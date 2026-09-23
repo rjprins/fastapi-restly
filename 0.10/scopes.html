@@ -1,0 +1,1029 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" data-theme="auto">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, follow">
+
+    <title>Scopes &#8212; FastAPI-Restly 0.10.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "auto";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "auto";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=82662543"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'scopes';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://www.fastapi-restly.org/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '0.10';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <link rel="canonical" href="https://www.fastapi-restly.org/0.10/scopes.html" />
+    <link rel="icon" href="_static/favicon.svg"/>
+    <link rel="author" title="About these documents" href="about.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Shape Error Responses" href="howto_error_responses.html" />
+    <link rel="prev" title="Query Clauses" href="clauses.html" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.10" />
+<meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700&amp;display=swap"
+      rel="stylesheet" />
+<!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
+<script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="auto">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/fr-monogram.svg" class="logo__image only-light" alt=""/>
+    <img src="_static/fr-monogram-dark.svg" class="logo__image only-dark pst-js-only" alt=""/>
+  
+  
+    <p class="title logo__title">FastAPI-Restly</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="getting_started.html">
+    Getting Started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="class_based_views.html">
+    CRUD Views
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="user_guide.html">
+    How-To
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="getting_started.html">
+    Getting Started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="class_based_views.html">
+    CRUD Views
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="user_guide.html">
+    How-To
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Project structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_relationship_loading.html">Relationship Loading and Async</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_query_modifiers.html">Filter, Sort, and Paginate Lists</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_current.html">Current context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Scopes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_react_admin.html">React Admin Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_openapi.html">Customize the OpenAPI Schema</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_testing.html">Test APIs with RestlyTestClient and Fixtures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="user_guide.html" class="nav-link">How-To Guides</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Scopes</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="scopes">
+<h1>Scopes<a class="headerlink" href="#scopes" title="Link to this heading">#</a></h1>
+<p>A scope is the clause the server imposes on every read of a model and on
+every reference to it: the row-visibility rule. Scope is a <em>role</em> a
+clause plays, not a kind of clause; the material is a plain
+<a class="reference internal" href="clauses.html"><span class="std std-doc">query clause</span></a>. The word completes a three-way vocabulary:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Word</p></th>
+<th class="head"><p>Who decides</p></th>
+<th class="head"><p>What it is</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>clause</strong></p></td>
+<td><p>the declaration</p></td>
+<td><p>a named, reusable query fragment: <code class="docutils literal notranslate"><span class="pre">ItemClauses.visible</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>scope</strong></p></td>
+<td><p>the server</p></td>
+<td><p>the clause every read and every reference check applies</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>filter</strong></p></td>
+<td><p>the client</p></td>
+<td><p>what the request asks for through <a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">query parameters</span></a></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>A filter narrows within the scope; it can never widen past it.</p>
+<p>The examples below use an <code class="docutils literal notranslate"><span class="pre">Item</span></code> model and an <code class="docutils literal notranslate"><span class="pre">ItemClauses</span></code> namespace for soft
+deletion. <a class="reference internal" href="clauses.html"><span class="std std-doc">Query Clauses</span></a> defines the clause operations:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ItemClauses</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ClauseNamespace</span><span class="p">):</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Item</span>
+
+    <span class="n">is_deleted</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span><span class="n">Item</span><span class="o">.</span><span class="n">deleted_at</span><span class="o">.</span><span class="n">is_not</span><span class="p">(</span><span class="kc">None</span><span class="p">))</span>
+    <span class="n">visible</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">none_of</span><span class="p">(</span><span class="n">is_deleted</span><span class="p">)</span>
+    <span class="n">trashed</span> <span class="o">=</span> <span class="n">is_deleted</span>
+
+    <span class="n">default_scope</span> <span class="o">=</span> <span class="n">visible</span>
+</pre></div>
+</div>
+<section id="the-model-s-default-scope">
+<span id="default-scope"></span><h2>The model’s default scope<a class="headerlink" href="#the-model-s-default-scope" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">default_scope</span></code> is a reserved attribute name on
+<a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.ClauseNamespace" title="fastapi_restly.clauses.ClauseNamespace"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ClauseNamespace</span></code></a>: the
+clause under that name is the scope for the model. The one line
+<code class="docutils literal notranslate"><span class="pre">default_scope</span> <span class="pre">=</span> <span class="pre">visible</span></code> arms two surfaces at once:</p>
+<ul class="simple">
+<li><p><strong>Every view read on the model.</strong> List, count, and retrieve apply the
+scope, so a row outside it is absent from pages and totals and returns
+404 from <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code>. Update and delete load through the same scoped
+retrieve, so a deleted row cannot be changed through the live surface.</p></li>
+<li><p><strong>Every reference to the model.</strong> A
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist</span></code></a> /
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDRef</span></code></a> /
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDSchema</span></code></a> field targeting
+the model checks existence inside the scope, so referencing a deleted
+row on a write returns 404.</p></li>
+</ul>
+<p>Every model namespace has a <code class="docutils literal notranslate"><span class="pre">default_scope</span></code>, and its default is
+<a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.UNSCOPED" title="fastapi_restly.clauses.UNSCOPED"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code></a>:
+a model that declares none reads unscoped, and
+its reference checks are bare primary-key lookups. <code class="docutils literal notranslate"><span class="pre">UNSCOPED</span></code> is the one
+explicit unscoped spelling everywhere a scope can appear. Searching for
+<code class="docutils literal notranslate"><span class="pre">UNSCOPED</span></code> finds where unscoping is requested directly. Follow variables
+and composed clauses to find the views and references that receive it.
+Composition can absorb or propagate the sentinel, so the search does
+not identify every resulting unscoped read.</p>
+<p>In clause composition, <code class="docutils literal notranslate"><span class="pre">UNSCOPED</span></code> means accepting every row: it is a
+no-op in <code class="docutils literal notranslate"><span class="pre">all_of</span></code>, makes <code class="docutils literal notranslate"><span class="pre">any_of</span></code> unscoped, and makes <code class="docutils literal notranslate"><span class="pre">none_of</span></code> match
+no rows. It contributes nothing to <code class="docutils literal notranslate"><span class="pre">apply_clauses</span></code> and does not remove
+other filters on a statement. See the
+<a class="reference internal" href="clauses.html#unscoped-composition"><span class="std std-ref">full composition rules</span></a> for object
+identity, return types, and validation.</p>
+<p>The scope guards reads <em>of</em> the model and references <em>to</em> it; it does
+not reach through relationships. A scoped model serialized inside
+another model’s response (<code class="docutils literal notranslate"><span class="pre">ItemRead.comments</span></code> embedding a soft-deleted
+comment, say) is loaded through the relationship, unscoped, and a
+dotted query-parameter filter or sort (<code class="docutils literal notranslate"><span class="pre">?items.name=x</span></code>) joins the
+related table without its scope. Shape the response schema, or override
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.get_relationship_loader_options" title="fastapi_restly.views.BaseRestView.get_relationship_loader_options"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code></a>,
+where embedded rows must be filtered.</p>
+<p><code class="docutils literal notranslate"><span class="pre">default_scope</span></code> is a
+<a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.WhereClause" title="fastapi_restly.clauses.WhereClause"><code class="xref py py-class docutils literal notranslate"><span class="pre">WhereClause</span></code></a>: a predicate,
+with EXISTS (<code class="docutils literal notranslate"><span class="pre">.any()</span></code>/<code class="docutils literal notranslate"><span class="pre">.has()</span></code>) for a rule that depends on a related
+table. A raw expression is rejected at class definition.</p>
+<p>A model <em>subclass</em> inherits the nearest declared <code class="docutils literal notranslate"><span class="pre">default_scope</span></code> along
+its MRO. A namespace on the subclass that says nothing about
+<code class="docutils literal notranslate"><span class="pre">default_scope</span></code> leaves the inherited scope in force; declaring one
+replaces it for that subclass, and the opt-out is explicit:
+<code class="docutils literal notranslate"><span class="pre">default_scope</span> <span class="pre">=</span> <span class="pre">fr.clauses.UNSCOPED</span></code>. A subclass can never drop the
+base scope by omission, and <code class="docutils literal notranslate"><span class="pre">default_scope</span> <span class="pre">=</span> <span class="pre">None</span></code> is rejected: it
+says nothing.</p>
+<p>An unbound scope raises at request time, naming the missing value: a
+scope with a request-bound value cannot be read silently unfiltered.</p>
+</section>
+<section id="views-replacing-the-scope">
+<span id="view-scope"></span><h2>Views: replacing the scope<a class="headerlink" href="#views-replacing-the-scope" title="Link to this heading">#</a></h2>
+<p>A view that should see something other than the default declares its
+own <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.scope" title="fastapi_restly.views.BaseRestView.scope"><code class="xref py py-attr docutils literal notranslate"><span class="pre">scope</span></code></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ItemView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/items&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Item</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ItemRead</span>
+    <span class="c1"># no scope declared: reads apply ItemClauses.default_scope</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TrashView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/trash&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Item</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ItemRead</span>
+    <span class="n">scope</span> <span class="o">=</span> <span class="n">ItemClauses</span><span class="o">.</span><span class="n">trashed</span>          <span class="c1"># the deviating view declares</span>
+</pre></div>
+</div>
+<p>Declaring a scope <strong>replaces</strong> the default; it does not stack on it.
+<code class="docutils literal notranslate"><span class="pre">ItemClauses.trashed</span></code> is the complete alternate surface for deleted rows.</p>
+<p>A tenant rule must hold under every scope a view or a route can name, so it
+is not a scope. SQLAlchemy’s
+<a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/queryguide/api.html#adding-global-where-on-criteria"><code class="docutils literal notranslate"><span class="pre">with_loader_criteria</span></code></a>,
+added from a <code class="docutils literal notranslate"><span class="pre">do_orm_execute</span></code> listener, puts the predicate on every ORM
+<code class="docutils literal notranslate"><span class="pre">SELECT</span></code> that selects or joins the class: view reads under any scope,
+reference checks, lazy loads and hand-written selects alike. Restly’s reads
+and reference checks are ORM statements, so the rule reaches them. The
+<a class="reference internal" href="howto_compose_views_with_mixins.html#tenant-row-scoping"><span class="std std-ref">tenant row scoping</span></a> recipe shows the listener, the
+column it restricts, and the statements it does not reach. The
+<a class="reference internal" href="examples.html#saas"><span class="std std-ref">SaaS example</span></a> runs that recipe.</p>
+<p>The explicit opt-out is <code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code>: it reads past the model’s
+<code class="docutils literal notranslate"><span class="pre">default_scope</span></code>, where <code class="docutils literal notranslate"><span class="pre">None</span></code> would fall back to it. Reserve it for a
+view that needs every model row. <code class="docutils literal notranslate"><span class="pre">UNSCOPED</span></code> removes only the model’s default
+scope. It does not disable session-level criteria. The tenant listener decides
+separately whether an admin may cross tenants:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">admin_router</span><span class="p">)</span>      <span class="c1"># router with admin auth</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">AdminItemView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/admin/items&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Item</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ItemRead</span>
+    <span class="n">scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">clauses</span><span class="o">.</span><span class="n">UNSCOPED</span>
+</pre></div>
+</div>
+<p>There is no per-request hook, deliberately: a clause is already a
+function. A per-request <em>value</em> (the tenant id) is bound around the
+request; a per-request <em>choice</em> is a clause function branching on a
+bound value, which fails loudly when the value is missing:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnElement</span><span class="p">,</span> <span class="n">true</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">RoleContext</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ContextNamespace</span><span class="p">):</span>
+    <span class="n">include_deleted</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ContextParam</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span>
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">where_clause</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">role_visibility</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">ColumnElement</span><span class="p">[</span><span class="nb">bool</span><span class="p">]:</span>
+    <span class="k">if</span> <span class="n">RoleContext</span><span class="o">.</span><span class="n">include_deleted</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">true</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">Item</span><span class="o">.</span><span class="n">deleted_at</span><span class="o">.</span><span class="n">is_</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ItemView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="o">...</span>
+    <span class="n">scope</span> <span class="o">=</span> <span class="n">role_visibility</span>  <span class="c1"># a dependency binds RoleContext.include_deleted</span>
+</pre></div>
+</div>
+<p>A policy clause like this names a request-boundary value, so it lives
+beside the view that applies it, not in the model’s namespace; the
+namespace holds model facts such as <code class="docutils literal notranslate"><span class="pre">is_deleted</span></code>, and views compose policy
+from them. The framework applies the declared clause
+itself, on every read; there is no apply-side override point, and a
+<code class="docutils literal notranslate"><span class="pre">scope</span></code> that is not a clause is rejected as the view class is defined.
+<a class="reference internal" href="#reading-the-scope">Reading the resolved scope</a> hands a route the
+clause without opening one.</p>
+</section>
+<section id="a-route-names-its-own-scope">
+<span id="per-read-scope"></span><h2>A route names its own scope<a class="headerlink" href="#a-route-names-its-own-scope" title="Link to this heading">#</a></h2>
+<p>A custom route that reads another surface of the same model passes a
+clause as <code class="docutils literal notranslate"><span class="pre">scope=</span></code> to the handler, and that clause replaces the resolved
+scope for that one read. The trash listing and the restore action are
+then routes on the view rather than a second view class:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ItemView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/items&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Item</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ItemRead</span>
+    <span class="c1"># no scope declared: reads apply ItemClauses.default_scope</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/trash&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">views</span><span class="o">.</span><span class="n">PaginatedEnvelope</span><span class="p">[</span><span class="n">ItemRead</span><span class="p">])</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">trash</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_params</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span><span class="n">query_params</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">ItemClauses</span><span class="o">.</span><span class="n">trashed</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">ResponseShape</span><span class="o">.</span><span class="n">LISTING</span><span class="p">)</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/restore&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">ItemRead</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">restore</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="n">item</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">ItemClauses</span><span class="o">.</span><span class="n">trashed</span><span class="p">)</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="s2">&quot;restore&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">item</span><span class="p">):</span>
+            <span class="n">item</span><span class="o">.</span><span class="n">deleted_at</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">item</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">handle_get_many</span></code> runs <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and forwards <code class="docutils literal notranslate"><span class="pre">scope=</span></code> to <code class="docutils literal notranslate"><span class="pre">get_many</span></code>;
+declaring <code class="docutils literal notranslate"><span class="pre">query_params</span></code> gives the route the listing grammar of <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>
+(<a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">Filter, Sort, and Paginate Lists</span></a>). The restore
+loads with <code class="docutils literal notranslate"><span class="pre">get_one(id,</span> <span class="pre">scope=...)</span></code> rather than <code class="docutils literal notranslate"><span class="pre">handle_get_one</span></code>, because
+a write action gates its own action inside
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.write_action" title="fastapi_restly.views.RestView.write_action"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_action</span></code></a>; a live
+item is a 404 here, since the trash is the surface this route reads.
+<code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code> is the per-read opt-out, in the same spelling as
+everywhere else.</p>
+<p>The argument replaces the scope, it does not narrow it. Put rules that may
+never be replaced, such as tenant isolation, at the session level. A <code class="docutils literal notranslate"><span class="pre">get_one</span></code>
+or <code class="docutils literal notranslate"><span class="pre">get_many</span></code> override declares the <code class="docutils literal notranslate"><span class="pre">scope</span></code> parameter and passes it on to
+<code class="docutils literal notranslate"><span class="pre">super()</span></code>. The handlers always pass it, so an override without the parameter
+fails on its first call instead of serving the wrong rows.</p>
+<section id="narrowing-inside-the-scope">
+<span id="per-read-where"></span><h3>Narrowing inside the scope<a class="headerlink" href="#narrowing-inside-the-scope" title="Link to this heading">#</a></h3>
+<p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_many" title="fastapi_restly.views.RestView.handle_get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_many</span></code></a>
+also takes <code class="docutils literal notranslate"><span class="pre">where=</span></code>, which narrows the read and keeps the scope. A listing
+of one collection’s items still hides deleted items:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="s2">&quot;/in-collection/</span><span class="si">{collection_id}</span><span class="s2">&quot;</span><span class="p">,</span>
+    <span class="n">response_model</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">views</span><span class="o">.</span><span class="n">PaginatedEnvelope</span><span class="p">[</span><span class="n">ItemRead</span><span class="p">],</span>
+<span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">in_collection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">collection_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">query_params</span><span class="p">):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span>
+        <span class="n">query_params</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="n">Item</span><span class="o">.</span><span class="n">collection_id</span> <span class="o">==</span> <span class="n">collection_id</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">ResponseShape</span><span class="o">.</span><span class="n">LISTING</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">where=</span></code> accepts a SQLAlchemy boolean expression or a clause. It is ANDed
+into the scope the read would apply, as <a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.all_of" title="fastapi_restly.clauses.all_of"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.all_of</span></code></a>
+would: the resolved scope by default, or the <code class="docutils literal notranslate"><span class="pre">scope=</span></code> argument when both are
+given. The page and <code class="docutils literal notranslate"><span class="pre">total_count</span></code> both apply it, and the client’s filters,
+sort and page apply on top.</p>
+<p>Passing the same expression as <code class="docutils literal notranslate"><span class="pre">scope=fr.where_clause(...)</span></code> replaces the
+scope, so that listing would include deleted items.</p>
+<p>The handler folds <code class="docutils literal notranslate"><span class="pre">where=</span></code> into the <code class="docutils literal notranslate"><span class="pre">scope</span></code> it forwards. A <code class="docutils literal notranslate"><span class="pre">get_many</span></code>
+override receives one combined clause and declares no <code class="docutils literal notranslate"><span class="pre">where</span></code> parameter.
+<code class="docutils literal notranslate"><span class="pre">get_many</span></code> itself does not take <code class="docutils literal notranslate"><span class="pre">where=</span></code>; a route that calls it directly
+composes <code class="docutils literal notranslate"><span class="pre">fr.all_of(fr.resolve_scope(self),</span> <span class="pre">...)</span></code>. A Python bool, such as a
+comparison on a loaded object, raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code>.</p>
+</section>
+</section>
+<section id="reading-the-resolved-scope">
+<span id="reading-the-scope"></span><h2>Reading the resolved scope<a class="headerlink" href="#reading-the-resolved-scope" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="api/views.html#fastapi_restly.views.resolve_scope" title="fastapi_restly.views.resolve_scope"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.resolve_scope</span></code></a> returns the
+clause a view’s reads apply, so a route that builds its own query sees
+the rows <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code> and <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code> see. A count route applies the client’s
+filters to the scoped select:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/count&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">total</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_params</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">authorize</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">GET_MANY</span><span class="p">)</span>
+    <span class="n">query</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">apply_clauses</span><span class="p">(</span><span class="n">sa</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">Task</span><span class="p">),</span> <span class="n">fr</span><span class="o">.</span><span class="n">resolve_scope</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+    <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">apply_query_params</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">query_params</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Do not name that route method <code class="docutils literal notranslate"><span class="pre">count</span></code>: it would shadow the
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.count" title="fastapi_restly.views.RestView.count"><code class="xref py py-meth docutils literal notranslate"><span class="pre">count</span></code></a> seam it calls.</p>
+<p>Pass another view to follow that view’s visibility from a route on this
+one, which is how a nested listing stays in step with the child’s own
+endpoint:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/tasks&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="nb">list</span><span class="p">[</span><span class="n">TaskRead</span><span class="p">])</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+    <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+    <span class="n">query</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">apply_clauses</span><span class="p">(</span>
+        <span class="n">sa</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">Task</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Task</span><span class="o">.</span><span class="n">project_id</span> <span class="o">==</span> <span class="nb">id</span><span class="p">),</span> <span class="n">fr</span><span class="o">.</span><span class="n">resolve_scope</span><span class="p">(</span><span class="n">TaskView</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">scalars</span><span class="p">(</span><span class="n">query</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Pass a mapped model class, <code class="docutils literal notranslate"><span class="pre">fr.resolve_scope(Task)</span></code>, for the model rung
+alone: the <code class="docutils literal notranslate"><span class="pre">default_scope</span></code> every reference check applies and every view
+without its own scope inherits. The two answers differ wherever a view
+declares a scope, so code off the request path that wants what the API
+shows passes the view.</p>
+<p>The result is a clause or <code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code>, never <code class="docutils literal notranslate"><span class="pre">None</span></code>, so it
+drops into <code class="docutils literal notranslate"><span class="pre">fr.apply_clauses</span></code> or a composition without a branch. The
+function resolves the scope; applying it stays with the framework.</p>
+</section>
+<section id="references-overriding-per-field">
+<span id="reference-scopes"></span><h2>References: overriding per field<a class="headerlink" href="#references-overriding-per-field" title="Link to this heading">#</a></h2>
+<p>A reference field checks against the target model’s <code class="docutils literal notranslate"><span class="pre">default_scope</span></code> by
+default. <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.RefExists" title="fastapi_restly.schemas.RefExists"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.RefExists</span></code></a> names
+the target explicitly and carries the per-field override in its <code class="docutils literal notranslate"><span class="pre">scope</span></code>
+argument, with three states:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">OrderCreate</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">BaseSchema</span><span class="p">):</span>
+    <span class="n">item_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">MustExist</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>                <span class="c1"># default_scope of Item (FK-inferred)</span>
+
+    <span class="n">restore_id</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">RefExists</span><span class="p">(</span><span class="n">Item</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">ItemClauses</span><span class="o">.</span><span class="n">trashed</span><span class="p">)]</span>
+
+    <span class="n">audit_item_id</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">RefExists</span><span class="p">(</span><span class="n">Item</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">clauses</span><span class="o">.</span><span class="n">UNSCOPED</span><span class="p">)]</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><strong>Not given</strong>: the target’s <code class="docutils literal notranslate"><span class="pre">default_scope</span></code> applies.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">scope=&lt;WhereClause&gt;</span></code></strong>: that predicate applies instead; the restore
+endpoint above accepts exactly the ids the trash view shows.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">scope=fr.clauses.UNSCOPED</span></code></strong>: the check is explicitly unscoped, in
+the same loud spelling as everywhere else. <code class="docutils literal notranslate"><span class="pre">scope=None</span></code> is rejected, so
+a variable that happens to be <code class="docutils literal notranslate"><span class="pre">None</span></code> can never silently unscope the
+check or escape the grep.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">IDRef</span></code> / <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> relationship references always use the target’s
+<code class="docutils literal notranslate"><span class="pre">default_scope</span></code>; the per-field override exists on the scalar marker
+only.</p>
+</section>
+<section id="coming-from-rails">
+<h2>Coming from Rails<a class="headerlink" href="#coming-from-rails" title="Link to this heading">#</a></h2>
+<p>This is <code class="docutils literal notranslate"><span class="pre">default_scope</span></code> without the parts that earned Rails’
+<code class="docutils literal notranslate"><span class="pre">default_scope</span></code> its reputation. <code class="docutils literal notranslate"><span class="pre">default_scope</span></code> controls which rows are
+visible to reads and reference checks. It does not set column values
+when creating rows. A view escapes it
+by declaring a replacement or <code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code>, both visible in the
+class body, and the reference escape is the same greppable word. Nothing
+escapes it implicitly.</p>
+</section>
+<section id="migrating-from-build-query">
+<span id="migrating-build-query"></span><h2>Migrating from <code class="docutils literal notranslate"><span class="pre">build_query</span></code><a class="headerlink" href="#migrating-from-build-query" title="Link to this heading">#</a></h2>
+<p>Restly’s earlier read seam, overriding <code class="docutils literal notranslate"><span class="pre">build_query()</span></code>, is removed: a view
+class that still defines one, itself or through a mixin, fails at class
+definition with a pointer here. Nothing it did is lost, and the mechanics
+differ in one point: <code class="docutils literal notranslate"><span class="pre">build_query</span></code> overrides composed through <code class="docutils literal notranslate"><span class="pre">super()</span></code>
+chains, scopes replace, so a chain of filters becomes one composed clause:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># before</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ItemView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">build_query</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">build_query</span><span class="p">()</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Item</span><span class="o">.</span><span class="n">deleted_at</span><span class="o">.</span><span class="n">is_</span><span class="p">(</span><span class="kc">None</span><span class="p">))</span>
+
+<span class="c1"># after: the rule becomes a clause on the model, and the override disappears</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ItemClauses</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ClauseNamespace</span><span class="p">):</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Item</span>
+    <span class="n">default_scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span><span class="n">Item</span><span class="o">.</span><span class="n">deleted_at</span><span class="o">.</span><span class="n">is_</span><span class="p">(</span><span class="kc">None</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Relationship loading that lived in <code class="docutils literal notranslate"><span class="pre">build_query</span></code> belongs in
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.get_relationship_loader_options" title="fastapi_restly.views.BaseRestView.get_relationship_loader_options"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code></a>.
+Other <code class="docutils literal notranslate"><span class="pre">Select</span></code> changes to a listing, such as a join or a default
+ordering, belong in an
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_query_params" title="fastapi_restly.views.RestView.apply_query_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_query_params</span></code></a>
+override:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ItemView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply_query_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">query_params</span><span class="p">):</span>
+        <span class="n">query</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="n">Item</span><span class="o">.</span><span class="n">created_at</span><span class="o">.</span><span class="n">desc</span><span class="p">())</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">apply_query_params</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">query_params</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>An ordering added before <code class="docutils literal notranslate"><span class="pre">super()</span></code> comes first, so a client <code class="docutils literal notranslate"><span class="pre">?sort=</span></code>
+orders rows within it. A to-many join added here does not repeat rows or
+inflate <code class="docutils literal notranslate"><span class="pre">total_count</span></code>.</p>
+</section>
+<section id="binding-scope-values">
+<span id="id1"></span><h2>Binding scope values<a class="headerlink" href="#binding-scope-values" title="Link to this heading">#</a></h2>
+<p>Scopes are clauses, so their values come from context members:
+<a class="reference internal" href="clauses.html#binding-values"><span class="std std-ref">Query Clauses, Supplying values</span></a>. Bind request-wide
+values with a generated dependency, which
+<a class="reference internal" href="howto_current.html#current-request-binding"><span class="std std-ref">Current context</span></a> describes:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">(</span><span class="n">dependencies</span><span class="o">=</span><span class="p">[</span>
+    <span class="n">Current</span><span class="o">.</span><span class="n">depends</span><span class="p">(</span><span class="n">user_id</span><span class="o">=</span><span class="n">get_user_id</span><span class="p">),</span>
+    <span class="n">RoleContext</span><span class="o">.</span><span class="n">depends</span><span class="p">(</span><span class="n">include_deleted</span><span class="o">=</span><span class="n">get_include_deleted</span><span class="p">),</span>
+<span class="p">])</span>
+</pre></div>
+</div>
+<p>Read <code class="docutils literal notranslate"><span class="pre">Current.explain()</span></code> when a query filters unexpectedly; the origin
+names your <code class="docutils literal notranslate"><span class="pre">depends()</span></code> line. The scope’s promise is structural: the
+framework guarantees the clause is applied and its values are bound, or
+the request fails loudly. That the bound value is the <em>right</em> user is the
+source dependency’s job; assert it there.</p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="clauses.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Query Clauses</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="howto_error_responses.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Shape Error Responses</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-model-s-default-scope">The model’s default scope</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#views-replacing-the-scope">Views: replacing the scope</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#a-route-names-its-own-scope">A route names its own scope</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#narrowing-inside-the-scope">Narrowing inside the scope</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reading-the-resolved-scope">Reading the resolved scope</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#references-overriding-per-field">References: overriding per field</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#coming-from-rails">Coming from Rails</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#migrating-from-build-query">Migrating from <code class="docutils literal notranslate"><span class="pre">build_query</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#binding-scope-values">Binding scope values</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+<p class="sidebar-newsletter">
+  <a href="newsletter.html">Subscribe to newsletter</a>
+</p></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, Rutger Prins.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
