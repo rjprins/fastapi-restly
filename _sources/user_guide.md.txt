@@ -2,8 +2,10 @@
 
 These guides are task-focused: each one shows how to accomplish a specific
 goal with FastAPI-Restly. If you are new to the framework, start with
-[Getting Started](getting_started.md), then the [Tutorial](tutorial.md), and
-come back here when you have a concrete task.
+[Getting Started](getting_started.md), read [Using RestView](rest_views.md) for
+the default CRUD contract, then use [Build a Blog API](tutorial.md) for a
+complete multi-model example. Come back here
+when you have a concrete task.
 
 ## Adopting and Modeling
 
@@ -18,6 +20,14 @@ schemas it works from.
 :link-type: doc
 
 Adopt Restly beside existing FastAPI routes, then wire it into your sessions and models.
+:::
+
+:::{grid-item-card} Project structure
+:link: howto_project_structure
+:link-type: doc
+
+Lay out a growing application by subject, keep imports pointing one way, and
+compose views and models from one place each.
 :::
 
 :::{grid-item-card} Custom Schemas and Field Types
@@ -67,6 +77,30 @@ set, and resolve `MissingGreenlet` on async sessions.
 Filter, sort, and paginate list endpoints using URL query parameters.
 :::
 
+:::{grid-item-card} Current context
+:link: howto_current
+:link-type: doc
+
+Bind the current user per request. Read the value in application code,
+column defaults, and tests.
+:::
+
+:::{grid-item-card} Query Clauses
+:link: clauses
+:link-type: doc
+
+Compose reusable SQLAlchemy predicates. Supply values through context
+members when applying the clauses to a statement.
+:::
+
+:::{grid-item-card} Scopes
+:link: scopes
+:link-type: doc
+
+Impose a replaceable clause on every read and every reference to a model.
+Use a default scope for row surfaces such as live and deleted records.
+:::
+
 :::{grid-item-card} Shape Error Responses
 :link: howto_error_responses
 :link-type: doc
@@ -79,7 +113,7 @@ split, and app-wide error envelopes (problem+json).
 
 ## Customizing Views
 
-These guides change what the generated views do, from overriding a single
+These guides change what CRUD views do, from overriding a single
 method to sharing behaviour across many views.
 
 ::::{grid} 1 2 2 2
@@ -94,12 +128,13 @@ different list schema, restoring soft-deleted rows, webhook receivers, login
 flows, custom actions, and tenant scoping.
 :::
 
-:::{grid-item-card} Customize RestView
+:::{grid-item-card} Customizing RestView
 :link: customize
 :link-type: doc
 
 Override the business methods ({meth}`create <fastapi_restly.views.RestView.create>`, {meth}`update <fastapi_restly.views.RestView.update>`, ...), the handlers,
-or the endpoint methods, and add custom routes alongside generated CRUD.
+or the endpoint methods, and add custom routes alongside the default CRUD
+routes.
 :::
 
 :::{grid-item-card} Share Behaviour with Base Views
@@ -114,8 +149,8 @@ access control across multiple views.
 :link: howto_compose_views_with_mixins
 :link-type: doc
 
-Layer cross-cutting concerns (tenant scoping, soft delete, audit stamping)
-through cooperative mixins.
+Put cross-cutting concerns (tenant scoping, soft delete, audit stamping)
+where they belong: structural fields on the model, verbs on view mixins.
 :::
 
 :::{grid-item-card} Use Type Annotations
@@ -148,7 +183,7 @@ Use {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` to g
 :link-type: doc
 
 Set per-view tags and responses, add metadata to custom routes, replace a
-generated route's documented contract, and use `x-resource-ref`.
+default CRUD route's documented contract, and use `x-resource-ref`.
 :::
 
 :::{grid-item-card} Test APIs with RestlyTestClient and Fixtures
@@ -174,11 +209,15 @@ checklist.
 :hidden:
 
 howto_existing_project
+howto_project_structure
 howto_custom_schema
 howto_relationship_idschema
 howto_response_schema
 howto_relationship_loading
 howto_query_modifiers
+howto_current
+clauses
+scopes
 howto_error_responses
 patterns
 howto_inheritance

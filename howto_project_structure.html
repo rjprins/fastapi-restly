@@ -1,0 +1,870 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" data-theme="auto">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Project structure &#8212; FastAPI-Restly 0.10.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "auto";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "auto";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=82662543"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'howto_project_structure';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://www.fastapi-restly.org/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <link rel="canonical" href="https://www.fastapi-restly.org/howto_project_structure.html" />
+    <link rel="icon" href="_static/favicon.svg"/>
+    <link rel="author" title="About these documents" href="about.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Custom Schemas and Field Types" href="howto_custom_schema.html" />
+    <link rel="prev" title="Use Restly in an Existing Project" href="howto_existing_project.html" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.10" />
+<meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700&amp;display=swap"
+      rel="stylesheet" />
+<!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
+<script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="auto">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/fr-monogram.svg" class="logo__image only-light" alt=""/>
+    <img src="_static/fr-monogram-dark.svg" class="logo__image only-dark pst-js-only" alt=""/>
+  
+  
+    <p class="title logo__title">FastAPI-Restly</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="getting_started.html">
+    Getting Started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="class_based_views.html">
+    CRUD Views
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="user_guide.html">
+    How-To
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="getting_started.html">
+    Getting Started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="class_based_views.html">
+    CRUD Views
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="user_guide.html">
+    How-To
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Project structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_relationship_loading.html">Relationship Loading and Async</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_query_modifiers.html">Filter, Sort, and Paginate Lists</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_current.html">Current context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_react_admin.html">React Admin Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_openapi.html">Customize the OpenAPI Schema</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_testing.html">Test APIs with RestlyTestClient and Fixtures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="user_guide.html" class="nav-link">How-To Guides</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Project structure</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="project-structure">
+<h1>Project structure<a class="headerlink" href="#project-structure" title="Link to this heading">#</a></h1>
+<p>Restly does not impose a project layout. Views are ordinary Python classes and
+<a class="reference internal" href="api/views.html#fastapi_restly.views.include_view" title="fastapi_restly.views.include_view"><code class="xref py py-func docutils literal notranslate"><span class="pre">include_view()</span></code></a> is an ordinary function call, so any arrangement of
+modules that Python can import will work. This page describes the layout we
+recommend anyway, so that a growing application does not have to invent one,
+and explains what each part of it buys you.</p>
+<section id="generate-it">
+<span id="restly-new"></span><h2>Generate it<a class="headerlink" href="#generate-it" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> creates a project with a <code class="docutils literal notranslate"><span class="pre">users</span></code> resource, a test suite,
+and the settings and schema wiring:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>fastapi-restly
+restly<span class="w"> </span>new<span class="w"> </span>myapp
+</pre></div>
+</div>
+<p>The name names the project: the directory, <code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code>, and the databases.
+The package inside is always <code class="docutils literal notranslate"><span class="pre">app</span></code>, so <code class="docutils literal notranslate"><span class="pre">from</span> <span class="pre">app.settings</span> <span class="pre">import</span> <span class="pre">Settings</span></code> is
+the same line in every Restly project.</p>
+<p>Three choices, each a flag, each asked for on a terminal when you leave it out:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p></p></th>
+<th class="head"><p>default</p></th>
+<th class="head"><p>alternative</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Views and driver</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--async</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--sync</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Database</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--postgres</span></code>, with a <code class="docutils literal notranslate"><span class="pre">compose.yaml</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--sqlite</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Schema</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--alembic</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--create-all</span></code>, built at startup and in tests</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="start-with-one-file">
+<h2>Start with one file<a class="headerlink" href="#start-with-one-file" title="Link to this heading">#</a></h2>
+<p>A single module is the right shape for a first resource.
+<a class="reference internal" href="getting_started.html"><span class="std std-doc">Getting Started</span></a> builds a complete application in one
+file, and nothing is gained by splitting it while it stays that size.</p>
+<p>Split when the second or third resource arrives, or when one resource grows
+explicit schemas and a handful of overrides. The signal is scrolling: when you
+navigate the file by searching rather than by reading, it holds more than one
+subject.</p>
+</section>
+<section id="organize-by-subject-then-by-type">
+<h2>Organize by subject, then by type<a class="headerlink" href="#organize-by-subject-then-by-type" title="Link to this heading">#</a></h2>
+<p>Give each resource a package, and name the modules inside it after the kind of
+code they hold:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>app/
+├── main.py                 # Application factory, VIEWS, and lifespan
+├── asgi.py                 # app = create_app(), the deployment entrypoint
+├── settings.py             # Pydantic settings
+├── current.py              # Current namespace (optional)
+├── views.py                # Shared base view and mixins
+├── users/
+│   ├── __init__.py
+│   ├── models.py
+│   ├── schemas.py
+│   └── views.py
+└── tasks/
+    ├── __init__.py
+    ├── models.py
+    ├── schemas.py
+    └── views.py
+</pre></div>
+</div>
+<p>Subject or domain first, code type second, once the application is large
+enough for the choice to matter.</p>
+</section>
+<section id="keep-imports-pointing-one-way">
+<h2>Keep imports pointing one way<a class="headerlink" href="#keep-imports-pointing-one-way" title="Link to this heading">#</a></h2>
+<p>Within a subject, models import nothing from their siblings, schemas import
+models, and views import both. Application composition imports the views. That
+ordering keeps subjects importable in isolation, which matters for Alembic,
+which loads models without an application, and for tests, which load one view
+without the rest of the app.</p>
+<p>Nothing in a subject package should register itself as a side effect of being
+imported. Keep <code class="docutils literal notranslate"><span class="pre">__init__.py</span></code> empty or limited to a docstring, and import
+concrete modules rather than building re-export modules that pull in a whole
+subject to reach one class.</p>
+</section>
+<section id="share-current-from-the-package-root">
+<span id="project-current"></span><h2>Share Current from the package root<a class="headerlink" href="#share-current-from-the-package-root" title="Link to this heading">#</a></h2>
+<p>Declare <a class="reference internal" href="howto_current.html"><span class="std std-doc">Current</span></a> in <code class="docutils literal notranslate"><span class="pre">app/current.py</span></code> when multiple modules need
+request-bound values. Import that declaration wherever it is used:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">app.current</span><span class="w"> </span><span class="kn">import</span> <span class="n">Current</span>
+</pre></div>
+</div>
+<p>The module can also expose <code class="docutils literal notranslate"><span class="pre">SetCurrentContextDep</span></code>, created with
+<a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.ContextNamespace.depends" title="fastapi_restly.clauses.ContextNamespace.depends"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Current.depends</span></code></a>.
+Attach this dependency in <code class="docutils literal notranslate"><span class="pre">main.py</span></code> or the shared <code class="docutils literal notranslate"><span class="pre">views.py</span></code>.</p>
+<p>Keep <code class="docutils literal notranslate"><span class="pre">current.py</span></code> independent of view modules and the application factory.
+Models and scripts must be able to import it without constructing an application.
+<code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> does not generate this module.</p>
+</section>
+<section id="compose-in-one-place">
+<span id="id1"></span><h2>Compose in one place<a class="headerlink" href="#compose-in-one-place" title="Link to this heading">#</a></h2>
+<p>Restly has no autodiscovery: nothing scans your package for views or models, so
+the layout registers them itself. That one place is a <code class="docutils literal notranslate"><span class="pre">VIEWS</span></code> tuple in
+<code class="docutils literal notranslate"><span class="pre">main.py</span></code>, which the factory registers after
+<a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure(app,</span> <span class="pre">...)</span></code></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># app/main.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">Settings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.tasks.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaskView</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.users.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">UserView</span>
+
+<span class="n">VIEWS</span> <span class="o">=</span> <span class="p">(</span><span class="n">TaskView</span><span class="p">,</span> <span class="n">UserView</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">create_app</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">FastAPI</span><span class="p">:</span>
+    <span class="n">settings</span> <span class="o">=</span> <span class="n">Settings</span><span class="o">.</span><span class="n">current</span>
+    <span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">()</span>
+    <span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">async_database_url</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">database_url</span><span class="p">,</span> <span class="n">health</span><span class="o">=</span><span class="s2">&quot;/health&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">view</span> <span class="ow">in</span> <span class="n">VIEWS</span><span class="p">:</span>
+        <span class="n">fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">view</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">app</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="deploying.html#production-main-template"><span class="std std-ref">A production <code class="docutils literal notranslate"><span class="pre">main.py</span></code> template</span></a> adds the engine and
+the lifespan that disposes it.</p>
+<p>That tuple also decides which module has seen every model, since each view
+imports its own. A declarative base holds the models that have been imported
+and nothing else, and <code class="docutils literal notranslate"><span class="pre">IDBase</span></code> subclasses <code class="docutils literal notranslate"><span class="pre">DataclassBase</span></code>, so
+<code class="docutils literal notranslate"><span class="pre">fr.DataclassBase.metadata</span></code> is the whole schema once <code class="docutils literal notranslate"><span class="pre">main.py</span></code> has been
+imported. On your own base, see
+<a class="reference internal" href="howto_existing_project.html#use-your-own-declarativebase-models"><span class="std std-ref">Use Your Own DeclarativeBase Models</span></a>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">alembic/env.py</span></code> relies on exactly that:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># alembic/env.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">app.main</span>  <span class="c1"># noqa: F401  (imports every view, and each view its model)</span>
+
+<span class="n">target_metadata</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">DataclassBase</span><span class="o">.</span><span class="n">metadata</span>
+</pre></div>
+</div>
+<p>This works only because importing <code class="docutils literal notranslate"><span class="pre">main.py</span></code> builds nothing. Never put
+<code class="docutils literal notranslate"><span class="pre">app</span> <span class="pre">=</span> <span class="pre">create_app()</span></code> at module level there: with settings that have no
+defaults, importing the module would require a configured environment, and the
+test suite is the first thing to break. The application object belongs in
+<code class="docutils literal notranslate"><span class="pre">asgi.py</span></code>, which only the server imports; see
+<a class="reference internal" href="deploying.html#id1"><span class="std std-ref">Running the app</span></a>.</p>
+<p>A model no view reaches, such as an outbox or audit table, is not on that
+graph. Import it at module level wherever the application uses it, or in
+<code class="docutils literal notranslate"><span class="pre">main.py</span></code> beside <code class="docutils literal notranslate"><span class="pre">VIEWS</span></code> when only a worker or a script does.
+Getting it wrong is not silent: <code class="docutils literal notranslate"><span class="pre">alembic</span> <span class="pre">check</span></code> compares metadata against the
+database and reports a missing model as a dropped table, so run it in CI. See
+<a class="reference internal" href="deploying.html#migrations-with-alembic"><span class="std std-ref">Migrations with Alembic</span></a> and
+<a class="reference internal" href="howto_testing.html"><span class="std std-doc">Test APIs with RestlyTestClient and Fixtures</span></a>.</p>
+</section>
+<section id="share-view-behavior-from-the-package-root">
+<h2>Share view behavior from the package root<a class="headerlink" href="#share-view-behavior-from-the-package-root" title="Link to this heading">#</a></h2>
+<p>Behavior common to every view belongs in a root <code class="docutils literal notranslate"><span class="pre">views.py</span></code>: the base class your
+views inherit from, plus any mixins. The subject packages hold concrete views,
+and the root module holds the foundation they are built on. Add it once a second
+view wants the same behavior, which is why a generated project does not have one.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># app/users/views.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..views</span><span class="w"> </span><span class="kn">import</span> <span class="n">AuthenticatedView</span><span class="p">,</span> <span class="n">SoftDeleteMixin</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">User</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.schemas</span><span class="w"> </span><span class="kn">import</span> <span class="n">UserRead</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">SoftDeleteMixin</span><span class="p">,</span> <span class="n">AuthenticatedView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserRead</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="howto_inheritance.html"><span class="std std-doc">Share Behaviour with Base Views</span></a> covers the base class,
+and <a class="reference internal" href="howto_compose_views_with_mixins.html"><span class="std std-doc">Compose Views with Mixins</span></a> covers the
+mixins.</p>
+</section>
+<section id="add-modules-when-they-earn-them">
+<h2>Add modules when they earn them<a class="headerlink" href="#add-modules-when-they-earn-them" title="Link to this heading">#</a></h2>
+<p>Resist creating a module before there is something to put in it. In
+particular, a subject does not need a <code class="docutils literal notranslate"><span class="pre">service.py</span></code>. For CRUD, the view class is
+already that layer: business methods such as
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a> and
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a> are where your logic
+goes, and an extra layer that forwards to them adds indirection without
+adding a seam. Write a <code class="docutils literal notranslate"><span class="pre">service.py</span></code> when logic genuinely runs outside a
+request, such as work shared with a background worker.</p>
+<p>The same applies to <code class="docutils literal notranslate"><span class="pre">dependencies.py</span></code>, <code class="docutils literal notranslate"><span class="pre">constants.py</span></code>, and <code class="docutils literal notranslate"><span class="pre">exceptions.py</span></code>
+inside a subject. Each is worth having once it holds more than one item.</p>
+<p>At the package root, move <code class="docutils literal notranslate"><span class="pre">VIEWS</span></code> and its registration loop into an <code class="docutils literal notranslate"><span class="pre">api.py</span></code>
+exposing <code class="docutils literal notranslate"><span class="pre">register_views(app)</span></code> once <code class="docutils literal notranslate"><span class="pre">main.py</span></code> grows crowded; <code class="docutils literal notranslate"><span class="pre">main.py</span></code> imports
+it, so it still reaches every model.</p>
+<p>Keep application-wide concerns in top-level modules named for what they do,
+such as <code class="docutils literal notranslate"><span class="pre">auth.py</span></code>, <code class="docutils literal notranslate"><span class="pre">settings.py</span></code>, or <code class="docutils literal notranslate"><span class="pre">outbox.py</span></code>, and promote one to a package
+only when it grows several cohesive modules.</p>
+</section>
+<section id="see-also">
+<h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="examples.html#saas"><span class="std std-ref">SaaS example</span></a>, a complete application in this layout</p></li>
+<li><p><a class="reference internal" href="deploying.html"><span class="std std-doc">Deploying</span></a> for the factory, engine, and Alembic setup</p></li>
+<li><p><a class="reference internal" href="howto_testing.html"><span class="std std-doc">Test APIs with RestlyTestClient and Fixtures</span></a> for the
+matching <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code></p></li>
+<li><p><a class="reference internal" href="howto_existing_project.html"><span class="std std-doc">Use Restly in an Existing Project</span></a> when the
+layout is already decided</p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="howto_existing_project.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Use Restly in an Existing Project</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="howto_custom_schema.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Custom Schemas and Field Types</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#generate-it">Generate it</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#start-with-one-file">Start with one file</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#organize-by-subject-then-by-type">Organize by subject, then by type</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#keep-imports-pointing-one-way">Keep imports pointing one way</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#share-current-from-the-package-root">Share Current from the package root</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#compose-in-one-place">Compose in one place</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#share-view-behavior-from-the-package-root">Share view behavior from the package root</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#add-modules-when-they-earn-them">Add modules when they earn them</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+<p class="sidebar-newsletter">
+  <a href="newsletter.html">Subscribe to newsletter</a>
+</p></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, Rutger Prins.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

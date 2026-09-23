@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>API Modules &#8212; FastAPI-Restly 0.9.0 documentation</title>
+    <title>API Modules &#8212; FastAPI-Restly 0.10.0 documentation</title>
   
   
   
@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=6821e04d" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=e2851362" />
   
   <!-- So that users can add custom icons -->
   <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=39bb1c6d"></script>
+    <script src="../_static/documentation_options.js?v=82662543"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -61,12 +61,12 @@
     <link rel="author" title="About these documents" href="../about.html" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Database API" href="db.html" />
+    <link rel="next" title="Package API" href="package.html" />
     <link rel="prev" title="API Reference" href="../api_reference.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.9" />
+  <meta name="docsearch:version" content="0.10" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -167,7 +167,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../tutorial_overview.html">
+  <a class="nav-link nav-internal" href="../tutorial.html">
     Tutorial
   </a>
 </li>
@@ -175,14 +175,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="../class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -190,13 +183,6 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="../user_guide.html">
     How-To
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../examples.html">
-    Examples
   </a>
 </li>
 
@@ -209,18 +195,35 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../about.html">
-    About
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
     Blog
   </a>
 </li>
 
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
   </ul>
 </nav></div>
       
@@ -338,7 +341,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../tutorial_overview.html">
+  <a class="nav-link nav-internal" href="../tutorial.html">
     Tutorial
   </a>
 </li>
@@ -346,14 +349,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="../class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -361,13 +357,6 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="../user_guide.html">
     How-To
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../examples.html">
-    Examples
   </a>
 </li>
 
@@ -380,15 +369,22 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../about.html">
-    About
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
-    Blog
+  <a class="nav-link nav-internal" href="../examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../about.html">
+    About
   </a>
 </li>
 
@@ -457,6 +453,8 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">API Modules</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="package.html">Package API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="clauses.html">Clauses API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="db.html">Database API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="exc.html">Exceptions API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="models.html">Models API</a></li>
@@ -465,10 +463,10 @@
 <li class="toctree-l2"><a class="reference internal" href="schemas.html">Schemas API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="views.html">Views API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="testing.html">Testing API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.html">Utils API</a></li>
 </ul>
 </details></li>
-</ul>
-<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../api_details.html">Behavior and Configuration Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../technical_details.html">Technical Details</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
 </ul>
@@ -533,10 +531,31 @@
                   
   <section id="api-modules">
 <h1>API Modules<a class="headerlink" href="#api-modules" title="Link to this heading">#</a></h1>
-<p>This section is generated with Sphinx autodoc from the public Python API.</p>
+<p>The package reference lists names exported directly by <code class="docutils literal notranslate"><span class="pre">fastapi_restly</span></code>.
+The module references document their definitions and signatures.</p>
 <div class="toctree-wrapper compound">
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="package.html">Package API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="package.html#fastapi_restly.fastapi_restly.__version__"><code class="docutils literal notranslate"><span class="pre">fastapi_restly.__version__</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Clauses API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="clauses.html#fastapi_restly.clauses.ClauseNamespace"><code class="docutils literal notranslate"><span class="pre">ClauseNamespace</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="clauses.html#fastapi_restly.clauses.ContextNamespace"><code class="docutils literal notranslate"><span class="pre">ContextNamespace</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="clauses.html#fastapi_restly.clauses.ContextParam"><code class="docutils literal notranslate"><span class="pre">ContextParam</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="clauses.html#fastapi_restly.clauses.Unscoped"><code class="docutils literal notranslate"><span class="pre">Unscoped</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="clauses.html#fastapi_restly.clauses.WhereClause"><code class="docutils literal notranslate"><span class="pre">WhereClause</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="clauses.html#fastapi_restly.clauses.all_of"><code class="docutils literal notranslate"><span class="pre">all_of()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="clauses.html#fastapi_restly.clauses.any_of"><code class="docutils literal notranslate"><span class="pre">any_of()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="clauses.html#fastapi_restly.clauses.apply_clauses"><code class="docutils literal notranslate"><span class="pre">apply_clauses()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="clauses.html#fastapi_restly.clauses.none_of"><code class="docutils literal notranslate"><span class="pre">none_of()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="clauses.html#fastapi_restly.clauses.where_clause"><code class="docutils literal notranslate"><span class="pre">where_clause()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="clauses.html#fastapi_restly.clauses.UNSCOPED"><code class="docutils literal notranslate"><span class="pre">UNSCOPED</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="db.html">Database API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="db.html#fastapi_restly.db.AsyncSessionDep"><code class="docutils literal notranslate"><span class="pre">fastapi_restly.db.AsyncSessionDep</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="db.html#fastapi_restly.db.SessionDep"><code class="docutils literal notranslate"><span class="pre">fastapi_restly.db.SessionDep</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="db.html#fastapi_restly.db.async_create_all"><code class="docutils literal notranslate"><span class="pre">async_create_all()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="db.html#fastapi_restly.db.configure"><code class="docutils literal notranslate"><span class="pre">configure()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="db.html#fastapi_restly.db.create_all"><code class="docutils literal notranslate"><span class="pre">create_all()</span></code></a></li>
@@ -583,10 +602,13 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="schemas.html#fastapi_restly.schemas.ReadOnly"><code class="docutils literal notranslate"><span class="pre">fastapi_restly.schemas.ReadOnly</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="schemas.html#fastapi_restly.schemas.WriteOnly"><code class="docutils literal notranslate"><span class="pre">fastapi_restly.schemas.WriteOnly</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="schemas.html#fastapi_restly.schemas.BaseSchema"><code class="docutils literal notranslate"><span class="pre">BaseSchema</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="schemas.html#fastapi_restly.schemas.IDRef"><code class="docutils literal notranslate"><span class="pre">IDRef</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="schemas.html#fastapi_restly.schemas.IDSchema"><code class="docutils literal notranslate"><span class="pre">IDSchema</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="schemas.html#fastapi_restly.schemas.MustExist"><code class="docutils literal notranslate"><span class="pre">MustExist</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="schemas.html#fastapi_restly.schemas.RefExists"><code class="docutils literal notranslate"><span class="pre">RefExists</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="schemas.html#fastapi_restly.schemas.TimestampsSchemaMixin"><code class="docutils literal notranslate"><span class="pre">TimestampsSchemaMixin</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="schemas.html#fastapi_restly.schemas.create_schema_from_model"><code class="docutils literal notranslate"><span class="pre">create_schema_from_model()</span></code></a></li>
 </ul>
@@ -611,6 +633,7 @@
 <li class="toctree-l2"><a class="reference internal" href="views.html#fastapi_restly.views.patch"><code class="docutils literal notranslate"><span class="pre">patch()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="views.html#fastapi_restly.views.post"><code class="docutils literal notranslate"><span class="pre">post()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="views.html#fastapi_restly.views.put"><code class="docutils literal notranslate"><span class="pre">put()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="views.html#fastapi_restly.views.resolve_scope"><code class="docutils literal notranslate"><span class="pre">resolve_scope()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="views.html#fastapi_restly.views.route"><code class="docutils literal notranslate"><span class="pre">route()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="views.html#fastapi_restly.views.run_write_action"><code class="docutils literal notranslate"><span class="pre">run_write_action()</span></code></a></li>
 </ul>
@@ -619,6 +642,10 @@
 <li class="toctree-l2"><a class="reference internal" href="testing.html#fastapi_restly.testing.AsyncRestlyTestClient"><code class="docutils literal notranslate"><span class="pre">AsyncRestlyTestClient</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="testing.html#fastapi_restly.testing.RestlyTestClient"><code class="docutils literal notranslate"><span class="pre">RestlyTestClient</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="testing.html#fastapi_restly.testing.configure_tests"><code class="docutils literal notranslate"><span class="pre">configure_tests()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="utils.html">Utils API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="utils.html#fastapi_restly.utils.CurrentSettingsMixin"><code class="docutils literal notranslate"><span class="pre">CurrentSettingsMixin</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -645,11 +672,11 @@
       </div>
     </a>
     <a class="right-next"
-       href="db.html"
+       href="package.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Database API</p>
+        <p class="prev-next-title">Package API</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>

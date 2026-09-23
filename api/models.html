@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Models API &#8212; FastAPI-Restly 0.9.0 documentation</title>
+    <title>Models API &#8212; FastAPI-Restly 0.10.0 documentation</title>
   
   
   
@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=6821e04d" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=e2851362" />
   
   <!-- So that users can add custom icons -->
   <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=39bb1c6d"></script>
+    <script src="../_static/documentation_options.js?v=82662543"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -66,7 +66,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.9" />
+  <meta name="docsearch:version" content="0.10" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -167,7 +167,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../tutorial_overview.html">
+  <a class="nav-link nav-internal" href="../tutorial.html">
     Tutorial
   </a>
 </li>
@@ -175,14 +175,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="../class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -190,13 +183,6 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="../user_guide.html">
     How-To
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../examples.html">
-    Examples
   </a>
 </li>
 
@@ -209,18 +195,35 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../about.html">
-    About
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
     Blog
   </a>
 </li>
 
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
   </ul>
 </nav></div>
       
@@ -338,7 +341,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../tutorial_overview.html">
+  <a class="nav-link nav-internal" href="../tutorial.html">
     Tutorial
   </a>
 </li>
@@ -346,14 +349,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="../class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -361,13 +357,6 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="../user_guide.html">
     How-To
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../examples.html">
-    Examples
   </a>
 </li>
 
@@ -380,15 +369,22 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../about.html">
-    About
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
-    Blog
+  <a class="nav-link nav-internal" href="../examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../about.html">
+    About
   </a>
 </li>
 
@@ -457,6 +453,8 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">API Modules</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="package.html">Package API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="clauses.html">Clauses API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="db.html">Database API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="exc.html">Exceptions API</a></li>
 <li class="toctree-l2 current active"><a class="current reference internal" href="#">Models API</a></li>
@@ -465,10 +463,10 @@
 <li class="toctree-l2"><a class="reference internal" href="schemas.html">Schemas API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="views.html">Views API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="testing.html">Testing API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.html">Utils API</a></li>
 </ul>
 </details></li>
-</ul>
-<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../api_details.html">Behavior and Configuration Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../technical_details.html">Technical Details</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
 </ul>
@@ -548,7 +546,7 @@ Restly models are declared against.</p>
 reached from plain async code – <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">obj.awaitable_attrs.items</span></code> –
 where a bare <code class="docutils literal notranslate"><span class="pre">obj.items</span></code> would raise <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. Views eager-load
 what the response schema names, so this is for the code that runs outside
-that: an <code class="docutils literal notranslate"><span class="pre">after_commit</span></code> hook, a custom business method.</p>
+that: an <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> hook, a custom business method.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.models.DataclassBase.registry">
 <span class="sig-name descname"><span class="pre">registry</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">_RegistryType</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;sqlalchemy.orm.decl_api.registry</span> <span class="pre">object&gt;</span></em><a class="headerlink" href="#fastapi_restly.models.DataclassBase.registry" title="Link to this definition">#</a></dt>
@@ -558,7 +556,7 @@ that: an <code class="docutils literal notranslate"><span class="pre">after_comm
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.models.DataclassBase.type_annotation_map">
-<span class="sig-name descname"><span class="pre">type_annotation_map</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{&lt;enum</span> <span class="pre">'Enum'&gt;:</span> <span class="pre">Enum(native_enum=False,</span> <span class="pre">length=64)}</span></em><a class="headerlink" href="#fastapi_restly.models.DataclassBase.type_annotation_map" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">type_annotation_map</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{&lt;class</span> <span class="pre">'datetime.datetime'&gt;:</span> <span class="pre">DateTime(timezone=True),</span> <span class="pre">&lt;enum</span> <span class="pre">'Enum'&gt;:</span> <span class="pre">Enum(native_enum=False,</span> <span class="pre">length=64)}</span></em><a class="headerlink" href="#fastapi_restly.models.DataclassBase.type_annotation_map" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -577,7 +575,7 @@ that: an <code class="docutils literal notranslate"><span class="pre">after_comm
 <p>Dataclass mixin adding an auto-incrementing integer <cite>id</cite> primary key.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.models.IDMixin.id">
-<span class="sig-name descname"><span class="pre">id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/internals.html#sqlalchemy.orm.Mapped" title="(in SQLAlchemy v2.0)"><span class="pre">Mapped</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;sqlalchemy.orm.properties.MappedColumn</span> <span class="pre">object&gt;</span></em><a class="headerlink" href="#fastapi_restly.models.IDMixin.id" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/internals.html#sqlalchemy.orm.Mapped" title="(in SQLAlchemy v2.0)"><span class="pre">Mapped</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;sqlalchemy.orm.properties.MappedColumn</span> <span class="pre">object&gt;</span></em><a class="headerlink" href="#fastapi_restly.models.IDMixin.id" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 </dd></dl>

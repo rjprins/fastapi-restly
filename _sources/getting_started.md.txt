@@ -3,13 +3,6 @@
 This guide walks from zero to a working REST API with FastAPI-Restly. Python
 3.10 or later is required.
 
-To try FastAPI-Restly without installing anything, open the project in GitHub
-Codespaces, which builds the dev environment and its example projects for you:
-
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/rjprins/fastapi-restly?quickstart=1)
-
-Once the Codespace finishes setup, run `cd example-projects/blog && uv run uvicorn blog.main:app --port 8000` in the terminal, then open the forwarded port 8000 and visit `/docs` for the interactive API.
-
 ## Installation
 
 Install the framework and an async driver for your database:
@@ -27,7 +20,9 @@ or `asyncpg`/`psycopg` for PostgreSQL. Test tooling lives in its own extra; see
 
 ## Create an app
 
-A first application fits in one file, `main.py`:
+`restly new myapp` generates a complete project; see
+[Generate it](#restly-new). This guide builds one by hand instead, starting from
+a single file, `main.py`:
 
 ```python
 from contextlib import asynccontextmanager
@@ -74,6 +69,11 @@ A few details are worth noting:
   an explicit `__tablename__`, and an explicit primary-key column.
 - If you prefer dataclass-oriented SQLAlchemy models, FastAPI-Restly also provides
   {class}`fr.DataclassBase <fastapi_restly.models.DataclassBase>` and {class}`fr.IDBase <fastapi_restly.models.IDBase>` convenience bases.
+  On those bases, `Mapped[datetime]` represents a UTC instant and maps to
+  `DateTime(timezone=True)`. PostgreSQL enforces that through its column type,
+  while SQLite returns naive datetime values. Declare
+  `mapped_column(DateTime())` explicitly only for a field that intentionally
+  stores a timezone-free wall-clock value.
 - {class}`RestView <fastapi_restly.views.RestView>` and {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` expect a single primary-key column; for
   composite-key tables, see
   [the view hierarchy](class_based_views.md#the-view-hierarchy).
@@ -104,12 +104,13 @@ The `fastapi dev` command comes from the `standard` extra; the dev server is
 not for production. Then open `http://127.0.0.1:8000/docs` or
 `http://127.0.0.1:8000/openapi.json`.
 
-## Use the generated endpoints
+## Use the CRUD routes
 
-Registering `UserView` with `prefix = "/users"` generated five endpoints:
+`UserView` inherits five endpoint methods from `AsyncRestView`. Registering it
+with `prefix = "/users"` exposes these routes:
 
-- `GET /users/`
-- `POST /users/`
+- `GET /users`
+- `POST /users`
 - `GET /users/{id}`
 - `PATCH /users/{id}`
 - `DELETE /users/{id}`
@@ -117,7 +118,7 @@ Registering `UserView` with `prefix = "/users"` generated five endpoints:
 These endpoints work as soon as the server starts. A `POST` creates a row:
 
 ```text
-POST /users/
+POST /users
 {"name": "Jane", "email": "jane@example.com"}
 ```
 
@@ -131,7 +132,7 @@ The response is `201 Created` with the stored record:
 }
 ```
 
-The database assigned the `id`, and `GET /users/` now returns that row in the
+The database assigned the `id`, and `GET /users` now returns that row in the
 default `data` envelope:
 
 ```json
@@ -144,10 +145,10 @@ default `data` envelope:
 }
 ```
 
-Update semantics are `PATCH` (partial update); see
-[Generated REST Endpoints](api_reference.md#generated-rest-endpoints) for the
-full contract. Filter lists with query parameters, for example
-`GET /users/?name=Jane`. See [Filter, Sort, and Paginate Lists](howto_query_modifiers.md).
+Update semantics are `PATCH` (partial update). See
+[Default CRUD Routes](#default-crud-routes) for the full
+contract. Filter lists with query parameters, for example
+`GET /users?name=Jane`. See [Filter, Sort, and Paginate Lists](howto_query_modifiers.md).
 
 ## Add an explicit schema (optional)
 
@@ -177,6 +178,16 @@ clarity for teams that prefer less implicit behavior;
 [Auto-Generated vs Explicit Schemas](howto_custom_schema.md#auto-generated-vs-explicit-schemas)
 compares the two.
 
+## Grow beyond one file
+
+Keep the one-file layout while the application is small. Once it holds several
+resources, give each one a package with its own `models.py`, `schemas.py`, and
+`views.py`, and register them all from a `VIEWS` tuple in `main.py`.
+[Project structure](howto_project_structure.md) covers the full layout, the
+import direction it depends on, and which modules to add only once they earn
+their place. Generating a project with `restly new` and moving this code into it
+is a reasonable way to make the move.
+
 ## Test quickly
 
 A quick check with FastAPI's regular `TestClient` confirms the API works:
@@ -186,7 +197,7 @@ from fastapi.testclient import TestClient
 from main import app
 
 with TestClient(app) as client:
-    res = client.post("/users/", json={"name": "Jane", "email": "jane@example.com"})
+    res = client.post("/users", json={"name": "Jane", "email": "jane@example.com"})
     assert res.status_code == 201
 ```
 
@@ -195,13 +206,26 @@ For test isolation (rolling back test data between tests), see the
 
 ## Next steps
 
-Continue with the **[Tutorial](tutorial.md)**, which builds a complete
-multi-model API step by step. The pages below go deeper into individual topics:
+[Build a Blog API](tutorial.md) adds a related model, explicit schemas,
+filtering, and broader tests. [Customize the Blog
+API](tutorial_customizing.md) then adds overrides, custom routes,
+authorization, and shared base classes.
 
-- [Class-Based Views](class_based_views.md): what makes the views subclassable,
-  and when to use {class}`View <fastapi_restly.views.View>`, {class}`RestView <fastapi_restly.views.RestView>`, or a plain FastAPI route.
+Use these pages for individual topics:
+
+- [Using RestView](rest_views.md): the default CRUD contract, view
+  configuration, and the map from common changes to their owning guides.
+- [Views](class_based_views.md): when to use a generic
+  {class}`View <fastapi_restly.views.View>` or a plain FastAPI route, and how
+  view registration and inheritance work.
 - Already have a FastAPI app? [Use Restly in an Existing Project](howto_existing_project.md)
   shows how Restly adopts per resource, beside your current routes.
 - [Filter, Sort, and Paginate Lists](howto_query_modifiers.md)
+- [Current context](howto_current.md): bind the current
+  user for application code and column defaults.
+- [Scopes](scopes.md): row visibility declared once and applied to every
+  read and reference check.
+- [Query Clauses](clauses.md): reusable query fragments with late-bound
+  request values.
 - [Deploying](deploying.md): production engine config, Alembic, and a `main.py` template.
 - [API Reference](api_reference.md)

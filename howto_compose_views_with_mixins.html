@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Compose Views with Mixins &#8212; FastAPI-Restly 0.9.0 documentation</title>
+    <title>Compose Views with Mixins &#8212; FastAPI-Restly 0.10.0 documentation</title>
   
   
   
@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=6821e04d" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=39bb1c6d"></script>
+    <script src="_static/documentation_options.js?v=82662543"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -66,7 +66,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.9" />
+  <meta name="docsearch:version" content="0.10" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -167,7 +167,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
 </li>
@@ -175,14 +175,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -195,22 +188,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="api_reference.html">
     API
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
   </a>
 </li>
 
@@ -221,6 +200,30 @@
   </a>
 </li>
 
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
   </ul>
 </nav></div>
       
@@ -338,7 +341,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
 </li>
@@ -346,14 +349,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -366,13 +362,6 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="api_reference.html">
     API
   </a>
@@ -380,15 +369,22 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
-    Blog
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
   </a>
 </li>
 
@@ -457,11 +453,15 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Project structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_loading.html">Relationship Loading and Async</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_query_modifiers.html">Filter, Sort, and Paginate Lists</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_current.html">Current context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
 <li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
@@ -533,53 +533,44 @@
                   
   <section id="compose-views-with-mixins">
 <h1>Compose Views with Mixins<a class="headerlink" href="#compose-views-with-mixins" title="Link to this heading">#</a></h1>
-<p>Some concerns belong on many views: tenant scoping, soft delete, audit stamps,
-permission filters. They are structural, not business logic: they stamp
-server-controlled fields or add read filters. Python mixins layer these concerns
-through cooperative <code class="docutils literal notranslate"><span class="pre">super()</span></code> calls. This guide covers the pattern, when to use
-it, and two gotchas.</p>
-<section id="the-structural-override-points">
-<h2>The structural override points<a class="headerlink" href="#the-structural-override-points" title="Link to this heading">#</a></h2>
-<p>Three <a class="reference internal" href="customize.html"><span class="std std-doc">override points</span></a> carry almost all
-structural concerns:</p>
+<p>Model mixins declare shared columns, such as tenant ids and audit stamps.
+SQLAlchemy session listeners restrict tenant reads. Clause namespaces define
+<a class="reference internal" href="scopes.html"><span class="std std-doc">scopes</span></a>, such as hiding soft-deleted rows. View mixins override
+shared behavior, such as setting a timestamp instead of deleting a row.</p>
+<section id="where-structural-concerns-live">
+<h2>Where structural concerns live<a class="headerlink" href="#where-structural-concerns-live" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.build_query" title="fastapi_restly.views.RestView.build_query"><code class="xref py py-meth docutils literal notranslate"><span class="pre">build_query</span></code></a> is the
-unified <a class="reference internal" href="customize.html#build-query-scope-every-read-at-once"><span class="std std-ref">read scope</span></a>.
-List, count, and retrieve all route through it, so one <code class="docutils literal notranslate"><span class="pre">.where(...)</span></code> clause
-filters every read.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> and <code class="docutils literal notranslate"><span class="pre">update_object</span></code> perform
-<a class="reference internal" href="customize.html#cooperative-field-stamping-override-make-new-object-update-object"><span class="std std-ref">cooperative field stamping</span></a>.
-Each calls <code class="docutils literal notranslate"><span class="pre">super()</span></code> to get the constructed object, mutates the
-server-controlled fields it owns, and returns the object. Mixins layer
-by chaining <code class="docutils literal notranslate"><span class="pre">super()</span></code>, each stamping its own fields on the way out.</p></li>
-<li><p>The <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete" title="fastapi_restly.views.RestView.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a> business method is
-overridden to replace a physical delete with a flag flip (soft delete).</p></li>
+<li><p><strong>Tenant filters</strong> belong in SQLAlchemy session listeners. They apply
+independently of the scope selected by a view or reference check.</p></li>
+<li><p><strong>Read scopes</strong> are clauses. The model namespace’s
+<a class="reference internal" href="scopes.html#default-scope"><span class="std std-ref">default scope</span></a> covers RestView reads and reference
+check, and a view <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.scope" title="fastapi_restly.views.BaseRestView.scope"><code class="xref py py-attr docutils literal notranslate"><span class="pre">scope</span></code></a>
+replaces it for that view. Clauses compose with
+<a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.all_of" title="fastapi_restly.clauses.all_of"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.all_of</span></code></a>.</p></li>
+<li><p><strong>Server-stamped fields</strong> are column defaults on the model, reading a
+<code class="docutils literal notranslate"><span class="pre">fr.ContextNamespace</span></code> member when the row is written. A default fires on every
+write path: the view verbs, a custom route that builds the object by hand,
+the free <code class="docutils literal notranslate"><span class="pre">fr.objects</span></code> helpers, a bulk route. Nothing on the view has to run.</p></li>
+<li><p><strong>Soft delete</strong> is a verb, so it is a view mixin overriding
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete" title="fastapi_restly.views.RestView.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a>.</p></li>
 </ul>
-<p>Do not use these for per-view application logic. Keep per-view logic in the
-business method: hash passwords, derive slugs, update rollups, and dispatch
-resource-specific events in <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a> /
+<p>Keep per-view logic in the business method: hash passwords, derive slugs,
+update rollups, and dispatch resource-specific events in
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a> /
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a>, as described in
-<a class="reference internal" href="customize.html#override-the-business-methods"><span class="std std-ref">Override the business methods</span></a>.</p>
-<p>Use mixins for the structural concerns instead: audit stamps, tenant ids,
-soft-delete read filters, and soft-delete mutation are all good examples.
-These compose because:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> and <code class="docutils literal notranslate"><span class="pre">update_object</span></code> mutate the object <em>after</em> the
-schema’s own writes are applied, so they compose cleanly and never
-fight the schema’s writes.</p></li>
-<li><p>They run inside the commit-free business method, before the handler commits.</p></li>
-<li><p>They only stamp and scope; they do not compute business values from
-schema inputs.</p></li>
-<li><p>They compose linearly via cooperative <code class="docutils literal notranslate"><span class="pre">super()</span></code> calls, so combinations
-work without ordering surprises.</p></li>
-</ul>
-<p>The discriminating question is whether the override depends on schema-derived
-business inputs. If it only reads request context (the auth user id, tenant
-id, or request flags) and writes server-controlled fields, it is structural
-and belongs in a mixin. If it reads schema fields and computes values from
-them, as in <code class="docutils literal notranslate"><span class="pre">hash_password(schema.password)</span></code> or
-<code class="docutils literal notranslate"><span class="pre">slugify(schema.name)</span> <span class="pre">+</span> <span class="pre">uniqueness_probe</span></code>, write a per-view <code class="docutils literal notranslate"><span class="pre">create</span></code> /
-<code class="docutils literal notranslate"><span class="pre">update</span></code> override from scratch.</p>
+<a class="reference internal" href="customize.html#override-the-business-methods"><span class="std std-ref">Override the business methods</span></a>.
+The discriminating question is whether the value depends on the request
+payload. A field that only reads request context (the auth user id, the tenant
+id) is structural and belongs on the model. A value computed from schema
+fields, as in <code class="docutils literal notranslate"><span class="pre">hash_password(schema.password)</span></code> or
+<code class="docutils literal notranslate"><span class="pre">slugify(schema.name)</span> <span class="pre">+</span> <span class="pre">uniqueness_probe</span></code>, belongs in a per-view <code class="docutils literal notranslate"><span class="pre">create</span></code> /
+<code class="docutils literal notranslate"><span class="pre">update</span></code> override.</p>
+<p>Why not stamp from a view mixin? <code class="docutils literal notranslate"><span class="pre">create</span></code> and <code class="docutils literal notranslate"><span class="pre">update</span></code> are overridden from
+scratch: a <code class="docutils literal notranslate"><span class="pre">create</span></code> that hashes a password does not call <code class="docutils literal notranslate"><span class="pre">super()</span></code>, so a
+stamp hooked on the verb is silently skipped by every view that overrides it.
+The object utilities under the verbs (<code class="docutils literal notranslate"><span class="pre">make_new_object</span></code>, <code class="docutils literal notranslate"><span class="pre">update_object</span></code>,
+<code class="docutils literal notranslate"><span class="pre">save_object</span></code>) are not override points either, and a stamp there would still
+miss a hand-built object and the free helpers. The column covers all of them.</p>
 <section id="reusing-logic-outside-the-view">
 <h3>Reusing logic outside the view<a class="headerlink" href="#reusing-logic-outside-the-view" title="Link to this heading">#</a></h3>
 <p>A per-view <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a> /
@@ -589,7 +580,7 @@ the right home for the logic.</p>
 <p>If the same logic must also run from a script or worker, extract a plain
 function, put it where it is easiest to find, and call it from both:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">hash_and_set_password</span><span class="p">(</span><span class="n">user</span><span class="p">:</span> <span class="n">User</span><span class="p">,</span> <span class="n">raw_password</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="n">user</span><span class="o">.</span><span class="n">password_hash</span> <span class="o">=</span> <span class="n">bcrypt</span><span class="o">.</span><span class="n">hashpw</span><span class="p">(</span><span class="n">raw_password</span><span class="o">.</span><span class="n">encode</span><span class="p">(),</span> <span class="n">bcrypt</span><span class="o">.</span><span class="n">gensalt</span><span class="p">())</span>
+    <span class="n">user</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="n">bcrypt</span><span class="o">.</span><span class="n">hashpw</span><span class="p">(</span><span class="n">raw_password</span><span class="o">.</span><span class="n">encode</span><span class="p">(),</span> <span class="n">bcrypt</span><span class="o">.</span><span class="n">gensalt</span><span class="p">())</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
@@ -602,151 +593,232 @@ function, put it where it is easiest to find, and call it from both:</p>
         <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_object</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">create</span></code> is commit-free, so the handler commits the password hash with the
-row. The view methods <code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> and <code class="docutils literal notranslate"><span class="pre">save_object</span></code> wrap the free
+<p><code class="docutils literal notranslate"><span class="pre">create</span></code> is commit-free, so the surrounding commit bracket persists the
+password hash with the row. The view methods <code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> and <code class="docutils literal notranslate"><span class="pre">save_object</span></code> wrap the free
 functions in <code class="docutils literal notranslate"><span class="pre">fastapi_restly.objects</span></code>; import the free functions for workers
 with a bare session.</p>
 <p>Do not extract early. Wait until there is a second caller.</p>
 </section>
 </section>
-<section id="three-reusable-mixins">
-<h2>Three reusable mixins<a class="headerlink" href="#three-reusable-mixins" title="Link to this heading">#</a></h2>
-<p>The <a class="reference internal" href="examples.html#saas"><span class="std std-ref">SaaS example</span></a> ships three structural mixins of this
-kind in
-<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views/_mixins.py"><code class="docutils literal notranslate"><span class="pre">_mixins.py</span></code></a>.
+<section id="three-structural-pieces">
+<h2>Three structural pieces<a class="headerlink" href="#three-structural-pieces" title="Link to this heading">#</a></h2>
+<p>The <a class="reference internal" href="examples.html#saas"><span class="std std-ref">SaaS example</span></a> ships the model mixins in
+<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/models.py"><code class="docutils literal notranslate"><span class="pre">app/models.py</span></code></a>
+and the view mixin in
+<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py"><code class="docutils literal notranslate"><span class="pre">app/views.py</span></code></a>.
 Copy them into your project as a starting point.</p>
-<section id="tenantscopedmixin-multi-tenant-row-scoping">
-<h3><code class="docutils literal notranslate"><span class="pre">TenantScopedMixin</span></code>: multi-tenant row scoping<a class="headerlink" href="#tenantscopedmixin-multi-tenant-row-scoping" title="Link to this heading">#</a></h3>
-<p><code class="docutils literal notranslate"><span class="pre">TenantScopedMixin</span></code> stamps <code class="docutils literal notranslate"><span class="pre">organization_id</span></code> from the authenticated request on
-writes and filters every read to the same organization:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.ext.asyncio</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncSession</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">DeclarativeBase</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sa</span>
+<section id="tenant-row-scoping-a-session-rule-plus-a-stamped-column">
+<span id="tenant-row-scoping"></span><h3>Tenant row scoping: a session rule plus a stamped column<a class="headerlink" href="#tenant-row-scoping-a-session-rule-plus-a-stamped-column" title="Link to this heading">#</a></h3>
+<p>The tenant rule is not a scope. It must hold under every scope a view or a
+route can name, and for every reference check, so it lives at the session
+level, where SQLAlchemy already provides it: a <code class="docutils literal notranslate"><span class="pre">do_orm_execute</span></code> listener
+adds a
+<a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/queryguide/api.html#sqlalchemy.orm.with_loader_criteria"><code class="docutils literal notranslate"><span class="pre">with_loader_criteria</span></code></a>
+option to ORM entity and relationship reads. The values
+it reads come from a generated dependency (<code class="docutils literal notranslate"><span class="pre">Current.depends(...)</span></code>, see the
+SaaS example) that binds them once per request, and they are never <code class="docutils literal notranslate"><span class="pre">None</span></code>:
+a request without an authenticated identity is refused by the dependency’s
+sources (401), and the admin is a conditional, not an absent value.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sa</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">ForeignKey</span><span class="p">,</span> <span class="n">orm</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
 
 
-<span class="k">class</span><span class="w"> </span><span class="nc">TenantScopedMixin</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Stamp ``organization_id`` from auth on writes; filter reads to it.&quot;&quot;&quot;</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Current</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ContextNamespace</span><span class="p">):</span>
+    <span class="n">org_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ContextParam</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+    <span class="n">user_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ContextParam</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+    <span class="n">is_admin</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ContextParam</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span>
 
-    <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
-        <span class="n">request</span><span class="p">:</span> <span class="n">fastapi</span><span class="o">.</span><span class="n">Request</span>
-        <span class="n">session</span><span class="p">:</span> <span class="n">AsyncSession</span>
-        <span class="n">model</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="n">DeclarativeBase</span><span class="p">]</span>
-        <span class="k">def</span><span class="w"> </span><span class="nf">_current_org_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
-        <span class="k">def</span><span class="w"> </span><span class="nf">_is_admin</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span> <span class="o">...</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">build_query</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">sa</span><span class="o">.</span><span class="n">Select</span><span class="p">:</span>
-        <span class="c1"># Filters get_many, count, AND get_one via the framework&#39;s</span>
-        <span class="c1"># unified read scope; no separate retrieve override is needed.</span>
-        <span class="n">q</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">build_query</span><span class="p">()</span>  <span class="c1"># type: ignore[misc]</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_admin</span><span class="p">():</span>
-            <span class="k">return</span> <span class="n">q</span>
-        <span class="n">org_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_org_id</span><span class="p">()</span>
-        <span class="k">if</span> <span class="n">org_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="s2">&quot;organization_id&quot;</span><span class="p">):</span>
-            <span class="n">q</span> <span class="o">=</span> <span class="n">q</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">organization_id</span> <span class="o">==</span> <span class="n">org_id</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">q</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TenantOwned</span><span class="p">(</span><span class="n">orm</span><span class="o">.</span><span class="n">MappedAsDataclass</span><span class="p">,</span> <span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The tenant column: the organization the request acts in.&quot;&quot;&quot;</span>
 
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">make_new_object</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">make_new_object</span><span class="p">(</span><span class="n">schema_obj</span><span class="p">)</span>  <span class="c1"># type: ignore[misc]</span>
-        <span class="n">org_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_org_id</span><span class="p">()</span>
-        <span class="k">if</span> <span class="n">org_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="s2">&quot;organization_id&quot;</span><span class="p">):</span>
-            <span class="n">obj</span><span class="o">.</span><span class="n">organization_id</span> <span class="o">=</span> <span class="n">org_id</span>
-        <span class="k">return</span> <span class="n">obj</span>
+    <span class="n">organization_id</span><span class="p">:</span> <span class="n">orm</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">orm</span><span class="o">.</span><span class="n">mapped_column</span><span class="p">(</span>
+        <span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;organization.id&quot;</span><span class="p">),</span>
+        <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">insert_default</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">Current</span><span class="o">.</span><span class="n">org_id</span><span class="p">(),</span>
+    <span class="p">)</span>
+
+
+<span class="c1"># Read identity when the SQL executes, not when the option is attached.</span>
+<span class="n">tenant_org_id</span> <span class="o">=</span> <span class="n">sa</span><span class="o">.</span><span class="n">bindparam</span><span class="p">(</span>
+    <span class="s2">&quot;tenant_org_id&quot;</span><span class="p">,</span> <span class="n">callable_</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">Current</span><span class="o">.</span><span class="n">org_id</span><span class="p">(),</span> <span class="n">type_</span><span class="o">=</span><span class="n">sa</span><span class="o">.</span><span class="n">Integer</span>
+<span class="p">)</span>
+<span class="n">tenant_is_admin</span> <span class="o">=</span> <span class="n">sa</span><span class="o">.</span><span class="n">bindparam</span><span class="p">(</span>
+    <span class="s2">&quot;tenant_is_admin&quot;</span><span class="p">,</span> <span class="n">callable_</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">Current</span><span class="o">.</span><span class="n">is_admin</span><span class="p">(),</span> <span class="n">type_</span><span class="o">=</span><span class="n">sa</span><span class="o">.</span><span class="n">Boolean</span>
+<span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">TenantCriteria</span><span class="p">(</span><span class="n">orm</span><span class="o">.</span><span class="n">UserDefinedOption</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Marks a statement that already carries the tenant criteria.&quot;&quot;&quot;</span>
+
+    <span class="n">propagate_to_loaders</span> <span class="o">=</span> <span class="kc">True</span>
+
+
+<span class="nd">@sa</span><span class="o">.</span><span class="n">event</span><span class="o">.</span><span class="n">listens_for</span><span class="p">(</span><span class="n">orm</span><span class="o">.</span><span class="n">Session</span><span class="p">,</span> <span class="s2">&quot;do_orm_execute&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_restrict_tenant_rows</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">orm</span><span class="o">.</span><span class="n">ORMExecuteState</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">state</span><span class="o">.</span><span class="n">is_select</span> <span class="ow">or</span> <span class="n">state</span><span class="o">.</span><span class="n">is_column_load</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">TenantCriteria</span><span class="p">)</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">state</span><span class="o">.</span><span class="n">user_defined_options</span><span class="p">):</span>
+        <span class="k">return</span>
+    <span class="n">state</span><span class="o">.</span><span class="n">statement</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">statement</span><span class="o">.</span><span class="n">options</span><span class="p">(</span>
+        <span class="n">TenantCriteria</span><span class="p">(),</span>
+        <span class="n">orm</span><span class="o">.</span><span class="n">with_loader_criteria</span><span class="p">(</span>
+            <span class="n">TenantOwned</span><span class="p">,</span>
+            <span class="k">lambda</span> <span class="bp">cls</span><span class="p">:</span> <span class="n">sa</span><span class="o">.</span><span class="n">or_</span><span class="p">(</span><span class="n">tenant_is_admin</span><span class="p">,</span> <span class="bp">cls</span><span class="o">.</span><span class="n">organization_id</span> <span class="o">==</span> <span class="n">tenant_org_id</span><span class="p">),</span>
+            <span class="n">include_aliases</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Project</span><span class="p">(</span><span class="n">TenantOwned</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">TimestampsMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDBase</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="n">orm</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
 </pre></div>
 </div>
-<p>The <code class="docutils literal notranslate"><span class="pre">if</span> <span class="pre">TYPE_CHECKING:</span></code> block declares what the mixin expects from its host
-class (see the gotchas below).</p>
+<p>The column is the write half. The tenant is not a constructor argument and
+not a payload field: <code class="docutils literal notranslate"><span class="pre">init=False</span></code> keeps it out of the constructor,
+<code class="docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code> on the schema keeps it out of the body, and the insert
+default stamps it at flush from the same member the listener reads. A row
+lands in the organization the request acts in, whoever builds it; an admin
+writing into another tenant acts as that tenant, and the stamp follows. A
+verb that needs the value before the flush reads <code class="docutils literal notranslate"><span class="pre">Current.org_id()</span></code>
+itself, as the example’s slug probe does.</p>
+<p>Attach the option even when the query starts from an unrestricted model:
+<code class="docutils literal notranslate"><span class="pre">select(Organization).options(joinedload(Organization.users))</span></code> must filter
+the users. Relationship queries also receive the option, including when
+their parent was inserted rather than loaded by a query. Keep the default
+<code class="docutils literal notranslate"><span class="pre">propagate_to_loaders=True</span></code> so joined eager loads receive the criteria.</p>
+<p>A relationship load inherits the options of the statement that loaded its
+parent. Without the <code class="docutils literal notranslate"><span class="pre">TenantCriteria</span></code> marker the listener adds a second copy of
+each criterion to that load, and a chain of loads, such as a task’s subtasks,
+gains one more copy at every level. The marker travels with the criteria, so
+the listener skips a statement that has it.</p>
+<p><a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/sqlelement.html#sqlalchemy.sql.expression.bindparam"><code class="docutils literal notranslate"><span class="pre">bindparam(callable_=...)</span></code></a>
+reads the identity only when the generated SQL uses that parameter. A plain
+lookup query needs no identity. A protected read without one fails with a
+context <code class="docutils literal notranslate"><span class="pre">LookupError</span></code>, wrapped in SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">StatementError</span></code>. The lambdas
+are needed here because <code class="docutils literal notranslate"><span class="pre">bindparam</span></code> tests the callable’s truth value, which
+<code class="docutils literal notranslate"><span class="pre">ContextParam</span></code> rejects.</p>
+<p>Keep <code class="docutils literal notranslate"><span class="pre">Current.bind(...)</span></code> active for the session’s lifetime. Use a new session
+for a different identity: criteria do not remove objects already loaded into
+the session, and <code class="docutils literal notranslate"><span class="pre">session.get()</span></code> returns such an object without a query.</p>
+<p>A model that reaches its tenant through a relationship needs its own
+criterion. The SaaS example registers one for <code class="docutils literal notranslate"><span class="pre">Task</span></code> through its project, for
+<code class="docutils literal notranslate"><span class="pre">TaskLabel</span></code> through both its task and its label, and for <code class="docutils literal notranslate"><span class="pre">UploadLine</span></code> through
+its upload. Write each criterion as a lambda. SQLAlchemy analyses a lambda
+once and caches it. It processes a plain expression again for every
+statement, including statements that never read the model.</p>
+<p>This is an ORM read filter, not database-level access control. Raw SQL, Core
+table queries, and arbitrary writes need their own checks. The criteria reach
+a statement only through an entity it selects or joins.
+<code class="docutils literal notranslate"><span class="pre">select(func.count()).where(Task.project_id</span> <span class="pre">==</span> <span class="pre">id)</span></code> names <code class="docutils literal notranslate"><span class="pre">Task</span></code> only in its
+<code class="docutils literal notranslate"><span class="pre">WHERE</span></code> clause, so it counts every tenant’s tasks. Add <code class="docutils literal notranslate"><span class="pre">.select_from(Task)</span></code>.
+Relationship predicates built with <code class="docutils literal notranslate"><span class="pre">.any()</span></code> or <code class="docutils literal notranslate"><span class="pre">.has()</span></code> do not automatically
+receive the criteria inside their <code class="docutils literal notranslate"><span class="pre">EXISTS</span></code> subquery. Include the tenant
+predicate there, as the SaaS criteria do.</p>
 </section>
-<section id="softdeletemixin-hide-deleted-rows">
-<h3><code class="docutils literal notranslate"><span class="pre">SoftDeleteMixin</span></code>: hide deleted rows<a class="headerlink" href="#softdeletemixin-hide-deleted-rows" title="Link to this heading">#</a></h3>
-<p><code class="docutils literal notranslate"><span class="pre">SoftDeleteMixin</span></code> filters deleted rows out of every read unless the request
-asks for them, and turns <code class="docutils literal notranslate"><span class="pre">delete</span></code> into a timestamp flip:</p>
+<section id="soft-delete-a-scope-clause-plus-a-delete-mixin">
+<span id="soft-delete-mixin"></span><h3>Soft delete: a scope clause plus a delete mixin<a class="headerlink" href="#soft-delete-a-scope-clause-plus-a-delete-mixin" title="Link to this heading">#</a></h3>
+<p>The read half is one unconditional predicate in the model’s namespace,
+<code class="docutils literal notranslate"><span class="pre">is_deleted</span></code>, declared with the composed model under
+<a class="reference internal" href="#composing-on-a-view">Composing on a view</a>: the default scope hides
+deleted rows for every read and every reference check, and the trash is
+reachable only through an explicit surface, a view declaring
+<code class="docutils literal notranslate"><span class="pre">scope</span> <span class="pre">=</span> <span class="pre">ProjectClauses.trashed</span></code> (see <a class="reference internal" href="scopes.html#view-scope"><span class="std std-ref">Scopes</span></a>). A query
+parameter can never widen a scope. The write half turns <code class="docutils literal notranslate"><span class="pre">delete</span></code> into a
+timestamp flip:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.ext.asyncio</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncSession</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">SoftDeletable</span><span class="p">(</span><span class="n">orm</span><span class="o">.</span><span class="n">MappedAsDataclass</span><span class="p">,</span> <span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="n">deleted_at</span><span class="p">:</span> <span class="n">orm</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="n">datetime</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="n">orm</span><span class="o">.</span><span class="n">mapped_column</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">SoftDeleteMixin</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Hide deleted rows; ``delete`` flips ``deleted_at`` instead.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;``delete`` flips ``deleted_at`` instead of removing the row.&quot;&quot;&quot;</span>
 
     <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
-        <span class="n">request</span><span class="p">:</span> <span class="n">fastapi</span><span class="o">.</span><span class="n">Request</span>
         <span class="n">session</span><span class="p">:</span> <span class="n">AsyncSession</span>
-        <span class="n">model</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="n">DeclarativeBase</span><span class="p">]</span>
-        <span class="k">def</span><span class="w"> </span><span class="nf">save_object</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span> <span class="o">...</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">_include_deleted</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;include_deleted&quot;</span><span class="p">,</span> <span class="s2">&quot;false&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">build_query</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">sa</span><span class="o">.</span><span class="n">Select</span><span class="p">:</span>
-        <span class="n">q</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">build_query</span><span class="p">()</span>  <span class="c1"># type: ignore[misc]</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_include_deleted</span><span class="p">()</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="s2">&quot;deleted_at&quot;</span><span class="p">):</span>
-            <span class="n">q</span> <span class="o">=</span> <span class="n">q</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">deleted_at</span><span class="o">.</span><span class="n">is_</span><span class="p">(</span><span class="kc">None</span><span class="p">))</span>
-        <span class="k">return</span> <span class="n">q</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s2">&quot;deleted_at&quot;</span><span class="p">):</span>
-            <span class="n">obj</span><span class="o">.</span><span class="n">deleted_at</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
-            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_object</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
-            <span class="k">return</span>
-        <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>  <span class="c1"># type: ignore[misc]</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">deleted_at</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
 </pre></div>
 </div>
-<p>The soft-delete flip overrides the <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete" title="fastapi_restly.views.RestView.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a>
+<p>No <code class="docutils literal notranslate"><span class="pre">hasattr</span></code> guard and no fallback to <code class="docutils literal notranslate"><span class="pre">super()</span></code>: the mixin goes on views of
+<code class="docutils literal notranslate"><span class="pre">SoftDeletable</span></code> models, and the column is there because the model said so.
+The flip overrides the <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete" title="fastapi_restly.views.RestView.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a>
 business method, not the handler.
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_delete" title="fastapi_restly.views.RestView.handle_delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_delete</span></code></a> still
 loads, authorizes, and commits; the mixin only changes what “delete” does. To
 bring a flipped row back, see
 <a class="reference internal" href="patterns.html#restore-a-soft-deleted-row"><span class="std std-ref">Restore a soft-deleted row</span></a>.</p>
 </section>
-<section id="auditstampedmixin-record-who-created-updated-each-row">
-<h3><code class="docutils literal notranslate"><span class="pre">AuditStampedMixin</span></code>: record who created/updated each row<a class="headerlink" href="#auditstampedmixin-record-who-created-updated-each-row" title="Link to this heading">#</a></h3>
-<p><code class="docutils literal notranslate"><span class="pre">AuditStampedMixin</span></code> stamps <code class="docutils literal notranslate"><span class="pre">created_by_id</span></code> and <code class="docutils literal notranslate"><span class="pre">updated_by_id</span></code> from request
-state on every write:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">AuditStampedMixin</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Stamp ``created_by_id`` / ``updated_by_id`` from request state.&quot;&quot;&quot;</span>
-
-    <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
-        <span class="n">request</span><span class="p">:</span> <span class="n">fastapi</span><span class="o">.</span><span class="n">Request</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">_current_user_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">state</span><span class="p">,</span> <span class="s2">&quot;user_id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">make_new_object</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">make_new_object</span><span class="p">(</span><span class="n">schema_obj</span><span class="p">)</span>  <span class="c1"># type: ignore[misc]</span>
-        <span class="n">uid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_user_id</span><span class="p">()</span>
-        <span class="n">obj</span><span class="o">.</span><span class="n">created_by_id</span> <span class="o">=</span> <span class="n">uid</span>
-        <span class="n">obj</span><span class="o">.</span><span class="n">updated_by_id</span> <span class="o">=</span> <span class="n">uid</span>
-        <span class="k">return</span> <span class="n">obj</span>
-
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update_object</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">update_object</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">)</span>  <span class="c1"># type: ignore[misc]</span>
-        <span class="n">obj</span><span class="o">.</span><span class="n">updated_by_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_user_id</span><span class="p">()</span>
-        <span class="k">return</span> <span class="n">obj</span>
+<section id="audit-stamps-two-column-defaults">
+<h3>Audit stamps: two column defaults<a class="headerlink" href="#audit-stamps-two-column-defaults" title="Link to this heading">#</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">created_by_id</span></code> and <code class="docutils literal notranslate"><span class="pre">updated_by_id</span></code> are the plain case, a default per column:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">AuditStamped</span><span class="p">(</span><span class="n">orm</span><span class="o">.</span><span class="n">MappedAsDataclass</span><span class="p">,</span> <span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="n">created_by_id</span><span class="p">:</span> <span class="n">orm</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="n">orm</span><span class="o">.</span><span class="n">mapped_column</span><span class="p">(</span>
+        <span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;user.id&quot;</span><span class="p">),</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">insert_default</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">()</span>
+    <span class="p">)</span>
+    <span class="n">updated_by_id</span><span class="p">:</span> <span class="n">orm</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="n">orm</span><span class="o">.</span><span class="n">mapped_column</span><span class="p">(</span>
+        <span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;user.id&quot;</span><span class="p">),</span>
+        <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">insert_default</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">(),</span>
+        <span class="n">onupdate</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">(),</span>
+    <span class="p">)</span>
 </pre></div>
 </div>
-<p>Each mixin calls <code class="docutils literal notranslate"><span class="pre">super()</span></code>, stamps its fields, and returns the object. By then
-the schema’s writes are already applied, so stamps do not collide with input
-fields.</p>
+<p>On a dataclass base <code class="docutils literal notranslate"><span class="pre">default</span></code> is the constructor default, so the insert-time
+callable goes in <code class="docutils literal notranslate"><span class="pre">insert_default</span></code>; <code class="docutils literal notranslate"><span class="pre">onupdate</span></code> fires on every UPDATE that
+changes the row. Keep these fields <code class="docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code> on the schema: with
+<code class="docutils literal notranslate"><span class="pre">init=False</span></code> a body value would otherwise reach the constructor and fail
+loudly there.</p>
+<p>The lambdas call the member: a <code class="docutils literal notranslate"><span class="pre">ContextParam</span></code> resolves when called, and an
+unbound context raises rather than stamping <code class="docutils literal notranslate"><span class="pre">None</span></code>. The columns stay
+nullable for one row: the first user has no creator and comes from a
+migration, which writes through its own table objects and fires no ORM
+default. A worker or a seed script binds context around its writes:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">Current</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">org_id</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">user_id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">is_admin</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Project</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Imported&quot;</span><span class="p">))</span>
+    <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+</pre></div>
+</div>
 </section>
 </section>
-<section id="composing-mixins-on-a-view">
-<h2>Composing mixins on a view<a class="headerlink" href="#composing-mixins-on-a-view" title="Link to this heading">#</a></h2>
-<p>The mixins layer through cooperative <code class="docutils literal notranslate"><span class="pre">super()</span></code> calls, and order matters only
-for short-circuit behaviour (for example <code class="docutils literal notranslate"><span class="pre">_is_admin()</span></code> skipping tenant
-scoping). A typical project view composes all three:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">ProjectView</span><span class="p">(</span><span class="n">SoftDeleteMixin</span><span class="p">,</span> <span class="n">AuditStampedMixin</span><span class="p">,</span> <span class="n">TenantScopedMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+<section id="composing-on-a-view">
+<h2>Composing on a view<a class="headerlink" href="#composing-on-a-view" title="Link to this heading">#</a></h2>
+<p>The model declares what it is, the namespace declares the read half
+against it, and a view stacks only the verb mixin:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Project</span><span class="p">(</span><span class="n">TenantOwned</span><span class="p">,</span> <span class="n">AuditStamped</span><span class="p">,</span> <span class="n">SoftDeletable</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">TimestampsMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDBase</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="n">orm</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ProjectClauses</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ClauseNamespace</span><span class="p">):</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Project</span>
+
+    <span class="n">is_deleted</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span><span class="n">Project</span><span class="o">.</span><span class="n">deleted_at</span><span class="o">.</span><span class="n">is_not</span><span class="p">(</span><span class="kc">None</span><span class="p">))</span>
+    <span class="n">default_scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">none_of</span><span class="p">(</span><span class="n">is_deleted</span><span class="p">)</span>  <span class="c1"># the tenant rule is the session&#39;s</span>
+    <span class="n">trashed</span> <span class="o">=</span> <span class="n">is_deleted</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ProjectView</span><span class="p">(</span><span class="n">SoftDeleteMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/projects&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Project</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">ProjectRead</span>
+    <span class="c1"># no scope declared: reads apply ProjectClauses.default_scope</span>
 </pre></div>
 </div>
 <p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a>,
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.count" title="fastapi_restly.views.RestView.count"><code class="xref py py-meth docutils literal notranslate"><span class="pre">count</span></code></a>, and
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> all use
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.build_query" title="fastapi_restly.views.RestView.build_query"><code class="xref py py-meth docutils literal notranslate"><span class="pre">build_query</span></code></a>, so tenant and
-soft-delete filters apply to listings, totals, single-row reads, updates, and
-deletes.</p>
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> all apply the
+default scope. The session listener also applies the tenant predicate to those
+reads and to every reference check. Together they cover listings, totals,
+single-row reads, updates, and deletes. The columns stamp themselves on every
+write.</p>
 </section>
 <section id="two-ergonomic-gotchas">
 <h2>Two ergonomic gotchas<a class="headerlink" href="#two-ergonomic-gotchas" title="Link to this heading">#</a></h2>
@@ -757,36 +829,36 @@ deletes.</p>
 (<code class="docutils literal notranslate"><span class="pre">session</span></code>, <code class="docutils literal notranslate"><span class="pre">request</span></code>, helper methods like <code class="docutils literal notranslate"><span class="pre">_current_org_id</span></code>). Declaring
 those as plain class members shadows the host’s implementation via the MRO:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># WRONG: this real method body shadows the host&#39;s _current_org_id.</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">TenantScopedMixin</span><span class="p">:</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">SoftDeleteMixin</span><span class="p">:</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_current_org_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
         <span class="o">...</span>  <span class="c1"># a stub body is still a real method</span>
 </pre></div>
 </div>
 <p>Wrap the stubs in <code class="docutils literal notranslate"><span class="pre">if</span> <span class="pre">TYPE_CHECKING:</span></code> so pyright sees them but Python
 does not add them to the runtime class:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">TenantScopedMixin</span><span class="p">:</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">SoftDeleteMixin</span><span class="p">:</span>
     <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
         <span class="k">def</span><span class="w"> </span><span class="nf">_current_org_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
 </pre></div>
 </div>
 <p>The same applies to typed <em>attribute</em> annotations. Marker-based DI (see
-<a class="reference internal" href="class_based_views.html#dependency-injection-on-class-attributes"><span class="std std-ref">Class-Based Views</span></a>)
+<a class="reference internal" href="class_based_views.html#id2"><span class="std std-ref">Views</span></a>)
 means a plain <code class="docutils literal notranslate"><span class="pre">model:</span> <span class="pre">type[DeclarativeBase]</span></code> annotation no longer
 shadows DI wiring, but it can still shadow inherited attribute lookups
 in some setups. <code class="docutils literal notranslate"><span class="pre">if</span> <span class="pre">TYPE_CHECKING:</span></code> is the safe wrapper for both.</p>
 </section>
 <section id="multiple-fk-columns-to-the-same-table-need-explicit-foreign-keys">
 <h3>2. Multiple FK columns to the same table need explicit <code class="docutils literal notranslate"><span class="pre">foreign_keys=</span></code><a class="headerlink" href="#multiple-fk-columns-to-the-same-table-need-explicit-foreign-keys" title="Link to this heading">#</a></h3>
-<p><code class="docutils literal notranslate"><span class="pre">AuditStampedMixin</span></code> adds <code class="docutils literal notranslate"><span class="pre">created_by_id</span></code> and <code class="docutils literal notranslate"><span class="pre">updated_by_id</span></code> columns,
+<p><code class="docutils literal notranslate"><span class="pre">AuditStamped</span></code> adds <code class="docutils literal notranslate"><span class="pre">created_by_id</span></code> and <code class="docutils literal notranslate"><span class="pre">updated_by_id</span></code> columns,
 both pointing at <code class="docutils literal notranslate"><span class="pre">User</span></code>. If the model already has another FK to <code class="docutils literal notranslate"><span class="pre">User</span></code>
 (say, <code class="docutils literal notranslate"><span class="pre">assignee_id</span></code> on <code class="docutils literal notranslate"><span class="pre">Task</span></code>), SQLAlchemy cannot disambiguate the
 existing relationship and raises <code class="docutils literal notranslate"><span class="pre">AmbiguousForeignKeysError</span></code>. Pin the
 relationship explicitly:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Task</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">TimestampsMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDBase</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Task</span><span class="p">(</span><span class="n">AuditStamped</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">TimestampsMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDBase</span><span class="p">):</span>
     <span class="n">assignee_id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;user.id&quot;</span><span class="p">))</span>
     <span class="n">assignee</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="n">User</span><span class="p">]</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="n">foreign_keys</span><span class="o">=</span><span class="s2">&quot;Task.assignee_id&quot;</span><span class="p">)</span>
 
-    <span class="c1"># Audit columns from AuditStampedMixin add two more FKs to user.id.</span>
+    <span class="c1"># Audit columns from AuditStamped add two more FKs to user.id.</span>
     <span class="c1"># Without foreign_keys=&quot;...&quot;, the assignee relationship is ambiguous.</span>
 </pre></div>
 </div>
@@ -797,14 +869,15 @@ it.</p>
 </section>
 <section id="admin-bypass-runtime-flag-not-a-parallel-view-tree">
 <h2>Admin bypass: runtime flag, not a parallel view tree<a class="headerlink" href="#admin-bypass-runtime-flag-not-a-parallel-view-tree" title="Link to this heading">#</a></h2>
-<p>The <code class="docutils literal notranslate"><span class="pre">_is_admin()</span></code> check in <code class="docutils literal notranslate"><span class="pre">TenantScopedMixin</span></code> points at a broader decision.
-Admin endpoints often do not need a parallel view hierarchy; a per-request
-<code class="docutils literal notranslate"><span class="pre">_is_admin()</span></code> predicate can let
-each scope-filtering mixin skip its filter. This keeps the route tree simple,
-but every read-scope mixin must consult the flag. A parallel admin view tree
-gives class-time guarantees at the cost of more classes.</p>
-<p>Read scope is <em>visibility</em>, not <em>policy</em>. Rows hidden by
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.build_query" title="fastapi_restly.views.RestView.build_query"><code class="xref py py-meth docutils literal notranslate"><span class="pre">build_query</span></code></a> return 404;
+<p>The <code class="docutils literal notranslate"><span class="pre">is_admin</span></code> conditional in the tenant listener points at a broader
+decision. Admin endpoints often do not need a parallel view hierarchy; a
+bound per-request flag lets a rule skip its filter, and a missing binding
+fails loudly. This keeps the route tree simple, but every rule that should
+widen for an admin must consult the flag. A parallel admin view tree (a
+second view with its own <code class="docutils literal notranslate"><span class="pre">scope</span></code>) gives class-time guarantees at the
+cost of more classes.</p>
+<p>Read scope is <em>visibility</em>, not <em>policy</em>. Rows outside the
+<a class="reference internal" href="scopes.html"><span class="std std-doc">scope</span></a> return 404;
 allow/deny decisions such as “only managers may create” belong in
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a>, described in
 <a class="reference internal" href="customize.html#authorize-gate-the-action"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">authorize</span></code>: gate the action</span></a>.</p>
@@ -812,9 +885,9 @@ allow/deny decisions such as “only managers may create” belong in
 <section id="cross-references">
 <h2>Cross-references<a class="headerlink" href="#cross-references" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><a class="reference internal" href="customize.html"><span class="std std-doc">Customize RestView</span></a>: the three tiers,
+<li><p><a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a>: the three tiers,
 single-base overrides, and the call chain.</p></li>
-<li><p><a class="reference internal" href="class_based_views.html#dependency-injection-on-class-attributes"><span class="std std-ref">Class-Based Views</span></a>:
+<li><p><a class="reference internal" href="class_based_views.html#id2"><span class="std std-ref">Views</span></a>:
 the marker-based DI rule that makes mixin type stubs safe.</p></li>
 <li><p><a class="reference internal" href="howto_inheritance.html"><span class="std std-doc">Share Behaviour with Base Views</span></a>: single-base
 shared logic, the simpler cousin to mixin composition.</p></li>
@@ -869,17 +942,17 @@ shared logic, the simpler cousin to mixin composition.</p></li>
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-structural-override-points">The structural override points</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#where-structural-concerns-live">Where structural concerns live</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#reusing-logic-outside-the-view">Reusing logic outside the view</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#three-reusable-mixins">Three reusable mixins</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#tenantscopedmixin-multi-tenant-row-scoping"><code class="docutils literal notranslate"><span class="pre">TenantScopedMixin</span></code>: multi-tenant row scoping</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#softdeletemixin-hide-deleted-rows"><code class="docutils literal notranslate"><span class="pre">SoftDeleteMixin</span></code>: hide deleted rows</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#auditstampedmixin-record-who-created-updated-each-row"><code class="docutils literal notranslate"><span class="pre">AuditStampedMixin</span></code>: record who created/updated each row</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#three-structural-pieces">Three structural pieces</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#tenant-row-scoping-a-session-rule-plus-a-stamped-column">Tenant row scoping: a session rule plus a stamped column</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#soft-delete-a-scope-clause-plus-a-delete-mixin">Soft delete: a scope clause plus a delete mixin</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#audit-stamps-two-column-defaults">Audit stamps: two column defaults</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#composing-mixins-on-a-view">Composing mixins on a view</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#composing-on-a-view">Composing on a view</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#two-ergonomic-gotchas">Two ergonomic gotchas</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#type-stubs-on-mixins-must-use-if-type-checking">1. Type stubs on mixins must use <code class="docutils literal notranslate"><span class="pre">if</span> <span class="pre">TYPE_CHECKING:</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#multiple-fk-columns-to-the-same-table-need-explicit-foreign-keys">2. Multiple FK columns to the same table need explicit <code class="docutils literal notranslate"><span class="pre">foreign_keys=</span></code></a></li>

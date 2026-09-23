@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Technical Details &#8212; FastAPI-Restly 0.9.0 documentation</title>
+    <title>Technical Details &#8212; FastAPI-Restly 0.10.0 documentation</title>
   
   
   
@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=6821e04d" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=39bb1c6d"></script>
+    <script src="_static/documentation_options.js?v=82662543"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -62,11 +62,11 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Changelog" href="changelog.html" />
-    <link rel="prev" title="Testing API" href="api/testing.html" />
+    <link rel="prev" title="Behavior and Configuration Reference" href="api_details.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.9" />
+  <meta name="docsearch:version" content="0.10" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -167,7 +167,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
 </li>
@@ -175,14 +175,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -190,13 +183,6 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="user_guide.html">
     How-To
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
   </a>
 </li>
 
@@ -209,18 +195,35 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
     Blog
   </a>
 </li>
 
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
   </ul>
 </nav></div>
       
@@ -338,7 +341,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
 </li>
@@ -346,14 +349,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -361,13 +357,6 @@
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="user_guide.html">
     How-To
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
   </a>
 </li>
 
@@ -380,15 +369,22 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
-    Blog
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
   </a>
 </li>
 
@@ -455,8 +451,10 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1 has-children"><a class="reference internal" href="api/index.html">API Modules</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/package.html">Package API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/clauses.html">Clauses API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/db.html">Database API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/exc.html">Exceptions API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/models.html">Models API</a></li>
@@ -465,10 +463,10 @@
 <li class="toctree-l2"><a class="reference internal" href="api/schemas.html">Schemas API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/views.html">Views API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/testing.html">Testing API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/utils.html">Utils API</a></li>
 </ul>
 </details></li>
-</ul>
-<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="api_details.html">Behavior and Configuration Reference</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Technical Details</a></li>
 <li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
 </ul>
@@ -700,6 +698,24 @@ already understood by Pydantic) are returned unchanged:</p>
 <p>Any type not in this table raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> at schema-generation time. For
 custom column types, declare an explicit schema and bypass auto-generation.</p>
 </section>
+<section id="json-document-columns">
+<span id="id2"></span><h3>JSON document columns<a class="headerlink" href="#json-document-columns" title="Link to this heading">#</a></h3>
+<p>A <code class="docutils literal notranslate"><span class="pre">JSON</span></code> column maps to a bare <code class="docutils literal notranslate"><span class="pre">dict</span></code>, which does not validate the document’s
+fields. To validate its shape, declare an explicit schema with a nested
+Pydantic model. Restly calls <code class="docutils literal notranslate"><span class="pre">model_dump(mode=&quot;json&quot;)</span></code> before assigning the
+document to the column. The response schema validates the stored document
+when reading it back.</p>
+<p>Documents containing <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.WriteOnly" title="fastapi_restly.schemas.WriteOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">WriteOnly</span></code></a> or
+<code class="docutils literal notranslate"><span class="pre">Field(exclude=True)</span></code> fields raise
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>
+before assignment, including exclusions inside nested models. Those fields
+would otherwise be omitted from storage. Documents containing dataclasses or
+iterators are also unsupported. Use a SQLAlchemy
+<a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/custom_types.html#sqlalchemy.types.TypeDecorator" title="(in SQLAlchemy v2.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypeDecorator</span></code></a> to define their storage representation.
+Its bind processor receives the original Pydantic model instead of a dump.</p>
+<p>Marking the whole JSON column as <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> remains supported. It hides the
+column in responses without excluding fields from the stored document.</p>
+</section>
 </section>
 <section id="view-classes-and-registration">
 <h2>View Classes and Registration<a class="headerlink" href="#view-classes-and-registration" title="Link to this heading">#</a></h2>
@@ -718,46 +734,42 @@ The async and sync variants have identical endpoint signatures; the only
 difference is that the async variant uses <code class="docutils literal notranslate"><span class="pre">await</span></code> in its process methods.</p>
 <p><code class="docutils literal notranslate"><span class="pre">AsyncSessionDep</span></code> and <code class="docutils literal notranslate"><span class="pre">SessionDep</span></code> use Restly’s built-in session generators.
 Those generators yield a SQLAlchemy session and manage lifecycle: rollback and
-close on exit. They do <strong>not</strong> commit on response. <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> owns the
-commit and runs <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.before_commit" title="fastapi_restly.views.RestView.before_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_commit</span></code></a>, then the commit itself, then <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_commit" title="fastapi_restly.views.RestView.after_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_commit</span></code></a> around domain logic.
+close on exit. They do <strong>not</strong> commit on response. <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> normally owns
+the commit and runs
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.before_action_commit" title="fastapi_restly.views.RestView.before_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_action_commit</span></code></a>,
+then the commit itself, then
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_action_commit" title="fastapi_restly.views.RestView.after_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_action_commit</span></code></a>
+around domain logic. Inside <code class="docutils literal notranslate"><span class="pre">shared_write_action_commit</span></code>, the outermost block
+owns the commit and handlers return after flush, before the commit and
+after-hook.
 Custom write routes can use the same bracket with
-<code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">with</span> <span class="pre">self.write_action(action,</span> <span class="pre">...)</span></code>. If a request ends with uncommitted
+<code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">with</span> <span class="pre">self.write_action(action,</span> <span class="pre">...)</span></code>. Several brackets can share a commit
+with <a class="reference internal" href="customize.html#shared-write-action-commit"><span class="std std-ref">shared_write_action_commit()</span></a>.
+If a request ends with uncommitted
 changes, Restly warns with <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyUncommittedChangesWarning" title="fastapi_restly.exc.RestlyUncommittedChangesWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyUncommittedChangesWarning</span></code></a> by default.
 <a class="reference internal" href="howto_existing_project.html#provide-your-own-session-generator"><span class="std std-ref">Custom session generators</span></a>
 control construction and cleanup, not commit ownership.</p>
-<p>Both views expose several class variables that affect endpoint registration and
-runtime behaviour:</p>
-<ul class="simple">
-<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a> holds the Pydantic schema class; it is auto-generated if absent.</p></li>
-<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a> and <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a> are derived from <code class="docutils literal notranslate"><span class="pre">schema</span></code> if not declared.</p></li>
-<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.model" title="fastapi_restly.views.BaseRestView.model"><code class="xref py py-attr docutils literal notranslate"><span class="pre">model</span></code></a> names the SQLAlchemy model class.</p></li>
-<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.id_type" title="fastapi_restly.views.BaseRestView.id_type"><code class="xref py py-attr docutils literal notranslate"><span class="pre">id_type</span></code></a> sets the Python type of the scalar <code class="docutils literal notranslate"><span class="pre">{id}</span></code> path parameter (default <code class="docutils literal notranslate"><span class="pre">int</span></code>).
-Composite primary keys are outside the generated CRUD route contract; use
-<a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a> directly when a resource needs a multi-part identity.</p></li>
-<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_routes" title="fastapi_restly.views.BaseRestView.exclude_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_routes</span></code></a> is an iterable of route names to suppress (e.g.
-<code class="docutils literal notranslate"><span class="pre">exclude_routes</span> <span class="pre">=</span> <span class="pre">[fr.ViewRoute.DELETE]</span></code>). Route-name strings such as
-<code class="docutils literal notranslate"><span class="pre">&quot;delete&quot;</span></code> are also accepted. Routes listed here have their
-<code class="docutils literal notranslate"><span class="pre">_api_route_args</span></code> marker removed during <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.before_include_view" title="fastapi_restly.views.BaseRestView.before_include_view"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_include_view()</span></code></a> so FastAPI
-never registers them.</p></li>
-<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.paginated" title="fastapi_restly.views.BaseRestView.paginated"><code class="xref py py-attr docutils literal notranslate"><span class="pre">paginated</span></code></a> (default <code class="docutils literal notranslate"><span class="pre">True</span></code>) makes the <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many_endpoint" title="fastapi_restly.views.RestView.get_many_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many_endpoint</span></code></a> route
-return a <a class="reference internal" href="howto_response_schema.html#the-list-envelope"><span class="std std-ref">paginated <code class="docutils literal notranslate"><span class="pre">data</span></code> envelope</span></a>
-with <code class="docutils literal notranslate"><span class="pre">total_count</span></code>, <code class="docutils literal notranslate"><span class="pre">page</span></code>, <code class="docutils literal notranslate"><span class="pre">page_size</span></code>, and <code class="docutils literal notranslate"><span class="pre">total_pages</span></code>. Set it to <code class="docutils literal notranslate"><span class="pre">False</span></code>
-to return every row in a plain <code class="docutils literal notranslate"><span class="pre">data</span></code> envelope.</p></li>
-</ul>
+<p><a class="reference internal" href="rest_views.html"><span class="std std-doc">Using RestView</span></a> owns the user-facing model, schema,
+identity, route, and list configuration. At registration,
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.before_include_view" title="fastapi_restly.views.BaseRestView.before_include_view"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_include_view()</span></code></a>
+turns that configuration into FastAPI signatures. It derives missing schemas,
+constructs the list query-parameter schema, sets the endpoint annotations, and
+removes the route marker for each exclusion. An exclusion may use a
+<code class="docutils literal notranslate"><span class="pre">ViewRoute</span></code> value or its endpoint-method string, such as <code class="docutils literal notranslate"><span class="pre">&quot;delete_endpoint&quot;</span></code>.</p>
 </section>
 <section id="include-view">
 <h3>include_view()<a class="headerlink" href="#include-view" title="Link to this heading">#</a></h3>
 <p><a class="reference internal" href="api/views.html#fastapi_restly.views.include_view" title="fastapi_restly.views.include_view"><code class="xref py py-func docutils literal notranslate"><span class="pre">include_view()</span></code></a> is the registration boundary between declarative view modules
 and application composition. For larger apps, define view classes without
-side effects in feature modules, then include them from the module that builds
+side effects in subject packages, then include them from the module that builds
 your <code class="docutils literal notranslate"><span class="pre">FastAPI</span></code> app or <code class="docutils literal notranslate"><span class="pre">APIRouter</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">MyView</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>This keeps imports predictable: importing <code class="docutils literal notranslate"><span class="pre">myapp.users.views</span></code> defines
-<code class="docutils literal notranslate"><span class="pre">UserView</span></code>, while <code class="docutils literal notranslate"><span class="pre">myapp.main</span></code> or <code class="docutils literal notranslate"><span class="pre">myapp.users.router</span></code> decides which app/router
-receives it. For small apps and examples, <code class="docutils literal notranslate"><span class="pre">include_view()</span></code> also works as a
-decorator:</p>
+<p>This keeps imports predictable: importing <code class="docutils literal notranslate"><span class="pre">app.users.views</span></code> defines
+<code class="docutils literal notranslate"><span class="pre">UserView</span></code>, while <code class="docutils literal notranslate"><span class="pre">app.main</span></code> decides which app or router receives it. See
+<a class="reference internal" href="howto_project_structure.html"><span class="std std-doc">Project structure</span></a> for the layout this assumes.
+For small apps and examples, <code class="docutils literal notranslate"><span class="pre">include_view()</span></code> also works as a decorator:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">MyView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="o">...</span>
@@ -772,7 +784,7 @@ attach an <code class="docutils literal notranslate"><span class="pre">APIRouter
 <p>Every CRUD verb is split into an endpoint method (<code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code>), a
 handler (<code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code>), and a business method (<code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;</span></code>); the model and the
 override decision table live in
-<a class="reference internal" href="customize.html"><span class="std std-doc">Customize RestView</span></a>.</p>
+<a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a>.</p>
 <p>The implementation detail worth knowing here is that the endpoint method calls
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response" title="fastapi_restly.views.BaseRestView.to_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_response(obj,</span> <span class="pre">shape)</span></code></a>, the single response method, which delegates to
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response_schema" title="fastapi_restly.views.BaseRestView.to_response_schema"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_response_schema(obj)</span></code></a> for the per-object serialization
@@ -794,7 +806,7 @@ when everything the schema names is already loaded, and it runs without
 <code class="docutils literal notranslate"><span class="pre">populate_existing</span></code>, so a relationship the caller has already populated keeps
 its value.</p>
 <p>Loader options follow relationships the schema <em>names</em>. Code that reaches
-past that set – an <code class="docutils literal notranslate"><span class="pre">after_commit</span></code> hook, a custom business method, a
+past that set – an <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> hook, a custom business method, a
 <code class="docutils literal notranslate"><span class="pre">&#64;property</span></code> walking a relationship nothing else loads – runs in plain async
 context, where a bare attribute access raises <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. Restly’s
 declarative base mixes in SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">AsyncAttrs</span></code> for exactly that case, so
@@ -822,7 +834,7 @@ describes the supported reference-field patterns.</p>
 </section>
 </section>
 <section id="list-parameters-lifecycle">
-<span id="id2"></span><h2>List Parameters Lifecycle<a class="headerlink" href="#list-parameters-lifecycle" title="Link to this heading">#</a></h2>
+<span id="id3"></span><h2>List Parameters Lifecycle<a class="headerlink" href="#list-parameters-lifecycle" title="Link to this heading">#</a></h2>
 <p>List endpoints accept URL query parameters of the form
 <code class="docutils literal notranslate"><span class="pre">name=John</span></code>, <code class="docutils literal notranslate"><span class="pre">age__gte=18</span></code>, <code class="docutils literal notranslate"><span class="pre">sort=-created_at</span></code>, and
 <code class="docutils literal notranslate"><span class="pre">page=2&amp;page_size=50</span></code>. The full operator surface (<code class="docutils literal notranslate"><span class="pre">__ne</span></code>, <code class="docutils literal notranslate"><span class="pre">__isnull</span></code>,
@@ -848,13 +860,139 @@ configure it once during startup:</p>
 </div>
 <p><a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure(...)</span></code></a> rejects no-op calls; pass at least one setup option. The
 authoritative list of accepted options is the
-<a class="reference internal" href="api_reference.html#database"><span class="std std-ref">API Reference’s Database section</span></a>; this page does not
+<a class="reference internal" href="api_details.html#api-database"><span class="std std-ref">Database reference</span></a>. This page does not
 duplicate the contract.</p>
 <p>Internally, Restly keeps a private context object so its own tests and fixtures
 can isolate runtime state. That context is not a public multi-engine feature.
 If an application needs multiple databases, wire a custom FastAPI dependency or
 session generator for that view. Restly does not currently bind different views
 to different named contexts.</p>
+</section>
+<section id="engine-defaults">
+<h2>Engine Defaults<a class="headerlink" href="#engine-defaults" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure()</span></code></a> builds an engine only when
+you give it a URL. To that engine, and no other, Restly applies the options a
+web application almost always wants but SQLAlchemy leaves at its library
+defaults:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Backend</p></th>
+<th class="head"><p>Applied</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>SQLite, in-memory</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">poolclass=StaticPool</span></code>, <code class="docutils literal notranslate"><span class="pre">connect_args={&quot;check_same_thread&quot;:</span> <span class="pre">False}</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>SQLite, any</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">PRAGMA</span> <span class="pre">foreign_keys=ON</span></code>, on every connection</p></td>
+</tr>
+<tr class="row-even"><td><p>PostgreSQL</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">pool_pre_ping=True</span></code>, <code class="docutils literal notranslate"><span class="pre">pool_recycle=1800</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>An in-memory SQLite database lives inside its connection, so the default pool,
+which opens one connection per thread, serves every thread but the first a
+second and empty database. FastAPI runs <code class="docutils literal notranslate"><span class="pre">def</span></code> endpoints on a thread pool, so
+<code class="docutils literal notranslate"><span class="pre">StaticPool</span></code> is what makes an in-memory URL behave as one database.</p>
+<p>SQLite enforces foreign keys only under <code class="docutils literal notranslate"><span class="pre">PRAGMA</span> <span class="pre">foreign_keys=ON</span></code>. Without it the
+<code class="docutils literal notranslate"><span class="pre">ForeignKey</span></code> constraints your models declare are parsed and then ignored, so
+<code class="docutils literal notranslate"><span class="pre">ondelete</span></code> never fires and a dangling reference is stored instead of raising the
+<code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> that becomes a 409.</p>
+<p>On PostgreSQL, <code class="docutils literal notranslate"><span class="pre">pool_pre_ping=True</span></code> tests a pooled connection before handing it
+out, turning a connection left stale by a database restart or a network blip
+into a reconnect rather than an error. <code class="docutils literal notranslate"><span class="pre">pool_recycle</span></code> then discards connections
+older than 30 minutes, because proxies such as pgbouncer drop idle connections
+without telling the client. Pool sizing stays yours: Restly sets neither
+<code class="docutils literal notranslate"><span class="pre">pool_size</span></code> nor <code class="docutils literal notranslate"><span class="pre">max_overflow</span></code>.</p>
+<p>Each of these is connection state, and that is the line they stop at. Restly
+configures the connections it opens and does not modify the database they reach,
+so nothing here leaves a mark on your data once the process exits.</p>
+<p><code class="docutils literal notranslate"><span class="pre">PRAGMA</span> <span class="pre">journal_mode=WAL</span></code> is the notable omission. WAL lets readers run while a
+writer holds the database, so it is the usual answer to <code class="docutils literal notranslate"><span class="pre">database</span> <span class="pre">is</span> <span class="pre">locked</span></code> on
+a file-backed SQLite database serving concurrent requests. Restly does not set
+it, because journal mode is written into the database file and outlives every
+process that touches it: a default here would permanently change a database you
+own, and every later reader would inherit the choice. It is also a loud failure
+rather than a silent one, unlike the pragmas above. Turn it on yourself when you
+want it:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_engine</span><span class="p">,</span> <span class="n">event</span>
+
+<span class="n">engine</span> <span class="o">=</span> <span class="n">create_engine</span><span class="p">(</span><span class="s2">&quot;sqlite:///app.db&quot;</span><span class="p">)</span>
+
+
+<span class="nd">@event</span><span class="o">.</span><span class="n">listens_for</span><span class="p">(</span><span class="n">engine</span><span class="p">,</span> <span class="s2">&quot;connect&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_enable_wal</span><span class="p">(</span><span class="n">dbapi_connection</span><span class="p">,</span> <span class="n">connection_record</span><span class="p">):</span>
+    <span class="n">dbapi_connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;PRAGMA journal_mode=WAL&quot;</span><span class="p">)</span>
+
+
+<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="n">engine</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Note that WAL adds <code class="docutils literal notranslate"><span class="pre">-wal</span></code> and <code class="docutils literal notranslate"><span class="pre">-shm</span></code> files beside the database, which are
+removed on clean shutdown but remain after a hard kill, and that it does not
+work over network filesystems.</p>
+<p>All of this rides on the URL rung alone. Pass <code class="docutils literal notranslate"><span class="pre">engine=</span></code>, <code class="docutils literal notranslate"><span class="pre">make_session=</span></code> or a
+session generator and Restly leaves your object exactly as it arrived, so
+building the engine yourself is how you decline any of these defaults.</p>
+</section>
+<section id="engine-disposal">
+<h2>Engine Disposal<a class="headerlink" href="#engine-disposal" title="Link to this heading">#</a></h2>
+<p>Disposing an engine closes the connections its pool is holding. Restly never
+disposes an engine, including the ones it builds, because an engine is meant to
+live as long as the process that serves requests through it. When that process
+exits, the operating system reclaims the sockets, so most applications never
+need to dispose anything.</p>
+<p>Asynchronous applications are the exception worth handling. <code class="docutils literal notranslate"><span class="pre">AsyncEngine.dispose()</span></code>
+is a coroutine, and nothing awaits it during interpreter shutdown, so an async
+engine that is never disposed drops its connections rather than closing them.
+The database server is not what notices. The operating system closes the sockets
+as the process exits, and a backend waiting for its next command treats that as
+an ordinary end of session. The cost lands in your own shutdown output: a
+<code class="docutils literal notranslate"><span class="pre">ResourceWarning</span></code> for every connection left in the pool, and, when a request is
+still in flight, a <code class="docutils literal notranslate"><span class="pre">RuntimeError:</span> <span class="pre">Event</span> <span class="pre">loop</span> <span class="pre">is</span> <span class="pre">closed</span></code> traceback from the
+finalizer trying to terminate a connection on a loop that is already gone.
+SQLite has no server and no socket, so none of this applies to it.</p>
+<p>An application that builds its own engine already holds it and disposes it in
+its lifespan, which is what <a class="reference internal" href="deploying.html#production-main-template"><span class="std std-ref">the production
+template</span></a> does. When you configure from a
+URL, Restly owns the engine, and
+<a class="reference internal" href="api/db.html#fastapi_restly.db.get_async_engine" title="fastapi_restly.db.get_async_engine"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.db.get_async_engine()</span></code></a> hands it
+back:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">asynccontextmanager</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span>
+
+
+<span class="nd">@asynccontextmanager</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">lifespan</span><span class="p">(</span><span class="n">app</span><span class="p">:</span> <span class="n">FastAPI</span><span class="p">):</span>
+    <span class="k">yield</span>
+    <span class="k">await</span> <span class="n">fr</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_async_engine</span><span class="p">()</span><span class="o">.</span><span class="n">dispose</span><span class="p">()</span>
+
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">(</span><span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">)</span>
+<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">async_database_url</span><span class="o">=</span><span class="s2">&quot;postgresql+asyncpg://localhost/app&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Synchronous applications call
+<a class="reference internal" href="api/db.html#fastapi_restly.db.get_engine" title="fastapi_restly.db.get_engine"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.db.get_engine()</span></code></a> and <code class="docutils literal notranslate"><span class="pre">dispose()</span></code>
+without awaiting. Note that Starlette runs <code class="docutils literal notranslate"><span class="pre">on_startup</span></code> and <code class="docutils literal notranslate"><span class="pre">on_shutdown</span></code>
+handlers only when the application was built without a <code class="docutils literal notranslate"><span class="pre">lifespan</span></code> argument, so
+disposal belongs in the lifespan itself rather than in a handler appended to
+<code class="docutils literal notranslate"><span class="pre">app.router</span></code>.</p>
+<p>An application that disposes its engine in the lifespan cannot be tested against
+an in-memory SQLite database. Restly’s test clients run the ASGI lifespan, so the
+disposal happens at the end of every test. An in-memory database lives inside its
+connection, so closing it discards the schema and the next test finds no tables.
+Point the suite at a file database instead.</p>
+<p>Reconfiguring Restly in a running process abandons the previous pool rather than
+closing it. CPython reclaims it once the garbage collector reaches the cycle the
+engine sits in, which is why a test suite that reconfigures per test can hold
+several pools open at once. Suites that care dispose explicitly; Restly’s own
+fixtures do.</p>
 </section>
 <section id="session-factory-defaults">
 <h2>Session Factory Defaults<a class="headerlink" href="#session-factory-defaults" title="Link to this heading">#</a></h2>
@@ -882,7 +1020,7 @@ sets a few SQLAlchemy session options intentionally:</p>
 <p><code class="docutils literal notranslate"><span class="pre">expire_on_commit=False</span></code> is used for both sync and async sessions so ORM
 objects remain readable after a route commits. Restly’s write handlers commit
 inside the request, and the response-schema conversion reads attributes from the
-committed object afterwards (as does an <code class="docutils literal notranslate"><span class="pre">after_commit</span></code> hook that inspects it).
+committed object afterwards (as does an <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> hook that inspects it).
 With <code class="docutils literal notranslate"><span class="pre">expire_on_commit=True</span></code> the commit expires those attributes, so each such
 read becomes an implicit database read: in async code it raises
 <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>, because the serializer – and any such hook – runs in plain
@@ -916,12 +1054,12 @@ filter, sort, and pagination reference.</p></li>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="api/testing.html"
+       href="api_details.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Testing API</p>
+        <p class="prev-next-title">Behavior and Configuration Reference</p>
       </div>
     </a>
     <a class="right-next"
@@ -957,6 +1095,7 @@ filter, sort, and pagination reference.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#generated-input-schemas">Generated Input Schemas</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#auto-generated-schemas">Auto-Generated Schemas</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sqlalchemy-to-pydantic-type-mapping">SQLAlchemy-to-Pydantic Type Mapping</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#json-document-columns">JSON document columns</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#view-classes-and-registration">View Classes and Registration</a><ul class="visible nav section-nav flex-column">
@@ -968,6 +1107,8 @@ filter, sort, and pagination reference.</p></li>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#list-parameters-lifecycle">List Parameters Lifecycle</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#restly-runtime-configuration">Restly Runtime Configuration</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#engine-defaults">Engine Defaults</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#engine-disposal">Engine Disposal</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#session-factory-defaults">Session Factory Defaults</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See Also</a></li>
 </ul>

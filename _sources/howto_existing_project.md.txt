@@ -1,14 +1,14 @@
 # Use Restly in an Existing Project
 
-FastAPI-Restly registers ordinary FastAPI path operations. You can mount Restly
-views on the same `FastAPI` app or `APIRouter` as your existing routes, adopt it
-one resource at a time, and move individual endpoints back to plain FastAPI when
-that is the clearer shape.
+{class}`RestView <fastapi_restly.views.RestView>` provides CRUD endpoints for
+a model. Register a view on the same `FastAPI` app or `APIRouter` as your
+existing routes. Add one resource at a time. Individual endpoints can remain
+plain FastAPI routes.
 
-## Add Restly Next to Existing Routes
+## Add a RestView Next to Existing Routes
 
 Use {func}`fr.include_view(...) <fastapi_restly.views.include_view>` wherever you already compose routes. Existing routers
-and Restly views can share the same parent app or router:
+and views can share the same parent app or router:
 
 ```python
 from fastapi import APIRouter, FastAPI
@@ -31,7 +31,7 @@ class UserView(fr.AsyncRestView):
     schema = UserRead
 
 
-fr.include_view(api, UserView)  # generated /api/users routes
+fr.include_view(api, UserView)  # registers /api/users CRUD routes
 
 app.include_router(api)
 ```
@@ -41,10 +41,10 @@ above) or as a class decorator (`@fr.include_view(app)`, used later in this
 guide); both register the same routes.
 
 Adoption is per resource. In the example above, orders stay hand-written while
-users use Restly. Adding a `ProductView` later does not require changing the
+users use `UserView`. Adding a `ProductView` later does not require changing the
 orders router.
 
-You can also keep plain FastAPI routes beside a Restly resource for endpoints
+You can also keep plain FastAPI routes beside a view for endpoints
 that are not part of the CRUD surface:
 
 ```python
@@ -55,7 +55,7 @@ async def export_user(id: int):
 
 ## Step Out for One Endpoint
 
-If one generated endpoint should be hand-written, exclude only that route and
+If one default CRUD route should be hand-written, exclude it and
 add the FastAPI route yourself:
 
 ```python
@@ -74,12 +74,12 @@ async def delete_user(id: int):
     ...
 ```
 
-That leaves Restly responsible for list, create, read, and update while DELETE
+That leaves `UserView` responsible for list, create, read, and update while DELETE
 uses your ordinary FastAPI implementation. For smaller changes that keep the
 same HTTP contract, prefer overriding the business method ({meth}`get_many <fastapi_restly.views.RestView.get_many>`, {meth}`get_one <fastapi_restly.views.RestView.get_one>`,
-{meth}`create <fastapi_restly.views.RestView.create>`, {meth}`update <fastapi_restly.views.RestView.update>`, {meth}`delete <fastapi_restly.views.RestView.delete>`) or its `handle_<verb>` handler; for a
+{meth}`create <fastapi_restly.views.RestView.create>`, {meth}`update <fastapi_restly.views.RestView.update>`, {meth}`delete <fastapi_restly.views.RestView.delete>`); for a
 different status code, response shape, or query interface, see
-[Customize RestView](customize.md).
+[Customizing RestView](customize.md).
 
 ## Step Out for a Whole Resource
 
@@ -93,13 +93,13 @@ modules.
 
 ## Replace an Existing Hand-Written Router
 
-The previous sections stepped out of Restly; going the other direction,
-retiring a hand-written CRUD router in favor of a generated view, is a mapping
-exercise:
+To replace a hand-written CRUD router with a
+{class}`RestView <fastapi_restly.views.RestView>`, map the existing HTTP
+contract first:
 
-1. Map your routes to the generated table. `GET /`, `POST /`, and
+1. Map your routes to the view's default CRUD contract. `GET /`, `POST /`, and
    `GET`/`PATCH`/`DELETE` on `/{id}` are covered ([the exact
-   contract](api_reference.md#generated-rest-endpoints)). Anything else on the
+   contract](#default-crud-routes)). Anything else on the
    router (exports, actions) stays as custom routes on the view or as plain
    FastAPI routes beside it.
 2. Keep custom semantics out of the swap. A route whose contract differs
@@ -141,10 +141,11 @@ fr.configure(async_engine=existing_async_engine)
 #   fr.configure(async_make_session=ExistingAsyncSession)
 ```
 
-Restly builds its session factory on top and owns the commit on its views;
-nothing about the engine changes hands. Reach for a session *generator* (next
-section) only when sessions must be constructed in a custom way, such as scoped
-sessions, multi-tenant routing, or instrumentation.
+{func}`fr.configure() <fastapi_restly.db.configure>` builds the session
+factory on top. {class}`RestView <fastapi_restly.views.RestView>` commits
+its write actions. Your application still controls the engine. Use a session
+*generator* (next section) only when sessions must be constructed in a custom
+way, such as scoped sessions, multi-tenant routing, or instrumentation.
 
 ## Provide Your Own Session Generator
 
@@ -157,9 +158,8 @@ factories intentionally use different autoflush defaults for sync and async
 sessions and keep `expire_on_commit=False` for both; see
 [Session Factory Defaults](technical_details.md#session-factory-defaults).
 A custom generator constructs sessions your way but does *not* own the
-commit: it should construct, yield, and clean up (close or roll back on the way
-out); Restly commits. Customizing how a session is built never takes the commit
-away from Restly.
+commit. It should construct, yield, and clean up (close or roll back on the way
+out). {class}`RestView <fastapi_restly.views.RestView>` commits its write actions.
 
 For async views ({class}`AsyncRestView <fastapi_restly.views.AsyncRestView>`), pass an async generator to
 {func}`fr.configure() <fastapi_restly.db.configure>`:
@@ -221,8 +221,8 @@ ReportingSession = async_sessionmaker(
 
 
 async def get_reporting_db() -> AsyncIterator[AsyncSession]:
-    # Construct, yield, and clean up; do NOT commit. Restly owns the commit,
-    # and the ``async with`` rolls back and closes the session on the way out.
+    # Construct, yield, and clean up. RestView owns the commit.
+    # The context manager rolls back and closes the session on the way out.
     async with ReportingSession() as session:
         yield session
 
@@ -238,9 +238,9 @@ class ReportView(fr.AsyncRestView):
     session: ReportingSessionDep
 ```
 
-The custom dependency owns session construction and cleanup. Restly still owns
-the commit. Use this for read replicas, reporting databases, or other per-view
-session wiring.
+The custom dependency owns session construction and cleanup.
+{class}`RestView <fastapi_restly.views.RestView>` still owns the commit.
+Use this for read replicas, reporting databases, or other per-view session wiring.
 
 ## Use the Configured Session Off-Request
 
@@ -265,7 +265,8 @@ Off-request code owns its commit; these helpers do not commit for you.
 ## Use Your Own DeclarativeBase Models
 
 If your project already has SQLAlchemy models on a custom `DeclarativeBase`,
-you can use those models directly in FastAPI-Restly views:
+you can use those models directly in a
+{class}`RestView <fastapi_restly.views.RestView>`:
 
 ```python
 import fastapi_restly as fr
@@ -288,7 +289,8 @@ class WorldView(fr.AsyncRestView):
     model = World
 ```
 
-FastAPI-Restly supports these models for generated CRUD routes and
+{class}`RestView <fastapi_restly.views.RestView>` supports these models for
+default CRUD routes and
 [auto-generated schemas](technical_details.md#auto-generated-schemas). When
 creating tables, use your own base metadata (for example
 `AppBase.metadata.create_all(...)`).

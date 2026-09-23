@@ -130,6 +130,27 @@ already understood by Pydantic) are returned unchanged:
 Any type not in this table raises `TypeError` at schema-generation time. For
 custom column types, declare an explicit schema and bypass auto-generation.
 
+(json-document-columns)=
+### JSON document columns
+
+A `JSON` column maps to a bare `dict`, which does not validate the document's
+fields. To validate its shape, declare an explicit schema with a nested
+Pydantic model. Restly calls `model_dump(mode="json")` before assigning the
+document to the column. The response schema validates the stored document
+when reading it back.
+
+Documents containing {data}`WriteOnly <fastapi_restly.schemas.WriteOnly>` or
+`Field(exclude=True)` fields raise
+{class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
+before assignment, including exclusions inside nested models. Those fields
+would otherwise be omitted from storage. Documents containing dataclasses or
+iterators are also unsupported. Use a SQLAlchemy
+{class}`~sqlalchemy.types.TypeDecorator` to define their storage representation.
+Its bind processor receives the original Pydantic model instead of a dump.
+
+Marking the whole JSON column as `WriteOnly` remains supported. It hides the
+column in responses without excluding fields from the stored document.
+
 ## View Classes and Registration
 
 The generated schemas feed the view layer, which turns a model and a schema
@@ -149,48 +170,45 @@ difference is that the async variant uses `await` in its process methods.
 
 `AsyncSessionDep` and `SessionDep` use Restly's built-in session generators.
 Those generators yield a SQLAlchemy session and manage lifecycle: rollback and
-close on exit. They do **not** commit on response. `handle_<verb>` owns the
-commit and runs {meth}`before_commit <fastapi_restly.views.RestView.before_commit>`, then the commit itself, then {meth}`after_commit <fastapi_restly.views.RestView.after_commit>` around domain logic.
+close on exit. They do **not** commit on response. `handle_<verb>` normally owns
+the commit and runs
+{meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`,
+then the commit itself, then
+{meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>`
+around domain logic. Inside `shared_write_action_commit`, the outermost block
+owns the commit and handlers return after flush, before the commit and
+after-hook.
 Custom write routes can use the same bracket with
-`async with self.write_action(action, ...)`. If a request ends with uncommitted
+`async with self.write_action(action, ...)`. Several brackets can share a commit
+with [shared_write_action_commit()](#shared-write-action-commit).
+If a request ends with uncommitted
 changes, Restly warns with {class}`RestlyUncommittedChangesWarning <fastapi_restly.exc.RestlyUncommittedChangesWarning>` by default.
 [Custom session generators](howto_existing_project.md#provide-your-own-session-generator)
 control construction and cleanup, not commit ownership.
 
-Both views expose several class variables that affect endpoint registration and
-runtime behaviour:
-
-- {attr}`schema <fastapi_restly.views.BaseRestView.schema>` holds the Pydantic schema class; it is auto-generated if absent.
-- {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` and {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` are derived from `schema` if not declared.
-- {attr}`model <fastapi_restly.views.BaseRestView.model>` names the SQLAlchemy model class.
-- {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` sets the Python type of the scalar `{id}` path parameter (default `int`).
-  Composite primary keys are outside the generated CRUD route contract; use
-  {class}`View <fastapi_restly.views.View>` directly when a resource needs a multi-part identity.
-- {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` is an iterable of route names to suppress (e.g.
-  `exclude_routes = [fr.ViewRoute.DELETE]`). Route-name strings such as
-  `"delete"` are also accepted. Routes listed here have their
-  `_api_route_args` marker removed during {meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>` so FastAPI
-  never registers them.
-- {attr}`paginated <fastapi_restly.views.BaseRestView.paginated>` (default `True`) makes the {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` route
-  return a [paginated `data` envelope](howto_response_schema.md#the-list-envelope)
-  with `total_count`, `page`, `page_size`, and `total_pages`. Set it to `False`
-  to return every row in a plain `data` envelope.
+[Using RestView](rest_views.md) owns the user-facing model, schema,
+identity, route, and list configuration. At registration,
+{meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>`
+turns that configuration into FastAPI signatures. It derives missing schemas,
+constructs the list query-parameter schema, sets the endpoint annotations, and
+removes the route marker for each exclusion. An exclusion may use a
+`ViewRoute` value or its endpoint-method string, such as `"delete_endpoint"`.
 
 ### include_view()
 
 {func}`include_view() <fastapi_restly.views.include_view>` is the registration boundary between declarative view modules
 and application composition. For larger apps, define view classes without
-side effects in feature modules, then include them from the module that builds
+side effects in subject packages, then include them from the module that builds
 your `FastAPI` app or `APIRouter`:
 
 ```python
 fr.include_view(app, MyView)
 ```
 
-This keeps imports predictable: importing `myapp.users.views` defines
-`UserView`, while `myapp.main` or `myapp.users.router` decides which app/router
-receives it. For small apps and examples, `include_view()` also works as a
-decorator:
+This keeps imports predictable: importing `app.users.views` defines
+`UserView`, while `app.main` decides which app or router receives it. See
+[Project structure](howto_project_structure.md) for the layout this assumes.
+For small apps and examples, `include_view()` also works as a decorator:
 
 ```python
 @fr.include_view(app)
@@ -207,7 +225,7 @@ attach an `APIRouter` to the parent app/router.
 Every CRUD verb is split into an endpoint method (`<verb>_endpoint`), a
 handler (`handle_<verb>`), and a business method (`<verb>`); the model and the
 override decision table live in
-[Customize RestView](customize.md).
+[Customizing RestView](customize.md).
 
 The implementation detail worth knowing here is that the endpoint method calls
 {meth}`to_response(obj, shape) <fastapi_restly.views.BaseRestView.to_response>`, the single response method, which delegates to
@@ -231,7 +249,7 @@ Nested schemas serve two different roles in Restly today:
   its value.
 
   Loader options follow relationships the schema *names*. Code that reaches
-  past that set -- an `after_commit` hook, a custom business method, a
+  past that set -- an `after_action_commit` hook, a custom business method, a
   `@property` walking a relationship nothing else loads -- runs in plain async
   context, where a bare attribute access raises `MissingGreenlet`. Restly's
   declarative base mixes in SQLAlchemy's `AsyncAttrs` for exactly that case, so
@@ -288,7 +306,7 @@ fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
 
 {func}`fr.configure(...) <fastapi_restly.db.configure>` rejects no-op calls; pass at least one setup option. The
 authoritative list of accepted options is the
-[API Reference's Database section](api_reference.md#database); this page does not
+[Database reference](#api-database). This page does not
 duplicate the contract.
 
 Internally, Restly keeps a private context object so its own tests and fixtures
@@ -296,6 +314,133 @@ can isolate runtime state. That context is not a public multi-engine feature.
 If an application needs multiple databases, wire a custom FastAPI dependency or
 session generator for that view. Restly does not currently bind different views
 to different named contexts.
+
+## Engine Defaults
+
+{func}`fr.configure() <fastapi_restly.db.configure>` builds an engine only when
+you give it a URL. To that engine, and no other, Restly applies the options a
+web application almost always wants but SQLAlchemy leaves at its library
+defaults:
+
+| Backend | Applied |
+|---|---|
+| SQLite, in-memory | `poolclass=StaticPool`, `connect_args={"check_same_thread": False}` |
+| SQLite, any | `PRAGMA foreign_keys=ON`, on every connection |
+| PostgreSQL | `pool_pre_ping=True`, `pool_recycle=1800` |
+
+An in-memory SQLite database lives inside its connection, so the default pool,
+which opens one connection per thread, serves every thread but the first a
+second and empty database. FastAPI runs `def` endpoints on a thread pool, so
+`StaticPool` is what makes an in-memory URL behave as one database.
+
+SQLite enforces foreign keys only under `PRAGMA foreign_keys=ON`. Without it the
+`ForeignKey` constraints your models declare are parsed and then ignored, so
+`ondelete` never fires and a dangling reference is stored instead of raising the
+`IntegrityError` that becomes a 409.
+
+On PostgreSQL, `pool_pre_ping=True` tests a pooled connection before handing it
+out, turning a connection left stale by a database restart or a network blip
+into a reconnect rather than an error. `pool_recycle` then discards connections
+older than 30 minutes, because proxies such as pgbouncer drop idle connections
+without telling the client. Pool sizing stays yours: Restly sets neither
+`pool_size` nor `max_overflow`.
+
+Each of these is connection state, and that is the line they stop at. Restly
+configures the connections it opens and does not modify the database they reach,
+so nothing here leaves a mark on your data once the process exits.
+
+`PRAGMA journal_mode=WAL` is the notable omission. WAL lets readers run while a
+writer holds the database, so it is the usual answer to `database is locked` on
+a file-backed SQLite database serving concurrent requests. Restly does not set
+it, because journal mode is written into the database file and outlives every
+process that touches it: a default here would permanently change a database you
+own, and every later reader would inherit the choice. It is also a loud failure
+rather than a silent one, unlike the pragmas above. Turn it on yourself when you
+want it:
+
+```python
+from sqlalchemy import create_engine, event
+
+engine = create_engine("sqlite:///app.db")
+
+
+@event.listens_for(engine, "connect")
+def _enable_wal(dbapi_connection, connection_record):
+    dbapi_connection.execute("PRAGMA journal_mode=WAL")
+
+
+fr.configure(engine=engine)
+```
+
+Note that WAL adds `-wal` and `-shm` files beside the database, which are
+removed on clean shutdown but remain after a hard kill, and that it does not
+work over network filesystems.
+
+All of this rides on the URL rung alone. Pass `engine=`, `make_session=` or a
+session generator and Restly leaves your object exactly as it arrived, so
+building the engine yourself is how you decline any of these defaults.
+
+## Engine Disposal
+
+Disposing an engine closes the connections its pool is holding. Restly never
+disposes an engine, including the ones it builds, because an engine is meant to
+live as long as the process that serves requests through it. When that process
+exits, the operating system reclaims the sockets, so most applications never
+need to dispose anything.
+
+Asynchronous applications are the exception worth handling. `AsyncEngine.dispose()`
+is a coroutine, and nothing awaits it during interpreter shutdown, so an async
+engine that is never disposed drops its connections rather than closing them.
+The database server is not what notices. The operating system closes the sockets
+as the process exits, and a backend waiting for its next command treats that as
+an ordinary end of session. The cost lands in your own shutdown output: a
+`ResourceWarning` for every connection left in the pool, and, when a request is
+still in flight, a `RuntimeError: Event loop is closed` traceback from the
+finalizer trying to terminate a connection on a loop that is already gone.
+SQLite has no server and no socket, so none of this applies to it.
+
+An application that builds its own engine already holds it and disposes it in
+its lifespan, which is what [the production
+template](#production-main-template) does. When you configure from a
+URL, Restly owns the engine, and
+{func}`fr.db.get_async_engine() <fastapi_restly.db.get_async_engine>` hands it
+back:
+
+```python
+from contextlib import asynccontextmanager
+
+import fastapi_restly as fr
+from fastapi import FastAPI
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    await fr.db.get_async_engine().dispose()
+
+
+app = FastAPI(lifespan=lifespan)
+fr.configure(app, async_database_url="postgresql+asyncpg://localhost/app")
+```
+
+Synchronous applications call
+{func}`fr.db.get_engine() <fastapi_restly.db.get_engine>` and `dispose()`
+without awaiting. Note that Starlette runs `on_startup` and `on_shutdown`
+handlers only when the application was built without a `lifespan` argument, so
+disposal belongs in the lifespan itself rather than in a handler appended to
+`app.router`.
+
+An application that disposes its engine in the lifespan cannot be tested against
+an in-memory SQLite database. Restly's test clients run the ASGI lifespan, so the
+disposal happens at the end of every test. An in-memory database lives inside its
+connection, so closing it discards the schema and the next test finds no tables.
+Point the suite at a file database instead.
+
+Reconfiguring Restly in a running process abandons the previous pool rather than
+closing it. CPython reclaims it once the garbage collector reaches the cycle the
+engine sits in, which is why a test suite that reconfigures per test can hold
+several pools open at once. Suites that care dispose explicitly; Restly's own
+fixtures do.
 
 ## Session Factory Defaults
 
@@ -310,7 +455,7 @@ sets a few SQLAlchemy session options intentionally:
 `expire_on_commit=False` is used for both sync and async sessions so ORM
 objects remain readable after a route commits. Restly's write handlers commit
 inside the request, and the response-schema conversion reads attributes from the
-committed object afterwards (as does an `after_commit` hook that inspects it).
+committed object afterwards (as does an `after_action_commit` hook that inspects it).
 With `expire_on_commit=True` the commit expires those attributes, so each such
 read becomes an implicit database read: in async code it raises
 `MissingGreenlet`, because the serializer -- and any such hook -- runs in plain

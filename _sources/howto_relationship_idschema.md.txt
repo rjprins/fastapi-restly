@@ -125,14 +125,14 @@ class ArticleView(fr.AsyncRestView):
 ```
 
 On create and update, Restly looks up the `User` with `id=1`. If it does not
-exist, the request returns `404`. That lookup is an *unscoped* existence check;
-see [Visibility and multi-tenancy](#visibility-and-multi-tenancy) below. In
-hooks, `data.author_id` is the plain integer.
+exist, or falls outside the model's `default_scope`, the request returns
+`404`; see [Visibility and multi-tenancy](#visibility-and-multi-tenancy)
+below. In hooks, `data.author_id` is the plain integer.
 
 ## List filtering
 
 The FK field is filterable on the list endpoint by its own public name, as in
-`GET /articles/?author_id=1`. The suffixed operators `author_id__in`,
+`GET /articles?author_id=1`. The suffixed operators `author_id__in`,
 `author_id__ne`, and `author_id__isnull` are available as well, and because a
 `MustExist[int, ...]` id is a plain integer, so is the range family
 `author_id__gte` / `__lte` / `__gt` / `__lt`. See
@@ -263,15 +263,23 @@ Restly's create/update helpers are aware of that constructor shape when an
 {class}`IDSchema <fastapi_restly.schemas.IDSchema>` relationship field has been
 resolved to an ORM object.
 
-The common FK-first declaration is still the clearest default:
+For an FK-first dataclass model, keep the relationship out of the generated
+constructor and leave it unset:
 
 ```python
 author_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
-author: Mapped["User"] = relationship(default=None, init=False)
+author: Mapped["User"] = relationship(init=False)
 ```
 
 With that model and `author: fr.IDRef[User]`, Restly passes the scalar FK when
-the constructor needs it and keeps `author` in sync after construction.
+the constructor needs it and assigns `author` after construction. With a
+scalar `author_id: fr.MustExist[int, User]` field, leaving `author` unset keeps
+SQLAlchemy from replacing the supplied foreign key with `NULL` during flush.
+
+Do not add `default=None` to an `init=False` relationship paired with a
+required scalar foreign key. SQLAlchemy assigns that relationship default to
+each new object, and the relationship value takes precedence over the foreign
+key during flush.
 
 If your model is relationship-first, Restly adapts there too:
 
@@ -340,7 +348,7 @@ with Restly is covered in
 
 ## Reference fields in custom routes
 
-Generated `POST` and `PATCH` routes validate the body before Restly calls
+The default `POST` and `PATCH` routes validate the body before Restly calls
 `make_new_object()` or `update_object()`, so reference fields are already in the
 right shape. A {class}`MustExist <fastapi_restly.schemas.MustExist>` field is a
 plain id; {class}`IDRef[Model] <fastapi_restly.schemas.IDRef>` and
@@ -405,17 +413,22 @@ their wire format is already scalar.
 
 ## Visibility and multi-tenancy
 
-Reference resolution is an **unscoped existence check**. Restly fetches the
-referenced row by primary key only (`session.get(User, id)`). View
-{meth}`build_query <fastapi_restly.views.RestView.build_query>` scoping is not applied, so tenant, soft-delete, and row-level
-visibility checks are your responsibility.
+Reference resolution applies the referenced model's `default_scope`, the
+clause declared on its namespace ([Scopes](scopes.md)): a reference to a
+row the scope hides returns 404. A session-level tenant rule also applies to
+the reference lookup because it is an ORM `SELECT`. See
+[tenant row scoping](#tenant-row-scoping) for that invariant. A per-field
+override (check against another clause, or none) is spelled with
+{class}`RefExists <fastapi_restly.schemas.RefExists>`; see
+[References: overriding per field](#reference-scopes).
 
-The resolver only knows the referenced *model* from the field type, not which
-view governs it. References are a *policy* concern, and they are gated in
+A model **without** a `default_scope` resolves by bare primary key
+(`session.get(User, id)`): tenant, soft-delete, and row-level visibility
+checks are then your responsibility. Gate them in
 {meth}`authorize <fastapi_restly.views.RestView.authorize>` /
-{meth}`before_commit <fastapi_restly.views.RestView.before_commit>` like any
+{meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>` like any
 other write-path authorization; both hooks are described in
-[Customize RestView](customize.md#authorize-gate-the-action).
+[Customizing RestView](customize.md#authorize-gate-the-action).
 
 Gate in `authorize`, where `data` carries the write-side value before
 resolution. For a {class}`MustExist <fastapi_restly.schemas.MustExist>` field,
@@ -439,7 +452,7 @@ class ArticleView(fr.AsyncRestView):
 ```
 
 The resolved ORM object is not available in `authorize`; resolution runs later
-in the business method. If you need the resolved row, check in `before_commit`,
+in the business method. If you need the resolved row, check in `before_action_commit`,
 where the built object carries it (for example `new.author.org_id`). Prefer
 `authorize` when the requested id is enough: it rejects before the unscoped
 fetch and is the standard policy seam.
@@ -448,7 +461,7 @@ fetch and is the standard policy seam.
 
 - [Relationship Loading and Async](howto_relationship_loading.md): how these
   relationship fields load for responses, and `MissingGreenlet` fixes on async.
-- [Tutorial](tutorial.md): reference fields in the blog build, in context.
+- [Build a Blog API](tutorial.md): reference fields in the blog build, in context.
 - [Custom Schemas and Field Types](howto_custom_schema.md): the schema bases
   and field markers these compose with.
 - [API Reference](api_reference.md): {class}`MustExist <fastapi_restly.schemas.MustExist>` / {class}`IDRef <fastapi_restly.schemas.IDRef>` / {class}`IDSchema <fastapi_restly.schemas.IDSchema>` signatures and the

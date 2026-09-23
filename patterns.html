@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Patterns &#8212; FastAPI-Restly 0.9.0 documentation</title>
+    <title>Patterns &#8212; FastAPI-Restly 0.10.0 documentation</title>
   
   
   
@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=6821e04d" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=39bb1c6d"></script>
+    <script src="_static/documentation_options.js?v=82662543"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -66,7 +66,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.9" />
+  <meta name="docsearch:version" content="0.10" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -167,7 +167,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
 </li>
@@ -175,14 +175,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -195,22 +188,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="api_reference.html">
     API
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
   </a>
 </li>
 
@@ -221,6 +200,30 @@
   </a>
 </li>
 
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
   </ul>
 </nav></div>
       
@@ -338,7 +341,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
 </li>
@@ -346,14 +349,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -366,13 +362,6 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="api_reference.html">
     API
   </a>
@@ -380,15 +369,22 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
-    Blog
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
   </a>
 </li>
 
@@ -457,11 +453,15 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Project structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_loading.html">Relationship Loading and Async</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_query_modifiers.html">Filter, Sort, and Paginate Lists</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_current.html">Current context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
@@ -555,8 +555,8 @@ filter by its foreign key; the filter parameter is generated automatically for
 </pre></div>
 </div>
 <p>Clients then scope the list through the query string:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /tasks/?project_id=17        # all tasks of one project
-GET /tasks/?project_id__in=1,2   # tasks of several projects
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /tasks?project_id=17        # all tasks of one project
+GET /tasks?project_id__in=1,2   # tasks of several projects
 </pre></div>
 </div>
 <p>When the nested URL is part of your API contract, add a custom route on the
@@ -572,16 +572,25 @@ read path:</p>
     <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/tasks&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="nb">list</span><span class="p">[</span><span class="n">TaskRead</span><span class="p">])</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
         <span class="n">project</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>  <span class="c1"># scoping, 404, and read-auth</span>
-        <span class="n">query</span> <span class="o">=</span> <span class="n">sa</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">Task</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Task</span><span class="o">.</span><span class="n">project_id</span> <span class="o">==</span> <span class="n">project</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+        <span class="n">query</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">apply_clauses</span><span class="p">(</span>
+            <span class="n">sa</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">Task</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Task</span><span class="o">.</span><span class="n">project_id</span> <span class="o">==</span> <span class="n">project</span><span class="o">.</span><span class="n">id</span><span class="p">),</span>
+            <span class="n">fr</span><span class="o">.</span><span class="n">resolve_scope</span><span class="p">(</span><span class="n">TaskView</span><span class="p">),</span>  <span class="c1"># the child&#39;s own visibility</span>
+        <span class="p">)</span>
         <span class="n">tasks</span> <span class="o">=</span> <span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">scalars</span><span class="p">(</span><span class="n">query</span><span class="p">))</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
         <span class="k">return</span> <span class="p">[</span><span class="n">TaskRead</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">from_attributes</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tasks</span><span class="p">]</span>
 </pre></div>
 </div>
+<p>The parent’s read path covers the project: scope, 404, read-auth. It says
+nothing about the tasks, so the child rows need the child’s visibility, and
+<a class="reference internal" href="api/views.html#fastapi_restly.views.resolve_scope" title="fastapi_restly.views.resolve_scope"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.resolve_scope</span></code></a> takes it from
+<code class="docutils literal notranslate"><span class="pre">TaskView</span></code> rather than repeating the clause here. Without it this listing
+returns rows <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/tasks</span></code> hides, such as another member’s or a soft-deleted
+one. See <a class="reference internal" href="scopes.html"><span class="std std-doc">Reading the resolved scope</span></a>.</p>
 <p>The filter grammar, including
 <a class="reference internal" href="howto_query_modifiers.html#foreign-key-filtering"><span class="std std-ref">foreign-key filtering</span></a>, is
 documented in <a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">Filter, Sort, and Paginate Lists</span></a>;
 custom routes are covered in
-<a class="reference internal" href="customize.html"><span class="std std-doc">Customize RestView</span></a>.</p>
+<a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a>.</p>
 </section>
 <section id="a-different-schema-for-the-list-endpoint">
 <h2>A different schema for the list endpoint<a class="headerlink" href="#a-different-schema-for-the-list-endpoint" title="Link to this heading">#</a></h2>
@@ -613,39 +622,36 @@ Filtering, sorting, and pagination parameters keep working:</p>
 </section>
 <section id="restore-a-soft-deleted-row">
 <h2>Restore a soft-deleted row<a class="headerlink" href="#restore-a-soft-deleted-row" title="Link to this heading">#</a></h2>
-<p>Soft delete hides rows in <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.build_query" title="fastapi_restly.views.RestView.build_query"><code class="xref py py-meth docutils literal notranslate"><span class="pre">build_query</span></code></a>,
-so every generated read returns 404 for them, including the read your restore
-action needs. The restore route therefore makes a deliberately unscoped
-query, then mutates inside <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.write_action" title="fastapi_restly.views.RestView.write_action"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_action</span></code></a>
-so that authorization and the commit bracket still run:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ItemView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+<p>The soft-delete <a class="reference internal" href="scopes.html"><span class="std std-doc">scope</span></a> hides deleted rows from every default
+read, including the read your restore action needs. The restore route
+therefore reads through the <em>complementary</em> clause, then mutates inside
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.write_action" title="fastapi_restly.views.RestView.write_action"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_action</span></code></a> so that
+authorization and the commit bracket still run:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">is_deleted</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span><span class="n">Item</span><span class="o">.</span><span class="n">deleted_at</span><span class="o">.</span><span class="n">is_not</span><span class="p">(</span><span class="kc">None</span><span class="p">))</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ItemView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/items&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Item</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">ItemRead</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">build_query</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">build_query</span><span class="p">()</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">deleted_at</span><span class="o">.</span><span class="n">is_</span><span class="p">(</span><span class="kc">None</span><span class="p">))</span>
+    <span class="n">scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">none_of</span><span class="p">(</span><span class="n">is_deleted</span><span class="p">)</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
         <span class="n">obj</span><span class="o">.</span><span class="n">deleted_at</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
 
     <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/restore&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">ItemRead</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">restore</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
-        <span class="c1"># The framework&#39;s read path calls build_query() with no arguments,</span>
-        <span class="c1"># so the bypass is an explicit query here, visibly on purpose.</span>
-        <span class="n">query</span> <span class="o">=</span> <span class="n">sa</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="nb">id</span><span class="p">)</span>
-        <span class="n">obj</span> <span class="o">=</span> <span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">scalars</span><span class="p">(</span><span class="n">query</span><span class="p">))</span><span class="o">.</span><span class="n">one_or_none</span><span class="p">()</span>
-        <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">NotFound</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Item </span><span class="si">{</span><span class="nb">id</span><span class="si">!r}</span><span class="s2"> not found&quot;</span><span class="p">)</span>
+        <span class="c1"># Reads through the complement of the view scope: only a deleted</span>
+        <span class="c1"># row can be restored, and the bypass is visible on purpose.</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">is_deleted</span><span class="p">)</span>
         <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="s2">&quot;restore&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">obj</span><span class="p">):</span>
             <span class="n">obj</span><span class="o">.</span><span class="n">deleted_at</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Soft delete itself is covered as a one-off override in
-<a class="reference internal" href="customize.html#delete-soft-delete-instead-of-removing-the-row"><span class="std std-ref">Customize RestView</span></a>
+<a class="reference internal" href="customize.html#delete-soft-delete-instead-of-removing-the-row"><span class="std std-ref">Customizing RestView</span></a>
 and as a reusable mixin in
-<a class="reference internal" href="howto_compose_views_with_mixins.html#softdeletemixin-hide-deleted-rows"><span class="std std-ref">Compose Views with Mixins</span></a>,
+<a class="reference internal" href="howto_compose_views_with_mixins.html#soft-delete-mixin"><span class="std std-ref">Compose Views with Mixins</span></a>,
 which also discusses the admin bypass.</p>
 </section>
 <section id="receive-a-webhook-inbound">
@@ -673,42 +679,38 @@ handlers, so a bare <code class="docutils literal notranslate"><span class="pre"
 </pre></div>
 </div>
 <p>For <em>outbound</em> webhooks (calling someone else after a write), use the
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_commit" title="fastapi_restly.views.RestView.after_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_commit</span></code></a> hook
-instead; see <a class="reference internal" href="customize.html"><span class="std std-doc">Customize RestView</span></a>.</p>
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_action_commit" title="fastapi_restly.views.RestView.after_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_action_commit</span></code></a> hook
+instead. See <a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a>.</p>
 <p>The decision between <code class="docutils literal notranslate"><span class="pre">View</span></code> and <code class="docutils literal notranslate"><span class="pre">RestView</span></code> is covered in
-<a class="reference internal" href="class_based_views.html#when-to-use-view-directly"><span class="std std-ref">When to use <code class="docutils literal notranslate"><span class="pre">View</span></code> directly</span></a>.</p>
+<a class="reference internal" href="class_based_views.html#id3"><span class="std std-ref">When to use <code class="docutils literal notranslate"><span class="pre">View</span></code> directly</span></a>.</p>
 </section>
 <section id="an-app-wide-base-view">
 <h2>An app-wide base view<a class="headerlink" href="#an-app-wide-base-view" title="Link to this heading">#</a></h2>
 <p>Declare <code class="docutils literal notranslate"><span class="pre">session</span></code>, <code class="docutils literal notranslate"><span class="pre">current_user</span></code>, and the rest of your request context once
 on a bare <a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a> base; every endpoint group
-(CRUD or not) subclasses it and reads from <code class="docutils literal notranslate"><span class="pre">self</span></code>. This pattern is owned by
-<a class="reference internal" href="class_based_views.html#one-base-view-for-the-whole-app"><span class="std std-ref">One base view for the whole app</span></a>
-in Class-Based Views.</p>
+(CRUD or not) subclasses it and reads from <code class="docutils literal notranslate"><span class="pre">self</span></code>. <a class="reference internal" href="class_based_views.html#one-base-view-for-the-whole-app"><span class="std std-ref">One base view for the whole
+app</span></a> owns this pattern.</p>
 </section>
 <section id="login-and-other-auth-flows">
 <h2>Login and other auth flows<a class="headerlink" href="#login-and-other-auth-flows" title="Link to this heading">#</a></h2>
 <p>An <code class="docutils literal notranslate"><span class="pre">AuthView</span></code> with <code class="docutils literal notranslate"><span class="pre">/login</span></code>, <code class="docutils literal notranslate"><span class="pre">/refresh</span></code>, and <code class="docutils literal notranslate"><span class="pre">/logout</span></code> routes is the worked
 example in
-<a class="reference internal" href="class_based_views.html#when-to-use-view-directly"><span class="std std-ref">When to use <code class="docutils literal notranslate"><span class="pre">View</span></code> directly</span></a>,
+<a class="reference internal" href="class_based_views.html#id3"><span class="std std-ref">When to use <code class="docutils literal notranslate"><span class="pre">View</span></code> directly</span></a>,
 which owns this pattern.</p>
 </section>
 <section id="custom-action-routes-post-id-publish">
 <h2>Custom action routes (<code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/{id}/publish</span></code>)<a class="headerlink" href="#custom-action-routes-post-id-publish" title="Link to this heading">#</a></h2>
 <p>Reuse <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> when the action is CRUD under another URL; use
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.write_action" title="fastapi_restly.views.RestView.write_action"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_action(&quot;publish&quot;,</span> <span class="pre">...)</span></code></a>
-when the action has its own identity. The full walkthrough is
-<a class="reference internal" href="customize.html#add-a-custom-action-route"><span class="std std-ref">Add a custom action route</span></a>
-in Customize RestView, which owns this pattern.</p>
+when the action has its own identity. <a class="reference internal" href="customize.html#add-a-custom-action-route"><span class="std std-ref">Add a custom action
+route</span></a> provides the full walkthrough.</p>
 </section>
 <section id="tenant-scoping">
 <h2>Tenant scoping<a class="headerlink" href="#tenant-scoping" title="Link to this heading">#</a></h2>
-<p>A <code class="docutils literal notranslate"><span class="pre">TenantScopedMixin</span></code> filters every read through
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.build_query" title="fastapi_restly.views.RestView.build_query"><code class="xref py py-meth docutils literal notranslate"><span class="pre">build_query</span></code></a> and stamps
-writes cooperatively; the pattern is owned by
-<a class="reference internal" href="howto_compose_views_with_mixins.html#tenantscopedmixin-multi-tenant-row-scoping"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">TenantScopedMixin</span></code> in Compose Views with Mixins</span></a>.
-The single-base-class variant is in
-<a class="reference internal" href="howto_inheritance.html"><span class="std std-doc">Share Behaviour with Base Views</span></a>.</p>
+<p>A session-level <code class="docutils literal notranslate"><span class="pre">with_loader_criteria</span></code> rule filters every ORM <code class="docutils literal notranslate"><span class="pre">SELECT</span></code>,
+including reads that replace a model’s <a class="reference internal" href="scopes.html"><span class="std std-doc">default scope</span></a>. The model
+stamps its tenant column on every write. <a class="reference internal" href="howto_compose_views_with_mixins.html#tenant-row-scoping"><span class="std std-ref">Tenant row scoping</span></a>
+owns the complete pattern.</p>
 </section>
 </section>
 

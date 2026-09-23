@@ -1,13 +1,26 @@
 # ![](_static/fr-monogram.svg) FastAPI-Restly
 
-FastAPI-Restly (`fr`) is a REST framework for FastAPI, backed by SQLAlchemy 2.0
-and Pydantic v2. Views are real Python classes: share behavior with inheritance
-and mixins, and override the one operation you need.
+FastAPI-Restly (`fr`) is a REST framework for FastAPI, using SQLAlchemy 2.0 and
+Pydantic v2. Views are real Python classes that support inheritance and mixins.
+Designed for customization.
 
 > **Status:** {{ release }}, a public beta after
 > [four years of internal use](about.md). Expect small breaking changes in
 > deeper extension points on the way to `1.0.0`; see the
 > [changelog](changelog.md).
+
+With FastAPI-Restly imported as `fr`, a CRUD resource is four lines once `app`
+and `User` exist:
+
+```python
+@fr.include_view(app)
+class UserView(fr.AsyncRestView):
+    prefix = "/users"
+    model = User  # SQLAlchemy model
+```
+
+See [Using RestView](rest_views.md) for the full guide and [Customizing
+RestView](customize.md) for how you can change it.
 
 ## Quick Start
 
@@ -61,8 +74,8 @@ class UserView(fr.AsyncRestView):
 That view exposes these routes, with schemas generated from the model:
 
 ```text
-GET    /users/       # list users: filter, sort, paginate via URL params
-POST   /users/       # create a user
+GET    /users       # list users: filter, sort, paginate via URL params
+POST   /users       # create a user
 GET    /users/{id}   # read one user
 PATCH  /users/{id}   # partially update one user
 DELETE /users/{id}   # delete one user
@@ -86,14 +99,16 @@ first test.
 
 ## Features
 
-- **[Generated REST endpoints](api_reference.md#generated-rest-endpoints)**: GET, POST, PATCH, DELETE with minimal boilerplate
+- **[Default CRUD routes](#default-crud-routes)**: GET, POST, PATCH, DELETE with minimal boilerplate
 - **[True class-based views](class_based_views.md)**: inheritance, mixins, and method overrides
-- **[Explicit override points](customize.md)**: every CRUD verb split into endpoint method, handler, and business method
+- **[Explicit override points](customize.md)**: every CRUD verb split into an endpoint method and a business method you override, with a final handler between them that custom routes call
 - **[React Admin ready](howto_react_admin.md)**: `AsyncReactAdminView` speaks `ra-data-simple-rest`
 - **[SQLAlchemy 2.0 support](getting_started.md)**: async-first with modern patterns
 - **[Pydantic v2 integration](howto_custom_schema.md)**: validation and serialization for public contracts
 - **[Automatic schema generation](technical_details.md#auto-generated-schemas)**: read, create, and update schemas generated automatically
 - **[List parameters](howto_query_modifiers.md)**: filter, sort, and paginate from a stable URL dialect generated from the response schema
+- **[Current context](howto_current.md)**: bind the current user once and read it in application code and column defaults
+- **[Scopes](scopes.md)**: row visibility declared once as a clause and applied to every read and reference check
 - **[Relationship support](howto_relationship_idschema.md)**: handle foreign keys and nested objects
 - **[Testing utilities](howto_testing.md)**: built-in test helpers with savepoint isolation
 
@@ -106,24 +121,25 @@ first test.
 :link: getting_started
 :link-type: doc
 
-Fast path from zero to a working REST API.
+Build a working REST API, then continue with a two-model blog API.
 :::
 
-:::{grid-item-card} Tutorial
-:link: tutorial_overview
-:link-type: doc
-
-Build a complete blog API in two parts: generated CRUD, then customization.
-:::
-
-:::{grid-item-card} Class-Based Views
+:::{grid-item-card} Views
 :link: class_based_views
 :link-type: doc
 
-How subclassable views make the override model work.
+Choose a view type, then learn how registration, dependencies, and inheritance
+work.
 :::
 
-:::{grid-item-card} Customize RestView
+:::{grid-item-card} Using RestView
+:link: rest_views
+:link-type: doc
+
+Define a model-backed CRUD resource and understand its default contract.
+:::
+
+:::{grid-item-card} Customizing RestView
 :link: customize
 :link-type: doc
 
@@ -149,7 +165,7 @@ Complete sample applications from a tiny API to a production-shaped service.
 :link: api_reference
 :link-type: doc
 
-Generated endpoints, all public symbols, query parameters, and autodoc.
+Public Python API by module, with signatures and default behavior.
 :::
 
 :::{grid-item-card} About
@@ -172,11 +188,11 @@ Production engine config, Alembic migrations, and an ASGI checklist.
 :hidden:
 
 getting_started
-Tutorial <tutorial_overview>
-Views <class_based_views>
-Customize <customize>
+Tutorial <tutorial>
+CRUD Views <class_based_views>
 How-To <user_guide>
-examples
 API <api_reference>
+Blog <https://www.fastapi-restly.org/blog/>
+examples
 About <about>
 ```

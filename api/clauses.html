@@ -1,0 +1,946 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" data-theme="auto">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Clauses API &#8212; FastAPI-Restly 0.10.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "auto";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "auto";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=e2851362" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=82662543"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api/clauses';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://www.fastapi-restly.org/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script src="../_static/newsletter.js?v=e342eb53"></script>
+    <link rel="canonical" href="https://www.fastapi-restly.org/api/clauses.html" />
+    <link rel="icon" href="../_static/favicon.svg"/>
+    <link rel="author" title="About these documents" href="../about.html" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Database API" href="db.html" />
+    <link rel="prev" title="Package API" href="package.html" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.10" />
+<meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700&amp;display=swap"
+      rel="stylesheet" />
+<!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
+<script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="auto">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/fr-monogram.svg" class="logo__image only-light" alt=""/>
+    <img src="../_static/fr-monogram-dark.svg" class="logo__image only-dark pst-js-only" alt=""/>
+  
+  
+    <p class="title logo__title">FastAPI-Restly</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../getting_started.html">
+    Getting Started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../class_based_views.html">
+    CRUD Views
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../user_guide.html">
+    How-To
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../getting_started.html">
+    Getting Started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../class_based_views.html">
+    CRUD Views
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../user_guide.html">
+    How-To
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../about.html">
+    About
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">API Modules</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="package.html">Package API</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Clauses API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="db.html">Database API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="exc.html">Exceptions API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="models.html">Models API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="objects.html">Objects API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="query.html">Query API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="schemas.html">Schemas API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="views.html">Views API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="testing.html">Testing API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.html">Utils API</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_details.html">Behavior and Configuration Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../technical_details.html">Technical Details</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../api_reference.html" class="nav-link">API Reference</a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">API Modules</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Clauses API</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="clauses-api">
+<h1>Clauses API<a class="headerlink" href="#clauses-api" title="Link to this heading">#</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">fastapi_restly.clauses</span></code> implements composable, context-bound query
+clauses: named fragments of a query, declared once at module level,
+composed with boolean functions, and applied to plain SQLAlchemy
+statements.</p>
+<p id="module-fastapi_restly.clauses">Composable, context-bound query clauses for SQLAlchemy.</p>
+<p>A WhereClause is a named, reusable predicate. where_clause() builds one
+from a SQLAlchemy condition or from a function that returns one, and
+all_of()/any_of()/none_of() compose them. A clause takes no arguments and
+holds no values.</p>
+<p>A value that changes per request or per call is a ContextParam: a member
+of a ContextNamespace (<cite>name: ContextParam[T]</cite>), bound through the
+namespace (<cite>Current.bind(tenant_id=tid)</cite>, or <cite>Current.depends(…)</cite> per
+request). Embedded in a condition (<cite>Item.tenant_id == Current.tenant_id</cite>)
+the member is a placeholder; called in a clause function
+(<cite>Current.tenant_id()</cite>) it returns the value. Both are read when the
+clause is applied, so the statement carries the values with it, and an
+unbound member raises LookupError instead of running unfiltered.</p>
+<p>A WhereClause is also callable. Calling it returns the raw
+ColumnElement for use inside plain SQLAlchemy: join conditions, CASE
+expressions, or a hand-built .where(). This bypasses apply_clauses’
+table validation, so raw SQLAlchemy rules apply.</p>
+<p>Statement construction stays plain SQLAlchemy. Build select()/update()/
+delete() as usual and pass the result through apply_clauses(), the
+bridge between the two worlds. A clause is a predicate and never joins:
+express a condition on a related table as EXISTS (relationship
+.any()/.has()). apply_clauses rejects a predicate that references a
+table the statement does not select from.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="fastapi_restly.clauses.ClauseNamespace">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.clauses.</span></span><span class="sig-name descname"><span class="pre">ClauseNamespace</span></span><a class="headerlink" href="#fastapi_restly.clauses.ClauseNamespace" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Groups clauses under one named class.</p>
+<p>Subclass and put the clauses in the class body; earlier names are
+available to later compositions. On definition the namespace
+validates that every public attribute is a clause (catching a bare
+SQLAlchemy expression that forgot its where_clause() wrapper). Usage
+is by class name (<cite>ItemClauses.visible</cite>): plain attribute access
+that any type checker follows. A clause needs no model; a namespace
+that declares <cite>model = &lt;mapped class&gt;</cite> is <em>the</em> namespace for that
+model and registers itself, so its <cite>default_scope</cite> reaches the
+model’s reads and reference checks; the model class itself is never
+touched. Define such a namespace in the model’s module, so importing
+the model guarantees the registration ran. A namespace without a
+model is a plain group: shared clauses, or a base class whose
+<cite>__init_subclass__</cite> shapes the namespaces that extend it.</p>
+<p>The name <cite>default_scope</cite> is reserved: a clause under that name is
+the scope every view read and every reference check on the model
+applies unless a view declares its own (see the Scopes guide). A
+join-dependent predicate is an EXISTS (.any()/.has()).
+A model subclass inherits the nearest declared <cite>default_scope</cite>
+along its MRO: a namespace that does not declare one leaves an
+inherited scope in force, and <cite>default_scope = UNSCOPED</cite> is the
+explicit opt-out. <cite>None</cite> says nothing here and is rejected.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.clauses.ClauseNamespace.default_scope">
+<span class="sig-name descname"><span class="pre">default_scope</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#fastapi_restly.clauses.WhereClause" title="fastapi_restly.clauses._runtime.WhereClause"><span class="pre">WhereClause</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#fastapi_restly.clauses.Unscoped" title="fastapi_restly.clauses._runtime.Unscoped"><span class="pre">Unscoped</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">fr.clauses.UNSCOPED</span></em><a class="headerlink" href="#fastapi_restly.clauses.ClauseNamespace.default_scope" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.clauses.ClauseNamespace.model">
+<span class="sig-name descname"><span class="pre">model</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/mapping_api.html#sqlalchemy.orm.DeclarativeBase" title="(in SQLAlchemy v2.0)"><span class="pre">DeclarativeBase</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#fastapi_restly.clauses.ClauseNamespace.model" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="fastapi_restly.clauses.ContextNamespace">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.clauses.</span></span><span class="sig-name descname"><span class="pre">ContextNamespace</span></span><a class="headerlink" href="#fastapi_restly.clauses.ContextNamespace" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Declares the ContextParams of one context, one per annotation.</p>
+<p>Subclass and annotate: each public annotation <cite>name: ContextParam[T]</cite>
+materializes a ContextParam bound under <cite>name</cite>, so the attribute name
+is the bind name and a typo fails at import. Assigning an existing
+member adopts it (<cite>tenant_id = Current.tenant_id</cite>), so namespaces can
+share one member; helpers take a leading underscore. The conventional
+app-wide subclass is named Current; a value with a smaller audience
+gets a smaller namespace beside its consumers. Declaring here says
+where a value lives, not where it is bound: binding stays at the
+narrowest level that knows the value, and an unbound read still
+raises.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="fastapi_restly.clauses.ContextNamespace.bind">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">bind</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">values</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterator" title="(in Python v3.14)"><span class="pre">Iterator</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.clauses.ContextNamespace.bind" title="Link to this definition">#</a></dt>
+<dd><p>Bind member values for the duration of the with block.</p>
+<p>Keys are member names; a name this namespace does not declare
+raises. An inner bind replaces the value until its block exits.
+Two names for the same member raise TypeError before binding any
+values, even if the supplied values are equal.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="fastapi_restly.clauses.ContextNamespace.depends">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">depends</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">sources</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="headerlink" href="#fastapi_restly.clauses.ContextNamespace.depends" title="Link to this definition">#</a></dt>
+<dd><p>A FastAPI dependency that binds the named members per request.</p>
+<p>Keyword names are member names; each value is the dependency the
+member’s value comes from (a callable, a <code class="docutils literal notranslate"><span class="pre">Depends(...)</span></code>, or an
+<code class="docutils literal notranslate"><span class="pre">Annotated</span></code> alias), so <code class="docutils literal notranslate"><span class="pre">app.dependency_overrides</span></code> keeps
+working. The result drops into a <code class="docutils literal notranslate"><span class="pre">dependencies=[...]</span></code> list at
+app, router, or view level. It is an async dependency underneath:
+the bind lands in the request task, where async and def endpoints
+alike read it.
+Two names for the same member raise TypeError at declaration.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="fastapi_restly.clauses.ContextNamespace.explain">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">explain</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#fastapi_restly.clauses.ContextNamespace.explain" title="Link to this definition">#</a></dt>
+<dd><p>Each member with its bound value and origin, or UNBOUND.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="fastapi_restly.clauses.ContextParam">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.clauses.</span></span><span class="sig-name descname"><span class="pre">ContextParam</span></span><a class="headerlink" href="#fastapi_restly.clauses.ContextParam" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Generic" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Generic</span></code></a>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">_T</span></code>], <a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/sqlelement.html#sqlalchemy.sql.expression.ColumnOperators" title="(in SQLAlchemy v2.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ColumnOperators</span></code></a></p>
+<p>One value of a context: bound around a unit of work, read anywhere.</p>
+<p>Declared in a ContextNamespace (<code class="docutils literal notranslate"><span class="pre">tenant_id:</span> <span class="pre">ContextParam[UUID]</span></code>),
+never constructed directly: the namespace is its address, and it is
+bound through the namespace’s bind() or depends(). One member, two
+positions. Called, it returns the bound value, or raises LookupError
+when nothing is bound. Embedded in a SQL expression
+(<code class="docutils literal notranslate"><span class="pre">Item.tenant_id</span> <span class="pre">==</span> <span class="pre">Current.tenant_id</span></code>) it becomes a placeholder,
+filled with the bound value each time a clause that carries it is
+applied.</p>
+<p>A member never stands in for its value: <code class="docutils literal notranslate"><span class="pre">==</span></code>, <code class="docutils literal notranslate"><span class="pre">!=</span></code> and a truth
+test raise. Call the member to read it, and in a SQL expression put
+the column first (<code class="docutils literal notranslate"><span class="pre">Item.role</span> <span class="pre">==</span> <span class="pre">Current.role</span></code>).</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="fastapi_restly.clauses.ContextParam.__call__">
+<span class="sig-name descname"><span class="pre">__call__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">_T</span></span></span><a class="headerlink" href="#fastapi_restly.clauses.ContextParam.__call__" title="Link to this definition">#</a></dt>
+<dd><p>The bound value; LookupError when nothing is bound.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="fastapi_restly.clauses.Unscoped">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.clauses.</span></span><span class="sig-name descname"><span class="pre">Unscoped</span></span><a class="headerlink" href="#fastapi_restly.clauses.Unscoped" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Sentinel scope: explicitly no scope, everywhere a scope can appear.</p>
+<p><cite>UNSCOPED</cite> is the one instance; the class is public so a <cite>scope</cite>
+declaration or a <cite>get_one</cite> / <cite>get_many</cite> override can name the type
+(<cite>WhereClause | Unscoped</cite>).
+The explicit spelling for a view’s <cite>scope</cite> (where <cite>None</cite> means
+“fall back to the model’s default”), a namespace’s <cite>default_scope</cite>
+(where undeclared defers to
+a base model’s namespace, or none), and a <cite>RefExists</cite> scope (where
+<cite>None</cite> is rejected, so a variable that happens to be None can never
+silently unscope). <cite>apply_clauses()</cite> accepts it and applies nothing
+for it, preserving existing filters and other supplied clauses.
+Boolean composition treats it as SQL TRUE: all_of ignores it and
+returns the sole remaining clause unchanged, or UNSCOPED when none
+remain. any_of propagates it, and none_of returns a WhereClause over
+SQL false(). Composition validates other operands before simplifying.
+Searching for UNSCOPED finds explicit uses. Variables and composition
+can pass the sentinel to other scope declarations and read calls.
+Deliberately not re-exported at the top level: the escape is spelled
+in full.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="fastapi_restly.clauses.WhereClause">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.clauses.</span></span><span class="sig-name descname"><span class="pre">WhereClause</span></span><a class="headerlink" href="#fastapi_restly.clauses.WhereClause" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>A named, reusable predicate.</p>
+<p>Built by where_clause() and by all_of()/any_of()/none_of(), never
+constructed directly. It takes no arguments and holds no values: a
+value that changes per request or per call is a ContextNamespace
+member, embedded in the condition or read in the clause function. It
+applies to SELECT, UPDATE and DELETE statements through
+apply_clauses(), and calling it returns the raw ColumnElement for use
+inside plain SQLAlchemy expressions.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="fastapi_restly.clauses.WhereClause.__call__">
+<span class="sig-name descname"><span class="pre">__call__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/sqlelement.html#sqlalchemy.sql.expression.ColumnElement" title="(in SQLAlchemy v2.0)"><span class="pre">ColumnElement</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.clauses.WhereClause.__call__" title="Link to this definition">#</a></dt>
+<dd><p>Resolve to the raw ColumnElement, for plain SQLAlchemy use.</p>
+<p>Context members are read now: an unbound one raises LookupError.
+The result drops into any expression position: .where(), a join
+condition, a CASE. This path skips apply_clauses’ table validation.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="fastapi_restly.clauses.all_of">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.clauses.</span></span><span class="sig-name descname"><span class="pre">all_of</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">clauses</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.clauses.WhereClause" title="fastapi_restly.clauses._runtime.WhereClause"><span class="pre">WhereClause</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#fastapi_restly.clauses.Unscoped" title="fastapi_restly.clauses._runtime.Unscoped"><span class="pre">Unscoped</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.clauses.WhereClause" title="fastapi_restly.clauses._runtime.WhereClause"><span class="pre">WhereClause</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#fastapi_restly.clauses.Unscoped" title="fastapi_restly.clauses._runtime.Unscoped"><span class="pre">Unscoped</span></a></span></span><a class="headerlink" href="#fastapi_restly.clauses.all_of" title="Link to this definition">#</a></dt>
+<dd><p>AND the operands’ predicates.</p>
+<p>UNSCOPED is a no-op. One remaining operand is returned unchanged, and
+none returns UNSCOPED. Calling with no arguments raises.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="fastapi_restly.clauses.any_of">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.clauses.</span></span><span class="sig-name descname"><span class="pre">any_of</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">clauses</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.clauses.WhereClause" title="fastapi_restly.clauses._runtime.WhereClause"><span class="pre">WhereClause</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#fastapi_restly.clauses.Unscoped" title="fastapi_restly.clauses._runtime.Unscoped"><span class="pre">Unscoped</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.clauses.WhereClause" title="fastapi_restly.clauses._runtime.WhereClause"><span class="pre">WhereClause</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#fastapi_restly.clauses.Unscoped" title="fastapi_restly.clauses._runtime.Unscoped"><span class="pre">Unscoped</span></a></span></span><a class="headerlink" href="#fastapi_restly.clauses.any_of" title="Link to this definition">#</a></dt>
+<dd><p>OR the operands’ predicates.</p>
+<p>UNSCOPED accepts every row, so any UNSCOPED operand returns the sentinel.
+Other operands are validated before this simplification and are not
+resolved if the result is UNSCOPED. Calling with no arguments raises.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="fastapi_restly.clauses.apply_clauses">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.clauses.</span></span><span class="sig-name descname"><span class="pre">apply_clauses</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stmt</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">clauses</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.clauses.WhereClause" title="fastapi_restly.clauses._runtime.WhereClause"><span class="pre">WhereClause</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#fastapi_restly.clauses.Unscoped" title="fastapi_restly.clauses._runtime.Unscoped"><span class="pre">Unscoped</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.clauses.apply_clauses" title="Link to this definition">#</a></dt>
+<dd><p>Apply clauses to a statement built with plain SQLAlchemy.</p>
+<p>The bridge between the two worlds: build select()/update()/delete()
+as usual, then let this add the clauses’ predicates to its WHERE. A
+predicate that references a table the statement does not select from
+is rejected: the silent alternative is a cartesian product. Express a
+condition on a related table as EXISTS (.any()/.has()). <code class="docutils literal notranslate"><span class="pre">UNSCOPED</span></code>
+among the clauses applies nothing: a scope seam passes on what it was
+given.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="fastapi_restly.clauses.none_of">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.clauses.</span></span><span class="sig-name descname"><span class="pre">none_of</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">clauses</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.clauses.WhereClause" title="fastapi_restly.clauses._runtime.WhereClause"><span class="pre">WhereClause</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#fastapi_restly.clauses.Unscoped" title="fastapi_restly.clauses._runtime.Unscoped"><span class="pre">Unscoped</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.clauses.WhereClause" title="fastapi_restly.clauses._runtime.WhereClause"><span class="pre">WhereClause</span></a></span></span><a class="headerlink" href="#fastapi_restly.clauses.none_of" title="Link to this definition">#</a></dt>
+<dd><p>True when none of the operands’ predicates hold.</p>
+<p>NOT over the OR of all operands. An UNSCOPED operand returns a
+WhereClause over SQL false(), matching no rows. Other operands are
+validated but not resolved in that case.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="fastapi_restly.clauses.where_clause">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.clauses.</span></span><span class="sig-name descname"><span class="pre">where_clause</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">condition</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/sqlelement.html#sqlalchemy.sql.expression.ColumnElement" title="(in SQLAlchemy v2.0)"><span class="pre">ColumnElement</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/sqlelement.html#sqlalchemy.sql.expression.ColumnElement" title="(in SQLAlchemy v2.0)"><span class="pre">ColumnElement</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.clauses.WhereClause" title="fastapi_restly.clauses._runtime.WhereClause"><span class="pre">WhereClause</span></a></span></span><a class="headerlink" href="#fastapi_restly.clauses.where_clause" title="Link to this definition">#</a></dt>
+<dd><p>A WhereClause from a condition or a function returning one.</p>
+<p>A ready-made ColumnElement is reused as-is. A function takes no
+parameters and runs each time the clause is applied, so it can branch
+in Python. Both read request and local values from ContextNamespace
+members: embed the member in the condition
+(<code class="docutils literal notranslate"><span class="pre">Item.user_id</span> <span class="pre">==</span> <span class="pre">Current.user_id</span></code>), or call it in the function body
+(<code class="docutils literal notranslate"><span class="pre">Current.user_id()</span></code>). A value the caller already has needs no
+clause function: build the condition there and wrap it,
+<code class="docutils literal notranslate"><span class="pre">where_clause(Item.collection_id</span> <span class="pre">==</span> <span class="pre">collection_id)</span></code>.</p>
+<p>In a ClauseNamespace body, stack this decorator over <code class="docutils literal notranslate"><span class="pre">staticmethod</span></code>:
+the marker keeps a type checker from reading the def as a method, and
+is unwrapped here.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="fastapi_restly.clauses.UNSCOPED">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.clauses.</span></span><span class="sig-name descname"><span class="pre">UNSCOPED</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">fr.clauses.UNSCOPED</span></em><a class="headerlink" href="#fastapi_restly.clauses.UNSCOPED" title="Link to this definition">#</a></dt>
+<dd><p>Sentinel scope: explicitly no scope, everywhere a scope can appear.</p>
+<p><cite>UNSCOPED</cite> is the one instance; the class is public so a <cite>scope</cite>
+declaration or a <cite>get_one</cite> / <cite>get_many</cite> override can name the type
+(<cite>WhereClause | Unscoped</cite>).
+The explicit spelling for a view’s <cite>scope</cite> (where <cite>None</cite> means
+“fall back to the model’s default”), a namespace’s <cite>default_scope</cite>
+(where undeclared defers to
+a base model’s namespace, or none), and a <cite>RefExists</cite> scope (where
+<cite>None</cite> is rejected, so a variable that happens to be None can never
+silently unscope). <cite>apply_clauses()</cite> accepts it and applies nothing
+for it, preserving existing filters and other supplied clauses.
+Boolean composition treats it as SQL TRUE: all_of ignores it and
+returns the sole remaining clause unchanged, or UNSCOPED when none
+remain. any_of propagates it, and none_of returns a WhereClause over
+SQL false(). Composition validates other operands before simplifying.
+Searching for UNSCOPED finds explicit uses. Variables and composition
+can pass the sentinel to other scope declarations and read calls.
+Deliberately not re-exported at the top level: the escape is spelled
+in full.</p>
+</dd></dl>
+
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p><a class="reference internal" href="../howto_current.html"><span class="doc">Current context</span></a> covers request values and dependency binding.
+<a class="reference internal" href="../clauses.html"><span class="doc">Query Clauses</span></a> covers query fragments and composition.</p>
+</div>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="package.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Package API</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="db.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Database API</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.clauses.ClauseNamespace"><code class="docutils literal notranslate"><span class="pre">ClauseNamespace</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.clauses.ClauseNamespace.default_scope"><code class="docutils literal notranslate"><span class="pre">ClauseNamespace.default_scope</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.clauses.ClauseNamespace.model"><code class="docutils literal notranslate"><span class="pre">ClauseNamespace.model</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.clauses.ContextNamespace"><code class="docutils literal notranslate"><span class="pre">ContextNamespace</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.clauses.ContextNamespace.bind"><code class="docutils literal notranslate"><span class="pre">ContextNamespace.bind()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.clauses.ContextNamespace.depends"><code class="docutils literal notranslate"><span class="pre">ContextNamespace.depends()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.clauses.ContextNamespace.explain"><code class="docutils literal notranslate"><span class="pre">ContextNamespace.explain()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.clauses.ContextParam"><code class="docutils literal notranslate"><span class="pre">ContextParam</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.clauses.ContextParam.__call__"><code class="docutils literal notranslate"><span class="pre">ContextParam.__call__()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.clauses.Unscoped"><code class="docutils literal notranslate"><span class="pre">Unscoped</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.clauses.WhereClause"><code class="docutils literal notranslate"><span class="pre">WhereClause</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.clauses.WhereClause.__call__"><code class="docutils literal notranslate"><span class="pre">WhereClause.__call__()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.clauses.all_of"><code class="docutils literal notranslate"><span class="pre">all_of()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.clauses.any_of"><code class="docutils literal notranslate"><span class="pre">any_of()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.clauses.apply_clauses"><code class="docutils literal notranslate"><span class="pre">apply_clauses()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.clauses.none_of"><code class="docutils literal notranslate"><span class="pre">none_of()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.clauses.where_clause"><code class="docutils literal notranslate"><span class="pre">where_clause()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.clauses.UNSCOPED"><code class="docutils literal notranslate"><span class="pre">UNSCOPED</span></code></a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+<p class="sidebar-newsletter">
+  <a href="../newsletter.html">Subscribe to newsletter</a>
+</p></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, Rutger Prins.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

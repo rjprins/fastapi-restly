@@ -1,9 +1,10 @@
-# Tutorial Part 1: Generated CRUD
+# Build a Blog API
 
-In Part 1 we build a small blog API with two related models, using the most
-common FastAPI-Restly patterns: models, schemas, and a view class that generates
-full CRUD endpoints. It assumes you have read [Getting Started](getting_started.md)
-and installed `fastapi-restly[standard]` with the `aiosqlite` driver.
+This tutorial builds a small blog API with two related models. It uses
+FastAPI-Restly models, schemas, and view classes that inherit full CRUD
+endpoint methods. It assumes you have read [Getting
+Started](getting_started.md) and installed `fastapi-restly[standard]` with the
+`aiosqlite` driver.
 
 This tutorial uses explicit schemas for clarity. For faster scaffolding, you can omit
 `schema = ...` on a view and let FastAPI-Restly auto-generate it from the model.
@@ -59,6 +60,12 @@ Post(title="Hello", content="World", published=False)  # correct
 
 The `id` column is excluded from `__init__` automatically, so you do not pass it.
 
+`IDBase` also maps a plain `Mapped[datetime]` column to
+`DateTime(timezone=True)`. Treat these values as UTC instants. PostgreSQL
+enforces the timezone-aware column type, while SQLite returns naive datetime
+values. For an intentional timezone-free wall-clock field, opt out per column
+with `mapped_column(DateTime())`.
+
 ## Schemas
 
 With the models in place, we can define the Pydantic schemas that shape the
@@ -92,7 +99,7 @@ wire format is the raw id:
 1
 ```
 
-So a `POST /comments/` request body looks like:
+So a `POST /comments` request body looks like:
 
 ```json
 {
@@ -168,14 +175,15 @@ fastapi dev main.py
 Open <http://127.0.0.1:8000/docs>. Both resources are listed with their
 request and response schemas, ready to try from the browser.
 
-## Generated endpoints
+## Default CRUD routes
 
-For each view, FastAPI-Restly generates five endpoints. With `prefix = "/posts"`:
+Each view inherits five endpoint methods. With `prefix = "/posts"`,
+`include_view` registers them at these paths:
 
 | Method   | Path          | Action         |
 |----------|---------------|----------------|
-| `GET`    | `/posts/`     | List all posts |
-| `POST`   | `/posts/`     | Create a post  |
+| `GET`    | `/posts`     | List all posts |
+| `POST`   | `/posts`     | Create a post  |
 | `GET`    | `/posts/{id}` | Get one post   |
 | `PATCH`  | `/posts/{id}` | Update a post  |
 | `DELETE` | `/posts/{id}` | Delete a post  |
@@ -222,7 +230,7 @@ class PostRead(fr.IDSchema):
 - `ReadOnly` fields appear in responses but are ignored on create and update;
   the server owns them.
 - `WriteOnly` fields are accepted on create and update but stripped from every
-  generated response.
+  CRUD response.
 
 `id` on {class}`IDSchema <fastapi_restly.schemas.IDSchema>` is already `ReadOnly`, which is why it appears in responses without
 being part of the create/update body.
@@ -232,14 +240,14 @@ covered in [ReadOnly and WriteOnly](howto_custom_schema.md#readonly-and-writeonl
 
 ## Querying lists
 
-The generated list endpoints accept filtering, sorting, and pagination
+The default list endpoints accept filtering, sorting, and pagination
 through URL query parameters. Filters use direct field names with optional
 operator suffixes:
 
 ```text
-GET /posts/?published=true&sort=-id&page=1&page_size=10
-GET /posts/?title__icontains=hello
-GET /posts/?created_at__gte=2024-01-01&created_at__lt=2025-01-01
+GET /posts?published=true&sort=-id&page=1&page_size=10
+GET /posts?title__icontains=hello
+GET /posts?created_at__gte=2024-01-01&created_at__lt=2025-01-01
 ```
 
 See [Filter, Sort, and Paginate Lists](howto_query_modifiers.md)
@@ -256,7 +264,7 @@ from fastapi_restly.testing import RestlyTestClient
 # Enter it: the app's lifespan, which creates the tables above, runs on entry.
 with RestlyTestClient(app) as client:
     post = client.post(
-        "/posts/", json={"title": "Hello", "content": "World", "published": False}
+        "/posts", json={"title": "Hello", "content": "World", "published": False}
     )
     # Automatically asserts status 201
 
@@ -266,7 +274,10 @@ with RestlyTestClient(app) as client:
 
 For test isolation, install the testing extra (`pip install "fastapi-restly[testing]"`);
 pytest then auto-loads Restly's fixtures. Point the suite at a test database in
-`conftest.py`:
+`conftest.py`. Setting the environment variable before the import works because
+this tutorial's single file configures Restly when it is imported. An
+application built by a factory receives its test database explicitly instead,
+as shown in [Test APIs with RestlyTestClient and Fixtures](howto_testing.md):
 
 ```python
 # conftest.py
@@ -291,7 +302,7 @@ when they finish:
 ```python
 # test_posts.py
 def test_create_post(restly_client):
-    resp = restly_client.post("/posts/", json={"title": "Hi", "content": "...", "published": False})
+    resp = restly_client.post("/posts", json={"title": "Hi", "content": "...", "published": False})
     assert resp.json()["title"] == "Hi"
     # Database changes are rolled back automatically after this test
 ```
@@ -378,14 +389,23 @@ class CommentView(fr.AsyncRestView):
 
 ## Next steps
 
-The tutorial continues with
-**[Part 2: Customizing Views](tutorial_customizing.md)**, which overrides
-handlers, adds custom routes, and shares behaviour with base classes. The
-pages below go deeper into the topics this part touched on:
+Continue with [Customize the Blog API](tutorial_customizing.md), which
+overrides business methods, adds custom routes, and shares behaviour with
+base classes.
+These pages cover the topics from this tutorial in more detail:
 
+- [Using RestView](rest_views.md): the default CRUD contract and
+  resource configuration
 - [Auto-Generated Schemas](technical_details.md#auto-generated-schemas): skip writing schemas for simple models
 - [Filter, Sort, and Paginate Lists](howto_query_modifiers.md): the full filter and sort reference
 - [Work with Foreign Keys and Relationships](howto_relationship_idschema.md): reference related rows by id
 - [Testing](howto_testing.md): savepoint isolation and test fixtures
 - [Examples](examples.md): complete sample apps that extend these patterns
 - [API Reference](api_reference.md)
+
+```{toctree}
+:maxdepth: 1
+:hidden:
+
+tutorial_customizing
+```

@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Tutorial Part 1: Generated CRUD &#8212; FastAPI-Restly 0.9.0 documentation</title>
+    <title>Build a Blog API &#8212; FastAPI-Restly 0.10.0 documentation</title>
   
   
   
@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=6821e04d" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=39bb1c6d"></script>
+    <script src="_static/documentation_options.js?v=82662543"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -61,12 +61,12 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Tutorial Part 2: Customizing Views" href="tutorial_customizing.html" />
-    <link rel="prev" title="Tutorial" href="tutorial_overview.html" />
+    <link rel="next" title="Customize the Blog API" href="tutorial_customizing.html" />
+    <link rel="prev" title="Getting Started" href="getting_started.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.9" />
+  <meta name="docsearch:version" content="0.10" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -167,7 +167,7 @@
 
 
 <li class="nav-item current active">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="#">
     Tutorial
   </a>
 </li>
@@ -175,14 +175,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -195,22 +188,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="api_reference.html">
     API
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
   </a>
 </li>
 
@@ -221,6 +200,30 @@
   </a>
 </li>
 
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
   </ul>
 </nav></div>
       
@@ -338,7 +341,7 @@
 
 
 <li class="nav-item current active">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="#">
     Tutorial
   </a>
 </li>
@@ -346,14 +349,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -366,13 +362,6 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="api_reference.html">
     API
   </a>
@@ -380,15 +369,22 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
-    Blog
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
   </a>
 </li>
 
@@ -455,9 +451,8 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Tutorial Part 1: Generated CRUD</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tutorial_customizing.html">Tutorial Part 2: Customizing Views</a></li>
+  <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="tutorial_customizing.html">Customize the Blog API</a></li>
 </ul>
 </div>
 </nav></div>
@@ -498,10 +493,7 @@
         <i class="fa-solid fa-home"></i>
       </a>
     </li>
-    
-    <li class="breadcrumb-item"><a href="tutorial_overview.html" class="nav-link">Tutorial</a></li>
-    
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Tutorial Part 1: Generated CRUD</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Build a Blog API</span></li>
   </ul>
 </nav>
 </div>
@@ -518,12 +510,13 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="tutorial-part-1-generated-crud">
-<h1>Tutorial Part 1: Generated CRUD<a class="headerlink" href="#tutorial-part-1-generated-crud" title="Link to this heading">#</a></h1>
-<p>In Part 1 we build a small blog API with two related models, using the most
-common FastAPI-Restly patterns: models, schemas, and a view class that generates
-full CRUD endpoints. It assumes you have read <a class="reference internal" href="getting_started.html"><span class="std std-doc">Getting Started</span></a>
-and installed <code class="docutils literal notranslate"><span class="pre">fastapi-restly[standard]</span></code> with the <code class="docutils literal notranslate"><span class="pre">aiosqlite</span></code> driver.</p>
+  <section id="build-a-blog-api">
+<h1>Build a Blog API<a class="headerlink" href="#build-a-blog-api" title="Link to this heading">#</a></h1>
+<p>This tutorial builds a small blog API with two related models. It uses
+FastAPI-Restly models, schemas, and view classes that inherit full CRUD
+endpoint methods. It assumes you have read <a class="reference internal" href="getting_started.html"><span class="std std-doc">Getting
+Started</span></a> and installed <code class="docutils literal notranslate"><span class="pre">fastapi-restly[standard]</span></code> with the
+<code class="docutils literal notranslate"><span class="pre">aiosqlite</span></code> driver.</p>
 <p>This tutorial uses explicit schemas for clarity. For faster scaffolding, you can omit
 <code class="docutils literal notranslate"><span class="pre">schema</span> <span class="pre">=</span> <span class="pre">...</span></code> on a view and let FastAPI-Restly auto-generate it from the model.
 See <a class="reference internal" href="technical_details.html#id1"><span class="std std-ref">Auto-Generated Schemas</span></a>.</p>
@@ -572,6 +565,11 @@ This is why <code class="docutils literal notranslate"><span class="pre">Foreign
 </pre></div>
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">id</span></code> column is excluded from <code class="docutils literal notranslate"><span class="pre">__init__</span></code> automatically, so you do not pass it.</p>
+<p><code class="docutils literal notranslate"><span class="pre">IDBase</span></code> also maps a plain <code class="docutils literal notranslate"><span class="pre">Mapped[datetime]</span></code> column to
+<code class="docutils literal notranslate"><span class="pre">DateTime(timezone=True)</span></code>. Treat these values as UTC instants. PostgreSQL
+enforces the timezone-aware column type, while SQLite returns naive datetime
+values. For an intentional timezone-free wall-clock field, opt out per column
+with <code class="docutils literal notranslate"><span class="pre">mapped_column(DateTime())</span></code>.</p>
 </section>
 </section>
 <section id="schemas">
@@ -603,7 +601,7 @@ wire format is the raw id:</p>
 <div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="mi">1</span>
 </pre></div>
 </div>
-<p>So a <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/comments/</span></code> request body looks like:</p>
+<p>So a <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/comments</span></code> request body looks like:</p>
 <div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Great post!&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;post_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span>
@@ -670,9 +668,10 @@ For production projects, use Alembic migrations instead of <a class="reference i
 <p>Open <a class="reference external" href="http://127.0.0.1:8000/docs">http://127.0.0.1:8000/docs</a>. Both resources are listed with their
 request and response schemas, ready to try from the browser.</p>
 </section>
-<section id="generated-endpoints">
-<h2>Generated endpoints<a class="headerlink" href="#generated-endpoints" title="Link to this heading">#</a></h2>
-<p>For each view, FastAPI-Restly generates five endpoints. With <code class="docutils literal notranslate"><span class="pre">prefix</span> <span class="pre">=</span> <span class="pre">&quot;/posts&quot;</span></code>:</p>
+<section id="default-crud-routes">
+<h2>Default CRUD routes<a class="headerlink" href="#default-crud-routes" title="Link to this heading">#</a></h2>
+<p>Each view inherits five endpoint methods. With <code class="docutils literal notranslate"><span class="pre">prefix</span> <span class="pre">=</span> <span class="pre">&quot;/posts&quot;</span></code>,
+<code class="docutils literal notranslate"><span class="pre">include_view</span></code> registers them at these paths:</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>
 <tr class="row-odd"><th class="head"><p>Method</p></th>
@@ -682,11 +681,11 @@ request and response schemas, ready to try from the browser.</p>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">GET</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">/posts/</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/posts</span></code></p></td>
 <td><p>List all posts</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">POST</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">/posts/</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/posts</span></code></p></td>
 <td><p>Create a post</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">GET</span></code></p></td>
@@ -741,7 +740,7 @@ must not be writable. First we add the columns to the model:</p>
 <li><p><code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> fields appear in responses but are ignored on create and update;
 the server owns them.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields are accepted on create and update but stripped from every
-generated response.</p></li>
+CRUD response.</p></li>
 </ul>
 <p><code class="docutils literal notranslate"><span class="pre">id</span></code> on <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a> is already <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>, which is why it appears in responses without
 being part of the create/update body.</p>
@@ -750,12 +749,12 @@ covered in <a class="reference internal" href="howto_custom_schema.html#readonly
 </section>
 <section id="querying-lists">
 <h2>Querying lists<a class="headerlink" href="#querying-lists" title="Link to this heading">#</a></h2>
-<p>The generated list endpoints accept filtering, sorting, and pagination
+<p>The default list endpoints accept filtering, sorting, and pagination
 through URL query parameters. Filters use direct field names with optional
 operator suffixes:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /posts/?published=true&amp;sort=-id&amp;page=1&amp;page_size=10
-GET /posts/?title__icontains=hello
-GET /posts/?created_at__gte=2024-01-01&amp;created_at__lt=2025-01-01
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /posts?published=true&amp;sort=-id&amp;page=1&amp;page_size=10
+GET /posts?title__icontains=hello
+GET /posts?created_at__gte=2024-01-01&amp;created_at__lt=2025-01-01
 </pre></div>
 </div>
 <p>See <a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">Filter, Sort, and Paginate Lists</span></a>
@@ -770,7 +769,7 @@ that asserts sensible default status codes and gives clear failure messages.</p>
 <span class="c1"># Enter it: the app&#39;s lifespan, which creates the tables above, runs on entry.</span>
 <span class="k">with</span> <span class="n">RestlyTestClient</span><span class="p">(</span><span class="n">app</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
     <span class="n">post</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
-        <span class="s2">&quot;/posts/&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Hello&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;World&quot;</span><span class="p">,</span> <span class="s2">&quot;published&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">}</span>
+        <span class="s2">&quot;/posts&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Hello&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;World&quot;</span><span class="p">,</span> <span class="s2">&quot;published&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">}</span>
     <span class="p">)</span>
     <span class="c1"># Automatically asserts status 201</span>
 
@@ -780,7 +779,10 @@ that asserts sensible default status codes and gives clear failure messages.</p>
 </div>
 <p>For test isolation, install the testing extra (<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">&quot;fastapi-restly[testing]&quot;</span></code>);
 pytest then auto-loads Restly’s fixtures. Point the suite at a test database in
-<code class="docutils literal notranslate"><span class="pre">conftest.py</span></code>:</p>
+<code class="docutils literal notranslate"><span class="pre">conftest.py</span></code>. Setting the environment variable before the import works because
+this tutorial’s single file configures Restly when it is imported. An
+application built by a factory receives its test database explicitly instead,
+as shown in <a class="reference internal" href="howto_testing.html"><span class="std std-doc">Test APIs with RestlyTestClient and Fixtures</span></a>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># conftest.py</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 
@@ -801,7 +803,7 @@ pytest then auto-loads Restly’s fixtures. Point the suite at a test database i
 when they finish:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># test_posts.py</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">test_create_post</span><span class="p">(</span><span class="n">restly_client</span><span class="p">):</span>
-    <span class="n">resp</span> <span class="o">=</span> <span class="n">restly_client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/posts/&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Hi&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">,</span> <span class="s2">&quot;published&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">})</span>
+    <span class="n">resp</span> <span class="o">=</span> <span class="n">restly_client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/posts&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Hi&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">,</span> <span class="s2">&quot;published&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">})</span>
     <span class="k">assert</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;title&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Hi&quot;</span>
     <span class="c1"># Database changes are rolled back automatically after this test</span>
 </pre></div>
@@ -887,11 +889,13 @@ read-only and write-only columns added along the way:</p>
 </section>
 <section id="next-steps">
 <h2>Next steps<a class="headerlink" href="#next-steps" title="Link to this heading">#</a></h2>
-<p>The tutorial continues with
-<strong><a class="reference internal" href="tutorial_customizing.html"><span class="std std-doc">Part 2: Customizing Views</span></a></strong>, which overrides
-handlers, adds custom routes, and shares behaviour with base classes. The
-pages below go deeper into the topics this part touched on:</p>
+<p>Continue with <a class="reference internal" href="tutorial_customizing.html"><span class="std std-doc">Customize the Blog API</span></a>, which
+overrides business methods, adds custom routes, and shares behaviour with
+base classes.
+These pages cover the topics from this tutorial in more detail:</p>
 <ul class="simple">
+<li><p><a class="reference internal" href="rest_views.html"><span class="std std-doc">Using RestView</span></a>: the default CRUD contract and
+resource configuration</p></li>
 <li><p><a class="reference internal" href="technical_details.html#id1"><span class="std std-ref">Auto-Generated Schemas</span></a>: skip writing schemas for simple models</p></li>
 <li><p><a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">Filter, Sort, and Paginate Lists</span></a>: the full filter and sort reference</p></li>
 <li><p><a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys and Relationships</span></a>: reference related rows by id</p></li>
@@ -899,6 +903,8 @@ pages below go deeper into the topics this part touched on:</p>
 <li><p><a class="reference internal" href="examples.html"><span class="std std-doc">Examples</span></a>: complete sample apps that extend these patterns</p></li>
 <li><p><a class="reference internal" href="api_reference.html"><span class="std std-doc">API Reference</span></a></p></li>
 </ul>
+<div class="toctree-wrapper compound">
+</div>
 </section>
 </section>
 
@@ -913,12 +919,12 @@ pages below go deeper into the topics this part touched on:</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="tutorial_overview.html"
+       href="getting_started.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Tutorial</p>
+        <p class="prev-next-title">Getting Started</p>
       </div>
     </a>
     <a class="right-next"
@@ -926,7 +932,7 @@ pages below go deeper into the topics this part touched on:</p>
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Tutorial Part 2: Customizing Views</p>
+        <p class="prev-next-title">Customize the Blog API</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -961,7 +967,7 @@ pages below go deeper into the topics this part touched on:</p>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#app-setup">App setup</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#run-it">Run it</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#generated-endpoints">Generated endpoints</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#default-crud-routes">Default CRUD routes</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#read-only-and-write-only-fields">Read-only and write-only fields</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#querying-lists">Querying lists</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#testing">Testing</a></li>

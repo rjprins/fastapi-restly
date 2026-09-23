@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>FastAPI-Restly &#8212; FastAPI-Restly 0.9.0 documentation</title>
+    <title>FastAPI-Restly &#8212; FastAPI-Restly 0.10.0 documentation</title>
   
   
   
@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=6821e04d" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=39bb1c6d"></script>
+    <script src="_static/documentation_options.js?v=82662543"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -65,7 +65,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.9" />
+  <meta name="docsearch:version" content="0.10" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -166,7 +166,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
 </li>
@@ -174,14 +174,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -194,22 +187,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="api_reference.html">
     API
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
   </a>
 </li>
 
@@ -220,6 +199,30 @@
   </a>
 </li>
 
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
   </ul>
 </nav></div>
       
@@ -339,7 +342,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
 </li>
@@ -347,14 +350,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -367,13 +363,6 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="api_reference.html">
     API
   </a>
@@ -381,15 +370,22 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
-    Blog
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
   </a>
 </li>
 
@@ -481,15 +477,25 @@
                   
   <section id="fastapi-restly">
 <h1><img alt="" src="_images/fr-monogram.svg" /> FastAPI-Restly<a class="headerlink" href="#fastapi-restly" title="Link to this heading">#</a></h1>
-<p>FastAPI-Restly (<code class="docutils literal notranslate"><span class="pre">fr</span></code>) is a REST framework for FastAPI, backed by SQLAlchemy 2.0
-and Pydantic v2. Views are real Python classes: share behavior with inheritance
-and mixins, and override the one operation you need.</p>
+<p>FastAPI-Restly (<code class="docutils literal notranslate"><span class="pre">fr</span></code>) is a REST framework for FastAPI, using SQLAlchemy 2.0 and
+Pydantic v2. Views are real Python classes that support inheritance and mixins.
+Designed for customization.</p>
 <blockquote>
-<div><p><strong>Status:</strong> <code class="docutils literal notranslate"><span class="pre">0.9.0</span></code>, a public beta after
+<div><p><strong>Status:</strong> <code class="docutils literal notranslate"><span class="pre">0.10.0</span></code>, a public beta after
 <a class="reference internal" href="about.html"><span class="std std-doc">four years of internal use</span></a>. Expect small breaking changes in
 deeper extension points on the way to <code class="docutils literal notranslate"><span class="pre">1.0.0</span></code>; see the
 <a class="reference internal" href="changelog.html"><span class="std std-doc">changelog</span></a>.</p>
 </div></blockquote>
+<p>With FastAPI-Restly imported as <code class="docutils literal notranslate"><span class="pre">fr</span></code>, a CRUD resource is four lines once <code class="docutils literal notranslate"><span class="pre">app</span></code>
+and <code class="docutils literal notranslate"><span class="pre">User</span></code> exist:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>  <span class="c1"># SQLAlchemy model</span>
+</pre></div>
+</div>
+<p>See <a class="reference internal" href="rest_views.html"><span class="std std-doc">Using RestView</span></a> for the full guide and <a class="reference internal" href="customize.html"><span class="std std-doc">Customizing
+RestView</span></a> for how you can change it.</p>
 <section id="quick-start">
 <h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading">#</a></h2>
 <p>Install FastAPI-Restly along with an async SQLite driver:</p>
@@ -536,8 +542,8 @@ application:</p>
 </pre></div>
 </div>
 <p>That view exposes these routes, with schemas generated from the model:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET    /users/       # list users: filter, sort, paginate via URL params
-POST   /users/       # create a user
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET    /users       # list users: filter, sort, paginate via URL params
+POST   /users       # create a user
 GET    /users/{id}   # read one user
 PATCH  /users/{id}   # partially update one user
 DELETE /users/{id}   # delete one user
@@ -559,14 +565,16 @@ first test.</p>
 <section id="features">
 <h2>Features<a class="headerlink" href="#features" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><strong><a class="reference internal" href="api_reference.html#generated-rest-endpoints"><span class="std std-ref">Generated REST endpoints</span></a></strong>: GET, POST, PATCH, DELETE with minimal boilerplate</p></li>
+<li><p><strong><a class="reference internal" href="api_details.html#default-crud-routes"><span class="std std-ref">Default CRUD routes</span></a></strong>: GET, POST, PATCH, DELETE with minimal boilerplate</p></li>
 <li><p><strong><a class="reference internal" href="class_based_views.html"><span class="std std-doc">True class-based views</span></a></strong>: inheritance, mixins, and method overrides</p></li>
-<li><p><strong><a class="reference internal" href="customize.html"><span class="std std-doc">Explicit override points</span></a></strong>: every CRUD verb split into endpoint method, handler, and business method</p></li>
+<li><p><strong><a class="reference internal" href="customize.html"><span class="std std-doc">Explicit override points</span></a></strong>: every CRUD verb split into an endpoint method and a business method you override, with a final handler between them that custom routes call</p></li>
 <li><p><strong><a class="reference internal" href="howto_react_admin.html"><span class="std std-doc">React Admin ready</span></a></strong>: <code class="docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code> speaks <code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code></p></li>
 <li><p><strong><a class="reference internal" href="getting_started.html"><span class="std std-doc">SQLAlchemy 2.0 support</span></a></strong>: async-first with modern patterns</p></li>
 <li><p><strong><a class="reference internal" href="howto_custom_schema.html"><span class="std std-doc">Pydantic v2 integration</span></a></strong>: validation and serialization for public contracts</p></li>
 <li><p><strong><a class="reference internal" href="technical_details.html#id1"><span class="std std-ref">Automatic schema generation</span></a></strong>: read, create, and update schemas generated automatically</p></li>
 <li><p><strong><a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">List parameters</span></a></strong>: filter, sort, and paginate from a stable URL dialect generated from the response schema</p></li>
+<li><p><strong><a class="reference internal" href="howto_current.html"><span class="std std-doc">Current context</span></a></strong>: bind the current user once and read it in application code and column defaults</p></li>
+<li><p><strong><a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a></strong>: row visibility declared once as a clause and applied to every read and reference check</p></li>
 <li><p><strong><a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Relationship support</span></a></strong>: handle foreign keys and nested objects</p></li>
 <li><p><strong><a class="reference internal" href="howto_testing.html"><span class="std std-doc">Testing utilities</span></a></strong>: built-in test helpers with savepoint isolation</p></li>
 </ul>
@@ -580,7 +588,7 @@ first test.</p>
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
 Getting Started</div>
-<p class="sd-card-text">Fast path from zero to a working REST API.</p>
+<p class="sd-card-text">Build a working REST API, then continue with a two-model blog API.</p>
 </div>
 <a class="sd-stretched-link sd-hide-link-text reference internal" href="getting_started.html"><span class="doc">Getting Started</span></a></div>
 </div>
@@ -588,29 +596,30 @@ Getting Started</div>
 <div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
-Tutorial</div>
-<p class="sd-card-text">Build a complete blog API in two parts: generated CRUD, then customization.</p>
+Views</div>
+<p class="sd-card-text">Choose a view type, then learn how registration, dependencies, and inheritance
+work.</p>
 </div>
-<a class="sd-stretched-link sd-hide-link-text reference internal" href="tutorial_overview.html"><span class="doc">Tutorial</span></a></div>
-</div>
-<div class="sd-col sd-d-flex-row docutils">
-<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
-<div class="sd-card-body docutils">
-<div class="sd-card-title sd-font-weight-bold docutils">
-Class-Based Views</div>
-<p class="sd-card-text">How subclassable views make the override model work.</p>
-</div>
-<a class="sd-stretched-link sd-hide-link-text reference internal" href="class_based_views.html"><span class="doc">Class-Based Views</span></a></div>
+<a class="sd-stretched-link sd-hide-link-text reference internal" href="class_based_views.html"><span class="doc">Views &amp; CRUD</span></a></div>
 </div>
 <div class="sd-col sd-d-flex-row docutils">
 <div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
-Customize RestView</div>
+Using RestView</div>
+<p class="sd-card-text">Define a model-backed CRUD resource and understand its default contract.</p>
+</div>
+<a class="sd-stretched-link sd-hide-link-text reference internal" href="rest_views.html"><span class="doc">Using RestView</span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Customizing RestView</div>
 <p class="sd-card-text">The three tiers behind every CRUD verb, with recipes for every override
 point.</p>
 </div>
-<a class="sd-stretched-link sd-hide-link-text reference internal" href="customize.html"><span class="doc">Customize RestView</span></a></div>
+<a class="sd-stretched-link sd-hide-link-text reference internal" href="customize.html"><span class="doc">Customizing RestView</span></a></div>
 </div>
 <div class="sd-col sd-d-flex-row docutils">
 <div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
@@ -635,7 +644,7 @@ Examples</div>
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
 API Reference</div>
-<p class="sd-card-text">Generated endpoints, all public symbols, query parameters, and autodoc.</p>
+<p class="sd-card-text">Public Python API by module, with signatures and default behavior.</p>
 </div>
 <a class="sd-stretched-link sd-hide-link-text reference internal" href="api_reference.html"><span class="doc">API Reference</span></a></div>
 </div>

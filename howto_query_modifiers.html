@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Filter, Sort, and Paginate Lists &#8212; FastAPI-Restly 0.9.0 documentation</title>
+    <title>Filter, Sort, and Paginate Lists &#8212; FastAPI-Restly 0.10.0 documentation</title>
   
   
   
@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=6821e04d" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=39bb1c6d"></script>
+    <script src="_static/documentation_options.js?v=82662543"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -61,12 +61,12 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Shape Error Responses" href="howto_error_responses.html" />
+    <link rel="next" title="Current context" href="howto_current.html" />
     <link rel="prev" title="Relationship Loading and Async" href="howto_relationship_loading.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.9" />
+  <meta name="docsearch:version" content="0.10" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -167,7 +167,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
 </li>
@@ -175,14 +175,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -195,22 +188,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="api_reference.html">
     API
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
   </a>
 </li>
 
@@ -221,6 +200,30 @@
   </a>
 </li>
 
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
   </ul>
 </nav></div>
       
@@ -338,7 +341,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="tutorial_overview.html">
+  <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
 </li>
@@ -346,14 +349,7 @@
 
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="class_based_views.html">
-    Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="customize.html">
-    Customize
+    CRUD Views
   </a>
 </li>
 
@@ -366,13 +362,6 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="api_reference.html">
     API
   </a>
@@ -380,15 +369,22 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="about.html">
-    About
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
-    Blog
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
   </a>
 </li>
 
@@ -457,11 +453,15 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Project structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_loading.html">Relationship Loading and Async</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Filter, Sort, and Paginate Lists</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_current.html">Current context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
 <li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
@@ -533,7 +533,7 @@
                   
   <section id="filter-sort-and-paginate-lists">
 <h1>Filter, Sort, and Paginate Lists<a class="headerlink" href="#filter-sort-and-paginate-lists" title="Link to this heading">#</a></h1>
-<p>List endpoints (<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{prefix}/</span></code>) support filtering, sorting, and
+<p>List endpoints (<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{prefix}</span></code>) support filtering, sorting, and
 pagination through URL query parameters out of the box. Filter parameters
 are derived from the response schema; sort and pagination use a fixed set
 of names.</p>
@@ -545,7 +545,7 @@ of names.</p>
 public endpoints; set <code class="docutils literal notranslate"><span class="pre">paginated</span> <span class="pre">=</span> <span class="pre">False</span></code> to return every matching row uncapped.</p>
 <p>Unknown query keys are rejected with 422. Filters are narrowing controls,
 so a typo or unsupported operator silently ignored could widen the result
-set. Generated list endpoints therefore validate the request against the
+set. The default list endpoints therefore validate the request against the
 schema’s declared parameters and reject anything else; for which
 malformed requests produce which status, see
 <a class="reference internal" href="howto_error_responses.html#vs-400-on-list-endpoints"><span class="std std-ref">422 vs 400 on list endpoints</span></a>.
@@ -555,7 +555,7 @@ To allow extra view-specific keys, see
 <h2>Filtering<a class="headerlink" href="#filtering" title="Link to this heading">#</a></h2>
 <p>Filter parameters compare a schema field against a value taken from the
 URL. Plain equality uses the bare field name:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?name=John
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?name=John
 </pre></div>
 </div>
 <p>Operator suffixes on the field name select other comparisons:</p>
@@ -619,16 +619,27 @@ types; they are omitted for booleans and UUIDs. <code class="docutils literal no
 (<code class="docutils literal notranslate"><span class="pre">dict</span></code>/<code class="docutils literal notranslate"><span class="pre">list</span></code>, typically <code class="docutils literal notranslate"><span class="pre">JSON</span></code> or <code class="docutils literal notranslate"><span class="pre">ARRAY</span></code> columns) generate only
 <code class="docutils literal notranslate"><span class="pre">__isnull</span></code>: a query-string value cannot coerce into a collection, so the
 other operators would fail on every request.</p>
+<p>A datetime value without a UTC offset is read as UTC when the column is
+timezone-aware, which is the default for <code class="docutils literal notranslate"><span class="pre">Mapped[datetime]</span></code>; a column
+declared <code class="docutils literal notranslate"><span class="pre">DateTime()</span></code> compares the naive value as given.</p>
+<section id="filter-value-validation">
+<h3>Filter value validation<a class="headerlink" href="#filter-value-validation" title="Link to this heading">#</a></h3>
+<p>Equality, <code class="docutils literal notranslate"><span class="pre">__ne</span></code>, <code class="docutils literal notranslate"><span class="pre">__in</span></code>, and range filters run the field’s Pydantic
+validation. They do not run model validators. Field validators receive
+the Python field name in <a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic-core/pydantic_core_schema/#pydantic_core.core_schema.ValidationInfo.field_name" title="(in Pydantic v0.0.0)"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pydantic.ValidationInfo.field_name</span></code></a>, even
+when the URL uses an alias. <a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic-core/pydantic_core_schema/#pydantic_core.core_schema.ValidationInfo.data" title="(in Pydantic v0.0.0)"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pydantic.ValidationInfo.data</span></code></a> is <code class="docutils literal notranslate"><span class="pre">{}</span></code>:
+each filter value is validated independently, without other field values.</p>
+</section>
 <section id="comma-logic-on-bare-equality">
 <h3>Comma logic on bare equality<a class="headerlink" href="#comma-logic-on-bare-equality" title="Link to this heading">#</a></h3>
 <p>Comma-separated values in a plain equality filter are OR-combined:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?status=active,pending
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?status=active,pending
 </pre></div>
 </div>
 <p>This produces <code class="docutils literal notranslate"><span class="pre">WHERE</span> <span class="pre">status</span> <span class="pre">=</span> <span class="pre">'active'</span> <span class="pre">OR</span> <span class="pre">status</span> <span class="pre">=</span> <span class="pre">'pending'</span></code>, which is
 equivalent to SQL <code class="docutils literal notranslate"><span class="pre">IN</span></code>. Use <code class="docutils literal notranslate"><span class="pre">__in</span></code> when you want that same SQL <code class="docutils literal notranslate"><span class="pre">IN</span></code>
 meaning to be explicit in the URL:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?status__in=active,pending
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?status__in=active,pending
 </pre></div>
 </div>
 </section>
@@ -636,7 +647,7 @@ meaning to be explicit in the URL:</p>
 <h3>Comma logic on <code class="docutils literal notranslate"><span class="pre">__ne</span></code> (NOT IN)<a class="headerlink" href="#comma-logic-on-ne-not-in" title="Link to this heading">#</a></h3>
 <p>Comma-separated values in <code class="docutils literal notranslate"><span class="pre">__ne</span></code> are AND-combined, meaning the row must
 differ from every listed value:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?status__ne=archived,deleted
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?status__ne=archived,deleted
 </pre></div>
 </div>
 <p>This produces <code class="docutils literal notranslate"><span class="pre">WHERE</span> <span class="pre">status</span> <span class="pre">!=</span> <span class="pre">'archived'</span> <span class="pre">AND</span> <span class="pre">status</span> <span class="pre">!=</span> <span class="pre">'deleted'</span></code>, which
@@ -647,8 +658,8 @@ is equivalent to SQL <code class="docutils literal notranslate"><span class="pre
 <p>To require several substrings at once, the precise form is to repeat the
 parameter: each predicate becomes its own <code class="docutils literal notranslate"><span class="pre">LIKE</span></code> / <code class="docutils literal notranslate"><span class="pre">ILIKE</span></code> clause and the
 clauses are AND-combined:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?name__contains=john&amp;name__contains=doe
-GET /users/?name__icontains=john&amp;name__icontains=doe
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?name__contains=john&amp;name__contains=doe
+GET /users?name__icontains=john&amp;name__icontains=doe
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">__contains</span></code> produces <code class="docutils literal notranslate"><span class="pre">WHERE</span> <span class="pre">name</span> <span class="pre">LIKE</span> <span class="pre">'%john%'</span> <span class="pre">AND</span> <span class="pre">name</span> <span class="pre">LIKE</span> <span class="pre">'%doe%'</span></code>;
@@ -664,7 +675,7 @@ quoting changes.</p>
 <section id="multiple-filters-on-the-same-field">
 <h3>Multiple filters on the same field<a class="headerlink" href="#multiple-filters-on-the-same-field" title="Link to this heading">#</a></h3>
 <p>Repeat the parameter to add AND conditions:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?created_at__gte=2024-01-01&amp;created_at__lt=2025-01-01
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?created_at__gte=2024-01-01&amp;created_at__lt=2025-01-01
 </pre></div>
 </div>
 <p>This produces
@@ -675,23 +686,26 @@ quoting changes.</p>
 <h2>Sorting<a class="headerlink" href="#sorting" title="Link to this heading">#</a></h2>
 <p>Use the <code class="docutils literal notranslate"><span class="pre">sort</span></code> parameter with comma-separated field names, prefixing a
 name with <code class="docutils literal notranslate"><span class="pre">-</span></code> for descending order:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?sort=-created_at,name
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?sort=-created_at,name
 </pre></div>
 </div>
 <p>Dotted relation paths sort exactly as they filter:
 <code class="docutils literal notranslate"><span class="pre">?sort=-city.country.code</span></code> orders by the related column, joining each hop
 of the path.</p>
-<p>When no <code class="docutils literal notranslate"><span class="pre">sort</span></code> parameter is given and the model has an <code class="docutils literal notranslate"><span class="pre">id</span></code> column, the
-framework automatically applies <code class="docutils literal notranslate"><span class="pre">ORDER</span> <span class="pre">BY</span> <span class="pre">id</span> <span class="pre">ASC</span></code>. Models without an <code class="docutils literal notranslate"><span class="pre">id</span></code>
-column return results in an unspecified order.</p>
+<p>The primary key is always the final <code class="docutils literal notranslate"><span class="pre">ORDER</span> <span class="pre">BY</span></code> term, every column of a
+composite key included, so equal-valued rows on a non-unique sort are never
+skipped or repeated across pages. With no <code class="docutils literal notranslate"><span class="pre">sort</span></code> parameter the primary key
+is the whole order.</p>
 </section>
 <section id="pagination">
 <h2>Pagination<a class="headerlink" href="#pagination" title="Link to this heading">#</a></h2>
 <p>Pagination is controlled by the <code class="docutils literal notranslate"><span class="pre">page</span></code> and <code class="docutils literal notranslate"><span class="pre">page_size</span></code> parameters:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?page=2&amp;page_size=50
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?page=2&amp;page_size=50
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">page</span></code> is 1-based. <code class="docutils literal notranslate"><span class="pre">page_size</span></code> must be <code class="docutils literal notranslate"><span class="pre">&gt;=</span> <span class="pre">1</span></code> and <code class="docutils literal notranslate"><span class="pre">&lt;=</span> <span class="pre">max_page_size</span></code>
+<p><code class="docutils literal notranslate"><span class="pre">page</span></code> is 1-based and has no fixed upper bound. The combination must satisfy
+<code class="docutils literal notranslate"><span class="pre">(page</span> <span class="pre">-</span> <span class="pre">1)</span> <span class="pre">*</span> <span class="pre">page_size</span> <span class="pre">&lt;=</span> <span class="pre">2**63</span> <span class="pre">-</span> <span class="pre">1</span></code>. A larger SQL offset is rejected with
+<code class="docutils literal notranslate"><span class="pre">422</span></code> before the query runs. <code class="docutils literal notranslate"><span class="pre">page_size</span></code> must be <code class="docutils literal notranslate"><span class="pre">&gt;=</span> <span class="pre">1</span></code> and <code class="docutils literal notranslate"><span class="pre">&lt;=</span> <span class="pre">max_page_size</span></code>
 (default 1000). When the client omits <code class="docutils literal notranslate"><span class="pre">page_size</span></code>, the endpoint falls back to
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.default_page_size" title="fastapi_restly.views.BaseRestView.default_page_size"><code class="xref py py-attr docutils literal notranslate"><span class="pre">default_page_size</span></code></a>
 (50). Tune both on the view class:</p>
@@ -739,8 +753,8 @@ Python-name aliases.</p>
 </pre></div>
 </div>
 <p>Only the alias is accepted on the URL surface:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?userName=Alice        # supported
-GET /users/?user_name=Alice       # rejected; the Python name is not exposed
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?userName=Alice        # supported
+GET /users?user_name=Alice       # rejected, the Python name is not exposed
 </pre></div>
 </div>
 <p>If you want a different URL key, change the alias.</p>
@@ -748,8 +762,8 @@ GET /users/?user_name=Alice       # rejected; the Python name is not exposed
 <section id="relation-filtering">
 <h2>Relation filtering<a class="headerlink" href="#relation-filtering" title="Link to this heading">#</a></h2>
 <p>Filtering on a related model’s field uses dot notation:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /orders/?user.name=Alice
-GET /orders/?user.name__contains=ali
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /orders?user.name=Alice
+GET /orders?user.name__contains=ali
 </pre></div>
 </div>
 <p>The relation must be defined on both the SQLAlchemy model (as a
@@ -773,8 +787,8 @@ the response schema’s public names:</p>
 </pre></div>
 </div>
 <p>Requests must then use the aliased segments:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /articles/?writer.authorName=Alice    # supported (aliased segments)
-GET /articles/?author.name=Alice          # rejected; use public aliases
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /articles?writer.authorName=Alice    # supported (aliased segments)
+GET /articles?author.name=Alice          # rejected, use public aliases
 </pre></div>
 </div>
 </section>
@@ -783,12 +797,12 @@ GET /articles/?author.name=Alice          # rejected; use public aliases
 <p>A scalar foreign key declared with
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Post]</span></code></a> is
 filterable by its own public name, the same name the wire format uses:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /comments/?post_id=1
-GET /comments/?post_id=1,2          # OR (SQL IN)
-GET /comments/?post_id__in=1,2
-GET /comments/?post_id__ne=1
-GET /comments/?post_id__gte=10      # range operators apply to int ids
-GET /comments/?post_id__isnull=true
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /comments?post_id=1
+GET /comments?post_id=1,2          # OR (SQL IN)
+GET /comments?post_id__in=1,2
+GET /comments?post_id__ne=1
+GET /comments?post_id__gte=10      # range operators apply to int ids
+GET /comments?post_id__isnull=true
 </pre></div>
 </div>
 <p>A <code class="docutils literal notranslate"><span class="pre">MustExist[pk,</span> <span class="pre">...]</span></code> id filters exactly like its plain scalar <code class="docutils literal notranslate"><span class="pre">pk</span></code>
@@ -805,43 +819,38 @@ compares the two reference styles.</p>
 <section id="quick-reference">
 <h2>Quick reference<a class="headerlink" href="#quick-reference" title="Link to this heading">#</a></h2>
 <p>The requests below summarize the grammar in one place:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users/?name=John
-GET /users/?status=active,pending
-GET /users/?age__gte=18&amp;age__lt=65
-GET /users/?deleted_at__isnull=true
-GET /users/?email__icontains=example
-GET /users/?name__contains=john doe
-GET /users/?sort=-id
-GET /users/?page=2&amp;page_size=50
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?name=John
+GET /users?status=active,pending
+GET /users?age__gte=18&amp;age__lt=65
+GET /users?deleted_at__isnull=true
+GET /users?email__icontains=example
+GET /users?name__contains=john doe
+GET /users?sort=-id
+GET /users?page=2&amp;page_size=50
 </pre></div>
 </div>
 </section>
 <section id="overriding-query-logic-per-view">
 <h2>Overriding query logic per view<a class="headerlink" href="#overriding-query-logic-per-view" title="Link to this heading">#</a></h2>
-<p>Everything above operates on a query that the view builds. Override
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.build_query" title="fastapi_restly.views.RestView.build_query"><code class="xref py py-meth docutils literal notranslate"><span class="pre">build_query</span></code></a> to inject
-a base query before URL parameters are applied.
+<p>Everything above operates on a query the view scope establishes first.
+Declare the base filter as the view’s
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.scope" title="fastapi_restly.views.BaseRestView.scope"><code class="xref py py-attr docutils literal notranslate"><span class="pre">scope</span></code></a>;
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a>,
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.count" title="fastapi_restly.views.RestView.count"><code class="xref py py-meth docutils literal notranslate"><span class="pre">count</span></code></a>, and
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> all use this
-query, so the filter applies to listings, totals, and single-row fetches:</p>
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> all apply it, so
+the filter covers listings, totals, and single-row fetches:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="o">...</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">build_query</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">build_query</span><span class="p">()</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">active</span><span class="o">.</span><span class="n">is_</span><span class="p">(</span><span class="kc">True</span><span class="p">))</span>
+    <span class="n">scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span><span class="n">User</span><span class="o">.</span><span class="n">active</span><span class="o">.</span><span class="n">is_</span><span class="p">(</span><span class="kc">True</span><span class="p">))</span>
 </pre></div>
 </div>
-<p>Calling <code class="docutils literal notranslate"><span class="pre">super().build_query()</span></code> and chaining <code class="docutils literal notranslate"><span class="pre">.where(...)</span></code> composes
-cleanly with any base-class or mixin filter. See
-<a class="reference internal" href="howto_compose_views_with_mixins.html"><span class="std std-doc">Composing views with mixins</span></a> for the
-multi-layer pattern.</p>
+<p><a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a> owns the topic, including the model-wide
+<code class="docutils literal notranslate"><span class="pre">default_scope</span></code> form and composing clauses.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">get_many</span></code> business method does not accept a separate <code class="docutils literal notranslate"><span class="pre">query</span></code> argument.
-Keep SQL-level base query changes in <code class="docutils literal notranslate"><span class="pre">build_query()</span></code> so listing,
-pagination totals, and single-row fetches all see the same visibility
-rules.</p>
+Keep SQL-level base query changes in the scope so listing, pagination
+totals, and single-row fetches all see the same visibility rules.</p>
 <p>For a different URL <strong>grammar</strong> (other parameter names, another dialect’s
 filter syntax), the seam is
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_query_params" title="fastapi_restly.views.RestView.apply_query_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_query_params(query,</span> <span class="pre">query_params)</span></code></a>,
@@ -850,11 +859,18 @@ which owns translating URL parameters into the query;
 example of a view family overriding it. Reserve overriding <code class="docutils literal notranslate"><span class="pre">get_many()</span></code>
 itself for a genuinely different <em>result</em> shape, where you construct the
 query explicitly inside the method.</p>
+<p>Any route method that declares a <code class="docutils literal notranslate"><span class="pre">query_params</span></code> parameter takes the same
+listing grammar as <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>: Restly annotates it with the view’s generated
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.listing_param_schema" title="fastapi_restly.views.BaseRestView.listing_param_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">listing_param_schema</span></code></a>,
+so filters, sort and page parse and validate the same way, appear in OpenAPI,
+and an unknown key is rejected with <code class="docutils literal notranslate"><span class="pre">422</span></code>. A custom listing such as a trash
+route passes them on with <code class="docutils literal notranslate"><span class="pre">self.handle_get_many(query_params,</span> <span class="pre">scope=...)</span></code>;
+see <a class="reference internal" href="scopes.html#per-read-scope"><span class="std std-ref">A route names its own scope</span></a>.</p>
 </section>
 <section id="see-also">
 <h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><a class="reference internal" href="technical_details.html#id2"><span class="std std-ref">List-parameters lifecycle</span></a>:
+<li><p><a class="reference internal" href="technical_details.html#id3"><span class="std std-ref">List-parameters lifecycle</span></a>:
 how the filter grammar is generated and frozen at registration time.</p></li>
 <li><p><a class="reference internal" href="patterns.html#nested-resources-projects-id-tasks"><span class="std std-ref">Patterns: nested resources</span></a>:
 foreign-key filtering as the sub-resource idiom.</p></li>
@@ -882,11 +898,11 @@ foreign-key filtering as the sub-resource idiom.</p></li>
       </div>
     </a>
     <a class="right-next"
-       href="howto_error_responses.html"
+       href="howto_current.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Shape Error Responses</p>
+        <p class="prev-next-title">Current context</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -910,6 +926,7 @@ foreign-key filtering as the sub-resource idiom.</p></li>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#filtering">Filtering</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#filter-value-validation">Filter value validation</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#comma-logic-on-bare-equality">Comma logic on bare equality</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#comma-logic-on-ne-not-in">Comma logic on <code class="docutils literal notranslate"><span class="pre">__ne</span></code> (NOT IN)</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#and-combining-multiple-contains-terms">AND-combining multiple contains terms</a></li>
