@@ -21,6 +21,7 @@ from typing import (
 
 from sqlalchemy import bindparam
 from sqlalchemy.sql.expression import BindParameter
+from sqlalchemy.sql.operators import ColumnOperators
 
 if sys.version_info >= (3, 14):
     import annotationlib
@@ -159,7 +160,8 @@ class ContextNamespace:
         return "\n".join(lines)
 
 
-class ContextParam(Generic[_T]):
+# SQLAlchemy 2.0.22 requires ColumnOperators for operands inside IN lists.
+class ContextParam(Generic[_T], ColumnOperators):
     """One value of a context: bound around a unit of work, read anywhere.
 
     Declared in a ContextNamespace (``tenant_id: ContextParam[UUID]``),

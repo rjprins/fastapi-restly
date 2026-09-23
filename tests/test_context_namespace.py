@@ -147,9 +147,12 @@ def test_a_member_is_not_a_boolean_and_says_how_to_read_it():
         (Thing.tenant_id == Context.tenant_id, {1, 4}),
         (Thing.id != Context.tenant_id, {1, 9}),
         (Thing.id.in_([Context.tenant_id, 99]), {4}),
+        (Thing.id.not_in([Context.tenant_id, 99]), {1, 9}),
+        (Thing.id > Context.tenant_id, {9}),
+        (Thing.id < Context.tenant_id, {1}),
         (Thing.id.between(Context.tenant_id, Context.tenant_id), {4}),
     ],
-    ids=["eq", "ne", "in", "between"],
+    ids=["eq", "ne", "in", "not-in", "gt", "lt", "between"],
 )
 def test_a_member_still_builds_sql_from_the_column_side(condition, expected):
     engine = sqlalchemy.create_engine("sqlite://")
@@ -176,6 +179,19 @@ def test_a_member_still_builds_sql_from_the_column_side(condition, expected):
 def test_a_member_stays_hashable():
     assert {Context.tenant_id: "a", Context.locale: "b"}[Context.tenant_id] == "a"
     assert len({Context.tenant_id, Context.tenant_id, Context.locale}) == 2
+
+
+def test_in_list_resolves_members_again_for_each_binding():
+    class Other(fr.ContextNamespace):
+        tenant_id: fr.ContextParam[int]
+
+    clause = fr.where_clause(
+        Thing.id.in_([Context.tenant_id, Other.tenant_id, Context.tenant_id, 99])
+    )
+    for tenant_id in (4, 9):
+        with Context.bind(tenant_id=tenant_id), Other.bind(tenant_id=7):
+            params = clause().compile().params
+        assert sorted(params.values()) == sorted([tenant_id, 7, 99])
 
 
 def test_explain_shows_values_origins_and_unbound_members():
