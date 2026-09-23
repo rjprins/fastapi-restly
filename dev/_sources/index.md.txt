@@ -99,7 +99,7 @@ first test.
 
 ## Features
 
-- **[Default CRUD routes](api_reference.md#default-crud-routes)**: GET, POST, PATCH, DELETE with minimal boilerplate
+- **[Default CRUD routes](#default-crud-routes)**: GET, POST, PATCH, DELETE with minimal boilerplate
 - **[True class-based views](class_based_views.md)**: inheritance, mixins, and method overrides
 - **[Explicit override points](customize.md)**: every CRUD verb split into an endpoint method and a business method you override, with a final handler between them that custom routes call
 - **[React Admin ready](howto_react_admin.md)**: `AsyncReactAdminView` speaks `ra-data-simple-rest`
@@ -165,7 +165,7 @@ Complete sample applications from a tiny API to a production-shaped service.
 :link: api_reference
 :link-type: doc
 
-Default CRUD routes, all public symbols, query parameters, and autodoc.
+Public Python API by module, with signatures and default behavior.
 :::
 
 :::{grid-item-card} About

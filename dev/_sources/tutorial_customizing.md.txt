@@ -278,7 +278,7 @@ If a custom action is just a create or update under another URL, call {meth}`han
 Writes can also violate database constraints. Restly turns SQLAlchemy
 `IntegrityError` exceptions into `409 Conflict` responses by default; custom
 envelopes and the opt-out are covered in
-[Default Exception Handling](api_reference.md#default-exception-handling).
+[Default Exception Handling](#default-exception-handling).
 
 ## Sharing behaviour with base classes
 

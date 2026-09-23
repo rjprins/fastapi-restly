@@ -63,7 +63,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Changelog" href="changelog.html" />
-    <link rel="prev" title="Utils API" href="api/utils.html" />
+    <link rel="prev" title="Behavior and Configuration Reference" href="api_details.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -452,8 +452,9 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1 has-children"><a class="reference internal" href="api/index.html">API Modules</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/package.html">Package API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/clauses.html">Clauses API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/db.html">Database API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/exc.html">Exceptions API</a></li>
@@ -466,8 +467,7 @@
 <li class="toctree-l2"><a class="reference internal" href="api/utils.html">Utils API</a></li>
 </ul>
 </details></li>
-</ul>
-<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="api_details.html">Behavior and Configuration Reference</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Technical Details</a></li>
 <li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
 </ul>
@@ -861,7 +861,7 @@ configure it once during startup:</p>
 </div>
 <p><a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure(...)</span></code></a> rejects no-op calls; pass at least one setup option. The
 authoritative list of accepted options is the
-<a class="reference internal" href="api_reference.html#database"><span class="std std-ref">API Reference’s Database section</span></a>; this page does not
+<a class="reference internal" href="api_details.html#api-database"><span class="std std-ref">Database reference</span></a>. This page does not
 duplicate the contract.</p>
 <p>Internally, Restly keeps a private context object so its own tests and fixtures
 can isolate runtime state. That context is not a public multi-engine feature.
@@ -1055,12 +1055,12 @@ filter, sort, and pagination reference.</p></li>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="api/utils.html"
+       href="api_details.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Utils API</p>
+        <p class="prev-next-title">Behavior and Configuration Reference</p>
       </div>
     </a>
     <a class="right-next"

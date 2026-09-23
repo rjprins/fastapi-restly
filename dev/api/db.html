@@ -454,6 +454,7 @@
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">API Modules</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="package.html">Package API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="clauses.html">Clauses API</a></li>
 <li class="toctree-l2 current active"><a class="current reference internal" href="#">Database API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="exc.html">Exceptions API</a></li>
@@ -466,8 +467,7 @@
 <li class="toctree-l2"><a class="reference internal" href="utils.html">Utils API</a></li>
 </ul>
 </details></li>
-</ul>
-<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../api_details.html">Behavior and Configuration Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../technical_details.html">Technical Details</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
 </ul>
@@ -539,6 +539,22 @@
 process-wide setup, session context managers and FastAPI session dependencies,
 engine accessors, table creation helpers for development, and the
 savepoint-only mode used in testing.</p>
+<dl class="py data">
+<dt class="sig sig-object py" id="fastapi_restly.db.AsyncSessionDep">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.db.</span></span><span class="sig-name descname"><span class="pre">AsyncSessionDep</span></span><a class="headerlink" href="#fastapi_restly.db.AsyncSessionDep" title="Link to this definition">#</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">Annotated</span></code> alias that supplies a SQLAlchemy <code class="docutils literal notranslate"><span class="pre">AsyncSession</span></code> through
+FastAPI dependency injection. The session uses the configuration set by
+<a class="reference internal" href="#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">configure()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="fastapi_restly.db.SessionDep">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.db.</span></span><span class="sig-name descname"><span class="pre">SessionDep</span></span><a class="headerlink" href="#fastapi_restly.db.SessionDep" title="Link to this definition">#</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">Annotated</span></code> alias that supplies a SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Session</span></code> through FastAPI
+dependency injection. The session uses the configuration set by
+<a class="reference internal" href="#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">configure()</span></code></a>.</p>
+</dd></dl>
+
 <dl class="py function" id="module-fastapi_restly.db">
 <dt class="sig sig-object py" id="fastapi_restly.db.async_create_all">
 <em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.db.</span></span><span class="sig-name descname"><span class="pre">async_create_all</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base_or_metadata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/mapping_api.html#sqlalchemy.orm.DeclarativeBase" title="(in SQLAlchemy v2.0)"><span class="pre">DeclarativeBase</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/metadata.html#sqlalchemy.schema.MetaData" title="(in SQLAlchemy v2.0)"><span class="pre">MetaData</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#fastapi_restly.db.async_create_all" title="Link to this definition">#</a></dt>
@@ -739,6 +755,8 @@ configuration.</p>
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.db.AsyncSessionDep"><code class="docutils literal notranslate"><span class="pre">fastapi_restly.db.AsyncSessionDep</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.db.SessionDep"><code class="docutils literal notranslate"><span class="pre">fastapi_restly.db.SessionDep</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.db.async_create_all"><code class="docutils literal notranslate"><span class="pre">async_create_all()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.db.configure"><code class="docutils literal notranslate"><span class="pre">configure()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.db.create_all"><code class="docutils literal notranslate"><span class="pre">create_all()</span></code></a></li>

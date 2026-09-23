@@ -403,7 +403,7 @@ The business methods are built from three utilities. Call them from your {meth}`
 | `self.update_object(obj, schema_obj)` | Applies writable fields onto an existing object, resolving references. Does not flush. |
 | `self.save_object(obj)` | Flushes and refreshes `obj`, then eager-loads the relationships the response schema names. Does not commit. |
 
-The same operations are available as free functions for use outside a view (scripts, workers, services): {func}`fr.objects.async_make_new_object <fastapi_restly.objects.async_make_new_object>`, {func}`async_update_object <fastapi_restly.objects.async_update_object>`, {func}`async_save_object <fastapi_restly.objects.async_save_object>`, {func}`async_delete_object <fastapi_restly.objects.async_delete_object>`, plus their sync counterparts. See [Advanced Object Helpers](api_reference.md#advanced-object-helpers).
+The same operations are available as free functions for use outside a view (scripts, workers, services): {func}`fr.objects.async_make_new_object <fastapi_restly.objects.async_make_new_object>`, {func}`async_update_object <fastapi_restly.objects.async_update_object>`, {func}`async_save_object <fastapi_restly.objects.async_save_object>`, {func}`async_delete_object <fastapi_restly.objects.async_delete_object>`, plus their sync counterparts. See [Advanced Object Helpers](#advanced-object-helpers).
 
 An import script, for example, can build and persist an object with the same semantics a view would use:
 
@@ -764,5 +764,5 @@ Any class-level `Annotated` dependency you declare on the view (for example a cu
   of this possible.
 - [Compose Views with Mixins](howto_compose_views_with_mixins.md): structural
   fields on the model, soft delete as a view mixin.
-- [View Method Surface](api_reference.md#view-method-surface): the complete
+- [View Method Surface](#view-method-surface): the complete
   classified method list.

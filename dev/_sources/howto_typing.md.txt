@@ -236,7 +236,7 @@ projects that want it.
 
 ## See also
 
-- [View Method Surface](api_reference.md#view-method-surface): the typed
+- [View Method Surface](#view-method-surface): the typed
   methods this page parameterizes, with tier classification.
 - [Customizing RestView](customize.md): the override recipes
   these signatures apply to.

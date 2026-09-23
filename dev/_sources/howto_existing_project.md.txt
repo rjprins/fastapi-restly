@@ -99,7 +99,7 @@ contract first:
 
 1. Map your routes to the view's default CRUD contract. `GET /`, `POST /`, and
    `GET`/`PATCH`/`DELETE` on `/{id}` are covered ([the exact
-   contract](api_reference.md#default-crud-routes)). Anything else on the
+   contract](#default-crud-routes)). Anything else on the
    router (exports, actions) stays as custom routes on the view or as plain
    FastAPI routes beside it.
 2. Keep custom semantics out of the swap. A route whose contract differs

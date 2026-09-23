@@ -146,7 +146,7 @@ default `data` envelope:
 ```
 
 Update semantics are `PATCH` (partial update). See
-[Default CRUD Routes](api_reference.md#default-crud-routes) for the full
+[Default CRUD Routes](#default-crud-routes) for the full
 contract. Filter lists with query parameters, for example
 `GET /users?name=Jane`. See [Filter, Sort, and Paginate Lists](howto_query_modifiers.md).
 

@@ -97,7 +97,7 @@ default handler that translates SQLAlchemy `IntegrityError`s into
 it can be disabled with
 {func}`fr.configure(app=app, install_default_exception_handlers=False) <fastapi_restly.db.configure>`;
 the exact registration contract is in
-[Default Exception Handling](api_reference.md#default-exception-handling).
+[Default Exception Handling](#default-exception-handling).
 
 ## See also
 
