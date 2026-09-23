@@ -1,4 +1,4 @@
-"""Row-level verification against in-memory SQLite: the promises the unit
+"""Row-level verification against SQLite: the promises the unit
 suite only asserts as SQL strings, executed for real."""
 
 import threading
@@ -7,7 +7,6 @@ from datetime import datetime
 import pytest
 from sqlalchemy import ForeignKey, bindparam, create_engine, delete, select, update
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship
-from sqlalchemy.pool import StaticPool
 
 from fastapi_restly.clauses import (
     UNSCOPED,
@@ -108,12 +107,10 @@ JUN = datetime(2026, 6, 1)
 
 
 @pytest.fixture(scope="module")
-def engine():
-    # StaticPool + check_same_thread=False: one shared in-memory database,
-    # also across the threads of the concurrency test
-    engine = create_engine(
-        "sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False}
-    )
+def engine(tmp_path_factory):
+    # Concurrent sessions need separate connections and transaction state.
+    database = tmp_path_factory.mktemp("clauses") / "rows.db"
+    engine = create_engine(f"sqlite:///{database}")
     Base.metadata.create_all(engine)
     with Session(engine) as session:
         session.add_all(
@@ -244,13 +241,15 @@ def test_interop_call_in_raw_where(engine):
 
 def test_concurrent_tenant_binds(engine):
     results: dict[int, set[int]] = {}
+    connections = {}
     barrier = threading.Barrier(2)
 
     def worker(tenant_id: int):
         with Ctx.bind(tenant_id=tenant_id):
-            barrier.wait()  # both binds active at the same time
-            stmt = apply_clauses(select(Item), ItemClauses.visible)
             with Session(engine) as s:
+                connections[tenant_id] = s.connection().connection.driver_connection
+                barrier.wait(timeout=10)  # both binds and connections active
+                stmt = apply_clauses(select(Item), ItemClauses.visible)
                 results[tenant_id] = ids(s, stmt)
 
     threads = [threading.Thread(target=worker, args=(t,)) for t in (T1, T2)]
@@ -258,6 +257,7 @@ def test_concurrent_tenant_binds(engine):
         t.start()
     for t in threads:
         t.join()
+    assert connections[T1] is not connections[T2]
     assert results == {T1: {1, 4}, T2: {3}}
 
 
