@@ -158,8 +158,9 @@ Configure the class according to the contract the resource needs:
 | Apply FastAPI metadata or dependencies to every route | Set {attr}`tags <fastapi_restly.views.View.tags>`, {attr}`responses <fastapi_restly.views.View.responses>`, or {attr}`dependencies <fastapi_restly.views.View.dependencies>` |
 | Use another session dependency | Override the `session` annotation with `Annotated[..., Depends(...)]` |
 
-[API Reference](api_reference.md) lists the exact attribute types and method
-signatures. [Use Restly in an Existing Project](howto_existing_project.md)
+[Behavior and Configuration Reference](api_details.md) lists the exact
+attribute types and method signatures.
+[Use Restly in an Existing Project](howto_existing_project.md)
 covers custom engines, session generators, and a per-view session dependency.
 
 ## Change behavior
@@ -211,4 +212,5 @@ The default CRUD contract has these boundaries:
 - [Views](class_based_views.md) explains registration, shared
   dependencies, and the inheritance model.
 - [How-To Guides](user_guide.md) covers individual tasks.
-- [API Reference](api_reference.md) lists exact signatures and defaults.
+- [Behavior and Configuration Reference](api_details.md) lists exact signatures
+  and defaults.

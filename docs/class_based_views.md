@@ -205,7 +205,7 @@ View                   ← class-based view primitive (no CRUD)
   and async CRUD endpoint methods. [Using RestView](rest_views.md) owns their
   default contract, configuration, and limits.
 
-The [API reference](api_reference.md#view-method-surface) classifies the public
+The [API reference](#view-method-surface) classifies the public
 method surface. [Customizing RestView](customize.md) explains the three override
 tiers and cross-cutting override points.
 

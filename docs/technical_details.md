@@ -306,7 +306,7 @@ fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
 
 {func}`fr.configure(...) <fastapi_restly.db.configure>` rejects no-op calls; pass at least one setup option. The
 authoritative list of accepted options is the
-[API Reference's Database section](api_reference.md#database); this page does not
+[Database reference](#api-database). This page does not
 duplicate the contract.
 
 Internally, Restly keeps a private context object so its own tests and fixtures

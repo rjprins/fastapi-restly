@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- API Reference lists the package exports and Python API modules with links
+  to their documentation.
+  Detailed behavior and configuration tables have their own page.
+
 ## [0.10.0] - 2026-09-22
 
 ### Added
