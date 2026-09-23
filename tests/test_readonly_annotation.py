@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Annotated, get_args, get_origin
 
 import pytest
+from pydantic import Field
 
 from fastapi_restly.schemas import BaseSchema, ReadOnly, WriteOnly
 from fastapi_restly.schemas._base import (
@@ -14,6 +15,21 @@ from fastapi_restly.schemas._base import (
     readonly_marker,
     writeonly_marker,
 )
+
+
+@pytest.mark.parametrize("marker", [ReadOnly, WriteOnly])
+def test_marker_defaults_do_not_leak_between_schemas(marker):
+    class First(BaseSchema):
+        value: marker[int | None] = None
+
+    class Second(BaseSchema):
+        values: marker[list[int]] = Field(default_factory=list)
+
+    assert First().value is None
+    first = Second()
+    second = Second()
+    first.values.append(1)
+    assert second.values == []
 
 
 def test_readonly_type_annotation():

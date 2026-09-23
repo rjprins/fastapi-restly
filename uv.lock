@@ -644,7 +644,7 @@ requires-dist = [
     { name = "fastapi", extras = ["standard"], marker = "extra == 'standard'", specifier = ">=0.115.0" },
     { name = "httpx", marker = "extra == 'testing'", specifier = ">=0.27.0" },
     { name = "httpx2", marker = "extra == 'testing'", specifier = ">=2.0.0" },
-    { name = "pydantic", specifier = ">=2.11.0" },
+    { name = "pydantic", specifier = ">=2.11.7" },
     { name = "pydantic-settings", specifier = ">=2.9.1" },
     { name = "pytest", marker = "extra == 'testing'", specifier = ">=8.3.5" },
     { name = "pytest-asyncio", marker = "extra == 'testing'", specifier = ">=0.24.0" },
