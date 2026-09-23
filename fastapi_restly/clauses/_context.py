@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import inspect
 import os
 import sys
 from contextlib import ExitStack, contextmanager
@@ -20,6 +21,9 @@ from typing import (
 
 from sqlalchemy import bindparam
 from sqlalchemy.sql.expression import BindParameter
+
+if sys.version_info >= (3, 14):
+    import annotationlib
 
 __all__ = ["ContextNamespace", "ContextParam"]
 
@@ -43,7 +47,13 @@ class ContextNamespace:
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
-        annotations = cls.__dict__.get("__annotations__") or {}
+        if sys.version_info >= (3, 14):
+            # Deferred annotations may name types not yet defined.
+            annotations = annotationlib.get_annotations(
+                cls, format=annotationlib.Format.FORWARDREF
+            )
+        else:
+            annotations = inspect.get_annotations(cls)
         for name, annotation in annotations.items():
             if name.startswith("_"):
                 continue
@@ -172,6 +182,8 @@ class ContextParam(Generic[_T]):
     # the bound (value, origin), or None: a bound value may itself be None
     _var: ContextVar[tuple[Any, str | None] | None]
     _placeholder: BindParameter[Any]
+    # Python 3.10/3.11 signature inspection otherwise invokes our equality guard.
+    __signature__ = inspect.Signature()
 
     def __init__(self) -> None:
         raise TypeError(
