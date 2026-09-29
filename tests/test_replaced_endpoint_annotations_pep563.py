@@ -1,13 +1,15 @@
-"""Under PEP 563 an endpoint annotation is a string, and a string is explicit.
+"""Under PEP 563 an endpoint annotation is a string.
 
-Registration keeps it instead of filling in the view's type; FastAPI resolves
-it against the module the method was written in. Kept in its own
-``from __future__ import annotations`` module, with the schemas at module
-level so the string annotations resolve.
+A string is explicit: registration keeps it, and FastAPI resolves it against
+the module the method was written in. The exception is ``Any``, which the
+default endpoint signature uses: spelled ``"Any"`` or ``"typing.Any"``, it
+still gets the view's types. Kept in its own ``from __future__ import
+annotations`` module, with the schemas at module level so the strings resolve.
 """
 
 from __future__ import annotations
 
+import typing
 from typing import Any
 
 import pytest
@@ -30,17 +32,21 @@ class ProductReplace(fr.BaseSchema):
     price: float
 
 
+def _client_and_tables(request, asynchronous):
+    if asynchronous:
+        return request.getfixturevalue("client"), create_tables
+
+    engine, _ = request.getfixturevalue("sync_db")
+
+    def make_tables():
+        fr.DataclassBase.metadata.create_all(engine)
+
+    return RestlyTestClient(FastAPI()), make_tables
+
+
 @pytest.mark.parametrize("asynchronous", [False, True], ids=["sync", "async"])
 def test_string_annotation_on_replaced_endpoint_is_kept(request, asynchronous):
-    if asynchronous:
-        client = request.getfixturevalue("client")
-        make_tables = create_tables
-    else:
-        engine, _ = request.getfixturevalue("sync_db")
-        client = RestlyTestClient(FastAPI())
-
-        def make_tables():
-            fr.DataclassBase.metadata.create_all(engine)
+    client, make_tables = _client_and_tables(request, asynchronous)
 
     class Product(fr.IDBase):
         name: Mapped[str]
@@ -77,3 +83,50 @@ def test_string_annotation_on_replaced_endpoint_is_kept(request, asynchronous):
         f"/products/{created['id']}", json={"name": "Desk", "price": 2.0}
     )
     assert response.json() == {"id": created["id"], "name": "Desk", "price": 2.0}
+
+
+@pytest.mark.parametrize("asynchronous", [False, True], ids=["sync", "async"])
+def test_string_any_on_replaced_endpoint_gets_the_view_types(request, asynchronous):
+    client, make_tables = _client_and_tables(request, asynchronous)
+
+    class Product(fr.IDBase):
+        name: Mapped[str]
+        price: Mapped[float]
+
+    base: Any = fr.AsyncRestView if asynchronous else fr.RestView
+
+    class ProductView(base):
+        prefix = "/products"
+        model = Product
+        schema = ProductRead
+
+        if asynchronous:
+
+            @fr.patch("/{id}")
+            async def update_endpoint(self, id: Any, schema_obj: typing.Any) -> Any:
+                return self.to_response(await self.handle_update(id, schema_obj))
+
+        else:
+
+            @fr.patch("/{id}")
+            def update_endpoint(self, id: Any, schema_obj: typing.Any) -> Any:
+                return self.to_response(self.handle_update(id, schema_obj))
+
+    assert ProductView.update_endpoint.__annotations__ == {
+        "id": "Any",
+        "schema_obj": "typing.Any",
+        "return": "Any",
+    }
+    fr.include_view(client.app, ProductView)
+    make_tables()
+
+    # schema_update takes a partial body, and id takes the int primary key
+    created = client.post("/products/", json={"name": "Lamp", "price": 1.0}).json()
+    response = client.patch(f"/products/{created['id']}", json={"name": "Desk"})
+    assert response.json() == {"id": created["id"], "name": "Desk", "price": 1.0}
+    client.patch("/products/abc", json={"name": "Desk"}, assert_status_code=422)
+
+    operation = client.app.openapi()["paths"]["/products/{id}"]["patch"]
+    assert "requestBody" in operation
+    response_schema = operation["responses"]["200"]["content"]["application/json"]
+    assert response_schema["schema"]["$ref"].endswith("/ProductRead")

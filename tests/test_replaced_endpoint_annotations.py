@@ -23,6 +23,7 @@ from fastapi_restly.testing._client import RestlyTestClient
 from .conftest import create_tables
 
 PositiveId = Annotated[int, fastapi.Path(ge=1)]
+UnhashableId = Annotated[int, fastapi.Path(ge=1), {"note": "unhashable"}]
 
 
 @pytest.fixture(params=["sync", "async"])
@@ -185,6 +186,33 @@ def test_replaced_get_one_endpoint_keeps_explicit_id(env):
     client.get("/products/999", assert_status_code=404)
     assert client.get(f"/products/{created['id']}").json()["name"] == "Lamp"
 
+    assert _id_param(openapi, "/products/{id}", "get")["minimum"] == 1
+
+
+def test_explicit_annotation_with_unhashable_metadata_is_kept(env):
+    """``Annotated`` metadata may be unhashable, so judging the annotation
+    must not hash it."""
+
+    class ProductView(env.base):
+        prefix = "/products"
+        model = env.Product
+        schema = env.ProductRead
+
+        if env.asynchronous:
+
+            @fr.get("/{id}")
+            async def get_one_endpoint(self, id: UnhashableId):
+                return self.to_response(await self.handle_get_one(id))
+
+        else:
+
+            @fr.get("/{id}")
+            def get_one_endpoint(self, id: UnhashableId):
+                return self.to_response(self.handle_get_one(id))
+
+    openapi = _register(env, ProductView)
+
+    env.client.get("/products/0", assert_status_code=422)
     assert _id_param(openapi, "/products/{id}", "get")["minimum"] == 1
 
 

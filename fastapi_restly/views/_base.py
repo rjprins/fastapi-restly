@@ -2093,6 +2093,7 @@ def _view_id_type(view_cls: type) -> Any:
 
 
 _UNCHANGED: Any = object()
+_ANY_STRINGS = frozenset({"Any", "typing.Any"})
 
 
 def _annotate(
@@ -2114,7 +2115,13 @@ def _annotate(
     written = inspect.get_annotations(func)
 
     def fillable(name: str) -> bool:
-        return overwrite or written.get(name, Any) is Any
+        annotation = written.get(name, Any)
+        # under PEP 563 the default signature's ``Any`` is the string "Any"
+        return (
+            overwrite
+            or annotation is Any
+            or (isinstance(annotation, str) and annotation in _ANY_STRINGS)
+        )
 
     sig = inspect.signature(func)
     params = [
