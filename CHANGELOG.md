@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Context members work as `mapped_column(default=Current.user_id)` on
   non-dataclass models.
+- A replaced endpoint method keeps its own `id`, `schema_obj`, and return
+  annotations. Registration used to replace them with the view's types, so a
+  stricter body schema on `update_endpoint` or react-admin `put` accepted a
+  partial body.
 
 ## [0.10.0] - 2026-09-23
 

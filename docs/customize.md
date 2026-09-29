@@ -452,6 +452,8 @@ class ProductView(fr.AsyncRestView):
 
 At view registration, a directly defined endpoint method replaces the inherited method with the same name. The other inherited endpoint methods remain unchanged.
 
+Registration fills in the view's types for annotations that are missing or `Any`. `id` gets {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>`, `schema_obj` gets {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` or {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>`, and the return annotation gets the route's default response model. An annotation you write is kept, so `schema_obj: ProductReplace` validates the request body against `ProductReplace`. `query_params` is the exception: it always gets the view's {attr}`listing_param_schema <fastapi_restly.views.BaseRestView.listing_param_schema>`.
+
 The default `DELETE /{id}` returns `204 No Content`; this version returns the deleted record, as `ra-data-simple-rest` expects (see [React Admin Integration](howto_react_admin.md)).
 
 ### `to_response`: the one response method

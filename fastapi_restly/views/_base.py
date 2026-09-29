@@ -1469,7 +1469,9 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         )
 
         # Every route that declares ``query_params`` takes the listing grammar:
-        # ``GET /`` and any custom listing alike, guarded the same way.
+        # ``GET /`` and any custom listing alike, guarded the same way. The
+        # guard checks keys against ``listing_param_schema`` whatever the
+        # annotation says, so the grammar replaces an explicit one too.
         listing_params = Annotated[cls.listing_param_schema, fastapi.Query()]
         for name, route in list(cls.__dict__.items()):
             if not hasattr(route, "_api_route_args"):
@@ -1479,23 +1481,14 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             if not getattr(route, "_fr_listing_guard", False):
                 route = _guard_listing_params(route)
                 setattr(cls, name, route)
-            if name != "get_many_endpoint":
-                _annotate(
-                    route,
-                    return_annotation=inspect.signature(route).return_annotation,
-                    query_params=listing_params,
-                )
+            _annotate(route, overwrite=True, query_params=listing_params)
 
         # The ``*_endpoint`` methods are defined on AsyncRestView/RestView
         # subclasses and may be excluded by ``exclude_routes``, so they aren't
         # visible on BaseRestView. ``getattr`` keeps pyright happy without
         # falsely advertising them on the base class.
         if (ep := getattr(cls, "get_many_endpoint", None)) is not None:
-            _annotate(
-                ep,
-                return_annotation=listing_response_annotation,
-                query_params=listing_params,
-            )
+            _annotate(ep, return_annotation=listing_response_annotation)
         if (ep := getattr(cls, "get_one_endpoint", None)) is not None:
             _annotate(ep, return_annotation=response_schema, id=cls.id_type)
         if (ep := getattr(cls, "create_endpoint", None)) is not None:
@@ -2078,22 +2071,40 @@ def _init_all_endpoints(view_cls: type[View]):
         _annotate_self(view_cls, endpoint)
 
 
-def _annotate(func: Callable, return_annotation: Any = None, **param_annotations):
+_UNCHANGED: Any = object()
+
+
+def _annotate(
+    func: Callable,
+    return_annotation: Any = _UNCHANGED,
+    *,
+    overwrite: bool = False,
+    **param_annotations: Any,
+) -> None:
+    """Fill the view's concrete types into ``func.__signature__``.
+
+    The endpoint shells declare ``Any`` because the concrete types only exist
+    per view class. A parameter or return is filled only where the author
+    wrote no annotation or ``Any``, so a replaced endpoint method keeps its
+    own types. ``overwrite`` fills regardless.
     """
-    Annotate a function by setting func.__signature__ explicitly.
-    """
+    # Judge what the author wrote, not the signature: functools.wraps copies
+    # a registered parent's filled-in signature onto a subclass's copy.
+    written = inspect.get_annotations(func)
+
+    def fillable(name: str) -> bool:
+        return overwrite or written.get(name, Any) is Any
+
     sig = inspect.signature(func)
-    new_params = []
-    for param in sig.parameters.values():
-        if param.name in param_annotations:
-            annotation = param_annotations[param.name]
-            new_param = param.replace(annotation=annotation)
-            new_params.append(new_param)
-        else:
-            new_params.append(param)
-    func.__signature__ = sig.replace(  # type: ignore[attr-defined]
-        parameters=new_params, return_annotation=return_annotation
-    )
+    params = [
+        param.replace(annotation=param_annotations[param.name])
+        if param.name in param_annotations and fillable(param.name)
+        else param
+        for param in sig.parameters.values()
+    ]
+    if return_annotation is not _UNCHANGED and fillable("return"):
+        sig = sig.replace(return_annotation=return_annotation)
+    func.__signature__ = sig.replace(parameters=params)  # type: ignore[attr-defined]
 
 
 def _get_all_parent_endpoints(view_cls: type[View]) -> dict[str, Callable]:

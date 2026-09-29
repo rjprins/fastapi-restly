@@ -154,9 +154,7 @@ class ProductView(fr.AsyncReactAdminView):
 ```
 
 A PUT with a missing field returns 422. Keys the schema does not declare, such
-as the `id` react-admin sends, are ignored. Do not name the body parameter
-`schema_obj`: registration annotates a `schema_obj` parameter on `put` with
-`schema_update`, which silently replaces `ProductReplace`.
+as the `id` react-admin sends, are ignored.
 
 ## Serialize related lists as scalar id arrays with `IDRef`
 
