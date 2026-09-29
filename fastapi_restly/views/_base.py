@@ -75,6 +75,7 @@ from ..objects import snapshot as _object_snapshot
 from ..query import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, create_list_params_schema
 from ..schemas import BaseSchema, IDSchema
 from ..schemas._base import (
+    _model_id_type,
     _reject_buried_markers,
     _unwrap_optional_annotation,
     create_model_with_optional_fields,
@@ -1122,7 +1123,10 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     #: contains). A rule that must hold under every scope is a session-level
     #: ``with_loader_criteria``, not a view concern. See the Scopes guide.
     scope: ClassVar[WhereClause | Unscoped | None] = None
-    id_type: ClassVar[type[Any]] = int
+    #: The type of the ``{id}`` path parameter on the default routes. ``None``
+    #: (the default) takes the Python type of the model's primary key, and a
+    #: composite key gets ``int``. Set a type to override it.
+    id_type: ClassVar[type[Any] | None] = None
     exclude_routes: ClassVar[Iterable[str | ViewRoute]] = ()
     #: Extra query-parameter keys to allow on listing routes beyond those
     #: derived from the response schema. Use this when a view consumes a custom
@@ -1460,6 +1464,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         # serialization-mode schema drops them), so the response_model can be the
         # full schema.
         response_schema = cls.schema
+        id_type = _view_id_type(cls)
 
         # Only annotate if the methods exist (they will be overridden in subclasses)
         listing_response_annotation: Any = (
@@ -1490,7 +1495,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         if (ep := getattr(cls, "get_many_endpoint", None)) is not None:
             _annotate(ep, return_annotation=listing_response_annotation)
         if (ep := getattr(cls, "get_one_endpoint", None)) is not None:
-            _annotate(ep, return_annotation=response_schema, id=cls.id_type)
+            _annotate(ep, return_annotation=response_schema, id=id_type)
         if (ep := getattr(cls, "create_endpoint", None)) is not None:
             _annotate(
                 ep, return_annotation=response_schema, schema_obj=cls.schema_create
@@ -1500,10 +1505,10 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                 ep,
                 return_annotation=response_schema,
                 schema_obj=cls.schema_update,
-                id=cls.id_type,
+                id=id_type,
             )
         if (ep := getattr(cls, "delete_endpoint", None)) is not None:
-            _annotate(ep, return_annotation=fastapi.Response, id=cls.id_type)
+            _annotate(ep, return_annotation=fastapi.Response, id=id_type)
         _exclude_routes(cls)
 
 
@@ -2069,6 +2074,22 @@ def _init_all_endpoints(view_cls: type[View]):
         # This will give the FooView.create() endpoint the name "fooview_create"
         endpoint.__name__ = view_cls.__name__.lower() + "_" + endpoint.__name__
         _annotate_self(view_cls, endpoint)
+
+
+def _view_id_type(view_cls: type) -> Any:
+    """The ``{id}`` type: ``id_type`` when set, else the model's primary key's.
+
+    Resolved per registration and never stored on the class, so a subclass
+    with another model derives its own.
+    """
+    explicit = getattr(view_cls, "id_type", None)
+    if explicit is not None:
+        return explicit
+    model = getattr(view_cls, "model", None)
+    # a composite key has no scalar type; it keeps the int default
+    if model is None or len(sa_inspect(model).primary_key) != 1:
+        return int
+    return _model_id_type(model) or int
 
 
 _UNCHANGED: Any = object()

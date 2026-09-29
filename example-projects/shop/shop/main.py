@@ -110,7 +110,6 @@ class ProductView(fr.AsyncReactAdminView):
     prefix = "/products"
     model = Product
     schema = ProductSchema
-    id_type = UUID
 
 
 @fr.include_view(app)

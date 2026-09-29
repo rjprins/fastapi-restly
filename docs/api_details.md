@@ -146,8 +146,8 @@ returns naive datetime values. Use `mapped_column(DateTime())` to opt a specific
 wall-clock field out of timezone-aware storage.
 
 `RestView` and `AsyncRestView` assume one scalar resource identifier at
-`/{id}`. The column can have another name when you provide explicit schemas
-and `id_type`, but the default CRUD routes, `IDSchema`, `IDRef`, React Admin,
+`/{id}`. The column can have another name when you provide explicit
+schemas, but the default CRUD routes, `IDSchema`, `IDRef`, React Admin,
 and OpenAPI identity shape all remain scalar-id contracts. A composite key is
 addressed from a custom route on the view, which loads with a predicate
 (`handle_get_one(sa.and_(Model.a == a, Model.b == b))`, see
@@ -269,7 +269,7 @@ Every `View` subclass, CRUD or not, honors these class attributes:
 | {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` | `ClassVar[type[pydantic.BaseModel]]` | Schema for `POST` input. Auto-derived by removing `ReadOnly` fields and named `ModelCreate`. |
 | {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` | `ClassVar[type[pydantic.BaseModel]]` | Schema for `PATCH` input. Auto-derived by making all writable fields optional and named `ModelUpdate`. |
 | {attr}`model <fastapi_restly.views.BaseRestView.model>` | `ClassVar[type[DeclarativeBase]]` | The SQLAlchemy model class. |
-| {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` | `ClassVar[type]` | Scalar primary-key type used in the default `/{id}` routes. Defaults to `int`. |
+| {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` | `ClassVar[type \| None]` | Type of the `{id}` path parameter on the default routes. `None` (the default) takes the model's primary key type; a composite key gets `int`. |
 | {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` | `ClassVar[Iterable[str \| ViewRoute]]` | Route names to suppress. |
 | {attr}`listing_param_schema <fastapi_restly.views.BaseRestView.listing_param_schema>` | `ClassVar[type[pydantic.BaseModel]]` | The generated listing grammar (filter, sort, page). Any route method that declares a `query_params` parameter is annotated with it, so a custom listing takes the same parameters as `GET /`. |
 
@@ -454,7 +454,7 @@ The default CRUD contract has these boundaries:
 - Nested schemas are supported for **responses** and relation filtering, including nested aliases.
 - Full nested schemas are **not** supported for create/update payloads by the default CRUD flow; write payloads must map directly to model fields, or use model-aware reference fields such as `*_id: fr.MustExist[int, Model]` for FK columns and relationship fields typed as `IDRef[Model]` or `IDSchema[Model]`.
 - Ordinary SQLAlchemy `DeclarativeBase` models work with CRUD views.
-- UUID and other non-`int` scalar primary keys are supported through `id_type`, `fr.MustExist[UUID, Model]`, `IDRef[Model]`, and `IDSchema[Model]`.
+- UUID and other non-`int` scalar primary keys are supported by the default routes, `fr.MustExist[UUID, Model]`, `IDRef[Model]`, and `IDSchema[Model]`.
 - Composite primary keys are not supported by the default `RestView` /
   `AsyncRestView` CRUD routes; a custom route on the view addresses one with
   a predicate (`handle_get_one(sa.and_(...))`), or use `fr.View` for a

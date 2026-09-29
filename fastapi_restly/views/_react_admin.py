@@ -26,6 +26,7 @@ from ._base import (
     ListingResult,
     ResponseShape,
     _annotate,
+    _view_id_type,
     get,
     put,
     reject_unknown_query_keys,
@@ -253,7 +254,6 @@ class _ReactAdminViewProtocol(Protocol):
     schema: ClassVar[type[pydantic.BaseModel]]
     schema_update: ClassVar[type[pydantic.BaseModel]]
     listing_param_schema: ClassVar[type[pydantic.BaseModel]]
-    id_type: ClassVar[type[Any]]
     default_page_size: ClassVar[int]
     paginated: ClassVar[bool]
     extra_query_params: ClassVar[Iterable[str]]
@@ -442,7 +442,7 @@ class _ReactAdminMixin:
                 view_cls.put,
                 return_annotation=view_cls.schema,
                 schema_obj=view_cls.schema_update,
-                id=view_cls.id_type,
+                id=_view_id_type(view_cls),
             )
 
 

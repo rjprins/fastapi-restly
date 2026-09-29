@@ -150,7 +150,7 @@ Configure the class according to the contract the resource needs:
 |---|---|
 | Stable response fields | Declare {attr}`schema <fastapi_restly.views.BaseRestView.schema>` |
 | Different create or update validation | Declare {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` or {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` |
-| UUID or another scalar ID type | Set {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` |
+| A different type for the `{id}` path parameter | Set {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` |
 | Read-only or otherwise restricted routes | Set {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` with `fr.ViewRoute` values |
 | Disable pagination | Set {attr}`paginated <fastapi_restly.views.BaseRestView.paginated>` to `False` |
 | Change page limits | Set {attr}`default_page_size <fastapi_restly.views.BaseRestView.default_page_size>` and {attr}`max_page_size <fastapi_restly.views.BaseRestView.max_page_size>` |
@@ -187,8 +187,9 @@ override decision table, and worked recipes.
 
 The default CRUD contract has these boundaries:
 
-- Resource identity is one scalar primary key on the generated routes. Set
-  `id_type` for UUID or another scalar type. A composite key is reached from
+- Resource identity is one scalar primary key on the generated routes. The
+  `{id}` path parameter takes the key's Python type, so a UUID or string key
+  needs no configuration. A composite key is reached from
   a custom route that loads with a predicate
   ([Look a row up by another key](#natural-key-route)), or from
   {class}`View <fastapi_restly.views.View>` with explicit route paths.

@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   annotations. Registration used to replace them with the view's types, so a
   stricter body schema on `update_endpoint` or react-admin `put` accepted a
   partial body.
+- The `{id}` path parameter takes the model's primary key type, so a UUID or
+  string key works without setting `id_type`. `id_type` now defaults to `None`
+  and still overrides the derived type.
 
 ## [0.10.0] - 2026-09-23
 
