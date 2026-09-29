@@ -708,7 +708,7 @@ dependencies, then enforce per-action policy in <code class="docutils literal no
 <tr class="row-odd"><td><p>Different create or update validation</p></td>
 <td><p>Declare <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a> or <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a></p></td>
 </tr>
-<tr class="row-even"><td><p>UUID or another scalar ID type</p></td>
+<tr class="row-even"><td><p>A different type for the <code class="docutils literal notranslate"><span class="pre">{id}</span></code> path parameter</p></td>
 <td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.id_type" title="fastapi_restly.views.BaseRestView.id_type"><code class="xref py py-attr docutils literal notranslate"><span class="pre">id_type</span></code></a></p></td>
 </tr>
 <tr class="row-odd"><td><p>Read-only or otherwise restricted routes</p></td>
@@ -785,8 +785,9 @@ override decision table, and worked recipes.</p>
 <h2>Limits and alternatives<a class="headerlink" href="#limits-and-alternatives" title="Link to this heading">#</a></h2>
 <p>The default CRUD contract has these boundaries:</p>
 <ul class="simple">
-<li><p>Resource identity is one scalar primary key on the generated routes. Set
-<code class="docutils literal notranslate"><span class="pre">id_type</span></code> for UUID or another scalar type. A composite key is reached from
+<li><p>Resource identity is one scalar primary key on the generated routes. The
+<code class="docutils literal notranslate"><span class="pre">{id}</span></code> path parameter takes the key’s Python type, so a UUID or string key
+needs no configuration. A composite key is reached from
 a custom route that loads with a predicate
 (<a class="reference internal" href="customize.html#natural-key-route"><span class="std std-ref">Look a row up by another key</span></a>), or from
 <a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a> with explicit route paths.</p></li>

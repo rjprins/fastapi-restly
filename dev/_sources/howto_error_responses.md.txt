@@ -30,9 +30,10 @@ routes), and they render through whatever handler is installed:
 ```python
 class ArticleView(fr.AsyncRestView):
     ...
+    current_user: Annotated[User, Depends(get_current_user)]
 
     async def authorize(self, action, obj=None, data=None):
-        if action == "delete" and not self.request.state.is_admin:
+        if action == "delete" and not self.current_user.is_admin:
             raise fr.exc.Forbidden("deletes need an admin token")
 ```
 

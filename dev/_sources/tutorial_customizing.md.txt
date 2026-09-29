@@ -50,18 +50,22 @@ Most customization lives here. The business method is the domain operation: buil
 
 ### create: inject server-side fields
 
-Real APIs rarely accept every field from the client. This example stamps the author from request context:
+Real APIs rarely accept every field from the client. This example stamps the author from the current user, injected by your own auth dependency `get_current_user`:
 
 ```python
+from typing import Annotated
+from fastapi import Depends
+
 @fr.include_view(app)
 class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
     schema = PostRead
+    current_user: Annotated[User, Depends(get_current_user)]
 
     async def create(self, schema_obj):
         obj = await self.make_new_object(schema_obj)
-        obj.author_id = self.request.state.user_id   # set server-side
+        obj.author_id = self.current_user.id   # set server-side
         return await self.save_object(obj)
 ```
 

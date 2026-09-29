@@ -777,8 +777,8 @@ its <code class="docutils literal notranslate"><span class="pre">timestamptz</sp
 returns naive datetime values. Use <code class="docutils literal notranslate"><span class="pre">mapped_column(DateTime())</span></code> to opt a specific
 wall-clock field out of timezone-aware storage.</p>
 <p><code class="docutils literal notranslate"><span class="pre">RestView</span></code> and <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code> assume one scalar resource identifier at
-<code class="docutils literal notranslate"><span class="pre">/{id}</span></code>. The column can have another name when you provide explicit schemas
-and <code class="docutils literal notranslate"><span class="pre">id_type</span></code>, but the default CRUD routes, <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code>, <code class="docutils literal notranslate"><span class="pre">IDRef</span></code>, React Admin,
+<code class="docutils literal notranslate"><span class="pre">/{id}</span></code>. The column can have another name when you provide explicit
+schemas, but the default CRUD routes, <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code>, <code class="docutils literal notranslate"><span class="pre">IDRef</span></code>, React Admin,
 and OpenAPI identity shape all remain scalar-id contracts. A composite key is
 addressed from a custom route on the view, which loads with a predicate
 (<code class="docutils literal notranslate"><span class="pre">handle_get_one(sa.and_(Model.a</span> <span class="pre">==</span> <span class="pre">a,</span> <span class="pre">Model.b</span> <span class="pre">==</span> <span class="pre">b))</span></code>, see
@@ -1149,8 +1149,8 @@ names are identical between variants.</p>
 <td><p>The SQLAlchemy model class.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.id_type" title="fastapi_restly.views.BaseRestView.id_type"><code class="xref py py-attr docutils literal notranslate"><span class="pre">id_type</span></code></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[type]</span></code></p></td>
-<td><p>Scalar primary-key type used in the default <code class="docutils literal notranslate"><span class="pre">/{id}</span></code> routes. Defaults to <code class="docutils literal notranslate"><span class="pre">int</span></code>.</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[type</span> <span class="pre">|</span> <span class="pre">None]</span></code></p></td>
+<td><p>Type of the <code class="docutils literal notranslate"><span class="pre">{id}</span></code> path parameter on the default routes. <code class="docutils literal notranslate"><span class="pre">None</span></code> (the default) takes the model’s primary key type; a composite key gets <code class="docutils literal notranslate"><span class="pre">int</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_routes" title="fastapi_restly.views.BaseRestView.exclude_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_routes</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[Iterable[str</span> <span class="pre">|</span> <span class="pre">ViewRoute]]</span></code></p></td>
@@ -1466,7 +1466,7 @@ This fallback covers apps that configure database sessions separately.</p></li>
 <li><p>Nested schemas are supported for <strong>responses</strong> and relation filtering, including nested aliases.</p></li>
 <li><p>Full nested schemas are <strong>not</strong> supported for create/update payloads by the default CRUD flow; write payloads must map directly to model fields, or use model-aware reference fields such as <code class="docutils literal notranslate"><span class="pre">*_id:</span> <span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code> for FK columns and relationship fields typed as <code class="docutils literal notranslate"><span class="pre">IDRef[Model]</span></code> or <code class="docutils literal notranslate"><span class="pre">IDSchema[Model]</span></code>.</p></li>
 <li><p>Ordinary SQLAlchemy <code class="docutils literal notranslate"><span class="pre">DeclarativeBase</span></code> models work with CRUD views.</p></li>
-<li><p>UUID and other non-<code class="docutils literal notranslate"><span class="pre">int</span></code> scalar primary keys are supported through <code class="docutils literal notranslate"><span class="pre">id_type</span></code>, <code class="docutils literal notranslate"><span class="pre">fr.MustExist[UUID,</span> <span class="pre">Model]</span></code>, <code class="docutils literal notranslate"><span class="pre">IDRef[Model]</span></code>, and <code class="docutils literal notranslate"><span class="pre">IDSchema[Model]</span></code>.</p></li>
+<li><p>UUID and other non-<code class="docutils literal notranslate"><span class="pre">int</span></code> scalar primary keys are supported by the default routes, <code class="docutils literal notranslate"><span class="pre">fr.MustExist[UUID,</span> <span class="pre">Model]</span></code>, <code class="docutils literal notranslate"><span class="pre">IDRef[Model]</span></code>, and <code class="docutils literal notranslate"><span class="pre">IDSchema[Model]</span></code>.</p></li>
 <li><p>Composite primary keys are not supported by the default <code class="docutils literal notranslate"><span class="pre">RestView</span></code> /
 <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code> CRUD routes; a custom route on the view addresses one with
 a predicate (<code class="docutils literal notranslate"><span class="pre">handle_get_one(sa.and_(...))</span></code>), or use <code class="docutils literal notranslate"><span class="pre">fr.View</span></code> for a

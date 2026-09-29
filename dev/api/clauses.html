@@ -660,8 +660,8 @@ when nothing is bound. Embedded in a SQL expression
 (<code class="docutils literal notranslate"><span class="pre">Item.tenant_id</span> <span class="pre">==</span> <span class="pre">Current.tenant_id</span></code>) it becomes a placeholder,
 filled with the bound value each time a clause that carries it is
 applied.</p>
-<p>A member never stands in for its value: <code class="docutils literal notranslate"><span class="pre">==</span></code>, <code class="docutils literal notranslate"><span class="pre">!=</span></code> and a truth
-test raise. Call the member to read it, and in a SQL expression put
+<p>A member never stands in for its value: comparisons with values and
+truth tests raise. Call the member to read it, and in a SQL expression put
 the column first (<code class="docutils literal notranslate"><span class="pre">Item.role</span> <span class="pre">==</span> <span class="pre">Current.role</span></code>).</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.clauses.ContextParam.__call__">
