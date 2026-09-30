@@ -600,18 +600,25 @@ on the view class before <a class="reference internal" href="api/views.html#fast
 </section>
 <section id="auto-generated-schemas">
 <span id="id1"></span><h3>Auto-Generated Schemas<a class="headerlink" href="#auto-generated-schemas" title="Link to this heading">#</a></h3>
-<p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.create_schema_from_model" title="fastapi_restly.schemas.create_schema_from_model"><code class="xref py py-func docutils literal notranslate"><span class="pre">create_schema_from_model(model_cls,</span> <span class="pre">...)</span></code></a> walks all <code class="docutils literal notranslate"><span class="pre">Mapped[...]</span></code> annotations
-on the model (including inherited ones) and builds a Pydantic schema. Three of
-its behaviours are worth noting:</p>
+<p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.create_schema_from_model" title="fastapi_restly.schemas.create_schema_from_model"><code class="xref py py-func docutils literal notranslate"><span class="pre">create_schema_from_model(model_cls,</span> <span class="pre">...)</span></code></a> builds a Pydantic schema with one
+field per column and relationship on the model’s SQLAlchemy mapper, inherited
+ones included. A column’s type comes from its <code class="docutils literal notranslate"><span class="pre">Mapped[T]</span></code> annotation, or from
+the plain annotation on a SQLModel table. Under
+<code class="docutils literal notranslate"><span class="pre">from</span> <span class="pre">__future__</span> <span class="pre">import</span> <span class="pre">annotations</span></code>, the annotation string is evaluated against
+the model’s module. When no annotation resolves, the column type’s
+<code class="docutils literal notranslate"><span class="pre">python_type</span></code> is used. A column with neither raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> naming the
+attribute. Synonyms and composites get no field of their own; the columns
+behind them already have one. Three of its behaviours are worth noting:</p>
 <ul class="simple">
 <li><p><strong>Base class selection</strong>: The function checks whether the model has fields
 <em>named</em> <code class="docutils literal notranslate"><span class="pre">id</span></code>, <code class="docutils literal notranslate"><span class="pre">created_at</span></code>, and <code class="docutils literal notranslate"><span class="pre">updated_at</span></code> to decide which schema base
 classes to mix in (<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a>, <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.TimestampsSchemaMixin" title="fastapi_restly.schemas.TimestampsSchemaMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">TimestampsSchemaMixin</span></code></a>, <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.BaseSchema" title="fastapi_restly.schemas.BaseSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseSchema</span></code></a>). It does
 <strong>not</strong> inspect the model’s Python inheritance hierarchy; a model with a field
 accidentally named <code class="docutils literal notranslate"><span class="pre">id</span></code> will receive <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> as a base.</p></li>
-<li><p><strong>ReadOnly annotation</strong>: Only three field names are automatically marked
+<li><p><strong>ReadOnly annotation</strong>: Three field names are automatically marked
 <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>: <code class="docutils literal notranslate"><span class="pre">&quot;id&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;created_at&quot;</span></code>, and <code class="docutils literal notranslate"><span class="pre">&quot;updated_at&quot;</span></code> (controlled by
-<code class="docutils literal notranslate"><span class="pre">include_readonly_fields=True</span></code>). Any other server-side default or
+<code class="docutils literal notranslate"><span class="pre">include_readonly_fields=True</span></code>). So is a <code class="docutils literal notranslate"><span class="pre">column_property</span></code> over a SQL
+expression, which cannot be written. Any other server-side default or
 auto-populated column will <strong>not</strong> be marked <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> by auto-generation.</p></li>
 <li><p><strong>Relationship fields</strong>: Included when <code class="docutils literal notranslate"><span class="pre">include_relationships=True</span></code> (the
 default for <code class="docutils literal notranslate"><span class="pre">create_schema_from_model</span></code>). Relationship fields are set to
@@ -626,8 +633,8 @@ foreign-key columns appear in the generated schema as ordinary scalar fields.</p
 </section>
 <section id="sqlalchemy-to-pydantic-type-mapping">
 <h3>SQLAlchemy-to-Pydantic Type Mapping<a class="headerlink" href="#sqlalchemy-to-pydantic-type-mapping" title="Link to this heading">#</a></h3>
-<p><code class="docutils literal notranslate"><span class="pre">convert_sqlalchemy_type_to_pydantic</span></code> maps the Python type extracted from each
-<code class="docutils literal notranslate"><span class="pre">Mapped[T]</span></code> annotation to its Pydantic equivalent. Pass-through types (those
+<p><code class="docutils literal notranslate"><span class="pre">convert_sqlalchemy_type_to_pydantic</span></code> maps each column’s Python type, from its
+annotation or its column type, to its Pydantic equivalent. Pass-through types (those
 already understood by Pydantic) are returned unchanged:</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>

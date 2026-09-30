@@ -554,6 +554,17 @@ partial body.</p></li>
 <li><p>The <code class="docutils literal notranslate"><span class="pre">{id}</span></code> path parameter takes the model’s primary key type, so a UUID or
 string key works without setting <code class="docutils literal notranslate"><span class="pre">id_type</span></code>. <code class="docutils literal notranslate"><span class="pre">id_type</span></code> now defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code>
 and still overrides the derived type.</p></li>
+<li><p>Auto-generated schemas take their fields from the SQLAlchemy mapper instead
+of <code class="docutils literal notranslate"><span class="pre">Mapped[...]</span></code> annotations. A model module with
+<code class="docutils literal notranslate"><span class="pre">from</span> <span class="pre">__future__</span> <span class="pre">import</span> <span class="pre">annotations</span></code>, a SQLModel table, and a class mapped
+with plain <code class="docutils literal notranslate"><span class="pre">Column</span></code> attributes each used to get a schema without its columns.
+On Python 3.14, a relationship to a class imported under <code class="docutils literal notranslate"><span class="pre">TYPE_CHECKING</span></code> no
+longer raises <code class="docutils literal notranslate"><span class="pre">NameError</span></code> during schema generation or <code class="docutils literal notranslate"><span class="pre">{id}</span></code> typing.</p></li>
+<li><p>A column whose Python type cannot be determined raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> naming the
+attribute, instead of being left out of the generated schema.</p></li>
+<li><p>A generated schema uses the annotation nearest the model, so a subclass that
+redefines an inherited column gets its own type. A <code class="docutils literal notranslate"><span class="pre">column_property</span></code> over a
+SQL expression is <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>.</p></li>
 </ul>
 </section>
 </section>
