@@ -258,46 +258,25 @@ difference is the API shape: flat id versus nested object.
 
 {class}`fr.IDBase <fastapi_restly.models.IDBase>` uses SQLAlchemy's
 `MappedAsDataclass`, which generates an `__init__` from the model fields.
-Restly's create/update helpers are aware of that constructor shape when an
-{class}`IDRef <fastapi_restly.schemas.IDRef>` /
-{class}`IDSchema <fastapi_restly.schemas.IDSchema>` relationship field has been
-resolved to an ORM object.
-
-For an FK-first dataclass model, keep the relationship out of the generated
-constructor and leave it unset:
+Restly passes that constructor the values it requires, whether the schema
+writes the foreign key, the relationship, or both. You can declare the foreign
+key and the relationship with any `init` and `default` options:
 
 ```python
 author_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
-author: Mapped["User"] = relationship(init=False)
-```
-
-With that model and `author: fr.IDRef[User]`, Restly passes the scalar FK when
-the constructor needs it and assigns `author` after construction. With a
-scalar `author_id: fr.MustExist[int, User]` field, leaving `author` unset keeps
-SQLAlchemy from replacing the supplied foreign key with `NULL` during flush.
-
-Do not add `default=None` to an `init=False` relationship paired with a
-required scalar foreign key. SQLAlchemy assigns that relationship default to
-each new object, and the relationship value takes precedence over the foreign
-key during flush.
-
-If your model is relationship-first, Restly adapts there too:
-
-```python
-author_id: Mapped[int] = mapped_column(ForeignKey("user.id"), init=False)
 author: Mapped["User"] = relationship(default=None)
 ```
 
-In that shape, Restly passes the resolved `User` object to the constructor and
-keeps `author_id` in sync. More generally, Restly supplies the constructor
-values your dataclass model requires: FK scalar, relationship object, or both.
+A relationship the request does not send never overrides a foreign key it
+does send. If such a relationship is `None` after construction, for example
+from `default=None`, Restly removes the `None`. Otherwise SQLAlchemy's flush
+would write `NULL` over the foreign key.
 
-Optional references follow the same contract. A field typed
-`author: fr.IDRef[User] | None` accepts an explicit `null`, and may simply be
-omitted when it defaults to `None`; the row is created with a `NULL` foreign
-key, with the constructor again receiving whatever the dataclass requires. A
-`null` against a `NOT NULL` column fails at the database and surfaces as the
-standard `409`, not a server error.
+Optional references work the same way. A field typed
+`author: fr.IDRef[User] | None` accepts an explicit `null`, and may be omitted
+when it defaults to `None`. Unless another field sends the foreign key, the
+row gets a `NULL` foreign key. A `null` for a `NOT NULL` column fails in the
+database, and the request returns the standard `409`, not a server error.
 
 If a schema exposes the same link as two reference fields, for example a
 FK-named {class}`IDRef <fastapi_restly.schemas.IDRef>` field alongside the
@@ -314,7 +293,9 @@ Conflicting references, such as `"author_id": 1` with `"author": {"id": 2}`,
 return `422`. Explicit `null` also participates in this check: `author_id: 1`
 with `author: null` is a conflict, while omitting `author` entirely is not. A
 plain {class}`MustExist <fastapi_restly.schemas.MustExist>` scalar does not take
-part in this reference-pair check; it is a checked column value.
+part in this reference-pair check; it is a checked column value. When a
+request sends it together with a different relationship value, including
+`null`, Restly saves the relationship value.
 
 ### Standard SQLAlchemy declarative models
 

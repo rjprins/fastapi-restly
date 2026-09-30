@@ -51,6 +51,7 @@ from sqlalchemy import ColumnElement, Select
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import select as sa_select
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.attributes import del_attribute
 from starlette.datastructures import QueryParams
 from typing_extensions import TypeVar
 
@@ -213,6 +214,8 @@ def _requires_init_kwarg(model_cls: type, attr_name: str) -> bool:
 class _CreatePlan:
     kwargs: dict[str, Any]
     post_assignments: dict[str, Any]
+    # Many-to-one relationships the input did not supply.
+    unsupplied_relationships: list[str] = dataclasses.field(default_factory=list)
 
 
 class _HasID(Protocol):
@@ -275,6 +278,18 @@ def _get_unambiguous_local_fk_name(
     except Exception:
         return local_columns[0].key
     return _column_attr_name(mapper, local_columns[0]) or local_columns[0].key
+
+
+def _many_to_one_names(model_cls: type[Any]) -> list[str]:
+    try:
+        mapper = sa_inspect(model_cls)
+    except Exception:
+        return []
+    return [
+        relationship_property.key
+        for relationship_property in mapper.relationships
+        if getattr(relationship_property.direction, "name", None) == "MANYTOONE"
+    ]
 
 
 def _relationship_name_for_fk(model_cls: type[Any], fk_attr_name: str) -> str | None:
@@ -512,16 +527,14 @@ def _add_null_reference_to_create_plan(
     defaulting to None) into the plan.
 
     Unlike a resolved reference, a null writes only the field's own slot, plus
-    a partner slot when — and only when — the dataclass ``__init__`` demands
-    it. It never mirrors further, and never overwrites a slot another field
-    already planned: schemas may declare both names of an FK/relationship pair
-    as reference fields, and the unset sibling's default None must not clobber
-    the side the client supplied. (Later fields overwrite a planned None
-    naturally, so the ``setdefault`` guards are order-independent. The guards
-    operate on the plan, so they protect reference-typed siblings; a plain
-    scalar FK *column* field beside a relationship reference still follows
-    SQLAlchemy's relationship-wins flush semantics, exactly as in a plain
-    ``Model(fk=id)`` construction when the relationship defaults to None.)
+    the partner FK column when the dataclass ``__init__`` requires it. It never
+    mirrors further, and never overwrites a slot another field already planned:
+    schemas may declare both names of an FK/relationship pair as reference
+    fields, and the unset sibling's default None must not clobber the side the
+    client supplied. (Later fields overwrite a planned None naturally, so the
+    ``setdefault`` guards are order-independent. A relationship the input did
+    not supply is left to :func:`build_create_plan`, which passes None only
+    where ``__init__`` requires it and has it unset after construction.)
     """
     relationship = _get_relationship_property(model_cls, field_name)
     if relationship is None and not _is_mapped_column(model_cls, field_name):
@@ -533,12 +546,6 @@ def _add_null_reference_to_create_plan(
         plan.post_assignments.setdefault(field_name, None)
 
     if relationship is None:
-        # Mirror direction: a null on the FK-named side whose partner
-        # *relationship* is a required init kwarg (``relationship()`` with no
-        # default) must construct that kwarg too.
-        relation_name = _relationship_name_for_fk(model_cls, field_name)
-        if relation_name is not None and _requires_init_kwarg(model_cls, relation_name):
-            plan.kwargs.setdefault(relation_name, None)
         return
 
     # A required-init partner FK column must be constructed even for a null
@@ -683,6 +690,17 @@ def build_create_plan(
             plan.kwargs[field_name] = value
         elif _has_model_attr(model_cls, field_name):
             plan.post_assignments[field_name] = value
+
+    plan.unsupplied_relationships = [
+        name
+        for name in _many_to_one_names(model_cls)
+        if name not in schema_obj.model_fields_set
+        or is_readonly_field(schema_cls, name)
+    ]
+    for name in plan.unsupplied_relationships:
+        # __init__ demands the argument; the None is unset after construction.
+        if _requires_init_kwarg(model_cls, name):
+            plan.kwargs.setdefault(name, None)
     return plan
 
 
@@ -695,9 +713,24 @@ def build_create_kwargs(
     return build_create_plan(model_cls, schema_obj, schema_cls, resolved).kwargs
 
 
-def apply_create_assignments(obj: Any, assignments: dict[str, Any]) -> None:
-    for field_name, value in assignments.items():
+def apply_create_assignments(obj: Any, plan: _CreatePlan) -> None:
+    """Finish an object built from ``plan.kwargs``.
+
+    Sets the attributes the constructor cannot take, then unsets each
+    many-to-one relationship the input did not supply that holds ``None``.
+    That ``None`` is a default: the dataclass ``__init__`` assigns
+    ``relationship(default=None)``, and the plan passes ``None`` for an
+    omitted reference field or a required relationship argument. SQLAlchemy's
+    flush would copy it over the foreign key, discarding an id the input did
+    supply. Unset, the relationship takes no part in the flush, as SQLAlchemy
+    2.1 treats dataclass defaults. A ``null`` the client sent stays.
+    """
+    for field_name, value in plan.post_assignments.items():
         setattr(obj, field_name, value)
+    loaded = sa_inspect(obj).dict
+    for name in plan.unsupplied_relationships:
+        if name in loaded and loaded[name] is None:
+            del_attribute(obj, name)
 
 
 def _apply_resolved_reference_update(obj: Any, field_name: str, value: Any) -> None:

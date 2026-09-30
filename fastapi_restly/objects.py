@@ -40,7 +40,7 @@ def make_new_object(
     validate_resolved_reference_consistency(model_cls, schema_obj, schema_cls, resolved)
     create_plan = build_create_plan(model_cls, schema_obj, schema_cls, resolved)
     obj = model_cls(**create_plan.kwargs)
-    apply_create_assignments(obj, create_plan.post_assignments)
+    apply_create_assignments(obj, create_plan)
     session.add(obj)
     return obj
 
@@ -152,7 +152,7 @@ async def async_make_new_object(
     validate_resolved_reference_consistency(model_cls, schema_obj, schema_cls, resolved)
     create_plan = build_create_plan(model_cls, schema_obj, schema_cls, resolved)
     obj = model_cls(**create_plan.kwargs)
-    apply_create_assignments(obj, create_plan.post_assignments)
+    apply_create_assignments(obj, create_plan)
     session.add(obj)
     return obj
 

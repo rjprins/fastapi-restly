@@ -47,6 +47,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A create saves the `post_id` the request sends. When the schema also had an
+  optional `post: fr.IDRef[Post] | None` field and the request left it out,
+  the create saved `NULL` instead, or answered `409` on a `NOT NULL` column.
+  On SQLAlchemy 2.0 this also happened without that field, for a `post_id`
+  typed `int` or `MustExist` and for a generated schema, when the model
+  declared `relationship(default=None)`.
+- A create works when a dataclass relationship has no default and the schema
+  has no field for it. The relationship is then a required `__init__`
+  argument, and the create used to answer 500. Restly passes `None` for it.
 - Building a view by hand, such as `TaskView(session=..., request=...)`,
   type-checks. mypy used to report the keyword arguments as unexpected.
 - Type checkers see that models on `fr.DataclassBase` and `fr.IDBase` are
