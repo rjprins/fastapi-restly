@@ -41,7 +41,8 @@ class ProjectSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     task_count: fr.ReadOnly[int | None] = None
     completed_task_count: fr.ReadOnly[int | None] = None
 
-    @computed_field
+    # mypy does not support a decorator on a property; pydantic documents this ignore
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def completion_percent(self) -> float | None:
         """Calculate completion percentage from task counts."""

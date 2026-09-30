@@ -24,6 +24,10 @@ test-typing:
 	@echo "=== Testing Typing Compatibility Fixtures ==="
 	uv run --with pyright --with sqlmodel pyright -p tests/typing/pyrightconfig.json
 	uv run --with mypy --with sqlmodel mypy --config-file tests/typing/mypy.ini
+	@echo "=== Type-checking the example projects ==="
+	cd example-projects/shop && uv run --with mypy mypy
+	cd example-projects/blog && uv run --with mypy mypy
+	cd example-projects/saas && uv run --with mypy mypy
 
 # Test the main framework
 test-framework:
@@ -139,7 +143,7 @@ build-pages:
 help:
 	@echo "Available commands:"
 	@echo "  test-framework  - Test the main FastAPI-Restly framework"
-	@echo "  test-typing     - Run Pyright and mypy on consumer typing fixtures"
+	@echo "  test-typing     - Run Pyright and mypy on typing fixtures, mypy on the examples"
 	@echo "  test-shop       - Test the shop example"
 	@echo "  test-blog       - Test the blog example"
 	@echo "  test-saas       - Test the SaaS example"

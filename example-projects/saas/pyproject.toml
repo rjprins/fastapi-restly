@@ -41,3 +41,12 @@ packages = ["app"]
 
 [tool.uv.sources]
 fastapi-restly = { path = "../..", editable = true }
+
+# A plain .pth entry for the editable Restly: mypy does not follow the
+# import-hook finder setuptools uses by default.
+[tool.uv]
+config-settings = { editable_mode = "compat" }
+
+[tool.mypy]
+strict = true
+files = ["app"]

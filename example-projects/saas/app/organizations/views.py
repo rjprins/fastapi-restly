@@ -15,7 +15,7 @@ from .schemas import (
 )
 
 
-class OrganizationView(fr.AsyncRestView):
+class OrganizationView(fr.AsyncRestView[Organization]):
     """CRUD endpoints for organizations.
 
     Deletion requires a platform admin. The other routes remain public.
@@ -55,7 +55,8 @@ class OrganizationView(fr.AsyncRestView):
     @fr.delete("/{id}", dependencies=[SetCurrentContextDep])
     async def delete_endpoint(self, id: int) -> Response:
         """Bind identity for deletion, including its relationship loads."""
-        return await super().delete_endpoint(id)
+        response: Response = await super().delete_endpoint(id)
+        return response
 
     async def authorize(
         self, action: str, obj: Organization | None = None, data: Any = None

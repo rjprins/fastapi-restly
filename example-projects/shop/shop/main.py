@@ -10,6 +10,7 @@ For an example showcasing customization (custom endpoints, handlers, validation,
 authorization), see ``example-projects/saas``.
 """
 
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from uuid import UUID, uuid4
 
@@ -26,7 +27,7 @@ fr.configure(async_database_url=ASYNC_DATABASE_URL)
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI):
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     await fr.db.async_create_all(fr.DataclassBase)
     yield
 

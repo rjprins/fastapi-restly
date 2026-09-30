@@ -60,7 +60,7 @@ VALID_TRANSITIONS = {
 }
 
 
-class TaskView(SoftDeleteMixin, AuthenticatedView):
+class TaskView(SoftDeleteMixin, AuthenticatedView[Task]):
     """CRUD endpoints for tasks.
 
     Task visibility is a row-level permission (a member sees their own
@@ -81,7 +81,7 @@ class TaskView(SoftDeleteMixin, AuthenticatedView):
     schema = TaskSchema
     scope = TaskClauses.visible
 
-    async def delete(self, obj):
+    async def delete(self, obj: Task) -> None:
         """Decrement the parent project's story-point rollup, then soft delete."""
         from ..projects.models import Project
 
@@ -91,7 +91,7 @@ class TaskView(SoftDeleteMixin, AuthenticatedView):
                 project.total_story_points -= obj.story_points
         await super().delete(obj)
 
-    async def _validate_cross_resource(self, data: dict) -> None:
+    async def _validate_cross_resource(self, data: dict[str, Any]) -> None:
         """Validate cross-resource constraints (assignee must be in same org as project)."""
         from ..projects.models import Project
         from ..users.models import User
@@ -110,7 +110,7 @@ class TaskView(SoftDeleteMixin, AuthenticatedView):
                         detail="Assignee must be from the same organization as the project",
                     )
 
-    def _validate_conditional_fields(self, data: dict) -> None:
+    def _validate_conditional_fields(self, data: dict[str, Any]) -> None:
         """Validate conditional required fields based on task_type."""
         task_type = data.get("task_type", TaskType.TASK)
         severity = data.get("severity")
@@ -121,7 +121,7 @@ class TaskView(SoftDeleteMixin, AuthenticatedView):
                 status_code=422, detail="severity is required for bug tasks"
             )
 
-    async def create(self, schema_obj):
+    async def create(self, schema_obj: BaseModel) -> Task:
         """Validate, build, save, and bump the parent's story-point rollup.
 
         The rollup depends on request data, so it lives in the business verb and
@@ -132,6 +132,7 @@ class TaskView(SoftDeleteMixin, AuthenticatedView):
         data = schema_obj.model_dump()
         project_id = data.get("project_id")
 
+        project = None
         if project_id:
             project = await self.session.get(Project, project_id)
             if project and project.status == ProjectStatus.ARCHIVED:
@@ -150,7 +151,7 @@ class TaskView(SoftDeleteMixin, AuthenticatedView):
             project.total_story_points += task.story_points
         return await self.save_object(task)
 
-    async def update(self, obj, schema_obj):
+    async def update(self, obj: Task, schema_obj: BaseModel) -> Task:
         """Optimistic locking + reroll the parent's story-point rollup.
 
         Capture old values, apply the update, then propagate the story-point

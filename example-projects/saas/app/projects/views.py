@@ -56,7 +56,7 @@ class ProjectStats(BaseModel):
     completion_percent: float
 
 
-class ProjectView(SoftDeleteMixin, AuthenticatedView):
+class ProjectView(SoftDeleteMixin, AuthenticatedView[Project]):
     """CRUD endpoints for projects.
 
     Read visibility is the model's ``default_scope`` (``ProjectClauses``):
@@ -83,10 +83,11 @@ class ProjectView(SoftDeleteMixin, AuthenticatedView):
 
     async def _decorate_project_response(self, project: Project) -> Project:
         """Populate transient response fields that are not stored on Project."""
-        project.can_edit = self._can_edit(project)
+        # Transient: read by ProjectSchema, not columns on the model.
+        setattr(project, "can_edit", self._can_edit(project))
         # select_from(Task): a count that names Task only in WHERE gets no
         # tenant criterion.
-        project.task_count = (
+        task_count = (
             await self.session.scalar(
                 select(func.count())
                 .select_from(Task)
@@ -94,7 +95,7 @@ class ProjectView(SoftDeleteMixin, AuthenticatedView):
             )
             or 0
         )
-        project.completed_task_count = (
+        completed_task_count = (
             await self.session.scalar(
                 select(func.count())
                 .select_from(Task)
@@ -106,10 +107,12 @@ class ProjectView(SoftDeleteMixin, AuthenticatedView):
             )
             or 0
         )
+        setattr(project, "task_count", task_count)
+        setattr(project, "completed_task_count", completed_task_count)
         return project
 
     async def get_many(
-        self, query_params, *, scope: fr.views.ReadScope = None
+        self, query_params: Any, *, scope: fr.views.ReadScope = None
     ) -> fr.ListingResult[Project]:
         # The session enforces tenancy. The default scope hides deleted rows.
         # Here we only do project-specific response decoration on each row
@@ -126,7 +129,7 @@ class ProjectView(SoftDeleteMixin, AuthenticatedView):
 
     async def get_one(
         self, id: int | sa.ColumnElement[bool], *, scope: fr.views.ReadScope = None
-    ):
+    ) -> Project:
         # The session enforces tenancy. The default scope hides deleted rows.
         # ``get_one`` is the auth-free load+scope+404 override point; we layer only
         # project-specific response decoration on top. ``handle_get_one``
@@ -142,7 +145,7 @@ class ProjectView(SoftDeleteMixin, AuthenticatedView):
         """
         return Current.is_admin() or project.organization_id == Current.org_id()
 
-    async def create(self, schema_obj):
+    async def create(self, schema_obj: BaseModel) -> Project:
         """Slug derivation + outbox emit.
 
         Overrides the *bare* business ``create`` verb: auth-free and
@@ -164,7 +167,7 @@ class ProjectView(SoftDeleteMixin, AuthenticatedView):
         )
         return await self._decorate_project_response(project)
 
-    async def update(self, obj: Project, schema_obj):
+    async def update(self, obj: Project, schema_obj: BaseModel) -> Project:
         """Slug regen if name changed + status-transition outbox event.
 
         Overrides the *bare* business ``update`` verb, which receives the

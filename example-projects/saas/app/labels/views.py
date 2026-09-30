@@ -22,7 +22,7 @@ class CreateAndAttachLabelRequest(BaseModel):
     color: str = "#808080"
 
 
-class LabelView(AuthenticatedView):
+class LabelView(AuthenticatedView[Label]):
     """CRUD for labels (organization-scoped).
 
     The session listener in ``app.models`` filters reads to the organization.
@@ -36,7 +36,7 @@ class LabelView(AuthenticatedView):
     schema = LabelSchema
 
 
-class TaskLabelView(AuthenticatedView):
+class TaskLabelView(AuthenticatedView[TaskLabel]):
     """CRUD for task-label associations.
 
     The tenant criterion in ``labels.models`` requires both the task and label
@@ -73,7 +73,7 @@ class TaskLabelView(AuthenticatedView):
     @fr.post("/create-and-attach", response_model=TaskLabelSchema, status_code=201)
     async def create_and_attach(
         self, request: CreateAndAttachLabelRequest
-    ) -> TaskLabelSchema:
+    ) -> TaskLabel:
         """Sibling-creation: build a Label *and* a TaskLabel in one request.
 
         The Label lands in the organization the request acts in:
@@ -100,5 +100,6 @@ class TaskLabelView(AuthenticatedView):
             task_label = await async_make_new_object(
                 self.session, TaskLabel, link_schema
             )
-            w.obj = await async_save_object(self.session, task_label)
-        return w.obj
+            task_label = await async_save_object(self.session, task_label)
+            w.obj = task_label
+        return task_label

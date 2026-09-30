@@ -44,17 +44,20 @@ def get_current_org_id(request: fastapi.Request) -> int:
     A tenant's user acts in their own organization; an admin acts in the
     one the request names (an act-as header, say).
     """
-    return _required(request, "org_id")
+    org_id: int = _required(request, "org_id")
+    return org_id
 
 
 def get_current_user_id(request: fastapi.Request) -> int:
     """The authenticated user, set by the auth layer."""
-    return _required(request, "user_id")
+    user_id: int = _required(request, "user_id")
+    return user_id
 
 
 def get_current_role(request: fastapi.Request) -> UserRole:
     """The authenticated user's role in the organization, set by the auth layer."""
-    return _required(request, "user_role")
+    role: UserRole = _required(request, "user_role")
+    return role
 
 
 def get_is_admin(request: fastapi.Request) -> bool:

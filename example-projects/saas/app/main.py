@@ -20,6 +20,7 @@ through ``VIEWS``. Alembic and anything else needing complete metadata import it
 for exactly that. Keep it free: never build an app at module level here.
 """
 
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -63,7 +64,7 @@ def create_app() -> FastAPI:
     )
 
     @asynccontextmanager
-    async def lifespan(_app: FastAPI):
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         """Dispose the application-owned pool when the process shuts down."""
         try:
             yield

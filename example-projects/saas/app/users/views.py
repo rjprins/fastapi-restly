@@ -10,7 +10,8 @@ import fastapi_restly as fr
 from ..auth import hash_password, verify_password
 from ..current import Current
 from ..views import AuthenticatedView, SoftDeleteMixin
-from .models import User, UserRole
+from .models import User
+from .roles import UserRole
 from .schemas import UserFullSchema, UserPublicSchema, UserSchema
 
 
@@ -34,7 +35,7 @@ class ChangePasswordRequest(BaseModel):
     new_password: str
 
 
-class UserView(SoftDeleteMixin, AuthenticatedView):
+class UserView(SoftDeleteMixin, AuthenticatedView[User]):
     """CRUD endpoints for users.
 
     The session listener restricts reads to the tenant. ``UserClauses`` hides
@@ -52,7 +53,7 @@ class UserView(SoftDeleteMixin, AuthenticatedView):
     def _can_see_salary(self) -> bool:
         return Current.role() in (UserRole.HR, UserRole.OWNER)
 
-    async def create(self, schema_obj):
+    async def create(self, schema_obj: Any) -> User:
         """Hash the password before saving the new row."""
         user = await self.make_new_object(schema_obj)
         if schema_obj.password:
@@ -92,7 +93,7 @@ class UserView(SoftDeleteMixin, AuthenticatedView):
         # Select schema based on viewer's role
         if self._can_see_salary():
             # HR/Owner gets full schema with salary
-            schema = UserFullSchema
+            schema: type[BaseModel] = UserFullSchema
         else:
             # Others get public schema without salary
             schema = UserPublicSchema

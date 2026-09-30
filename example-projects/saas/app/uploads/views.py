@@ -26,7 +26,7 @@ from .models import Upload, UploadLine
 from .schemas import UploadLineSchema, UploadSchema
 
 
-class UploadView(AuthenticatedView):
+class UploadView(AuthenticatedView[Upload]):
     """Read endpoints for uploads + a custom multipart POST.
 
     Generic create is excluded because the wire format is multipart, not
@@ -87,7 +87,7 @@ class UploadView(AuthenticatedView):
             saved = await self.save_object(upload)
             self._emit("upload.completed", saved, {"line_count": saved.line_count})
             w.obj = saved
-        return w.obj
+        return saved
 
     @fr.get("/{id}/lines", response_model=list[UploadLineSchema])
     async def list_lines(self, id: int) -> list[UploadLine]:

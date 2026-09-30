@@ -1,5 +1,7 @@
 """Label model and TaskLabel association."""
 
+from typing import TYPE_CHECKING
+
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey, orm
 
@@ -9,6 +11,10 @@ from ..current import Current
 from ..models import TenantOwned, restrict_to_tenant, tenant_is_admin, tenant_org_id
 from ..projects.models import Project
 from ..tasks.models import Task
+
+if TYPE_CHECKING:
+    from ..organizations.models import Organization
+    from ..users.models import User
 
 
 class Label(TenantOwned, fr.TimestampsMixin, fr.IDBase):
@@ -21,7 +27,7 @@ class Label(TenantOwned, fr.TimestampsMixin, fr.IDBase):
     color: orm.Mapped[str] = orm.mapped_column(default="#808080")
 
     # Relationships
-    organization: orm.Mapped["Organization"] = orm.relationship(  # noqa: F821
+    organization: orm.Mapped["Organization"] = orm.relationship(
         back_populates="labels", init=False
     )
     # passive_deletes: the database removes the links (see TaskLabel).
@@ -61,15 +67,13 @@ class TaskLabel(fr.TimestampsMixin, fr.IDBase):
     )
 
     # Relationships
-    task: orm.Mapped["Task"] = orm.relationship(  # noqa: F821
+    task: orm.Mapped["Task"] = orm.relationship(
         back_populates="task_labels", init=False
     )
     label: orm.Mapped["Label"] = orm.relationship(
         back_populates="task_labels", init=False
     )
-    added_by: orm.Mapped["User | None"] = orm.relationship(  # noqa: F821
-        init=False
-    )
+    added_by: orm.Mapped["User | None"] = orm.relationship(init=False)
 
 
 # Both ends: an admin can link a task to another organization's label.

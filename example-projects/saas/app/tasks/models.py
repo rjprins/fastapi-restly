@@ -1,7 +1,7 @@
 """Task model belonging to a project."""
 
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey, Integer, orm
@@ -20,8 +20,12 @@ from ..models import (
 from ..projects.models import Project
 from ..users.roles import UserRole
 
+if TYPE_CHECKING:
+    from ..labels.models import TaskLabel
+    from ..users.models import User
 
-class IntEnumType(TypeDecorator):
+
+class IntEnumType(TypeDecorator[Any]):
     """Store an IntEnum as a plain INTEGER column, returning the enum on load.
 
     SQLAlchemy's default Enum type stores values as strings (by name), which
@@ -40,8 +44,9 @@ class IntEnumType(TypeDecorator):
 
     def process_bind_param(self, value: Any, dialect: Any) -> int | None:
         if isinstance(value, self.enum_class):
-            return int(value)
-        return value
+            return int(value.value)
+        stored: int | None = value
+        return stored
 
     def process_result_value(self, value: Any, dialect: Any) -> Enum | None:
         if value is not None:
@@ -108,10 +113,10 @@ class Task(AuditStamped, SoftDeletable, fr.TimestampsMixin, fr.IDBase):
     )
 
     # Relationships
-    project: orm.Mapped["Project"] = orm.relationship(  # noqa: F821
+    project: orm.Mapped["Project"] = orm.relationship(
         back_populates="tasks", init=False
     )
-    assignee: orm.Mapped["User | None"] = orm.relationship(  # noqa: F821
+    assignee: orm.Mapped["User | None"] = orm.relationship(
         back_populates="assigned_tasks",
         init=False,
         # Multiple FKs from Task → User now exist (assignee_id +
@@ -126,7 +131,7 @@ class Task(AuditStamped, SoftDeletable, fr.TimestampsMixin, fr.IDBase):
         back_populates="parent", init=False, default_factory=list
     )
     # passive_deletes: the database removes the links (see TaskLabel).
-    task_labels: orm.Mapped[list["TaskLabel"]] = orm.relationship(  # noqa: F821
+    task_labels: orm.Mapped[list["TaskLabel"]] = orm.relationship(
         back_populates="task",
         init=False,
         default_factory=list,

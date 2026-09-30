@@ -1,11 +1,17 @@
 """User model with organization membership and role."""
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy import orm
 
 import fastapi_restly as fr
 
 from ..models import AuditStamped, SoftDeletable, TenantOwned
 from .roles import UserRole
+
+if TYPE_CHECKING:
+    from ..organizations.models import Organization
+    from ..tasks.models import Task
 
 
 class User(TenantOwned, AuditStamped, SoftDeletable, fr.TimestampsMixin, fr.IDBase):
@@ -30,10 +36,10 @@ class User(TenantOwned, AuditStamped, SoftDeletable, fr.TimestampsMixin, fr.IDBa
     salary: orm.Mapped[int | None] = orm.mapped_column(default=None)
 
     # Relationships
-    organization: orm.Mapped["Organization"] = orm.relationship(  # noqa: F821
+    organization: orm.Mapped["Organization"] = orm.relationship(
         back_populates="users", init=False
     )
-    assigned_tasks: orm.Mapped[list["Task"]] = orm.relationship(  # noqa: F821
+    assigned_tasks: orm.Mapped[list["Task"]] = orm.relationship(
         back_populates="assignee",
         default_factory=list,
         # Pinned to assignee_id because Task now also has created_by_id /

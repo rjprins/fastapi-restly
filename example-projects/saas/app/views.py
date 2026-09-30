@@ -27,17 +27,17 @@ AsyncRestView directly. Prefixes from each class in the MRO are concatenated,
 so adding a version prefix to AuthenticatedView (e.g. ``prefix = "/api/v1"``)
 would automatically update each of those routes::
 
-    class AuthenticatedView(fr.AsyncRestView):
+    class AuthenticatedView(fr.AsyncRestView[ModelT]):
         prefix = "/api/v1"          # shared namespace
 
-    class ProjectView(AuthenticatedView):
+    class ProjectView(AuthenticatedView[Project]):
         prefix = "/projects"         # → /api/v1/projects
 """
 
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
 
 import fastapi
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -63,8 +63,14 @@ def check_api_key(request: fastapi.Request) -> None:
     pass  # Always passes in this example; replace with real auth logic
 
 
-class AuthenticatedView(fr.AsyncRestView):
+ModelT = TypeVar("ModelT")
+
+
+class AuthenticatedView(fr.AsyncRestView[ModelT]):
     """Base for every view that needs an identity.
+
+    Generic in the model, so a subclass that names it
+    (``AuthenticatedView[Project]``) gets typed loads and saves.
 
     It binds the identity. It does not restrict rows to the tenant: the
     session listener in ``app.models`` does that, under every view.

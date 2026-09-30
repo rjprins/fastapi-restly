@@ -1,12 +1,17 @@
 """Project model belonging to an organization."""
 
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import orm
 
 import fastapi_restly as fr
 
 from ..models import AuditStamped, SoftDeletable, TenantOwned
+
+if TYPE_CHECKING:
+    from ..organizations.models import Organization
+    from ..tasks.models import Task
 
 
 class ProjectStatus(str, Enum):
@@ -38,10 +43,10 @@ class Project(TenantOwned, AuditStamped, SoftDeletable, fr.TimestampsMixin, fr.I
     total_story_points: orm.Mapped[int] = orm.mapped_column(default=0)
 
     # Relationships
-    organization: orm.Mapped["Organization"] = orm.relationship(  # noqa: F821
+    organization: orm.Mapped["Organization"] = orm.relationship(
         back_populates="projects", init=False
     )
-    tasks: orm.Mapped[list["Task"]] = orm.relationship(  # noqa: F821
+    tasks: orm.Mapped[list["Task"]] = orm.relationship(
         back_populates="project", default_factory=list, cascade="all, delete-orphan"
     )
 

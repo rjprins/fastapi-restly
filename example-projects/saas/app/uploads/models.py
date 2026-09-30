@@ -14,6 +14,7 @@ The flow needs two flush points with mutation in between.
 """
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey, orm
@@ -22,6 +23,9 @@ import fastapi_restly as fr
 
 from ..current import Current
 from ..models import TenantOwned, restrict_to_tenant, tenant_is_admin, tenant_org_id
+
+if TYPE_CHECKING:
+    from ..organizations.models import Organization
 
 
 class Upload(TenantOwned, fr.TimestampsMixin, fr.IDBase):
@@ -37,7 +41,7 @@ class Upload(TenantOwned, fr.TimestampsMixin, fr.IDBase):
     completed_at: orm.Mapped[datetime | None] = orm.mapped_column(default=None)
     line_count: orm.Mapped[int] = orm.mapped_column(default=0)
 
-    organization: orm.Mapped["Organization"] = orm.relationship(  # noqa: F821
+    organization: orm.Mapped["Organization"] = orm.relationship(
         back_populates="uploads", init=False
     )
     lines: orm.Mapped[list["UploadLine"]] = orm.relationship(
