@@ -33,5 +33,6 @@ import fastapi_restly as fr
 api/index
 api_details
 technical_details
+known_issues
 changelog
 ```
