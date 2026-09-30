@@ -58,6 +58,29 @@ def sync_client(sync_db) -> Iterator[RestlyTestClient]:
     yield RestlyTestClient(app)
 
 
+@pytest.mark.parametrize("wrap_default", [False, True], ids=["direct", "lambda"])
+def test_dataclass_defaults_read_the_flush_binding(sync_db, wrap_default):
+    Ctx, Note, _ = _define("/notes", wrap_default=wrap_default)
+    note = Note(title="before binding")
+    explicit = Note(title="explicit", created_by_id=41, updated_by_id=42)
+    assert note.created_by_id is None
+    assert note.updated_by_id is None
+
+    engine, make_session = sync_db
+    Note.metadata.create_all(engine)
+    with make_session() as session:
+        session.add_all([note, explicit])
+        with Ctx.bind(user_id=7):
+            session.flush()
+        assert (note.created_by_id, note.updated_by_id) == (7, 7)
+        assert (explicit.created_by_id, explicit.updated_by_id) == (41, 42)
+
+        note.title = "updated"
+        with Ctx.bind(user_id=9):
+            session.flush()
+        assert (note.created_by_id, note.updated_by_id) == (7, 9)
+
+
 def _create_sync_tables():
     fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
 
@@ -70,13 +93,15 @@ def _define(prefix: str, *, wrap_default: bool):
 
     class Note(fr.IDBase):
         title: Mapped[str]
-        # default=None is the constructor default on a dataclass base; the
-        # insert-time callable goes in insert_default
+        # The factory supplies the constructor default without also setting a
+        # column default, which would conflict with insert_default on 2.1.
         created_by_id: Mapped[int | None] = mapped_column(
-            default=None, insert_default=read_user_id
+            default_factory=lambda: None, insert_default=read_user_id
         )
         updated_by_id: Mapped[int | None] = mapped_column(
-            default=None, insert_default=read_user_id, onupdate=read_user_id
+            default_factory=lambda: None,
+            insert_default=read_user_id,
+            onupdate=read_user_id,
         )
 
     class NoteSchema(fr.IDSchema):

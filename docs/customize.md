@@ -381,9 +381,15 @@ A field the server owns (an audit id, a tenant id) is a column default that read
 class Article(fr.TimestampsMixin, fr.IDBase):
     title: Mapped[str]
     created_by_id: Mapped[int | None] = mapped_column(
-        ForeignKey("user.id"), default=None, insert_default=lambda: Current.user_id()
+        ForeignKey("user.id"),
+        default_factory=lambda: None,
+        insert_default=lambda: Current.user_id(),
     )
 ```
+
+`default_factory` makes the constructor argument optional without reading the
+context. `insert_default` reads it when the row is inserted. SQLAlchemy 2.1
+rejects combining `default` with `insert_default`.
 
 A payload value wins over a default, so keep the field `fr.ReadOnly` on the schema. Stamping from the view instead, in `create`, only covers that verb: a `create` override does not call `super()`, and the free `fr.objects` helpers never see the view. See [Compose Views with Mixins](howto_compose_views_with_mixins.md) for the tenant, audit, and soft-delete pieces the SaaS example ships.
 
