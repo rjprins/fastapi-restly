@@ -961,6 +961,11 @@ class View:
     tags: ClassVar[Iterable[str | Enum] | None] = None
     dependencies: ClassVar[Any] = None
     responses: ClassVar[dict[int | str, dict[str, Any]]] = {}
+    #: FastAPI route keyword arguments keyed by endpoint method name or
+    #: ``ViewRoute``. These override decorator metadata without replacing the
+    #: endpoint method. A subclass inherits this mapping unless it declares
+    #: its own, which replaces it.
+    route_options: ClassVar[Mapping[str | ViewRoute, Mapping[str, Any]]] = {}
 
     if TYPE_CHECKING:
         # include_view replaces __init__: each injected attribute becomes a
@@ -2238,6 +2243,12 @@ def _get_all_parent_endpoints(view_cls: type[View]) -> dict[str, Callable]:
 
 
 def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
+    for name in view_cls.route_options:
+        if not _is_route_name_in_lineage(view_cls, name):
+            raise RestlyConfigurationError(
+                f"{name!r} is not a route in {view_cls.__name__}.route_options"
+            )
+
     # Concatenate prefixes defined at each level of the class hierarchy (base → derived).
     prefix = "".join(
         c.__dict__["prefix"] for c in reversed(view_cls.mro()) if "prefix" in c.__dict__
@@ -2251,14 +2262,33 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
     )
 
     # Find all endpoint functions in this class and add them to the router
-    for attr in view_cls.__dict__.values():
+    for name, attr in view_cls.__dict__.items():
         if not hasattr(attr, "_api_route_args"):
             continue
         endpoint = attr
         path, route_kwargs = endpoint._api_route_args
+        defaults = {}
+        if issubclass(view_cls, BaseRestView) and name in _CRUD_ROUTE_METADATA:
+            route_name, summary = _CRUD_ROUTE_METADATA[name]
+            defaults = {"name": route_name, "summary": summary}
+        route_kwargs = {
+            **defaults,
+            **route_kwargs,
+            **view_cls.route_options.get(name, {}),
+        }
         _add_api_route(api_router, view_cls, path, endpoint, route_kwargs)
 
     return api_router
+
+
+_CRUD_ROUTE_METADATA = {
+    "get_many_endpoint": ("get_many", "List"),
+    "get_one_endpoint": ("get_one", "Retrieve"),
+    "create_endpoint": ("create", "Create"),
+    "update_endpoint": ("update", "Update"),
+    "delete_endpoint": ("delete", "Delete"),
+    "put": ("put", "Update (PUT)"),
+}
 
 
 def _get_router_tags(view_cls: type[View], prefix: str) -> list[str | Enum]:

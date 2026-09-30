@@ -160,6 +160,7 @@ Configure the class according to the contract the resource needs:
 | Change page limits | Set {attr}`default_page_size <fastapi_restly.views.BaseRestView.default_page_size>` and {attr}`max_page_size <fastapi_restly.views.BaseRestView.max_page_size>` |
 | Accept a view-specific list query key | Add it to {attr}`extra_query_params <fastapi_restly.views.BaseRestView.extra_query_params>` |
 | Apply FastAPI metadata or dependencies to every route | Set {attr}`tags <fastapi_restly.views.View.tags>`, {attr}`responses <fastapi_restly.views.View.responses>`, or {attr}`dependencies <fastapi_restly.views.View.dependencies>` |
+| Set a route name, summary, or operation ID | Set {attr}`route_options <fastapi_restly.views.View.route_options>` as shown in [OpenAPI customization](#default-route-metadata) |
 | Use another session dependency | Override the `session` annotation with `Annotated[..., Depends(...)]` |
 
 [Behavior and Configuration Reference](api_details.md) lists the exact

@@ -96,6 +96,7 @@ class View:
     tags: ClassVar[Iterable[str | Enum] | None] = None
     dependencies: ClassVar[Any] = None
     responses: ClassVar[dict[int | str, dict[str, Any]]] = {}
+    route_options: ClassVar[Mapping[str | ViewRoute, Mapping[str, Any]]] = {}
 
     @classmethod
     def before_include_view(cls): ...

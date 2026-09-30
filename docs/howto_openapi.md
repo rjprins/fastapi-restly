@@ -7,8 +7,8 @@ customization points.
 ## Per-view metadata
 
 To apply OpenAPI metadata across a whole view, set the
-{attr}`tags <fastapi_restly.views.View.tags>`, {attr}`responses <fastapi_restly.views.View.responses>`, and {attr}`dependencies <fastapi_restly.views.View.dependencies>` class attributes;
-they exist on every view and apply to all of its routes, default and custom:
+{attr}`tags <fastapi_restly.views.View.tags>`, {attr}`responses <fastapi_restly.views.View.responses>`, and {attr}`dependencies <fastapi_restly.views.View.dependencies>` class attributes.
+They exist on every view and apply to all of its routes, default and custom:
 
 ```python
 @fr.include_view(app)
@@ -20,10 +20,72 @@ class InvoiceView(fr.AsyncRestView):
     schema = InvoiceRead
 ```
 
+(default-route-metadata)=
+## Default route names and operation IDs
+
+CRUD routes use these FastAPI route names and OpenAPI summaries:
+
+| Endpoint method | Route name | Summary |
+|---|---|---|
+| `get_many_endpoint` | `get_many` | List |
+| `get_one_endpoint` | `get_one` | Retrieve |
+| `create_endpoint` | `create` | Create |
+| `update_endpoint` | `update` | Update |
+| `delete_endpoint` | `delete` | Delete |
+| React Admin `put` | `put` | Update (PUT) |
+
+FastAPI's default operation ID combines the route name, URL path, and HTTP
+method. For a view at `/items`, the list ID is `get_many_items_get` and the
+create ID is `create_items_post`. Renaming the view class does not change
+these IDs. Mounting it under another prefix changes the path part of the ID.
+
+Applications can supply FastAPI's
+[`generate_unique_id_function`](https://fastapi.tiangolo.com/advanced/generate-clients/#custom-generate-unique-id-function).
+It receives the route names above, so a generator based on tag and name can
+produce IDs such as `items-get_many`.
+
+Regenerate clients when adopting these defaults. To preserve an existing
+operation ID, set `operation_id` in the route's options.
+
+## Per-route metadata without replacing a method
+
+Set {attr}`route_options <fastapi_restly.views.View.route_options>` to pass
+FastAPI route keyword arguments to an existing endpoint method:
+
+```python
+class InvoiceView(fr.AsyncRestView):
+    prefix = "/invoices"
+    model = Invoice
+    schema = InvoiceRead
+    route_options = {
+        fr.ViewRoute.GET_MANY: {
+            "name": "list_invoices",
+            "summary": "List invoices",
+            "operation_id": "billing_list_invoices",
+        },
+        "create_endpoint": {"summary": "Create an invoice"},
+    }
+```
+
+Keys are endpoint method names or {class}`ViewRoute
+<fastapi_restly.views.ViewRoute>` values. Use `"put"` for React Admin's PUT
+route and the method name for a custom route. Values accept the same keyword
+arguments as a route decorator, except its path. An unknown method name raises
+{class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
+at registration. Options for an excluded route are ignored.
+
+The options override decorator metadata, which overrides the defaults. A
+subclass inherits the mapping. Declaring a new mapping on the subclass
+replaces it, without merging entries from the parent.
+
+Default route names repeat across resources. Set distinct `name` values when
+using `app.url_path_for()` to reverse routes from several views. Explicit
+`operation_id` values must be unique across the application's OpenAPI schema.
+
 ## Per-route metadata on custom routes
 
-To document a custom route, pass keyword arguments to its route decorator;
-the decorators forward them to FastAPI's `add_api_route()`, so
+To document a custom route, pass keyword arguments to its route decorator.
+The decorators forward them to FastAPI's `add_api_route()`, so
 custom actions document themselves like any FastAPI endpoint:
 
 ```python
