@@ -1,10 +1,12 @@
 name: Latest versions
 
-# Test the newest dependency resolutions on pull requests and every week.
+# Test the newest dependency resolutions on pushes to main and every week.
 # The regular CI workflow also tests locked and minimum dependency versions.
 
 on:
-  pull_request:
+  push:
+    branches:
+      - main
   schedule:
     - cron: "0 6 * * 1" # Mondays 06:00 UTC
   workflow_dispatch:

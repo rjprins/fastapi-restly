@@ -22,7 +22,11 @@ from sqlalchemy.types import UserDefinedType
 
 import fastapi_restly as fr
 import fastapi_restly.schemas as fr_schemas
-from fastapi_restly.schemas._base import _model_id_type
+from fastapi_restly.schemas._base import (
+    _is_unresolved,
+    _model_id_type,
+    _own_annotations,
+)
 
 
 def test_unannotated_columns_get_fields(client):
@@ -141,7 +145,6 @@ def test_deferred_annotation_naming_an_undefined_class(client):
 
     # The usual cross-module layout: Child is imported only under
     # TYPE_CHECKING, so the name is undefined when annotations evaluate.
-    # A plain base, since SQLAlchemy's dataclass transform evaluates them too.
     parent_namespace = {
         "Base": Base,
         "Mapped": Mapped,
@@ -180,3 +183,47 @@ def test_deferred_annotation_naming_an_undefined_class(client):
     schema = fr_schemas.create_schema_from_model(Parent, include_relationships=True)
     children = schema.model_fields["children"].annotation
     assert Child.__name__ in repr(children)
+
+
+@pytest.mark.skipif(sys.version_info < (3, 14), reason="Deferred annotations need 3.14")
+def test_deferred_annotation_naming_an_undefined_class_on_a_dataclass_base(client):
+    # Below SQLAlchemy 2.0.45, defining Writer raises NameError on 3.14.
+    # Declared in a function so the registry cleanup treats it as test-local.
+    writer_namespace = {
+        "fr": fr,
+        "Mapped": Mapped,
+        "relationship": relationship,
+        "__name__": __name__,
+    }
+    exec(
+        "def declare():\n"
+        "    class Writer(fr.IDBase):\n"
+        "        name: Mapped[str]\n"
+        "        novels: Mapped[list[Novel]] = relationship(\n"
+        "            back_populates='writer', default_factory=list\n"
+        "        )\n"
+        "    return Writer\n",
+        writer_namespace,
+    )
+    Writer = writer_namespace["declare"]()
+
+    class Novel(fr.IDBase):
+        title: Mapped[str]
+        writer_id: Mapped[int] = mapped_column(ForeignKey("writer.id"))
+        writer: Mapped[Writer] = relationship(back_populates="novels", default=None)
+
+    # SQLAlchemy leaves Novel behind as a forward reference.
+    assert _is_unresolved(_own_annotations(Writer)["novels"])
+
+    assert _model_id_type(Writer) is int
+
+    @fr.include_view(client.app)
+    class WriterView(fr.AsyncRestView):
+        prefix = "/writers"
+        model = Writer
+
+    assert set(WriterView.schema.model_fields) == {"id", "name"}
+
+    schema = fr_schemas.create_schema_from_model(Writer, include_relationships=True)
+    novels = schema.model_fields["novels"].annotation
+    assert Novel.__name__ in repr(novels)
