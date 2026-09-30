@@ -548,6 +548,11 @@ and this project adheres to <a class="reference external" href="https://semver.o
 <li><p>The minimum SQLAlchemy version is 2.0.45, up from 2.0.22. On Python 3.14,
 earlier versions raise <code class="docutils literal notranslate"><span class="pre">NameError</span></code> for a mapped dataclass, such as a model on
 <code class="docutils literal notranslate"><span class="pre">fr.IDBase</span></code>, whose relationship names a class imported under <code class="docutils literal notranslate"><span class="pre">TYPE_CHECKING</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.ContextParam</span></code> no longer inherits SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">ColumnOperators</span></code>, so it
+has no <code class="docutils literal notranslate"><span class="pre">in_()</span></code>, <code class="docutils literal notranslate"><span class="pre">like()</span></code> or other operator methods. Using an operator on a
+member raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> where it raised <code class="docutils literal notranslate"><span class="pre">NotImplementedError</span></code>. An ordering
+comparison with the member first, such as <code class="docutils literal notranslate"><span class="pre">Current.limit</span> <span class="pre">&lt;</span> <span class="pre">Item.size</span></code>, now
+builds the same SQL as the column-first form.</p></li>
 </ul>
 </section>
 <section id="fixed">
