@@ -70,3 +70,34 @@ def test_response_serialization_runs_through_fastapi_response_model(client):
     assert payload["email"] == "ada@example.com"
     assert payload["name"] == "user:Ada"
     assert "password" not in payload
+
+
+def test_to_response_schema_with_a_narrowed_model_validate():
+    # SQLModel overrides model_validate without by_alias and by_name.
+    class NarrowSchema(pydantic.BaseModel):
+        model_config = pydantic.ConfigDict(from_attributes=True)
+
+        @classmethod
+        def model_validate(cls, obj, *, strict=None, from_attributes=None):  # type: ignore[override]
+            return super().model_validate(
+                obj, strict=strict, from_attributes=from_attributes
+            )
+
+    class NarrowGadgetRead(NarrowSchema):
+        id: int
+        display_name: str = pydantic.Field(alias="displayName")
+
+    class NarrowGadget(fr.IDBase):
+        display_name: Mapped[str]
+
+    class NarrowGadgetView(fr.AsyncRestView):
+        model = NarrowGadget
+        schema = NarrowGadgetRead
+
+    gadget = NarrowGadget(display_name="Widget")
+    gadget.id = 1
+
+    schema_obj = NarrowGadgetView().to_response_schema(gadget)
+
+    assert isinstance(schema_obj, NarrowGadgetRead)
+    assert schema_obj.model_dump(by_alias=True) == {"id": 1, "displayName": "Widget"}

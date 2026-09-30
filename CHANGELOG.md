@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A view whose `schema` is a SQLModel data class returns responses. SQLModel
+  narrows the signature of `model_validate`, so serializing a row raised
+  `TypeError` and every route answered 500.
 - A view's `model` accepts any SQLAlchemy mapped class under mypy and pyright,
   so a SQLModel table or an imperatively mapped class needs no `type: ignore`.
   The same holds for `ClauseNamespace.model`, the `fr.objects` helpers, and

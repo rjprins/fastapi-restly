@@ -812,6 +812,13 @@ def _create_response_validation_schema(
     )
 
 
+@functools.cache
+def _response_validation_adapter(
+    schema_cls: type[pydantic.BaseModel],
+) -> pydantic.TypeAdapter[pydantic.BaseModel]:
+    return pydantic.TypeAdapter(_create_response_validation_schema(schema_cls))
+
+
 def _build_relationship_loader_options(
     model_cls: type[Any],
     schema_cls: type[pydantic.BaseModel],
@@ -1340,10 +1347,11 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             elif field_info.alias and hasattr(obj, field_info.alias):
                 payload[field_name] = getattr(obj, field_info.alias)
 
-        response_schema = _create_response_validation_schema(self.schema)
+        # through the adapter, not model_validate: a schema may narrow that
+        # classmethod's signature (SQLModel drops by_alias and by_name)
+        adapter = _response_validation_adapter(self.schema)
         return cast(
-            SchemaT,
-            response_schema.model_validate(payload, by_alias=False, by_name=True),
+            SchemaT, adapter.validate_python(payload, by_alias=False, by_name=True)
         )
 
     @staticmethod
