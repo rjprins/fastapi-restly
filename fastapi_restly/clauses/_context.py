@@ -22,7 +22,6 @@ from typing import (
 from sqlalchemy import bindparam
 from sqlalchemy.sql.base import _NoArg
 from sqlalchemy.sql.expression import BindParameter
-from sqlalchemy.sql.operators import ColumnOperators
 
 if sys.version_info >= (3, 14):
     import annotationlib
@@ -161,8 +160,7 @@ class ContextNamespace:
         return "\n".join(lines)
 
 
-# SQLAlchemy 2.0.22 requires ColumnOperators for operands inside IN lists.
-class ContextParam(Generic[_T], ColumnOperators):
+class ContextParam(Generic[_T]):
     """One value of a context: bound around a unit of work, read anywhere.
 
     Declared in a ContextNamespace (``tenant_id: ContextParam[UUID]``),
@@ -241,14 +239,14 @@ class ContextParam(Generic[_T], ColumnOperators):
     # SQLAlchemy's MappedColumn compares its option tuple against defaults:
     # default=Current.user_id reaches _NoArg.NO_ARG even without dataclasses.
     # Exempt only that private sentinel by identity, leaving other comparisons
-    # guarded. Its result is a bool, not ColumnOperators' SQL expression.
+    # guarded.
     # https://github.com/sqlalchemy/sqlalchemy/blob/rel_2_0_41/lib/sqlalchemy/orm/properties.py#L561-L568
-    def __eq__(self, other: object) -> bool:  # type: ignore[override]
+    def __eq__(self, other: object) -> bool:
         if other is _NoArg.NO_ARG:
             return False
         raise self._not_its_value("==")
 
-    def __ne__(self, other: object) -> bool:  # type: ignore[override]
+    def __ne__(self, other: object) -> bool:
         if other is _NoArg.NO_ARG:
             return True
         raise self._not_its_value("!=")

@@ -14,6 +14,7 @@ import pytest
 import sqlalchemy
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 from sqlalchemy.sql.base import _NoArg
+from sqlalchemy.sql.operators import ColumnOperators
 
 import fastapi_restly as fr
 
@@ -208,6 +209,55 @@ def test_a_member_still_builds_sql_from_the_column_side(condition, expected):
             assert set(session.scalars(query)) == expected
     finally:
         engine.dispose()
+
+
+@pytest.mark.parametrize(
+    "member_first, column_first",
+    [
+        (lambda: Context.tenant_id < Thing.id, lambda: Thing.id > Context.tenant_id),
+        (lambda: Context.tenant_id <= Thing.id, lambda: Thing.id >= Context.tenant_id),
+        (lambda: Context.tenant_id > Thing.id, lambda: Thing.id < Context.tenant_id),
+        (lambda: Context.tenant_id >= Thing.id, lambda: Thing.id <= Context.tenant_id),
+    ],
+    ids=["lt", "le", "gt", "ge"],
+)
+def test_an_ordering_comparison_with_the_member_first_is_the_column_side_one(
+    member_first, column_first
+):
+    # the member defines no ordering, so Python hands the comparison to the column
+    for tenant_id in (4, 9):
+        with Context.bind(tenant_id=tenant_id):
+            built = fr.where_clause(member_first())().compile()
+            wanted = fr.where_clause(column_first())().compile()
+        assert str(built) == str(wanted)
+        assert list(built.params.values()) == [tenant_id]
+
+
+@pytest.mark.parametrize(
+    "use",
+    [
+        lambda: Context.tenant_id < 1,
+        lambda: 1 < Context.tenant_id,
+        lambda: Context.tenant_id + 1,
+        lambda: 1 + Context.tenant_id,
+        lambda: -Context.tenant_id,
+        lambda: Context.tenant_id & Context.tenant_id,
+        lambda: 1 in Context.tenant_id,
+        lambda: Context.tenant_id[0],
+    ],
+    ids=["lt", "reflected-lt", "add", "reflected-add", "neg", "and", "in", "item"],
+)
+def test_a_member_has_no_operators_of_its_own(use):
+    with Context.bind(tenant_id=1):
+        with pytest.raises(TypeError):
+            use()
+
+
+def test_a_member_has_no_sql_operator_methods():
+    # SQL is built from the column side; the member is only an operand
+    assert not isinstance(Context.tenant_id, ColumnOperators)
+    for name in ("in_", "like", "is_", "desc", "operate"):
+        assert not hasattr(Context.tenant_id, name)
 
 
 def test_a_member_stays_hashable():

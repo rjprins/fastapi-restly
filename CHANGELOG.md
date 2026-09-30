@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The minimum SQLAlchemy version is 2.0.45, up from 2.0.22. On Python 3.14,
   earlier versions raise `NameError` for a mapped dataclass, such as a model on
   `fr.IDBase`, whose relationship names a class imported under `TYPE_CHECKING`.
+- `fr.ContextParam` no longer inherits SQLAlchemy's `ColumnOperators`, so it
+  has no `in_()`, `like()` or other operator methods. Using an operator on a
+  member raises `TypeError` where it raised `NotImplementedError`. An ordering
+  comparison with the member first, such as `Current.limit < Item.size`, now
+  builds the same SQL as the column-first form.
 
 ### Fixed
 
