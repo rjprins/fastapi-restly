@@ -822,6 +822,11 @@ in its body:</p>
     <span class="k">return</span> <span class="n">Item</span><span class="o">.</span><span class="n">user_id</span> <span class="o">==</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">()</span>
 </pre></div>
 </div>
+<p>Arithmetic with the member first, such as <code class="docutils literal notranslate"><span class="pre">Current.now</span> <span class="pre">-</span> <span class="pre">Item.created_at</span></code>,
+and a member inside a plain tuple raise <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> when the clause is
+applied: SQLAlchemy would pass the member object to the database as a value.
+Wrap the member with <code class="docutils literal notranslate"><span class="pre">sqlalchemy.type_coerce(Current.now,</span> <span class="pre">DateTime)</span></code>, and
+write a tuple as <code class="docutils literal notranslate"><span class="pre">sqlalchemy.tuple_(...)</span></code>.</p>
 <p>Both forms read the member when the clause is applied: by
 <code class="docutils literal notranslate"><span class="pre">apply_clauses</span></code>, by a view read, by a reference check, or when the clause
 is called. The statement carries the values with it, so it can run after

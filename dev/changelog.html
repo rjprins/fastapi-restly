@@ -566,6 +566,10 @@ SQLAlchemy 2.1’s variadic row types.</p></li>
 preserving optional constructor arguments on SQLAlchemy 2.0 and 2.1.</p></li>
 <li><p>An unknown column type still raises a schema error naming the attribute when
 SQLAlchemy 2.1 reports its Python type as <code class="docutils literal notranslate"><span class="pre">object</span></code>.</p></li>
+<li><p>A context member that SQLAlchemy would bind as a plain value raises
+<code class="docutils literal notranslate"><span class="pre">TypeError</span></code> when the clause is applied, where the database driver used to
+reject it at execution. This covers arithmetic with the member first
+(<code class="docutils literal notranslate"><span class="pre">Current.now</span> <span class="pre">-</span> <span class="pre">Item.created_at</span></code>) and a member inside a plain tuple.</p></li>
 <li><p>Context members work as <code class="docutils literal notranslate"><span class="pre">mapped_column(default=Current.user_id)</span></code> on
 non-dataclass models.</p></li>
 <li><p>A replaced endpoint method keeps its own <code class="docutils literal notranslate"><span class="pre">id</span></code>, <code class="docutils literal notranslate"><span class="pre">schema_obj</span></code>, and return
