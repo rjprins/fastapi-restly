@@ -187,7 +187,9 @@ def _statement_tables(stmt: Select[Any] | Update | Delete) -> set[str]:
     return names
 
 
-_SelectT = TypeVar("_SelectT", bound=Select[Any])
+# Select's row types are tuple-based in 2.0 and variadic in 2.1.
+# The bound accepts any Select while the TypeVar preserves its exact type.
+_SelectT = TypeVar("_SelectT", bound=Select)
 
 
 @overload

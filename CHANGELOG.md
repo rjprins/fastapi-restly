@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Query clauses bind context values on SQLAlchemy 2.1 without calling the
   deprecated expression-level `params()` method.
+- `apply_clauses` preserves the type of a multi-column `Select` with
+  SQLAlchemy 2.1's variadic row types.
 - Server-stamped field examples use `default_factory` with `insert_default`,
   preserving optional constructor arguments on SQLAlchemy 2.0 and 2.1.
 - An unknown column type still raises a schema error naming the attribute when
