@@ -262,7 +262,6 @@ def test_create_all_disposes_the_connection_it_pooled(tmp_path: Path):
     user-supplied engine's pool would resurface on a test's own loop, which is
     how asyncpg fails."""
     from sqlalchemy.ext.asyncio import create_async_engine
-    from sqlalchemy.pool import NullPool
 
     engine = create_async_engine(f"sqlite+aiosqlite:///{tmp_path / 'made.db'}")
     with _isolated_config():
@@ -273,8 +272,7 @@ def test_create_all_disposes_the_connection_it_pooled(tmp_path: Path):
         fr.configure(async_engine=engine)
         configure_tests(base=fr.DataclassBase, create_all=True)
         _create_schema(_current_setup())  # type: ignore[arg-type]
-        # SQLAlchemy 2.0.22 uses NullPool here, which retains no connections.
-        assert isinstance(engine.pool, NullPool) or engine.pool.checkedin() == 0
+        assert engine.pool.checkedin() == 0
 
 
 # ---------------------------------------------------------------------------

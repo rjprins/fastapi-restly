@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
-from sqlalchemy.pool import NullPool, StaticPool
+from sqlalchemy.pool import StaticPool
 
 import fastapi_restly._pytest_fixtures as _fixtures
 import fastapi_restly.pytest_fixtures as exported_fixtures
@@ -393,8 +393,7 @@ async def test_async_scope_closes_a_pool_replaced_by_application_shutdown(tmp_pa
             # it at shutdown, while Restly's outer transaction is still open.
             await async_engine.dispose()
 
-        # SQLAlchemy 2.0.22 uses NullPool here, which retains no connections.
-        assert isinstance(former_pool, NullPool) or former_pool.checkedin() == 0
+        assert former_pool.checkedin() == 0
 
     await async_engine.dispose()
 

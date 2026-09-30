@@ -220,7 +220,7 @@ requires-dist = [
     { name = "pydantic-settings", specifier = ">=2.9.1" },
     { name = "pytest", marker = "extra == 'testing'", specifier = ">=8.3.5" },
     { name = "pytest-asyncio", marker = "extra == 'testing'", specifier = ">=0.24.0" },
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.22" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.45" },
 ]
 provides-extras = ["standard", "testing"]
 

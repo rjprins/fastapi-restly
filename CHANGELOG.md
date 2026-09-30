@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The minimum SQLAlchemy version is 2.0.45, up from 2.0.22. On Python 3.14,
+  earlier versions raise `NameError` for a mapped dataclass, such as a model on
+  `fr.IDBase`, whose relationship names a class imported under `TYPE_CHECKING`.
+
 ### Fixed
 
 - Context members work as `mapped_column(default=Current.user_id)` on
