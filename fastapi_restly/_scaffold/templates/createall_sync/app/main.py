@@ -1,5 +1,6 @@
 """Application factory."""
 
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import fastapi_restly as fr
@@ -24,6 +25,6 @@ def create_app() -> FastAPI:
 
 # Async even for sync views: the ASGI lifespan protocol is async either way.
 @asynccontextmanager
-async def lifespan(_app: FastAPI):
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     fr.db.create_all(fr.DataclassBase)
     yield

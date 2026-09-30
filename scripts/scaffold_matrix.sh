@@ -164,6 +164,7 @@ pyproject.write_text(
         uv run ruff check .
         uv run ruff format --check .
         uv run pyright
+        uv run --with mypy mypy --strict app
         uv run pytest -q
     )
     local status=$?

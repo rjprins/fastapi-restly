@@ -1,5 +1,6 @@
 """Application factory."""
 
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import fastapi_restly as fr
@@ -23,7 +24,7 @@ def create_app() -> FastAPI:
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI):
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     await fr.db.async_create_all(fr.DataclassBase)
     yield
     # An async engine that is never disposed drops its connections rather than
