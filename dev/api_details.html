@@ -1120,6 +1120,10 @@ names are identical between variants.</p>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[dict[int</span> <span class="pre">|</span> <span class="pre">str,</span> <span class="pre">dict[str,</span> <span class="pre">Any]]]</span></code></p></td>
 <td><p>OpenAPI response overrides. <code class="docutils literal notranslate"><span class="pre">View</span></code> defaults to <code class="docutils literal notranslate"><span class="pre">{}</span></code>; <code class="docutils literal notranslate"><span class="pre">BaseRestView</span></code> defaults to <code class="docutils literal notranslate"><span class="pre">{404:</span> <span class="pre">{&quot;description&quot;:</span> <span class="pre">&quot;Not</span> <span class="pre">found&quot;}}</span></code>.</p></td>
 </tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.View.route_options" title="fastapi_restly.views.View.route_options"><code class="xref py py-attr docutils literal notranslate"><span class="pre">route_options</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[Mapping[str</span> <span class="pre">|</span> <span class="pre">ViewRoute,</span> <span class="pre">Mapping[str,</span> <span class="pre">Any]]]</span></code></p></td>
+<td><p>Per-route FastAPI keyword arguments. See <a class="reference internal" href="howto_openapi.html#default-route-metadata"><span class="std std-ref">OpenAPI customization</span></a> for names, operation IDs, and override rules.</p></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -1145,8 +1149,8 @@ names are identical between variants.</p>
 <td><p>Schema for <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> input. Auto-derived by making all writable fields optional and named <code class="docutils literal notranslate"><span class="pre">ModelUpdate</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.model" title="fastapi_restly.views.BaseRestView.model"><code class="xref py py-attr docutils literal notranslate"><span class="pre">model</span></code></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[type[DeclarativeBase]]</span></code></p></td>
-<td><p>The SQLAlchemy model class.</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[type[Any]]</span></code></p></td>
+<td><p>The SQLAlchemy mapped class. A class without a mapper raises at class definition.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.id_type" title="fastapi_restly.views.BaseRestView.id_type"><code class="xref py py-attr docutils literal notranslate"><span class="pre">id_type</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[type</span> <span class="pre">|</span> <span class="pre">None]</span></code></p></td>

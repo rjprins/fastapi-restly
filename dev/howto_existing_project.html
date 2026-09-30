@@ -688,9 +688,10 @@ out). <a class="reference internal" href="api/views.html#fastapi_restly.views.Re
 <span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
 
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">my_get_db</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">AsyncIterator</span><span class="p">[</span><span class="n">AsyncSession</span><span class="p">]:</span>
-    <span class="o">...</span>
-    <span class="k">yield</span> <span class="n">MyAsyncSession</span><span class="p">()</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="n">MyAsyncSession</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">session</span>
 
+<span class="c1"># Before registering routes or including views.</span>
 <span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">session_generator</span><span class="o">=</span><span class="n">my_get_db</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -700,17 +701,48 @@ out). <a class="reference internal" href="api/views.html#fastapi_restly.views.Re
 <span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">my_get_db</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">Session</span><span class="p">]:</span>
-    <span class="o">...</span>
-    <span class="k">yield</span> <span class="n">MySession</span><span class="p">()</span>
+    <span class="k">with</span> <span class="n">MySession</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">session</span>
 
+<span class="c1"># Before registering routes or including views.</span>
 <span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">sync_session_generator</span><span class="o">=</span><span class="n">my_get_db</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The <a class="reference internal" href="howto_testing.html#restly-session"><span class="std std-ref">test fixtures</span></a> clear a configured
-generator for the duration of a test, so the request receives the fixture’s
-isolated session. Configure a sessionmaker (or a database URL) for the tests as
-well, and note that whatever the generator body runs per session does not run
-there.</p>
+<p>Restly resolves the configured generator through FastAPI’s dependency graph.
+An existing <code class="docutils literal notranslate"><span class="pre">Depends(my_get_db)</span></code> in an authentication dependency or route and
+the view’s <code class="docutils literal notranslate"><span class="pre">self.session</span></code> receive the same session within a request. That means
+a user loaded by authentication can be assigned directly to a relationship in
+the view. The generator runs once, with one cleanup, under FastAPI’s normal
+dependency caching. Custom <code class="docutils literal notranslate"><span class="pre">use_cache=False</span></code>, dependency scopes, and security
+scopes follow FastAPI’s own caching rules.</p>
+<p>Configure the generator before registering any route that uses
+<a class="reference internal" href="api/db.html#fastapi_restly.db.SessionDep" title="fastapi_restly.db.SessionDep"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.SessionDep</span></code></a> or
+<a class="reference internal" href="api/db.html#fastapi_restly.db.AsyncSessionDep" title="fastapi_restly.db.AsyncSessionDep"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.AsyncSessionDep</span></code></a>, including plain
+FastAPI routes. FastAPI fixes the
+dependency graph at registration, so setting or replacing that generator later
+raises <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>.
+An explicit <code class="docutils literal notranslate"><span class="pre">session:</span> <span class="pre">Annotated[...,</span> <span class="pre">Depends(reporting_get_db)]</span></code> on a view keeps
+using <code class="docutils literal notranslate"><span class="pre">reporting_get_db</span></code>.</p>
+<p>Sharing also works when Restly owns session creation. Use its public aliases in
+your application’s dependencies and plain routes. This example assumes your
+application supplies <code class="docutils literal notranslate"><span class="pre">User</span></code> and <code class="docutils literal notranslate"><span class="pre">current_user_id()</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">async_engine</span><span class="o">=</span><span class="n">existing_async_engine</span><span class="p">)</span>
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_current_user</span><span class="p">(</span><span class="n">session</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncSessionDep</span><span class="p">):</span>
+    <span class="k">return</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">User</span><span class="p">,</span> <span class="n">current_user_id</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>Views and application dependencies using <code class="docutils literal notranslate"><span class="pre">fr.AsyncSessionDep</span></code> share one session.
+Use <code class="docutils literal notranslate"><span class="pre">fr.SessionDep</span></code> for sync code. Both aliases keep Restly’s uncommitted-changes
+warning, including when used on plain routes.</p>
+<p>The <a class="reference internal" href="howto_testing.html#restly-session"><span class="std std-ref">test fixtures</span></a> override the configured
+generator through <code class="docutils literal notranslate"><span class="pre">app.dependency_overrides</span></code> under rollback isolation. Native
+application dependencies and Restly then share an isolated request session.
+The generator body does not run for requests during those tests. If no factory
+is configured, setup opens the generator to discover its session’s bind.
+Generators needing request arguments require an explicit test engine or
+sessionmaker as well. For your own overrides, use
+<code class="docutils literal notranslate"><span class="pre">app.dependency_overrides[my_get_db]</span> <span class="pre">=</span> <span class="pre">test_get_db</span></code>.</p>
 </section>
 <section id="use-a-custom-session-dependency-on-one-view">
 <h2>Use a Custom Session Dependency on One View<a class="headerlink" href="#use-a-custom-session-dependency-on-one-view" title="Link to this heading">#</a></h2>

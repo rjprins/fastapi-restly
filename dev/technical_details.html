@@ -744,9 +744,14 @@ its own <code class="docutils literal notranslate"><span class="pre">Annotated[.
 <a class="reference internal" href="howto_existing_project.html#use-a-custom-session-dependency-on-one-view"><span class="std std-ref">per-view session wiring</span></a>.
 The async and sync variants have identical endpoint signatures; the only
 difference is that the async variant uses <code class="docutils literal notranslate"><span class="pre">await</span></code> in its process methods.</p>
-<p><code class="docutils literal notranslate"><span class="pre">AsyncSessionDep</span></code> and <code class="docutils literal notranslate"><span class="pre">SessionDep</span></code> use Restly’s built-in session generators.
-Those generators yield a SQLAlchemy session and manage lifecycle: rollback and
-close on exit. They do <strong>not</strong> commit on response. <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> normally owns
+<p><code class="docutils literal notranslate"><span class="pre">AsyncSessionDep</span></code> and <code class="docutils literal notranslate"><span class="pre">SessionDep</span></code> wrap a session source as a FastAPI
+sub-dependency. The source is either Restly’s built-in generator or the custom
+generator passed to <a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">configure()</span></code></a> before
+route registration. Making that source a dependency lets FastAPI share its
+cached session with the application’s <code class="docutils literal notranslate"><span class="pre">Depends(get_db)</span></code>, without rewriting
+view annotations. The wrapper checks for uncommitted changes before the source
+cleans up. The built-in generators roll back and close on exit.
+They do <strong>not</strong> commit on response. <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> normally owns
 the commit and runs
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.before_action_commit" title="fastapi_restly.views.RestView.before_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_action_commit</span></code></a>,
 then the commit itself, then

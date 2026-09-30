@@ -545,6 +545,19 @@ and this project adheres to <a class="reference external" href="https://semver.o
 <section id="changed">
 <h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>Default CRUD route names are <code class="docutils literal notranslate"><span class="pre">get_many</span></code>, <code class="docutils literal notranslate"><span class="pre">get_one</span></code>, <code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">delete</span></code>, with summaries such as “List” and “Create”. React Admin’s PUT route
+is named <code class="docutils literal notranslate"><span class="pre">put</span></code>. Default operation IDs use the resource path and action:
+<code class="docutils literal notranslate"><span class="pre">items_list</span></code>, <code class="docutils literal notranslate"><span class="pre">items_get</span></code>, <code class="docutils literal notranslate"><span class="pre">items_create</span></code>, <code class="docutils literal notranslate"><span class="pre">items_update</span></code>, and <code class="docutils literal notranslate"><span class="pre">items_delete</span></code>
+for <code class="docutils literal notranslate"><span class="pre">/items</span></code>. Router prefixes remain in the ID, such as <code class="docutils literal notranslate"><span class="pre">v1_items_list</span></code>.
+Explicit operation IDs and application-supplied generators take precedence.
+Regenerate clients or set explicit operation IDs to keep existing names.
+Set <code class="docutils literal notranslate"><span class="pre">route_options</span></code> on a view to override a route’s name, summary, operation
+ID, or other FastAPI route keyword arguments without replacing its endpoint
+method.</p></li>
+<li><p>Configure custom session generators before registering routes that use
+<code class="docutils literal notranslate"><span class="pre">SessionDep</span></code> or <code class="docutils literal notranslate"><span class="pre">AsyncSessionDep</span></code>. Setting or replacing a generator after
+registration raises a configuration error.</p></li>
 <li><p>The minimum SQLAlchemy version is 2.0.45, up from 2.0.22. On Python 3.14,
 earlier versions raise <code class="docutils literal notranslate"><span class="pre">NameError</span></code> for a mapped dataclass, such as a model on
 <code class="docutils literal notranslate"><span class="pre">fr.IDBase</span></code>, whose relationship names a class imported under <code class="docutils literal notranslate"><span class="pre">TYPE_CHECKING</span></code>.</p></li>
@@ -553,11 +566,48 @@ has no <code class="docutils literal notranslate"><span class="pre">in_()</span>
 member raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> where it raised <code class="docutils literal notranslate"><span class="pre">NotImplementedError</span></code>. An ordering
 comparison with the member first, such as <code class="docutils literal notranslate"><span class="pre">Current.limit</span> <span class="pre">&lt;</span> <span class="pre">Item.size</span></code>, now
 builds the same SQL as the column-first form.</p></li>
+<li><p>A create or update schema derived from <code class="docutils literal notranslate"><span class="pre">schema</span></code> leaves out a primary key
+the server generates, even when the schema does not mark it <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>.
+Generated means an autoincrement column, a column default, or a dataclass
+field with <code class="docutils literal notranslate"><span class="pre">init=False</span></code>. A plain <code class="docutils literal notranslate"><span class="pre">id:</span> <span class="pre">int</span></code> field used to stay in both
+schemas: create required it and the client chose the key. A natural key
+without a default stays writable. To let clients supply a generated key,
+declare <code class="docutils literal notranslate"><span class="pre">schema_create</span></code>.</p></li>
 </ul>
 </section>
 <section id="fixed">
 <h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>Building a view by hand, such as <code class="docutils literal notranslate"><span class="pre">TaskView(session=...,</span> <span class="pre">request=...)</span></code>,
+type-checks. mypy used to report the keyword arguments as unexpected.</p></li>
+<li><p>Type checkers see that models on <code class="docutils literal notranslate"><span class="pre">fr.DataclassBase</span></code> and <code class="docutils literal notranslate"><span class="pre">fr.IDBase</span></code> are
+keyword-only. mypy and pyright used to reject a column without a default
+after one with a default, although it works at runtime.</p></li>
+<li><p>Reference types work with a mapped class that does not subclass
+<code class="docutils literal notranslate"><span class="pre">DeclarativeBase</span></code>: a SQLModel table, a <code class="docutils literal notranslate"><span class="pre">registry.mapped</span></code> or
+<code class="docutils literal notranslate"><span class="pre">declarative_base()</span></code> class, or an imperative mapping. Reading an <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> or
+nested schema over such a relationship used to answer 500, and the OpenAPI
+<code class="docutils literal notranslate"><span class="pre">x-resource-ref</span></code> was missing. <code class="docutils literal notranslate"><span class="pre">IDSchema[Model]</span></code>, <code class="docutils literal notranslate"><span class="pre">IDRef[Model]</span></code> and
+<code class="docutils literal notranslate"><span class="pre">MustExist[pk,</span> <span class="pre">Model]</span></code> also accept such a class under mypy and pyright.</p></li>
+<li><p>A view whose <code class="docutils literal notranslate"><span class="pre">schema</span></code> is a SQLModel data class returns responses. SQLModel
+narrows the signature of <code class="docutils literal notranslate"><span class="pre">model_validate</span></code>, so serializing a row raised
+<code class="docutils literal notranslate"><span class="pre">TypeError</span></code> and every route answered 500.</p></li>
+<li><p>A view’s <code class="docutils literal notranslate"><span class="pre">model</span></code> accepts any SQLAlchemy mapped class under mypy and pyright,
+so a SQLModel table or an imperatively mapped class needs no <code class="docutils literal notranslate"><span class="pre">type:</span> <span class="pre">ignore</span></code>.
+The same holds for <code class="docutils literal notranslate"><span class="pre">ClauseNamespace.model</span></code>, the <code class="docutils literal notranslate"><span class="pre">fr.objects</span></code> helpers, and
+<code class="docutils literal notranslate"><span class="pre">fr.resolve_scope</span></code>, which used to raise <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> for such a class. A view
+whose <code class="docutils literal notranslate"><span class="pre">model</span></code> has no mapper now raises <code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code> at class
+definition.</p></li>
+<li><p>Subclassing <code class="docutils literal notranslate"><span class="pre">fr.ContextNamespace</span></code> or <code class="docutils literal notranslate"><span class="pre">fr.ClauseNamespace</span></code> passes
+<code class="docutils literal notranslate"><span class="pre">mypy</span> <span class="pre">--strict</span></code>. The untyped <code class="docutils literal notranslate"><span class="pre">__init_subclass__</span></code> hooks used to report
+<code class="docutils literal notranslate"><span class="pre">no-untyped-call</span></code> on the class line.</p></li>
+<li><p>Configured session generators participate in FastAPI’s dependency cache.
+Application dependencies and Restly views share one request session, so
+related ORM objects loaded by authentication can be assigned in a view.
+Explicit view session dependencies keep their declared source.</p></li>
+<li><p>Rollback test fixtures override configured generators on the app, sharing
+isolated request sessions with native FastAPI dependencies. Generator-only
+setups can discover a factory from a yielded session’s bind.</p></li>
 <li><p>A view subclass keeps the <code class="docutils literal notranslate"><span class="pre">schema</span></code>, <code class="docutils literal notranslate"><span class="pre">schema_create</span></code>, and <code class="docutils literal notranslate"><span class="pre">schema_update</span></code> its
 base view declares. Registration used to replace them with schemas generated
 from the model, so columns the declared schema left out appeared in

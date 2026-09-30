@@ -1012,7 +1012,7 @@ async <code class="docutils literal notranslate"><span class="pre">session_gener
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">&quot;rollback&quot;</span></code></p></td>
-<td><p>Restly bypasses the generator and builds isolated sessions from the matching sessionmaker. If only the generator is configured, pytest stops before running tests with a configuration error that names the missing sessionmaker. Code in the generator body, such as <code class="docutils literal notranslate"><span class="pre">SET</span> <span class="pre">search_path</span></code>, does not run.</p></td>
+<td><p>Restly overrides the generator through <code class="docutils literal notranslate"><span class="pre">app.dependency_overrides</span></code> and builds isolated sessions from the matching sessionmaker. With only a generator configured, setup opens it to discover its session’s bind. Code in the generator body, such as <code class="docutils literal notranslate"><span class="pre">SET</span> <span class="pre">search_path</span></code>, does not run for test requests.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">&quot;delete&quot;</span></code></p></td>
 <td><p>If either custom generator is configured, pytest stops before running tests with a configuration error, even when a matching sessionmaker exists. Restly cannot verify that the generator writes to the database it would clean. Use the sessionmaker as the application session source, or choose <code class="docutils literal notranslate"><span class="pre">&quot;none&quot;</span></code>.</p></td>
@@ -1023,6 +1023,17 @@ async <code class="docutils literal notranslate"><span class="pre">session_gener
 </tbody>
 </table>
 </div>
+<p>Generator discovery requires a generator without arguments that yields a
+single-bind SQLAlchemy session. If the generator needs request dependencies,
+chooses binds dynamically, or constructs a session needing other constructor
+arguments, configure its test engine or sessionmaker explicitly. Use a test
+database for discovery too, since setup runs the generator body and cleanup.</p>
+<p>Pass <code class="docutils literal notranslate"><span class="pre">app=</span></code> to <a class="reference internal" href="api/testing.html#fastapi_restly.testing.configure_tests" title="fastapi_restly.testing.configure_tests"><code class="xref py py-func docutils literal notranslate"><span class="pre">configure_tests()</span></code></a>
+so ordinary FastAPI dependencies such as <code class="docutils literal notranslate"><span class="pre">Depends(get_db)</span></code> use the same isolated
+request session as Restly. Without managed setup, use <code class="docutils literal notranslate"><span class="pre">restly_client</span></code> with
+<code class="docutils literal notranslate"><span class="pre">restly_session</span></code>, or their async equivalents. The client installs and removes
+the override for the test. Existing application overrides are preserved and
+are responsible for their own isolation.</p>
 <p>Under rollback, <code class="docutils literal notranslate"><span class="pre">fr.open_session()</span></code> resolves the same factory <code class="docutils literal notranslate"><span class="pre">SessionDep</span></code> does,
 so it too yields a session on the test’s pinned connection even when
 <code class="docutils literal notranslate"><span class="pre">restly_session</span></code> is not requested. This makes database-only unit tests a

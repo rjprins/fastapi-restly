@@ -526,9 +526,22 @@ async `session_generator` and async sessionmaker.
 
 | Cleanup mode | Generator behavior |
 |---|---|
-| `"rollback"` | Restly bypasses the generator and builds isolated sessions from the matching sessionmaker. If only the generator is configured, pytest stops before running tests with a configuration error that names the missing sessionmaker. Code in the generator body, such as `SET search_path`, does not run. |
+| `"rollback"` | Restly overrides the generator through `app.dependency_overrides` and builds isolated sessions from the matching sessionmaker. With only a generator configured, setup opens it to discover its session's bind. Code in the generator body, such as `SET search_path`, does not run for test requests. |
 | `"delete"` | If either custom generator is configured, pytest stops before running tests with a configuration error, even when a matching sessionmaker exists. Restly cannot verify that the generator writes to the database it would clean. Use the sessionmaker as the application session source, or choose `"none"`. |
 | `"none"` | Restly leaves the generator untouched. The public session fixture uses the matching sessionmaker when one exists; with only a generator it skips because there is no sessionmaker from which to construct the fixture session. |
+
+Generator discovery requires a generator without arguments that yields a
+single-bind SQLAlchemy session. If the generator needs request dependencies,
+chooses binds dynamically, or constructs a session needing other constructor
+arguments, configure its test engine or sessionmaker explicitly. Use a test
+database for discovery too, since setup runs the generator body and cleanup.
+
+Pass `app=` to {func}`configure_tests() <fastapi_restly.testing.configure_tests>`
+so ordinary FastAPI dependencies such as `Depends(get_db)` use the same isolated
+request session as Restly. Without managed setup, use `restly_client` with
+`restly_session`, or their async equivalents. The client installs and removes
+the override for the test. Existing application overrides are preserved and
+are responsible for their own isolation.
 
 Under rollback, `fr.open_session()` resolves the same factory `SessionDep` does,
 so it too yields a session on the test's pinned connection even when

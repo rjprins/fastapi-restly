@@ -595,6 +595,9 @@ not match the table directly:</p>
 </tbody>
 </table>
 </div>
+<p>Both derived schemas also leave out a primary key the server generates
+(autoincrement, a column default, or a dataclass field with <code class="docutils literal notranslate"><span class="pre">init=False</span></code>),
+marked <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> or not. A natural key stays writable.</p>
 <p><a class="reference internal" href="howto_custom_schema.html"><span class="std std-doc">Custom Schemas and Field Types</span></a> owns field markers,
 aliases, validation, and the choice between explicit and constructed schemas.</p>
 <p>For larger applications, define the class without registration side effects
@@ -726,7 +729,10 @@ dependencies, then enforce per-action policy in <code class="docutils literal no
 <tr class="row-odd"><td><p>Apply FastAPI metadata or dependencies to every route</p></td>
 <td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.View.tags" title="fastapi_restly.views.View.tags"><code class="xref py py-attr docutils literal notranslate"><span class="pre">tags</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.View.responses" title="fastapi_restly.views.View.responses"><code class="xref py py-attr docutils literal notranslate"><span class="pre">responses</span></code></a>, or <a class="reference internal" href="api/views.html#fastapi_restly.views.View.dependencies" title="fastapi_restly.views.View.dependencies"><code class="xref py py-attr docutils literal notranslate"><span class="pre">dependencies</span></code></a></p></td>
 </tr>
-<tr class="row-even"><td><p>Use another session dependency</p></td>
+<tr class="row-even"><td><p>Set a route name, summary, or operation ID</p></td>
+<td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.View.route_options" title="fastapi_restly.views.View.route_options"><code class="xref py py-attr docutils literal notranslate"><span class="pre">route_options</span></code></a> as shown in <a class="reference internal" href="howto_openapi.html#default-route-metadata"><span class="std std-ref">OpenAPI customization</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>Use another session dependency</p></td>
 <td><p>Override the <code class="docutils literal notranslate"><span class="pre">session</span></code> annotation with <code class="docutils literal notranslate"><span class="pre">Annotated[...,</span> <span class="pre">Depends(...)]</span></code></p></td>
 </tr>
 </tbody>
