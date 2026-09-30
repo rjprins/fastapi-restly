@@ -20,13 +20,14 @@ from typing import (
 
 import pydantic
 from pydantic.fields import Field, FieldInfo
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio.session import AsyncSession as SA_AsyncSession
-from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm.session import Session as SA_Session
 from typing_extensions import TypeAliasType, TypeVar
 
+from .._mapping import is_mapped_instance
 from ..clauses import Unscoped, WhereClause, apply_clauses
 from ..clauses._scopes import _default_scope
 from ..exc import NotFound, RestlyConfigurationError
@@ -196,7 +197,7 @@ class RefExists:
 
     def __init__(
         self,
-        model: type[DeclarativeBase] | type[_Infer],
+        model: type[Any] | type[_Infer],
         scope: WhereClause | Unscoped | _NotGiven = _NOT_GIVEN,
     ) -> None:
         if scope is None:
@@ -260,9 +261,8 @@ class TimestampsSchemaMixin(pydantic.BaseModel):
     updated_at: ReadOnly[datetime]
 
 
-SQLAlchemyModel = TypeVar(
-    "SQLAlchemyModel", bound=DeclarativeBase, default=DeclarativeBase
-)
+# Unbound: a mapped class need not subclass DeclarativeBase.
+SQLAlchemyModel = TypeVar("SQLAlchemyModel", default=Any)
 _IDREF_UNSET = object()
 _SCHEMA_RESOURCE_SUFFIX = "Read"
 
@@ -314,7 +314,7 @@ def _is_unresolved(annotation: Any) -> bool:
     return any(_is_unresolved(arg) for arg in args)
 
 
-def _model_id_type(sql_model: type[DeclarativeBase]) -> Any:
+def _model_id_type(sql_model: type[Any]) -> Any:
     """Return the Python type of ``sql_model``'s ``id`` primary key, or ``None``.
 
     Reads the ``id`` annotation off the model's MRO (works before the mapper is
@@ -339,10 +339,9 @@ def _model_id_type(sql_model: type[DeclarativeBase]) -> Any:
 
     # Fallback: ask the SA mapper. `python_type` raises NotImplementedError for
     # column types without a Python equivalent (e.g. some user types), and
-    # accessing `__mapper__` may fail with AttributeError if the class has not
-    # been mapped yet.
+    # a class that is not mapped has no mapper to ask.
     try:
-        return sql_model.__mapper__.primary_key[0].type.python_type
+        return sa_inspect(sql_model, raiseerr=False).primary_key[0].type.python_type
     except (AttributeError, NotImplementedError, IndexError):
         return None
 
@@ -367,7 +366,7 @@ class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
     id: ReadOnly[Any]
 
     @classmethod
-    def _get_sql_model_annotation(cls) -> type[DeclarativeBase] | None:
+    def _get_sql_model_annotation(cls) -> type[Any] | None:
         # `__pydantic_generic_metadata__` is set on parameterised subclasses;
         # on the bare `IDSchema` class the "args" tuple may be missing or empty.
         try:
@@ -407,7 +406,7 @@ class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
             return v
         if isinstance(v, dict):
             return v
-        if isinstance(v, DeclarativeBase):
+        if is_mapped_instance(v):
             return {"id": getattr(v, "id")}
         return {"id": v}
 
@@ -618,7 +617,7 @@ async def _async_resolve_ids_to_sqlalchemy_objects(
                     raise NotFound(f"Id not found for {field}: {value.id}") from e
             else:
                 # mapper pk, not `.id`: the pk attribute can be named anything
-                pk_col = sql_model.__mapper__.primary_key[0]
+                pk_col = sa_inspect(sql_model).primary_key[0]
                 query = apply_clauses(
                     select(sql_model).where(pk_col == value.id), scope
                 )
@@ -691,7 +690,7 @@ def _resolve_ids_to_sqlalchemy_objects(
                     raise NotFound(f"Id not found for {field}: {value.id}") from e
             else:
                 # mapper pk, not `.id`: the pk attribute can be named anything
-                pk_col = sql_model.__mapper__.primary_key[0]
+                pk_col = sa_inspect(sql_model).primary_key[0]
                 query = apply_clauses(
                     select(sql_model).where(pk_col == value.id), scope
                 )
@@ -754,11 +753,12 @@ def _infer_ref_model(model_cls: type[Any], field_name: str) -> type[Any]:
     map to a single-FK column -- name the model explicitly (``MustExist[pk,
     Model]``) there.
     """
-    column = model_cls.__mapper__.columns.get(field_name)
+    model_mapper = sa_inspect(model_cls)
+    column = model_mapper.columns.get(field_name)
     foreign_keys = list(column.foreign_keys) if column is not None else []
     if len(foreign_keys) == 1:
         target_table = foreign_keys[0].column.table
-        for mapper in model_cls.registry.mappers:
+        for mapper in model_mapper.registry.mappers:
             if mapper.local_table is target_table:
                 return mapper.class_
         raise RestlyConfigurationError(
@@ -831,7 +831,7 @@ def _ref_exists_query(
     model: type[Any], scope: WhereClause | None, items: list[tuple[str, Any]]
 ) -> Any:
     unique = list(dict.fromkeys(value for _, value in items))
-    mapper = model.__mapper__
+    mapper = sa_inspect(model)
     # the mapped attribute, not the Core column: an ORM statement, so a
     # session-level rule (with_loader_criteria) reaches this check too
     pk = getattr(model, mapper.get_property_by_column(mapper.primary_key[0]).key)

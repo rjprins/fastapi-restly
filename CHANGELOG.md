@@ -27,6 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Reference types work with a mapped class that does not subclass
+  `DeclarativeBase`: a SQLModel table, a `registry.mapped` or
+  `declarative_base()` class, or an imperative mapping. Reading an `IDRef` or
+  nested schema over such a relationship used to answer 500, and the OpenAPI
+  `x-resource-ref` was missing. `IDSchema[Model]`, `IDRef[Model]` and
+  `MustExist[pk, Model]` also accept such a class under mypy and pyright.
 - A view whose `schema` is a SQLModel data class returns responses. SQLModel
   narrows the signature of `model_validate`, so serializing a row raised
   `TypeError` and every route answered 500.

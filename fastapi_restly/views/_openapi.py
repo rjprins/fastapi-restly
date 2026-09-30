@@ -17,8 +17,8 @@ from typing import Any, Union, get_args, get_origin
 import fastapi
 import pydantic
 from sqlalchemy import inspect as sa_inspect
-from sqlalchemy.orm import DeclarativeBase
 
+from .._mapping import is_mapped_class
 from ..schemas import IDSchema
 
 _PATCHED_ATTR = "_fr_resource_refs_patched"
@@ -26,7 +26,7 @@ _PATCHED_ATTR = "_fr_resource_refs_patched"
 
 @dataclass
 class _Entry:
-    model: type[DeclarativeBase]
+    model: type[Any]
     resource_name: str
     schema: type[pydantic.BaseModel]
     schema_create: type[pydantic.BaseModel]
@@ -85,9 +85,7 @@ def _register_for_resource_ref(
     Silently skips views without a SQLAlchemy model (e.g. plain View subclasses).
     """
     model = getattr(view_cls, "model", None)
-    if model is None or not (
-        isinstance(model, type) and issubclass(model, DeclarativeBase)
-    ):
+    if not is_mapped_class(model):
         return
 
     resource_name = "".join(
@@ -186,8 +184,8 @@ def _field_openapi_key(schema_cls: type[pydantic.BaseModel], field_name: str) ->
 
 def _compute_refs(
     schema_cls: type[pydantic.BaseModel],
-    model_cls: type[DeclarativeBase],
-    model_to_resource: dict[type[DeclarativeBase], str],
+    model_cls: type[Any],
+    model_to_resource: dict[type[Any], str],
 ) -> dict[str, str]:
     """Return {openapi_property_key: resource_name} for FK columns and ID-ref relationship fields."""
     result: dict[str, str] = {}
@@ -203,7 +201,7 @@ def _compute_refs(
             fks = list(mapper.columns[field_name].foreign_keys)
             if fks:
                 target_table = fks[0].column.table  # Table object identity
-                for m in model_cls.registry.mappers:
+                for m in mapper.registry.mappers:
                     if m.local_table is target_table:
                         resource_name = model_to_resource.get(m.class_)
                         break
@@ -221,9 +219,7 @@ def _compute_refs(
 
 
 def _annotate_spec(
-    spec: dict[str, Any],
-    entries: list[_Entry],
-    model_to_resource: dict[type[DeclarativeBase], str],
+    spec: dict[str, Any], entries: list[_Entry], model_to_resource: dict[type[Any], str]
 ) -> None:
     """Mutate spec in-place, adding x-resource-ref to qualifying properties."""
     schemas = spec.get("components", {}).get("schemas", {})

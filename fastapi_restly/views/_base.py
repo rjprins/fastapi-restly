@@ -31,7 +31,6 @@ from typing import (
     Iterator,
     Protocol,
     Sequence,
-    TypeGuard,
     cast,
     get_args,
     get_origin,
@@ -47,8 +46,7 @@ from sqlalchemy import JSON as _JSONType
 from sqlalchemy import ColumnElement, Select
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import select as sa_select
-from sqlalchemy.orm import DeclarativeBase, Mapper, selectinload
-from sqlalchemy.orm.exc import UnmappedClassError
+from sqlalchemy.orm import selectinload
 from starlette.datastructures import QueryParams
 from typing_extensions import TypeVar
 
@@ -71,6 +69,7 @@ ReadScope = WhereClause | Unscoped | None
 # all_of takes. Private: only the final list handler accepts one, so no
 # override spells it.
 _ReadWhere = ColumnElement[bool] | WhereClause | Unscoped | None
+from .._mapping import is_mapped_class, is_mapped_instance
 from ..db._globals import _fr_globals
 from ..exc import RestlyConfigurationError, RestlyMisuseWarning
 from ..objects import snapshot as _object_snapshot
@@ -217,17 +216,6 @@ class _HasID(Protocol):
     keys are named ``id``; ``IDBase`` formalizes this but isn't required."""
 
     id: Any
-
-
-def _is_mapped_class(cls: Any) -> TypeGuard[type[Any]]:
-    """Whether ``cls`` has a SQLAlchemy mapper, whatever its base class."""
-    if not isinstance(cls, type):
-        return False
-    try:
-        return isinstance(sa_inspect(cls, raiseerr=False), Mapper)
-    except UnmappedClassError:
-        # a deferred mapping (DeferredReflection) is mapped once prepared
-        return True
 
 
 def _has_model_attr(model_cls: type[Any], attr_name: str) -> bool:
@@ -422,7 +410,7 @@ _EXPLICIT_NULL_REF = object()
 def _reference_identity(value: Any) -> tuple[type[Any] | None, Any] | object | None:
     if value is None:
         return _EXPLICIT_NULL_REF
-    if isinstance(value, DeclarativeBase):
+    if is_mapped_instance(value):
         return type(value), getattr(value, "id", None)
     if isinstance(value, IDSchema):
         sql_model = value.get_sql_model_annotation()
@@ -682,9 +670,7 @@ def build_create_plan(
         if value is None and is_reference_field(schema_cls, field_name):
             _add_null_reference_to_create_plan(plan, model_cls, field_name)
             continue
-        if isinstance(value, DeclarativeBase) and is_reference_field(
-            schema_cls, field_name
-        ):
+        if is_mapped_instance(value) and is_reference_field(schema_cls, field_name):
             _add_resolved_reference_to_create_plan(plan, model_cls, field_name, value)
             continue
 
@@ -752,7 +738,7 @@ def apply_update_to_object(
         if isinstance(value, IDSchema) and _is_mapped_column(type(obj), field_name):
             setattr(obj, field_name, value.id)
             continue
-        if isinstance(value, DeclarativeBase) and is_reference_field(
+        if is_mapped_instance(value) and is_reference_field(
             schema_cls or schema_obj.__class__, field_name
         ):
             _apply_resolved_reference_update(obj, field_name, value)
@@ -1208,7 +1194,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             )
         # the annotation accepts any class, so the mapping is checked here
         model = cls.__dict__.get("model")
-        if model is not None and not _is_mapped_class(model):
+        if model is not None and not is_mapped_class(model):
             label = getattr(model, "__name__", repr(model))
             raise RestlyConfigurationError(
                 f"{cls.__name__}.model must be a SQLAlchemy mapped class, "
@@ -1639,7 +1625,7 @@ def resolve_scope(target: type[Any] | _AnyRestView) -> WhereClause | Unscoped:
     :raises TypeError: if ``target`` is neither a view nor a mapped model.
     """
     label = target.__name__ if isinstance(target, type) else type(target).__name__
-    if _is_mapped_class(target):
+    if is_mapped_class(target):
         return _model_scope(target)
     if not isinstance(target, BaseRestView) and not (
         isinstance(target, type) and issubclass(target, BaseRestView)

@@ -3,7 +3,6 @@ Schema generation utilities for auto-generating Pydantic schemas from SQLAlchemy
 """
 
 import enum
-import inspect
 import sys
 import types
 from collections.abc import Collection
@@ -16,8 +15,9 @@ import pydantic
 from pydantic import Field
 from sqlalchemy import Column
 from sqlalchemy import inspect as sa_inspect
-from sqlalchemy.orm import ColumnProperty, DeclarativeBase, Mapped, RelationshipProperty
+from sqlalchemy.orm import ColumnProperty, Mapped, RelationshipProperty
 
+from .._mapping import is_mapped_class
 from ._base import (
     BaseSchema,
     IDSchema,
@@ -57,7 +57,7 @@ def is_relationship_field(field: Any) -> bool:
     return isinstance(getattr(field, "property", None), RelationshipProperty)
 
 
-def get_relationship_target_model(field: Any) -> type[DeclarativeBase] | None:
+def get_relationship_target_model(field: Any) -> type[Any] | None:
     """
     Get the target model class for a relationship field.
 
@@ -87,7 +87,7 @@ def get_relationship_target_model(field: Any) -> type[DeclarativeBase] | None:
             args = get_args(target_type)
             if args:
                 return args[0]
-        elif inspect.isclass(target_type) and issubclass(target_type, DeclarativeBase):
+        elif is_mapped_class(target_type):
             return target_type
 
     return None
@@ -141,7 +141,7 @@ def _split_optional(annotation: Any) -> tuple[Any, bool]:
     return annotation, False
 
 
-def get_model_fields(model_cls: type[DeclarativeBase]) -> dict[str, Any]:
+def get_model_fields(model_cls: type[Any]) -> dict[str, Any]:
     """
     Extract field information from a SQLAlchemy model.
 
@@ -224,7 +224,7 @@ def get_model_fields(model_cls: type[DeclarativeBase]) -> dict[str, Any]:
 
 
 def create_schema_from_model(
-    model_cls: type[DeclarativeBase],
+    model_cls: type[Any],
     *,
     schema_name: str | None = None,
     include_relationships: bool = True,
@@ -360,9 +360,7 @@ def convert_sqlalchemy_type_to_pydantic(
         pydantic_type = sqlalchemy_type
     elif isinstance(sqlalchemy_type, type) and issubclass(sqlalchemy_type, enum.Enum):
         pydantic_type = sqlalchemy_type
-    elif isinstance(sqlalchemy_type, type) and issubclass(
-        sqlalchemy_type, DeclarativeBase
-    ):
+    elif is_mapped_class(sqlalchemy_type):
         # Relationship targets are replaced with nested schemas later.
         pydantic_type = sqlalchemy_type
     elif getattr(sqlalchemy_type, "__origin__", None) is not None:
@@ -395,7 +393,7 @@ def convert_sqlalchemy_type_to_pydantic(
 
 
 def auto_generate_schema_for_view(
-    view_cls: type, model_cls: type[DeclarativeBase], schema_name: str | None = None
+    view_cls: type, model_cls: type[Any], schema_name: str | None = None
 ) -> type[BaseSchema]:
     """
     Auto-generate a schema for a view class if none is specified.

@@ -17,7 +17,7 @@ from typing import Any, ClassVar, Protocol, Sequence, cast
 import fastapi
 import pydantic
 import sqlalchemy
-from sqlalchemy.orm import DeclarativeBase, RelationshipProperty
+from sqlalchemy.orm import RelationshipProperty
 
 from ..exc import BadQueryParam
 from ..query._shared import _append_pk_tiebreak
@@ -138,9 +138,7 @@ def parse_react_admin_filter(filter_raw: str | None) -> dict:
     return parsed
 
 
-def _resolve_column(
-    model: type[DeclarativeBase], schema_cls: Any, field_name: str
-) -> Any:
+def _resolve_column(model: type[Any], schema_cls: Any, field_name: str) -> Any:
     """
     Resolve a PUBLIC schema field name (or alias) to its SQLAlchemy column.
 
@@ -197,10 +195,7 @@ def _coerce_value(col: Any, value: Any) -> Any:
 
 
 def _apply_react_admin_filters(
-    query: sqlalchemy.Select,
-    model: type[DeclarativeBase],
-    schema_cls: Any,
-    filters: dict,
+    query: sqlalchemy.Select, model: type[Any], schema_cls: Any, filters: dict
 ) -> sqlalchemy.Select:
     """Apply a react-admin filter dict to a select query."""
     for key, value in filters.items():
@@ -215,7 +210,7 @@ def _apply_react_admin_filters(
 
 def apply_react_admin_query(
     query: sqlalchemy.Select,
-    model: type[DeclarativeBase],
+    model: type[Any],
     schema_cls: Any,
     sort: tuple[str, str] | None,
     start: int,
