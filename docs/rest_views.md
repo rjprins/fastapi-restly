@@ -71,6 +71,10 @@ The three schema attributes have separate jobs:
 | {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` | `POST` request body | `schema` without `ReadOnly` fields |
 | {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` | `PATCH` request body | Writable fields from `schema`, made optional |
 
+Both derived schemas also leave out a primary key the server generates
+(autoincrement, a column default, or a dataclass field with `init=False`),
+marked `ReadOnly` or not. A natural key stays writable.
+
 [Custom Schemas and Field Types](howto_custom_schema.md) owns field markers,
 aliases, validation, and the choice between explicit and constructed schemas.
 

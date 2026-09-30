@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   member raises `TypeError` where it raised `NotImplementedError`. An ordering
   comparison with the member first, such as `Current.limit < Item.size`, now
   builds the same SQL as the column-first form.
+- A create or update schema derived from `schema` leaves out a primary key
+  the server generates, even when the schema does not mark it `ReadOnly`.
+  Generated means an autoincrement column, a column default, or a dataclass
+  field with `init=False`. A plain `id: int` field used to stay in both
+  schemas: create required it and the client chose the key. A natural key
+  without a default stays writable. To let clients supply a generated key,
+  declare `schema_create`.
 
 ### Fixed
 

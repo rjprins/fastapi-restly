@@ -812,6 +812,34 @@ def _create_response_validation_schema(
     )
 
 
+def _generated_primary_key_fields(model_cls: type[Any]) -> frozenset[str]:
+    """The primary key attributes the server generates, never the client.
+
+    A derived create or update schema leaves these out even when the schema
+    does not mark them ReadOnly. Generated means an autoincrement column, a
+    column default, or a dataclass field outside ``__init__``. A key without
+    any of these is a natural key, and the client supplies it.
+    """
+    mapper = sa_inspect(model_cls)
+    autoincrement = getattr(mapper.local_table, "autoincrement_column", None)
+    not_in_init = (
+        {f.name for f in dataclasses.fields(model_cls) if not f.init}
+        if dataclasses.is_dataclass(model_cls)
+        else set()
+    )
+    generated = set()
+    for column in mapper.primary_key:
+        key = mapper.get_property_by_column(column).key
+        if (
+            column is autoincrement
+            or column.default is not None
+            or column.server_default is not None
+            or key in not_in_init
+        ):
+            generated.add(key)
+    return frozenset(generated)
+
+
 @functools.cache
 def _response_validation_adapter(
     schema_cls: type[pydantic.BaseModel],
@@ -1475,12 +1503,18 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             _mark_generated(cls, "listing_param_schema")
         if _needs_generating(cls, "schema_create", derived_from="schema"):
             cls.schema_create = cast(
-                type[CreateSchemaT], create_model_without_read_only_fields(cls.schema)
+                type[CreateSchemaT],
+                create_model_without_read_only_fields(
+                    cls.schema, omit=_generated_primary_key_fields(cls.model)
+                ),
             )
             _mark_generated(cls, "schema_create")
         if _needs_generating(cls, "schema_update", derived_from="schema"):
             cls.schema_update = cast(
-                type[UpdateSchemaT], create_model_with_optional_fields(cls.schema)
+                type[UpdateSchemaT],
+                create_model_with_optional_fields(
+                    cls.schema, omit=_generated_primary_key_fields(cls.model)
+                ),
             )
             _mark_generated(cls, "schema_update")
 

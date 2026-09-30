@@ -2,6 +2,7 @@ import functools
 import inspect
 import sys
 import types
+from collections.abc import Iterable
 from datetime import datetime
 from typing import (
     TYPE_CHECKING,
@@ -926,10 +927,11 @@ def is_writeonly_field(
 
 
 def create_model_without_read_only_fields(
-    model_cls: type[pydantic.BaseModel],
+    model_cls: type[pydantic.BaseModel], *, omit: Iterable[str] = ()
 ) -> type[pydantic.BaseModel]:
     """
     Create a subclass of the given pydantic model class with a new name.
+    Read-only fields are removed, and so are the fields named in ``omit``.
     """
     new_model_name = _schema_role_name(model_cls, "Create")
     new_doc = (model_cls.__doc__ or "") + "\nRead-only fields have been removed."
@@ -938,7 +940,11 @@ def create_model_without_read_only_fields(
     new_model_cls = type(
         new_model_name,
         (OmitReadOnlyMixin, model_cls),
-        {"__module__": model_cls.__module__, "__doc__": new_doc},
+        {
+            "__module__": model_cls.__module__,
+            "__doc__": new_doc,
+            "__restly_omit_fields__": frozenset(omit),
+        },
     )
 
     return new_model_cls
@@ -964,9 +970,10 @@ class OmitReadOnlyMixin(pydantic.BaseModel):
         super().__pydantic_init_subclass__(**kwargs)
 
         # Collect readonly fields to delete first
+        omit = getattr(cls, "__restly_omit_fields__", ())
         readonly_fields = []
         for name, field_info in cls.model_fields.items():
-            if _is_readonly(field_info):
+            if _is_readonly(field_info) or name in omit:
                 readonly_fields.append(name)
 
         # Delete readonly fields after iteration is complete
@@ -988,11 +995,12 @@ def rebase_with_model_config(
 
 
 def create_model_with_optional_fields(
-    model_cls: type[pydantic.BaseModel],
+    model_cls: type[pydantic.BaseModel], *, omit: Iterable[str] = ()
 ) -> type[pydantic.BaseModel]:
     """
     Create a subclass of the given pydantic model class with a new name.
-    Read-only fields are removed and all writable fields are made optional with None as default.
+    Read-only fields and the fields named in ``omit`` are removed, and all
+    writable fields are made optional with None as default.
     """
     new_model_name = _schema_role_name(model_cls, "Update")
     new_doc = (
@@ -1003,7 +1011,11 @@ def create_model_with_optional_fields(
     new_model_cls = type(
         new_model_name,
         (PatchMixin, OmitReadOnlyMixin, model_cls),
-        {"__module__": model_cls.__module__, "__doc__": new_doc},
+        {
+            "__module__": model_cls.__module__,
+            "__doc__": new_doc,
+            "__restly_omit_fields__": frozenset(omit),
+        },
     )
 
     return new_model_cls
