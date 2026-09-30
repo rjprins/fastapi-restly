@@ -1,13 +1,20 @@
 name: Latest versions
 
-# Weekly canary for the top edge of the dependency range: re-resolve every
-# lockfile to the newest available versions and run the full suite. A failure
-# here means upstream moved, not that main is broken -- fix forward.
+# Test the newest dependency resolutions on pull requests and every week.
+# The regular CI workflow also tests locked and minimum dependency versions.
 
 on:
+  pull_request:
   schedule:
     - cron: "0 6 * * 1" # Mondays 06:00 UTC
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   latest-versions:
@@ -36,6 +43,13 @@ jobs:
 
       - name: Install dependencies
         run: make install-dev
+
+      - name: Record installed versions
+        run: |
+          uv pip freeze
+          for project in shop blog saas; do
+            uv --directory "example-projects/$project" pip freeze
+          done
 
       - name: Run framework and example tests
         run: make test-all
