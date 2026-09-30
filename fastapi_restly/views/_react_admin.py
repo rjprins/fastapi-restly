@@ -250,7 +250,7 @@ def apply_react_admin_query(
 
 class _ReactAdminViewProtocol(Protocol):
     request: fastapi.Request
-    model: ClassVar[type[DeclarativeBase]]
+    model: ClassVar[type[Any]]
     schema: ClassVar[type[pydantic.BaseModel]]
     schema_update: ClassVar[type[pydantic.BaseModel]]
     listing_param_schema: ClassVar[type[pydantic.BaseModel]]

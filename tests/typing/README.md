@@ -56,5 +56,6 @@ Coverage checklist:
 - [x] Schema aliases with list-params filtering
 - [x] `IDRef[...]`
 - [x] UUID / non-int primary key flows
+- [x] SQLModel table as a view's `model`
 - [ ] Write-only and read-only field markers in consumer schemas
 - [x] Direct override of built-in `listing/get/create/update/delete` route methods as a documented pattern

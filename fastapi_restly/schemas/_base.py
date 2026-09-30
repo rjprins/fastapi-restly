@@ -744,9 +744,7 @@ def _ref_exists_marker(field_info: FieldInfo) -> RefExists | None:
     return None
 
 
-def _infer_ref_model(
-    model_cls: type[DeclarativeBase], field_name: str
-) -> type[DeclarativeBase]:
+def _infer_ref_model(model_cls: type[Any], field_name: str) -> type[Any]:
     """Resolve the target model for a ``MustExist[pk]`` field from its FK column.
 
     ``MustExist[pk]`` (one argument) leaves the model to be inferred: the column
@@ -776,9 +774,7 @@ def _infer_ref_model(
     )
 
 
-def _effective_ref_scope(
-    marker: RefExists, model: type[DeclarativeBase]
-) -> WhereClause | None:
+def _effective_ref_scope(marker: RefExists, model: type[Any]) -> WhereClause | None:
     """The scope a ``RefExists`` check applies: the marker's own ``scope``
     when given (``UNSCOPED`` meaning explicitly none), the target model's
     ``default_scope`` otherwise."""
@@ -790,8 +786,8 @@ def _effective_ref_scope(
 
 
 def _ref_exists_fields(
-    model_cls: type[DeclarativeBase], schema_obj: pydantic.BaseModel
-) -> dict[tuple[type[DeclarativeBase], WhereClause | None], list[tuple[str, Any]]]:
+    model_cls: type[Any], schema_obj: pydantic.BaseModel
+) -> dict[tuple[type[Any], WhereClause | None], list[tuple[str, Any]]]:
     """Group provided, non-``None`` ``RefExists``-marked scalar fields by
     target model and effective scope.
 
@@ -804,9 +800,7 @@ def _ref_exists_fields(
     check against different scopes. Only fields actually supplied
     (``model_fields_set``) with a non-``None`` value are included.
     """
-    by_target: dict[
-        tuple[type[DeclarativeBase], WhereClause | None], list[tuple[str, Any]]
-    ] = {}
+    by_target: dict[tuple[type[Any], WhereClause | None], list[tuple[str, Any]]] = {}
     model_fields = type(schema_obj).model_fields
     for field_name in schema_obj.model_fields_set:
         field_info = model_fields.get(field_name)
@@ -833,9 +827,7 @@ def _raise_for_missing_refs(items: list[tuple[str, Any]], found: set[Any]) -> No
 
 
 def _ref_exists_query(
-    model: type[DeclarativeBase],
-    scope: WhereClause | None,
-    items: list[tuple[str, Any]],
+    model: type[Any], scope: WhereClause | None, items: list[tuple[str, Any]]
 ) -> Any:
     unique = list(dict.fromkeys(value for _, value in items))
     mapper = model.__mapper__
@@ -849,9 +841,7 @@ def _ref_exists_query(
 
 
 def _check_ref_exists(
-    session: SA_Session,
-    model_cls: type[DeclarativeBase],
-    schema_obj: pydantic.BaseModel,
+    session: SA_Session, model_cls: type[Any], schema_obj: pydantic.BaseModel
 ) -> None:
     """Batch-validate that every ``RefExists``-marked id exists (sync).
 
@@ -868,9 +858,7 @@ def _check_ref_exists(
 
 
 async def _async_check_ref_exists(
-    session: SA_AsyncSession,
-    model_cls: type[DeclarativeBase],
-    schema_obj: pydantic.BaseModel,
+    session: SA_AsyncSession, model_cls: type[Any], schema_obj: pydantic.BaseModel
 ) -> None:
     """Async twin of :func:`_check_ref_exists`."""
     for (model, scope), items in _ref_exists_fields(model_cls, schema_obj).items():

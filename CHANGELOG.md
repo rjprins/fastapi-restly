@@ -20,6 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A view's `model` accepts any SQLAlchemy mapped class under mypy and pyright,
+  so a SQLModel table or an imperatively mapped class needs no `type: ignore`.
+  The same holds for `ClauseNamespace.model`, the `fr.objects` helpers, and
+  `fr.resolve_scope`, which used to raise `TypeError` for such a class. A view
+  whose `model` has no mapper now raises `RestlyConfigurationError` at class
+  definition.
 - Subclassing `fr.ContextNamespace` or `fr.ClauseNamespace` passes
   `mypy --strict`. The untyped `__init_subclass__` hooks used to report
   `no-untyped-call` on the class line.

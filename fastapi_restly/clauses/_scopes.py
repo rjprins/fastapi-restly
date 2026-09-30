@@ -5,14 +5,12 @@ from __future__ import annotations
 import weakref
 from typing import Any, ClassVar
 
-from sqlalchemy.orm import DeclarativeBase
-
 from ._runtime import UNSCOPED, Unscoped, WhereClause
 
 __all__ = ["ClauseNamespace"]
 
 
-_NAMESPACES: weakref.WeakKeyDictionary[type[DeclarativeBase], type[ClauseNamespace]] = (
+_NAMESPACES: weakref.WeakKeyDictionary[type[Any], type[ClauseNamespace]] = (
     weakref.WeakKeyDictionary()
 )
 
@@ -44,7 +42,7 @@ class ClauseNamespace:
     explicit opt-out. `None` says nothing here and is rejected.
     """
 
-    model: ClassVar[type[DeclarativeBase]]
+    model: ClassVar[type[Any]]
     default_scope: ClassVar[WhereClause | Unscoped] = UNSCOPED
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
@@ -101,7 +99,7 @@ def _declared_default_scope(namespace: type[ClauseNamespace]) -> Any:
     return _NO_DECLARATION
 
 
-def _default_scope(model: type[DeclarativeBase]) -> WhereClause | None:
+def _default_scope(model: type[Any]) -> WhereClause | None:
     """The model's `default_scope`, or None for unscoped.
 
     Walks the model's MRO and applies the first registered namespace

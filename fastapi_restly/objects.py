@@ -3,7 +3,6 @@ from typing import TypeVar as _TypeVar
 
 import pydantic as _pydantic
 from sqlalchemy.ext.asyncio import AsyncSession as _AsyncSession
-from sqlalchemy.orm import DeclarativeBase as _DeclarativeBase
 from sqlalchemy.orm import Session as _Session
 from sqlalchemy.orm import object_mapper as _object_mapper
 
@@ -14,7 +13,7 @@ from .schemas._base import (
     _resolve_ids_to_sqlalchemy_objects,
 )
 
-_T = _TypeVar("_T", bound=_DeclarativeBase)
+_T = _TypeVar("_T")
 
 
 def make_new_object(
@@ -108,13 +107,13 @@ def save_object(session: _Session, obj: _T) -> _T:
     return obj
 
 
-def delete_object(session: _Session, obj: _DeclarativeBase) -> None:
+def delete_object(session: _Session, obj: object) -> None:
     """Delete ``obj`` and flush the session."""
     session.delete(obj)
     session.flush()
 
 
-def snapshot(obj: _DeclarativeBase) -> dict[str, _Any]:
+def snapshot(obj: _Any) -> dict[str, _Any]:
     """Frozen capture of an object's *already-loaded* column values, for
     old-vs-new dirty detection in the commit hooks.
 
@@ -187,7 +186,7 @@ async def async_save_object(session: _AsyncSession, obj: _T) -> _T:
     return obj
 
 
-async def async_delete_object(session: _AsyncSession, obj: _DeclarativeBase) -> None:
+async def async_delete_object(session: _AsyncSession, obj: object) -> None:
     """Async equivalent of :func:`delete_object`."""
     await session.delete(obj)
     await session.flush()

@@ -31,6 +31,7 @@ from typing import (
     Iterator,
     Protocol,
     Sequence,
+    TypeGuard,
     cast,
     get_args,
     get_origin,
@@ -46,7 +47,8 @@ from sqlalchemy import JSON as _JSONType
 from sqlalchemy import ColumnElement, Select
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import select as sa_select
-from sqlalchemy.orm import DeclarativeBase, selectinload
+from sqlalchemy.orm import DeclarativeBase, Mapper, selectinload
+from sqlalchemy.orm.exc import UnmappedClassError
 from starlette.datastructures import QueryParams
 from typing_extensions import TypeVar
 
@@ -89,7 +91,9 @@ from ..schemas._base import (
 from ..schemas._generator import auto_generate_schema_for_view
 from ._openapi import _register_for_resource_ref
 
-ModelT = TypeVar("ModelT", bound=DeclarativeBase, default=DeclarativeBase)
+# Unbound: a mapped class need not subclass DeclarativeBase (a SQLModel table,
+# an imperative mapping). ``BaseRestView`` checks the mapping at class definition.
+ModelT = TypeVar("ModelT", default=Any)
 SchemaT = TypeVar("SchemaT", bound=pydantic.BaseModel, default=BaseSchema)
 CreateSchemaT = TypeVar(
     "CreateSchemaT", bound=pydantic.BaseModel, default=pydantic.BaseModel
@@ -215,13 +219,22 @@ class _HasID(Protocol):
     id: Any
 
 
-def _has_model_attr(model_cls: type[DeclarativeBase], attr_name: str) -> bool:
+def _is_mapped_class(cls: Any) -> TypeGuard[type[Any]]:
+    """Whether ``cls`` has a SQLAlchemy mapper, whatever its base class."""
+    if not isinstance(cls, type):
+        return False
+    try:
+        return isinstance(sa_inspect(cls, raiseerr=False), Mapper)
+    except UnmappedClassError:
+        # a deferred mapping (DeferredReflection) is mapped once prepared
+        return True
+
+
+def _has_model_attr(model_cls: type[Any], attr_name: str) -> bool:
     return hasattr(model_cls, attr_name)
 
 
-def _get_relationship_property(
-    model_cls: type[DeclarativeBase], relation_name: str
-) -> Any | None:
+def _get_relationship_property(model_cls: type[Any], relation_name: str) -> Any | None:
     try:
         mapper = sa_inspect(model_cls)
     except Exception:
@@ -246,7 +259,7 @@ def _column_attr_name(mapper: Any, column: Any) -> str | None:
 
 
 def _get_unambiguous_local_fk_name(
-    model_cls: type[DeclarativeBase], relation_name: str
+    model_cls: type[Any], relation_name: str
 ) -> str | None:
     relationship_property = _get_relationship_property(model_cls, relation_name)
     if relationship_property is None:
@@ -272,9 +285,7 @@ def _get_unambiguous_local_fk_name(
     return _column_attr_name(mapper, local_columns[0]) or local_columns[0].key
 
 
-def _relationship_name_for_fk(
-    model_cls: type[DeclarativeBase], fk_attr_name: str
-) -> str | None:
+def _relationship_name_for_fk(model_cls: type[Any], fk_attr_name: str) -> str | None:
     """Reverse of :func:`_get_unambiguous_local_fk_name`.
 
     Given a scalar FK column's attribute name, return the single many-to-one
@@ -302,7 +313,7 @@ def _relationship_name_for_fk(
     return matches[0] if len(matches) == 1 else None
 
 
-def _is_mapped_column(model_cls: type[DeclarativeBase], field_name: str) -> bool:
+def _is_mapped_column(model_cls: type[Any], field_name: str) -> bool:
     """True if ``field_name`` maps to a (scalar) column on ``model_cls``.
 
     This is the target for writing a resolved reference's raw id. Decided by the
@@ -316,7 +327,7 @@ def _is_mapped_column(model_cls: type[DeclarativeBase], field_name: str) -> bool
     return field_name in mapper.columns
 
 
-def _is_json_column(model_cls: type[DeclarativeBase], field_name: str) -> bool:
+def _is_json_column(model_cls: type[Any], field_name: str) -> bool:
     """True if ``field_name`` maps to a plain ``JSON`` column (``JSONB`` too).
 
     A ``TypeDecorator`` over ``JSON`` is not a ``JSON`` instance and so is not
@@ -331,7 +342,7 @@ def _is_json_column(model_cls: type[DeclarativeBase], field_name: str) -> bool:
     return column is not None and isinstance(column.type, _JSONType)
 
 
-def _json_ready(model_cls: type[DeclarativeBase], field_name: str, value: Any) -> Any:
+def _json_ready(model_cls: type[Any], field_name: str, value: Any) -> Any:
     """Dump pydantic models on their way into a JSON column.
 
     A schema field typed as a nested model validates to a model instance, and
@@ -428,7 +439,7 @@ def _reference_identity_detail(identity: object) -> Any:
 
 
 def validate_resolved_reference_consistency(
-    model_cls: type[DeclarativeBase],
+    model_cls: type[Any],
     schema_obj: pydantic.BaseModel,
     schema_cls: type[pydantic.BaseModel] | None = None,
     resolved: dict[str, Any] | None = None,
@@ -503,7 +514,7 @@ def iter_creatable_fields(
 
 
 def _add_null_reference_to_create_plan(
-    plan: _CreatePlan, model_cls: type[DeclarativeBase], field_name: str
+    plan: _CreatePlan, model_cls: type[Any], field_name: str
 ) -> None:
     """Write a null reference (explicit ``post=None``, or an omitted field
     defaulting to None) into the plan.
@@ -551,10 +562,7 @@ def _add_null_reference_to_create_plan(
 
 
 def _add_resolved_reference_to_create_plan(
-    plan: _CreatePlan,
-    model_cls: type[DeclarativeBase],
-    field_name: str,
-    value: DeclarativeBase,
+    plan: _CreatePlan, model_cls: type[Any], field_name: str, value: Any
 ) -> None:
     # ``cast`` only; ``.id`` is accessed lazily inside the branches so a
     # composite-keyed relationship raises its descriptive ValueError (from
@@ -645,7 +653,7 @@ def _add_resolved_reference_to_create_plan(
 
 
 def build_create_plan(
-    model_cls: type[DeclarativeBase],
+    model_cls: type[Any],
     schema_obj: pydantic.BaseModel,
     schema_cls: type[pydantic.BaseModel] | None = None,
     resolved: dict[str, Any] | None = None,
@@ -689,7 +697,7 @@ def build_create_plan(
 
 
 def build_create_kwargs(
-    model_cls: type[DeclarativeBase],
+    model_cls: type[Any],
     schema_obj: pydantic.BaseModel,
     schema_cls: type[pydantic.BaseModel] | None = None,
     resolved: dict[str, Any] | None = None,
@@ -697,14 +705,12 @@ def build_create_kwargs(
     return build_create_plan(model_cls, schema_obj, schema_cls, resolved).kwargs
 
 
-def apply_create_assignments(obj: DeclarativeBase, assignments: dict[str, Any]) -> None:
+def apply_create_assignments(obj: Any, assignments: dict[str, Any]) -> None:
     for field_name, value in assignments.items():
         setattr(obj, field_name, value)
 
 
-def _apply_resolved_reference_update(
-    obj: DeclarativeBase, field_name: str, value: DeclarativeBase
-) -> None:
+def _apply_resolved_reference_update(obj: Any, field_name: str, value: Any) -> None:
     ref = cast(_HasID, value)
     model_cls = type(obj)
     relationship = _get_relationship_property(model_cls, field_name)
@@ -727,7 +733,7 @@ def _apply_resolved_reference_update(
 
 
 def apply_update_to_object(
-    obj: DeclarativeBase,
+    obj: Any,
     schema_obj: pydantic.BaseModel,
     schema_cls: type[pydantic.BaseModel] | None = None,
     resolved: dict[str, Any] | None = None,
@@ -807,9 +813,9 @@ def _create_response_validation_schema(
 
 
 def _build_relationship_loader_options(
-    model_cls: type[DeclarativeBase],
+    model_cls: type[Any],
     schema_cls: type[pydantic.BaseModel],
-    seen: set[tuple[type[DeclarativeBase], type[pydantic.BaseModel]]] | None = None,
+    seen: set[tuple[type[Any], type[pydantic.BaseModel]]] | None = None,
 ) -> list[Any]:
     if seen is None:
         seen = set()
@@ -863,7 +869,7 @@ def _relationship_reload_statement(obj: Any, options: list[Any]) -> Any:
 
 def _schema_relationships_are_loaded(
     obj: Any,
-    model_cls: type[DeclarativeBase],
+    model_cls: type[Any],
     schema_cls: type[pydantic.BaseModel],
     seen: set[tuple[int, type[pydantic.BaseModel]]] | None = None,
 ) -> bool:
@@ -1113,7 +1119,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     # using `create_model_without_read_only_fields()`.
     schema_create: ClassVar[type[pydantic.BaseModel]]
     schema_update: ClassVar[type[pydantic.BaseModel]]
-    model: ClassVar[type[DeclarativeBase]]
+    model: ClassVar[type[Any]]
     #: The clause every read on this view applies: list, count, and retrieve
     #: (a row outside it is 404). ``None`` (the default) falls back to the
     #: model's declared ``default_scope``; ``fr.clauses.UNSCOPED`` reads
@@ -1164,6 +1170,14 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                 f"{cls.__name__}.scope must be a WhereClause, "
                 f"fr.clauses.UNSCOPED, or None, got {type(scope).__name__}; "
                 "wrap a raw expression with where_clause()"
+            )
+        # the annotation accepts any class, so the mapping is checked here
+        model = cls.__dict__.get("model")
+        if model is not None and not _is_mapped_class(model):
+            label = getattr(model, "__name__", repr(model))
+            raise RestlyConfigurationError(
+                f"{cls.__name__}.model must be a SQLAlchemy mapped class, "
+                f"got {label}, which has no mapper"
             )
         # build_query is removed; a definition would be silently dead code,
         # and dead visibility filtering is a security hole
@@ -1551,9 +1565,7 @@ def _needs_generating(cls: type, name: str, *, derived_from: str | None = None) 
 _AnyRestView = BaseRestView[Any, Any, Any, Any, Any]
 
 
-def resolve_scope(
-    target: type[DeclarativeBase] | type[_AnyRestView] | _AnyRestView,
-) -> WhereClause | Unscoped:
+def resolve_scope(target: type[Any] | _AnyRestView) -> WhereClause | Unscoped:
     """The scope a read applies, resolved down the ladder.
 
     Pass a view, class or instance, for the visibility that view's reads
@@ -1585,7 +1597,7 @@ def resolve_scope(
     :raises TypeError: if ``target`` is neither a view nor a mapped model.
     """
     label = target.__name__ if isinstance(target, type) else type(target).__name__
-    if isinstance(target, type) and issubclass(target, DeclarativeBase):
+    if _is_mapped_class(target):
         return _model_scope(target)
     if not isinstance(target, BaseRestView) and not (
         isinstance(target, type) and issubclass(target, BaseRestView)
@@ -1604,7 +1616,7 @@ def resolve_scope(
     return _checked_scope(declared, label, "the scope")
 
 
-def _model_scope(model: type[DeclarativeBase]) -> WhereClause | Unscoped:
+def _model_scope(model: type[Any]) -> WhereClause | Unscoped:
     declared = _default_scope(model)
     return UNSCOPED if declared is None else declared
 
@@ -1637,9 +1649,7 @@ def _checked_where(where: Any, label: str) -> WhereClause | Unscoped:
     )
 
 
-def _identity_criterion(
-    model_cls: type[DeclarativeBase], id: Any
-) -> ColumnElement[bool]:
+def _identity_criterion(model_cls: type[Any], id: Any) -> ColumnElement[bool]:
     """The predicate that picks the one row ``get_one`` loads.
 
     The primary key is the default: ``get_one(5)`` means ``pk == 5``. A
@@ -1674,7 +1684,7 @@ def _identity_criterion(
     return pk_cols[0] == id
 
 
-def _not_found_message(model_cls: type[DeclarativeBase], id: Any) -> str:
+def _not_found_message(model_cls: type[Any], id: Any) -> str:
     # a predicate is not echoed: the 404 body is no place for SQL
     if isinstance(id, ColumnElement):
         return f"{model_cls.__name__} was not found"

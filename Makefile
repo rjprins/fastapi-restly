@@ -22,8 +22,8 @@ lint:
 
 test-typing:
 	@echo "=== Testing Typing Compatibility Fixtures ==="
-	uv run --with pyright pyright -p tests/typing/pyrightconfig.json
-	uv run --with mypy mypy --config-file tests/typing/mypy.ini
+	uv run --with pyright --with sqlmodel pyright -p tests/typing/pyrightconfig.json
+	uv run --with mypy --with sqlmodel mypy --config-file tests/typing/mypy.ini
 
 # Test the main framework
 test-framework:

@@ -268,7 +268,7 @@ Every `View` subclass, CRUD or not, honors these class attributes:
 | {attr}`schema <fastapi_restly.views.BaseRestView.schema>` | `ClassVar[type[pydantic.BaseModel]]` | The read/response schema. If omitted, auto-generated from `model` as `ModelRead`. |
 | {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` | `ClassVar[type[pydantic.BaseModel]]` | Schema for `POST` input. Auto-derived by removing `ReadOnly` fields and named `ModelCreate`. |
 | {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` | `ClassVar[type[pydantic.BaseModel]]` | Schema for `PATCH` input. Auto-derived by making all writable fields optional and named `ModelUpdate`. |
-| {attr}`model <fastapi_restly.views.BaseRestView.model>` | `ClassVar[type[DeclarativeBase]]` | The SQLAlchemy model class. |
+| {attr}`model <fastapi_restly.views.BaseRestView.model>` | `ClassVar[type[Any]]` | The SQLAlchemy mapped class. A class without a mapper raises at class definition. |
 | {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` | `ClassVar[type \| None]` | Type of the `{id}` path parameter on the default routes. `None` (the default) takes the model's primary key type; a composite key gets `int`. |
 | {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` | `ClassVar[Iterable[str \| ViewRoute]]` | Route names to suppress. |
 | {attr}`listing_param_schema <fastapi_restly.views.BaseRestView.listing_param_schema>` | `ClassVar[type[pydantic.BaseModel]]` | The generated listing grammar (filter, sort, page). Any route method that declares a `query_params` parameter is annotated with it, so a custom listing takes the same parameters as `GET /`. |
