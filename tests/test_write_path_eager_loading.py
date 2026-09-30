@@ -14,13 +14,18 @@ because the reload runs without ``populate_existing``.
 """
 
 import asyncio
+import gc
+import re
+import traceback
+import warnings
 from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any
 
 import pytest
 from fastapi import FastAPI
 from sqlalchemy import ForeignKey, event, select
-from sqlalchemy.exc import MissingGreenlet
+from sqlalchemy.exc import MissingGreenlet, StatementError
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.inspection import inspect as sa_inspect
 from sqlalchemy.orm import Mapped, joinedload, mapped_column, relationship, selectinload
@@ -506,9 +511,9 @@ def test_indirection_over_an_unnamed_relationship_fails_alike_on_read_and_write(
 
     asyncio.run(seed())
 
-    with pytest.raises(MissingGreenlet):
+    with _expect_missing_greenlet():
         client.get("/docs/1")
-    with pytest.raises(MissingGreenlet):
+    with _expect_missing_greenlet():
         client.post("/docs/", json={"title": "created"})
 
 
@@ -546,8 +551,7 @@ def test_awaitable_attrs_reaches_a_relationship_the_schema_never_names(client):
         schema_create = DocCreate
 
         async def after_action_commit(self, action, new: Any, old=None) -> None:
-            with pytest.raises(MissingGreenlet):
-                _ = new.notes
+            assert "notes" in sa_inspect(new).unloaded
             seen["notes"] = [n.body for n in await new.awaitable_attrs.notes]
 
     create_tables()
@@ -911,3 +915,27 @@ def test_gate_terminates_on_a_self_referential_cycle(sync_db):
 
         # Must terminate rather than RecursionError; parent is loaded (itself).
         assert _schema_relationships_are_loaded(node, Node, NodeRead) is True
+
+
+@contextmanager
+def _expect_missing_greenlet() -> Iterator[None]:
+    # SQLAlchemy 2.1's aiosqlite adapter closes the cursor's __aenter__
+    # coroutine on this error path but leaves Connection.cursor unawaited.
+    # Capture that warning only around the deliberately invalid lazy load.
+    message = "coroutine 'Connection.cursor' was never awaited"
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.filterwarnings(
+            "always", message=rf"^{re.escape(message)}$", category=RuntimeWarning
+        )
+        with pytest.raises((MissingGreenlet, StatementError)) as error:
+            yield
+        if isinstance(error.value, StatementError):
+            assert isinstance(error.value.orig, MissingGreenlet)
+        # The test client's worker can retain the exception after the request.
+        # Release its frame locals before collecting the abandoned coroutine.
+        traceback.clear_frames(error.value.__traceback__)
+        del error
+        gc.collect()
+    assert all(
+        w.category is RuntimeWarning and str(w.message) == message for w in caught
+    )
