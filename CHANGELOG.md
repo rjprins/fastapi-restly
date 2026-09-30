@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Building a view by hand, such as `TaskView(session=..., request=...)`,
+  type-checks. mypy used to report the keyword arguments as unexpected.
 - Type checkers see that models on `fr.DataclassBase` and `fr.IDBase` are
   keyword-only. mypy and pyright used to reject a column without a default
   after one with a default, although it works at runtime.

@@ -22,6 +22,7 @@ from collections.abc import Mapping, Set
 from enum import Enum
 from math import ceil
 from typing import (
+    TYPE_CHECKING,
     Annotated,
     Any,
     Callable,
@@ -961,8 +962,13 @@ class View:
     dependencies: ClassVar[Any] = None
     responses: ClassVar[dict[int | str, dict[str, Any]]] = {}
 
+    if TYPE_CHECKING:
+        # include_view replaces __init__: each injected attribute becomes a
+        # keyword, so code that builds a view by hand passes them by name.
+        def __init__(self, **dependencies: Any) -> None: ...
+
     @classmethod
-    def before_include_view(cls):
+    def before_include_view(cls) -> None:
         """Run by :func:`include_view` once per class, before its routes are
         registered. A no-op here; override to adjust route methods first."""
 
