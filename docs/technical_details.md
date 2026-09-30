@@ -75,18 +75,25 @@ on the view class before {func}`include_view() <fastapi_restly.views.include_vie
 (auto-generated-schemas)=
 ### Auto-Generated Schemas
 
-{func}`create_schema_from_model(model_cls, ...) <fastapi_restly.schemas.create_schema_from_model>` walks all `Mapped[...]` annotations
-on the model (including inherited ones) and builds a Pydantic schema. Three of
-its behaviours are worth noting:
+{func}`create_schema_from_model(model_cls, ...) <fastapi_restly.schemas.create_schema_from_model>` builds a Pydantic schema with one
+field per column and relationship on the model's SQLAlchemy mapper, inherited
+ones included. A column's type comes from its `Mapped[T]` annotation, or from
+the plain annotation on a SQLModel table. Under
+`from __future__ import annotations`, the annotation string is evaluated against
+the model's module. When no annotation resolves, the column type's
+`python_type` is used. A column with neither raises `TypeError` naming the
+attribute. Synonyms and composites get no field of their own; the columns
+behind them already have one. Three of its behaviours are worth noting:
 
 - **Base class selection**: The function checks whether the model has fields
   *named* `id`, `created_at`, and `updated_at` to decide which schema base
   classes to mix in ({class}`IDSchema <fastapi_restly.schemas.IDSchema>`, {class}`TimestampsSchemaMixin <fastapi_restly.schemas.TimestampsSchemaMixin>`, {class}`BaseSchema <fastapi_restly.schemas.BaseSchema>`). It does
   **not** inspect the model's Python inheritance hierarchy; a model with a field
   accidentally named `id` will receive `IDSchema` as a base.
-- **ReadOnly annotation**: Only three field names are automatically marked
+- **ReadOnly annotation**: Three field names are automatically marked
   `ReadOnly`: `"id"`, `"created_at"`, and `"updated_at"` (controlled by
-  `include_readonly_fields=True`). Any other server-side default or
+  `include_readonly_fields=True`). So is a `column_property` over a SQL
+  expression, which cannot be written. Any other server-side default or
   auto-populated column will **not** be marked `ReadOnly` by auto-generation.
 - **Relationship fields**: Included when `include_relationships=True` (the
   default for `create_schema_from_model`). Relationship fields are set to
@@ -101,8 +108,8 @@ foreign-key columns appear in the generated schema as ordinary scalar fields.
 
 ### SQLAlchemy-to-Pydantic Type Mapping
 
-`convert_sqlalchemy_type_to_pydantic` maps the Python type extracted from each
-`Mapped[T]` annotation to its Pydantic equivalent. Pass-through types (those
+`convert_sqlalchemy_type_to_pydantic` maps each column's Python type, from its
+annotation or its column type, to its Pydantic equivalent. Pass-through types (those
 already understood by Pydantic) are returned unchanged:
 
 | SQLAlchemy / Python annotation | Pydantic field type |

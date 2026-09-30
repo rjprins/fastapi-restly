@@ -1,12 +1,15 @@
 import functools
 import inspect
+import sys
 import types
 from datetime import datetime
 from typing import (
     TYPE_CHECKING,
     Annotated,
     Any,
+    ForwardRef,
     Generic,
+    Literal,
     Optional,
     Union,
     final,
@@ -26,6 +29,9 @@ from typing_extensions import TypeAliasType, TypeVar
 from ..clauses import Unscoped, WhereClause, apply_clauses
 from ..clauses._scopes import _default_scope
 from ..exc import NotFound, RestlyConfigurationError
+
+if sys.version_info >= (3, 14):
+    import annotationlib
 
 
 class BaseSchema(pydantic.BaseModel):
@@ -279,6 +285,34 @@ def _schema_role_name(model_cls: type[pydantic.BaseModel], role: str) -> str:
     return f"{_schema_resource_name(model_cls)}{role}"
 
 
+def _own_annotations(cls: type) -> dict[str, Any]:
+    """Return the annotations ``cls`` itself declares, without failing on them.
+
+    Under PEP 563 the values are strings. On 3.14 a name that is undefined at
+    runtime, such as a ``TYPE_CHECKING`` import, comes back as a ``ForwardRef``
+    where reading ``__annotations__`` would raise ``NameError``.
+    """
+    if sys.version_info >= (3, 14):
+        return annotationlib.get_annotations(
+            cls, format=annotationlib.Format.FORWARDREF
+        )
+    return inspect.get_annotations(cls)
+
+
+def _is_unresolved(annotation: Any) -> bool:
+    """Whether ``annotation`` still holds a string or ``ForwardRef`` anywhere."""
+    if isinstance(annotation, (str, ForwardRef)):
+        return True
+    origin = get_origin(annotation)
+    if origin is Literal:
+        return False
+    args = get_args(annotation)
+    if origin is Annotated:
+        # Metadata may be any object, strings included.
+        args = args[:1]
+    return any(_is_unresolved(arg) for arg in args)
+
+
 def _model_id_type(sql_model: type[DeclarativeBase]) -> Any:
     """Return the Python type of ``sql_model``'s ``id`` primary key, or ``None``.
 
@@ -289,18 +323,17 @@ def _model_id_type(sql_model: type[DeclarativeBase]) -> Any:
     (via ``_get_sql_model_id_type``) and ``MustExist``.
     """
     for model_cls in sql_model.mro():
-        annotation = getattr(model_cls, "__annotations__", {}).get("id")
+        annotation = _own_annotations(model_cls).get("id")
         if annotation is None:
             continue
-        if isinstance(annotation, str):
-            # PEP 563 stringized annotation -- don't return the raw string; the
-            # mapper below resolves the real column type without eval'ing it.
-            break
-        origin = get_origin(annotation)
-        if origin is not None:
+        if get_origin(annotation) is not None:
             args = get_args(annotation)
             if args:
-                return args[0]
+                annotation = args[0]
+        if _is_unresolved(annotation):
+            # Don't return a raw string; the mapper below resolves the real
+            # column type without eval'ing it.
+            break
         return annotation
 
     # Fallback: ask the SA mapper. `python_type` raises NotImplementedError for

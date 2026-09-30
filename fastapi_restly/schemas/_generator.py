@@ -4,18 +4,28 @@ Schema generation utilities for auto-generating Pydantic schemas from SQLAlchemy
 
 import enum
 import inspect
+import sys
 import types
+from collections.abc import Collection
 from datetime import date, datetime, time
 from decimal import Decimal
-from typing import Any, Union, get_args
+from typing import Any, ForwardRef, Union, get_args, get_origin
 from uuid import UUID
 
 import pydantic
 from pydantic import Field
+from sqlalchemy import Column
 from sqlalchemy import inspect as sa_inspect
-from sqlalchemy.orm import DeclarativeBase, Mapped, RelationshipProperty
+from sqlalchemy.orm import ColumnProperty, DeclarativeBase, Mapped, RelationshipProperty
 
-from ._base import BaseSchema, IDSchema, ReadOnly, TimestampsSchemaMixin
+from ._base import (
+    BaseSchema,
+    IDSchema,
+    ReadOnly,
+    TimestampsSchemaMixin,
+    _is_unresolved,
+    _own_annotations,
+)
 
 
 def get_sqlalchemy_field_type(field: Any) -> Any:
@@ -83,81 +93,130 @@ def get_relationship_target_model(field: Any) -> type[DeclarativeBase] | None:
     return None
 
 
+def _resolve_annotation(owner: type, annotation: Any) -> Any:
+    """Evaluate a string annotation against ``owner``'s module, or return None."""
+    if isinstance(annotation, ForwardRef):
+        annotation = annotation.__forward_arg__
+    if isinstance(annotation, str):
+        module = sys.modules.get(owner.__module__)
+        # Module names win over class attributes, as in typing.get_type_hints:
+        # a column named ``date`` must not shadow the ``date`` type.
+        try:
+            annotation = eval(
+                annotation, dict(vars(owner)), dict(vars(module)) if module else {}
+            )
+        except Exception:
+            return None
+    return annotation
+
+
+def _model_annotations(model_cls: type, keys: Collection[str]) -> dict[str, Any]:
+    """Map each annotated name in ``keys`` to its inner type, or None if unresolvable.
+
+    ``Mapped[X]`` gives ``X``; a plain annotation (SQLModel) is kept as is.
+    The class nearest ``model_cls`` on the MRO wins.
+    """
+    annotations: dict[str, Any] = {}
+    for cls in model_cls.mro():
+        for name, annotation in _own_annotations(cls).items():
+            if name in annotations or name not in keys:
+                continue
+            annotation = _resolve_annotation(cls, annotation)
+            if get_origin(annotation) is Mapped:
+                args = get_args(annotation)
+                annotation = _resolve_annotation(cls, args[0]) if args else None
+            if annotation is not None and _is_unresolved(annotation):
+                annotation = None
+            annotations[name] = annotation
+    return annotations
+
+
+def _split_optional(annotation: Any) -> tuple[Any, bool]:
+    """Return ``(type, is_optional)`` with ``None`` removed from a union."""
+    if isinstance(annotation, types.UnionType) or get_origin(annotation) is Union:
+        union_args = get_args(annotation)
+        if type(None) in union_args:
+            non_none_types = [arg for arg in union_args if arg is not type(None)]
+            return (non_none_types[0] if non_none_types else annotation), True
+    return annotation, False
+
+
 def get_model_fields(model_cls: type[DeclarativeBase]) -> dict[str, Any]:
     """
     Extract field information from a SQLAlchemy model.
 
+    The mapper decides which attributes exist; annotations only refine a
+    column's type. Fields follow annotation order, then the mapper's order.
+
     :param model_cls: A SQLAlchemy model class.
     :returns: Dictionary mapping field names to their types and metadata.
+    :raises TypeError: If a column's Python type can be read from neither its
+        annotation nor its column type.
     """
     fields: dict[str, Any] = {}
 
     mapper = sa_inspect(model_cls)
+    props = {prop.key: prop for prop in mapper.attrs}
+    annotations = _model_annotations(model_cls, props.keys())
+    names = list(annotations)
+    names += [name for name in props if name not in annotations]
 
-    # Get all annotations from the model class and its base classes
-    all_annotations = {}
-    for cls in model_cls.mro():
-        if hasattr(cls, "__annotations__"):
-            all_annotations.update(cls.__annotations__)
-
-    for name, field_type in all_annotations.items():
+    for name in names:
         if name.startswith("_"):
             continue
+        prop = props[name]
 
-        # Check if it's a Mapped field
-        if not hasattr(field_type, "__origin__") or field_type.__origin__ is not Mapped:
-            continue
-
-        # Extract the actual type from Mapped[Type]
-        args = get_args(field_type)
-        if not args:
-            continue
-
-        actual_type = args[0]
-        relationship = mapper.relationships.get(name)
-
-        rel_mapper = (
-            getattr(relationship, "mapper", None) if relationship is not None else None
-        )
-        field_info: dict[str, Any] = {
-            "type": actual_type,
-            "is_relationship": relationship is not None,
-            "target_model": (rel_mapper.class_ if rel_mapper is not None else None),
-            "is_optional": False,
-            "default": None,
-        }
-
-        # Check if the field is optional (Union with None or Optional)
-        if isinstance(actual_type, types.UnionType):
-            # Python 3.10+ `str | None` syntax
-            union_args = get_args(actual_type)
-            if type(None) in union_args:
-                field_info["is_optional"] = True
-                non_none_types = [arg for arg in union_args if arg is not type(None)]
-                if non_none_types:
-                    field_info["type"] = non_none_types[0]
-        elif hasattr(actual_type, "__origin__"):
-            origin = actual_type.__origin__
-            if origin is Union:
-                args = get_args(actual_type)
-                if type(None) in args:
-                    field_info["is_optional"] = True
-                    # Remove None from the type
-                    non_none_types = [arg for arg in args if arg is not type(None)]
-                    if non_none_types:
-                        field_info["type"] = non_none_types[0]
-
-        if relationship is not None:
+        if isinstance(prop, RelationshipProperty):
+            target_model = prop.mapper.class_
             # Relationship fields are response-oriented in generated schemas.
             # Keep them optional so create/update inputs can rely on FK columns.
-            field_info["is_optional"] = True
-        elif name in mapper.columns:
-            column = mapper.columns[name]
-            if column.default is not None or column.server_default is not None:
-                field_info["default"] = column.default or column.server_default
-                field_info["is_optional"] = True
+            fields[name] = {
+                "type": list[target_model] if prop.uselist else target_model,
+                "is_relationship": True,
+                "target_model": target_model,
+                "is_optional": True,
+                "is_read_only": False,
+                "default": None,
+            }
+            continue
 
-        fields[name] = field_info
+        if not isinstance(prop, ColumnProperty):
+            # Synonyms and composites are views of attributes listed already.
+            continue
+
+        column = prop.columns[0]
+        annotation = annotations.get(name)
+        if annotation is not None:
+            field_type, is_optional = _split_optional(annotation)
+        else:
+            try:
+                field_type = column.type.python_type
+            except NotImplementedError:
+                raise TypeError(
+                    f"Cannot determine the Python type of "
+                    f"{model_cls.__name__}.{name} for an auto-generated schema: "
+                    f"it has no annotation that resolves at runtime, and its "
+                    f"column type {column.type!r} has no python_type. Annotate "
+                    f"it as Mapped[...] or set schema= on the view."
+                ) from None
+            is_optional = bool(getattr(column, "nullable", False))
+
+        default = None
+        column_default = getattr(column, "default", None)
+        server_default = getattr(column, "server_default", None)
+        if column_default is not None or server_default is not None:
+            default = column_default or server_default
+            is_optional = True
+
+        fields[name] = {
+            "type": field_type,
+            "is_relationship": False,
+            "target_model": None,
+            "is_optional": is_optional,
+            # A column_property over an expression cannot be written.
+            "is_read_only": not isinstance(column, Column),
+            "default": default,
+        }
 
     return fields
 
@@ -213,47 +272,36 @@ def create_schema_from_model(
 
         # Determine if field should be read-only
         is_readonly = (
-            field_name in ["id", "created_at", "updated_at"] and include_readonly_fields
-        )
+            field_name in ["id", "created_at", "updated_at"]
+            or field_info["is_read_only"]
+        ) and include_readonly_fields
 
         if is_readonly:
             read_only_fields.append(field_name)
 
-        # Convert SQLAlchemy type to Pydantic type
-        pydantic_type = convert_sqlalchemy_type_to_pydantic(
-            field_info["type"], field_info["is_optional"]
-        )
-
-        # Handle relationships
-        if field_info["is_relationship"] and field_info["target_model"]:
+        if field_info["is_relationship"]:
             target_model = field_info["target_model"]
 
             # Skip self-referential relationship to avoid infinite recursion
             if target_model is model_cls:
                 continue
 
-            if (
-                hasattr(field_info["type"], "__origin__")
-                and field_info["type"].__origin__ is list
-            ):
-                # Many relationship
-                target_schema = create_schema_from_model(
-                    target_model,
-                    include_relationships=False,  # Avoid circular references
-                    include_readonly_fields=False,
-                )
+            target_schema = create_schema_from_model(
+                target_model,
+                include_relationships=False,  # Avoid circular references
+                include_readonly_fields=False,
+            )
+            if get_origin(field_info["type"]) is list:
                 pydantic_type = list[target_schema]
             else:
-                # One relationship
-                target_schema = create_schema_from_model(
-                    target_model,
-                    include_relationships=False,  # Avoid circular references
-                    include_readonly_fields=False,
-                )
                 pydantic_type = target_schema
 
             if field_info["is_optional"]:
                 pydantic_type = pydantic_type | None
+        else:
+            pydantic_type = convert_sqlalchemy_type_to_pydantic(
+                field_info["type"], field_info["is_optional"]
+            )
 
         # Add field to definitions - use proper Pydantic field format
         # Don't include SQLAlchemy defaults as they're not JSON-serializable

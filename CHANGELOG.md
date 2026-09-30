@@ -18,6 +18,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The `{id}` path parameter takes the model's primary key type, so a UUID or
   string key works without setting `id_type`. `id_type` now defaults to `None`
   and still overrides the derived type.
+- Auto-generated schemas take their fields from the SQLAlchemy mapper instead
+  of `Mapped[...]` annotations. A model module with
+  `from __future__ import annotations`, a SQLModel table, and a class mapped
+  with plain `Column` attributes each used to get a schema without its columns.
+  On Python 3.14, a relationship to a class imported under `TYPE_CHECKING` no
+  longer raises `NameError` during schema generation or `{id}` typing.
+- A column whose Python type cannot be determined raises `TypeError` naming the
+  attribute, instead of being left out of the generated schema.
+- A generated schema uses the annotation nearest the model, so a subclass that
+  redefines an inherited column gets its own type. A `column_property` over a
+  SQL expression is `ReadOnly`.
 
 ## [0.10.0] - 2026-09-23
 
