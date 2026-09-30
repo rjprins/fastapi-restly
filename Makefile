@@ -23,6 +23,7 @@ lint:
 test-typing:
 	@echo "=== Testing Typing Compatibility Fixtures ==="
 	uv run --with pyright pyright -p tests/typing/pyrightconfig.json
+	uv run --with mypy mypy --config-file tests/typing/mypy.ini
 
 # Test the main framework
 test-framework:
@@ -138,7 +139,7 @@ build-pages:
 help:
 	@echo "Available commands:"
 	@echo "  test-framework  - Test the main FastAPI-Restly framework"
-	@echo "  test-typing     - Run Pyright on consumer typing fixtures"
+	@echo "  test-typing     - Run Pyright and mypy on consumer typing fixtures"
 	@echo "  test-shop       - Test the shop example"
 	@echo "  test-blog       - Test the blog example"
 	@echo "  test-saas       - Test the SaaS example"

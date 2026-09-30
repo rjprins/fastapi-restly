@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Subclassing `fr.ContextNamespace` or `fr.ClauseNamespace` passes
+  `mypy --strict`. The untyped `__init_subclass__` hooks used to report
+  `no-untyped-call` on the class line.
 - A view subclass keeps the `schema`, `schema_create`, and `schema_update` its
   base view declares. Registration used to replace them with schemas generated
   from the model, so columns the declared schema left out appeared in

@@ -61,7 +61,7 @@ jobs:
       - name: Install dependencies
         run: make install-dev
 
-      - name: Run pyright on typing fixtures
+      - name: Run pyright and mypy on typing fixtures
         run: make test-typing
 
   test:

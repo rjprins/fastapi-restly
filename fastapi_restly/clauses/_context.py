@@ -46,7 +46,7 @@ class ContextNamespace:
     raises.
     """
 
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
         if sys.version_info >= (3, 14):
             # Deferred annotations may name types not yet defined.

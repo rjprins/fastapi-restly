@@ -1,3 +1,4 @@
+from collections.abc import AsyncIterator
 from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, Response
@@ -26,7 +27,9 @@ class Current(fr.ContextNamespace):
     tenant_id: fr.ContextParam[int]
 
 
-async def bind_tenant(tenant_id: Annotated[int, Depends(current_tenant_id)]):
+async def bind_tenant(
+    tenant_id: Annotated[int, Depends(current_tenant_id)],
+) -> AsyncIterator[None]:
     with Current.bind(tenant_id=tenant_id):
         yield
 

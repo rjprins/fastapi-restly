@@ -2,7 +2,9 @@ Typing compatibility fixtures for Restly consumer code.
 
 These files are not pytest tests. They are small example applications that are
 checked with Pyright to verify that normal Restly usage stays quiet in editors
-like VS Code with Pylance.
+like VS Code with Pylance, and with `mypy --strict` for projects that gate CI
+on it. `mypy.ini` ignores errors inside the package, as mypy does for an
+installed package.
 
 Run them with:
 

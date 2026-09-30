@@ -47,7 +47,7 @@ class ClauseNamespace:
     model: ClassVar[type[DeclarativeBase]]
     default_scope: ClassVar[WhereClause | Unscoped] = UNSCOPED
 
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
         model = cls.__dict__.get("model")
         for name, value in vars(cls).items():
