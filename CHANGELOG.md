@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A view subclass keeps the `schema`, `schema_create`, and `schema_update` its
+  base view declares. Registration used to replace them with schemas generated
+  from the model, so columns the declared schema left out appeared in
+  responses and request bodies.
 - Query clauses bind context values on SQLAlchemy 2.1 without calling the
   deprecated expression-level `params()` method.
 - `apply_clauses` preserves the type of a multi-column `Select` with

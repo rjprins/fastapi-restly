@@ -1408,11 +1408,10 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         This function can be overridden to further tweak the endpoints before they
         are added to FastAPI.
         """
-        # Auto-generate schema if none is provided. Each of these guards
-        # checks ``cls.__dict__`` — not ``hasattr`` — so a subclass that
-        # changes ``schema``/``default_page_size``/``max_page_size`` regenerates
-        # the derived schemas instead of silently inheriting the parent's.
-        if "schema" not in cls.__dict__:
+        # A declared schema is inherited like any attribute. One that Restly
+        # generated for a parent is rebuilt, since the subclass may change
+        # what it was derived from.
+        if _needs_generating(cls, "schema"):
             if not hasattr(cls, "model"):
                 raise ValueError(
                     f"'{cls.__name__}.model' must be specified to auto-generate schema"
@@ -1420,6 +1419,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             cls.schema = cast(
                 type[SchemaT], auto_generate_schema_for_view(cls, cls.model)
             )
+            _mark_generated(cls, "schema")
 
         # A paginated view always caps at ``default_page_size``, so it must be a
         # usable size. Reject ``None`` (the pre-envelope "no cap" idiom) and
@@ -1437,7 +1437,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                 "set 'paginated = False'."
             )
 
-        if "listing_param_schema" not in cls.__dict__:
+        if _needs_generating(cls, "listing_param_schema", derived_from="schema"):
             if not hasattr(cls, "model"):
                 raise ValueError(
                     f"'{cls.__name__}.model' must be specified: it is needed to "
@@ -1450,14 +1450,17 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                 max_page_size=cls.max_page_size,
                 paginated=cls.paginated,
             )
-        if "schema_create" not in cls.__dict__:
+            _mark_generated(cls, "listing_param_schema")
+        if _needs_generating(cls, "schema_create", derived_from="schema"):
             cls.schema_create = cast(
                 type[CreateSchemaT], create_model_without_read_only_fields(cls.schema)
             )
-        if "schema_update" not in cls.__dict__:
+            _mark_generated(cls, "schema_create")
+        if _needs_generating(cls, "schema_update", derived_from="schema"):
             cls.schema_update = cast(
                 type[UpdateSchemaT], create_model_with_optional_fields(cls.schema)
             )
+            _mark_generated(cls, "schema_update")
 
         # WriteOnly fields are excluded from responses by ``exclude=True`` on the
         # marker (recursively, and from the OpenAPI response schema, since FastAPI's
@@ -1510,6 +1513,38 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         if (ep := getattr(cls, "delete_endpoint", None)) is not None:
             _annotate(ep, return_annotation=fastapi.Response, id=id_type)
         _exclude_routes(cls)
+
+
+def _owner_index(cls: type, name: str) -> int | None:
+    """Position in the MRO of the class that sets ``name``, or None."""
+    for index, klass in enumerate(cls.__mro__):
+        if name in klass.__dict__:
+            return index
+    return None
+
+
+def _mark_generated(cls: type, name: str) -> None:
+    generated = cls.__dict__.get("_fr_generated", frozenset())
+    cls._fr_generated = generated | {name}  # type: ignore[attr-defined]
+
+
+def _needs_generating(cls: type, name: str, *, derived_from: str | None = None) -> bool:
+    """Whether registration must build ``name`` for this view class.
+
+    A declared value is inherited. It is rebuilt when no class sets it, when a
+    parent's value was generated, or when the attribute it derives from is set
+    nearer to ``cls`` than the value itself.
+    """
+    index = _owner_index(cls, name)
+    if index is None:
+        return True
+    owner = cls.__mro__[index]
+    if name in owner.__dict__.get("_fr_generated", ()):
+        return owner is not cls
+    if derived_from is not None:
+        source_index = _owner_index(cls, derived_from)
+        return source_index is not None and source_index < index
+    return False
 
 
 #: A ``BaseRestView`` at any parameterization, for the signature below.
