@@ -26,6 +26,7 @@ from ._base import (
     ListingResult,
     ResponseShape,
     _annotate,
+    _typed_id_route,
     _view_id_type,
     get,
     put,
@@ -459,6 +460,7 @@ class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
         result = await self.handle_get_many(self._parse_react_admin_params())
         return self.to_response(result, ResponseShape.LISTING)
 
+    @_typed_id_route
     @put("/{id}")
     async def put(self, id: Any, schema_obj: Any) -> Any:
         obj = await self.handle_update(id, schema_obj)
@@ -478,6 +480,7 @@ class ReactAdminView(_ReactAdminMixin, RestView):
         result = self.handle_get_many(self._parse_react_admin_params())
         return self.to_response(result, ResponseShape.LISTING)
 
+    @_typed_id_route
     @put("/{id}")
     def put(self, id: Any, schema_obj: Any) -> Any:
         obj = self.handle_update(id, schema_obj)

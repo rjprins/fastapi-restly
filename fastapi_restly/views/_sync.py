@@ -25,6 +25,7 @@ from ._base import (
     _identity_criterion,
     _not_found_message,
     _ReadWhere,
+    _typed_id_route,
     delete,
     get,
     patch,
@@ -75,6 +76,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         result = self.handle_get_many(query_params)
         return self.to_response(result, ResponseShape.LISTING)
 
+    @_typed_id_route
     @get("/{id}")
     def get_one_endpoint(self, id: Any) -> Any:
         """``GET /{id}`` endpoint method. Override ``get_one`` for domain
@@ -92,6 +94,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         obj = self.handle_create(schema_obj)
         return self.to_response(obj)
 
+    @_typed_id_route
     @patch("/{id}")
     def update_endpoint(self, id: Any, schema_obj: Any) -> Any:
         """``PATCH /{id}`` endpoint method. Override ``update`` for
@@ -100,6 +103,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         obj = self.handle_update(id, schema_obj)
         return self.to_response(obj)
 
+    @_typed_id_route
     @delete("/{id}")
     def delete_endpoint(self, id: Any) -> Any:
         """``DELETE /{id}`` endpoint method. Override ``delete`` for

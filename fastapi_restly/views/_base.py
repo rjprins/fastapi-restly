@@ -39,6 +39,7 @@ from typing import (
     get_type_hints,
     overload,
 )
+from uuid import UUID
 
 import fastapi
 import pydantic
@@ -1040,6 +1041,12 @@ def route(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
     return store_args_decorator
 
 
+def _typed_id_route(endpoint: Callable[..., Any]) -> Callable[..., Any]:
+    """Mark a built-in item route whose copied path follows the view's ID type."""
+    endpoint._fr_typed_id_route = True  # type: ignore[attr-defined]
+    return endpoint
+
+
 def get(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
     """Decorator to mark a View method as a GET endpoint.
 
@@ -1523,6 +1530,16 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         # full schema.
         response_schema = cls.schema
         id_type = _view_id_type(cls)
+        if id_type is int:
+            item_path = "/{id:int}"
+        elif id_type is UUID:
+            item_path = "/{id:uuid}"
+        else:
+            item_path = "/{id}"
+        for endpoint in cls.__dict__.values():
+            if getattr(endpoint, "_fr_typed_id_route", False):
+                _, route_kwargs = endpoint._api_route_args
+                endpoint._api_route_args = (item_path, route_kwargs.copy())
 
         # Only annotate if the methods exist (they will be overridden in subclasses)
         listing_response_annotation: Any = (

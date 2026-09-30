@@ -209,7 +209,7 @@ def test_id_parameter_takes_the_primary_key_type(flavor, kind):
     client.delete(f"/things/{thing_id}")
     client.get(f"/things/{thing_id}", assert_status_code=404)
     if bad_id is not None:
-        client.get(f"/things/{bad_id}", assert_status_code=422)
+        client.get(f"/things/{bad_id}", assert_status_code=404)
 
     openapi = client.app.openapi()
     for method in ("get", "patch", "delete"):
@@ -254,7 +254,7 @@ def test_react_admin_put_takes_the_primary_key_type(flavor):
     created = client.post("/things/", json={"name": "a"}).json()
     response = client.put(f"/things/{created['id']}", json={"name": "b"})
     assert response.json() == {"id": created["id"], "name": "b"}
-    client.put("/things/not-a-uuid", json={"name": "b"}, assert_status_code=422)
+    client.put("/things/not-a-uuid", json={"name": "b"}, assert_status_code=404)
     assert _id_schema(client.app.openapi(), "/things/{id}", "put")["format"] == "uuid"
 
 
@@ -300,7 +300,7 @@ def test_explicit_id_type_overrides_the_primary_key_type(flavor):
     flavor.make_tables()
     client = flavor.client
 
-    client.get("/things/abc", assert_status_code=422)
+    client.get("/things/abc", assert_status_code=404)
     assert _id_schema(client.app.openapi(), "/things/{id}", "get") == {
         "type": "integer"
     }
@@ -356,3 +356,30 @@ def test_composite_primary_key_keeps_the_int_id(base):
     fr.include_view(app, PairView)
 
     assert _id_schema(app.openapi(), "/pairs/{id}", "get") == {"type": "integer"}
+
+
+@pytest.mark.parametrize("kind", ["int", "uuid"])
+@pytest.mark.parametrize("react_admin", [False, True], ids=["rest", "react-admin"])
+def test_typed_item_routes_allow_later_static_routes(flavor, kind, react_admin):
+    thing_model, thing_schema, _, bad_id, expected = _pk_case(kind)
+    base = flavor.react_admin_base if react_admin else flavor.base
+
+    class ThingView(base):
+        prefix = "/things"
+        model = thing_model
+        schema = thing_schema
+
+    app = flavor.client.app
+    fr.include_view(app, ThingView)
+    methods = ["GET", "PATCH", "DELETE"] + (["PUT"] if react_admin else [])
+
+    @app.api_route("/things/me", methods=methods, include_in_schema=False)
+    def me():
+        return {"name": "current user"}
+
+    for method in methods:
+        response = flavor.client.request(method, "/things/me")
+        assert response.status_code == 200
+        assert response.json() == {"name": "current user"}
+        assert flavor.client.request(method, f"/things/{bad_id}").status_code == 404
+        assert _id_schema(app.openapi(), "/things/{id}", method.lower()) == expected
