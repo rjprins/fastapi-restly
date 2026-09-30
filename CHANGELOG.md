@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Built-in item routes use `/{id:int}` for integer keys and `/{id:uuid}` for
+  UUID keys, including React Admin's `PUT`. Later static routes such as
+  `/users/me` remain reachable. Values that do not match now return `404`
+  instead of `422`, unless another route handles them. Integer item paths
+  accept non-negative digits, including zero. Negative IDs require explicit
+  custom item routes. Custom route declarations and OpenAPI path shapes stay
+  unchanged.
 - Default CRUD route names are `get_many`, `get_one`, `create`, `update`, and
   `delete`, with summaries such as "List" and "Create". React Admin's PUT route
   is named `put`. Default operation IDs use the resource path and action:

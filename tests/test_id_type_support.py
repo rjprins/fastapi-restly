@@ -1,8 +1,10 @@
+from enum import Enum
+from functools import wraps
 from types import SimpleNamespace
 from uuid import UUID, uuid4
 
 import pytest
-from fastapi import FastAPI, Response
+from fastapi import APIRouter, FastAPI, Response
 from pydantic import BaseModel
 from sqlalchemy import ForeignKey, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -370,16 +372,170 @@ def test_typed_item_routes_allow_later_static_routes(flavor, kind, react_admin):
         schema = thing_schema
 
     app = flavor.client.app
-    fr.include_view(app, ThingView)
+    router = APIRouter()
+    fr.include_view(router, ThingView)
+    app.include_router(router, prefix="/api")
     methods = ["GET", "PATCH", "DELETE"] + (["PUT"] if react_admin else [])
 
-    @app.api_route("/things/me", methods=methods, include_in_schema=False)
+    @app.api_route("/api/things/me", methods=methods, include_in_schema=False)
     def me():
         return {"name": "current user"}
 
     for method in methods:
-        response = flavor.client.request(method, "/things/me")
+        response = flavor.client.request(method, "/api/things/me")
         assert response.status_code == 200
         assert response.json() == {"name": "current user"}
-        assert flavor.client.request(method, f"/things/{bad_id}").status_code == 404
-        assert _id_schema(app.openapi(), "/things/{id}", method.lower()) == expected
+        response = flavor.client.request(method, f"/api/things/{bad_id}")
+        assert response.status_code == 404
+        assert _id_schema(app.openapi(), "/api/things/{id}", method.lower()) == expected
+
+
+def test_integer_item_routes_accept_zero_but_not_negative_ids(flavor):
+    class Thing(fr.DataclassBase):
+        id: Mapped[int] = mapped_column(primary_key=True, autoincrement=False)
+        name: Mapped[str]
+
+    class ThingSchema(fr.BaseSchema):
+        id: int
+        name: str
+
+    class ThingView(flavor.react_admin_base):
+        prefix = "/things"
+        model = Thing
+        schema = ThingSchema
+
+    client = flavor.client
+    fr.include_view(client.app, ThingView)
+    flavor.make_tables()
+    for key in (-1, 0):
+        assert client.post("/things", json={"id": key, "name": "a"}).json()["id"] == key
+
+    for method in ("GET", "PATCH", "PUT", "DELETE"):
+        response = client.request(method, "/things/-1", json={"name": "b"})
+        assert response.status_code == 404
+        response = client.request(method, "/things/0", json={"name": "b"})
+        assert response.status_code == (204 if method == "DELETE" else 200)
+    assert str(client.app.url_path_for("get_one", id=0)) == "/things/0"
+
+
+def test_unconverted_id_type_keeps_fastapi_validation(flavor):
+    thing_model, thing_schema, *_ = _pk_case("str")
+
+    class Key(str, Enum):
+        LAMP = "lamp"
+
+    class ThingView(flavor.base):
+        prefix = "/things"
+        model = thing_model
+        schema = thing_schema
+        id_type = Key
+
+    client = flavor.client
+    fr.include_view(client.app, ThingView)
+    flavor.make_tables()
+    created = client.post("/things", json={"id": "lamp", "name": "a"}).json()
+    assert client.get("/things/lamp").json() == created
+    client.get("/things/not-a-key", assert_status_code=422)
+
+
+def test_id_paths_are_isolated_across_registered_relatives(flavor):
+    thing_model, thing_schema, *_ = _pk_case("int")
+
+    class ThingView(flavor.react_admin_base):
+        prefix = "/things"
+        model = thing_model
+        schema = thing_schema
+
+    app = FastAPI()
+    fr.include_view(app, ThingView)
+    uuid_model, uuid_schema = _uuid_thing()
+
+    class UuidView(ThingView):
+        prefix = "/uuids"
+        model = uuid_model
+        schema = uuid_schema
+
+    fr.include_view(app, UuidView)
+    str_model, str_schema, *_ = _pk_case("str")
+
+    class StrView(UuidView):
+        prefix = "/strings"
+        model = str_model
+        schema = str_schema
+
+    fr.include_view(app, StrView)
+    second_app = FastAPI()
+    for view in (ThingView, UuidView, StrView):
+        fr.include_view(second_app, view)
+    assert app.openapi() == second_app.openapi()
+
+    for name in ("get_one_endpoint", "update_endpoint", "delete_endpoint", "put"):
+        assert getattr(ThingView, name)._api_route_args[0] == "/{id:int}"
+        assert getattr(UuidView, name)._api_route_args[0] == "/{id:uuid}"
+        assert getattr(StrView, name)._api_route_args[0] == "/{id}"
+        assert getattr(flavor.react_admin_base, name)._api_route_args[0] == "/{id}"
+
+
+@pytest.mark.parametrize(
+    ("name", "method"),
+    [
+        ("get_one_endpoint", "GET"),
+        ("update_endpoint", "PATCH"),
+        ("delete_endpoint", "DELETE"),
+        ("put", "PUT"),
+    ],
+)
+@pytest.mark.parametrize("path", ["/{id}", "/lookup/{id:str}"])
+def test_custom_item_paths_survive_registration_and_inheritance(
+    flavor, name, method, path
+):
+    thing_model, thing_schema, *_ = _pk_case("int")
+
+    class ThingView(flavor.react_admin_base):
+        prefix = "/things"
+        model = thing_model
+        schema = thing_schema
+
+    @fr.route(path, methods=[method])
+    def custom(self, id: str) -> dict[str, str]:
+        return {"id": id}
+
+    setattr(ThingView, name, custom)
+    client = flavor.client
+    fr.include_view(client.app, ThingView)
+
+    class ChildView(ThingView):
+        prefix = "/child"
+
+    fr.include_view(client.app, ChildView)
+    for prefix in ("/things", "/things/child"):
+        url = prefix + path.replace("{id}", "-1").replace("{id:str}", "-1")
+        response = client.request(method, url)
+        assert response.status_code == 200
+        assert response.json() == {"id": "-1"}
+
+
+def test_redecorated_builtin_endpoint_keeps_its_custom_path(flavor):
+    thing_model, thing_schema, *_ = _pk_case("int")
+
+    class ThingView(flavor.base):
+        prefix = "/things"
+        model = thing_model
+        schema = thing_schema
+
+        if flavor.asynchronous:
+
+            @fr.get("/lookup/{id}", response_model=None)
+            @wraps(flavor.base.get_one_endpoint)
+            async def get_one_endpoint(self, id):
+                return {"id": id}
+
+        else:
+
+            @fr.get("/lookup/{id}", response_model=None)
+            @wraps(flavor.base.get_one_endpoint)
+            def get_one_endpoint(self, id):
+                return {"id": id}
+
+    fr.include_view(flavor.client.app, ThingView)
+    assert flavor.client.get("/things/lookup/-1").json() == {"id": -1}

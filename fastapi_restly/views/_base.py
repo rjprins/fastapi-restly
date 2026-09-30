@@ -1034,6 +1034,8 @@ def route(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
     """
 
     def store_args_decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+        # A new declaration takes precedence over metadata copied by wraps().
+        func.__dict__.pop("_fr_typed_id_route", None)
         # Create a new attribute: '_api_route_args'
         func._api_route_args = (path, api_route_kwargs)  # type: ignore[attr-defined]
         return func
@@ -1172,7 +1174,10 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     scope: ClassVar[WhereClause | Unscoped | None] = None
     #: The type of the ``{id}`` path parameter on the default routes. ``None``
     #: (the default) takes the Python type of the model's primary key, and a
-    #: composite key gets ``int``. Set a type to override it.
+    #: composite key gets ``int``. Set a type to override it. Built-in item
+    #: routes use Starlette's ``int`` or ``uuid`` path converter for those
+    #: types. Integer paths accept non-negative digits. An unmatched value
+    #: falls through to another route or returns 404, instead of 422.
     id_type: ClassVar[type[Any] | None] = None
     exclude_routes: ClassVar[Iterable[str | ViewRoute]] = ()
     #: Extra query-parameter keys to allow on listing routes beyond those

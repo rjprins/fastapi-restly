@@ -325,7 +325,7 @@ def test_subclass_and_parent_on_same_app_have_no_duplicate_routes(sync_db):
     paths = {path for path, _ in _effective_route_pairs(app)}
     # The child's CRUD routes exist (once) under the composed prefix.
     assert "/dials/fancy/" in paths
-    assert "/dials/fancy/{id}" in paths
+    assert "/dials/fancy/{id:int}" in paths
 
     fr.DataclassBase.metadata.create_all(engine)
     client = TestClient(app)
@@ -480,7 +480,7 @@ def test_same_view_registered_twice_on_same_app_mounts_once(sync_db):
     assert _duplicate_routes(app) == {}
     paths = {path for path, _ in _effective_route_pairs(app)}
     assert "/pulleys/" in paths
-    assert "/pulleys/{id}" in paths
+    assert "/pulleys/{id:int}" in paths
 
     # Still answers end-to-end.
     fr.DataclassBase.metadata.create_all(engine)

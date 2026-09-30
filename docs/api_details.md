@@ -29,6 +29,7 @@ The default routes share these conventions:
 
 - Updates use `PATCH`, not `PUT`. React Admin views also expose `PUT /{id}` for `ra-data-simple-rest`; see [React Admin Integration](howto_react_admin.md).
 - `GET /{id}` and `DELETE /{id}` return `404` when the object is not found.
+- Built-in integer and UUID item routes use [typed path matching](#item-route-matching). Values that do not match fall through to another route or return `404`.
 - Read-only schema fields are ignored on create/update.
 - `*_id: fr.MustExist[int, Model]` inputs are validated against the database: the referenced row must exist. The scalar id is the related primary-key type, such as `int` or `UUID`.
 
