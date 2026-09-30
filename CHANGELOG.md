@@ -11,11 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Default CRUD route names are `get_many`, `get_one`, `create`, `update`, and
   `delete`, with summaries such as "List" and "Create". React Admin's PUT route
-  is named `put`. Generated operation IDs no longer contain the view class
-  name or `_endpoint`. Regenerate clients or set explicit operation IDs to
-  keep existing names. Set `route_options` on a view to override a route's
-  name, summary, operation ID, or other FastAPI route keyword arguments
-  without replacing its endpoint method.
+  is named `put`. Default operation IDs use the resource path and action:
+  `items_list`, `items_get`, `items_create`, `items_update`, and `items_delete`
+  for `/items`. Router prefixes remain in the ID, such as `v1_items_list`.
+  Explicit operation IDs and application-supplied generators take precedence.
+  Regenerate clients or set explicit operation IDs to keep existing names.
+  Set `route_options` on a view to override a route's name, summary, operation
+  ID, or other FastAPI route keyword arguments without replacing its endpoint
+  method.
 - Configure custom session generators before registering routes that use
   `SessionDep` or `AsyncSessionDep`. Setting or replacing a generator after
   registration raises a configuration error.

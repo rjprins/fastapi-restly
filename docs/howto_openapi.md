@@ -25,24 +25,41 @@ class InvoiceView(fr.AsyncRestView):
 
 CRUD routes use these FastAPI route names and OpenAPI summaries:
 
-| Endpoint method | Route name | Summary |
-|---|---|---|
-| `get_many_endpoint` | `get_many` | List |
-| `get_one_endpoint` | `get_one` | Retrieve |
-| `create_endpoint` | `create` | Create |
-| `update_endpoint` | `update` | Update |
-| `delete_endpoint` | `delete` | Delete |
-| React Admin `put` | `put` | Update (PUT) |
+| Endpoint method | Route name | Operation ID at `/items` | Summary |
+|---|---|---|---|
+| `get_many_endpoint` | `get_many` | `items_list` | List |
+| `get_one_endpoint` | `get_one` | `items_get` | Retrieve |
+| `create_endpoint` | `create` | `items_create` | Create |
+| `update_endpoint` | `update` | `items_update` | Update |
+| `delete_endpoint` | `delete` | `items_delete` | Delete |
+| React Admin `put` | `put` | `items_put` | Update (PUT) |
 
-FastAPI's default operation ID combines the route name, URL path, and HTTP
-method. For a view at `/items`, the list ID is `get_many_items_get` and the
-create ID is `create_items_post`. Renaming the view class does not change
-these IDs. Mounting it under another prefix changes the path part of the ID.
+Default CRUD operation IDs combine the full resource path and the action.
+They omit the final member parameter and the HTTP method suffix. Mounting a
+view under `/v1` changes `items_list` to `v1_items_list`, so mounting the same
+view under `/v1` and `/v2` gives distinct IDs. Renaming the view class or
+changing its tags does not change these IDs.
 
-Applications can supply FastAPI's
+Parent path parameters remain in the resource name as `by_<parameter>`.
+For `/projects/{project_id}/items`, the list ID is
+`projects_by_project_id_items_list`. Punctuation becomes underscores, so
+`/order-items` uses `order_items_list`. Resource spelling is preserved:
+`/people` uses `people_get`, without singularizing it. Paths that normalize
+to the same name, such as `/order-items` and `/order_items`, need explicit
+operation IDs when included in one schema.
+
+Changing a CRUD route's `name` changes the action part of its generated ID.
+For example, `name="search"` on the list route produces `items_search`.
+Custom routes and plain {class}`View <fastapi_restly.views.View>` routes use
+FastAPI's normal operation ID rules.
+
+Explicit `operation_id` values take precedence. Applications can also supply
+FastAPI's
 [`generate_unique_id_function`](https://fastapi.tiangolo.com/advanced/generate-clients/#custom-generate-unique-id-function).
-It receives the route names above, so a generator based on tag and name can
-produce IDs such as `items-get_many`.
+Generators supplied on a route, router, router inclusion, or app replace the
+CRUD defaults using FastAPI's normal precedence. They receive the route names
+above, so a generator based on tag and name can produce IDs such as
+`items-get_many`.
 
 Regenerate clients when adopting these defaults. To preserve an existing
 operation ID, set `operation_id` in the route's options.

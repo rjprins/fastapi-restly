@@ -16,6 +16,7 @@ SQLAlchemy models.
 import dataclasses
 import functools
 import inspect
+import re
 import types
 import warnings
 from collections.abc import Mapping, Set
@@ -42,6 +43,7 @@ from typing import (
 import fastapi
 import pydantic
 from fastapi import BackgroundTasks, Request, Response, WebSocket
+from fastapi.datastructures import Default
 from fastapi.params import Depends as _DependsMarker
 from sqlalchemy import JSON as _JSONType
 from sqlalchemy import ColumnElement, Select
@@ -2270,7 +2272,19 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
         defaults = {}
         if issubclass(view_cls, BaseRestView) and name in _CRUD_ROUTE_METADATA:
             route_name, summary = _CRUD_ROUTE_METADATA[name]
-            defaults = {"name": route_name, "summary": summary}
+            # FastAPI carries placeholders through include_router(), so an
+            # explicit generator on the route, router, or app still wins.
+            # https://github.com/fastapi/fastapi/blob/0.115.0/fastapi/utils.py
+            defaults = {
+                "name": route_name,
+                "summary": summary,
+                "generate_unique_id_function": Default(
+                    functools.partial(
+                        _generate_crud_operation_id,
+                        is_member=name not in {"get_many_endpoint", "create_endpoint"},
+                    )
+                ),
+            }
         route_kwargs = {
             **defaults,
             **route_kwargs,
@@ -2289,6 +2303,23 @@ _CRUD_ROUTE_METADATA = {
     "delete_endpoint": ("delete", "Delete"),
     "put": ("put", "Update (PUT)"),
 }
+
+
+def _generate_crud_operation_id(
+    route: fastapi.routing.APIRoute, *, is_member: bool
+) -> str:
+    """Combine the mounted resource path and action, omitting the member key."""
+    path = route.path_format.rstrip("/")
+    if is_member:
+        path = re.sub(r"/\{[^}]+\}$", "", path)
+    segments = [
+        f"by_{segment[1:-1]}" if segment.startswith("{") else segment
+        for segment in path.strip("/").split("/")
+        if segment
+    ]
+    resource = re.sub(r"\W+", "_", "_".join(segments)).strip("_") or "root"
+    action = {"get_many": "list", "get_one": "get"}.get(route.name, route.name)
+    return re.sub(r"\W+", "_", f"{resource}_{action}").strip("_")
 
 
 def _get_router_tags(view_cls: type[View], prefix: str) -> list[str | Enum]:
