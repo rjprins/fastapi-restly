@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Inherited routes and custom listing routes resolve postponed annotations on
+  FastAPI 0.115. A route declared with `from __future__ import annotations` used
+  to fail registration, request validation, or OpenAPI generation when its
+  annotations named a schema, enum, or type alias from the application's module.
 - A view subclass keeps the `schema`, `schema_create`, and `schema_update` its
   base view declares. Registration used to replace them with schemas generated
   from the model, so columns the declared schema left out appeared in

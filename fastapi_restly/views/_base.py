@@ -1706,13 +1706,11 @@ def reject_unknown_query_keys(request: fastapi.Request, allowed: set[str]) -> No
 def _guard_listing_params(route: Callable) -> Callable:
     """Run the unknown-key guard before a route that takes ``query_params``.
 
-    A copy, like the parent-endpoint copies: ``functools.wraps`` carries the
-    route args and the signature, and the marker keeps a subclass's copy
-    from being wrapped twice.
+    The copy keeps the route args and signature. The marker keeps a
+    subclass's copy from being wrapped twice.
     """
     if inspect.iscoroutinefunction(route):
 
-        @functools.wraps(route)
         async def _async_guarded(self, *args, **kwargs):
             self._reject_unknown_query_params()
             return await route(self, *args, **kwargs)
@@ -1720,13 +1718,13 @@ def _guard_listing_params(route: Callable) -> Callable:
         guarded: Callable = _async_guarded
     else:
 
-        @functools.wraps(route)
         def _sync_guarded(self, *args, **kwargs):
             self._reject_unknown_query_params()
             return route(self, *args, **kwargs)
 
         guarded = _sync_guarded
 
+    guarded = _wrap_endpoint(guarded, route)
     guarded._fr_listing_guard = True  # type: ignore[attr-defined]
     return guarded
 
@@ -2080,21 +2078,35 @@ def _make_copy(endpoint: Callable, view_cls: type[View]) -> Callable:
     """
     if inspect.iscoroutinefunction(endpoint):
 
-        @functools.wraps(endpoint)
         async def _async_wrapper(self, *args, **kwargs):
             return await endpoint(self, *args, **kwargs)
 
         endpoint_wrapper: Callable = _async_wrapper
     else:
 
-        @functools.wraps(endpoint)
         def _sync_wrapper(self, *args, **kwargs):
             return endpoint(self, *args, **kwargs)
 
         endpoint_wrapper = _sync_wrapper
 
-    endpoint_wrapper.__annotations__ = endpoint.__annotations__.copy()
-    return endpoint_wrapper
+    return _wrap_endpoint(endpoint_wrapper, endpoint)
+
+
+def _wrap_endpoint(wrapper: Callable, endpoint: Callable) -> Callable:
+    """Copy endpoint metadata and its annotation namespace onto a wrapper."""
+    # FastAPI 0.115 resolves string annotations against the wrapper's globals.
+    # These wrappers use only arguments and closure values, so the endpoint's
+    # globals can replace this module's without changing their behavior.
+    copied = types.FunctionType(
+        wrapper.__code__,
+        inspect.unwrap(endpoint).__globals__,
+        wrapper.__name__,
+        wrapper.__defaults__,
+        wrapper.__closure__,
+    )
+    functools.update_wrapper(copied, endpoint)
+    copied.__annotations__ = endpoint.__annotations__.copy()
+    return copied
 
 
 def _init_all_endpoints(view_cls: type[View]):
