@@ -98,7 +98,7 @@ requires-dist = [
     { name = "alembic", specifier = ">=1.15.2" },
     { name = "fastapi", specifier = ">=0.115.12" },
     { name = "fastapi-restly", editable = "../../" },
-    { name = "sqlalchemy", specifier = ">=2.0.41" },
+    { name = "sqlalchemy", specifier = ">=2.0.45" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32.1" },
 ]
 

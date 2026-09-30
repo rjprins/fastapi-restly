@@ -10,7 +10,7 @@ dependencies = [
     "fastapi-restly",
     "pydantic-settings>=2.9.1",
     "uvicorn[standard]>=0.32.1",
-    "sqlalchemy[asyncio]>=2.0.41",
+    "sqlalchemy[asyncio]>=2.0.45",
     "python-multipart>=0.0.20",
 ]
 

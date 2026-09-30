@@ -8,7 +8,7 @@ dependencies = [
     "fastapi>=0.115.12",
     "fastapi-restly",
     "uvicorn[standard]>=0.32.1",
-    "sqlalchemy[asyncio]>=2.0.41",
+    "sqlalchemy[asyncio]>=2.0.45",
     "aiosqlite>=0.21.0",
     "alembic>=1.15.2",
 ]
