@@ -6,12 +6,22 @@ from typing import Any
 from sqlalchemy import DateTime, Enum, func
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import (
+    Composite,
     DeclarativeBase,
     Mapped,
     MappedAsDataclass,
+    MappedColumn,
+    RelationshipProperty,
+    Synonym,
+    composite,
     declared_attr,
+    deferred,
     mapped_column,
+    relationship,
+    synonym,
 )
+from sqlalchemy.orm.decl_api import DCTransformDeclarative
+from typing_extensions import dataclass_transform
 
 # Alternatives to cascade "all" and "all, delete-orphan" without
 # "refresh-expire": a plain session.refresh(obj) on an async session would
@@ -71,8 +81,34 @@ def underscore(name: str) -> str:
     return s2.lower()
 
 
+# A type checker reads kw_only from the metaclass, not from a base class's
+# keyword, so without this it rejects a required column after a defaulted one.
+# The field specifiers repeat SQLAlchemy's own.
+@dataclass_transform(
+    kw_only_default=True,
+    field_specifiers=(
+        MappedColumn,
+        RelationshipProperty,
+        Composite,
+        Synonym,
+        mapped_column,
+        relationship,
+        composite,
+        synonym,
+        deferred,
+    ),
+)
+class _KwOnlyDataclassMeta(DCTransformDeclarative):
+    pass
+
+
 class DataclassBase(
-    AsyncAttrs, TableNameMixin, MappedAsDataclass, DeclarativeBase, kw_only=True
+    AsyncAttrs,
+    TableNameMixin,
+    MappedAsDataclass,
+    DeclarativeBase,
+    metaclass=_KwOnlyDataclassMeta,
+    kw_only=True,
 ):
     """SQLAlchemy declarative base with dataclass semantics.
 

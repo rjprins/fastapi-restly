@@ -27,6 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Type checkers see that models on `fr.DataclassBase` and `fr.IDBase` are
+  keyword-only. mypy and pyright used to reject a column without a default
+  after one with a default, although it works at runtime.
 - Reference types work with a mapped class that does not subclass
   `DeclarativeBase`: a SQLModel table, a `registry.mapped` or
   `declarative_base()` class, or an imperative mapping. Reading an `IDRef` or
