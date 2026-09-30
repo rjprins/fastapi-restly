@@ -39,7 +39,11 @@ jobs:
       - name: Upgrade all lockfiles to the latest resolutions
         run: |
           uv lock --upgrade
-          for d in example-projects/*/; do (cd "$d" && uv lock --upgrade); done
+          for project in example-projects/*/; do
+            if [ -f "$project/uv.lock" ]; then
+              uv --directory "$project" lock --upgrade
+            fi
+          done
 
       - name: Install dependencies
         run: make install-dev
