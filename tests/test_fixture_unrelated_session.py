@@ -56,7 +56,9 @@ def test_unrelated_sync_session_is_not_hijacked_by_restly_session():
         with RestlyContext():
             _fr_globals.make_session = make_session
             with fixture_engine.connect() as conn:
-                scope = _fixtures._restly_sync_scope.__wrapped__(conn)
+                scope = _fixtures._restly_sync_scope.__wrapped__(
+                    conn, _fixtures._source_factories()[0]
+                )
                 isolated_make_session = next(scope)
                 gen = _fixtures.restly_session.__wrapped__(isolated_make_session)
                 fixture_session = next(gen)

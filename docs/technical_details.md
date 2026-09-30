@@ -180,9 +180,14 @@ its own `Annotated[..., Depends(...)]` dependency for
 The async and sync variants have identical endpoint signatures; the only
 difference is that the async variant uses `await` in its process methods.
 
-`AsyncSessionDep` and `SessionDep` use Restly's built-in session generators.
-Those generators yield a SQLAlchemy session and manage lifecycle: rollback and
-close on exit. They do **not** commit on response. `handle_<verb>` normally owns
+`AsyncSessionDep` and `SessionDep` wrap a session source as a FastAPI
+sub-dependency. The source is either Restly's built-in generator or the custom
+generator passed to {func}`configure() <fastapi_restly.db.configure>` before
+route registration. Making that source a dependency lets FastAPI share its
+cached session with the application's `Depends(get_db)`, without rewriting
+view annotations. The wrapper checks for uncommitted changes before the source
+cleans up. The built-in generators roll back and close on exit.
+They do **not** commit on response. `handle_<verb>` normally owns
 the commit and runs
 {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`,
 then the commit itself, then

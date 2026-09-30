@@ -136,13 +136,13 @@ def test_custom_generator_forgot_commit_warns(client):
     ``session_generator`` too, not only the built-in factory: a custom generator
     constructs/yields/cleans-up (no commit), so a route that forgot to commit is
     still caught."""
-    _build(client)
 
     async def custom_gen():
         async with _fr_globals.async_make_session() as session:
             yield session
 
     fr.configure(session_generator=custom_gen)
+    _build(client)
     assert _warn_count(lambda: client.post("/things/forgot")) >= 1
 
 

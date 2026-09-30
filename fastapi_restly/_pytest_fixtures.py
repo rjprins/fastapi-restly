@@ -21,17 +21,21 @@ from ._test_setup import (
     DELETE,
     NONE,
     ROLLBACK,
+    _async_source_factory,
     _clean_database_async,
     _clean_database_sync,
     _create_schema,
     _current_setup,
     _is_memory_sqlite,
+    _prepare_database_sources,
     _resolve_db_cleanup,
     _resolve_engine,
     _source_factories,
+    _sync_source_factory,
     _validate_database_sources,
 )
 from .db._globals import RestlyContext, _fr_globals, _get_restly_context
+from .db._session import _async_generate_session, _generate_session
 from .exc import RestlyConfigurationError
 
 if TYPE_CHECKING:
@@ -277,7 +281,18 @@ def _blocked_async_test_access() -> Iterator[None]:
 
 
 @pytest.fixture
-def _shared_connection(request: pytest.FixtureRequest):
+def _restly_sync_source(request: pytest.FixtureRequest):
+    """Discover a sync factory once per test, before pinning its connection."""
+    if _cleanup_mode() == ROLLBACK and (
+        _current_setup() is not None
+        or {"restly_session", "restly_async_session"} & set(request.fixturenames)
+    ):
+        return _sync_source_factory()
+    return _source_factories()[0]
+
+
+@pytest.fixture
+def _shared_connection(request: pytest.FixtureRequest, _restly_sync_source):
     # One pinned connection shared by the sync and async fixtures, so a test that
     # uses both sees a single database. Each request during the test joins this
     # connection's outer transaction through a SAVEPOINT (create_savepoint mode);
@@ -301,7 +316,7 @@ def _shared_connection(request: pytest.FixtureRequest):
         yield None
         return
 
-    make_session, _ = _source_factories()
+    make_session = _restly_sync_source
     if not make_session:
         yield None
         return
@@ -343,9 +358,9 @@ def _isolated_sync_factory(
 
 
 @pytest.fixture
-def _restly_sync_scope(_shared_connection):
+def _restly_sync_scope(_shared_connection, _restly_sync_source):
     """Own sync cleanup and the per-test factory; create no public session."""
-    original = _source_factories()[0]
+    original = _restly_sync_source
     mode = _cleanup_mode()
     setup = _current_setup()
 
@@ -355,6 +370,10 @@ def _restly_sync_scope(_shared_connection):
         yield original
         return
 
+    if original is None:
+        # A dynamically requested session fixture may not have appeared in the
+        # fixture closure when the source was first resolved.
+        original = _sync_source_factory()
     if original is None:
         yield None
         return
@@ -405,10 +424,11 @@ else:
 
     @asynccontextmanager
     async def _async_rollback_factory(
-        shared_connection=None,
+        shared_connection=None, *, original=None
     ) -> AsyncIterator[async_sessionmaker[SA_AsyncSession]]:
         """Install one savepoint factory on the caller's event loop."""
-        original = _source_factories()[1]
+        if original is None:
+            original = await _async_source_factory()
         if original is None:
             raise RestlyConfigurationError(
                 "Async rollback isolation needs an async sessionmaker configured "
@@ -459,14 +479,20 @@ else:
         shared_connection=None, *, clean_database: bool = True
     ) -> AsyncIterator[async_sessionmaker[SA_AsyncSession] | None]:
         """Own one async execution domain's cleanup, override, and disposal."""
-        original = _source_factories()[1]
+        mode = _cleanup_mode()
+        original = (
+            await _async_source_factory()
+            if mode == ROLLBACK
+            else _source_factories()[1]
+        )
         if original is None:
             yield None
             return
 
-        mode = _cleanup_mode()
         if mode == ROLLBACK:
-            async with _async_rollback_factory(shared_connection) as isolated:
+            async with _async_rollback_factory(
+                shared_connection, original=original
+            ) as isolated:
                 yield isolated
             return
 
@@ -546,31 +572,17 @@ else:
         As with the sync fixture there is no shared identity map: this fixture and
         the request are separate sessions on one connection, so a write made
         directly on this session becomes visible to a request only after a flush or
-        commit. Configure an async sessionmaker for the tests (``async_database_url=``,
-        ``async_engine=`` or ``async_make_session=`` to ``fr.configure()``); a
-        ``session_generator`` alone cannot be isolated, because ``AsyncSessionDep``
-        resolves it before the factory this fixture swaps.
+        commit. A configured ``session_generator`` is overridden on the test app,
+        so native ``Depends(get_db)`` and Restly share the isolated request session.
+        Without a configured factory, rollback setup opens the generator to
+        discover its session's bind. Generators requiring request arguments need
+        an explicit test engine or sessionmaker.
 
         ``fr.open_async_session()`` resolves the same factory, so it also yields an
         isolated session during a test.
         """
         make_session = _restly_async_scope
         if make_session is None:
-            if (
-                _cleanup_mode() == ROLLBACK
-                and _fr_globals.session_generator is not None
-            ):
-                raise RestlyConfigurationError(
-                    "restly_async_session cannot isolate a session built by "
-                    "your session_generator: AsyncSessionDep reads the "
-                    "generator before the session factory this fixture swaps, "
-                    "so each request would get its own session, with no "
-                    "isolation. Configure an async sessionmaker for the tests "
-                    "as well: pass async_database_url=, async_engine= or "
-                    "async_make_session= to fr.configure(). The fixture then "
-                    "builds the isolated session from it and ignores the "
-                    "generator during each test."
-                )
             pytest.skip("Database connection not set up")
 
         session = make_session()
@@ -581,7 +593,7 @@ else:
 
     @pytest_asyncio.fixture
     async def restly_async_client(
-        restly_app, _restly_async_scope
+        restly_app, _restly_async_scope, request: pytest.FixtureRequest
     ) -> AsyncIterator[AsyncRestlyTestClient]:
         """An async HTTP client that runs the application's lifespan.
 
@@ -608,12 +620,16 @@ else:
                 ) from exc
             raise
 
-        async with LifespanManager(
-            restly_app, startup_timeout=None, shutdown_timeout=None
-        ) as manager:
-            client = AsyncRestlyTestClient(restly_app, _transport_app=manager.app)
-            async with client:
-                yield client
+        if "restly_session" in getattr(request, "fixturenames", ()):
+            request.getfixturevalue("_restly_sync_scope")
+
+        with _override_session_generators(restly_app):
+            async with LifespanManager(
+                restly_app, startup_timeout=None, shutdown_timeout=None
+            ) as manager:
+                client = AsyncRestlyTestClient(restly_app, _transport_app=manager.app)
+                async with client:
+                    yield client
 
 
 class _AsyncEngineLifespanApp:
@@ -659,30 +675,17 @@ def restly_session(_restly_sync_scope) -> Iterator[SA_Session]:
     Unlike production, this fixture and the request are separate sessions on one
     connection, so a write made directly on this session becomes visible to a
     request only after a flush or commit (there is no shared identity map).
-    Configure a sync sessionmaker for the tests (``database_url=``, ``engine=`` or
-    ``make_session=`` to ``fr.configure()``); a ``sync_session_generator`` alone
-    cannot be isolated, because ``SessionDep`` resolves it before the factory this
-    fixture swaps.
+    A configured ``sync_session_generator`` is overridden on the test app, so native
+    ``Depends(get_db)`` and Restly share the isolated request session. Without a
+    configured factory, rollback setup opens the generator to discover its
+    session's bind. Generators requiring request arguments need an explicit test
+    engine or sessionmaker.
 
     ``fr.open_session()`` resolves the same factory, so it also yields an isolated
     session during a test.
     """
     make_session = _restly_sync_scope
     if make_session is None:
-        if (
-            _cleanup_mode() == ROLLBACK
-            and _fr_globals.sync_session_generator is not None
-        ):
-            raise RestlyConfigurationError(
-                "restly_session cannot isolate a session built by your "
-                "sync_session_generator: SessionDep reads the generator before "
-                "the session factory this fixture swaps, so each request "
-                "would get its own session, with no isolation. Configure a sync "
-                "sessionmaker for the tests as well: pass database_url=, "
-                "engine= or make_session= to fr.configure(). The fixture then "
-                "builds the isolated session from it and ignores the generator "
-                "during each test."
-            )
         pytest.skip("Database connection not set up")
 
     session = make_session()
@@ -701,6 +704,7 @@ def pytest_collection_finish(session: pytest.Session) -> None:
         return
 
     try:
+        setup = _prepare_database_sources(_cleanup_mode())
         _validate_database_sources(setup, _cleanup_mode())
         _create_schema(setup, root=Path(session.config.rootpath))
     except RestlyConfigurationError as error:
@@ -724,7 +728,8 @@ def _restly_managed_isolation(request: pytest.FixtureRequest) -> Iterator[None]:
 
     mode = _cleanup_mode()
     _validate_database_sources(setup, mode)
-    yield from _managed_isolation(request, setup, mode)
+    with _override_session_generators(setup.app):
+        yield from _managed_isolation(request, setup, mode)
 
 
 def _managed_isolation(
@@ -831,6 +836,11 @@ def restly_client(
             raise ModuleNotFoundError(_TESTING_EXTRA_MESSAGE, name=exc.name) from exc
         raise
 
+    # Resolve isolation before entering the application's lifespan even when
+    # the test lists its client before its session fixture.
+    if "restly_session" in getattr(request, "fixturenames", ()):
+        request.getfixturevalue("_restly_sync_scope")
+
     # Bound before the block: __enter__ returns self at runtime, but Starlette
     # annotates it as the base TestClient, so `with ... as client` would type
     # the fixture without the subclass's status-code assertions.
@@ -842,8 +852,44 @@ def restly_client(
         or (setup is not None and _async_source_is_loop_bound(setup))
     ):
         _reject_split_async_usage(request)
+    if setup is None and "restly_async_session" in getattr(request, "fixturenames", ()):
+        request.getfixturevalue("_restly_async_scope")
     if async_engine_policy is not None:
         transport_app = _AsyncEngineLifespanApp(restly_app)
     client = RestlyTestClient(restly_app, _transport_app=transport_app)
-    with client:
+    with _override_session_generators(restly_app), client:
         yield client
+
+
+@contextmanager
+def _override_session_generators(app: FastAPI | None) -> Iterator[None]:
+    """Make native Depends(get_db) and Restly use the test's pinned connection."""
+    if app is None or _cleanup_mode() != ROLLBACK:
+        yield
+        return
+    managed = _current_setup() is not None
+    installed = {}
+    for generator, factory, replacement in (
+        (
+            _fr_globals.sync_session_generator,
+            _fr_globals.test_make_session,
+            _generate_session,
+        ),
+        (
+            _fr_globals.session_generator,
+            _fr_globals.test_async_make_session,
+            _async_generate_session,
+        ),
+    ):
+        if generator is not None and (managed or factory is not None):
+            # An explicit application override owns its own isolation. Preserve
+            # it, including an override a user fixture installs during the test.
+            if generator not in app.dependency_overrides:
+                app.dependency_overrides[generator] = replacement
+                installed[generator] = replacement
+    try:
+        yield
+    finally:
+        for generator, replacement in installed.items():
+            if app.dependency_overrides.get(generator) is replacement:
+                del app.dependency_overrides[generator]

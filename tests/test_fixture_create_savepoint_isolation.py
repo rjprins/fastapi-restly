@@ -56,9 +56,13 @@ def test_get_engine_and_create_all_work_inside_the_sync_fixture():
     try:
         with RestlyContext():
             _fr_globals.make_session = make_session
-            shared_gen = _fixtures._shared_connection.__wrapped__(_SYNC_SESSION_REQUEST)
+            shared_gen = _fixtures._shared_connection.__wrapped__(
+                _SYNC_SESSION_REQUEST, _fixtures._source_factories()[0]
+            )
             conn = next(shared_gen)
-            scope = _fixtures._restly_sync_scope.__wrapped__(conn)
+            scope = _fixtures._restly_sync_scope.__wrapped__(
+                conn, _fixtures._source_factories()[0]
+            )
             isolated_make_session = next(scope)
             gen = _fixtures.restly_session.__wrapped__(isolated_make_session)
             session = next(gen)
@@ -86,9 +90,13 @@ def test_sync_request_write_is_visible_to_a_later_request():
     try:
         with RestlyContext():
             _fr_globals.make_session = make_session
-            shared_gen = _fixtures._shared_connection.__wrapped__(_SYNC_SESSION_REQUEST)
+            shared_gen = _fixtures._shared_connection.__wrapped__(
+                _SYNC_SESSION_REQUEST, _fixtures._source_factories()[0]
+            )
             conn = next(shared_gen)
-            scope = _fixtures._restly_sync_scope.__wrapped__(conn)
+            scope = _fixtures._restly_sync_scope.__wrapped__(
+                conn, _fixtures._source_factories()[0]
+            )
             isolated_make_session = next(scope)
             gen = _fixtures.restly_session.__wrapped__(isolated_make_session)
             next(gen)
@@ -128,9 +136,13 @@ def test_sync_request_rollback_discards_only_its_own_work():
     try:
         with RestlyContext():
             _fr_globals.make_session = make_session
-            shared_gen = _fixtures._shared_connection.__wrapped__(_SYNC_SESSION_REQUEST)
+            shared_gen = _fixtures._shared_connection.__wrapped__(
+                _SYNC_SESSION_REQUEST, _fixtures._source_factories()[0]
+            )
             conn = next(shared_gen)
-            scope = _fixtures._restly_sync_scope.__wrapped__(conn)
+            scope = _fixtures._restly_sync_scope.__wrapped__(
+                conn, _fixtures._source_factories()[0]
+            )
             isolated_make_session = next(scope)
             gen = _fixtures.restly_session.__wrapped__(isolated_make_session)
             next(gen)

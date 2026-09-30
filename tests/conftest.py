@@ -113,6 +113,7 @@ def setup_database_connection():
     # ``_fr_globals`` and don't tear them down).
     _fr_globals.session_generator = None
     _fr_globals.sync_session_generator = None
+    _fr_globals.registered_session_dependencies = set()
     _fr_globals.make_session = None
     fr.configure(async_database_url="sqlite+aiosqlite:///:memory:")
     yield

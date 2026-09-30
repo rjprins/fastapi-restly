@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Configure custom session generators before registering routes that use
+  `SessionDep` or `AsyncSessionDep`. Setting or replacing a generator after
+  registration raises a configuration error.
 - The minimum SQLAlchemy version is 2.0.45, up from 2.0.22. On Python 3.14,
   earlier versions raise `NameError` for a mapped dataclass, such as a model on
   `fr.IDBase`, whose relationship names a class imported under `TYPE_CHECKING`.
@@ -50,6 +53,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Subclassing `fr.ContextNamespace` or `fr.ClauseNamespace` passes
   `mypy --strict`. The untyped `__init_subclass__` hooks used to report
   `no-untyped-call` on the class line.
+- Configured session generators participate in FastAPI's dependency cache.
+  Application dependencies and Restly views share one request session, so
+  related ORM objects loaded by authentication can be assigned in a view.
+  Explicit view session dependencies keep their declared source.
+- Rollback test fixtures override configured generators on the app, sharing
+  isolated request sessions with native FastAPI dependencies. Generator-only
+  setups can discover a factory from a yielded session's bind.
 - A view subclass keeps the `schema`, `schema_create`, and `schema_update` its
   base view declares. Registration used to replace them with schemas generated
   from the model, so columns the declared schema left out appeared in

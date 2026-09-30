@@ -75,7 +75,9 @@ def test_restly_project_root_fixture_anchors_to_test_file(restly_project_root):
 
 def test_shared_connection_yields_none_or_real_connection():
     with RestlyContext():
-        gen = _fixtures._shared_connection.__wrapped__(_SYNC_SESSION_REQUEST)
+        gen = _fixtures._shared_connection.__wrapped__(
+            _SYNC_SESSION_REQUEST, _fixtures._source_factories()[0]
+        )
         assert next(gen) is None
         with pytest.raises(StopIteration):
             next(gen)
@@ -91,7 +93,9 @@ def test_shared_connection_yields_none_or_real_connection():
 
             _fr_globals.make_session = make_session
 
-            gen = _fixtures._shared_connection.__wrapped__(_SYNC_SESSION_REQUEST)
+            gen = _fixtures._shared_connection.__wrapped__(
+                _SYNC_SESSION_REQUEST, _fixtures._source_factories()[0]
+            )
             conn = next(gen)
             assert conn.engine is engine
             gen.close()
@@ -112,7 +116,9 @@ def test_sync_fixture_swaps_in_an_isolated_factory_and_restores():
             _fr_globals.make_session = make_session
             with engine.connect() as conn:
                 conn.begin()
-                scope = _fixtures._restly_sync_scope.__wrapped__(conn)
+                scope = _fixtures._restly_sync_scope.__wrapped__(
+                    conn, _fixtures._source_factories()[0]
+                )
                 isolated_make_session = next(scope)
                 gen = _fixtures.restly_session.__wrapped__(isolated_make_session)
                 session = next(gen)
@@ -158,7 +164,9 @@ def test_sync_fixture_begin_context_flushes_on_successful_exit():
 
             _fr_globals.make_session = make_session
             with engine.connect() as conn:
-                scope = _fixtures._restly_sync_scope.__wrapped__(conn)
+                scope = _fixtures._restly_sync_scope.__wrapped__(
+                    conn, _fixtures._source_factories()[0]
+                )
                 isolated_make_session = next(scope)
                 gen = _fixtures.restly_session.__wrapped__(isolated_make_session)
                 next(gen)
@@ -240,7 +248,9 @@ def test_sync_fixture_restores_globals_even_if_session_close_raises():
             _fr_globals.sync_session_generator = sentinel_gen
             with engine.connect() as conn:
                 conn.begin()
-                scope = _fixtures._restly_sync_scope.__wrapped__(conn)
+                scope = _fixtures._restly_sync_scope.__wrapped__(
+                    conn, _fixtures._source_factories()[0]
+                )
                 isolated_make_session = next(scope)
                 gen = _fixtures.restly_session.__wrapped__(isolated_make_session)
                 session = next(gen)
@@ -352,7 +362,9 @@ async def test_async_fixture_reuses_configured_sync_connection():
             _fr_globals.make_session = make_session
             _fr_globals.async_make_session = async_make_session
 
-            conn_gen = _fixtures._shared_connection.__wrapped__(_ASYNC_SESSION_REQUEST)
+            conn_gen = _fixtures._shared_connection.__wrapped__(
+                _ASYNC_SESSION_REQUEST, _fixtures._source_factories()[0]
+            )
             shared_conn = next(conn_gen)
             assert shared_conn is not None  # sync sessionmaker -> real connection
 
@@ -555,7 +567,7 @@ from fastapi import FastAPI
 from fastapi_restly.pytest_fixtures import restly_async_client
 
 async def exercise_fixture():
-    client = restly_async_client.__wrapped__(FastAPI(), None)
+    client = restly_async_client.__wrapped__(FastAPI(), None, None)
     await client.__anext__()
 
 asyncio.run(exercise_fixture())

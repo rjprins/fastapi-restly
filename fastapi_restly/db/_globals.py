@@ -15,6 +15,7 @@ class RestlyContext:
         "async_database_url",
         "async_make_session",
         "database_configuration_locked",
+        "registered_session_dependencies",
         "test_async_make_session",
         "test_make_session",
         "database_url",
@@ -28,15 +29,15 @@ class RestlyContext:
     async_database_url: str | None
     async_make_session: async_sessionmaker[Any] | None
     database_configuration_locked: bool
-    #: Set by the test fixtures for the duration of a test. The session
-    #: dependencies consult it before anything else, so nothing an application
-    #: configures afterwards can route a test's requests elsewhere.
+    registered_session_dependencies: set[str]
+    #: Set by the test fixtures for the duration of a test. The app's dependency
+    #: overrides and open_session() use these factories before application sources.
     test_make_session: sessionmaker[Any] | None
     test_async_make_session: async_sessionmaker[Any] | None
     database_url: str | None
     make_session: sessionmaker[Any] | None
-    session_generator: Callable[[], AsyncIterator[SA_AsyncSession]] | None
-    sync_session_generator: Callable[[], Iterator[SA_Session]] | None
+    session_generator: Callable[..., AsyncIterator[SA_AsyncSession]] | None
+    sync_session_generator: Callable[..., Iterator[SA_Session]] | None
     warn_on_misuse: bool
     warn_on_uncommitted: bool
 
@@ -44,6 +45,7 @@ class RestlyContext:
         self.async_database_url = None
         self.async_make_session = None
         self.database_configuration_locked = False
+        self.registered_session_dependencies = set()
         self.test_make_session = None
         self.test_async_make_session = None
         self.database_url = None

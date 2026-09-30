@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Sequence
-from dataclasses import dataclass
+from contextlib import asynccontextmanager, contextmanager
+from dataclasses import dataclass, replace
+from inspect import signature
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -239,23 +241,7 @@ def _validate_database_sources(setup: _TestSetup, mode: str) -> None:
     # configure_tests() recorded the setup. In particular, two private in-memory
     # SQLite engines are only unified by rollback mode's pinned sync connection.
     _reject_split_databases(setup, mode)
-    if mode == ROLLBACK:
-        if setup.sync_session_generator is not None and setup.make_session is None:
-            raise RestlyConfigurationError(
-                'fr.testing.configure_tests(db_cleanup="rollback") cannot '
-                "isolate the configured sync_session_generator without a sync "
-                "sessionmaker. Configure the application with database_url=, "
-                "engine= or make_session= as well."
-            )
-        if setup.session_generator is not None and setup.async_make_session is None:
-            raise RestlyConfigurationError(
-                'fr.testing.configure_tests(db_cleanup="rollback") cannot '
-                "isolate the configured session_generator without an async "
-                "sessionmaker. Configure the application with "
-                "async_database_url=, async_engine= or async_make_session= as "
-                "well."
-            )
-    elif mode == DELETE and (
+    if mode == DELETE and (
         setup.sync_session_generator is not None or setup.session_generator is not None
     ):
         raise RestlyConfigurationError(
@@ -264,6 +250,92 @@ def _validate_database_sources(setup: _TestSetup, mode: str) -> None:
             "sessionmaker it would clean. Use the sessionmaker as the application "
             'session source, or choose db_cleanup="none".'
         )
+
+
+def _sync_source_factory() -> Any:
+    factory = _source_factories()[0]
+    generator = _fr_globals.sync_session_generator
+    if factory is not None or generator is None:
+        return factory
+    _check_discoverable_generator(generator, "sync_session_generator")
+    with contextmanager(generator)() as session:
+        return _factory_from_session(session, asynchronous=False)
+
+
+async def _async_source_factory() -> Any:
+    factory = _source_factories()[1]
+    generator = _fr_globals.session_generator
+    if factory is not None or generator is None:
+        return factory
+    _check_discoverable_generator(generator, "session_generator")
+    async with asynccontextmanager(generator)() as session:
+        return _factory_from_session(session, asynchronous=True)
+
+
+def _prepare_database_sources(mode: str) -> _TestSetup:
+    """Discover generator-only sources before managed schema setup and isolation."""
+    global _setup
+    assert _setup is not None
+    if mode != ROLLBACK:
+        return _setup
+    sync_factory = _sync_source_factory()
+    async_factory = _source_factories()[1]
+    if async_factory is None and _setup.session_generator is not None:
+
+        async def discover():
+            factory = await _async_source_factory()
+            # Discovery may check out a connection in the generator body. Close
+            # pooled connections before the temporary loop ends.
+            engine = _resolve_engine(factory.kw["bind"])
+            if not _is_memory_sqlite(engine.url):
+                await engine.dispose()
+            return factory
+
+        async_factory = asyncio.run(discover())
+    _setup = replace(
+        _setup, make_session=sync_factory, async_make_session=async_factory
+    )
+    return _setup
+
+
+def _check_discoverable_generator(generator: Any, name: str) -> None:
+    if signature(generator).parameters:
+        raise RestlyConfigurationError(
+            f"The configured {name} takes arguments. To use rollback isolation, "
+            "also configure its test engine or sessionmaker through fr.configure(). "
+            "Restly cannot resolve request dependencies during database setup."
+        )
+
+
+def _factory_from_session(session: Any, *, asynchronous: bool) -> Any:
+    """Build test sessions from the source's database and session class."""
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+    from sqlalchemy.orm import Session, sessionmaker
+
+    expected = AsyncSession if asynchronous else Session
+    if not isinstance(session, expected) or session.bind is None:
+        raise RestlyConfigurationError(
+            "A session generator used for rollback setup must yield a SQLAlchemy "
+            "session with a bind. Configure its test engine or sessionmaker "
+            "through fr.configure() when the generator chooses binds dynamically."
+        )
+    sync_session = session.sync_session if asynchronous else session
+    # Session exposes no public inventory of per-mapper binds. Reject them,
+    # like the factory-based path, rather than silently dropping that routing.
+    if sync_session._Session__binds:
+        raise RestlyConfigurationError(
+            "Rollback isolation needs a single-bind session. Configure a test "
+            "sessionmaker instead of a generator with per-mapper binds."
+        )
+    options = dict(
+        bind=_resolve_engine(session.bind),
+        class_=type(session),
+        autoflush=session.autoflush,
+        expire_on_commit=sync_session.expire_on_commit,
+    )
+    if asynchronous:
+        return async_sessionmaker(sync_session_class=type(sync_session), **options)
+    return sessionmaker(**options)
 
 
 def _resolve_db_cleanup(setup: _TestSetup, flag: str | None) -> str:

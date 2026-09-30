@@ -1,6 +1,6 @@
 import warnings
 from collections.abc import AsyncIterator, Callable, Iterator
-from inspect import signature
+from inspect import Parameter, Signature, signature
 from typing import Annotated, Any, cast
 
 from fastapi import Depends, FastAPI
@@ -109,8 +109,8 @@ def configure(
     database_url: str | None = None,
     engine: Engine | None = None,
     make_session: sessionmaker[Any] | None = None,
-    session_generator: Callable[[], AsyncIterator[SA_AsyncSession]] | None = None,
-    sync_session_generator: Callable[[], Iterator[SA_Session]] | None = None,
+    session_generator: Callable[..., AsyncIterator[SA_AsyncSession]] | None = None,
+    sync_session_generator: Callable[..., Iterator[SA_Session]] | None = None,
     warn_on_misuse: bool | None = None,
     warn_on_uncommitted: bool | None = None,
     install_default_exception_handlers: bool = True,
@@ -135,6 +135,13 @@ def configure(
     custom session generator constructs, yields, and cleans up, and must not
     commit. A custom write route brackets its mutation with ``write_action(...)``
     or commits the session itself.
+
+    Configure custom generators before registering routes that use ``SessionDep``
+    or ``AsyncSessionDep``. FastAPI resolves the generator as a sub-dependency,
+    sharing its cached session with the application's ``Depends(get_db)``.
+    Explicit view dependencies remain as declared. Generators used outside a
+    request through ``open_session()`` or ``open_async_session()`` must be callable
+    without arguments.
 
     :func:`fastapi_restly.testing.configure_tests` freezes the database sources
     for the rest of that pytest process, so configure the application before
@@ -177,8 +184,8 @@ def configure(
         Readiness is a separate endpoint of your own, not a mode of this one.
     :raises TypeError: No setup argument was given.
     :raises RestlyConfigurationError: ``health`` is not an absolute path or was
-        passed without ``app``, or the database configuration changed after
-        ``configure_tests()`` recorded it.
+        passed without ``app``, a generator changed after route registration, or
+        the database configuration changed after ``configure_tests()`` recorded it.
     """
     configures_database = any(
         (
@@ -214,6 +221,22 @@ def configure(
         )
     ):
         raise TypeError("fr.configure() requires at least one setup argument.")
+
+    for name, generator in (
+        ("session_generator", session_generator),
+        ("sync_session_generator", sync_session_generator),
+    ):
+        if (
+            generator is not None
+            and name in _fr_globals.registered_session_dependencies
+            and generator is not getattr(_fr_globals, name)
+        ):
+            raise RestlyConfigurationError(
+                f"Configure {name} before registering routes that use Restly's "
+                "session dependency. FastAPI has already built their dependency "
+                "graphs. Move fr.configure() before route registration. For "
+                "tests, use app.dependency_overrides instead."
+            )
 
     # Validate before applying anything, so a bad health path cannot leave a
     # half-configured process behind.
@@ -422,15 +445,11 @@ async def _async_generate_session() -> AsyncIterator[SA_AsyncSession]:
     """FastAPI dependency for async database session."""
     if _fr_globals.test_async_make_session is not None:
         async with _fr_globals.test_async_make_session() as session:
-            _arm_uncommitted_warning(session)
             yield session
-            _warn_if_uncommitted(session)
         return
     if _fr_globals.session_generator is not None:
         async for session in _fr_globals.session_generator():
-            _arm_uncommitted_warning(session)
             yield session
-            _warn_if_uncommitted(session)
         return
     if _fr_globals.async_make_session is None:
         raise RestlyConfigurationError(
@@ -444,9 +463,7 @@ async def _async_generate_session() -> AsyncIterator[SA_AsyncSession]:
     # back and closes on the way out, and any change a custom route flushed but
     # never committed is discarded (and warned about).
     async with _fr_globals.async_make_session() as session:
-        _arm_uncommitted_warning(session)
         yield session
-        _warn_if_uncommitted(session)
 
 
 def _session_dependency(dependency: Callable[..., Any]) -> Any:
@@ -456,34 +473,79 @@ def _session_dependency(dependency: Callable[..., Any]) -> Any:
     return depends(dependency)
 
 
-AsyncSessionDep = Annotated[
-    SA_AsyncSession, _session_dependency(_async_generate_session)
-]
-
-
 def _generate_session() -> Iterator[SA_Session]:
     """FastAPI dependency for sync database session."""
     # A test's session source wins over everything, including a generator and
     # anything reconfigured after the test started.
     if _fr_globals.test_make_session is not None:
         with _fr_globals.test_make_session() as session:
-            _arm_uncommitted_warning(session)
             yield session
-            _warn_if_uncommitted(session)
         return
     if _fr_globals.sync_session_generator is not None:
         for session in _fr_globals.sync_session_generator():
-            _arm_uncommitted_warning(session)
             yield session
-            _warn_if_uncommitted(session)
         return
     if _fr_globals.make_session is None:
         raise RestlyConfigurationError("Call fr.configure() before using SessionDep.")
 
     with _fr_globals.make_session() as session:
+        yield session
+
+
+class _SyncSessionDependency:
+    @property
+    def __signature__(self) -> Signature:
+        return _session_signature(
+            "sync_session_generator", _generate_session, SA_Session
+        )
+
+    def __call__(self, session: SA_Session) -> Iterator[SA_Session]:
         _arm_uncommitted_warning(session)
         yield session
         _warn_if_uncommitted(session)
 
 
-SessionDep = Annotated[SA_Session, _session_dependency(_generate_session)]
+class _AsyncSessionDependency:
+    @property
+    def __signature__(self) -> Signature:
+        return _session_signature(
+            "session_generator", _async_generate_session, SA_AsyncSession
+        )
+
+    async def __call__(
+        self, session: SA_AsyncSession
+    ) -> AsyncIterator[SA_AsyncSession]:
+        _arm_uncommitted_warning(session)
+        yield session
+        _warn_if_uncommitted(session)
+
+
+def _session_signature(
+    generator_name: str, default: Callable[..., Any], session_type: type
+) -> Signature:
+    """Bind the source when FastAPI builds a route's dependency graph.
+
+    The public alias keeps one callable identity. Its source is a sub-dependency,
+    so an application's Depends(get_db) shares the same cached session. Reading
+    the active context here also keeps app factories from mutating a global
+    function signature when they configure different generators.
+    """
+    _fr_globals.registered_session_dependencies.add(generator_name)
+    source = getattr(_fr_globals, generator_name)
+    dependency = Depends(source) if source is not None else _session_dependency(default)
+    return Signature(
+        [
+            Parameter(
+                "session",
+                Parameter.KEYWORD_ONLY,
+                default=dependency,
+                annotation=session_type,
+            )
+        ]
+    )
+
+
+SessionDep = Annotated[SA_Session, _session_dependency(_SyncSessionDependency())]
+AsyncSessionDep = Annotated[
+    SA_AsyncSession, _session_dependency(_AsyncSessionDependency())
+]

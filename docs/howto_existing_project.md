@@ -170,9 +170,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import fastapi_restly as fr
 
 async def my_get_db() -> AsyncIterator[AsyncSession]:
-    ...
-    yield MyAsyncSession()
+    async with MyAsyncSession() as session:
+        yield session
 
+# Before registering routes or including views.
 fr.configure(session_generator=my_get_db)
 ```
 
@@ -184,17 +185,53 @@ from sqlalchemy.orm import Session
 import fastapi_restly as fr
 
 def my_get_db() -> Iterator[Session]:
-    ...
-    yield MySession()
+    with MySession() as session:
+        yield session
 
+# Before registering routes or including views.
 fr.configure(sync_session_generator=my_get_db)
 ```
 
-The [test fixtures](howto_testing.md#restly_session) clear a configured
-generator for the duration of a test, so the request receives the fixture's
-isolated session. Configure a sessionmaker (or a database URL) for the tests as
-well, and note that whatever the generator body runs per session does not run
-there.
+Restly resolves the configured generator through FastAPI's dependency graph.
+An existing `Depends(my_get_db)` in an authentication dependency or route and
+the view's `self.session` receive the same session within a request. That means
+a user loaded by authentication can be assigned directly to a relationship in
+the view. The generator runs once, with one cleanup, under FastAPI's normal
+dependency caching. Custom `use_cache=False`, dependency scopes, and security
+scopes follow FastAPI's own caching rules.
+
+Configure the generator before registering any route that uses
+{data}`fr.SessionDep <fastapi_restly.db.SessionDep>` or
+{data}`fr.AsyncSessionDep <fastapi_restly.db.AsyncSessionDep>`, including plain
+FastAPI routes. FastAPI fixes the
+dependency graph at registration, so setting or replacing that generator later
+raises {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`.
+An explicit `session: Annotated[..., Depends(reporting_get_db)]` on a view keeps
+using `reporting_get_db`.
+
+Sharing also works when Restly owns session creation. Use its public aliases in
+your application's dependencies and plain routes. This example assumes your
+application supplies `User` and `current_user_id()`:
+
+```python
+fr.configure(async_engine=existing_async_engine)
+
+async def get_current_user(session: fr.AsyncSessionDep):
+    return await session.get(User, current_user_id())
+```
+
+Views and application dependencies using `fr.AsyncSessionDep` share one session.
+Use `fr.SessionDep` for sync code. Both aliases keep Restly's uncommitted-changes
+warning, including when used on plain routes.
+
+The [test fixtures](howto_testing.md#restly_session) override the configured
+generator through `app.dependency_overrides` under rollback isolation. Native
+application dependencies and Restly then share an isolated request session.
+The generator body does not run for requests during those tests. If no factory
+is configured, setup opens the generator to discover its session's bind.
+Generators needing request arguments require an explicit test engine or
+sessionmaker as well. For your own overrides, use
+`app.dependency_overrides[my_get_db] = test_get_db`.
 
 ## Use a Custom Session Dependency on One View
 

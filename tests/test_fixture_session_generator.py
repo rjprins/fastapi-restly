@@ -1,15 +1,10 @@
 """Regression: a configured ``session_generator`` / ``sync_session_generator``
 must not break the shipped session fixtures.
 
-``SessionDep`` and ``AsyncSessionDep`` resolve the generator before the session
-factory the fixtures swap. A project that configured one got no isolation: the
-request built its own real session from the generator, outside the fixture's
-transaction, so its write escaped the rollback.
-
-The internal test scope now installs an isolated factory with higher precedence
-than the generator, so requests use the shared connection without mutating the
-application's generator. Without a sessionmaker to build from, the public
-fixture raises under rollback and retains its prior skip behavior under none.
+The internal test scope installs an isolated factory, and the test clients
+override the generator on the app. Requests and open_session() use the shared
+connection without mutating the application's generator. Generator-only
+rollback setups are covered by test_configured_session_fixtures.py.
 """
 
 from __future__ import annotations
@@ -29,7 +24,6 @@ import fastapi_restly._pytest_fixtures as _fixtures
 from fastapi_restly._test_setup import NONE
 from fastapi_restly.db._globals import RestlyContext, _fr_globals
 from fastapi_restly.db._session import _async_generate_session, _generate_session
-from fastapi_restly.exc import RestlyConfigurationError
 
 pytest_plugins = ["pytester"]
 
@@ -71,7 +65,9 @@ def test_sync_fixture_isolates_a_generator_configured_project():
             _fr_globals.make_session = make_session
             _fr_globals.sync_session_generator = project_get_db
             with engine.connect() as conn:
-                scope = _fixtures._restly_sync_scope.__wrapped__(conn)
+                scope = _fixtures._restly_sync_scope.__wrapped__(
+                    conn, _fixtures._source_factories()[0]
+                )
                 isolated_make_session = next(scope)
                 gen = _fixtures.restly_session.__wrapped__(isolated_make_session)
                 try:
@@ -104,30 +100,6 @@ def test_sync_fixture_isolates_a_generator_configured_project():
     finally:
         engine.dispose()
         project_engine.dispose()
-
-
-def test_sync_fixture_raises_when_only_a_generator_is_configured():
-    def project_get_db() -> Iterator[Session]:  # pragma: no cover - never called
-        raise AssertionError("the fixture must not call the generator")
-        yield
-
-    with RestlyContext():
-        _fr_globals.sync_session_generator = project_get_db
-        gen = _fixtures.restly_session.__wrapped__(None)
-        try:
-            with pytest.raises(
-                RestlyConfigurationError, match="sync_session_generator"
-            ):
-                try:
-                    next(gen)
-                except Skipped as skip:
-                    # A revert to pytest.skip() would otherwise mark this test
-                    # skipped, not failed, and slip through CI green.
-                    raise AssertionError(
-                        f"fixture skipped instead of raising: {skip}"
-                    ) from skip
-        finally:
-            gen.close()
 
 
 def test_sync_fixture_skips_generator_only_config_in_none_mode(monkeypatch):
@@ -208,31 +180,6 @@ async def test_async_fixture_isolates_a_generator_configured_project():
 
 
 @pytest.mark.asyncio
-async def test_async_fixture_raises_when_only_a_generator_is_configured():
-    async def project_get_db() -> AsyncIterator[AsyncSession]:  # pragma: no cover
-        raise AssertionError("the fixture must not call the generator")
-        yield
-
-    with RestlyContext():
-        _fr_globals.session_generator = project_get_db
-        agen = _fixtures.restly_async_session.__wrapped__(None)
-        try:
-            # Match the fixture name: "session_generator" alone is a substring
-            # of "sync_session_generator" and would pass on the wrong message.
-            with pytest.raises(RestlyConfigurationError, match="restly_async_session"):
-                try:
-                    await agen.__anext__()
-                except Skipped as skip:
-                    # A revert to pytest.skip() would otherwise mark this test
-                    # skipped, not failed, and slip through CI green.
-                    raise AssertionError(
-                        f"fixture skipped instead of raising: {skip}"
-                    ) from skip
-        finally:
-            await agen.aclose()
-
-
-@pytest.mark.asyncio
 async def test_async_fixture_skips_generator_only_config_in_none_mode(monkeypatch):
     async def project_get_db() -> AsyncIterator[AsyncSession]:  # pragma: no cover
         raise AssertionError("the fixture must not call the generator")
@@ -252,7 +199,7 @@ async def test_async_fixture_skips_generator_only_config_in_none_mode(monkeypatc
 def test_open_session_yields_an_isolated_session_with_a_generator_configured():
     # fr.open_session() reads sync_session_generator the same way SessionDep
     # does, so off-request code also gets an isolated session on the fixture's
-    # connection rather than one from the (cleared) project generator.
+    # connection rather than one from the project generator.
     engine = create_engine(
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
@@ -267,7 +214,9 @@ def test_open_session_yields_an_isolated_session_with_a_generator_configured():
             _fr_globals.make_session = make_session
             _fr_globals.sync_session_generator = project_get_db
             with engine.connect() as conn:
-                scope = _fixtures._restly_sync_scope.__wrapped__(conn)
+                scope = _fixtures._restly_sync_scope.__wrapped__(
+                    conn, _fixtures._source_factories()[0]
+                )
                 isolated_make_session = next(scope)
                 gen = _fixtures.restly_session.__wrapped__(isolated_make_session)
                 try:
@@ -321,12 +270,7 @@ async def test_open_async_session_yields_an_isolated_session_with_a_generator_co
 def test_client_request_is_isolated_with_a_generator_configured(
     pytester: pytest.Pytester,
 ):
-    """End-to-end: the bug's real shape is a request through RestlyTestClient.
-
-    The tests above drive the dependency inline, in the calling thread. The
-    test client runs the app in its own portal thread, which is what makes the
-    global mutation (rather than a ContextVar) the load-bearing mechanism.
-    """
+    """TestClient requests use the fixture's pinned connection across threads."""
     pytester.makefile(
         ".toml",
         pyproject="""
@@ -365,6 +309,7 @@ def project_get_db():
         yield session
 
 
+fr.configure(engine=engine, sync_session_generator=project_get_db)
 app = FastAPI()
 
 
@@ -376,7 +321,6 @@ def create_widget(session: fr.SessionDep):
     return {"id": widget.id}
 
 
-fr.configure(engine=engine, sync_session_generator=project_get_db)
 fr.DataclassBase.metadata.create_all(engine)
 
 
@@ -410,5 +354,5 @@ def test_request_write_lands_in_the_fixture_session(restly_session, restly_clien
 """
     )
 
-    result = pytester.runpytest("-q")
+    result = pytester.runpytest_subprocess("-q")
     result.assert_outcomes(passed=1)

@@ -32,6 +32,7 @@ from fastapi_restly._test_setup import (
     _clean_database_sync,
     _create_schema,
     _current_setup,
+    _prepare_database_sources,
     _reset_setup,
     _resolve_db_cleanup,
     _run_alembic_upgrade,
@@ -1983,7 +1984,8 @@ def test_a_connection_bound_factory_works_in_rollback_mode(tmp_path: Path):
                 fr.configure(make_session=sessionmaker(bind=connection))
                 pinned = next(
                     _fixtures._shared_connection.__wrapped__(
-                        SimpleNamespace(fixturenames=["restly_session"])
+                        SimpleNamespace(fixturenames=["restly_session"]),
+                        _fixtures._source_factories()[0],
                     )
                 )
                 assert pinned is not None
@@ -2429,19 +2431,17 @@ def test_a_nested_run_gives_the_outer_run_its_mode_back(monkeypatch):
     assert _fixtures._db_cleanup_override is None
 
 
-def test_a_generator_only_application_is_rejected():
-    """A session_generator is where an application's requests get their database.
-    The fixtures cannot isolate one they know nothing about, so a suite that names
-    no matching factory cannot use rollback isolation."""
+def test_generator_with_request_arguments_needs_an_explicit_test_factory():
     with _isolated_config():
 
-        def dev_sessions():  # pragma: no cover - never called
+        def dev_sessions(request):  # pragma: no cover - never called
+            raise AssertionError("setup must not call a request-dependent generator")
             yield None
 
         fr.configure(sync_session_generator=dev_sessions)
         configure_tests(app=FastAPI())
         with pytest.raises(RestlyConfigurationError) as excinfo:
-            _validate_database_sources(_current_setup(), ROLLBACK)  # type: ignore[arg-type]
+            _prepare_database_sources(ROLLBACK)
 
     message = str(excinfo.value)
     assert "session_generator" in message
