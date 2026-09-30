@@ -558,6 +558,14 @@ builds the same SQL as the column-first form.</p></li>
 <section id="fixed">
 <h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>Query clauses bind context values on SQLAlchemy 2.1 without calling the
+deprecated expression-level <code class="docutils literal notranslate"><span class="pre">params()</span></code> method.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">apply_clauses</span></code> preserves the type of a multi-column <code class="docutils literal notranslate"><span class="pre">Select</span></code> with
+SQLAlchemy 2.1’s variadic row types.</p></li>
+<li><p>Server-stamped field examples use <code class="docutils literal notranslate"><span class="pre">default_factory</span></code> with <code class="docutils literal notranslate"><span class="pre">insert_default</span></code>,
+preserving optional constructor arguments on SQLAlchemy 2.0 and 2.1.</p></li>
+<li><p>An unknown column type still raises a schema error naming the attribute when
+SQLAlchemy 2.1 reports its Python type as <code class="docutils literal notranslate"><span class="pre">object</span></code>.</p></li>
 <li><p>Context members work as <code class="docutils literal notranslate"><span class="pre">mapped_column(default=Current.user_id)</span></code> on
 non-dataclass models.</p></li>
 <li><p>A replaced endpoint method keeps its own <code class="docutils literal notranslate"><span class="pre">id</span></code>, <code class="docutils literal notranslate"><span class="pre">schema_obj</span></code>, and return

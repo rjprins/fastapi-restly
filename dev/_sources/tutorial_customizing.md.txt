@@ -184,11 +184,13 @@ class Current(fr.ContextNamespace):
 class Post(fr.TimestampsMixin, fr.IDBase):
     title: Mapped[str]
     created_by_id: Mapped[int | None] = mapped_column(
-        ForeignKey("user.id"), default=None, insert_default=lambda: Current.user_id()
+        ForeignKey("user.id"),
+        default_factory=lambda: None,
+        insert_default=lambda: Current.user_id(),
     )
     updated_by_id: Mapped[int | None] = mapped_column(
         ForeignKey("user.id"),
-        default=None,
+        default_factory=lambda: None,
         insert_default=lambda: Current.user_id(),
         onupdate=lambda: Current.user_id(),
     )
