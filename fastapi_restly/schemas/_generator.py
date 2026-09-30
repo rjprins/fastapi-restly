@@ -192,11 +192,13 @@ def get_model_fields(model_cls: type[DeclarativeBase]) -> dict[str, Any]:
             try:
                 field_type = column.type.python_type
             except NotImplementedError:
+                field_type = object
+            if field_type is object:
                 raise TypeError(
                     f"Cannot determine the Python type of "
                     f"{model_cls.__name__}.{name} for an auto-generated schema: "
                     f"it has no annotation that resolves at runtime, and its "
-                    f"column type {column.type!r} has no python_type. Annotate "
+                    f"column type {column.type!r} has no concrete python_type. Annotate "
                     f"it as Mapped[...] or set schema= on the view."
                 ) from None
             is_optional = bool(getattr(column, "nullable", False))

@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   deprecated expression-level `params()` method.
 - Server-stamped field examples use `default_factory` with `insert_default`,
   preserving optional constructor arguments on SQLAlchemy 2.0 and 2.1.
+- An unknown column type still raises a schema error naming the attribute when
+  SQLAlchemy 2.1 reports its Python type as `object`.
 - Context members work as `mapped_column(default=Current.user_id)` on
   non-dataclass models.
 - A replaced endpoint method keeps its own `id`, `schema_obj`, and return
