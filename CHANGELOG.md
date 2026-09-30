@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Query clauses bind context values on SQLAlchemy 2.1 without calling the
+  deprecated expression-level `params()` method.
 - Context members work as `mapped_column(default=Current.user_id)` on
   non-dataclass models.
 - A replaced endpoint method keeps its own `id`, `schema_obj`, and return

@@ -6,12 +6,14 @@ from typing import Any, Callable, NoReturn, Sequence, TypeVar, final, overload
 
 from sqlalchemy import ColumnElement, Delete, Select, Update
 from sqlalchemy.sql.expression import (
+    BindParameter,
     ColumnClause,
     Join,
     ScalarSelect,
     SelectBase,
     Subquery,
 )
+from sqlalchemy.sql.visitors import cloned_traverse
 
 from ._context import ContextParam
 
@@ -108,7 +110,17 @@ def _fill_members(expr: ColumnElement[bool]) -> ColumnElement[bool]:
             values[el.key] = member()
             continue
         stack.extend(el.get_children())
-    return expr.params(values) if values else expr
+    if not values:
+        return expr
+
+    def fill(bind: BindParameter[Any]) -> None:
+        if bind.key in values:
+            bind.value = values[bind.key]
+            bind.required = False
+
+    return cloned_traverse(
+        expr, {"maintain_key": True, "detect_subquery_cols": True}, {"bindparam": fill}
+    )
 
 
 def _without_unscoped(
