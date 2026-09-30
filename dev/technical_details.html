@@ -597,6 +597,10 @@ response schema.</p>
 at registration time (see <a class="reference internal" href="#list-parameters-lifecycle">List Parameters Lifecycle</a>).
 They can be overridden by declaring <code class="docutils literal notranslate"><span class="pre">schema_create</span></code> or <code class="docutils literal notranslate"><span class="pre">schema_update</span></code> directly
 on the view class before <a class="reference internal" href="api/views.html#fastapi_restly.views.include_view" title="fastapi_restly.views.include_view"><code class="xref py py-func docutils literal notranslate"><span class="pre">include_view()</span></code></a> is called.</p>
+<p>A subclass inherits the schemas its base view declares. Registration rebuilds a
+schema for the subclass in two cases: Restly generated it for the parent, or the
+subclass declares a new <code class="docutils literal notranslate"><span class="pre">schema</span></code>, which replaces an inherited <code class="docutils literal notranslate"><span class="pre">schema_create</span></code>,
+<code class="docutils literal notranslate"><span class="pre">schema_update</span></code>, and list parameter schema.</p>
 </section>
 <section id="auto-generated-schemas">
 <span id="id1"></span><h3>Auto-Generated Schemas<a class="headerlink" href="#auto-generated-schemas" title="Link to this heading">#</a></h3>

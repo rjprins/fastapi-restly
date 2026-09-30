@@ -72,6 +72,11 @@ at registration time (see [List Parameters Lifecycle](#list-parameters-lifecycle
 They can be overridden by declaring `schema_create` or `schema_update` directly
 on the view class before {func}`include_view() <fastapi_restly.views.include_view>` is called.
 
+A subclass inherits the schemas its base view declares. Registration rebuilds a
+schema for the subclass in two cases: Restly generated it for the parent, or the
+subclass declares a new `schema`, which replaces an inherited `schema_create`,
+`schema_update`, and list parameter schema.
+
 (auto-generated-schemas)=
 ### Auto-Generated Schemas
 

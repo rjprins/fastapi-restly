@@ -558,6 +558,10 @@ builds the same SQL as the column-first form.</p></li>
 <section id="fixed">
 <h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>A view subclass keeps the <code class="docutils literal notranslate"><span class="pre">schema</span></code>, <code class="docutils literal notranslate"><span class="pre">schema_create</span></code>, and <code class="docutils literal notranslate"><span class="pre">schema_update</span></code> its
+base view declares. Registration used to replace them with schemas generated
+from the model, so columns the declared schema left out appeared in
+responses and request bodies.</p></li>
 <li><p>Query clauses bind context values on SQLAlchemy 2.1 without calling the
 deprecated expression-level <code class="docutils literal notranslate"><span class="pre">params()</span></code> method.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">apply_clauses</span></code> preserves the type of a multi-column <code class="docutils literal notranslate"><span class="pre">Select</span></code> with
