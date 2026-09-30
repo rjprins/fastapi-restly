@@ -109,6 +109,11 @@ def _fill_members(expr: ColumnElement[bool]) -> ColumnElement[bool]:
         if member is not None:
             values[el.key] = member()
             continue
+        if isinstance(el, BindParameter):
+            stray = _member_in(el.value)
+            if stray is not None:
+                raise _bound_as_value(stray)
+            continue
         stack.extend(el.get_children())
     if not values:
         return expr
@@ -120,6 +125,31 @@ def _fill_members(expr: ColumnElement[bool]) -> ColumnElement[bool]:
 
     return cloned_traverse(
         expr, {"maintain_key": True, "detect_subquery_cols": True}, {"bindparam": fill}
+    )
+
+
+def _member_in(value: object) -> ContextParam[Any] | None:
+    # isinstance, never ==: comparing a member raises
+    if isinstance(value, ContextParam):
+        return value
+    if isinstance(value, (list, tuple, set, frozenset)):
+        for item in value:
+            found = _member_in(item)
+            if found is not None:
+                return found
+    return None
+
+
+def _bound_as_value(member: ContextParam[Any]) -> TypeError:
+    # SQLAlchemy wraps a left operand, or an item of a tuple, as a plain
+    # value; the driver would then reject the member object at execution
+    name = member._name
+    return TypeError(
+        f"the context member {name!r} is not its value, but this expression "
+        f"passes it to the database as one. With the member first in "
+        f"arithmetic (<member> - Model.column), put the column first or wrap "
+        f"the member: sqlalchemy.type_coerce(<member>, <type>). Inside a "
+        f"plain tuple, use sqlalchemy.tuple_(...)"
     )
 
 

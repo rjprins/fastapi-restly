@@ -313,6 +313,12 @@ def owned_by_current_user() -> ColumnElement[bool]:
     return Item.user_id == Current.user_id()
 ```
 
+Arithmetic with the member first, such as `Current.now - Item.created_at`,
+and a member inside a plain tuple raise `TypeError` when the clause is
+applied: SQLAlchemy would pass the member object to the database as a value.
+Wrap the member with `sqlalchemy.type_coerce(Current.now, DateTime)`, and
+write a tuple as `sqlalchemy.tuple_(...)`.
+
 Both forms read the member when the clause is applied: by
 `apply_clauses`, by a view read, by a reference check, or when the clause
 is called. The statement carries the values with it, so it can run after

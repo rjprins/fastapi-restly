@@ -28,6 +28,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   preserving optional constructor arguments on SQLAlchemy 2.0 and 2.1.
 - An unknown column type still raises a schema error naming the attribute when
   SQLAlchemy 2.1 reports its Python type as `object`.
+- A context member that SQLAlchemy would bind as a plain value raises
+  `TypeError` when the clause is applied, where the database driver used to
+  reject it at execution. This covers arithmetic with the member first
+  (`Current.now - Item.created_at`) and a member inside a plain tuple.
 - Context members work as `mapped_column(default=Current.user_id)` on
   non-dataclass models.
 - A replaced endpoint method keeps its own `id`, `schema_obj`, and return

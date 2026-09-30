@@ -260,6 +260,82 @@ def test_a_member_has_no_sql_operator_methods():
         assert not hasattr(Context.tenant_id, name)
 
 
+@pytest.mark.parametrize(
+    "build",
+    [
+        lambda: Context.tenant_id - Thing.id < 0,
+        lambda: Context.tenant_id + Thing.id > 0,
+        lambda: sqlalchemy.tuple_(Thing.id, Thing.tenant_id).in_(
+            [(Context.tenant_id, Context.tenant_id)]
+        ),
+    ],
+    ids=["member-first-sub", "member-first-add", "plain-tuple"],
+)
+def test_a_member_passed_as_a_value_raises_when_the_clause_is_applied(build):
+    # SQLAlchemy binds the member object itself; the driver would reject it
+    clause = fr.where_clause(build())
+    with Context.bind(tenant_id=4):
+        with pytest.raises(TypeError, match="'tenant_id' is not its value"):
+            fr.apply_clauses(sqlalchemy.select(Thing.id), clause)
+        with pytest.raises(TypeError, match="'tenant_id' is not its value"):
+            clause()
+
+
+@pytest.mark.parametrize(
+    "condition, expected",
+    [
+        (
+            sqlalchemy.type_coerce(Context.tenant_id, sqlalchemy.Integer) - Thing.id
+            < 0,
+            {9},
+        ),
+        (
+            sqlalchemy.tuple_(Thing.id, Thing.tenant_id).in_(
+                [sqlalchemy.tuple_(Context.tenant_id, Context.tenant_id)]
+            ),
+            {4},
+        ),
+        (Context.tenant_id - Thing.__table__.c.id < 0, {9}),
+    ],
+    ids=["type-coerce", "sql-tuple", "core-column"],
+)
+def test_a_wrapped_member_works_where_a_bare_one_is_passed_as_a_value(
+    condition, expected
+):
+    engine = sqlalchemy.create_engine("sqlite://")
+    try:
+        Base.metadata.create_all(engine)
+        with Session(engine) as session:
+            session.add_all(
+                [
+                    Thing(id=1, tenant_id=4),
+                    Thing(id=4, tenant_id=4),
+                    Thing(id=9, tenant_id=5),
+                ]
+            )
+            session.flush()
+            with Context.bind(tenant_id=4):
+                query = fr.apply_clauses(
+                    sqlalchemy.select(Thing.id), fr.where_clause(condition)
+                )
+            assert set(session.scalars(query)) == expected
+    finally:
+        engine.dispose()
+
+
+def test_ordinary_bind_values_pass_the_member_check():
+    clause = fr.where_clause(
+        sqlalchemy.and_(
+            Thing.id.in_([1, 4]),
+            sqlalchemy.tuple_(Thing.id, Thing.tenant_id).in_([(1, 4), (4, 4)]),
+            Thing.tenant_id == Context.tenant_id,
+        )
+    )
+    with Context.bind(tenant_id=4):
+        params = clause().compile().params
+    assert 4 in params.values()
+
+
 def test_a_member_stays_hashable():
     assert {Context.tenant_id: "a", Context.locale: "b"}[Context.tenant_id] == "a"
     assert len({Context.tenant_id, Context.tenant_id, Context.locale}) == 2
