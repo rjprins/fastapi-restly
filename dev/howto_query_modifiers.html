@@ -772,11 +772,22 @@ GET /orders?user.name__contains=ali
 <a class="reference internal" href="howto_relationship_idschema.html#nested-relationship-objects"><span class="std std-ref">nested schema field</span></a>).
 Optional nested schemas (<code class="docutils literal notranslate"><span class="pre">UserRead</span> <span class="pre">|</span> <span class="pre">None</span></code>) and deep nesting
 (<code class="docutils literal notranslate"><span class="pre">?blog.author.name=Alice</span></code>) are supported. Lists of nested schemas
-(<code class="docutils literal notranslate"><span class="pre">list[UserRead]</span></code>) are not. Two current limitations: paths through a
-self-referential relationship (<code class="docutils literal notranslate"><span class="pre">?manager.name=...</span></code> on a model relating to
-itself), and combining two filter paths that reach the same table
-(<code class="docutils literal notranslate"><span class="pre">?city.country.code=NL&amp;club.country.code=NL</span></code>), are not supported — the
-joins are not aliased per path.</p>
+(<code class="docutils literal notranslate"><span class="pre">list[UserRead]</span></code>) are not.</p>
+<p>Paths through a self-referential relationship work too, such as
+<code class="docutils literal notranslate"><span class="pre">?manager.name=Alice</span></code> or <code class="docutils literal notranslate"><span class="pre">?manager.manager.name=Alice</span></code>. Each hop must be
+exposed by a nested schema. Different relationships to the same model can
+be filtered together:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /people?home_city.name=Amsterdam&amp;work_city.name=Berlin
+GET /people?home_city.country.code=NL&amp;work_city.country.code=DE
+</pre></div>
+</div>
+<p>Sorting accepts the same paths. A filter and sort on the same relationship
+share its join. These are inner joins: filtering or sorting through an
+absent relationship excludes the row, including a dotted <code class="docutils literal notranslate"><span class="pre">__isnull</span></code> filter.</p>
+<p>Relationship joins use SQL aliases. If you use
+<a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/queryguide/api.html#sqlalchemy.orm.with_loader_criteria" title="(in SQLAlchemy v2.0)"><code class="xref py py-func docutils literal notranslate"><span class="pre">sqlalchemy.orm.with_loader_criteria()</span></code></a> for tenant or visibility rules,
+set <code class="docutils literal notranslate"><span class="pre">include_aliases=True</span></code> so the rules cover these joins. See the
+<a class="reference internal" href="howto_compose_views_with_mixins.html#tenant-row-scoping"><span class="std std-ref">tenant row scoping recipe</span></a>.</p>
 <p>Aliases apply to <strong>every</strong> segment of the dotted path, both the relation
 field and the nested column, because the list-params keys always follow
 the response schema’s public names:</p>

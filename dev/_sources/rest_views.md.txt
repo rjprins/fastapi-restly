@@ -146,6 +146,31 @@ action unless a subclass overrides it. Add authentication through FastAPI
 dependencies, then enforce per-action policy in `authorize()` where needed.
 :::
 
+(item-route-matching)=
+### Item paths and static routes
+
+The built-in `GET`, `PATCH`, and `DELETE` item paths follow
+{attr}`id_type <fastapi_restly.views.BaseRestView.id_type>`. By default, it is
+inferred from the model's primary key. React Admin's `PUT` uses the same path.
+
+| ID type | Registered item path | Matching values |
+|---|---|---|
+| `int` | `/{id:int}` | Non-negative digits, including `0` |
+| `uuid.UUID` | `/{id:uuid}` | UUIDs accepted by Starlette's converter |
+| Any other type | `/{id}` | Any single path segment, then FastAPI validation |
+
+An integer or UUID item route leaves `/users/me` available to a static route
+registered after the view. A value that does not match the converter returns
+`404` instead of the previous `422`, unless another route handles it. Negative
+integer IDs do not match, even if the row exists. OpenAPI still shows
+`/users/{id}` with the integer or UUID parameter schema.
+
+Custom endpoint declarations keep their paths. To accept negative integer
+IDs, replace each needed item endpoint with an untyped path such as
+`@fr.get("/{id}")` and annotate its `id` parameter as `int`. See
+[Customizing RestView](customize.md) for endpoint replacements. Register
+static routes before untyped item routes, including views with string IDs.
+
 ## Configure a view
 
 Configure the class according to the contract the resource needs:

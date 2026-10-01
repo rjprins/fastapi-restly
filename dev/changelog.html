@@ -545,6 +545,16 @@ and this project adheres to <a class="reference external" href="https://semver.o
 <section id="changed">
 <h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>Dotted filters and sorts use SQL aliases for relationship joins. Set
+<code class="docutils literal notranslate"><span class="pre">include_aliases=True</span></code> on SQLAlchemy <code class="docutils literal notranslate"><span class="pre">with_loader_criteria</span></code> rules so they
+apply to these joins.</p></li>
+<li><p>Built-in item routes use <code class="docutils literal notranslate"><span class="pre">/{id:int}</span></code> for integer keys and <code class="docutils literal notranslate"><span class="pre">/{id:uuid}</span></code> for
+UUID keys, including React Admin’s <code class="docutils literal notranslate"><span class="pre">PUT</span></code>. Later static routes such as
+<code class="docutils literal notranslate"><span class="pre">/users/me</span></code> remain reachable. Values that do not match now return <code class="docutils literal notranslate"><span class="pre">404</span></code>
+instead of <code class="docutils literal notranslate"><span class="pre">422</span></code>, unless another route handles them. Integer item paths
+accept non-negative digits, including zero. Negative IDs require explicit
+custom item routes. Custom route declarations and OpenAPI path shapes stay
+unchanged.</p></li>
 <li><p>Default CRUD route names are <code class="docutils literal notranslate"><span class="pre">get_many</span></code>, <code class="docutils literal notranslate"><span class="pre">get_one</span></code>, <code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code>, and
 <code class="docutils literal notranslate"><span class="pre">delete</span></code>, with summaries such as “List” and “Create”. React Admin’s PUT route
 is named <code class="docutils literal notranslate"><span class="pre">put</span></code>. Default operation IDs use the resource path and action:
@@ -578,6 +588,19 @@ declare <code class="docutils literal notranslate"><span class="pre">schema_crea
 <section id="fixed">
 <h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>Dotted filters and sorts support self-referential relationships and
+different paths to the same model. Requests such as
+<code class="docutils literal notranslate"><span class="pre">?home_city.name=Amsterdam&amp;work_city.name=Berlin</span></code> used to return 500.
+Repeated paths share their join across filtering and sorting.</p></li>
+<li><p>A create saves the <code class="docutils literal notranslate"><span class="pre">post_id</span></code> the request sends. When the schema also had an
+optional <code class="docutils literal notranslate"><span class="pre">post:</span> <span class="pre">fr.IDRef[Post]</span> <span class="pre">|</span> <span class="pre">None</span></code> field and the request left it out,
+the create saved <code class="docutils literal notranslate"><span class="pre">NULL</span></code> instead, or answered <code class="docutils literal notranslate"><span class="pre">409</span></code> on a <code class="docutils literal notranslate"><span class="pre">NOT</span> <span class="pre">NULL</span></code> column.
+On SQLAlchemy 2.0 this also happened without that field, for a <code class="docutils literal notranslate"><span class="pre">post_id</span></code>
+typed <code class="docutils literal notranslate"><span class="pre">int</span></code> or <code class="docutils literal notranslate"><span class="pre">MustExist</span></code> and for a generated schema, when the model
+declared <code class="docutils literal notranslate"><span class="pre">relationship(default=None)</span></code>.</p></li>
+<li><p>A create works when a dataclass relationship has no default and the schema
+has no field for it. The relationship is then a required <code class="docutils literal notranslate"><span class="pre">__init__</span></code>
+argument, and the create used to answer 500. Restly passes <code class="docutils literal notranslate"><span class="pre">None</span></code> for it.</p></li>
 <li><p>Building a view by hand, such as <code class="docutils literal notranslate"><span class="pre">TaskView(session=...,</span> <span class="pre">request=...)</span></code>,
 type-checks. mypy used to report the keyword arguments as unexpected.</p></li>
 <li><p>Type checkers see that models on <code class="docutils literal notranslate"><span class="pre">fr.DataclassBase</span></code> and <code class="docutils literal notranslate"><span class="pre">fr.IDBase</span></code> are

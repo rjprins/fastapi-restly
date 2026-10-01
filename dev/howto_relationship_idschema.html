@@ -801,38 +801,22 @@ difference is the API shape: flat id versus nested object.</p>
 <h2>Dataclass relationship setup<a class="headerlink" href="#dataclass-relationship-setup" title="Link to this heading">#</a></h2>
 <p><a class="reference internal" href="api/models.html#fastapi_restly.models.IDBase" title="fastapi_restly.models.IDBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDBase</span></code></a> uses SQLAlchemy’s
 <code class="docutils literal notranslate"><span class="pre">MappedAsDataclass</span></code>, which generates an <code class="docutils literal notranslate"><span class="pre">__init__</span></code> from the model fields.
-Restly’s create/update helpers are aware of that constructor shape when an
-<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef</span></code></a> /
-<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a> relationship field has been
-resolved to an ORM object.</p>
-<p>For an FK-first dataclass model, keep the relationship out of the generated
-constructor and leave it unset:</p>
+Restly passes that constructor the values it requires, whether the schema
+writes the foreign key, the relationship, or both. You can declare the foreign
+key and the relationship with any <code class="docutils literal notranslate"><span class="pre">init</span></code> and <code class="docutils literal notranslate"><span class="pre">default</span></code> options:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">author_id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;user.id&quot;</span><span class="p">))</span>
-<span class="n">author</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="s2">&quot;User&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>With that model and <code class="docutils literal notranslate"><span class="pre">author:</span> <span class="pre">fr.IDRef[User]</span></code>, Restly passes the scalar FK when
-the constructor needs it and assigns <code class="docutils literal notranslate"><span class="pre">author</span></code> after construction. With a
-scalar <code class="docutils literal notranslate"><span class="pre">author_id:</span> <span class="pre">fr.MustExist[int,</span> <span class="pre">User]</span></code> field, leaving <code class="docutils literal notranslate"><span class="pre">author</span></code> unset keeps
-SQLAlchemy from replacing the supplied foreign key with <code class="docutils literal notranslate"><span class="pre">NULL</span></code> during flush.</p>
-<p>Do not add <code class="docutils literal notranslate"><span class="pre">default=None</span></code> to an <code class="docutils literal notranslate"><span class="pre">init=False</span></code> relationship paired with a
-required scalar foreign key. SQLAlchemy assigns that relationship default to
-each new object, and the relationship value takes precedence over the foreign
-key during flush.</p>
-<p>If your model is relationship-first, Restly adapts there too:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">author_id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;user.id&quot;</span><span class="p">),</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="n">author</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="s2">&quot;User&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>In that shape, Restly passes the resolved <code class="docutils literal notranslate"><span class="pre">User</span></code> object to the constructor and
-keeps <code class="docutils literal notranslate"><span class="pre">author_id</span></code> in sync. More generally, Restly supplies the constructor
-values your dataclass model requires: FK scalar, relationship object, or both.</p>
-<p>Optional references follow the same contract. A field typed
-<code class="docutils literal notranslate"><span class="pre">author:</span> <span class="pre">fr.IDRef[User]</span> <span class="pre">|</span> <span class="pre">None</span></code> accepts an explicit <code class="docutils literal notranslate"><span class="pre">null</span></code>, and may simply be
-omitted when it defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code>; the row is created with a <code class="docutils literal notranslate"><span class="pre">NULL</span></code> foreign
-key, with the constructor again receiving whatever the dataclass requires. A
-<code class="docutils literal notranslate"><span class="pre">null</span></code> against a <code class="docutils literal notranslate"><span class="pre">NOT</span> <span class="pre">NULL</span></code> column fails at the database and surfaces as the
-standard <code class="docutils literal notranslate"><span class="pre">409</span></code>, not a server error.</p>
+<p>A relationship the request does not send never overrides a foreign key it
+does send. If such a relationship is <code class="docutils literal notranslate"><span class="pre">None</span></code> after construction, for example
+from <code class="docutils literal notranslate"><span class="pre">default=None</span></code>, Restly removes the <code class="docutils literal notranslate"><span class="pre">None</span></code>. Otherwise SQLAlchemy’s flush
+would write <code class="docutils literal notranslate"><span class="pre">NULL</span></code> over the foreign key.</p>
+<p>Optional references work the same way. A field typed
+<code class="docutils literal notranslate"><span class="pre">author:</span> <span class="pre">fr.IDRef[User]</span> <span class="pre">|</span> <span class="pre">None</span></code> accepts an explicit <code class="docutils literal notranslate"><span class="pre">null</span></code>, and may be omitted
+when it defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code>. Unless another field sends the foreign key, the
+row gets a <code class="docutils literal notranslate"><span class="pre">NULL</span></code> foreign key. A <code class="docutils literal notranslate"><span class="pre">null</span></code> for a <code class="docutils literal notranslate"><span class="pre">NOT</span> <span class="pre">NULL</span></code> column fails in the
+database, and the request returns the standard <code class="docutils literal notranslate"><span class="pre">409</span></code>, not a server error.</p>
 <p>If a schema exposes the same link as two reference fields, for example a
 FK-named <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef</span></code></a> field alongside the
 relationship, Restly validates that they match:</p>
@@ -846,7 +830,9 @@ relationship, Restly validates that they match:</p>
 return <code class="docutils literal notranslate"><span class="pre">422</span></code>. Explicit <code class="docutils literal notranslate"><span class="pre">null</span></code> also participates in this check: <code class="docutils literal notranslate"><span class="pre">author_id:</span> <span class="pre">1</span></code>
 with <code class="docutils literal notranslate"><span class="pre">author:</span> <span class="pre">null</span></code> is a conflict, while omitting <code class="docutils literal notranslate"><span class="pre">author</span></code> entirely is not. A
 plain <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">MustExist</span></code></a> scalar does not take
-part in this reference-pair check; it is a checked column value.</p>
+part in this reference-pair check; it is a checked column value. When a
+request sends it together with a different relationship value, including
+<code class="docutils literal notranslate"><span class="pre">null</span></code>, Restly saves the relationship value.</p>
 <section id="standard-sqlalchemy-declarative-models">
 <h3>Standard SQLAlchemy declarative models<a class="headerlink" href="#standard-sqlalchemy-declarative-models" title="Link to this heading">#</a></h3>
 <p>If you use a normal SQLAlchemy <code class="docutils literal notranslate"><span class="pre">DeclarativeBase</span></code>, the dataclass constructor

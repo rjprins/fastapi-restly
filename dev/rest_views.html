@@ -694,6 +694,45 @@ commit.</p>
 action unless a subclass overrides it. Add authentication through FastAPI
 dependencies, then enforce per-action policy in <code class="docutils literal notranslate"><span class="pre">authorize()</span></code> where needed.</p>
 </div>
+<section id="item-paths-and-static-routes">
+<span id="item-route-matching"></span><h3>Item paths and static routes<a class="headerlink" href="#item-paths-and-static-routes" title="Link to this heading">#</a></h3>
+<p>The built-in <code class="docutils literal notranslate"><span class="pre">GET</span></code>, <code class="docutils literal notranslate"><span class="pre">PATCH</span></code>, and <code class="docutils literal notranslate"><span class="pre">DELETE</span></code> item paths follow
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.id_type" title="fastapi_restly.views.BaseRestView.id_type"><code class="xref py py-attr docutils literal notranslate"><span class="pre">id_type</span></code></a>. By default, it is
+inferred from the model’s primary key. React Admin’s <code class="docutils literal notranslate"><span class="pre">PUT</span></code> uses the same path.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>ID type</p></th>
+<th class="head"><p>Registered item path</p></th>
+<th class="head"><p>Matching values</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/{id:int}</span></code></p></td>
+<td><p>Non-negative digits, including <code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">uuid.UUID</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/{id:uuid}</span></code></p></td>
+<td><p>UUIDs accepted by Starlette’s converter</p></td>
+</tr>
+<tr class="row-even"><td><p>Any other type</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/{id}</span></code></p></td>
+<td><p>Any single path segment, then FastAPI validation</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>An integer or UUID item route leaves <code class="docutils literal notranslate"><span class="pre">/users/me</span></code> available to a static route
+registered after the view. A value that does not match the converter returns
+<code class="docutils literal notranslate"><span class="pre">404</span></code> instead of the previous <code class="docutils literal notranslate"><span class="pre">422</span></code>, unless another route handles it. Negative
+integer IDs do not match, even if the row exists. OpenAPI still shows
+<code class="docutils literal notranslate"><span class="pre">/users/{id}</span></code> with the integer or UUID parameter schema.</p>
+<p>Custom endpoint declarations keep their paths. To accept negative integer
+IDs, replace each needed item endpoint with an untyped path such as
+<code class="docutils literal notranslate"><span class="pre">&#64;fr.get(&quot;/{id}&quot;)</span></code> and annotate its <code class="docutils literal notranslate"><span class="pre">id</span></code> parameter as <code class="docutils literal notranslate"><span class="pre">int</span></code>. See
+<a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a> for endpoint replacements. Register
+static routes before untyped item routes, including views with string IDs.</p>
+</section>
 </section>
 <section id="configure-a-view">
 <h2>Configure a view<a class="headerlink" href="#configure-a-view" title="Link to this heading">#</a></h2>
@@ -874,7 +913,10 @@ and defaults.</p></li>
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#choose-async-or-sync">Choose async or sync</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#define-the-resource">Define the resource</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#default-crud-behavior">Default CRUD behavior</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#default-crud-behavior">Default CRUD behavior</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#item-paths-and-static-routes">Item paths and static routes</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#configure-a-view">Configure a view</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#change-behavior">Change behavior</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#limits-and-alternatives">Limits and alternatives</a></li>
