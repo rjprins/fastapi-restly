@@ -130,6 +130,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   redefines an inherited column gets its own type. A `column_property` over a
   SQL expression is `ReadOnly`.
 
+### Security
+
+- List endpoints no longer filter or sort on `WriteOnly` fields. A client
+  could read a hidden value back: `?pin=1234` returned the row with that PIN,
+  and `?pin__gte=5&sort=pin` narrowed it down. Such a filter is now an unknown
+  query parameter (`422`), and such a sort key is an invalid attribute
+  (`400`), the same answers a field that does not exist gets. This includes
+  nested schemas and a custom `listing_param_schema`.
+
 ## [0.10.0] - 2026-09-23
 
 ### Added

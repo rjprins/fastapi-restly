@@ -28,7 +28,12 @@ from sqlalchemy.orm.util import AliasedClass
 from starlette.datastructures import QueryParams
 
 from ..exc import BadQueryParam
-from ..schemas._base import IDRef, IDSchema, _unwrap_optional_annotation
+from ..schemas._base import (
+    IDRef,
+    IDSchema,
+    _unwrap_optional_annotation,
+    is_writeonly_field,
+)
 from ._shared import _append_pk_tiebreak, _escape_like_value
 
 SchemaType = type[pydantic.BaseModel]
@@ -179,10 +184,11 @@ def create_list_params_schema(
     suffixes. Fields that do not resolve to a column (relationship/collection
     fields, or reference traversals the request path would reject) get no filter
     params, so the generated schema -- and the OpenAPI it produces -- no longer
-    advertises filters for fields that are not filterable at all. Fields whose
-    type is a collection (``dict``/``list``, e.g. ``JSON`` or ``ARRAY`` columns)
-    generate only ``__isnull``: a query-string value cannot coerce into them,
-    so every other operator would fail at request time.
+    advertises filters for fields that are not filterable at all. WriteOnly
+    fields get none either, since a filter on one would leak its value. Fields
+    whose type is a collection (``dict``/``list``, e.g. ``JSON`` or ``ARRAY``
+    columns) generate only ``__isnull``: a query-string value cannot coerce into
+    them, so every other operator would fail at request time.
 
     When ``paginated`` is true (the default), ``page`` and ``page_size`` are
     added and validated by Pydantic with bounds (``page >= 1``,
@@ -480,6 +486,9 @@ def _iter_fields_including_nested(
     schema_cls: SchemaType, prefix: str = ""
 ) -> Iterator[tuple[str, FieldInfo]]:
     for name, field in schema_cls.model_fields.items():
+        # Never in a response, so never a filter or sort key.
+        if is_writeonly_field(schema_cls, name):
+            continue
         public_name = field.alias or name
         # Each segment of the public dotted path becomes part of the URL
         # grammar. ``__`` is reserved for operator suffixes (``__gte``,
@@ -515,16 +524,22 @@ def _resolve_field_name(schema_cls: SchemaType, public_name: str) -> str | None:
     Python field names are never part of the public URL contract, even when
     the schema has ``populate_by_name=True`` (which only affects how Pydantic
     parses input bodies, not the generated list-params query schema).
+
+    A WriteOnly field never resolves: filtering or sorting on it would let a
+    client read back a value that responses leave out.
     """
+    resolved: str | None = None
     for field_name, field in schema_cls.model_fields.items():
         if field.alias == public_name:
-            return field_name
-
-    if public_name in schema_cls.model_fields:
-        field = schema_cls.model_fields[public_name]
-        if field.alias is None:
-            return public_name
-    return None
+            resolved = field_name
+            break
+    else:
+        field = schema_cls.model_fields.get(public_name)
+        if field is not None and field.alias is None:
+            resolved = public_name
+    if resolved is not None and is_writeonly_field(schema_cls, resolved):
+        return None
+    return resolved
 
 
 def _join_column(
