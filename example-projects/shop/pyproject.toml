@@ -13,11 +13,6 @@ dependencies = [
     "alembic>=1.15.2",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "fastapi-restly[testing]",
-]
-
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["shop"]
@@ -28,6 +23,11 @@ asyncio_default_fixture_loop_scope = "function"
 
 [tool.uv.sources]
 fastapi-restly = { path = "../../", editable = true }
+
+[dependency-groups]
+dev = [
+    "fastapi-restly[testing]",
+]
 
 # A plain .pth entry for the editable Restly: mypy does not follow the
 # import-hook finder setuptools uses by default.
