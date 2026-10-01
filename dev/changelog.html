@@ -669,6 +669,17 @@ redefines an inherited column gets its own type. A <code class="docutils literal
 SQL expression is <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>.</p></li>
 </ul>
 </section>
+<section id="security">
+<h3>Security<a class="headerlink" href="#security" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>List endpoints no longer filter or sort on <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields. A client
+could read a hidden value back: <code class="docutils literal notranslate"><span class="pre">?pin=1234</span></code> returned the row with that PIN,
+and <code class="docutils literal notranslate"><span class="pre">?pin__gte=5&amp;sort=pin</span></code> narrowed it down. Such a filter is now an unknown
+query parameter (<code class="docutils literal notranslate"><span class="pre">422</span></code>), and such a sort key is an invalid attribute
+(<code class="docutils literal notranslate"><span class="pre">400</span></code>), the same answers a field that does not exist gets. This includes
+nested schemas and a custom <code class="docutils literal notranslate"><span class="pre">listing_param_schema</span></code>.</p></li>
+</ul>
+</section>
 </section>
 <section id="id1">
 <h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.9.0...v0.10.0">0.10.0</a> - 2026-09-23<a class="headerlink" href="#id1" title="Link to this heading">#</a></h2>
@@ -1306,6 +1317,7 @@ the pytest plugin path is <code class="docutils literal notranslate"><span class
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#unreleased">Unreleased</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#changed">Changed</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fixed">Fixed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#security">Security</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">0.10.0 - 2026-09-23</a><ul class="visible nav section-nav flex-column">

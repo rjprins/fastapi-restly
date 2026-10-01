@@ -619,7 +619,9 @@ types; they are omitted for booleans and UUIDs. <code class="docutils literal no
 <code class="docutils literal notranslate"><span class="pre">__icontains</span></code> are only generated for string fields. Collection-typed fields
 (<code class="docutils literal notranslate"><span class="pre">dict</span></code>/<code class="docutils literal notranslate"><span class="pre">list</span></code>, typically <code class="docutils literal notranslate"><span class="pre">JSON</span></code> or <code class="docutils literal notranslate"><span class="pre">ARRAY</span></code> columns) generate only
 <code class="docutils literal notranslate"><span class="pre">__isnull</span></code>: a query-string value cannot coerce into a collection, so the
-other operators would fail on every request.</p>
+other operators would fail on every request. A
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.WriteOnly" title="fastapi_restly.schemas.WriteOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">WriteOnly</span></code></a> field gets no filters
+and is not a sort key, since either would let a client read its value back.</p>
 <p>A datetime value without a UTC offset is read as UTC when the column is
 timezone-aware, which is the default for <code class="docutils literal notranslate"><span class="pre">Mapped[datetime]</span></code>; a column
 declared <code class="docutils literal notranslate"><span class="pre">DateTime()</span></code> compares the naive value as given.</p>
