@@ -2448,6 +2448,60 @@ def test_generator_with_request_arguments_needs_an_explicit_test_factory():
     assert "sessionmaker" in message
 
 
+def test_rollback_rejects_a_generator_session_with_per_mapper_binds():
+    """The test factory takes the single bind of the session the generator
+    yields, so binds= routing would be dropped. Reading those binds is version
+    specific: SQLAlchemy 2.1 lists them publicly, 2.0 keeps them private."""
+    from sqlalchemy.orm import Session
+
+    engine = create_engine("sqlite://")
+    other = create_engine("sqlite://")
+    try:
+        with _isolated_config():
+
+            class RoutedByGenerator(fr.IDBase):
+                name: Mapped[str]
+
+            def dev_sessions():
+                with Session(bind=engine, binds={RoutedByGenerator: other}) as session:
+                    yield session
+
+            fr.configure(sync_session_generator=dev_sessions)
+            configure_tests(app=FastAPI())
+            with pytest.raises(RestlyConfigurationError, match="single-bind"):
+                _prepare_database_sources(ROLLBACK)
+    finally:
+        engine.dispose()
+        other.dispose()
+
+
+def test_rollback_rejects_an_async_generator_session_with_per_mapper_binds():
+    """Async parity: the binds are read from the session's sync_session."""
+    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+
+    engine = create_async_engine("sqlite+aiosqlite://")
+    other = create_async_engine("sqlite+aiosqlite://")
+    try:
+        with _isolated_config():
+
+            class RoutedByAsyncGenerator(fr.IDBase):
+                name: Mapped[str]
+
+            async def dev_sessions():
+                async with AsyncSession(
+                    bind=engine, binds={RoutedByAsyncGenerator: other}
+                ) as session:
+                    yield session
+
+            fr.configure(session_generator=dev_sessions)
+            configure_tests(app=FastAPI())
+            with pytest.raises(RestlyConfigurationError, match="single-bind"):
+                _prepare_database_sources(ROLLBACK)
+    finally:
+        engine.sync_engine.dispose()
+        other.sync_engine.dispose()
+
+
 def test_rollback_accepts_a_generator_alongside_a_configured_factory():
     """Rollback's per-test factory override takes precedence over the generator."""
     with _isolated_config():

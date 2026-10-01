@@ -320,9 +320,13 @@ def _factory_from_session(session: Any, *, asynchronous: bool) -> Any:
             "through fr.configure() when the generator chooses binds dynamically."
         )
     sync_session = session.sync_session if asynchronous else session
-    # Session exposes no public inventory of per-mapper binds. Reject them,
-    # like the factory-based path, rather than silently dropping that routing.
-    if sync_session._Session__binds:
+    # Reject per-mapper binds, like the factory-based path, rather than
+    # silently dropping that routing. SQLAlchemy 2.1 lists them as the public
+    # Session.binds; 2.0 keeps them in a private attribute.
+    binds = getattr(sync_session, "binds", None)
+    if binds is None:
+        binds = sync_session._Session__binds
+    if binds:
         raise RestlyConfigurationError(
             "Rollback isolation needs a single-bind session. Configure a test "
             "sessionmaker instead of a generator with per-mapper binds."
