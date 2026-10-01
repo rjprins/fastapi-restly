@@ -20,6 +20,7 @@ to the section that covers it.
 | Stable public contract | [Explicit schema](#auto-generated-vs-explicit-schemas) |
 | Input field hidden from responses | [`WriteOnly`](#readonly-and-writeonly) |
 | Server-owned field, ignored on input | [`ReadOnly`](#readonly-and-writeonly) |
+| Field set on create, frozen afterwards | [Explicit write schema](#explicit-write-schemas) |
 | Checked foreign-key column | [`MustExist`](#mustexist) |
 | Relationship as a flat id | [`IDRef`](howto_relationship_idschema.md#choosing-a-reference-style) |
 | Relationship as a nested object | [`IDSchema[Model]`](#nested-relationship-objects) |
@@ -92,8 +93,8 @@ class UserRead(fr.TimestampsSchemaMixin, fr.IDSchema):
 
 ## ReadOnly and WriteOnly
 
-`fr.ReadOnly[T]` marks a field as response-only. It is removed from create and
-update inputs:
+`fr.ReadOnly[T]` marks a field as response-only. It is removed from the
+generated create and update inputs:
 
 ```python
 class UserRead(fr.IDSchema):
@@ -121,6 +122,39 @@ through nested schemas, and the documented response schema in OpenAPI omits it.
 when its object helpers construct or update ORM objects. On a schema used
 directly, a `ReadOnly` field validates and serializes like any other field;
 only its OpenAPI schema is marked `readOnly`.
+
+(explicit-write-schemas)=
+
+An explicit
+{attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` or
+{attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` is the
+whole contract for its request. Restly writes every field it declares, except
+those it marks `ReadOnly` itself. The response schema's markers only shape the
+write schemas Restly generates. So a field that the response schema marks
+`ReadOnly` and an explicit `schema_create` declares is set on create and frozen
+afterwards:
+
+```python
+class CommentRead(fr.IDSchema):
+    body: str
+    story_id: fr.ReadOnly[int]
+
+
+class CommentCreate(fr.BaseSchema):
+    body: str
+    story_id: fr.MustExist[int, Story]
+
+
+class CommentView(fr.AsyncRestView):
+    prefix = "/comments"
+    model = Comment
+    schema = CommentRead
+    schema_create = CommentCreate
+```
+
+`POST /comments` sets `story_id`. The generated `schema_update` leaves it out,
+so `PATCH` ignores it. Keep a server-stamped field, such as a tenant id, out of
+every explicit write schema: a client could set it otherwise.
 
 Either marker must be the field's outer annotation. Nested inside a union or a
 container (`Optional[WriteOnly[str]]`, `WriteOnly[str] | None`,

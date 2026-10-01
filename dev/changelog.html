@@ -583,11 +583,24 @@ field with <code class="docutils literal notranslate"><span class="pre">init=Fal
 schemas: create required it and the client chose the key. A natural key
 without a default stays writable. To let clients supply a generated key,
 declare <code class="docutils literal notranslate"><span class="pre">schema_create</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.objects.make_new_object</span></code>, <code class="docutils literal notranslate"><span class="pre">update_object</span></code> and their async versions no
+longer take a <code class="docutils literal notranslate"><span class="pre">schema_cls</span></code> argument: the payload’s own schema decides what is
+written. Remove the argument from calls. A field that an explicit
+<code class="docutils literal notranslate"><span class="pre">schema_create</span></code> or <code class="docutils literal notranslate"><span class="pre">schema_update</span></code> declares is now written even when the
+response schema marks it <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>, so keep a server-stamped field such as a
+tenant id out of explicit write schemas.</p></li>
 </ul>
 </section>
 <section id="fixed">
 <h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>An explicit <code class="docutils literal notranslate"><span class="pre">schema_create</span></code> or <code class="docutils literal notranslate"><span class="pre">schema_update</span></code> writes every field it
+declares. A field that the response schema marks <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> used to be
+dropped: a required one answered <code class="docutils literal notranslate"><span class="pre">500</span></code>, an optional one was saved as <code class="docutils literal notranslate"><span class="pre">null</span></code>,
+and a <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> left it unchanged. An <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> field for a relationship that the
+response schema embeds as a nested object answered <code class="docutils literal notranslate"><span class="pre">500</span></code>. For a field set on
+create and frozen afterwards, mark it <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> on the response schema and
+declare it in <code class="docutils literal notranslate"><span class="pre">schema_create</span></code>.</p></li>
 <li><p>Dotted filters and sorts support self-referential relationships and
 different paths to the same model. Requests such as
 <code class="docutils literal notranslate"><span class="pre">?home_city.name=Amsterdam&amp;work_city.name=Berlin</span></code> used to return 500.

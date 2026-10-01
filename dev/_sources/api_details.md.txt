@@ -169,7 +169,7 @@ These classes and markers define how model data crosses the wire; the reference-
 | {class}`fr.IDRef[Model] <fastapi_restly.schemas.IDRef>` | Relationship reference with a flat-id wire; resolves the id to the related object. Wire format is the raw id (`5`) on request and response; dict input (`{"id": 5}`) is also accepted. Use this for a relationship field and React Admin scalar id arrays. |
 | {class}`fr.IDSchema[Model] <fastapi_restly.schemas.IDSchema>` | Nested relationship-object field type. Wire format is `{"id": 5}` on request and response. Use this when a client expects relationship objects instead of flat scalar ids. |
 | {class}`fr.TimestampsSchemaMixin <fastapi_restly.schemas.TimestampsSchemaMixin>` | Pydantic mixin adding read-only `created_at` / `updated_at` fields to a schema. |
-| `fr.ReadOnly[T]` | Type annotation marker. Fields annotated `ReadOnly[T]` are excluded from create/update inputs. |
+| `fr.ReadOnly[T]` | Type annotation marker. Fields annotated `ReadOnly[T]` are left out of the generated create/update input schemas, and never written from a payload whose own schema marks them. An [explicit write schema](#explicit-write-schemas) decides for itself. |
 | {data}`fr.WriteOnly[T] <fastapi_restly.schemas.WriteOnly>` | Type annotation marker. Fields are accepted on input and excluded from Pydantic serialization, including CRUD responses and direct `model_dump()` calls. |
 | {func}`fastapi_restly.schemas.create_schema_from_model(model) <fastapi_restly.schemas.create_schema_from_model>` | Auto-generate a Pydantic schema from a SQLAlchemy model. Useful for scaffolding, prototypes, and internal tools; prefer explicit schemas for stable public API contracts. Import from `fastapi_restly.schemas`; it is intentionally not exported at the top level. |
 
@@ -311,12 +311,12 @@ These helpers build, update, delete, and save ORM objects from schemas. Use them
 
 | Symbol | Description |
 |---|---|
-| {func}`fr.objects.make_new_object(session, model_cls, schema_obj, schema_cls=None) <fastapi_restly.objects.make_new_object>` | Build a new `model_cls` instance from `schema_obj`, existence-check any `MustExist[...]` FK ids and resolve any `IDRef[...]` / `IDSchema[...]` reference fields against the database, and add the object to `session`. It does not flush; call `fr.objects.save_object(session, obj)` afterwards to persist. |
-| {func}`fr.objects.update_object(session, obj, schema_obj, schema_cls=None) <fastapi_restly.objects.update_object>` | Apply the schema's writable fields onto an existing ORM `obj` and resolve FK fields. It does not flush; call `fr.objects.save_object(session, obj)` afterwards to persist. |
+| {func}`fr.objects.make_new_object(session, model_cls, schema_obj) <fastapi_restly.objects.make_new_object>` | Build a new `model_cls` instance from `schema_obj`, existence-check any `MustExist[...]` FK ids and resolve any `IDRef[...]` / `IDSchema[...]` reference fields against the database, and add the object to `session`. It does not flush; call `fr.objects.save_object(session, obj)` afterwards to persist. |
+| {func}`fr.objects.update_object(session, obj, schema_obj) <fastapi_restly.objects.update_object>` | Apply the schema's writable fields onto an existing ORM `obj` and resolve FK fields. It does not flush; call `fr.objects.save_object(session, obj)` afterwards to persist. |
 | {func}`fr.objects.save_object(session, obj) <fastapi_restly.objects.save_object>` | Flush the session and refresh `obj` so server-side defaults and generated columns (PKs, timestamps) are populated. Returns `obj`. This is where create/update writes hit the database. |
 | {func}`fr.objects.delete_object(session, obj) <fastapi_restly.objects.delete_object>` | Delete `obj` and flush the session. |
-| {func}`fr.objects.async_make_new_object(session, model_cls, schema_obj, schema_cls=None) <fastapi_restly.objects.async_make_new_object>` | Async equivalent of `fr.objects.make_new_object`. Pass an `AsyncSession`. |
-| {func}`fr.objects.async_update_object(session, obj, schema_obj, schema_cls=None) <fastapi_restly.objects.async_update_object>` | Async equivalent of `fr.objects.update_object`. |
+| {func}`fr.objects.async_make_new_object(session, model_cls, schema_obj) <fastapi_restly.objects.async_make_new_object>` | Async equivalent of `fr.objects.make_new_object`. Pass an `AsyncSession`. |
+| {func}`fr.objects.async_update_object(session, obj, schema_obj) <fastapi_restly.objects.async_update_object>` | Async equivalent of `fr.objects.update_object`. |
 | {func}`fr.objects.async_save_object(session, obj) <fastapi_restly.objects.async_save_object>` | Async equivalent of `fr.objects.save_object`. |
 | {func}`fr.objects.async_delete_object(session, obj) <fastapi_restly.objects.async_delete_object>` | Async equivalent of `fr.objects.delete_object`. |
 

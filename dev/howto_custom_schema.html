@@ -563,13 +563,16 @@ to the section that covers it.</p>
 <tr class="row-even"><td><p>Server-owned field, ignored on input</p></td>
 <td><p><a class="reference internal" href="#readonly-and-writeonly"><code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code></a></p></td>
 </tr>
-<tr class="row-odd"><td><p>Checked foreign-key column</p></td>
+<tr class="row-odd"><td><p>Field set on create, frozen afterwards</p></td>
+<td><p><a class="reference internal" href="#explicit-write-schemas">Explicit write schema</a></p></td>
+</tr>
+<tr class="row-even"><td><p>Checked foreign-key column</p></td>
 <td><p><a class="reference internal" href="#mustexist"><code class="docutils literal notranslate"><span class="pre">MustExist</span></code></a></p></td>
 </tr>
-<tr class="row-even"><td><p>Relationship as a flat id</p></td>
+<tr class="row-odd"><td><p>Relationship as a flat id</p></td>
 <td><p><a class="reference internal" href="howto_relationship_idschema.html#choosing-a-reference-style"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">IDRef</span></code></span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p>Relationship as a nested object</p></td>
+<tr class="row-even"><td><p>Relationship as a nested object</p></td>
 <td><p><a class="reference internal" href="#nested-relationship-objects"><code class="docutils literal notranslate"><span class="pre">IDSchema[Model]</span></code></a></p></td>
 </tr>
 </tbody>
@@ -631,8 +634,8 @@ or different field metadata.</p>
 </section>
 <section id="readonly-and-writeonly">
 <h2>ReadOnly and WriteOnly<a class="headerlink" href="#readonly-and-writeonly" title="Link to this heading">#</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">fr.ReadOnly[T]</span></code> marks a field as response-only. It is removed from create and
-update inputs:</p>
+<p><code class="docutils literal notranslate"><span class="pre">fr.ReadOnly[T]</span></code> marks a field as response-only. It is removed from the
+generated create and update inputs:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">created_by_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
@@ -656,6 +659,34 @@ through nested schemas, and the documented response schema in OpenAPI omits it.
 when its object helpers construct or update ORM objects. On a schema used
 directly, a <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> field validates and serializes like any other field;
 only its OpenAPI schema is marked <code class="docutils literal notranslate"><span class="pre">readOnly</span></code>.</p>
+<p id="explicit-write-schemas">An explicit
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a> or
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a> is the
+whole contract for its request. Restly writes every field it declares, except
+those it marks <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> itself. The response schema’s markers only shape the
+write schemas Restly generates. So a field that the response schema marks
+<code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> and an explicit <code class="docutils literal notranslate"><span class="pre">schema_create</span></code> declares is set on create and frozen
+afterwards:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">CommentRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">body</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">story_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">CommentCreate</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">BaseSchema</span><span class="p">):</span>
+    <span class="n">body</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">story_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">MustExist</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Story</span><span class="p">]</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">CommentView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/comments&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Comment</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">CommentRead</span>
+    <span class="n">schema_create</span> <span class="o">=</span> <span class="n">CommentCreate</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/comments</span></code> sets <code class="docutils literal notranslate"><span class="pre">story_id</span></code>. The generated <code class="docutils literal notranslate"><span class="pre">schema_update</span></code> leaves it out,
+so <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> ignores it. Keep a server-stamped field, such as a tenant id, out of
+every explicit write schema: a client could set it otherwise.</p>
 <p>Either marker must be the field’s outer annotation. Nested inside a union or a
 container (<code class="docutils literal notranslate"><span class="pre">Optional[WriteOnly[str]]</span></code>, <code class="docutils literal notranslate"><span class="pre">WriteOnly[str]</span> <span class="pre">|</span> <span class="pre">None</span></code>,
 <code class="docutils literal notranslate"><span class="pre">list[WriteOnly[str]]</span></code>) the marker would silently do nothing, so Restly
