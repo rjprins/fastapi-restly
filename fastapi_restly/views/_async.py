@@ -410,16 +410,14 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         session. Does not flush; :meth:`save_object` does.
 
         Final: the view-bound spelling of ``fr.objects.async_make_new_object``,
-        passing the view's model and response schema (the schema carries the
-        read-only markers). A server-stamped field (an audit id, a tenant
-        id) is a column default on the model, which covers every write path;
-        a value derived from the payload goes in a ``create`` override, after
-        this call.
+        passing the view's model. ``schema_obj``'s own schema decides what is
+        written, not the response schema. A server-stamped field (an audit id,
+        a tenant id) is a column default on the model, which covers every
+        write path; a value derived from the payload goes in a ``create``
+        override, after this call.
         """
         model_cls = cast(type[ModelT], self.model)
-        return await object_async_make_new_object(
-            self.session, model_cls, schema_obj, self.schema
-        )
+        return await object_async_make_new_object(self.session, model_cls, schema_obj)
 
     @final
     async def update_object(self, obj: ModelT, schema_obj: UpdateSchemaT) -> ModelT:
@@ -429,9 +427,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         column's ``onupdate`` on the model; payload-derived values go in an
         ``update`` override, after this call.
         """
-        return await object_async_update_object(
-            self.session, obj, schema_obj, self.schema
-        )
+        return await object_async_update_object(self.session, obj, schema_obj)
 
     @final
     async def save_object(self, obj: ModelT) -> ModelT:

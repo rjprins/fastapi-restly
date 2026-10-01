@@ -70,7 +70,7 @@ def test_sync_object_helpers_handle_readonly_and_relationship_inputs(sync_db):
         create_payload = ArticleSchema(
             id=999, title="Draft", author_id={"id": original_author.id}
         )
-        article = make_new_object(session, Article, create_payload, ArticleSchema)
+        article = make_new_object(session, Article, create_payload)
         session.flush()
 
         assert article.id != 999
@@ -80,7 +80,7 @@ def test_sync_object_helpers_handle_readonly_and_relationship_inputs(sync_db):
         update_payload = ArticleSchema(
             id=12345, title="Published", author_id={"id": replacement_author.id}
         )
-        updated_article = update_object(session, article, update_payload, ArticleSchema)
+        updated_article = update_object(session, article, update_payload)
 
         assert updated_article.id == article.id
         assert updated_article.title == "Published"
@@ -118,9 +118,7 @@ def test_sync_save_object_flushes_and_refreshes(sync_db):
     fr.DataclassBase.metadata.create_all(engine)
 
     with make_session() as session:
-        obj = make_new_object(
-            session, Widget, WidgetSchema(id=0, name="gizmo"), WidgetSchema
-        )
+        obj = make_new_object(session, Widget, WidgetSchema(id=0, name="gizmo"))
         # Before save_object the PK should not be assigned.
         assert obj.id is None or obj.id == 0
         saved = save_object(session, obj)
@@ -150,14 +148,14 @@ def test_sync_apply_schema_only_applies_set_fields(sync_db):
 
     with make_session() as session:
         item = make_new_object(
-            session, Item, ItemSchema(id=0, name="orig", notes="keep"), ItemSchema
+            session, Item, ItemSchema(id=0, name="orig", notes="keep")
         )
         save_object(session, item)
 
         # Only ``name`` is set in the partial payload; ``notes`` is unset and
         # should not be overwritten.
         partial = UpdateItemSchema(name="renamed")
-        update_object(session, item, partial, ItemSchema)
+        update_object(session, item, partial)
         assert item.name == "renamed"
         assert item.notes == "keep"
 
@@ -292,16 +290,12 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
                 session,
                 model_cls,
                 FKSchema(title=model_cls.__name__, author_id=first.id),
-                FKSchema,
             )
             assert article.author_id == first.id
             assert article.author is first
 
             update_object(
-                session,
-                article,
-                FKSchema(title="updated", author_id=second.id),
-                FKSchema,
+                session, article, FKSchema(title="updated", author_id=second.id)
             )
             assert article.author_id == second.id
             assert article.author is second
@@ -309,7 +303,6 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
         both_init_plan = build_create_plan(
             RefRoutingSyncBothInitArticle,
             FKSchema.model_construct(title="both", author_id=first),
-            FKSchema,
         )
         assert both_init_plan.kwargs["author_id"] == first.id
         assert "author" not in both_init_plan.kwargs
@@ -327,9 +320,7 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
                 _fields_set=fields_set, **values
             )
             validate_resolved_reference_consistency(
-                RefRoutingSyncRelationshipFirstArticle,
-                payload,
-                OptionalBothReferenceSchema,
+                RefRoutingSyncRelationshipFirstArticle, payload
             )
 
         validate_optional_payload({"title", "author"}, author=first)
@@ -367,7 +358,6 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
                         id1=1, id2=2, name="Composite"
                     ),
                 ),
-                CompositeRelationshipSchema,
             )
 
         both_explicit = make_new_object(
@@ -376,7 +366,6 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
             BothReferenceSchema(
                 title="both explicit", author_id=first.id, author={"id": first.id}
             ),
-            BothReferenceSchema,
         )
         assert both_explicit.author_id == first.id
         assert both_explicit.author is first
@@ -388,7 +377,6 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
                 BothReferenceSchema(
                     title="conflict", author_id=first.id, author={"id": second.id}
                 ),
-                BothReferenceSchema,
             )
         assert create_exc.value.status_code == 422
 
@@ -399,7 +387,6 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
                 BothReferenceSchema(
                     title="conflict", author_id=first.id, author={"id": second.id}
                 ),
-                BothReferenceSchema,
             )
         assert update_exc.value.status_code == 422
 
@@ -407,7 +394,6 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
             session,
             RefRoutingSyncRelationshipFieldFirstArticle,
             RelationshipSchema(title="relation", author={"id": first.id}),
-            RelationshipSchema,
         )
         assert relation_first.author_id == first.id
         assert relation_first.author is first
@@ -416,7 +402,6 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
             session,
             RefRoutingSyncRelationshipFieldFallbackArticle,
             RelationshipSchema(title="fallback", author={"id": first.id}),
-            RelationshipSchema,
         )
         assert relation_fallback.author_id == first.id
         assert relation_fallback.author is first
@@ -425,7 +410,6 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
             session,
             RefRoutingSyncDeclarativeArticle,
             DeclarativeFKSchema(title="declarative", author_id=declarative_author.id),
-            DeclarativeFKSchema,
         )
         assert declarative_article.author_id == declarative_author.id
         assert declarative_article.author is declarative_author

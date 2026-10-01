@@ -317,9 +317,7 @@ def test_schema_helper_utilities_cover_readonly_optional_and_config_rebasing():
     set_schema_title(DemoSchema)
     assert DemoSchema.model_config["title"] == "DemoSchema"
 
-    writable = get_writable_inputs(
-        DemoSchema(id=2, password="pw", name="name"), DemoSchema
-    )
+    writable = get_writable_inputs(DemoSchema(id=2, password="pw", name="name"))
     assert "id" not in writable
     assert writable["password"] == "pw"
 

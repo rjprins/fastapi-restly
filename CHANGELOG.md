@@ -47,9 +47,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   schemas: create required it and the client chose the key. A natural key
   without a default stays writable. To let clients supply a generated key,
   declare `schema_create`.
+- `fr.objects.make_new_object`, `update_object` and their async versions no
+  longer take a `schema_cls` argument: the payload's own schema decides what is
+  written. Remove the argument from calls. A field that an explicit
+  `schema_create` or `schema_update` declares is now written even when the
+  response schema marks it `ReadOnly`, so keep a server-stamped field such as a
+  tenant id out of explicit write schemas.
 
 ### Fixed
 
+- An explicit `schema_create` or `schema_update` writes every field it
+  declares. A field that the response schema marks `ReadOnly` used to be
+  dropped: a required one answered `500`, an optional one was saved as `null`,
+  and a `PATCH` left it unchanged. An `IDRef` field for a relationship that the
+  response schema embeds as a nested object answered `500`. For a field set on
+  create and frozen afterwards, mark it `ReadOnly` on the response schema and
+  declare it in `schema_create`.
 - Dotted filters and sorts support self-referential relationships and
   different paths to the same model. Requests such as
   `?home_city.name=Amsterdam&work_city.name=Berlin` used to return 500.

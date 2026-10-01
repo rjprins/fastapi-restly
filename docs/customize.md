@@ -391,7 +391,7 @@ class Article(fr.TimestampsMixin, fr.IDBase):
 context. `insert_default` reads it when the row is inserted. SQLAlchemy 2.1
 rejects combining `default` with `insert_default`.
 
-A payload value wins over a default, so keep the field `fr.ReadOnly` on the schema. Stamping from the view instead, in `create`, only covers that verb: a `create` override does not call `super()`, and the free `fr.objects` helpers never see the view. See [Compose Views with Mixins](howto_compose_views_with_mixins.md) for the tenant, audit, and soft-delete pieces the SaaS example ships.
+A payload value wins over a default, so keep the field `fr.ReadOnly` on the schema and out of any [explicit write schema](#explicit-write-schemas). Stamping from the view instead, in `create`, only covers that verb: a `create` override does not call `super()`, and the free `fr.objects` helpers never see the view. See [Compose Views with Mixins](howto_compose_views_with_mixins.md) for the tenant, audit, and soft-delete pieces the SaaS example ships.
 
 A derivation that needs more than a value, a slug from the title or a denormalised counter, is a SQLAlchemy `before_insert` mapper event on the same model:
 
@@ -413,7 +413,7 @@ The business methods are built from three utilities. Call them from your {meth}`
 
 | Method | What it does |
 |---|---|
-| `self.make_new_object(schema_obj)` | Constructs a new ORM object from the schema, resolving references and skipping read-only fields (it passes the view's response schema, which carries the markers), and adds it to the session. Does not flush. |
+| `self.make_new_object(schema_obj)` | Constructs a new ORM object from the schema, resolving references and skipping the fields the schema marks read-only, and adds it to the session. Does not flush. |
 | `self.update_object(obj, schema_obj)` | Applies writable fields onto an existing object, resolving references. Does not flush. |
 | `self.save_object(obj)` | Flushes and refreshes `obj`, then eager-loads the relationships the response schema names. Does not commit. |
 
@@ -426,7 +426,7 @@ from fastapi_restly.objects import async_make_new_object, async_save_object
 
 
 async def import_user(session, payload) -> User:
-    user = await async_make_new_object(session, User, payload, UserRead)
+    user = await async_make_new_object(session, User, payload)
     user.password = hash_password(payload.password)
     await async_save_object(session, user)
     await session.commit()

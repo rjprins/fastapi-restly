@@ -17,10 +17,7 @@ _T = _TypeVar("_T")
 
 
 def make_new_object(
-    session: _Session,
-    model_cls: type[_T],
-    schema_obj: _pydantic.BaseModel,
-    schema_cls: type[_pydantic.BaseModel] | None = None,
+    session: _Session, model_cls: type[_T], schema_obj: _pydantic.BaseModel
 ) -> _T:
     """Build ``model_cls`` from ``schema_obj`` and add it to ``session``.
 
@@ -28,6 +25,9 @@ def make_new_object(
     fields, skips read-only inputs, applies schema defaults, and stages the
     object in the session. It does not flush and does not run a view's
     ``create`` business logic.
+
+    ``schema_obj``'s own schema decides what is written: every field it
+    declares, except those it marks ``ReadOnly``.
     """
     from .views._base import (
         apply_create_assignments,
@@ -37,25 +37,21 @@ def make_new_object(
 
     resolved = _resolve_ids_to_sqlalchemy_objects(session, schema_obj)
     _check_ref_exists(session, model_cls, schema_obj)
-    validate_resolved_reference_consistency(model_cls, schema_obj, schema_cls, resolved)
-    create_plan = build_create_plan(model_cls, schema_obj, schema_cls, resolved)
+    validate_resolved_reference_consistency(model_cls, schema_obj, resolved)
+    create_plan = build_create_plan(model_cls, schema_obj, resolved)
     obj = model_cls(**create_plan.kwargs)
     apply_create_assignments(obj, create_plan)
     session.add(obj)
     return obj
 
 
-def update_object(
-    session: _Session,
-    obj: _T,
-    schema_obj: _pydantic.BaseModel,
-    schema_cls: type[_pydantic.BaseModel] | None = None,
-) -> _T:
+def update_object(session: _Session, obj: _T, schema_obj: _pydantic.BaseModel) -> _T:
     """Apply writable fields from ``schema_obj`` to ``obj``.
 
     This is the schema-to-ORM update primitive. It resolves Restly reference
-    fields and applies only writable inputs. It does not flush and does not run
-    a view's ``update`` business logic.
+    fields and applies only writable inputs: the fields the client sent that
+    ``schema_obj``'s own schema does not mark ``ReadOnly``. It does not flush
+    and does not run a view's ``update`` business logic.
     """
     from .views._base import (
         apply_update_to_object,
@@ -64,8 +60,8 @@ def update_object(
 
     resolved = _resolve_ids_to_sqlalchemy_objects(session, schema_obj)
     _check_ref_exists(session, type(obj), schema_obj)
-    validate_resolved_reference_consistency(type(obj), schema_obj, schema_cls, resolved)
-    apply_update_to_object(obj, schema_obj, schema_cls, resolved)
+    validate_resolved_reference_consistency(type(obj), schema_obj, resolved)
+    apply_update_to_object(obj, schema_obj, resolved)
     return obj
 
 
@@ -135,10 +131,7 @@ def snapshot(obj: _Any) -> dict[str, _Any]:
 
 
 async def async_make_new_object(
-    session: _AsyncSession,
-    model_cls: type[_T],
-    schema_obj: _pydantic.BaseModel,
-    schema_cls: type[_pydantic.BaseModel] | None = None,
+    session: _AsyncSession, model_cls: type[_T], schema_obj: _pydantic.BaseModel
 ) -> _T:
     """Async equivalent of :func:`make_new_object`."""
     from .views._base import (
@@ -149,8 +142,8 @@ async def async_make_new_object(
 
     resolved = await _async_resolve_ids_to_sqlalchemy_objects(session, schema_obj)
     await _async_check_ref_exists(session, model_cls, schema_obj)
-    validate_resolved_reference_consistency(model_cls, schema_obj, schema_cls, resolved)
-    create_plan = build_create_plan(model_cls, schema_obj, schema_cls, resolved)
+    validate_resolved_reference_consistency(model_cls, schema_obj, resolved)
+    create_plan = build_create_plan(model_cls, schema_obj, resolved)
     obj = model_cls(**create_plan.kwargs)
     apply_create_assignments(obj, create_plan)
     session.add(obj)
@@ -158,10 +151,7 @@ async def async_make_new_object(
 
 
 async def async_update_object(
-    session: _AsyncSession,
-    obj: _T,
-    schema_obj: _pydantic.BaseModel,
-    schema_cls: type[_pydantic.BaseModel] | None = None,
+    session: _AsyncSession, obj: _T, schema_obj: _pydantic.BaseModel
 ) -> _T:
     """Async equivalent of :func:`update_object`."""
     from .views._base import (
@@ -171,8 +161,8 @@ async def async_update_object(
 
     resolved = await _async_resolve_ids_to_sqlalchemy_objects(session, schema_obj)
     await _async_check_ref_exists(session, type(obj), schema_obj)
-    validate_resolved_reference_consistency(type(obj), schema_obj, schema_cls, resolved)
-    apply_update_to_object(obj, schema_obj, schema_cls, resolved)
+    validate_resolved_reference_consistency(type(obj), schema_obj, resolved)
+    apply_update_to_object(obj, schema_obj, resolved)
     return obj
 
 

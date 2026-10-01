@@ -1078,9 +1078,7 @@ def set_schema_title(schema_cls: type[pydantic.BaseModel]) -> None:
     schema_cls.model_config["title"] = schema_cls.__name__
 
 
-def get_writable_inputs(
-    schema_obj: pydantic.BaseModel, schema_cls: type[pydantic.BaseModel] | None = None
-) -> dict[str, Any]:
+def get_writable_inputs(schema_obj: pydantic.BaseModel) -> dict[str, Any]:
     """
     Return a dictionary of field_name: value pairs for writable input fields.
 
@@ -1088,15 +1086,12 @@ def get_writable_inputs(
     - ReadOnly fields
     - fields not provided with input (using Pydantic model_fields_set)
 
-    :param schema_obj: The schema object to extract writable fields from.
-    :param schema_cls: The schema class to check for read-only fields. Defaults
-        to ``schema_obj.__class__``.
+    :param schema_obj: The schema object to extract writable fields from. Its
+        own schema decides which fields are ``ReadOnly``.
     :returns: Dictionary mapping field names to their values, for writable
         input fields only.
     """
-    if schema_cls is None:
-        schema_cls = schema_obj.__class__
-
+    schema_cls = type(schema_obj)
     updated_fields: dict[str, Any] = {}
     for field_name, value in schema_obj:
         if field_name not in schema_obj.model_fields_set:

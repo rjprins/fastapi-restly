@@ -150,9 +150,7 @@ def test_async_free_functions_handle_readonly_and_relationship_inputs():
             create_payload = ArticleSchema(
                 id=999, title="Draft", author_id={"id": original_author.id}
             )
-            article = await async_make_new_object(
-                session, Article, create_payload, ArticleSchema
-            )
+            article = await async_make_new_object(session, Article, create_payload)
             saved = await async_save_object(session, article)
             assert saved is article
             assert article.id != 999
@@ -162,7 +160,7 @@ def test_async_free_functions_handle_readonly_and_relationship_inputs():
             update_payload = ArticleSchema(
                 id=12345, title="Published", author_id={"id": replacement_author.id}
             )
-            await async_update_object(session, article, update_payload, ArticleSchema)
+            await async_update_object(session, article, update_payload)
             assert article.title == "Published"
             assert article.author_id == replacement_author.id
             assert article.author.id == replacement_author.id
@@ -210,12 +208,12 @@ def test_async_update_object_only_applies_set_fields():
 
         async with make_session() as session:
             item = await async_make_new_object(
-                session, Item, ItemSchema(id=0, name="orig", notes="keep"), ItemSchema
+                session, Item, ItemSchema(id=0, name="orig", notes="keep")
             )
             await async_save_object(session, item)
 
             partial = UpdateItemSchema(name="renamed")
-            await async_update_object(session, item, partial, ItemSchema)
+            await async_update_object(session, item, partial)
             assert item.name == "renamed"
             assert item.notes == "keep"
 
@@ -270,16 +268,12 @@ def test_async_object_helpers_are_dataclass_init_aware_for_resolved_refs():
                 session,
                 RefRoutingAsyncRelationshipFirstArticle,
                 FKSchema(title="async", author_id=first.id),
-                FKSchema,
             )
             assert article.author_id == first.id
             assert article.author is first
 
             await async_update_object(
-                session,
-                article,
-                FKSchema(title="updated", author_id=second.id),
-                FKSchema,
+                session, article, FKSchema(title="updated", author_id=second.id)
             )
             assert article.author_id == second.id
             assert article.author is second
@@ -291,7 +285,6 @@ def test_async_object_helpers_are_dataclass_init_aware_for_resolved_refs():
                     BothReferenceSchema(
                         title="conflict", author_id=first.id, author={"id": second.id}
                     ),
-                    BothReferenceSchema,
                 )
             assert create_exc.value.status_code == 422
 
@@ -302,7 +295,6 @@ def test_async_object_helpers_are_dataclass_init_aware_for_resolved_refs():
                     BothReferenceSchema(
                         title="conflict", author_id=first.id, author={"id": second.id}
                     ),
-                    BothReferenceSchema,
                 )
             assert update_exc.value.status_code == 422
 
@@ -310,7 +302,6 @@ def test_async_object_helpers_are_dataclass_init_aware_for_resolved_refs():
                 session,
                 RefRoutingAsyncRelationshipFieldFallbackArticle,
                 RelationshipSchema(title="fallback", author={"id": first.id}),
-                RelationshipSchema,
             )
             assert fallback.author_id == first.id
             assert fallback.author is first

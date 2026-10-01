@@ -448,7 +448,6 @@ def _reference_identity_detail(identity: object) -> Any:
 def validate_resolved_reference_consistency(
     model_cls: type[Any],
     schema_obj: pydantic.BaseModel,
-    schema_cls: type[pydantic.BaseModel] | None = None,
     resolved: dict[str, Any] | None = None,
 ) -> None:
     """Validate explicitly supplied FK and relationship fields agree.
@@ -459,8 +458,7 @@ def validate_resolved_reference_consistency(
     row. ``resolved`` is the ``{field: object}`` mapping from the resolver; a
     field absent from it keeps its (unresolved) value on ``schema_obj``.
     """
-    if schema_cls is None:
-        schema_cls = schema_obj.__class__
+    schema_cls = type(schema_obj)
     resolved = resolved or {}
 
     for fk_field in schema_obj.model_fields_set:
@@ -502,9 +500,7 @@ def validate_resolved_reference_consistency(
         )
 
 
-def iter_creatable_fields(
-    schema_obj: pydantic.BaseModel, schema_cls: type[pydantic.BaseModel] | None = None
-) -> Iterator[tuple[str, Any]]:
+def iter_creatable_fields(schema_obj: pydantic.BaseModel) -> Iterator[tuple[str, Any]]:
     """Iterate over (field_name, value) pairs that should be used to construct a new
     ORM object from ``schema_obj``.
 
@@ -512,8 +508,7 @@ def iter_creatable_fields(
     this also includes fields that were not explicitly provided, so that
     schema-level defaults end up on the new object.
     """
-    if schema_cls is None:
-        schema_cls = schema_obj.__class__
+    schema_cls = type(schema_obj)
     for field_name, value in schema_obj:
         if is_readonly_field(schema_cls, field_name):
             continue
@@ -654,7 +649,6 @@ def _add_resolved_reference_to_create_plan(
 def build_create_plan(
     model_cls: type[Any],
     schema_obj: pydantic.BaseModel,
-    schema_cls: type[pydantic.BaseModel] | None = None,
     resolved: dict[str, Any] | None = None,
 ) -> _CreatePlan:
     """Translate ``schema_obj`` fields into kwargs for ``model_cls(**kwargs)``.
@@ -664,12 +658,11 @@ def build_create_plan(
     vs async); a resolved reference field uses that ORM value instead of the
     wire-shaped ``IDRef`` still on ``schema_obj``.
     """
-    if schema_cls is None:
-        schema_cls = schema_obj.__class__
+    schema_cls = type(schema_obj)
     resolved = resolved or {}
 
     plan = _CreatePlan(kwargs={}, post_assignments={})
-    for field_name, value in iter_creatable_fields(schema_obj, schema_cls):
+    for field_name, value in iter_creatable_fields(schema_obj):
         if field_name in resolved:
             value = resolved[field_name]
         if isinstance(value, IDSchema) and _is_mapped_column(model_cls, field_name):
@@ -702,15 +695,6 @@ def build_create_plan(
         if _requires_init_kwarg(model_cls, name):
             plan.kwargs.setdefault(name, None)
     return plan
-
-
-def build_create_kwargs(
-    model_cls: type[Any],
-    schema_obj: pydantic.BaseModel,
-    schema_cls: type[pydantic.BaseModel] | None = None,
-    resolved: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    return build_create_plan(model_cls, schema_obj, schema_cls, resolved).kwargs
 
 
 def apply_create_assignments(obj: Any, plan: _CreatePlan) -> None:
@@ -756,10 +740,7 @@ def _apply_resolved_reference_update(obj: Any, field_name: str, value: Any) -> N
 
 
 def apply_update_to_object(
-    obj: Any,
-    schema_obj: pydantic.BaseModel,
-    schema_cls: type[pydantic.BaseModel] | None = None,
-    resolved: dict[str, Any] | None = None,
+    obj: Any, schema_obj: pydantic.BaseModel, resolved: dict[str, Any] | None = None
 ) -> None:
     """Apply writable inputs from ``schema_obj`` onto ``obj`` in place.
 
@@ -768,16 +749,15 @@ def apply_update_to_object(
     vs async); a resolved reference field uses that ORM value instead of the
     wire-shaped ``IDRef`` still on ``schema_obj``.
     """
+    schema_cls = type(schema_obj)
     resolved = resolved or {}
-    for field_name, value in get_writable_inputs(schema_obj, schema_cls).items():
+    for field_name, value in get_writable_inputs(schema_obj).items():
         if field_name in resolved:
             value = resolved[field_name]
         if isinstance(value, IDSchema) and _is_mapped_column(type(obj), field_name):
             setattr(obj, field_name, value.id)
             continue
-        if is_mapped_instance(value) and is_reference_field(
-            schema_cls or schema_obj.__class__, field_name
-        ):
+        if is_mapped_instance(value) and is_reference_field(schema_cls, field_name):
             _apply_resolved_reference_update(obj, field_name, value)
             continue
         setattr(obj, field_name, _json_ready(type(obj), field_name, value))

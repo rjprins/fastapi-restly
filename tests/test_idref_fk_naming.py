@@ -202,7 +202,6 @@ def test_arbitrary_fk_column_name_routes_by_mapper(sync_db):
         plan = build_create_plan(
             Comment,
             CommentSchema(content="hi", linked_post=post.id),
-            CommentSchema,
             resolved={"linked_post": post},
         )
         assert plan.kwargs["linked_post"] == post.id  # the id, not the object
@@ -245,7 +244,6 @@ def test_non_id_fk_conflict_detection_is_name_independent(sync_db):
         validate_resolved_reference_consistency(
             Comment,
             CommentSchema(content="ok", post_fk=p1.id, post={"id": p1.id}),
-            CommentSchema,
             resolved={"post_fk": p1, "post": p1},
         )
 
@@ -254,7 +252,6 @@ def test_non_id_fk_conflict_detection_is_name_independent(sync_db):
             validate_resolved_reference_consistency(
                 Comment,
                 CommentSchema(content="bad", post_fk=p1.id, post={"id": p2.id}),
-                CommentSchema,
                 resolved={"post_fk": p1, "post": p2},
             )
         assert exc.value.status_code == 422
@@ -410,10 +407,7 @@ def test_relationship_field_with_required_init_fk_sync(sync_db):
 
         # The required FK id is constructed, not post-assigned.
         plan = build_create_plan(
-            Comment,
-            CommentSchema(content="hi", post=p1.id),
-            CommentSchema,
-            resolved={"post": p1},
+            Comment, CommentSchema(content="hi", post=p1.id), resolved={"post": p1}
         )
         assert plan.kwargs["post_id"] == p1.id
         assert "post_id" not in plan.post_assignments
@@ -458,10 +452,7 @@ def test_relationship_field_with_required_init_fk_async():
 
             # The required FK id is constructed, not post-assigned.
             plan = build_create_plan(
-                Comment,
-                CommentSchema(content="hi", post=p1.id),
-                CommentSchema,
-                resolved={"post": p1},
+                Comment, CommentSchema(content="hi", post=p1.id), resolved={"post": p1}
             )
             assert plan.kwargs["post_id"] == p1.id
             assert "post_id" not in plan.post_assignments
@@ -515,10 +506,7 @@ def test_relationship_field_required_fk_with_init_false_relationship_sync(sync_d
 
         # FK id constructed; the init=False relationship post-assigned.
         plan = build_create_plan(
-            Comment,
-            CommentSchema(content="hi", post=p1.id),
-            CommentSchema,
-            resolved={"post": p1},
+            Comment, CommentSchema(content="hi", post=p1.id), resolved={"post": p1}
         )
         assert plan.kwargs["post_id"] == p1.id
         assert "post" not in plan.kwargs
@@ -567,9 +555,7 @@ def test_explicit_null_reference_nullable_required_init_fk_sync(sync_db):
         session.flush()
 
         # The null reaches both sides of the pair at construction.
-        plan = build_create_plan(
-            Comment, CommentSchema(content="hi", post=None), CommentSchema
-        )
+        plan = build_create_plan(Comment, CommentSchema(content="hi", post=None))
         assert plan.kwargs["post_id"] is None
         assert plan.kwargs["post"] is None
 
@@ -622,9 +608,7 @@ def test_explicit_null_reference_nullable_required_init_fk_async():
             session.add(p1)
             await session.flush()
 
-            plan = build_create_plan(
-                Comment, CommentSchema(content="hi", post=None), CommentSchema
-            )
+            plan = build_create_plan(Comment, CommentSchema(content="hi", post=None))
             assert plan.kwargs["post_id"] is None
             assert plan.kwargs["post"] is None
 
@@ -864,9 +848,7 @@ def test_scalar_named_null_reference_writes_only_its_own_column(sync_db):
 
     fr.DataclassBase.metadata.create_all(engine)
 
-    plan = build_create_plan(
-        Comment, CommentSchema(content="hi", post_id=None), CommentSchema
-    )
+    plan = build_create_plan(Comment, CommentSchema(content="hi", post_id=None))
     assert plan.kwargs["post_id"] is None
     assert "post" not in plan.kwargs
     assert "post" not in plan.post_assignments
@@ -996,9 +978,7 @@ def test_null_fk_named_reference_with_required_init_relationship(sync_db):
 
     fr.DataclassBase.metadata.create_all(engine)
 
-    plan = build_create_plan(
-        Comment, CommentSchema(content="hi", post_id=None), CommentSchema
-    )
+    plan = build_create_plan(Comment, CommentSchema(content="hi", post_id=None))
     assert plan.kwargs["post_id"] is None
     assert plan.kwargs["post"] is None
 
