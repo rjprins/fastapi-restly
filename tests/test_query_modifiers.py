@@ -475,11 +475,11 @@ class TestApplyFiltering:
 
         rendered = str(result)
         assert (
-            "JOIN relation_users ON relation_users.id = relation_posts.author_id"
-            in rendered
+            "JOIN relation_users AS relation_users_1 "
+            "ON relation_users_1.id = relation_posts.author_id" in rendered
         )
         assert "FROM relation_posts, relation_users" not in rendered
-        assert "WHERE relation_users.name = " in rendered
+        assert "WHERE relation_users_1.name = " in rendered
 
     def test__apply_filtering_relation_field_handles_ambiguous_foreign_keys(
         self, audit_log_select_query, mock_query_params
@@ -491,10 +491,10 @@ class TestApplyFiltering:
 
         rendered = str(result)
         assert (
-            "JOIN audit_relation_users ON audit_relation_users.id = audit_logs.creator_id"
-            in rendered
+            "JOIN audit_relation_users AS audit_relation_users_1 "
+            "ON audit_relation_users_1.id = audit_logs.creator_id" in rendered
         )
-        assert "WHERE audit_relation_users.name = " in rendered
+        assert "WHERE audit_relation_users_1.name = " in rendered
 
     def test__apply_sorting_relation_field_handles_ambiguous_foreign_keys(
         self, audit_log_select_query, mock_query_params
@@ -506,10 +506,12 @@ class TestApplyFiltering:
 
         rendered = str(result)
         assert (
-            "JOIN audit_relation_users ON audit_relation_users.id = audit_logs.creator_id"
-            in rendered
+            "JOIN audit_relation_users AS audit_relation_users_1 "
+            "ON audit_relation_users_1.id = audit_logs.creator_id" in rendered
         )
-        assert "ORDER BY audit_relation_users.name ASC, audit_logs.id DESC" in rendered
+        assert (
+            "ORDER BY audit_relation_users_1.name ASC, audit_logs.id DESC" in rendered
+        )
 
 
 class TestApplyListParams:
@@ -737,3 +739,70 @@ def test_three_level_dotted_filter_executes_with_correct_joins(sync_db):
         from_clause = sql[sql.index("FROM") : sql.index("WHERE")]
         assert "," not in from_clause, from_clause
         assert from_clause.index("JOIN city") < from_clause.index("JOIN country")
+
+
+@pytest.mark.parametrize("restricted", [False, True])
+def test_relationship_filters_preserve_existing_joins_and_visibility(
+    sync_db, restricted
+):
+    from sqlalchemy.orm import with_loader_criteria
+
+    engine, make_session = sync_db
+    AuditUserModel.__table__.create(engine)
+    AuditLogModel.__table__.create(engine)
+    with make_session() as session:
+        alice = AuditUserModel(id=1, name="Alice")
+        bob = AuditUserModel(id=2, name="Bob")
+        session.add_all([alice, bob])
+        session.add_all(
+            [
+                AuditLogModel(
+                    id=1, creator_id=1, updater_id=2, creator=alice, updater=bob
+                ),
+                AuditLogModel(
+                    id=2, creator_id=2, updater_id=1, creator=bob, updater=alice
+                ),
+            ]
+        )
+        session.flush()
+
+        # An application join and its predicate still select the first log.
+        query = (
+            sqlalchemy.select(AuditLogModel)
+            .join(AuditLogModel.creator)
+            .where(AuditUserModel.name == "Alice")
+        )
+        if restricted:
+            # Alice is visible, but the first log's updater is hidden.
+            query = query.options(
+                with_loader_criteria(
+                    AuditUserModel,
+                    lambda user: user.name != "Bob",
+                    include_aliases=True,
+                )
+            )
+        query = apply_list_params(
+            QueryParams({"updater.name": "Bob", "sort": "creator.name,updater.id"}),
+            query,
+            AuditLogModel,
+            AuditLogSchema,
+        )
+        assert [log.id for log in session.scalars(query)] == ([] if restricted else [1])
+
+
+def test_filtering_and_sorting_share_relationship_joins():
+    query = apply_list_params(
+        QueryParams(
+            [
+                ("creator.name__contains", "A"),
+                ("creator.name__ne", "Bob"),
+                ("updater.name", "Bob"),
+                ("sort", "creator.name,updater.id"),
+            ]
+        ),
+        sqlalchemy.select(AuditLogModel),
+        AuditLogModel,
+        AuditLogSchema,
+    )
+    # Each relationship is joined once, including repeated filters and sorts.
+    assert str(query).count("JOIN audit_relation_users AS ") == 2

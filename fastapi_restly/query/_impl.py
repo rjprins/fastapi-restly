@@ -21,9 +21,10 @@ from pydantic import Field
 from pydantic.fields import FieldInfo
 from pydantic_core import SchemaValidator, core_schema
 from sqlalchemy import ColumnElement, Select
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase, aliased
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.properties import ColumnProperty
+from sqlalchemy.orm.util import AliasedClass
 from starlette.datastructures import QueryParams
 
 from ..exc import BadQueryParam
@@ -31,6 +32,7 @@ from ..schemas._base import IDRef, IDSchema, _unwrap_optional_annotation
 from ._shared import _append_pk_tiebreak, _escape_like_value
 
 SchemaType = type[pydantic.BaseModel]
+_JoinAliases = dict[tuple[str, ...], AliasedClass[Any]]
 
 #: Default ``page_size`` applied to paginated list endpoints when the client
 #: does not send one. A bounded default keeps a forgotten ``page_size`` from
@@ -392,8 +394,13 @@ def apply_list_params(
         name__contains=John&email__icontains=example
     """
     query_params = _coerce_to_query_params(params)
-    select_query = _apply_filtering(query_params, select_query, model, schema_cls)
-    select_query = _apply_sorting(query_params, select_query, model, schema_cls)
+    aliases: _JoinAliases = {}
+    select_query = _apply_filtering(
+        query_params, select_query, model, schema_cls, aliases=aliases
+    )
+    select_query = _apply_sorting(
+        query_params, select_query, model, schema_cls, aliases=aliases
+    )
     select_query = _apply_pagination(query_params, select_query)
     return select_query
 
@@ -448,7 +455,11 @@ def _apply_sorting(
     select_query: Select[Any],
     model: type[DeclarativeBase],
     schema_cls: SchemaType,
+    *,
+    aliases: _JoinAliases | None = None,
 ) -> Select[Any]:
+    if aliases is None:
+        aliases = {}
     sorted_on: list[InstrumentedAttribute[Any]] = []
     for column_name in (query_params.get("sort") or "").split(","):
         if not column_name:
@@ -457,9 +468,9 @@ def _apply_sorting(
         if column_name.startswith("-"):
             order = sqlalchemy.desc
             column_name = column_name[1:]
-        joins, column = _resolve_column(model, column_name, schema_cls)
-        for join in joins:
-            select_query = select_query.join(join)
+        select_query, column = _join_column(
+            select_query, model, column_name, schema_cls, aliases
+        )
         select_query = select_query.order_by(order(column))
         sorted_on.append(column)
     return _append_pk_tiebreak(select_query, model, sorted_on)
@@ -516,6 +527,32 @@ def _resolve_field_name(schema_cls: SchemaType, public_name: str) -> str | None:
     return None
 
 
+def _join_column(
+    select_query: Select[Any],
+    model: type[DeclarativeBase],
+    column_path: str,
+    schema_cls: SchemaType,
+    aliases: _JoinAliases,
+) -> tuple[Select[Any], InstrumentedAttribute[Any]]:
+    """Join each relationship path once and return its aliased leaf column."""
+    relationships, column = _resolve_column(model, column_path, schema_cls)
+    source: type[DeclarativeBase] | AliasedClass[Any] = model
+    path: tuple[str, ...] = ()
+    for relationship in relationships:
+        # The full path distinguishes home_city.country from work_city.country
+        # and successive hops through a self-referential relationship.
+        path += (relationship.key,)
+        target = aliases.get(path)
+        if target is None:
+            target = aliased(relationship.property.mapper)
+            select_query = select_query.join_from(
+                source, getattr(source, relationship.key).of_type(target)
+            )
+            aliases[path] = target
+        source = target
+    return select_query, getattr(source, column.key)
+
+
 def _resolve_column(
     model: type[DeclarativeBase], column_path: str, schema_cls: SchemaType
 ) -> tuple[list[InstrumentedAttribute[Any]], InstrumentedAttribute[Any]]:
@@ -568,6 +605,8 @@ def _apply_filtering(
     select_query: Select[Any],
     model: type[DeclarativeBase],
     schema_cls: SchemaType,
+    *,
+    aliases: _JoinAliases | None = None,
 ) -> Select[Any]:
     """Apply ``key=value`` and ``key__op=value`` filters to ``select_query``.
 
@@ -577,15 +616,11 @@ def _apply_filtering(
     ``status__ne=a,b`` means NOT IN (a, b)). For ``contains``/``icontains``
     values are split on whitespace and AND-combined.
     """
+    if aliases is None:
+        aliases = {}
     filters: dict[InstrumentedAttribute[Any], list[ColumnElement[Any]]] = defaultdict(
         list
     )
-    # Ordered and deduped (dict, not set): a multi-hop path such as
-    # ``city.country.code`` must join each hop from the previous hop's entity,
-    # so joins are applied in path order. An unordered set could join the
-    # second hop first, which SQLAlchemy renders as an implicit cartesian
-    # product (an ambiguous-join OperationalError at execution).
-    joins: dict[InstrumentedAttribute[Any], None] = {}
 
     for key, raw_value in query_params.multi_items():
         if key in _RESERVED_NAMES:
@@ -596,9 +631,9 @@ def _apply_filtering(
         else:
             column_name, op = key, "eq"
 
-        column_joins, column = _resolve_column(model, column_name, schema_cls)
-        for column_join in column_joins:
-            joins.setdefault(column_join, None)
+        select_query, column = _join_column(
+            select_query, model, column_name, schema_cls, aliases
+        )
         parser = functools.partial(_parse_value, schema_cls, column_name)
 
         if op == "isnull":
@@ -614,9 +649,6 @@ def _apply_filtering(
         clause = _build_clause(column, raw_value, op, parser)
         if clause is not None:
             filters[column].append(clause)
-
-    for join in joins:
-        select_query = select_query.join(join)
 
     for column, clauses in filters.items():
         and_clause = clauses[0] if len(clauses) == 1 else sqlalchemy.and_(*clauses)

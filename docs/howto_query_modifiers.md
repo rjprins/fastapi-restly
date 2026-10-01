@@ -236,11 +236,26 @@ The relation must be defined on both the SQLAlchemy model (as a
 [nested schema field](howto_relationship_idschema.md#nested-relationship-objects)).
 Optional nested schemas (`UserRead | None`) and deep nesting
 (`?blog.author.name=Alice`) are supported. Lists of nested schemas
-(`list[UserRead]`) are not. Two current limitations: paths through a
-self-referential relationship (`?manager.name=...` on a model relating to
-itself), and combining two filter paths that reach the same table
-(`?city.country.code=NL&club.country.code=NL`), are not supported — the
-joins are not aliased per path.
+(`list[UserRead]`) are not.
+
+Paths through a self-referential relationship work too, such as
+`?manager.name=Alice` or `?manager.manager.name=Alice`. Each hop must be
+exposed by a nested schema. Different relationships to the same model can
+be filtered together:
+
+```text
+GET /people?home_city.name=Amsterdam&work_city.name=Berlin
+GET /people?home_city.country.code=NL&work_city.country.code=DE
+```
+
+Sorting accepts the same paths. A filter and sort on the same relationship
+share its join. These are inner joins: filtering or sorting through an
+absent relationship excludes the row, including a dotted `__isnull` filter.
+
+Relationship joins use SQL aliases. If you use
+{func}`sqlalchemy.orm.with_loader_criteria` for tenant or visibility rules,
+set `include_aliases=True` so the rules cover these joins. See the
+[tenant row scoping recipe](#tenant-row-scoping).
 
 Aliases apply to **every** segment of the dotted path, both the relation
 field and the nested column, because the list-params keys always follow

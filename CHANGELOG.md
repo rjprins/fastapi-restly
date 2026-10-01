@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Dotted filters and sorts use SQL aliases for relationship joins. Set
+  `include_aliases=True` on SQLAlchemy `with_loader_criteria` rules so they
+  apply to these joins.
 - Built-in item routes use `/{id:int}` for integer keys and `/{id:uuid}` for
   UUID keys, including React Admin's `PUT`. Later static routes such as
   `/users/me` remain reachable. Values that do not match now return `404`
@@ -47,6 +50,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Dotted filters and sorts support self-referential relationships and
+  different paths to the same model. Requests such as
+  `?home_city.name=Amsterdam&work_city.name=Berlin` used to return 500.
+  Repeated paths share their join across filtering and sorting.
 - A create saves the `post_id` the request sends. When the schema also had an
   optional `post: fr.IDRef[Post] | None` field and the request left it out,
   the create saved `NULL` instead, or answered `409` on a `NOT NULL` column.

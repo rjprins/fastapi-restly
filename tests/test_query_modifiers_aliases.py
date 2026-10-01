@@ -397,7 +397,7 @@ class TestRelationAliases:
             _apply_filtering(params, sqlalchemy.select(Article), Article, ArticleSchema)
         )
         assert "JOIN ra_author" in rendered
-        assert "ra_author.name = " in rendered
+        assert "ra_author_1.name = " in rendered
 
     def test_sort_resolves_aliased_relation_path(self, mock_query_params):
         Article, ArticleSchema = self._build()
@@ -405,4 +405,4 @@ class TestRelationAliases:
         rendered = str(
             _apply_sorting(params, sqlalchemy.select(Article), Article, ArticleSchema)
         )
-        assert "ORDER BY ra_author.name DESC" in rendered
+        assert "ORDER BY ra_author_1.name DESC" in rendered
