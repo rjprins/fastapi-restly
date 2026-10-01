@@ -24,6 +24,7 @@ include = ["shop"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.uv.sources]
 fastapi-restly = { path = "../../", editable = true }
