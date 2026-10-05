@@ -172,6 +172,9 @@ class ReportView(V2Base):
     schema = ReportRead
 ```
 
+A prefix can also contain a path parameter, such as `/projects/{project_id}`.
+[Nested Resources](howto_nested.md) builds child resources this way.
+
 ## Inherit custom routes
 
 Custom routes defined with {func}`@fr.get <fastapi_restly.views.get>`, {func}`@fr.post <fastapi_restly.views.post>`, and friends on a base class are inherited by all registered subclasses:

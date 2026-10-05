@@ -7,7 +7,7 @@ Every example on this page runs against the current release.
 
 (patterns-nested-resources)=
 
-## Nested resources (`/projects/{id}/tasks`)
+## Nested resources (`/projects/{project_id}/tasks`)
 
 To expose child rows under a parent, model the child as a flat resource and
 filter by its foreign key; the filter parameter is generated automatically for
@@ -33,38 +33,15 @@ GET /tasks?project_id=17        # all tasks of one project
 GET /tasks?project_id__in=1,2   # tasks of several projects
 ```
 
-When the nested URL is part of your API contract, add a custom route on the
-*parent* view, so that parent scoping and 404 behavior come from the parent's
-read path:
-
-```python
-import sqlalchemy as sa
-
-class ProjectView(fr.AsyncRestView):
-    prefix = "/projects"
-    model = Project
-    schema = ProjectRead
-
-    @fr.get("/{id}/tasks", response_model=list[TaskRead])
-    async def list_tasks(self, id: int):
-        project = await self.handle_get_one(id)  # scoping, 404, and read-auth
-        query = fr.apply_clauses(
-            sa.select(Task).where(Task.project_id == project.id),
-            fr.resolve_scope(TaskView),  # the child's own visibility
-        )
-        tasks = (await self.session.scalars(query)).all()
-        return [TaskRead.model_validate(t, from_attributes=True) for t in tasks]
-```
-
-The parent's read path covers the project: scope, 404, read-auth. It says
-nothing about the tasks, so the child rows need the child's visibility, and
-{func}`fr.resolve_scope <fastapi_restly.views.resolve_scope>` takes it from
-`TaskView` rather than repeating the clause here. Without it this listing
-returns rows `GET /tasks` hides, such as another member's or a soft-deleted
-one. See [Reading the resolved scope](scopes.md).
+When the nested URL is part of your API, serve the child view under the
+parent instead: a path parameter in its `prefix`, a lookup that answers `404`
+for an unknown or hidden parent, and a scope that keeps that parent's rows.
+Every CRUD route keeps paging, filters and sort.
+[Nested Resources](howto_nested.md) shows the full example, how to create
+children, and deeper nesting.
 
 The filter grammar, including
-[foreign-key filtering](howto_query_modifiers.md#foreign-key-filtering), is
+[foreign-key filtering](#foreign-key-filtering), is
 documented in [Filter, Sort, and Paginate Lists](howto_query_modifiers.md);
 custom routes are covered in
 [Customizing RestView](customize.md).

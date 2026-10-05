@@ -270,18 +270,21 @@ async def total(self, query_params) -> int:
 Do not name that route method `count`: it would shadow the
 {meth}`count <fastapi_restly.views.RestView.count>` seam it calls.
 
-Pass another view to follow that view's visibility from a route on this
-one, which is how a nested listing stays in step with the child's own
-endpoint:
+Pass another view to follow that view's visibility in code that builds its
+own query. The parent lookup of a [nested view](howto_nested.md) does this,
+so a project that `GET /projects/{id}` hides also answers `404` under
+`/projects/{project_id}/tasks`:
 
 ```python
-@fr.get("/{id}/tasks", response_model=list[TaskRead])
-async def list_tasks(self, id: int):
-    await self.handle_get_one(id)
+async def project_from_path(project_id: int, session: fr.AsyncSessionDep) -> int:
     query = fr.apply_clauses(
-        sa.select(Task).where(Task.project_id == id), fr.resolve_scope(TaskView)
+        sa.select(Project.id).where(Project.id == project_id),
+        fr.resolve_scope(ProjectView),
     )
-    return list(await self.session.scalars(query))
+    found = await session.scalar(query)
+    if found is None:
+        raise fr.exc.NotFound(f"Project with id {project_id} was not found")
+    return found
 ```
 
 Pass a mapped model class, `fr.resolve_scope(Task)`, for the model rung

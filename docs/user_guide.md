@@ -128,6 +128,15 @@ different list schema, restoring soft-deleted rows, webhook receivers, login
 flows, custom actions, and tenant scoping.
 :::
 
+:::{grid-item-card} Nested Resources
+:link: howto_nested
+:link-type: doc
+
+Serve a child resource under its parent, such as
+`/projects/{project_id}/tasks`, with paging, filters, sort and every CRUD
+route.
+:::
+
 :::{grid-item-card} Customizing RestView
 :link: customize
 :link-type: doc
@@ -220,6 +229,7 @@ clauses
 scopes
 howto_error_responses
 patterns
+howto_nested
 howto_inheritance
 howto_compose_views_with_mixins
 howto_typing
