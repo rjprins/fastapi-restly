@@ -583,6 +583,18 @@ field with <code class="docutils literal notranslate"><span class="pre">init=Fal
 schemas: create required it and the client chose the key. A natural key
 without a default stays writable. To let clients supply a generated key,
 declare <code class="docutils literal notranslate"><span class="pre">schema_create</span></code>.</p></li>
+<li><p>A view’s <code class="docutils literal notranslate"><span class="pre">dependencies</span></code> and <code class="docutils literal notranslate"><span class="pre">responses</span></code> add up down the class hierarchy,
+base first, as <code class="docutils literal notranslate"><span class="pre">prefix</span></code> does. A subclass that set its own <code class="docutils literal notranslate"><span class="pre">dependencies</span></code>
+used to replace the base’s list, which dropped a base guard without any
+error, and its own <code class="docutils literal notranslate"><span class="pre">responses</span></code> dropped the documented <code class="docutils literal notranslate"><span class="pre">404</span></code>. A subclass can
+no longer remove a base dependency or a base response, not even with
+<code class="docutils literal notranslate"><span class="pre">dependencies</span> <span class="pre">=</span> <span class="pre">[]</span></code> or <code class="docutils literal notranslate"><span class="pre">responses</span> <span class="pre">=</span> <span class="pre">{}</span></code>; move it out of the base instead. A
+subclass that lists a base’s dependency again, as in
+<code class="docutils literal notranslate"><span class="pre">[own,</span> <span class="pre">*Base.dependencies]</span></code>, keeps its order, and each entry runs once. A
+mixin listed after the view base, as in <code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">V(fr.View,</span> <span class="pre">AuthMixin)</span></code>, used
+to have its <code class="docutils literal notranslate"><span class="pre">dependencies</span></code> and <code class="docutils literal notranslate"><span class="pre">responses</span></code> ignored; they now apply. A base
+<code class="docutils literal notranslate"><span class="pre">Security(...,</span> <span class="pre">scopes=[...])</span></code> and a subclass one with other scopes now both
+run, so a request needs both sets of scopes.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">fr.objects.make_new_object</span></code>, <code class="docutils literal notranslate"><span class="pre">update_object</span></code> and their async versions no
 longer take a <code class="docutils literal notranslate"><span class="pre">schema_cls</span></code> argument: the payload’s own schema decides what is
 written. Remove the argument from calls. A field that an explicit

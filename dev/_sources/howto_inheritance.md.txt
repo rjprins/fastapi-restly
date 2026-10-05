@@ -125,6 +125,14 @@ class OrderView(ProtectedBase):
 
 Every route on `/users` and `/orders` now requires authentication.
 
+A subclass that sets its own `dependencies` adds them after the base's, the
+way nested FastAPI routers add up, so it cannot drop a guard the base
+declares. To run its own dependency first, it lists the base's again:
+`dependencies = [own, *ProtectedBase.dependencies]`. Each one still runs once.
+{attr}`responses <fastapi_restly.views.View.responses>` add up the
+same way, and a subclass's entry for a status code wins. Other class attributes,
+such as `tags`, replace the base's value.
+
 (prefix-concatenation)=
 
 ## Concatenate URL prefixes
@@ -163,6 +171,9 @@ class ReportView(V2Base):
     model = Report
     schema = ReportRead
 ```
+
+A prefix can also contain a path parameter, such as `/projects/{project_id}`.
+[Nested Resources](howto_nested.md) builds child resources this way.
 
 ## Inherit custom routes
 

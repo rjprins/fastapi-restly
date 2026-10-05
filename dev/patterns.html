@@ -62,7 +62,7 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Share Behaviour with Base Views" href="howto_inheritance.html" />
+    <link rel="next" title="Nested Resources" href="howto_nested.html" />
     <link rel="prev" title="Shape Error Responses" href="howto_error_responses.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -465,6 +465,7 @@
 <li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Patterns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_nested.html">Nested Resources</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
@@ -538,8 +539,8 @@
 each. Entries are short on purpose: each states the problem, shows the
 recommended shape in one example, and links to the page that owns the depth.
 Every example on this page runs against the current release.</p>
-<section id="nested-resources-projects-id-tasks">
-<span id="patterns-nested-resources"></span><h2>Nested resources (<code class="docutils literal notranslate"><span class="pre">/projects/{id}/tasks</span></code>)<a class="headerlink" href="#nested-resources-projects-id-tasks" title="Link to this heading">#</a></h2>
+<section id="nested-resources-projects-project-id-tasks">
+<span id="patterns-nested-resources"></span><h2>Nested resources (<code class="docutils literal notranslate"><span class="pre">/projects/{project_id}/tasks</span></code>)<a class="headerlink" href="#nested-resources-projects-project-id-tasks" title="Link to this heading">#</a></h2>
 <p>To expose child rows under a parent, model the child as a flat resource and
 filter by its foreign key; the filter parameter is generated automatically for
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">MustExist</span></code></a> fields:</p>
@@ -560,33 +561,12 @@ filter by its foreign key; the filter parameter is generated automatically for
 GET /tasks?project_id__in=1,2   # tasks of several projects
 </pre></div>
 </div>
-<p>When the nested URL is part of your API contract, add a custom route on the
-<em>parent</em> view, so that parent scoping and 404 behavior come from the parent’s
-read path:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sa</span>
-
-<span class="k">class</span><span class="w"> </span><span class="nc">ProjectView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/projects&quot;</span>
-    <span class="n">model</span> <span class="o">=</span> <span class="n">Project</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">ProjectRead</span>
-
-    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/tasks&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="nb">list</span><span class="p">[</span><span class="n">TaskRead</span><span class="p">])</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
-        <span class="n">project</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>  <span class="c1"># scoping, 404, and read-auth</span>
-        <span class="n">query</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">apply_clauses</span><span class="p">(</span>
-            <span class="n">sa</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">Task</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Task</span><span class="o">.</span><span class="n">project_id</span> <span class="o">==</span> <span class="n">project</span><span class="o">.</span><span class="n">id</span><span class="p">),</span>
-            <span class="n">fr</span><span class="o">.</span><span class="n">resolve_scope</span><span class="p">(</span><span class="n">TaskView</span><span class="p">),</span>  <span class="c1"># the child&#39;s own visibility</span>
-        <span class="p">)</span>
-        <span class="n">tasks</span> <span class="o">=</span> <span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">scalars</span><span class="p">(</span><span class="n">query</span><span class="p">))</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
-        <span class="k">return</span> <span class="p">[</span><span class="n">TaskRead</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">from_attributes</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tasks</span><span class="p">]</span>
-</pre></div>
-</div>
-<p>The parent’s read path covers the project: scope, 404, read-auth. It says
-nothing about the tasks, so the child rows need the child’s visibility, and
-<a class="reference internal" href="api/views.html#fastapi_restly.views.resolve_scope" title="fastapi_restly.views.resolve_scope"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.resolve_scope</span></code></a> takes it from
-<code class="docutils literal notranslate"><span class="pre">TaskView</span></code> rather than repeating the clause here. Without it this listing
-returns rows <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/tasks</span></code> hides, such as another member’s or a soft-deleted
-one. See <a class="reference internal" href="scopes.html"><span class="std std-doc">Reading the resolved scope</span></a>.</p>
+<p>When the nested URL is part of your API, serve the child view under the
+parent instead: a path parameter in its <code class="docutils literal notranslate"><span class="pre">prefix</span></code>, a lookup that answers <code class="docutils literal notranslate"><span class="pre">404</span></code>
+for an unknown or hidden parent, and a scope that keeps that parent’s rows.
+Every CRUD route keeps paging, filters and sort.
+<a class="reference internal" href="howto_nested.html"><span class="std std-doc">Nested Resources</span></a> shows the full example, how to create
+children, and deeper nesting.</p>
 <p>The filter grammar, including
 <a class="reference internal" href="howto_query_modifiers.html#foreign-key-filtering"><span class="std std-ref">foreign-key filtering</span></a>, is
 documented in <a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">Filter, Sort, and Paginate Lists</span></a>;
@@ -735,11 +715,11 @@ owns the complete pattern.</p>
       </div>
     </a>
     <a class="right-next"
-       href="howto_inheritance.html"
+       href="howto_nested.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Share Behaviour with Base Views</p>
+        <p class="prev-next-title">Nested Resources</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -762,7 +742,7 @@ owns the complete pattern.</p>
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nested-resources-projects-id-tasks">Nested resources (<code class="docutils literal notranslate"><span class="pre">/projects/{id}/tasks</span></code>)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nested-resources-projects-project-id-tasks">Nested resources (<code class="docutils literal notranslate"><span class="pre">/projects/{project_id}/tasks</span></code>)</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#a-different-schema-for-the-list-endpoint">A different schema for the list endpoint</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#restore-a-soft-deleted-row">Restore a soft-deleted row</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#receive-a-webhook-inbound">Receive a webhook (inbound)</a></li>

@@ -465,6 +465,7 @@
 <li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
 <li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_nested.html">Nested Resources</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
@@ -807,7 +808,7 @@ GET /articles?author.name=Alice          # rejected, use public aliases
 </div>
 </section>
 <section id="foreign-key-filtering">
-<h2>Foreign-key filtering<a class="headerlink" href="#foreign-key-filtering" title="Link to this heading">#</a></h2>
+<span id="id1"></span><h2>Foreign-key filtering<a class="headerlink" href="#foreign-key-filtering" title="Link to this heading">#</a></h2>
 <p>A scalar foreign key declared with
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Post]</span></code></a> is
 filterable by its own public name, the same name the wire format uses:</p>
@@ -886,8 +887,8 @@ see <a class="reference internal" href="scopes.html#per-read-scope"><span class=
 <ul class="simple">
 <li><p><a class="reference internal" href="technical_details.html#id3"><span class="std std-ref">List-parameters lifecycle</span></a>:
 how the filter grammar is generated and frozen at registration time.</p></li>
-<li><p><a class="reference internal" href="patterns.html#nested-resources-projects-id-tasks"><span class="std std-ref">Patterns: nested resources</span></a>:
-foreign-key filtering as the sub-resource idiom.</p></li>
+<li><p><a class="reference internal" href="howto_nested.html"><span class="std std-doc">Nested Resources</span></a>: serving a child resource under its
+parent, such as <code class="docutils literal notranslate"><span class="pre">/projects/{project_id}/tasks</span></code>.</p></li>
 </ul>
 </section>
 </section>

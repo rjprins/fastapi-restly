@@ -136,7 +136,7 @@ The FK field is filterable on the list endpoint by its own public name, as in
 `author_id__ne`, and `author_id__isnull` are available as well, and because a
 `MustExist[int, ...]` id is a plain integer, so is the range family
 `author_id__gte` / `__lte` / `__gt` / `__lt`. See
-[Foreign-key filtering](howto_query_modifiers.md#foreign-key-filtering) for the
+[Foreign-key filtering](#foreign-key-filtering) for the
 full behavior.
 
 ## Field naming

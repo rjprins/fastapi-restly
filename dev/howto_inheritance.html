@@ -63,7 +63,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Compose Views with Mixins" href="howto_compose_views_with_mixins.html" />
-    <link rel="prev" title="Patterns" href="patterns.html" />
+    <link rel="prev" title="Nested Resources" href="howto_nested.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -465,6 +465,7 @@
 <li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
 <li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_nested.html">Nested Resources</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Share Behaviour with Base Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
@@ -646,6 +647,13 @@ queues the hook until the outermost block commits.</p>
 </pre></div>
 </div>
 <p>Every route on <code class="docutils literal notranslate"><span class="pre">/users</span></code> and <code class="docutils literal notranslate"><span class="pre">/orders</span></code> now requires authentication.</p>
+<p>A subclass that sets its own <code class="docutils literal notranslate"><span class="pre">dependencies</span></code> adds them after the base’s, the
+way nested FastAPI routers add up, so it cannot drop a guard the base
+declares. To run its own dependency first, it lists the base’s again:
+<code class="docutils literal notranslate"><span class="pre">dependencies</span> <span class="pre">=</span> <span class="pre">[own,</span> <span class="pre">*ProtectedBase.dependencies]</span></code>. Each one still runs once.
+<a class="reference internal" href="api/views.html#fastapi_restly.views.View.responses" title="fastapi_restly.views.View.responses"><code class="xref py py-attr docutils literal notranslate"><span class="pre">responses</span></code></a> add up the
+same way, and a subclass’s entry for a status code wins. Other class attributes,
+such as <code class="docutils literal notranslate"><span class="pre">tags</span></code>, replace the base’s value.</p>
 </section>
 <section id="concatenate-url-prefixes">
 <span id="prefix-concatenation"></span><h2>Concatenate URL prefixes<a class="headerlink" href="#concatenate-url-prefixes" title="Link to this heading">#</a></h2>
@@ -680,6 +688,8 @@ queues the hook until the outermost block commits.</p>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">ReportRead</span>
 </pre></div>
 </div>
+<p>A prefix can also contain a path parameter, such as <code class="docutils literal notranslate"><span class="pre">/projects/{project_id}</span></code>.
+<a class="reference internal" href="howto_nested.html"><span class="std std-doc">Nested Resources</span></a> builds child resources this way.</p>
 </section>
 <section id="inherit-custom-routes">
 <h2>Inherit custom routes<a class="headerlink" href="#inherit-custom-routes" title="Link to this heading">#</a></h2>
@@ -743,12 +753,12 @@ Mixins</span></a>.</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="patterns.html"
+       href="howto_nested.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Patterns</p>
+        <p class="prev-next-title">Nested Resources</p>
       </div>
     </a>
     <a class="right-next"

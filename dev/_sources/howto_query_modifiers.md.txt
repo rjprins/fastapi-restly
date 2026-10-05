@@ -278,6 +278,7 @@ GET /articles?writer.authorName=Alice    # supported (aliased segments)
 GET /articles?author.name=Alice          # rejected, use public aliases
 ```
 
+(foreign-key-filtering)=
 ## Foreign-key filtering
 
 A scalar foreign key declared with
@@ -365,5 +366,5 @@ see [A route names its own scope](#per-read-scope).
 
 - [List-parameters lifecycle](technical_details.md#list-parameters-lifecycle):
   how the filter grammar is generated and frozen at registration time.
-- [Patterns: nested resources](patterns.md#nested-resources-projectsidtasks):
-  foreign-key filtering as the sub-resource idiom.
+- [Nested Resources](howto_nested.md): serving a child resource under its
+  parent, such as `/projects/{project_id}/tasks`.

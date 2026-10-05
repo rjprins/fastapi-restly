@@ -259,8 +259,8 @@ Every `View` subclass, CRUD or not, honors these class attributes:
 |---|---|---|
 | {attr}`prefix <fastapi_restly.views.View.prefix>` | `ClassVar[str]` | URL prefix for all routes in the view (e.g. `"/users"`). Required. |
 | {attr}`tags <fastapi_restly.views.View.tags>` | `ClassVar[Iterable[str \| Enum] \| None]` | OpenAPI tags. When unset, a tag derived from the view class name is used; setting this replaces the derived tag. |
-| {attr}`dependencies <fastapi_restly.views.View.dependencies>` | `ClassVar[Sequence[Depends] \| None]` | FastAPI dependencies applied to every route in the view. |
-| {attr}`responses <fastapi_restly.views.View.responses>` | `ClassVar[dict[int \| str, dict[str, Any]]]` | OpenAPI response overrides. `View` defaults to `{}`; `BaseRestView` defaults to `{404: {"description": "Not found"}}`. |
+| {attr}`dependencies <fastapi_restly.views.View.dependencies>` | `ClassVar[Sequence[Depends] \| None]` | FastAPI dependencies applied to every route in the view. Each class in the hierarchy adds its own, base first. |
+| {attr}`responses <fastapi_restly.views.View.responses>` | `ClassVar[dict[int \| str, dict[str, Any]]]` | OpenAPI response overrides. `View` defaults to `{}`; `BaseRestView` defaults to `{404: {"description": "Not found"}}`. Each class in the hierarchy adds its own, and a subclass's entry for a status code wins. |
 | {attr}`route_options <fastapi_restly.views.View.route_options>` | `ClassVar[Mapping[str \| ViewRoute, Mapping[str, Any]]]` | Per-route FastAPI keyword arguments. See [OpenAPI customization](#default-route-metadata) for names, operation IDs, and override rules. |
 
 `RestView` and `AsyncRestView` add the following:

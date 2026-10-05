@@ -465,6 +465,7 @@
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Scopes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
 <li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_nested.html">Nested Resources</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
@@ -789,16 +790,19 @@ filters to the scoped select:</p>
 </div>
 <p>Do not name that route method <code class="docutils literal notranslate"><span class="pre">count</span></code>: it would shadow the
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.count" title="fastapi_restly.views.RestView.count"><code class="xref py py-meth docutils literal notranslate"><span class="pre">count</span></code></a> seam it calls.</p>
-<p>Pass another view to follow that view’s visibility from a route on this
-one, which is how a nested listing stays in step with the child’s own
-endpoint:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/tasks&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="nb">list</span><span class="p">[</span><span class="n">TaskRead</span><span class="p">])</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
-    <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+<p>Pass another view to follow that view’s visibility in code that builds its
+own query. The parent lookup of a <a class="reference internal" href="howto_nested.html"><span class="std std-doc">nested view</span></a> does this,
+so a project that <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/projects/{id}</span></code> hides also answers <code class="docutils literal notranslate"><span class="pre">404</span></code> under
+<code class="docutils literal notranslate"><span class="pre">/projects/{project_id}/tasks</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">project_from_path</span><span class="p">(</span><span class="n">project_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">session</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncSessionDep</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
     <span class="n">query</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">apply_clauses</span><span class="p">(</span>
-        <span class="n">sa</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">Task</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Task</span><span class="o">.</span><span class="n">project_id</span> <span class="o">==</span> <span class="nb">id</span><span class="p">),</span> <span class="n">fr</span><span class="o">.</span><span class="n">resolve_scope</span><span class="p">(</span><span class="n">TaskView</span><span class="p">)</span>
+        <span class="n">sa</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">Project</span><span class="o">.</span><span class="n">id</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Project</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">project_id</span><span class="p">),</span>
+        <span class="n">fr</span><span class="o">.</span><span class="n">resolve_scope</span><span class="p">(</span><span class="n">ProjectView</span><span class="p">),</span>
     <span class="p">)</span>
-    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">scalars</span><span class="p">(</span><span class="n">query</span><span class="p">))</span>
+    <span class="n">found</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">found</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">NotFound</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Project with id </span><span class="si">{</span><span class="n">project_id</span><span class="si">}</span><span class="s2"> was not found&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">found</span>
 </pre></div>
 </div>
 <p>Pass a mapped model class, <code class="docutils literal notranslate"><span class="pre">fr.resolve_scope(Task)</span></code>, for the model rung
