@@ -264,17 +264,19 @@ live in [Customizing RestView](customize.md).
 A class attribute on a view is wired as a FastAPI dependency only when its
 annotation either:
 
-- carries an `Annotated[..., Depends(...)]` marker, or
+- carries an `Annotated[..., Depends(...)]` marker (`Security(...)` counts,
+  since it is a kind of `Depends`), or
 - names one of FastAPI's bare-injectable special types (`Request`,
   `Response`, `BackgroundTasks`, `WebSocket`).
 
-This matches FastAPI function parameters; a plain annotation like
-`model: type[Foo]` is only a type hint. The following view demonstrates each
-case:
+Every other annotation is only a type hint. This differs from a function
+parameter, where FastAPI reads a plain annotation as a query or body
+parameter. The following view demonstrates each case:
 
 ```python
-from fastapi import Request
 from typing import Annotated
+
+from fastapi import Depends, Request
 
 class UserView(fr.AsyncRestView):
     # Wired: AsyncSessionDep is Annotated[AsyncSession, Depends(...)].
@@ -286,18 +288,32 @@ class UserView(fr.AsyncRestView):
     # Wired: explicit Depends marker.
     current_user: Annotated[User, Depends(get_current_user)]
 
-    # NOT wired: plain annotation, just a type hint.
-    model: type[User]
+    # NOT wired: a bare type is only a hint.
+    reviewer: User
 ```
 
-The shipped `AsyncSessionDep` / `SessionDep` aliases carry `Depends`, so
-they keep working unchanged. The `request` attribute on {class}`BaseRestView <fastapi_restly.views.BaseRestView>`
-relies on the special-type rule. Any custom dependency declared on a view
-class must use the `Annotated[X, Depends(...)]` form unless it is one of
-the bare-injectable types.
+A wired attribute is set on the view instance before any method runs, so
+endpoint methods, business methods, `authorize`, and the commit hooks all
+read it as `self.current_user`. An attribute that is not wired is never set
+from the request: reading `self.reviewer` raises `AttributeError`.
 
-This rule makes mixins safe: a mixin can declare what it expects from its
-host without shadowing the host's wiring. See
+The shipped `AsyncSessionDep` / `SessionDep` aliases carry `Depends`. The
+`request` attribute on {class}`BaseRestView <fastapi_restly.views.BaseRestView>`
+relies on the special-type rule.
+
+A request parameter belongs on the endpoint method that reads it. A class
+attribute with a `Path()`, `Query()`, `Header()`, `Cookie()`, `Body()`,
+`Form()` or `File()` marker raises
+{class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
+when the view is registered, because FastAPI would never set it. A path
+segment or header that every route of the view needs comes through a
+dependency instead; [Nested Resources](howto_nested.md) shows the pattern for
+a path segment.
+
+A plain annotation never replaces a wired one. A mixin or subclass that
+declares `current_user: User` so type checkers know the attribute keeps the
+base's `Depends` wiring. This rule makes mixins safe: a mixin can declare
+what it expects from its host without shadowing the host's wiring. See
 [Composing views with mixins](howto_compose_views_with_mixins.md) for the
 mixin pattern.
 
