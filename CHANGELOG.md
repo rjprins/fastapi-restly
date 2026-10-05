@@ -47,6 +47,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   schemas: create required it and the client chose the key. A natural key
   without a default stays writable. To let clients supply a generated key,
   declare `schema_create`.
+- A view's `dependencies` and `responses` add up down the class hierarchy,
+  base first, as `prefix` does. A subclass that set its own `dependencies`
+  used to replace the base's list, which dropped a base guard without any
+  error, and its own `responses` dropped the documented `404`. A subclass can
+  no longer remove a base dependency or a base response, not even with
+  `dependencies = []` or `responses = {}`; move it out of the base instead. A
+  subclass that lists a base's dependency again, as in
+  `[own, *Base.dependencies]`, keeps its order, and each entry runs once. A
+  mixin listed after the view base, as in `class V(fr.View, AuthMixin)`, used
+  to have its `dependencies` and `responses` ignored; they now apply. A base
+  `Security(..., scopes=[...])` and a subclass one with other scopes now both
+  run, so a request needs both sets of scopes.
 - `fr.objects.make_new_object`, `update_object` and their async versions no
   longer take a `schema_cls` argument: the payload's own schema decides what is
   written. Remove the argument from calls. A field that an explicit

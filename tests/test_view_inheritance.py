@@ -5,7 +5,9 @@ Views are real Python classes — not decorators or function wrappers — so the
 full Python inheritance model applies:
 
   - Class variables (model, schema, exclude_routes, paginated,
-    id_type, dependencies) are inherited and can be overridden per-subclass.
+    id_type) are inherited and can be overridden per-subclass. Class-level
+    ``dependencies`` and ``responses`` add up instead; see
+    test_view_router_inheritance.py.
   - Business verb overrides (create/update/delete/get_one/get_many) and custom
     routes defined on a base view are shared by all subclasses; each subclass can
     further override and call super().

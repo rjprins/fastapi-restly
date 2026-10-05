@@ -973,9 +973,17 @@ class View:
     grouped non-CRUD endpoints (auth flows, custom RPC routes, etc.).
     """
 
+    #: The URL prefix of every route. Each class in the hierarchy that sets one
+    #: adds a segment, base first.
     prefix: ClassVar[str]
     tags: ClassVar[Iterable[str | Enum] | None] = None
+    #: FastAPI dependencies run for every route, without injecting a result.
+    #: Each class in the hierarchy adds its own, base first, so a subclass
+    #: cannot drop a base's guard. A subclass that lists a base's entry again
+    #: runs it where it lists it.
     dependencies: ClassVar[Any] = None
+    #: OpenAPI responses documented on every route. Each class in the hierarchy
+    #: adds its own, and a subclass's entry for a status code wins.
     responses: ClassVar[dict[int | str, dict[str, Any]]] = {}
     #: FastAPI route keyword arguments keyed by endpoint method name or
     #: ``ViewRoute``. These override decorator metadata without replacing the
@@ -2286,16 +2294,23 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
                 f"{name!r} is not a route in {view_cls.__name__}.route_options"
             )
 
-    # Concatenate prefixes defined at each level of the class hierarchy (base → derived).
-    prefix = "".join(
-        c.__dict__["prefix"] for c in reversed(view_cls.mro()) if "prefix" in c.__dict__
-    )
+    # Each level of the class hierarchy adds to these, base first: a subclass
+    # cannot drop a guard its base declares.
+    levels = [c.__dict__ for c in reversed(view_cls.mro())]
+    prefix = "".join(level["prefix"] for level in levels if "prefix" in level)
+    dependencies: list[Any] = []
+    responses: dict[int | str, dict[str, Any]] = {}
+    for level in levels:
+        for dependency in level.get("dependencies") or ():
+            # A subclass that spells out ``[own, *Base.dependencies]`` lists
+            # the base's entries again. They move to where it lists them, so
+            # ``own`` still runs first.
+            dependencies = [seen for seen in dependencies if seen is not dependency]
+            dependencies.append(dependency)
+        responses.update(level.get("responses") or {})
     tags = _get_router_tags(view_cls, prefix)
     api_router = fastapi.APIRouter(
-        prefix=prefix,
-        tags=tags,
-        responses=view_cls.responses,
-        dependencies=view_cls.dependencies,
+        prefix=prefix, tags=tags, responses=responses, dependencies=dependencies
     )
 
     # Find all endpoint functions in this class and add them to the router
