@@ -190,10 +190,12 @@ canonical for the envelope's shape.
 
 ## Extra query parameters
 
-A query parameter that a dependency reads needs no setup, wherever the
-dependency is declared: on the app or a router, in the view's
-`dependencies`, or on a class attribute. The key of an `APIKeyQuery` counts
-too. The unknown-key check accepts these keys like filters.
+A query parameter that the route declares needs no setup: one the endpoint
+method takes, or one a dependency reads, wherever the dependency is
+declared (on the app or a router, in the view's `dependencies`, or on a
+class attribute). The key of an `APIKeyQuery` counts too. The unknown-key
+check accepts these keys like filters, and OpenAPI lists them beside the
+filters.
 
 A view that reads a custom key straight from `self.request.query_params`
 (in an override) must name it, or the 422 validation rejects it as an
@@ -365,7 +367,9 @@ listing grammar as `GET /`: Restly annotates it with the view's generated
 so filters, sort and page parse and validate the same way, appear in OpenAPI,
 and an unknown key is rejected with `422`. A custom listing such as a trash
 route passes them on with `self.handle_get_many(query_params, scope=...)`;
-see [A route names its own scope](#per-read-scope).
+see [A route names its own scope](#per-read-scope). The route can take its
+own query parameters beside `query_params`, such as
+`def search(self, query_params, mode: SearchMode)`.
 
 ## See also
 

@@ -106,6 +106,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   attribute, and the key of an `APIKeyQuery`. These keys used to answer
   `422 Unknown query parameter` unless the view listed them in
   `extra_query_params`. Unknown keys are still rejected.
+- A custom listing route can take its own query parameters beside
+  `query_params`, such as `def search(self, query_params, mode: SearchMode)`.
+  It used to answer 422 with `query_params` reported missing.
+- A list endpoint's OpenAPI lists each filter as its own parameter when the
+  route also reads another query parameter, for example one a dependency
+  declares. FastAPI used to collapse the filters into one required
+  `query_params` object, which also changed the method signatures of
+  generated clients.
+- A hand-written `listing_param_schema` takes a field by its alias. The alias
+  used to be rejected as an unknown key, and the Python field name was
+  accepted and then ignored.
 - Type checkers see that models on `fr.DataclassBase` and `fr.IDBase` are
   keyword-only. mypy and pyright used to reject a column without a default
   after one with a default, although it works at runtime.

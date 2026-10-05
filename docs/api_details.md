@@ -61,7 +61,7 @@ behavior:
 | {attr}`default_page_size <fastapi_restly.views.BaseRestView.default_page_size>` | `ClassVar[int]` | `50` | Page cap when the client omits `?page_size=` (paginated views only). Lower it and cap `max_page_size` on public endpoints. |
 | {attr}`max_page_size <fastapi_restly.views.BaseRestView.max_page_size>` | `ClassVar[int]` | `1000` | Upper bound for `?page_size=`; higher values are rejected with `422`. |
 | {attr}`paginated <fastapi_restly.views.BaseRestView.paginated>` | `ClassVar[bool]` | `True` | When `True` (default) list endpoints paginate and return the `PaginatedEnvelope` (`data` plus `total_count` / `page` / `page_size` / `total_pages`). `False` returns every row in a plain `Envelope` (`data` only). |
-| {attr}`extra_query_params <fastapi_restly.views.BaseRestView.extra_query_params>` | `ClassVar[Iterable[str]]` | `()` | Query keys to allow beyond those derived from the response schema, for view-specific parameters read from the request outside the list grammar (e.g. `?include_deleted=true`). A key that a dependency declares, or an `APIKeyQuery` key, needs no entry. |
+| {attr}`extra_query_params <fastapi_restly.views.BaseRestView.extra_query_params>` | `ClassVar[Iterable[str]]` | `()` | Query keys to allow beyond those derived from the response schema, for view-specific parameters read from the request outside the list grammar (e.g. `?include_deleted=true`). A key that the endpoint method or a dependency declares, or an `APIKeyQuery` key, needs no entry. |
 
 The envelope's shape and custom alternatives are covered in
 [Response Envelopes and List Metadata](howto_response_schema.md).

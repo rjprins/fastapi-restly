@@ -307,6 +307,13 @@ parameter per response-schema field that maps to a filterable column on the
 model, with optional operator suffixes. It is generated once per registration
 and never re-derived.
 
+A route reads the schema through a dependency, not as a FastAPI query model.
+FastAPI splits a query model into separate parameters only when it is the
+route's only query parameter, so a dependency's `?api_key=` would collapse
+the filters into one required object. Restly validates the model from the
+query string itself and documents each key as its own OpenAPI parameter,
+next to whatever else the route reads.
+
 Custom dialects (e.g. react-admin's
 [`AsyncReactAdminView` / `ReactAdminView`](howto_react_admin.md)) live as
 parallel view classes that bypass {func}`apply_list_params <fastapi_restly.query.apply_list_params>` entirely and

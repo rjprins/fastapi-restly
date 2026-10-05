@@ -33,6 +33,7 @@ from typing import (
     Iterator,
     Protocol,
     Sequence,
+    Union,
     cast,
     get_args,
     get_origin,
@@ -45,11 +46,13 @@ import fastapi
 import pydantic
 from fastapi import BackgroundTasks, Request, Response, WebSocket
 from fastapi.datastructures import Default
+from fastapi.exceptions import RequestValidationError
 from fastapi.openapi.models import APIKeyIn
 from fastapi.params import Body as _BodyMarker
 from fastapi.params import Depends as _DependsMarker
 from fastapi.params import Param as _ParamMarker
 from fastapi.security.api_key import APIKeyBase
+from pydantic.fields import FieldInfo
 from sqlalchemy import JSON as _JSONType
 from sqlalchemy import ColumnElement, Select
 from sqlalchemy import inspect as sa_inspect
@@ -1208,9 +1211,9 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     #: Extra query-parameter keys to allow on listing routes beyond those
     #: derived from the response schema. Use this when a view reads a custom
     #: parameter from ``self.request`` (e.g. ``?verbose=true``). Without this,
-    #: the strict unknown-key guard rejects the request with 422. A key that a
-    #: dependency of the route declares, or an ``APIKeyQuery`` key, needs no
-    #: entry.
+    #: the strict unknown-key guard rejects the request with 422. A key that the
+    #: route declares, on the endpoint method or in a dependency, or an
+    #: ``APIKeyQuery`` key, needs no entry.
     extra_query_params: ClassVar[Iterable[str]] = ()
     #: Whether list endpoints paginate. ``True`` (the default) wraps the list in
     #: a :class:`PaginatedEnvelope` (``data`` plus ``total_count`` / ``page`` /
@@ -1228,7 +1231,8 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     #: from ``schema`` and ``model``. Any route method on the view that declares
     #: a ``query_params`` parameter takes it: typed for FastAPI and OpenAPI, and
     #: guarded against unknown keys like ``GET /``, so a custom listing (a
-    #: trash route naming its own scope) reads the same grammar.
+    #: trash route naming its own scope) reads the same grammar. The route can
+    #: take other query parameters beside it.
     listing_param_schema: ClassVar[type[pydantic.BaseModel]]
 
     request: fastapi.Request
@@ -1363,9 +1367,9 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         Runs before every route that declares ``query_params`` (see
         :attr:`listing_param_schema`).
 
-        FastAPI flattens ``Annotated[listing_param_schema, Query()]`` into named
-        query parameters; unknown keys are silently ignored at that layer,
-        which would let typoed filters or unsupported operators (e.g.
+        The listing dependency (:func:`_listing_params_dependency`) reads
+        the grammar's keys and ignores any other, which would let typoed
+        filters or unsupported operators (e.g.
         ``active__gte=true`` on a boolean column where the schema does not
         emit a range operator) widen the result set without telling the
         caller. We treat unknown keys as a validation error instead, mirroring
@@ -1382,9 +1386,11 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         listing_schema = getattr(self, "listing_param_schema", None)
         if listing_schema is None:
             return
-        reject_unknown_query_keys(
-            request, set(listing_schema.model_fields) | set(self.extra_query_params)
-        )
+        listing_keys = {
+            _query_key(name, field)
+            for name, field in listing_schema.model_fields.items()
+        }
+        reject_unknown_query_keys(request, listing_keys | set(self.extra_query_params))
 
     def to_response_schema(self, obj: ModelT | SchemaT) -> SchemaT:
         """Serialize an ORM object to the configured response schema.
@@ -1584,8 +1590,14 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         # Every route that declares ``query_params`` takes the listing grammar:
         # ``GET /`` and any custom listing alike, guarded the same way. The
         # guard checks keys against ``listing_param_schema`` whatever the
-        # annotation says, so the grammar replaces an explicit one too.
-        listing_params = Annotated[cls.listing_param_schema, fastapi.Query()]
+        # annotation says, so the grammar replaces an explicit one too. A
+        # dependency reads it rather than a FastAPI query model, which
+        # collapses next to any other query parameter (see
+        # :func:`_listing_params_dependency`).
+        listing_params = Annotated[
+            cls.listing_param_schema,
+            fastapi.Depends(_listing_params_dependency(cls.listing_param_schema)),
+        ]
         for name, route in list(cls.__dict__.items()):
             if not hasattr(route, "_api_route_args"):
                 continue
@@ -1830,6 +1842,157 @@ def _route_query_keys(request: fastapi.Request) -> set[str]:
             keys.add(call.model.name)
         pending.extend(current.dependencies)
     return keys
+
+
+def _listing_params_dependency(
+    params_model: type[pydantic.BaseModel],
+) -> Callable[..., pydantic.BaseModel]:
+    """A dependency that validates ``params_model`` from the query string.
+
+    FastAPI splits a query model into its fields only when it is the sole
+    query parameter: at runtime per function, in OpenAPI across the route.
+    Any other query parameter therefore collapses it into one required
+    ``query_params`` value. This reads the fields itself, the way FastAPI
+    hands a query model its input: every value of a repeated key for a
+    sequence field, the last value otherwise, a default that is not None,
+    and any other key as sent. :func:`_listing_openapi_parameters`
+    documents the fields.
+    """
+    fields = [
+        (_query_key(name, field), field, _reads_every_value(field))
+        for name, field in params_model.model_fields.items()
+    ]
+    field_keys = {key for key, _, _ in fields}
+
+    def listing_params(
+        request: fastapi.Request, first: Any = None
+    ) -> pydantic.BaseModel:
+        query = request.query_params
+        data: dict[str, Any] = {}
+        for key, field, every_value in fields:
+            if key in query:
+                data[key] = query.getlist(key) if every_value else query[key]
+            elif not field.is_required():
+                default = field.get_default()
+                if default is not None:
+                    data[key] = default
+        for key in query.keys():
+            if key not in field_keys:
+                values = query.getlist(key)
+                data[key] = values[0] if len(values) == 1 else values
+        try:
+            return params_model.model_validate(data)
+        except pydantic.ValidationError as exc:
+            errors = [
+                {**error, "loc": ("query", *error["loc"])}
+                for error in exc.errors(include_url=False)
+            ]
+            raise RequestValidationError(errors) from None
+
+    parameters = [
+        inspect.Parameter(
+            "request", inspect.Parameter.KEYWORD_ONLY, annotation=fastapi.Request
+        )
+    ]
+    if fields:
+        # FastAPI documents a route's 422 only when it reads a parameter of
+        # the route itself. It reads the first key here, undocumented and
+        # unchecked; the model validates the value with the rest.
+        marker = fastapi.Query(alias=fields[0][0], include_in_schema=False)
+        parameters.append(
+            inspect.Parameter(
+                "first",
+                inspect.Parameter.KEYWORD_ONLY,
+                default=None,
+                annotation=Annotated[Any, marker],
+            )
+        )
+    listing_params.__signature__ = inspect.Signature(parameters)  # type: ignore[attr-defined]
+    return listing_params
+
+
+def _query_key(name: str, field: FieldInfo) -> str:
+    """The query key of a listing field: its validation alias, its alias, or
+    its name, as FastAPI reads a query model."""
+    if isinstance(field.validation_alias, str):
+        return field.validation_alias
+    return field.alias or name
+
+
+def _reads_every_value(field: FieldInfo) -> bool:
+    """Whether a listing field reads every value of a repeated query key.
+
+    FastAPI's rule for a query model: a sequence or set type, alone or in a
+    union, unless the value is JSON.
+    """
+    if any(isinstance(item, pydantic.Json) for item in field.metadata):
+        return False
+    return _is_sequence_annotation(field.annotation)
+
+
+def _is_sequence_annotation(annotation: Any) -> bool:
+    if get_origin(annotation) in (Union, types.UnionType):
+        return any(_is_sequence_annotation(arg) for arg in get_args(annotation))
+    return any(
+        isinstance(candidate, type)
+        and get_origin(candidate) is None
+        and issubclass(candidate, (Sequence, Set))
+        and not issubclass(candidate, (str, bytes))
+        for candidate in (annotation, get_origin(annotation))
+    )
+
+
+def _listing_openapi_parameters(
+    params_model: type[pydantic.BaseModel],
+) -> list[dict[str, Any]]:
+    """One OpenAPI query parameter per field of ``params_model``.
+
+    The entries FastAPI writes for a query model it splits into fields, so
+    the listing documents the same whatever else the route reads. Built from
+    the model's JSON schema, with references inlined: the document's
+    components do not hold the model's definitions.
+    """
+    schema = params_model.model_json_schema()
+    definitions = schema.get("$defs", {})
+    properties = schema.get("properties", {})
+    required = set(schema.get("required", ()))
+    parameters: list[dict[str, Any]] = []
+    for name, field in params_model.model_fields.items():
+        key = _query_key(name, field)
+        field_schema = _inline_definitions(
+            properties.get(key, properties.get(name, {})), definitions
+        )
+        field_schema["title"] = field.title or key.title().replace("_", " ")
+        parameter: dict[str, Any] = {
+            "name": key,
+            "in": "query",
+            "required": key in required,
+            "schema": field_schema,
+        }
+        if field.description:
+            parameter["description"] = field.description
+        if field.deprecated:
+            parameter["deprecated"] = True
+        parameters.append(parameter)
+    return parameters
+
+
+def _inline_definitions(schema: Any, definitions: dict[str, Any]) -> Any:
+    """``schema`` with each ``#/$defs/...`` reference replaced by its target."""
+    if isinstance(schema, list):
+        return [_inline_definitions(item, definitions) for item in schema]
+    if not isinstance(schema, dict):
+        return schema
+    inlined = {
+        key: _inline_definitions(value, definitions)
+        for key, value in schema.items()
+        if key != "$ref"
+    }
+    reference = schema.get("$ref")
+    if isinstance(reference, str) and reference.startswith("#/$defs/"):
+        target = definitions[reference.removeprefix("#/$defs/")]
+        return {**_inline_definitions(target, definitions), **inlined}
+    return inlined
 
 
 def _guard_listing_params(route: Callable) -> Callable:
@@ -2349,6 +2512,7 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
     )
 
     # Find all endpoint functions in this class and add them to the router
+    listing_parameters: list[dict[str, Any]] | None = None
     for name, attr in view_cls.__dict__.items():
         if not hasattr(attr, "_api_route_args"):
             continue
@@ -2375,6 +2539,14 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
             **route_kwargs,
             **view_cls.route_options.get(name, {}),
         }
+        if getattr(endpoint, "_fr_listing_guard", False):
+            if listing_parameters is None:
+                listing_parameters = _listing_openapi_parameters(
+                    cast(Any, view_cls).listing_param_schema
+                )
+            extra = dict(route_kwargs.get("openapi_extra") or {})
+            extra["parameters"] = [*listing_parameters, *extra.get("parameters", [])]
+            route_kwargs["openapi_extra"] = extra
         _add_api_route(api_router, view_cls, path, endpoint, route_kwargs)
 
     return api_router
