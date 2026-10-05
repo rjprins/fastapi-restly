@@ -106,6 +106,11 @@ class ItemView(fr.AsyncRestView):
         return self.to_response(obj)
 ```
 
+`scope=` replaces the view scope for that read; it does not narrow it. Keep
+rules that a restore must never skip, such as tenant isolation, at the
+session level ([Tenant scoping](#tenant-scoping)). [A route names its own
+scope](scopes.md#a-route-names-its-own-scope) owns the details.
+
 Soft delete itself is covered as a one-off override in
 [Customizing RestView](customize.md#delete-soft-delete-instead-of-removing-the-row)
 and as a reusable mixin in
