@@ -373,6 +373,26 @@ once the mark is durable:
             await enqueue_async_delete(old["id"])  # the real delete runs off-request
 ```
 
+### When `after_action_commit` raises
+
+The write is already committed, so an exception from the hook cannot undo it.
+The request still fails, and a client that retries repeats the write. For a
+best-effort effect, catch and log the error in the hook:
+
+```python
+    async def after_action_commit(self, action, new, old=None):
+        if action == "create":
+            try:
+                await send_confirmation_email(new.id)
+            except Exception:  # the order is saved; don't fail the request
+                logger.exception("Confirmation email failed for order %s", new.id)
+```
+
+An effect that must happen belongs in an outbox row written in
+`before_action_commit`, which a worker delivers and retries. Make delivery
+idempotent, since a retry can repeat it. FastAPI's `BackgroundTasks` is no
+substitute: a crash loses the task, and nothing retries it.
+
 ## Server-stamped fields: column defaults on the model
 
 A field the server owns (an audit id, a tenant id) is a column default that reads a bound {class}`fr.ContextNamespace <fastapi_restly.clauses.ContextNamespace>` member. It fires on every write path, whichever view or helper built the row, so nothing on the view has to run:

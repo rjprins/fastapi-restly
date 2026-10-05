@@ -3,9 +3,10 @@
 Covers ``snapshot`` -> ``before_action_commit`` -> commit -> ``after_action_commit``: that
 ``old`` is the pre-mutation snapshot, that ``after_action_commit`` runs after the write
 is durable, and that a ``before_action_commit`` failure aborts the write (it runs
-*inside* the transaction).
+*inside* the transaction) while an ``after_action_commit`` failure keeps it.
 """
 
+import pytest
 from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
@@ -73,3 +74,31 @@ def test_before_commit_failure_aborts_the_write(client):
 
     # The failed before_action_commit means the create was never committed.
     assert client.get("/docs/").json()["data"] == []
+
+
+def test_after_commit_failure_fails_the_request_but_keeps_the_write(client):
+    """``after_action_commit`` runs after the commit: raising there fails the
+    request, but the write stays durable, so a client retry would repeat it."""
+
+    class Doc(fr.IDBase):
+        title: Mapped[str]
+
+    class DocSchema(fr.IDSchema):
+        title: str
+
+    @fr.include_view(client.app)
+    class DocView(fr.AsyncRestView):
+        prefix = "/docs"
+        model = Doc
+        schema = DocSchema
+
+        async def after_action_commit(self, action, new, old=None):
+            raise RuntimeError("mail server down")
+
+    create_tables()
+
+    # The test client re-raises what a server answers with a 500.
+    with pytest.raises(RuntimeError, match="mail server down"):
+        client.post("/docs/", json={"title": "v1"})
+
+    assert [doc["title"] for doc in client.get("/docs/").json()["data"]] == ["v1"]

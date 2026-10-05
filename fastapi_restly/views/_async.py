@@ -489,4 +489,9 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         leaks into this request's response (which serializes ``new`` after this
         hook) while being silently discarded from storage. Do the mutation in
         the business method or ``before_action_commit`` instead.
+
+        An exception here cannot undo the committed write, yet it fails the
+        request, so a client that retries repeats the write. Catch and log the
+        errors of a best-effort effect here; add an effect that must happen as
+        an outbox row in ``before_action_commit``.
         """

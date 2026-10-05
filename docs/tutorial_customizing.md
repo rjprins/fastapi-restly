@@ -162,7 +162,7 @@ handle_delete  →  get_one(id)
 The write handlers call two transaction hooks, which are the override points at this tier:
 
 - {meth}`before_action_commit(action, new, old=None) <fastapi_restly.views.RestView.before_action_commit>` runs an in-transaction side effect (an outbox row, an audit row) that commits atomically with the write.
-- {meth}`after_action_commit(action, new, old=None) <fastapi_restly.views.RestView.after_action_commit>` runs a post-commit side effect (an email, a webhook, a cache invalidation) only after the write is durable.
+- {meth}`after_action_commit(action, new, old=None) <fastapi_restly.views.RestView.after_action_commit>` runs a post-commit side effect (an email, a webhook, a cache invalidation) only after the write is durable. An exception there cannot undo the write; [When `after_action_commit` raises](customize.md#when-after_action_commit-raises) shows how to handle one.
 
 Both receive `old`, the pre-mutation snapshot produced by {meth}`snapshot(obj) <fastapi_restly.views.BaseRestView.snapshot>`, so you can fire only on a real change:
 
