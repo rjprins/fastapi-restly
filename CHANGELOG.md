@@ -97,6 +97,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   argument, and the create used to answer 500. Restly passes `None` for it.
 - Building a view by hand, such as `TaskView(session=..., request=...)`,
   type-checks. mypy used to report the keyword arguments as unexpected.
+- On Python 3.10, a view registers when a class attribute has a parameterized
+  generic type, such as `seen: list[str]` or
+  `roles: Annotated[list[str], Depends(get_roles)]`. Registration used to
+  raise `TypeError: issubclass() arg 1 must be a class`.
 - Type checkers see that models on `fr.DataclassBase` and `fr.IDBase` are
   keyword-only. mypy and pyright used to reject a column without a default
   after one with a default, although it works at runtime.

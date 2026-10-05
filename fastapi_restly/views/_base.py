@@ -2495,8 +2495,12 @@ def _init_class_based_view(view_cls: type[View]) -> None:
                 if get_origin(annotation) is not Annotated
                 else (get_args(annotation)[0] if get_args(annotation) else annotation)
             )
-            is_special_type = inspect.isclass(underlying) and issubclass(
-                underlying, _FASTAPI_SPECIAL_INJECTABLE
+            # On Python 3.10, a parameterized generic such as list[str] passes
+            # isclass() but makes issubclass() raise; it is never special.
+            is_special_type = (
+                inspect.isclass(underlying)
+                and get_origin(underlying) is None
+                and issubclass(underlying, _FASTAPI_SPECIAL_INJECTABLE)
             )
             if has_depends_marker or is_special_type:
                 # Marker-bearing annotation wins, regardless of MRO position.

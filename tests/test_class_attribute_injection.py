@@ -117,6 +117,44 @@ def test_a_plain_annotation_keeps_the_wiring(client):
     assert client.get("/users/reviews/probe").json()["current_user"] == "ann"
 
 
+def get_roles() -> list[str]:
+    return ["reader"]
+
+
+def test_a_dependency_of_a_generic_type_is_wired():
+    app = FastAPI()
+
+    @fr.include_view(app)
+    class RoleView(fr.View):
+        prefix = "/roles"
+        roles: Annotated[list[str], Depends(get_roles)]
+
+        @fr.get("")
+        def list_roles(self) -> list[str]:
+            return self.roles
+
+    assert TestClient(app).get("/roles").json() == ["reader"]
+
+
+def test_generic_annotations_are_only_hints():
+    app = FastAPI()
+
+    @fr.include_view(app)
+    class ItemView(fr.View):
+        prefix = "/items"
+        seen: list[str]
+        limits: dict[str, int]
+        kind: type[User]
+        notes: Annotated[list[str], "free text"]
+
+        @fr.get("")
+        def probe(self) -> list[bool]:
+            names = ("seen", "limits", "kind", "notes")
+            return [hasattr(self, name) for name in names]
+
+    assert TestClient(app).get("/items").json() == [False, False, False, False]
+
+
 @pytest.mark.parametrize(
     "marker",
     [Path(), Query(), Header(), Cookie(), Body(), Form(), File()],
