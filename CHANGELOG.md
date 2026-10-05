@@ -101,6 +101,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   generic type, such as `seen: list[str]` or
   `roles: Annotated[list[str], Depends(get_roles)]`. Registration used to
   raise `TypeError: issubclass() arg 1 must be a class`.
+- A list endpoint accepts a query parameter that a dependency reads, whether
+  the dependency is on the app, a router, the view's `dependencies` or a class
+  attribute, and the key of an `APIKeyQuery`. These keys used to answer
+  `422 Unknown query parameter` unless the view listed them in
+  `extra_query_params`. Unknown keys are still rejected.
 - Type checkers see that models on `fr.DataclassBase` and `fr.IDBase` are
   keyword-only. mypy and pyright used to reject a column without a default
   after one with a default, although it works at runtime.

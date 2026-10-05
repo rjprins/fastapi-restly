@@ -45,9 +45,11 @@ import fastapi
 import pydantic
 from fastapi import BackgroundTasks, Request, Response, WebSocket
 from fastapi.datastructures import Default
+from fastapi.openapi.models import APIKeyIn
 from fastapi.params import Body as _BodyMarker
 from fastapi.params import Depends as _DependsMarker
 from fastapi.params import Param as _ParamMarker
+from fastapi.security.api_key import APIKeyBase
 from sqlalchemy import JSON as _JSONType
 from sqlalchemy import ColumnElement, Select
 from sqlalchemy import inspect as sa_inspect
@@ -1204,9 +1206,11 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     id_type: ClassVar[type[Any] | None] = None
     exclude_routes: ClassVar[Iterable[str | ViewRoute]] = ()
     #: Extra query-parameter keys to allow on listing routes beyond those
-    #: derived from the response schema. Use this when a view consumes a custom
-    #: parameter (e.g. ``?verbose=true`` read from ``self.request``). Without
-    #: this, the strict unknown-key guard rejects the request with 422.
+    #: derived from the response schema. Use this when a view reads a custom
+    #: parameter from ``self.request`` (e.g. ``?verbose=true``). Without this,
+    #: the strict unknown-key guard rejects the request with 422. A key that a
+    #: dependency of the route declares, or an ``APIKeyQuery`` key, needs no
+    #: entry.
     extra_query_params: ClassVar[Iterable[str]] = ()
     #: Whether list endpoints paginate. ``True`` (the default) wraps the list in
     #: a :class:`PaginatedEnvelope` (``data`` plus ``total_count`` / ``page`` /
@@ -1353,7 +1357,8 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         return _relationship_reload_statement(obj, options)
 
     def _reject_unknown_query_params(self) -> None:
-        """Reject any query-string key that isn't part of ``listing_param_schema``.
+        """Reject any query-string key that neither the listing grammar nor
+        the route reads.
 
         Runs before every route that declares ``query_params`` (see
         :attr:`listing_param_schema`).
@@ -1782,9 +1787,12 @@ def reject_unknown_query_keys(request: fastapi.Request, allowed: set[str]) -> No
 
     The dialect decides what is allowed (the listing grammar for the default
     one, ``sort``/``range``/``filter`` for react-admin); the envelope is the
-    same either way, and mirrors FastAPI's own validation shape.
+    same either way, and mirrors FastAPI's own validation shape. A key that
+    the route reads elsewhere is never unknown (see :func:`_route_query_keys`).
     """
     unknown = set(request.query_params.keys()) - allowed
+    if unknown:
+        unknown -= _route_query_keys(request)
     if not unknown:
         return
     detail = [
@@ -1797,6 +1805,31 @@ def reject_unknown_query_keys(request: fastapi.Request, allowed: set[str]) -> No
         for key in sorted(unknown)
     ]
     raise fastapi.HTTPException(status_code=422, detail=detail)
+
+
+def _route_query_keys(request: fastapi.Request) -> set[str]:
+    """The query keys that the matched route reads.
+
+    Every query parameter its dependency tree declares, at any level: the
+    app or a router, the view's ``dependencies``, a class attribute, the
+    endpoint. Also the key of a query API key scheme such as
+    ``APIKeyQuery``, which reads the query string without declaring a
+    parameter. The guard walks the tree only for a key that its dialect
+    does not allow.
+    """
+    dependant = getattr(request.scope.get("route"), "dependant", None)
+    pending = [dependant] if dependant is not None else []
+    keys: set[str] = set()
+    while pending:
+        current = pending.pop()
+        for field in current.query_params:
+            # the name FastAPI reads the value from
+            keys.add(getattr(field, "validation_alias", None) or field.alias)
+        call = current.call
+        if isinstance(call, APIKeyBase) and call.model.in_ == APIKeyIn.query:
+            keys.add(call.model.name)
+        pending.extend(current.dependencies)
+    return keys
 
 
 def _guard_listing_params(route: Callable) -> Callable:

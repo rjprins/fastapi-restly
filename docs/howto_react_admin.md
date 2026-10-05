@@ -89,7 +89,8 @@ The list endpoint reads react-admin's three JSON-encoded query parameters:
 
 Those three are the whole contract. Any other query key is rejected with a
 422, so a typo cannot widen the result set unnoticed; the standard dialect's
-`page`, `page_size` and per-field filters are unknown keys here too. Declare
+`page`, `page_size` and per-field filters are unknown keys here too. A key
+that a dependency declares, or an `APIKeyQuery` key, is accepted. Declare
 `extra_query_params` on the view for a key it reads itself.
 
 The response body is a plain JSON array, and the `Content-Range` header

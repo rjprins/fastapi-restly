@@ -190,9 +190,14 @@ canonical for the envelope's shape.
 
 ## Extra query parameters
 
-A view that consumes a custom query parameter outside the schema-derived
-grammar (read in an override via `self.request.query_params`) must
-declare it, or the 422 validation rejects it as an unknown key:
+A query parameter that a dependency reads needs no setup, wherever the
+dependency is declared: on the app or a router, in the view's
+`dependencies`, or on a class attribute. The key of an `APIKeyQuery` counts
+too. The unknown-key check accepts these keys like filters.
+
+A view that reads a custom key straight from `self.request.query_params`
+(in an override) must name it, or the 422 validation rejects it as an
+unknown key:
 
 ```python
 class UserView(fr.AsyncRestView):
