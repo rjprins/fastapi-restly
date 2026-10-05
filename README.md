@@ -3,11 +3,11 @@
 </p>
 
 <p align="center">
-  <a href="https://pypi.org/project/fastapi-restly/"><img src="https://img.shields.io/pypi/v/fastapi-restly?color=44cc11" alt="PyPI"></a>
-  <a href="https://github.com/rjprins/fastapi-restly/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/rjprins/fastapi-restly/ci.yml?branch=main&amp;label=CI&amp;color=44cc11" alt="CI"></a>
-  <a href="https://github.com/rjprins/fastapi-restly/blob/main/pyproject.toml"><img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-44cc11" alt="Python"></a>
-  <a href="https://github.com/rjprins/fastapi-restly/blob/main/LICENSE"><img src="https://img.shields.io/github/license/rjprins/fastapi-restly?color=44cc11" alt="License"></a>
-  <a href="https://www.fastapi-restly.org/coverage/"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fwww.fastapi-restly.org%2Fcoverage%2Fsummary.json&amp;color=44cc11" alt="Coverage"></a>
+  <a href="https://pypi.org/project/fastapi-restly/"><img src="https://img.shields.io/pypi/v/fastapi-restly?color=009b84" alt="PyPI"></a>
+  <a href="https://github.com/rjprins/fastapi-restly/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/rjprins/fastapi-restly/ci.yml?branch=main&amp;label=CI&amp;color=009b84" alt="CI"></a>
+  <a href="https://github.com/rjprins/fastapi-restly/blob/main/pyproject.toml"><img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-009b84" alt="Python"></a>
+  <a href="https://github.com/rjprins/fastapi-restly/blob/main/LICENSE"><img src="https://img.shields.io/github/license/rjprins/fastapi-restly?color=009b84" alt="License"></a>
+  <a href="https://www.fastapi-restly.org/coverage/"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fwww.fastapi-restly.org%2Fcoverage%2Fsummary.json&amp;color=009b84" alt="Coverage"></a>
 </p>
 
 <p align="center">
