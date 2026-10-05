@@ -65,6 +65,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `schema_create` or `schema_update` declares is now written even when the
   response schema marks it `ReadOnly`, so keep a server-stamped field such as a
   tenant id out of explicit write schemas.
+- A view class attribute with a `Path()`, `Query()`, `Header()`, `Cookie()`,
+  `Body()`, `Form()` or `File()` marker raises `RestlyConfigurationError` when
+  the view is registered. FastAPI never set such an attribute: it kept its
+  class default whatever the request sent, and OpenAPI did not list the
+  parameter. Declare the parameter on the endpoint method that reads it, or
+  read it in a dependency and annotate the attribute with
+  `Annotated[..., Depends(...)]`.
 
 ### Fixed
 

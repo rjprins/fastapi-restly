@@ -45,7 +45,9 @@ import fastapi
 import pydantic
 from fastapi import BackgroundTasks, Request, Response, WebSocket
 from fastapi.datastructures import Default
+from fastapi.params import Body as _BodyMarker
 from fastapi.params import Depends as _DependsMarker
+from fastapi.params import Param as _ParamMarker
 from sqlalchemy import JSON as _JSONType
 from sqlalchemy import ColumnElement, Select
 from sqlalchemy import inspect as sa_inspect
@@ -2437,6 +2439,12 @@ _FASTAPI_SPECIAL_INJECTABLE: tuple[type, ...] = (
     WebSocket,
 )
 
+# Markers for the request inputs FastAPI reads into an endpoint parameter:
+# ``Path``/``Query``/``Header``/``Cookie`` (``Param``) and ``Body``/``Form``/
+# ``File`` (``Body``). FastAPI fills a class attribute only through ``Depends``
+# or a special type, never through one of these, so the view is rejected.
+_REQUEST_PARAMETER_MARKERS: tuple[type, ...] = (_ParamMarker, _BodyMarker)
+
 
 def _init_class_based_view(view_cls: type[View]) -> None:
     """
@@ -2468,6 +2476,7 @@ def _init_class_based_view(view_cls: type[View]) -> None:
     # Without this rule, any plain annotation a mixin adds would
     # silently break dependency injection.
     di_annotations: dict[str, Any] = {}
+    request_markers: dict[str, Any] = {}
     for cls in reversed(view_cls.__mro__):
         try:
             cls_hints = get_type_hints(cls, include_extras=True)
@@ -2478,6 +2487,9 @@ def _init_class_based_view(view_cls: type[View]) -> None:
                 continue
             metadata = getattr(annotation, "__metadata__", ())
             has_depends_marker = any(isinstance(m, _DependsMarker) for m in metadata)
+            for marker in metadata:
+                if isinstance(marker, _REQUEST_PARAMETER_MARKERS):
+                    request_markers.setdefault(name, marker)
             underlying = (
                 annotation
                 if get_origin(annotation) is not Annotated
@@ -2491,6 +2503,20 @@ def _init_class_based_view(view_cls: type[View]) -> None:
                 di_annotations[name] = annotation
             # Plain annotations are silently ignored — they neither set
             # nor clear an entry in di_annotations.
+
+    # FastAPI never fills an attribute with a request-parameter marker: it
+    # would keep its class default, with no error and no OpenAPI entry. A
+    # Depends marker on the same name wires it, as above.
+    for name, marker in request_markers.items():
+        if name not in di_annotations:
+            raise RestlyConfigurationError(
+                f"{view_cls.__name__}.{name} has a {type(marker).__name__}() "
+                "marker, but a view class attribute is filled only through "
+                "Depends(...) or Security(...), so FastAPI would never set it. "
+                "Declare the parameter on the endpoint method that reads it, "
+                f"or annotate {name} with Annotated[..., Depends(...)] and read "
+                "the parameter in that dependency."
+            )
 
     dependency_names: list[str] = []
     for name, annotation in di_annotations.items():
