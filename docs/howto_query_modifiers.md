@@ -2,8 +2,8 @@
 
 List endpoints (`GET /{prefix}`) support filtering, sorting, and
 pagination through URL query parameters out of the box. Filter parameters
-are derived from the response schema; sort and pagination use a fixed set
-of names.
+are derived from the response schema. Sort has a fixed name, and the
+pagination names are a setting of the view.
 
 Pagination is on by default: lists are capped at 50 rows per page and
 wrapped in a `data` envelope. Clients page with `page` and `page_size`. The
@@ -210,7 +210,7 @@ class AppView(fr.AsyncRestView):
 
 
 class LogView(AppView):
-    pagination = APP_PAGINATION.replace(max_page_size=10)
+    pagination = APP_PAGINATION.replace(default_page_size=10, max_page_size=10)
 ```
 
 ### The pagination envelope
@@ -245,11 +245,11 @@ T = TypeVar("T")
 
 
 class Page(pydantic.BaseModel, Generic[T]):
-    data: list[T] = pydantic.Field(serialization_alias="items")
-    total_count: int = pydantic.Field(serialization_alias="total")
+    data: list[T] = pydantic.Field(alias="items")
+    total_count: int = pydantic.Field(alias="total")
     page: int
-    page_size: int = pydantic.Field(serialization_alias="size")
-    total_pages: int = pydantic.Field(serialization_alias="pages")
+    page_size: int = pydantic.Field(alias="size")
+    total_pages: int = pydantic.Field(alias="pages")
 
 
 class AppView(fr.AsyncRestView):
@@ -426,8 +426,8 @@ The `get_many` business method does not accept a separate `query` argument.
 Keep SQL-level base query changes in the scope so listing, pagination
 totals, and single-row fetches all see the same visibility rules.
 
-For a different URL **grammar** (other parameter names, another dialect's
-filter syntax), the seam is
+For a different URL **grammar**, such as another dialect's filter syntax, the
+seam is
 {meth}`apply_query_params(query, query_params) <fastapi_restly.views.RestView.apply_query_params>`,
 which owns translating URL parameters into the query;
 [React Admin Integration](howto_react_admin.md) is the shipped worked

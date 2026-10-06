@@ -2,8 +2,10 @@
 
 A view's :attr:`~fastapi_restly.views.BaseRestView.pagination` holds a
 :class:`NumberedPagination`, or a :class:`NoPagination` (``None`` for short)
-for a view that returns every row. The names are public through :mod:`fastapi_restly.views` and the package
-root; the page-size constants through :mod:`fastapi_restly.query`.
+for a view that returns every row. The two settings classes are public
+through the package root and :mod:`fastapi_restly.views`, the envelopes
+through :mod:`fastapi_restly.views`, and the page-size constants through
+:mod:`fastapi_restly.query`.
 """
 
 import dataclasses
@@ -73,17 +75,20 @@ class NumberedPagination:
             pagination = APP_PAGINATION
 
         class LogView(AppView):
-            pagination = APP_PAGINATION.replace(max_page_size=10)
+            pagination = APP_PAGINATION.replace(
+                default_page_size=10, max_page_size=10
+            )
 
     ``envelope`` is the list response model: a generic Pydantic model with one
     type parameter, which each view fills with its response schema. Restly
     fills its fields by name from ``data``, ``total_count``, ``page``,
     ``page_size`` and ``total_pages``. Leave a field out to drop it from the
-    response, and rename one with a ``serialization_alias`` or an
-    ``alias_generator``. A ``model_validator(mode="before")`` receives those
+    response, and rename one with an ``alias`` or an ``alias_generator``. A ``model_validator(mode="before")`` receives those
     values as a dict and can reshape them, for example to nest the metadata.
-    Creating the settings builds an empty page from the envelope, so a field
-    Restly cannot fill fails at startup instead of on a request.
+    Creating the settings builds an empty page from the envelope, so a
+    required field Restly cannot fill fails at startup instead of on a
+    request. An envelope keeps the default ``extra`` setting: Restly passes it
+    every page value and it keeps the fields it declares.
     """
 
     #: ``page_size`` when the client sends none.
@@ -101,7 +106,7 @@ class NumberedPagination:
     envelope: type[pydantic.BaseModel] = PaginatedEnvelope
 
     def __post_init__(self) -> None:
-        _check_count("max_page_size", self.max_page_size)
+        _check_count("NumberedPagination", "max_page_size", self.max_page_size)
         if not _is_int(self.default_page_size) or not (
             1 <= self.default_page_size <= self.max_page_size
         ):
@@ -112,8 +117,9 @@ class NumberedPagination:
                 "'pagination = None' on the view."
             )
         if self.max_page is not None:
-            _check_count("max_page", self.max_page)
+            _check_count("NumberedPagination", "max_page", self.max_page)
         _check_query_params(
+            "NumberedPagination",
             page_query_param=self.page_query_param,
             page_size_query_param=self.page_size_query_param,
         )
@@ -126,7 +132,9 @@ class NumberedPagination:
 
         For a view that changes one setting of shared pagination settings::
 
-            pagination = APP_PAGINATION.replace(max_page_size=10)
+            pagination = APP_PAGINATION.replace(
+                default_page_size=10, max_page_size=10
+            )
         """
         return dataclasses.replace(self, **changes)
 
@@ -188,8 +196,8 @@ def _listing_envelope(
 ) -> type[pydantic.BaseModel]:
     """The list response model of a view: its pagination's envelope, or
     :class:`Envelope` for ``None``, parametrized with the item schema.
-    Pydantic caches the parametrized class, so every call returns the same
-    one."""
+    Pydantic caches the parametrized class while something, such as the
+    route, holds it, so the calls during a request return the same one."""
     envelope: Any = Envelope if pagination is None else pagination.envelope
     return envelope[item_schema]
 
@@ -206,33 +214,40 @@ def _is_int(value: Any) -> bool:
     return isinstance(value, int) and not isinstance(value, bool)
 
 
-def _check_count(name: str, value: Any) -> None:
+def _check_count(owner: str, name: str, value: Any) -> None:
     if not _is_int(value) or value < 1:
         raise RestlyConfigurationError(
-            f"NumberedPagination.{name} must be an int of at least 1, got {value!r}."
+            f"{owner}.{name} must be an int of at least 1, got {value!r}."
         )
 
 
-def _check_query_params(**params: Any) -> None:
+def _check_query_params(owner: str, **params: Any) -> None:
     for setting, name in params.items():
         if not isinstance(name, str) or not name:
             raise RestlyConfigurationError(
-                f"NumberedPagination.{setting} must be a non-empty string, "
-                f"got {name!r}."
+                f"{owner}.{setting} must be a non-empty string, got {name!r}."
             )
         if "__" in name or "." in name:
             raise RestlyConfigurationError(
-                f"NumberedPagination.{setting} cannot be {name!r}: '__' is "
-                "reserved for filter operators and '.' for relation traversal."
+                f"{owner}.{setting} cannot be {name!r}: '__' is reserved for "
+                "filter operators and '.' for relation traversal."
             )
         if name == _SORT_QUERY_PARAM:
             raise RestlyConfigurationError(
-                f"NumberedPagination.{setting} cannot be {name!r}: it is the "
-                "sort parameter."
+                f"{owner}.{setting} cannot be {name!r}: it is the sort parameter."
+            )
+        # the listing grammar is a Pydantic model with one field per query
+        # parameter; Pydantic drops a field that starts with "_", and one
+        # named like a BaseModel attribute breaks or shadows it
+        if name.startswith("_") or hasattr(pydantic.BaseModel, name):
+            raise RestlyConfigurationError(
+                f"{owner}.{setting} cannot be {name!r}: a query parameter "
+                "cannot start with '_' or share a name with a Pydantic "
+                "BaseModel attribute."
             )
     if len(set(params.values())) != len(params):
         raise RestlyConfigurationError(
-            f"NumberedPagination query parameters must differ, got {params!r}."
+            f"{owner} query parameters must differ, got {params!r}."
         )
 
 
@@ -240,6 +255,13 @@ def _check_envelope(owner: str, envelope: Any, page_info: dict[str, Any]) -> Non
     if not (isinstance(envelope, type) and issubclass(envelope, pydantic.BaseModel)):
         raise RestlyConfigurationError(
             f"{owner}.envelope must be a Pydantic model class, got {envelope!r}."
+        )
+    extra = envelope.model_config.get("extra")
+    if extra in ("allow", "forbid"):
+        raise RestlyConfigurationError(
+            f"{owner}.envelope {envelope.__name__} sets extra={extra!r}. Restly "
+            "passes an envelope every page value and it keeps the fields it "
+            "declares, so leave extra at its default."
         )
     generic = envelope.__pydantic_generic_metadata__
     if generic["origin"] is not None or len(generic["parameters"]) != 1:
@@ -262,3 +284,8 @@ def _check_envelope(owner: str, envelope: Any, page_info: dict[str, Any]) -> Non
             "field after one of these values, rename it on the wire with an "
             "alias, or give it a default."
         ) from None
+
+
+#: The pagination of a view or a listing grammar that names none: ``page`` and
+#: ``page_size``, 50 rows by default and at most 1000.
+_DEFAULT_PAGINATION = NumberedPagination()

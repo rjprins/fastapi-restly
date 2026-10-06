@@ -241,10 +241,12 @@ class ProductView(fr.AsyncReactAdminView):
     pagination = fr.NumberedPagination(default_page_size=50)
 ```
 
-That is the only pagination setting a react-admin view uses. It pages with
-`range` and reports the total in the `Content-Range` header, so other
-settings, such as parameter names or an envelope, fail at registration. So
-does `pagination = None`: the header requires the total count.
+A react-admin view uses two pagination settings: `default_page_size`, and
+`max_page_size`, the most rows one `range` may ask for. A wider `range`, or
+one with a negative start or an end before its start, answers `400`. The view
+pages with `range` and reports the total in the `Content-Range` header, so
+other settings, such as parameter names or an envelope, fail at registration.
+So does `pagination = None`: the header requires the total count.
 
 ### Change the Content-Range unit
 

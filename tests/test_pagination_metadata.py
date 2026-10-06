@@ -1,10 +1,8 @@
 """Tests for the list response envelope and pagination metadata."""
 
-import pytest
 from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
-from fastapi_restly.exc import RestlyConfigurationError
 
 from .conftest import create_tables
 
@@ -73,25 +71,6 @@ def test_unpaginated_view_returns_data_envelope_without_metadata(client):
     rejected = client.get("/widgets/?page_size=5", assert_status_code=422)
     locs = [item.get("loc") for item in rejected.json().get("detail", [])]
     assert ["query", "page_size"] in locs
-
-
-def test_pagination_rejects_out_of_range_default_page_size():
-    """A ``default_page_size`` outside ``[1, max_page_size]`` (e.g. ``0``) is
-    rejected when the settings are created, rather than silently returning
-    empty pages."""
-
-    with pytest.raises(RestlyConfigurationError, match="set 'pagination = None'"):
-        fr.NumberedPagination(default_page_size=0)
-    with pytest.raises(RestlyConfigurationError, match=r"\[1, 10\]"):
-        fr.NumberedPagination(default_page_size=20, max_page_size=10)
-
-
-def test_pagination_rejects_none_default_page_size():
-    """``default_page_size=None`` (the pre-envelope "no cap" idiom) raises when
-    the settings are created instead of 500ing on the first list request."""
-
-    with pytest.raises(RestlyConfigurationError, match="set 'pagination = None'"):
-        fr.NumberedPagination(default_page_size=None)  # type: ignore[arg-type]
 
 
 def test_default_page_size_caps_a_large_result_set(client):

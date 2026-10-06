@@ -19,7 +19,7 @@ import pydantic
 import sqlalchemy
 from sqlalchemy.orm import RelationshipProperty
 
-from .._pagination import NoPagination, NumberedPagination
+from .._pagination import _DEFAULT_PAGINATION, NoPagination, NumberedPagination
 from ..exc import BadQueryParam, RestlyConfigurationError
 from ..query._shared import _append_pk_tiebreak
 from ._async import AsyncRestView
@@ -275,16 +275,18 @@ class _ReactAdminMixin:
 
     Set ``pagination = fr.NumberedPagination(default_page_size=...)`` on a
     subclass to change the implicit page size used when the client does not
-    send a ``range`` query parameter. The other pagination settings do not
-    apply: react-admin pages with ``range`` and reports the total in the
+    send a ``range`` query parameter. Its ``max_page_size`` caps the rows one
+    ``range`` asks for. The other pagination settings do not apply:
+    react-admin pages with ``range`` and reports the total in the
     ``Content-Range`` header.
 
     Type annotations on the mixin methods use ``_ReactAdminViewProtocol`` to
     make the expected ``RestView`` surface explicit to static checkers.
     """
 
-    #: Only ``default_page_size`` applies: the implicit page size when no
-    #: ``range`` parameter is sent. Override per view.
+    #: Only ``default_page_size`` and ``max_page_size`` apply: the implicit
+    #: page size when no ``range`` parameter is sent, and the most rows one
+    #: ``range`` may ask for. Override per view.
     pagination: ClassVar[NumberedPagination | NoPagination | None] = NumberedPagination(
         default_page_size=DEFAULT_REACT_ADMIN_PAGE_SIZE
     )
@@ -292,6 +294,12 @@ class _ReactAdminMixin:
     def get_react_admin_range_unit(self) -> str:
         """Return the unit string used in the Content-Range header."""
         return "items"
+
+    @classmethod
+    def _check_declared_listing_param_schema(cls) -> None:
+        # react-admin reads its own sort/range/filter grammar, not the
+        # pagination's page parameters
+        return None
 
     #: The whole react-admin query contract. The listing grammar's own keys
     #: (``page``, ``page_size``, per-field filters) are not part of this
@@ -336,7 +344,8 @@ class _ReactAdminMixin:
         view = cast(_ReactAdminViewProtocol, self)
         # ``pagination`` is required on react-admin (see before_include_view),
         # and NumberedPagination checks default_page_size when it is created.
-        default_page_size = cast(NumberedPagination, view.pagination).default_page_size
+        pagination = cast(NumberedPagination, view.pagination)
+        default_page_size = pagination.default_page_size
         sort_raw = params.get("sort") if hasattr(params, "get") else None
         range_raw = params.get("range") if hasattr(params, "get") else None
         filter_raw = params.get("filter") if hasattr(params, "get") else None
@@ -352,6 +361,10 @@ class _ReactAdminMixin:
                     400, "Invalid range parameter: must be [start, end]"
                 )
             start, end = range_raw
+            if not isinstance(start, int) or not isinstance(end, int):
+                raise fastapi.HTTPException(
+                    400, "Invalid range parameter: values must be integers"
+                )
         else:
             start, end = parse_react_admin_range(
                 range_raw, default_page_size=default_page_size
@@ -361,6 +374,17 @@ class _ReactAdminMixin:
             if isinstance(filter_raw, dict)
             else parse_react_admin_filter(filter_raw)
         )
+        if start < 0 or end < start:
+            raise fastapi.HTTPException(
+                400,
+                "Invalid range parameter: must be [start, end] with 0 <= start <= end",
+            )
+        if end - start + 1 > pagination.max_page_size:
+            raise fastapi.HTTPException(
+                400,
+                "Invalid range parameter: a range can ask for at most "
+                f"{pagination.max_page_size} rows",
+            )
         return _ReactAdminListParams(sort=sort, start=start, end=end, filters=filters)
 
     def apply_query_params(
@@ -429,23 +453,30 @@ class _ReactAdminMixin:
         # report a total of 0 and silently break the client's paging.
         pagination = view_cls.pagination
         if not isinstance(pagination, NumberedPagination):
-            raise ValueError(
+            raise RestlyConfigurationError(
                 f"{cls.__name__}: a react-admin view cannot disable pagination; "
                 "'pagination' must stay a fr.NumberedPagination so the "
                 "Content-Range total is counted."
             )
-        # react-admin reads only the default page size; any other setting
-        # would be silently ignored
-        only_page_size = NumberedPagination(
-            default_page_size=pagination.default_page_size,
-            max_page_size=pagination.max_page_size,
-        )
-        if pagination != only_page_size:
+        # react-admin reads the two page sizes; any other setting would be
+        # silently ignored
+        ignored = [
+            name
+            for name in (
+                "max_page",
+                "page_query_param",
+                "page_size_query_param",
+                "envelope",
+            )
+            if getattr(pagination, name) != getattr(_DEFAULT_PAGINATION, name)
+        ]
+        if ignored:
             raise RestlyConfigurationError(
                 f"{cls.__name__}: a react-admin view uses only "
-                "pagination.default_page_size. It pages with the 'range' "
-                "parameter and reports the total in the Content-Range header, "
-                "so query parameter names, max_page and envelope do not apply."
+                "pagination.default_page_size and max_page_size. It pages with "
+                "the 'range' parameter and reports the total in the "
+                "Content-Range header, so these settings do not apply: "
+                f"{', '.join(ignored)}."
             )
         if "listing_param_schema" not in cls.__dict__:
             view_cls.listing_param_schema = _ReactAdminQueryParams

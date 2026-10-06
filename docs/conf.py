@@ -4,6 +4,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 import os
+import re
 import sys
 from importlib.metadata import version as _package_version
 from pathlib import Path
@@ -187,7 +188,26 @@ def _canonicalize_sitemap_index(app, exception):
         tree.write(sitemap_path, xml_declaration=True, encoding="utf-8")
 
 
+def _skip_envelope_alias(app, what, name, obj, skip, options):
+    # NumberedPagination.envelope and NoPagination.envelope hold a model class,
+    # which autodoc renders as a bare "alias of ..." and drops the setting's
+    # comment. The class docstrings describe the setting instead.
+    if name == "envelope" and isinstance(obj, type):
+        return True
+    return None
+
+
+def _short_class_defaults(app, what, name, obj, options, signature, annotation):
+    # a class default, such as a settings dataclass's envelope, would print
+    # as "<class 'fastapi_restly._pagination.PaginatedEnvelope'>"
+    if signature:
+        signature = re.sub(r"<class '(?:[\w.]+\.)?(\w+)'>", r"\1", signature)
+    return signature, annotation
+
+
 def setup(app):
+    app.connect("autodoc-skip-member", _skip_envelope_alias)
+    app.connect("autodoc-process-signature", _short_class_defaults)
     app.connect("html-page-context", _canonicalize_index_page)
     app.connect("html-page-context", _noindex_snapshots)
     app.connect("build-finished", _canonicalize_sitemap_index, priority=900)

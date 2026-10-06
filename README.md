@@ -253,14 +253,13 @@ Parameter keys use the **response schema's public names**, including dotted
 relation paths; unknown keys are rejected with `422`.
 
 Pagination is on by default: list endpoints wrap rows in a `data` envelope and
-cap each page at `default_page_size` (50). Clients page with `?page=` and
-`?page_size=`. Tune the default and set a `max_page_size` ceiling on public
-endpoints:
+cap each page at 50 rows. Clients page with `?page=` and `?page_size=`. Set the
+default and a lower ceiling on public endpoints with the view's `pagination`.
+It also renames the parameters:
 
 ```python
 class UserView(fr.AsyncRestView):
-    default_page_size = 25
-    max_page_size = 200
+    pagination = fr.NumberedPagination(default_page_size=25, max_page_size=200)
 ```
 
 See [Filter, Sort, and Paginate Lists](https://www.fastapi-restly.org/howto_query_modifiers.html) for the full operator surface, alias rules, and pagination guidance.
@@ -356,7 +355,7 @@ List endpoints return a `data` envelope with pagination metadata:
 {"data": [...], "total_count": 123, "page": 1, "page_size": 50, "total_pages": 3}
 ```
 
-Set `paginated = False` to return every matching row in a bare `data` envelope
+Set `pagination = None` to return every matching row in a bare `data` envelope
 (no cap, no metadata):
 
 ```python
@@ -364,13 +363,13 @@ Set `paginated = False` to return every matching row in a bare `data` envelope
 class TagView(fr.AsyncRestView):
     prefix = "/tags"
     model = Tag
-    paginated = False
+    pagination = None
     # Response: {"data": [...]}
 ```
 
-For a different response shape, replace `get_many_endpoint` with a matching
-`response_model`; use `to_listing_response()` inside the replacement when you
-want to reuse the default serialization and page-metadata calculation.
+For a different response shape, set the pagination's `envelope` to your own
+Pydantic model: rename the fields, drop some, nest them, or return a bare
+array. See [Response Envelopes and List Metadata](https://www.fastapi-restly.org/howto_response_schema.html).
 
 ## Testing
 

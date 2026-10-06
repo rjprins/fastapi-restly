@@ -74,7 +74,7 @@ generic model with one type parameter for the items, and set it as the
 and OpenAPI follow the model.
 
 - Leave a field out to drop it from the response.
-- Rename a field on the wire with `serialization_alias`, or rename them all
+- Rename a field on the wire with `alias`, or rename them all
   with an `alias_generator`.
 - Give an extra field a default, and it is sent as is.
 - Reshape the values in a `model_validator(mode="before")`, which receives
@@ -92,7 +92,7 @@ T = TypeVar("T")
 
 class DataCount(pydantic.BaseModel, Generic[T]):
     data: list[T]
-    total_count: int = pydantic.Field(serialization_alias="count")
+    total_count: int = pydantic.Field(alias="count")
 
 
 @fr.include_view(app)
@@ -144,9 +144,16 @@ class DataMeta(pydantic.BaseModel, Generic[T]):
 
 Set the pagination on a project base view to give every list the same
 envelope; see [Set it once for every view](howto_query_modifiers.md#set-it-once-for-every-view).
+A custom listing route on such a view names the same envelope as its
+response model, for example `response_model=APP_PAGINATION.envelope[ItemRead]`.
+[Coming from fastapi-pagination](howto_query_modifiers.md#coming-from-fastapi-pagination)
+shows the envelope that keeps fastapi-pagination's field names.
+
 Creating the pagination settings builds an empty page from the envelope, so
-a field Restly cannot fill, such as a misspelled `totl_count`, fails at
-startup instead of on a request.
+a required field Restly cannot fill, such as a misspelled `totl_count`, fails
+at startup instead of on a request. Leave the envelope's `extra` setting at
+its default: Restly passes it every page value, and it keeps the fields it
+declares.
 
 ### Without pagination
 
@@ -229,8 +236,8 @@ A replacement for
 the `query_params` parameter, which Restly annotates with the generated filter,
 sort, and pagination query parameters. To reuse the page math,
 {meth}`to_listing_response() <fastapi_restly.views.BaseRestView.to_listing_response>`
-returns the envelope model, so read its attributes: `page.data`,
-`page.total_count`.
+returns an instance of the view's envelope model, so read its attributes, such
+as `page.data` and `page.total_count` with the default envelope.
 
 ### Envelope several routes at once: `to_response`
 

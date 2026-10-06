@@ -27,11 +27,11 @@ U = TypeVar("U")
 class FastAPIPaginationPage(BaseModel, Generic[T]):
     """fastapi-pagination's default ``Page`` body."""
 
-    data: list[T] = Field(serialization_alias="items")
-    total_count: int = Field(serialization_alias="total")
+    data: list[T] = Field(alias="items")
+    total_count: int = Field(alias="total")
     page: int
-    page_size: int = Field(serialization_alias="size")
-    total_pages: int = Field(serialization_alias="pages")
+    page_size: int = Field(alias="size")
+    total_pages: int = Field(alias="pages")
 
 
 class CamelPage(BaseModel, Generic[T]):
@@ -48,7 +48,7 @@ class DataCount(BaseModel, Generic[T]):
     """The FastAPI full-stack template's list body."""
 
     data: list[T]
-    total_count: int = Field(serialization_alias="count")
+    total_count: int = Field(alias="count")
 
 
 class PageMeta(BaseModel):
@@ -115,10 +115,15 @@ def _query_param(operation, name):
     return next(p for p in operation["parameters"] if p["name"] == name)
 
 
-def _response_properties(spec, operation):
+def _response_component(spec, operation):
     ref = operation["responses"]["200"]["content"]["application/json"]["schema"]
-    component = ref["$ref"].removeprefix("#/components/schemas/")
-    return list(spec["components"]["schemas"][component]["properties"])
+    return spec["components"]["schemas"][
+        ref["$ref"].removeprefix("#/components/schemas/")
+    ]
+
+
+def _response_properties(spec, operation):
+    return list(_response_component(spec, operation)["properties"])
 
 
 # ---------------------------------------------------------------------------
@@ -142,7 +147,7 @@ def test_defaults_keep_the_page_and_page_size_contract():
 def test_replace_returns_a_checked_copy():
     base = fr.NumberedPagination(page_size_query_param="size", max_page_size=100)
 
-    small = base.replace(max_page_size=10, default_page_size=10)
+    small = base.replace(default_page_size=10, max_page_size=10)
 
     assert small.page_size_query_param == "size"
     assert (small.max_page_size, small.default_page_size) == (10, 10)
@@ -163,6 +168,11 @@ def test_replace_returns_a_checked_copy():
         ({"page_query_param": "page.number"}, "'.' for relation traversal"),
         ({"page_query_param": "sort"}, "it is the sort parameter"),
         ({"page_query_param": "n", "page_size_query_param": "n"}, "must differ"),
+        ({"page_query_param": "_page"}, "cannot start with '_'"),
+        ({"page_size_query_param": "model_config"}, "Pydantic BaseModel attribute"),
+        ({"default_page_size": 0}, "set 'pagination = None' on the view"),
+        ({"default_page_size": None}, "set 'pagination = None' on the view"),
+        ({"default_page_size": 20, "max_page_size": 10}, "an int in [1, 10], got 20"),
     ],
 )
 def test_invalid_settings_fail_when_created(settings, message):
@@ -208,6 +218,17 @@ def test_envelope_field_restly_cannot_fill_fails_when_created():
     assert "(data, total_count, page, page_size, total_pages)" in message
 
 
+@pytest.mark.parametrize("extra", ["allow", "forbid"])
+def test_envelope_must_keep_the_default_extra(extra):
+    class Strict(BaseModel, Generic[T]):
+        model_config = ConfigDict(extra=extra)
+
+        data: list[T]
+
+    with pytest.raises(RestlyConfigurationError, match=f"sets extra='{extra}'"):
+        fr.NumberedPagination(envelope=Strict)
+
+
 def test_envelope_field_with_a_default_is_sent_as_is(client):
     class Versioned(BaseModel, Generic[T]):
         data: list[T]
@@ -239,6 +260,11 @@ def test_envelope_field_with_a_default_is_sent_as_is(client):
             100,
             "call '.replace(max_page_size=100)' on pagination settings",
         ),
+        (
+            "max_page_size",
+            20,
+            "fr.NumberedPagination(default_page_size=20, max_page_size=20)",
+        ),
     ],
 )
 def test_old_pagination_settings_fail_with_what_to_write_instead(name, value, instead):
@@ -248,6 +274,52 @@ def test_old_pagination_settings_fail_with_what_to_write_instead(name, value, in
     message = str(excinfo.value)
     assert f"OldView sets {name}, which was replaced by the 'pagination'" in message
     assert instead in message
+
+
+def test_old_pagination_settings_get_one_suggestion():
+    with pytest.raises(RestlyConfigurationError) as excinfo:
+        type(
+            "OldView",
+            (fr.AsyncRestView,),
+            {"default_page_size": 25, "max_page_size": 200},
+        )
+
+    message = str(excinfo.value)
+    assert (
+        "OldView sets default_page_size, max_page_size, which were replaced" in message
+    )
+    assert (
+        "Write 'pagination = fr.NumberedPagination(default_page_size=25, "
+        "max_page_size=200)'" in message
+    )
+    # the suggestion works as written
+    fr.NumberedPagination(default_page_size=25, max_page_size=200)
+
+
+def test_settings_assigned_after_the_class_fail_at_registration(client):
+    class Thing(fr.IDBase):
+        name: Mapped[str]
+
+    class ThingRead(fr.IDSchema):
+        name: str
+
+    class CappedView(fr.AsyncRestView):
+        prefix = "/things"
+        model = Thing
+        schema = ThingRead
+
+    CappedView.max_page_size = 5  # type: ignore[attr-defined]
+    with pytest.raises(RestlyConfigurationError, match="sets max_page_size"):
+        fr.include_view(client.app, CappedView)
+
+    class LateView(fr.AsyncRestView):
+        prefix = "/late"
+        model = Thing
+        schema = ThingRead
+
+    LateView.pagination = fr.NumberedPagination  # type: ignore[assignment]
+    with pytest.raises(RestlyConfigurationError, match="Create an instance"):
+        fr.include_view(client.app, LateView)
 
 
 def test_old_pagination_setting_on_a_mixin_names_the_mixin():
@@ -336,6 +408,41 @@ def test_a_base_view_sets_pagination_once(client):
     assert set(every_note) == {"data"}
     assert len(every_note["data"]) == 4
     client.get("/all-notes/?size=2", assert_status_code=422)
+
+
+def test_declared_grammar_must_match_the_pagination(client):
+    class Thing(fr.IDBase):
+        name: Mapped[str]
+
+    class ThingRead(fr.IDSchema):
+        name: str
+
+    with pytest.raises(
+        RestlyConfigurationError,
+        match="listing_param_schema was created for other pagination settings",
+    ):
+
+        @fr.include_view(client.app)
+        class MismatchView(fr.AsyncRestView):
+            prefix = "/mismatch"
+            model = Thing
+            schema = ThingRead
+            pagination = None
+            listing_param_schema = create_list_params_schema(ThingRead, Thing)
+
+    @fr.include_view(client.app)
+    class MatchView(fr.AsyncRestView):
+        prefix = "/things"
+        model = Thing
+        schema = ThingRead
+        pagination = None
+        listing_param_schema = create_list_params_schema(
+            ThingRead, Thing, pagination=None
+        )
+
+    create_tables()
+    client.post("/things/", json={"name": "Thing 0"})
+    assert client.get("/things/").json() == {"data": [{"id": 1, "name": "Thing 0"}]}
 
 
 # ---------------------------------------------------------------------------
@@ -559,10 +666,11 @@ def test_sync_view_takes_the_same_settings(sync_db):
 # ---------------------------------------------------------------------------
 
 
-def test_no_pagination_is_what_none_means(client):
+@pytest.mark.parametrize("unpaginated", [None, fr.NoPagination()])
+def test_no_pagination_is_what_none_means(client, unpaginated):
     assert fr.NoPagination().envelope is fr.views.Envelope
 
-    view = _list_app(client, fr.NoPagination(), rows=3)
+    view = _list_app(client, unpaginated, rows=3)
 
     payload = client.get("/things/").json()
     assert set(payload) == {"data"}
@@ -597,10 +705,7 @@ def test_no_pagination_bare_array(client):
         {"id": 2, "name": "Thing 1"},
     ]
     spec, operation = _list_operation(client)
-    ref = operation["responses"]["200"]["content"]["application/json"]["schema"]
-    component = spec["components"]["schemas"][
-        ref["$ref"].removeprefix("#/components/schemas/")
-    ]
+    component = _response_component(spec, operation)
     assert component["type"] == "array"
     assert component["items"]["$ref"].endswith("/ThingRead")
 
@@ -660,11 +765,42 @@ def test_query_helpers_take_the_pagination():
         sql("size=10", pagination=None)
 
 
+def test_apply_list_params_reads_the_pagination_of_its_params_model():
+    class Bookmark(fr.IDBase):
+        page: Mapped[int]
+
+    class BookmarkRead(fr.IDSchema):
+        page: int
+
+    def sql(params: Any) -> str:
+        query = apply_list_params(params, select(Bookmark), Bookmark, BookmarkRead)
+        return str(query.compile(compile_kwargs={"literal_binds": True}))
+
+    # without pagination, ``page`` is a filter, not a page number
+    unpaginated = create_list_params_schema(BookmarkRead, Bookmark, pagination=None)
+    filtered = sql(unpaginated.model_validate({"page": ["3"]}))
+    assert "bookmark.page = 3" in filtered
+    assert "LIMIT" not in filtered
+
+    renamed = create_list_params_schema(
+        BookmarkRead,
+        Bookmark,
+        pagination=fr.NumberedPagination(
+            page_query_param="p", page_size_query_param="size"
+        ),
+    )
+    assert "LIMIT 10 OFFSET 10" in sql(renamed.model_validate({"p": 2, "size": 10}))
+
+
 @pytest.mark.parametrize(
-    "settings",
-    [{"page_size_query_param": "size"}, {"max_page": 10}, {"envelope": DataCount}],
+    ("settings", "ignored"),
+    [
+        ({"page_size_query_param": "size"}, "page_size_query_param"),
+        ({"max_page": 10}, "max_page"),
+        ({"envelope": DataCount}, "envelope"),
+    ],
 )
-def test_react_admin_view_rejects_settings_it_would_ignore(client, settings):
+def test_react_admin_view_rejects_settings_it_would_ignore(client, settings, ignored):
     class Gadget(fr.IDBase):
         name: Mapped[str]
 
@@ -672,7 +808,8 @@ def test_react_admin_view_rejects_settings_it_would_ignore(client, settings):
         name: str
 
     with pytest.raises(
-        RestlyConfigurationError, match="uses only pagination.default_page_size"
+        RestlyConfigurationError,
+        match=f"uses only pagination.default_page_size and max_page_size.*: {ignored}",
     ):
 
         @fr.include_view(client.app)
@@ -681,3 +818,29 @@ def test_react_admin_view_rejects_settings_it_would_ignore(client, settings):
             model = Gadget
             schema = GadgetRead
             pagination = fr.NumberedPagination(**settings)
+
+
+def test_react_admin_range_is_checked(client):
+    class Gadget(fr.IDBase):
+        name: Mapped[str]
+
+    class GadgetRead(fr.IDSchema):
+        name: str
+
+    @fr.include_view(client.app)
+    class GadgetView(fr.AsyncReactAdminView):
+        prefix = "/gadgets"
+        model = Gadget
+        schema = GadgetRead
+        pagination = fr.NumberedPagination(default_page_size=5, max_page_size=10)
+
+    create_tables()
+    for i in range(12):
+        client.post("/gadgets/", json={"name": f"Gadget {i}"})
+
+    assert len(client.get("/gadgets/?range=[0,9]").json()) == 10
+    too_wide = client.get("/gadgets/?range=[0,10]", assert_status_code=400)
+    assert "at most 10 rows" in too_wide.json()["detail"]
+    for backwards in ("[0,-5]", "[-3,4]", "[5,2]"):
+        response = client.get(f"/gadgets/?range={backwards}", assert_status_code=400)
+        assert "0 <= start <= end" in response.json()["detail"]

@@ -49,7 +49,7 @@ class PagedTicketView(fr.AsyncRestView):
 
 
 class SmallPagedTicketView(PagedTicketView):
-    pagination = APP_PAGINATION.replace(max_page_size=10)
+    pagination = APP_PAGINATION.replace(default_page_size=10, max_page_size=10)
 
 
 class AllTicketView(PagedTicketView):

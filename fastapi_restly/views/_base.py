@@ -82,6 +82,8 @@ ReadScope = WhereClause | Unscoped | None
 _ReadWhere = ColumnElement[bool] | WhereClause | Unscoped | None
 from .._mapping import is_mapped_class, is_mapped_instance
 from .._pagination import (
+    _DEFAULT_PAGINATION,
+    DEFAULT_PAGE_SIZE,
     NoPagination,
     NumberedPagination,
     _build_envelope,
@@ -93,6 +95,7 @@ from ..db._globals import _fr_globals
 from ..exc import RestlyConfigurationError, RestlyMisuseWarning
 from ..objects import snapshot as _object_snapshot
 from ..query import create_list_params_schema
+from ..query._impl import _UNKNOWN, _created_with, _query_settings
 from ..schemas import BaseSchema, IDSchema
 from ..schemas._base import (
     _model_id_type,
@@ -1163,25 +1166,74 @@ _REPLACED_PAGINATION_SETTINGS = ("paginated", "default_page_size", "max_page_siz
 
 
 def _replaced_pagination_message(
-    view_name: str, name: str, value: Any, origin: str
+    view_name: str, found: dict[str, tuple[Any, str]]
 ) -> str:
-    """What a view that sets an old pagination setting writes instead."""
-    if name == "paginated":
+    """What a view that sets old pagination settings writes instead: one
+    suggestion that carries every value it set. ``found`` maps each setting
+    to its value and where it came from."""
+    values = {name: value for name, (value, _) in found.items()}
+    sizes = {
+        name: values[name]
+        for name in ("default_page_size", "max_page_size")
+        if name in values
+    }
+    maximum = sizes.get("max_page_size")
+    if (
+        "default_page_size" not in sizes
+        and isinstance(maximum, int)
+        and maximum < DEFAULT_PAGE_SIZE
+    ):
+        # the default page size of 50 would be above the new maximum
+        sizes = {"default_page_size": maximum, **sizes}
+    if values.get("paginated") is False:
+        instead = "Write 'pagination = None' to return every row."
+    elif sizes:
+        arguments = ", ".join(f"{name}={value!r}" for name, value in sizes.items())
         instead = (
-            "Write 'pagination = None' to return every row."
-            if value is False
-            else "Remove it: views paginate by default."
+            f"Write 'pagination = fr.NumberedPagination({arguments})', or call "
+            f"'.replace({arguments})' on pagination settings that views share."
         )
+        if "paginated" in values:
+            instead += " Remove 'paginated': views paginate by default."
     else:
-        instead = (
-            f"Write 'pagination = fr.NumberedPagination({name}={value!r})', or "
-            f"call '.replace({name}={value!r})' on pagination settings that "
-            "views share."
-        )
+        instead = "Remove it: views paginate by default."
+    names = ", ".join(f"{name}{origin}" for name, (_, origin) in found.items())
+    verb = "was" if len(found) == 1 else "were"
     return (
-        f"{view_name} sets {name}{origin}, which was replaced by the "
-        f"'pagination' setting. {instead}"
+        f"{view_name} sets {names}, which {verb} replaced by the 'pagination' "
+        f"setting. {instead}"
     )
+
+
+def _check_pagination_setting(cls: type) -> None:
+    """Reject the replaced pagination settings, and a ``pagination`` that is
+    not a settings instance. Runs when the class is defined and again at
+    registration, so a value assigned to the class later is caught too."""
+    # the old settings are no longer read; a definition would be silently
+    # dead, and a dead max_page_size is a cap that is gone
+    found: dict[str, tuple[Any, str]] = {}
+    for klass in cls.__mro__:
+        for name in _REPLACED_PAGINATION_SETTINGS:
+            if name in vars(klass) and name not in found:
+                origin = "" if klass is cls else f" (from {klass.__name__})"
+                found[name] = (vars(klass)[name], origin)
+    if found:
+        raise RestlyConfigurationError(
+            _replaced_pagination_message(cls.__name__, found)
+        )
+    pagination = getattr(cls, "pagination", None)
+    if not (
+        pagination is None or isinstance(pagination, (NumberedPagination, NoPagination))
+    ):
+        hint = (
+            f" Create an instance: fr.{pagination.__name__}()."
+            if pagination in (NumberedPagination, NoPagination)
+            else ""
+        )
+        raise RestlyConfigurationError(
+            f"{cls.__name__}.pagination must be a fr.NumberedPagination or "
+            f"fr.NoPagination instance, or None, got {pagination!r}.{hint}"
+        )
 
 
 class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT]):
@@ -1239,9 +1291,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     #: shape no envelope model can express, such as a header, replace
     #: ``get_many_endpoint`` with a matching ``response_model`` (see
     #: :class:`AsyncReactAdminView`).
-    pagination: ClassVar[NumberedPagination | NoPagination | None] = (
-        NumberedPagination()
-    )
+    pagination: ClassVar[NumberedPagination | NoPagination | None] = _DEFAULT_PAGINATION
     #: The listing grammar (filter, sort, page) as a pydantic model, generated
     #: from ``schema`` and ``model``. Any route method on the view that declares
     #: a ``query_params`` parameter takes it: typed for FastAPI and OpenAPI, and
@@ -1325,31 +1375,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                     raise RestlyConfigurationError(
                         _final_handler_message(cls.__name__, name, origin)
                     )
-        # the old pagination settings are no longer read; a definition would
-        # be silently dead, and a dead max_page_size is a cap that is gone
-        for klass in cls.__mro__:
-            for name in _REPLACED_PAGINATION_SETTINGS:
-                if name in vars(klass):
-                    origin = "" if klass is cls else f" (from {klass.__name__})"
-                    raise RestlyConfigurationError(
-                        _replaced_pagination_message(
-                            cls.__name__, name, vars(klass)[name], origin
-                        )
-                    )
-        pagination = cls.pagination
-        if not (
-            pagination is None
-            or isinstance(pagination, (NumberedPagination, NoPagination))
-        ):
-            hint = (
-                f" Create an instance: fr.{pagination.__name__}()."
-                if pagination in (NumberedPagination, NoPagination)
-                else ""
-            )
-            raise RestlyConfigurationError(
-                f"{cls.__name__}.pagination must be a fr.NumberedPagination or "
-                f"fr.NoPagination instance, or None, got {pagination!r}.{hint}"
-            )
+        _check_pagination_setting(cls)
 
     def _apply_scope(self, query: Select[Any], scope: ReadScope) -> Select[Any]:
         # the one path every read takes, so retrieve, list and count cannot
@@ -1434,6 +1460,9 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
     def to_response_schema(self, obj: ModelT | SchemaT) -> SchemaT:
         """Serialize an ORM object to the configured response schema.
+
+        An override returns an instance of :attr:`schema`: the list envelopes
+        take their items as schema instances.
 
         WriteOnly fields are stripped from responses by ``exclude=True`` on the
         marker itself (recursively, at serialization time), so a pre-built schema
@@ -1536,6 +1565,23 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         return _object_snapshot(obj)
 
     @classmethod
+    def _check_declared_listing_param_schema(cls) -> None:
+        """Reject a declared grammar that ``create_list_params_schema`` made
+        for other pagination settings: it reads other page parameters than
+        the view applies, or none. A hand-written grammar is the author's to
+        keep in step."""
+        created_with = _created_with(cls.listing_param_schema)
+        if created_with is _UNKNOWN:
+            return
+        if _query_settings(created_with) != _query_settings(cls.pagination):
+            raise RestlyConfigurationError(
+                f"{cls.__name__}.listing_param_schema was created for other "
+                "pagination settings than the view's. Create it with "
+                f"pagination={cls.__name__}.pagination, or leave it out to "
+                "have it generated."
+            )
+
+    @classmethod
     def before_include_view(cls):
         """
         Apply type annotations needed for FastAPI, before creating an APIRouter from
@@ -1544,6 +1590,8 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         This function can be overridden to further tweak the endpoints before they
         are added to FastAPI.
         """
+        _check_pagination_setting(cls)
+
         # A declared schema is inherited like any attribute. One that Restly
         # generated for a parent is rebuilt, since the subclass may change
         # what it was derived from.
@@ -1567,6 +1615,8 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                 cls.schema, cls.model, pagination=cls.pagination
             )
             _mark_generated(cls, "listing_param_schema")
+        else:
+            cls._check_declared_listing_param_schema()
         if _needs_generating(cls, "schema_create", derived_from="schema"):
             cls.schema_create = cast(
                 type[CreateSchemaT],

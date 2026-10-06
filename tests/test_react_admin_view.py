@@ -21,6 +21,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
 from fastapi_restly.db._globals import _fr_globals
+from fastapi_restly.exc import RestlyConfigurationError
 from fastapi_restly.testing._client import RestlyTestClient
 from fastapi_restly.views._react_admin import (
     DEFAULT_REACT_ADMIN_PAGE_SIZE,
@@ -844,7 +845,7 @@ def test_react_admin_view_cannot_disable_pagination(client, unpaginated):
     class GadgetSchema(fr.IDSchema):
         name: str
 
-    with pytest.raises(ValueError, match="cannot disable pagination"):
+    with pytest.raises(RestlyConfigurationError, match="cannot disable pagination"):
 
         @fr.include_view(client.app)
         class GadgetView(fr.AsyncReactAdminView):

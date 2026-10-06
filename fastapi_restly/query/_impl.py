@@ -3,6 +3,7 @@ import datetime as _dt
 import decimal as _decimal
 import functools
 import uuid as _uuid
+import weakref
 from collections import defaultdict
 from typing import (
     Annotated,
@@ -27,7 +28,12 @@ from sqlalchemy.orm.properties import ColumnProperty
 from sqlalchemy.orm.util import AliasedClass
 from starlette.datastructures import QueryParams
 
-from .._pagination import _SORT_QUERY_PARAM, NoPagination, NumberedPagination
+from .._pagination import (
+    _DEFAULT_PAGINATION,
+    _SORT_QUERY_PARAM,
+    NoPagination,
+    NumberedPagination,
+)
 from ..exc import BadQueryParam
 from ..schemas._base import (
     IDRef,
@@ -40,18 +46,54 @@ from ._shared import _append_pk_tiebreak, _escape_like_value
 SchemaType = type[pydantic.BaseModel]
 _JoinAliases = dict[tuple[str, ...], AliasedClass[Any]]
 
-#: The pagination a caller gets when it names none: today's ``page`` and
-#: ``page_size`` grammar.
-_DEFAULT_PAGINATION = NumberedPagination()
+_AnyPagination = NumberedPagination | NoPagination | None
+
+#: The pagination each generated listing grammar was created with, so
+#: :func:`apply_list_params` and view registration can read it back.
+_CREATED_WITH: "weakref.WeakKeyDictionary[type, _AnyPagination]" = (
+    weakref.WeakKeyDictionary()
+)
+
+
+class _FromParams:
+    """The default of :func:`apply_list_params`'s ``pagination``: the one its
+    params model was created with."""
+
+    def __repr__(self) -> str:
+        # the default as the API reference shows it; the docstring explains it
+        return "..."
+
+
+_FROM_PARAMS = _FromParams()
+_UNKNOWN = object()
+
+
+def _created_with(params_model: type) -> Any:
+    """The pagination a generated listing grammar was created with, or
+    ``_UNKNOWN`` for a hand-written one."""
+    return _CREATED_WITH.get(params_model, _UNKNOWN)
+
+
+def _query_settings(pagination: _AnyPagination) -> tuple[Any, ...] | None:
+    """What a listing grammar's pagination fields depend on; ``None`` for
+    no pagination."""
+    if not isinstance(pagination, NumberedPagination):
+        return None
+    return (
+        pagination.page_query_param,
+        pagination.page_size_query_param,
+        pagination.default_page_size,
+        pagination.max_page_size,
+        pagination.max_page,
+    )
+
 
 #: Largest pagination offset accepted by supported SQL databases. SQLite and
 #: PostgreSQL bind ``OFFSET`` as a signed 64-bit integer.
 _MAX_PAGINATION_OFFSET = 2**63 - 1
 
 
-def _reserved_names(
-    pagination: NumberedPagination | NoPagination | None,
-) -> frozenset[str]:
+def _reserved_names(pagination: _AnyPagination) -> frozenset[str]:
     """Query parameters the schema produces besides filters.
 
     A filter column whose public name is one of these would shadow pagination
@@ -182,7 +224,7 @@ def create_list_params_schema(
     schema_cls: SchemaType,
     model: type[DeclarativeBase],
     *,
-    pagination: NumberedPagination | NoPagination | None = _DEFAULT_PAGINATION,
+    pagination: _AnyPagination = _DEFAULT_PAGINATION,
 ) -> SchemaType:
     """
     Create a Pydantic model that describes and validates URL query parameters
@@ -374,9 +416,11 @@ def create_list_params_schema(
         if isinstance(pagination, NumberedPagination)
         else {}
     )
-    return pydantic.create_model(  # type: ignore[call-overload]
+    params_model = pydantic.create_model(  # type: ignore[call-overload]
         schema_name, __validators__=validators, **fields
     )
+    _CREATED_WITH[params_model] = pagination
+    return params_model
 
 
 def apply_list_params(
@@ -385,7 +429,7 @@ def apply_list_params(
     model: type[DeclarativeBase],
     schema_cls: SchemaType,
     *,
-    pagination: NumberedPagination | NoPagination | None = _DEFAULT_PAGINATION,
+    pagination: _AnyPagination = cast(Any, _FROM_PARAMS),
 ) -> Select[Any]:
     """
     Apply pagination, sorting, and filtering on a SQL query using validated
@@ -402,10 +446,11 @@ def apply_list_params(
     (``max_page_size``); this function only performs the minimum coercion
     needed to apply the SQL clauses.
 
-    ``pagination`` names the page and page-size parameters to read; pass the
-    view's own, as the default ``apply_query_params`` does. The default reads
-    ``page`` and ``page_size``. A ``NoPagination`` or ``None`` applies no
-    ``LIMIT``/``OFFSET``.
+    ``pagination`` names the page and page-size parameters to read. By default
+    it is the pagination :func:`create_list_params_schema` created the params
+    model with, and ``page`` and ``page_size`` for raw ``QueryParams`` or a
+    hand-written model. A ``NoPagination`` or ``None`` applies no
+    ``LIMIT``/``OFFSET``, and so does a missing page-size key.
 
     Examples::
 
@@ -421,6 +466,12 @@ def apply_list_params(
         # Contains (string fields)
         name__contains=John&email__icontains=example
     """
+    if isinstance(pagination, _FromParams):
+        pagination = (
+            _CREATED_WITH.get(type(params), _DEFAULT_PAGINATION)
+            if isinstance(params, pydantic.BaseModel)
+            else _DEFAULT_PAGINATION
+        )
     query_params = _coerce_to_query_params(params)
     aliases: _JoinAliases = {}
     select_query = _apply_filtering(
@@ -429,7 +480,7 @@ def apply_list_params(
         model,
         schema_cls,
         aliases=aliases,
-        reserved=_reserved_names(pagination),
+        pagination=pagination,
     )
     select_query = _apply_sorting(
         query_params, select_query, model, schema_cls, aliases=aliases
@@ -650,7 +701,7 @@ def _apply_filtering(
     schema_cls: SchemaType,
     *,
     aliases: _JoinAliases | None = None,
-    reserved: frozenset[str] = _reserved_names(_DEFAULT_PAGINATION),
+    pagination: _AnyPagination = _DEFAULT_PAGINATION,
 ) -> Select[Any]:
     """Apply ``key=value`` and ``key__op=value`` filters to ``select_query``.
 
@@ -662,6 +713,7 @@ def _apply_filtering(
     """
     if aliases is None:
         aliases = {}
+    reserved = _reserved_names(pagination)
     filters: dict[InstrumentedAttribute[Any], list[ColumnElement[Any]]] = defaultdict(
         list
     )

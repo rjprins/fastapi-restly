@@ -72,10 +72,10 @@ checked copy:
 | {attr}`max_page <fastapi_restly.views.NumberedPagination.max_page>` | `None` | Largest page number a client may ask for; a larger one is rejected with `422`. |
 | {attr}`page_query_param <fastapi_restly.views.NumberedPagination.page_query_param>` | `"page"` | Query parameter for the page number. |
 | {attr}`page_size_query_param <fastapi_restly.views.NumberedPagination.page_size_query_param>` | `"page_size"` | Query parameter for the page size. |
-| {attr}`envelope <fastapi_restly.views.NumberedPagination.envelope>` | `PaginatedEnvelope` | The list response model: a generic model filled by field name from `data`, `total_count`, `page`, `page_size` and `total_pages`. |
+| `envelope` | `PaginatedEnvelope` | The list response model: a generic model filled by field name from `data`, `total_count`, `page`, `page_size` and `total_pages`. |
 
 {class}`fr.NoPagination <fastapi_restly.views.NoPagination>` has one setting,
-{attr}`envelope <fastapi_restly.views.NoPagination.envelope>`, `Envelope` by
+`envelope`, `Envelope` by
 default, filled from `data` and `total_count`, the number of rows.
 
 The envelope's shape and custom alternatives are covered in
@@ -85,9 +85,9 @@ At a lower level, `fr.query.create_list_params_schema(...)` and
 `fr.query.apply_list_params(...)` power the default list endpoint. Use the
 view classes for normal CRUD. Call these helpers directly only for custom
 endpoints that need the same list grammar, and pass a validated params-schema
-instance instead of raw `QueryParams`. Pass the view's settings as
-`pagination=self.pagination` to both, so they read the same parameter names
-and limits.
+instance instead of raw `QueryParams`. Pass the view's settings to
+`create_list_params_schema` as `pagination=self.pagination`;
+`apply_list_params` then reads them from the params model.
 
 (endpoint-decorators)=
 ## Endpoint Decorators
