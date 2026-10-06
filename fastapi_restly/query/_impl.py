@@ -27,6 +27,7 @@ from sqlalchemy.orm.properties import ColumnProperty
 from sqlalchemy.orm.util import AliasedClass
 from starlette.datastructures import QueryParams
 
+from .._pagination import _SORT_QUERY_PARAM, NumberedPagination
 from ..exc import BadQueryParam
 from ..schemas._base import (
     IDRef,
@@ -39,26 +40,27 @@ from ._shared import _append_pk_tiebreak, _escape_like_value
 SchemaType = type[pydantic.BaseModel]
 _JoinAliases = dict[tuple[str, ...], AliasedClass[Any]]
 
-#: Default ``page_size`` applied to paginated list endpoints when the client
-#: does not send one. A bounded default keeps a forgotten ``page_size`` from
-#: returning an entire table. Override per-view via
-#: :attr:`BaseRestView.default_page_size`; to return every row, set
-#: :attr:`BaseRestView.paginated` to ``False`` instead of removing the cap.
-DEFAULT_PAGE_SIZE: int = 50
-
-#: Maximum ``page_size`` accepted by list endpoints. Values above this are
-#: rejected with a 422 by the FastAPI Pydantic-Query validation layer.
-#: Override per-view via :attr:`BaseRestView.max_page_size`.
-MAX_PAGE_SIZE = 1000
+#: The pagination a caller gets when it names none: today's ``page`` and
+#: ``page_size`` grammar.
+_DEFAULT_PAGINATION = NumberedPagination()
 
 #: Largest pagination offset accepted by supported SQL databases. SQLite and
 #: PostgreSQL bind ``OFFSET`` as a signed 64-bit integer.
 _MAX_PAGINATION_OFFSET = 2**63 - 1
 
-#: Reserved query-parameter names produced by the schema. Filter columns
-#: literally named one of these would shadow pagination/sort, which would
-#: silently break the endpoint contract. Treated as a hard error.
-_RESERVED_NAMES = frozenset({"page", "page_size", "sort"})
+
+def _reserved_names(pagination: NumberedPagination | None) -> frozenset[str]:
+    """Query parameters the schema produces besides filters.
+
+    A filter column whose public name is one of these would shadow pagination
+    or sort, which would silently break the endpoint contract. Treated as a
+    hard error.
+    """
+    names = {_SORT_QUERY_PARAM}
+    if pagination is not None:
+        names |= {pagination.page_query_param, pagination.page_size_query_param}
+    return frozenset(names)
+
 
 # Types that support SQL ``<``/``<=``/``>``/``>=`` comparisons. Booleans are
 # excluded: ordering booleans is rarely meaningful, and ``WHERE active >= true``
@@ -152,26 +154,33 @@ def _supports_range_operators(field: FieldInfo) -> bool:
     return False
 
 
-@pydantic.model_validator(mode="after")
-def _validate_pagination_offset(params: pydantic.BaseModel) -> pydantic.BaseModel:
-    page = cast(int, params.page)  # type: ignore[attr-defined]
-    page_size = cast(Optional[int], params.page_size)  # type: ignore[attr-defined]
-    if page_size is None:
+def _pagination_offset_validator(pagination: NumberedPagination) -> Any:
+    """A model validator that rejects a page whose SQL offset would not fit in
+    a signed 64-bit integer."""
+    page_param = pagination.page_query_param
+    page_size_param = pagination.page_size_query_param
+
+    @pydantic.model_validator(mode="after")
+    def _validate_pagination_offset(params: pydantic.BaseModel) -> pydantic.BaseModel:
+        page = cast(int, getattr(params, page_param))
+        page_size = cast(Optional[int], getattr(params, page_size_param))
+        if page_size is None:
+            return params
+        if page - 1 > _MAX_PAGINATION_OFFSET // page_size:
+            raise ValueError(
+                f"{page_param} and {page_size_param} produce an offset above "
+                f"{_MAX_PAGINATION_OFFSET}"
+            )
         return params
-    if page - 1 > _MAX_PAGINATION_OFFSET // page_size:
-        raise ValueError(
-            f"page and page_size produce an offset above {_MAX_PAGINATION_OFFSET}"
-        )
-    return params
+
+    return _validate_pagination_offset
 
 
 def create_list_params_schema(
     schema_cls: SchemaType,
     model: type[DeclarativeBase],
     *,
-    default_page_size: int = DEFAULT_PAGE_SIZE,
-    max_page_size: int = MAX_PAGE_SIZE,
-    paginated: bool = True,
+    pagination: NumberedPagination | None = _DEFAULT_PAGINATION,
 ) -> SchemaType:
     """
     Create a Pydantic model that describes and validates URL query parameters
@@ -190,47 +199,49 @@ def create_list_params_schema(
     columns) generate only ``__isnull``: a query-string value cannot coerce into
     them, so every other operator would fail at request time.
 
-    When ``paginated`` is true (the default), ``page`` and ``page_size`` are
-    added and validated by Pydantic with bounds (``page >= 1``,
-    ``1 <= page_size <= max_page_size``). The resulting SQL offset must also fit
-    in a signed 64-bit integer. Out-of-range values produce a standard 422
-    response from FastAPI. When it is false, no pagination parameters are
-    emitted at all -- the endpoint returns every matching row -- while sorting
-    and filtering stay available.
+    With a ``pagination`` (the default is ``page`` and ``page_size``), its two
+    query parameters are added under its names and validated by Pydantic with
+    bounds: the page at least 1 and at most ``max_page`` when set, the page
+    size from 1 to ``max_page_size``. The resulting SQL offset must also fit in
+    a signed 64-bit integer. Out-of-range values produce a standard 422
+    response from FastAPI. With ``pagination=None``, no pagination parameters
+    are emitted at all -- the endpoint returns every matching row -- while
+    sorting and filtering stay available.
 
     :param schema_cls: The response schema whose fields drive the available
         filter parameters.
     :param model: The SQLAlchemy model the list endpoint queries. Used to verify
         each field resolves to a filterable column; non-column fields are
         omitted from the generated params.
-    :param default_page_size: Default value for the ``page_size`` parameter when
-        the client omits it. Only used when ``paginated`` is true.
-    :param max_page_size: Upper bound (inclusive) for the ``page_size``
-        parameter. Defaults to ``MAX_PAGE_SIZE`` (1000).
-    :param paginated: Whether to emit ``page``/``page_size`` parameters. False
-        for an unpaginated view, which returns the full result set.
+    :param pagination: The view's pagination settings, or ``None`` for an
+        unpaginated view, which returns the full result set.
     """
     fields: dict[str, Any] = {}
-    if paginated:
-        fields["page"] = (
-            Annotated[int, Field(ge=1, description="1-based page number.")],
+    if pagination is not None:
+        page_description = "1-based page number."
+        if pagination.max_page is not None:
+            page_description += f" At most {pagination.max_page}."
+        fields[pagination.page_query_param] = (
+            Annotated[
+                int, Field(ge=1, le=pagination.max_page, description=page_description)
+            ],
             1,
         )
-        fields["page_size"] = (
+        fields[pagination.page_size_query_param] = (
             Annotated[
                 Optional[int],
                 Field(
                     ge=1,
-                    le=max_page_size,
+                    le=pagination.max_page_size,
                     description=(
-                        f"Number of items per page (1–{max_page_size}). "
-                        f"Defaults to {default_page_size}."
+                        f"Number of items per page (1–{pagination.max_page_size}). "
+                        f"Defaults to {pagination.default_page_size}."
                     ),
                 ),
             ],
-            default_page_size,
+            pagination.default_page_size,
         )
-    fields["sort"] = (
+    fields[_SORT_QUERY_PARAM] = (
         Annotated[
             Optional[str],
             Field(
@@ -243,12 +254,14 @@ def create_list_params_schema(
         ],
         None,
     )
+    reserved = _reserved_names(pagination)
     for name, field in _iter_fields_including_nested(schema_cls):
-        if name in _RESERVED_NAMES:
+        if name in reserved:
             raise ValueError(
                 f"List-params schema for {schema_cls.__name__!r} cannot expose "
                 f"field {name!r}: it collides with a reserved pagination/sort "
-                "parameter. Add a Pydantic alias to expose it as a filter."
+                "parameter. Add a Pydantic alias to expose it as a filter, or "
+                "rename the pagination parameter."
             )
 
         # Only emit params for fields that resolve to a filterable column on the
@@ -355,8 +368,8 @@ def create_list_params_schema(
 
     schema_name = "ListParams" + schema_cls.__name__
     validators = (
-        {"_validate_pagination_offset": _validate_pagination_offset}
-        if paginated
+        {"_validate_pagination_offset": _pagination_offset_validator(pagination)}
+        if pagination is not None
         else {}
     )
     return pydantic.create_model(  # type: ignore[call-overload]
@@ -369,6 +382,8 @@ def apply_list_params(
     select_query: Select[Any],
     model: type[DeclarativeBase],
     schema_cls: SchemaType,
+    *,
+    pagination: NumberedPagination | None = _DEFAULT_PAGINATION,
 ) -> Select[Any]:
     """
     Apply pagination, sorting, and filtering on a SQL query using validated
@@ -384,6 +399,10 @@ def apply_list_params(
     for verifying ``page``/``page_size`` ranges and any per-view bounds
     (``max_page_size``); this function only performs the minimum coercion
     needed to apply the SQL clauses.
+
+    ``pagination`` names the page and page-size parameters to read; pass the
+    view's own, as the default ``apply_query_params`` does. The default reads
+    ``page`` and ``page_size``. ``None`` applies no ``LIMIT``/``OFFSET``.
 
     Examples::
 
@@ -402,12 +421,18 @@ def apply_list_params(
     query_params = _coerce_to_query_params(params)
     aliases: _JoinAliases = {}
     select_query = _apply_filtering(
-        query_params, select_query, model, schema_cls, aliases=aliases
+        query_params,
+        select_query,
+        model,
+        schema_cls,
+        aliases=aliases,
+        reserved=_reserved_names(pagination),
     )
     select_query = _apply_sorting(
         query_params, select_query, model, schema_cls, aliases=aliases
     )
-    select_query = _apply_pagination(query_params, select_query)
+    if pagination is not None:
+        select_query = _apply_pagination(query_params, select_query, pagination)
     return select_query
 
 
@@ -433,12 +458,12 @@ def _coerce_to_query_params(params: pydantic.BaseModel | QueryParams) -> QueryPa
 
 
 def _apply_pagination(
-    query_params: QueryParams, select_query: Select[Any]
+    query_params: QueryParams, select_query: Select[Any], pagination: NumberedPagination
 ) -> Select[Any]:
-    page_size = _get_int(query_params, "page_size")
+    page_size = _get_int(query_params, pagination.page_size_query_param)
     if page_size is None:
         return select_query
-    page = _get_int(query_params, "page") or 1
+    page = _get_int(query_params, pagination.page_query_param) or 1
     offset = (page - 1) * page_size
     return select_query.limit(page_size).offset(offset)
 
@@ -622,6 +647,7 @@ def _apply_filtering(
     schema_cls: SchemaType,
     *,
     aliases: _JoinAliases | None = None,
+    reserved: frozenset[str] = _reserved_names(_DEFAULT_PAGINATION),
 ) -> Select[Any]:
     """Apply ``key=value`` and ``key__op=value`` filters to ``select_query``.
 
@@ -638,7 +664,7 @@ def _apply_filtering(
     )
 
     for key, raw_value in query_params.multi_items():
-        if key in _RESERVED_NAMES:
+        if key in reserved:
             continue
 
         if "__" in key:

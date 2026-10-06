@@ -163,7 +163,7 @@ def test_subclass_page_size_rebuilds_the_generated_listing_params():
 
     class Small(Base):
         prefix = "/small-recs"
-        default_page_size = 5
+        pagination = Base.pagination.replace(default_page_size=5)
 
     fr.include_view(app, Small)
 

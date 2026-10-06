@@ -4,7 +4,7 @@ Tests for class-based view inheritance in FastAPI-Restly.
 Views are real Python classes — not decorators or function wrappers — so the
 full Python inheritance model applies:
 
-  - Class variables (model, schema, exclude_routes, paginated,
+  - Class variables (model, schema, exclude_routes, pagination,
     id_type) are inherited and can be overridden per-subclass. Class-level
     ``dependencies`` and ``responses`` add up instead; see
     test_view_router_inheritance.py.
@@ -233,8 +233,8 @@ def test_exclude_routes_accepts_view_route_enum(sync_db):
 # ---------------------------------------------------------------------------
 
 
-def test_inherit_paginated(sync_db):
-    """paginated=False on a base view is inherited by subclasses."""
+def test_inherit_pagination_none(sync_db):
+    """pagination = None on a base view is inherited by subclasses."""
     engine, _ = sync_db
 
     class Ticket(fr.IDBase):
@@ -246,7 +246,7 @@ def test_inherit_paginated(sync_db):
     class UnpaginatedBase(fr.RestView):
         model = Ticket
         schema = TicketSchema
-        paginated = False
+        pagination = None
 
     class TicketView(UnpaginatedBase):
         prefix = "/tickets"
@@ -262,10 +262,10 @@ def test_inherit_paginated(sync_db):
         listing_result = view.get_many({})
         result = view.to_listing_response({}, listing_result)
 
-    # Inherited paginated=False -> plain data envelope, no pagination metadata.
-    assert isinstance(result, dict)
-    assert set(result) == {"data"}
-    assert {item.title for item in result["data"]} == {"Bug", "Feature"}
+    # Inherited pagination = None -> plain data envelope, no pagination metadata.
+    assert isinstance(result, fr.views.Envelope)
+    assert set(result.model_dump()) == {"data"}
+    assert {item.title for item in result.data} == {"Bug", "Feature"}
 
 
 # ---------------------------------------------------------------------------

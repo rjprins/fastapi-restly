@@ -44,7 +44,7 @@ Coverage checklist:
 - [x] Plain Pydantic `BaseModel` create/update schemas
 - [x] Custom extra routes via `@fr.get` and `@fr.route`
 - [x] `perform_*` handler overrides
-- [x] View options: `paginated`
+- [x] View options: `pagination`
 - [x] View options: `exclude_routes`
 - [x] View options: class-level `dependencies`
 - [x] View options: `route_options` with endpoint names and `ViewRoute` keys

@@ -22,7 +22,7 @@ class TicketRead(fr.IDSchema[Ticket]):
 class TicketBase(fr.AsyncRestView):
     model = Ticket
     schema = TicketRead
-    paginated = False
+    pagination = None
     exclude_routes = [fr.ViewRoute.DELETE]
     dependencies: ClassVar[list[Any]] = [Depends(lambda: None)]
 
@@ -34,3 +34,21 @@ class TicketView(TicketBase):
         fr.ViewRoute.GET_MANY: {"name": "list_tickets", "operation_id": "list_tickets"},
         "create_endpoint": {"summary": "Create a ticket"},
     }
+
+
+APP_PAGINATION = fr.NumberedPagination(page_size_query_param="size", max_page_size=100)
+
+
+class PagedTicketView(fr.AsyncRestView):
+    model = Ticket
+    schema = TicketRead
+    # annotated, so mypy lets a subclass turn pagination off
+    pagination: ClassVar[fr.NumberedPagination | None] = APP_PAGINATION
+
+
+class SmallPagedTicketView(PagedTicketView):
+    pagination = APP_PAGINATION.replace(max_page_size=10)
+
+
+class AllTicketView(PagedTicketView):
+    pagination = None

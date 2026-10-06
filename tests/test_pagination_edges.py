@@ -208,8 +208,7 @@ def test_per_view_max_page_size_override_propagates_to_schema(client):
     class BigItemView(fr.AsyncRestView):
         prefix = "/big-items"
         model = BigItem
-        max_page_size = 5000
-        default_page_size = 500
+        pagination = fr.NumberedPagination(max_page_size=5000, default_page_size=500)
 
     create_tables()
 

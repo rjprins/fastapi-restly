@@ -19,7 +19,8 @@ import pydantic
 import sqlalchemy
 from sqlalchemy.orm import RelationshipProperty
 
-from ..exc import BadQueryParam
+from .._pagination import NumberedPagination
+from ..exc import BadQueryParam, RestlyConfigurationError
 from ..query._shared import _append_pk_tiebreak
 from ._async import AsyncRestView
 from ._base import (
@@ -35,7 +36,8 @@ from ._base import (
 from ._sync import RestView
 
 #: Default page size used when the react-admin client does not send a `range`
-#: query parameter. Override per-view via ``default_page_size``.
+#: query parameter. Override per view with
+#: ``pagination = fr.NumberedPagination(default_page_size=...)``.
 DEFAULT_REACT_ADMIN_PAGE_SIZE = 25
 
 
@@ -250,8 +252,7 @@ class _ReactAdminViewProtocol(Protocol):
     schema: ClassVar[type[pydantic.BaseModel]]
     schema_update: ClassVar[type[pydantic.BaseModel]]
     listing_param_schema: ClassVar[type[pydantic.BaseModel]]
-    default_page_size: ClassVar[int]
-    paginated: ClassVar[bool]
+    pagination: ClassVar[NumberedPagination | None]
     extra_query_params: ClassVar[Iterable[str]]
     get_many_endpoint: ClassVar[Any]
     put: ClassVar[Any]
@@ -272,15 +273,21 @@ class _ReactAdminMixin:
     AsyncReactAdminView. User-facing customization should happen by
     subclassing one of those concrete view classes.
 
-    Set :attr:`default_page_size` on a subclass to change the implicit page
-    size used when the client does not send a ``range`` query parameter.
+    Set ``pagination = fr.NumberedPagination(default_page_size=...)`` on a
+    subclass to change the implicit page size used when the client does not
+    send a ``range`` query parameter. The other pagination settings do not
+    apply: react-admin pages with ``range`` and reports the total in the
+    ``Content-Range`` header.
 
     Type annotations on the mixin methods use ``_ReactAdminViewProtocol`` to
     make the expected ``RestView`` surface explicit to static checkers.
     """
 
-    #: Implicit page size when no ``range`` parameter is sent. Override per-view.
-    default_page_size: ClassVar[int] = DEFAULT_REACT_ADMIN_PAGE_SIZE
+    #: Only ``default_page_size`` applies: the implicit page size when no
+    #: ``range`` parameter is sent. Override per view.
+    pagination: ClassVar[NumberedPagination | None] = NumberedPagination(
+        default_page_size=DEFAULT_REACT_ADMIN_PAGE_SIZE
+    )
 
     def get_react_admin_range_unit(self) -> str:
         """Return the unit string used in the Content-Range header."""
@@ -327,9 +334,9 @@ class _ReactAdminMixin:
             params = params.model_dump()
 
         view = cast(_ReactAdminViewProtocol, self)
-        # ``paginated`` is forced True on react-admin and ``default_page_size`` is
-        # range-validated at registration, so it is always a usable int here.
-        default_page_size = view.default_page_size
+        # ``pagination`` is required on react-admin (see before_include_view),
+        # and NumberedPagination checks default_page_size when it is created.
+        default_page_size = cast(NumberedPagination, view.pagination).default_page_size
         sort_raw = params.get("sort") if hasattr(params, "get") else None
         range_raw = params.get("range") if hasattr(params, "get") else None
         filter_raw = params.get("filter") if hasattr(params, "get") else None
@@ -418,12 +425,26 @@ class _ReactAdminMixin:
     def before_include_view(cls) -> None:
         view_cls = cast(type[_ReactAdminViewProtocol], cls)
         # React-admin reports its total through the Content-Range header, which
-        # needs the count query -- gated on ``paginated``. Disabling it would
+        # needs the count query -- gated on ``pagination``. Disabling it would
         # report a total of 0 and silently break the client's paging.
-        if not view_cls.paginated:
+        pagination = view_cls.pagination
+        if pagination is None:
             raise ValueError(
                 f"{cls.__name__}: a react-admin view cannot disable pagination; "
-                "'paginated' must stay True so the Content-Range total is counted."
+                "'pagination' must stay set so the Content-Range total is counted."
+            )
+        # react-admin reads only the default page size; any other setting
+        # would be silently ignored
+        only_page_size = NumberedPagination(
+            default_page_size=pagination.default_page_size,
+            max_page_size=pagination.max_page_size,
+        )
+        if pagination != only_page_size:
+            raise RestlyConfigurationError(
+                f"{cls.__name__}: a react-admin view uses only "
+                "pagination.default_page_size. It pages with the 'range' "
+                "parameter and reports the total in the Content-Range header, "
+                "so query parameter names, max_page and envelope do not apply."
             )
         if "listing_param_schema" not in cls.__dict__:
             view_cls.listing_param_schema = _ReactAdminQueryParams

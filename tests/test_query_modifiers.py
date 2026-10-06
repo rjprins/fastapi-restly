@@ -228,11 +228,15 @@ class TestCreateListParamsSchema:
             create_list_params_schema(DotAliasSchema, WidgetModel)
 
 
+#: The default ``page`` / ``page_size`` pagination.
+PAGES = fr.NumberedPagination()
+
+
 class TestApplyPagination:
     def test__apply_pagination_defaults(self, select_query, mock_query_params):
         """Without ``page_size`` no LIMIT/OFFSET is applied (default is unlimited)."""
         params = mock_query_params()
-        result = _apply_pagination(params, select_query)
+        result = _apply_pagination(params, select_query, PAGES)
 
         assert "LIMIT" not in str(result)
         assert "OFFSET" not in str(result)
@@ -240,7 +244,7 @@ class TestApplyPagination:
     def test__apply_pagination_custom_values(self, select_query, mock_query_params):
         """Test pagination with custom values."""
         params = mock_query_params(page="2", page_size="25")
-        result = _apply_pagination(params, select_query)
+        result = _apply_pagination(params, select_query, PAGES)
 
         # Should apply page=2, page_size=25
         assert "LIMIT :param_1" in str(result)
@@ -251,7 +255,7 @@ class TestApplyPagination:
         params = mock_query_params(page="invalid", page_size="10")
 
         with pytest.raises(HTTPException) as exc_info:
-            _apply_pagination(params, select_query)
+            _apply_pagination(params, select_query, PAGES)
 
         assert exc_info.value.status_code == 400
         assert "not an integer" in str(exc_info.value.detail)
@@ -261,7 +265,7 @@ class TestApplyPagination:
         params = mock_query_params(page_size="invalid")
 
         with pytest.raises(HTTPException) as exc_info:
-            _apply_pagination(params, select_query)
+            _apply_pagination(params, select_query, PAGES)
 
         assert exc_info.value.status_code == 400
         assert "not an integer" in str(exc_info.value.detail)

@@ -55,11 +55,12 @@ async def test_async_get_many_uses_validated_query_params(monkeypatch):
     """
     captured = {}
 
-    def _apply_list_params(first_arg, query, model, schema):
+    def _apply_list_params(first_arg, query, model, schema, *, pagination):
         captured["calls"] = captured.get("calls", 0) + 1
         captured["first_arg"] = first_arg
         captured["model"] = model
         captured["schema"] = schema
+        captured["pagination"] = pagination
         return query
 
     monkeypatch.setattr(
@@ -81,6 +82,8 @@ async def test_async_get_many_uses_validated_query_params(monkeypatch):
     # be consulted.
     assert captured["first_arg"] is params
     assert captured["calls"] == 1
+    # and the view's pagination, which names the page parameters to read
+    assert captured["pagination"] is _DummyAsyncView.pagination
 
 
 def test_utc_now_is_timezone_aware_utc():

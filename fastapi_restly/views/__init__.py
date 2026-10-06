@@ -23,13 +23,12 @@ field is a column default on the model. ``View`` is the bare class-based
 primitive for non-CRUD endpoint groups (auth flows, webhooks, RPC).
 """
 
+from .._pagination import Envelope, NumberedPagination, PaginatedEnvelope
 from ._async import AsyncRestView
 from ._base import (
     Action,
     BaseRestView,
-    Envelope,
     ListingResult,
-    PaginatedEnvelope,
     ReadScope,
     ResponseShape,
     View,
@@ -60,6 +59,7 @@ __all__ = [
     "ReactAdminView",
     "BaseRestView",
     "ListingResult",
+    "NumberedPagination",
     "Envelope",
     "PaginatedEnvelope",
     "Action",

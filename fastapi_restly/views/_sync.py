@@ -268,8 +268,8 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         Auth-free: ``handle_get_many`` adds ``authorize``. The query is the
         resolved scope (``fr.resolve_scope(self)``, or ``scope`` when given)
         plus :meth:`apply_query_params`. A paginated view also runs
-        :meth:`count` for ``total_count``; an unpaginated view returns every
-        matching row with ``total_count=None``. Relationships the response
+        :meth:`count` for ``total_count``; a view with ``pagination = None``
+        returns every matching row with ``total_count=None``. Relationships the response
         schema names are eager-loaded.
 
         The handlers always forward ``scope=``, so an override must declare
@@ -284,7 +284,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         """
         query = self._apply_scope(select(self.model), scope)
         query = self.apply_query_params(query, query_params)
-        total_count = self.count(query) if self.paginated else None
+        total_count = self.count(query) if self.pagination is not None else None
         loader_options = self.get_relationship_loader_options()
         if loader_options:
             query = query.options(*loader_options)
@@ -381,7 +381,9 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         """Apply URL filter/sort/pagination to ``query``. Override for a
         non-default URL grammar; the common case is driven by configuration.
         """
-        return apply_list_params(query_params, query, self.model, self.schema)
+        return apply_list_params(
+            query_params, query, self.model, self.schema, pagination=self.pagination
+        )
 
     def count(self, query: sqlalchemy.Select[Any]) -> int:
         """Total for the list, ignoring presentation-layer ordering/pagination.

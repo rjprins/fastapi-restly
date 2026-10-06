@@ -21,7 +21,6 @@ import types
 import warnings
 from collections.abc import Mapping, Set
 from enum import Enum
-from math import ceil
 from typing import (
     TYPE_CHECKING,
     Annotated,
@@ -82,10 +81,16 @@ ReadScope = WhereClause | Unscoped | None
 # override spells it.
 _ReadWhere = ColumnElement[bool] | WhereClause | Unscoped | None
 from .._mapping import is_mapped_class, is_mapped_instance
+from .._pagination import (
+    NumberedPagination,
+    _build_envelope,
+    _listing_envelope,
+    _numbered_page_info,
+)
 from ..db._globals import _fr_globals
 from ..exc import RestlyConfigurationError, RestlyMisuseWarning
 from ..objects import snapshot as _object_snapshot
-from ..query import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, create_list_params_schema
+from ..query import create_list_params_schema
 from ..schemas import BaseSchema, IDSchema
 from ..schemas._base import (
     _model_id_type,
@@ -113,27 +118,6 @@ UpdateSchemaT = TypeVar(
     "UpdateSchemaT", bound=pydantic.BaseModel, default=pydantic.BaseModel
 )
 IdT = TypeVar("IdT", default=int)
-
-DataT = TypeVar("DataT")
-
-
-class Envelope(pydantic.BaseModel, Generic[DataT]):
-    """List response wrapper: ``{"data": [...]}``.
-
-    The response shape for an unpaginated view. A paginated view uses
-    :class:`PaginatedEnvelope`, which adds the pagination metadata.
-    """
-
-    data: Sequence[DataT]
-
-
-class PaginatedEnvelope(Envelope[DataT]):
-    """Paginated list response: ``data`` plus pagination metadata."""
-
-    total_count: int
-    page: int
-    page_size: int
-    total_pages: int
 
 
 @dataclasses.dataclass(frozen=True)
@@ -1172,6 +1156,32 @@ def _final_handler_message(view_name: str, name: str, origin: str) -> str:
     return message
 
 
+# Replaced by ``pagination``. A view that still sets one is told what to write.
+_REPLACED_PAGINATION_SETTINGS = ("paginated", "default_page_size", "max_page_size")
+
+
+def _replaced_pagination_message(
+    view_name: str, name: str, value: Any, origin: str
+) -> str:
+    """What a view that sets an old pagination setting writes instead."""
+    if name == "paginated":
+        instead = (
+            "Write 'pagination = None' to return every row."
+            if value is False
+            else "Remove it: views paginate by default."
+        )
+    else:
+        instead = (
+            f"Write 'pagination = fr.NumberedPagination({name}={value!r})', or "
+            f"call '.replace({name}={value!r})' on pagination settings that "
+            "views share."
+        )
+    return (
+        f"{view_name} sets {name}{origin}, which was replaced by the "
+        f"'pagination' setting. {instead}"
+    )
+
+
 class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT]):
     """
     Base class for RestView implementations.
@@ -1215,18 +1225,18 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     #: route declares, on the endpoint method or in a dependency, or an
     #: ``APIKeyQuery`` key, needs no entry.
     extra_query_params: ClassVar[Iterable[str]] = ()
-    #: Whether list endpoints paginate. ``True`` (the default) wraps the list in
-    #: a :class:`PaginatedEnvelope` (``data`` plus ``total_count`` / ``page`` /
-    #: ``page_size`` / ``total_pages``), emits ``page`` / ``page_size`` query
-    #: parameters, and runs the count query. ``False`` returns every matching row
-    #: in a plain :class:`Envelope` (``data`` only) with no count. For a bare
-    #: array or another non-envelope shape, replace ``get_many_endpoint`` with a
-    #: matching ``response_model`` (see :class:`AsyncReactAdminView`).
-    paginated: ClassVar[bool] = True
-    #: Default ``page_size`` when the client omits it (paginated views only).
-    default_page_size: ClassVar[int] = DEFAULT_PAGE_SIZE
-    #: Maximum ``page_size`` accepted on list endpoints. Above this returns 422.
-    max_page_size: ClassVar[int] = MAX_PAGE_SIZE
+    #: How list endpoints paginate. The default :class:`NumberedPagination`
+    #: takes ``page`` / ``page_size`` query parameters, runs the count query,
+    #: and wraps the list in its ``envelope`` (:class:`PaginatedEnvelope`:
+    #: ``data`` plus ``total_count`` / ``page`` / ``page_size`` /
+    #: ``total_pages``). ``None`` returns every matching row in a plain
+    #: :class:`Envelope` (``data`` only) with no count. A view inherits it, so a
+    #: project base view sets it once; a view that differs changes one setting
+    #: with :meth:`NumberedPagination.replace` on the shared settings. For a
+    #: bare array or another shape no envelope model can express, replace
+    #: ``get_many_endpoint`` with a matching ``response_model`` (see
+    #: :class:`AsyncReactAdminView`).
+    pagination: ClassVar[NumberedPagination | None] = NumberedPagination()
     #: The listing grammar (filter, sort, page) as a pydantic model, generated
     #: from ``schema`` and ``model``. Any route method on the view that declares
     #: a ``query_params`` parameter takes it: typed for FastAPI and OpenAPI, and
@@ -1310,6 +1320,28 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                     raise RestlyConfigurationError(
                         _final_handler_message(cls.__name__, name, origin)
                     )
+        # the old pagination settings are no longer read; a definition would
+        # be silently dead, and a dead max_page_size is a cap that is gone
+        for klass in cls.__mro__:
+            for name in _REPLACED_PAGINATION_SETTINGS:
+                if name in vars(klass):
+                    origin = "" if klass is cls else f" (from {klass.__name__})"
+                    raise RestlyConfigurationError(
+                        _replaced_pagination_message(
+                            cls.__name__, name, vars(klass)[name], origin
+                        )
+                    )
+        pagination = cls.pagination
+        if not (pagination is None or isinstance(pagination, NumberedPagination)):
+            hint = (
+                " Create an instance: fr.NumberedPagination()."
+                if pagination is NumberedPagination
+                else ""
+            )
+            raise RestlyConfigurationError(
+                f"{cls.__name__}.pagination must be a fr.NumberedPagination "
+                f"instance or None, got {pagination!r}.{hint}"
+            )
 
     def _apply_scope(self, query: Select[Any], scope: ReadScope) -> Select[Any]:
         # the one path every read takes, so retrieve, list and count cannot
@@ -1443,32 +1475,33 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     def to_listing_response(
         self, query_params: Any, listing_result: ListingResult[ModelT]
     ) -> Any:
-        """Serialize a :class:`ListingResult` into the list response body.
+        """Build the list response body: an instance of the envelope model.
 
-        The default shape is the ``{"data": [...]}`` envelope, with pagination
-        metadata (``total_count`` / ``page`` / ``page_size`` / ``total_pages``)
-        when :attr:`paginated` is true. This builds the body only; the route's
-        ``response_model`` is fixed from :attr:`paginated` separately. For a bare
-        array or a ``Content-Range`` header, replace ``get_many_endpoint`` with a
-        matching ``response_model`` (as :class:`AsyncReactAdminView` does), not by
-        overriding this method alone, which would fail response validation.
+        A paginated view fills its :attr:`pagination`'s ``envelope`` (by
+        default :class:`PaginatedEnvelope`: ``data`` plus ``total_count`` /
+        ``page`` / ``page_size`` / ``total_pages``); an unpaginated one returns
+        an :class:`Envelope` (``data`` only). The route's ``response_model`` is
+        the same envelope, fixed from :attr:`pagination` at registration. To
+        change the shape, set the pagination's ``envelope``. For a bare array
+        or a ``Content-Range`` header, replace ``get_many_endpoint`` with a
+        matching ``response_model`` (as :class:`AsyncReactAdminView` does), not
+        by overriding this method alone, which would fail response validation.
         """
         data = [self.to_response_schema(obj) for obj in listing_result.objects]
-        if not self.paginated:
-            return {"data": data}
+        pagination = self.pagination
+        envelope = _listing_envelope(pagination, self.schema)
+        if pagination is None:
+            return _build_envelope(envelope, {"data": data})
         params = self._to_query_params(query_params)
-        page = int(params.get("page", "1"))
-        page_size = int(params.get("page_size") or self.default_page_size)
-        total = listing_result.total_count or 0
-        # Keys mirror :class:`PaginatedEnvelope` (the list ``response_model``);
-        # keep the two in sync.
-        return {
-            "data": data,
-            "total_count": total,
-            "page": page,
-            "page_size": page_size,
-            "total_pages": ceil(total / page_size) if page_size > 0 else 0,
-        }
+        page_info = _numbered_page_info(
+            total_count=listing_result.total_count or 0,
+            page=int(params.get(pagination.page_query_param) or 1),
+            page_size=int(
+                params.get(pagination.page_size_query_param)
+                or pagination.default_page_size
+            ),
+        )
+        return _build_envelope(envelope, {"data": data, **page_info})
 
     def to_response(
         self, obj_or_list: Any, shape: ResponseShape = ResponseShape.SINGLE
@@ -1516,22 +1549,6 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             )
             _mark_generated(cls, "schema")
 
-        # A paginated view always caps at ``default_page_size``, so it must be a
-        # usable size. Reject ``None`` (the pre-envelope "no cap" idiom) and
-        # out-of-range values at registration; otherwise ``None`` would 500 at
-        # request time and ``0`` would silently return empty pages. Point the
-        # author at the real "don't paginate" switch.
-        if cls.paginated and (
-            not isinstance(cls.default_page_size, int)
-            or not (1 <= cls.default_page_size <= cls.max_page_size)
-        ):
-            raise ValueError(
-                f"{cls.__name__}.default_page_size must be an int in "
-                f"[1, {cls.max_page_size}], got {cls.default_page_size!r}. "
-                "To return every matching row without pagination, "
-                "set 'paginated = False'."
-            )
-
         if _needs_generating(cls, "listing_param_schema", derived_from="schema"):
             if not hasattr(cls, "model"):
                 raise ValueError(
@@ -1539,11 +1556,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                     "generate list query parameters."
                 )
             cls.listing_param_schema = create_list_params_schema(
-                cls.schema,
-                cls.model,
-                default_page_size=cls.default_page_size,
-                max_page_size=cls.max_page_size,
-                paginated=cls.paginated,
+                cls.schema, cls.model, pagination=cls.pagination
             )
             _mark_generated(cls, "listing_param_schema")
         if _needs_generating(cls, "schema_create", derived_from="schema"):
@@ -1581,10 +1594,8 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                 endpoint._api_route_args = (item_path, route_kwargs.copy())
 
         # Only annotate if the methods exist (they will be overridden in subclasses)
-        listing_response_annotation: Any = (
-            PaginatedEnvelope[response_schema]
-            if cls.paginated
-            else Envelope[response_schema]
+        listing_response_annotation: Any = _listing_envelope(
+            cls.pagination, response_schema
         )
 
         # Every route that declares ``query_params`` takes the listing grammar:

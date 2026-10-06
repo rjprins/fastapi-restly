@@ -4,6 +4,7 @@ import pytest
 from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
+from fastapi_restly.exc import RestlyConfigurationError
 
 from .conftest import create_tables
 
@@ -41,7 +42,7 @@ def test_index_response_defaults_to_paginated_envelope(client):
 
 
 def test_unpaginated_view_returns_data_envelope_without_metadata(client):
-    """``paginated = False`` returns every row in a plain ``{"data": [...]}``
+    """``pagination = None`` returns every row in a plain ``{"data": [...]}``
     envelope -- no pagination metadata, and no ``page``/``page_size`` params."""
 
     class Widget(fr.IDBase):
@@ -55,7 +56,7 @@ def test_unpaginated_view_returns_data_envelope_without_metadata(client):
         prefix = "/widgets"
         model = Widget
         schema = WidgetSchema
-        paginated = False
+        pagination = None
 
     create_tables()
 
@@ -74,70 +75,23 @@ def test_unpaginated_view_returns_data_envelope_without_metadata(client):
     assert ["query", "page_size"] in locs
 
 
-def test_paginated_view_rejects_out_of_range_default_page_size(client):
-    """A paginated view whose ``default_page_size`` falls outside
-    ``[1, max_page_size]`` (e.g. ``0``) is rejected at registration rather than
-    silently returning empty pages."""
+def test_pagination_rejects_out_of_range_default_page_size():
+    """A ``default_page_size`` outside ``[1, max_page_size]`` (e.g. ``0``) is
+    rejected when the settings are created, rather than silently returning
+    empty pages."""
 
-    class Gizmo(fr.IDBase):
-        name: Mapped[str]
-
-    class GizmoSchema(fr.IDSchema):
-        name: str
-
-    with pytest.raises(ValueError, match="set 'paginated = False'"):
-
-        @fr.include_view(client.app)
-        class GizmoView(fr.AsyncRestView):
-            prefix = "/gizmos"
-            model = Gizmo
-            schema = GizmoSchema
-            default_page_size = 0
+    with pytest.raises(RestlyConfigurationError, match="set 'pagination = None'"):
+        fr.NumberedPagination(default_page_size=0)
+    with pytest.raises(RestlyConfigurationError, match=r"\[1, 10\]"):
+        fr.NumberedPagination(default_page_size=20, max_page_size=10)
 
 
-def test_paginated_view_rejects_none_default_page_size(client):
-    """``default_page_size = None`` (the pre-envelope "no cap" idiom) now raises
-    at registration instead of 500ing on the first list request."""
+def test_pagination_rejects_none_default_page_size():
+    """``default_page_size=None`` (the pre-envelope "no cap" idiom) raises when
+    the settings are created instead of 500ing on the first list request."""
 
-    class Doohickey(fr.IDBase):
-        name: Mapped[str]
-
-    class DoohickeySchema(fr.IDSchema):
-        name: str
-
-    with pytest.raises(ValueError, match="set 'paginated = False'"):
-
-        @fr.include_view(client.app)
-        class DoohickeyView(fr.AsyncRestView):
-            prefix = "/doohickeys"
-            model = Doohickey
-            schema = DoohickeySchema
-            default_page_size = None  # type: ignore[assignment]
-
-
-def test_unpaginated_view_ignores_default_page_size(client):
-    """``default_page_size`` is unused when ``paginated = False``, so an
-    otherwise-invalid value must not trip the guard."""
-
-    class Sprocket(fr.IDBase):
-        name: Mapped[str]
-
-    class SprocketSchema(fr.IDSchema):
-        name: str
-
-    @fr.include_view(client.app)
-    class SprocketView(fr.AsyncRestView):
-        prefix = "/sprockets"
-        model = Sprocket
-        schema = SprocketSchema
-        paginated = False
-        default_page_size = 0  # unused; must not raise
-
-    create_tables()
-
-    response = client.get("/sprockets/")
-    assert response.status_code == 200
-    assert set(response.json()) == {"data"}
+    with pytest.raises(RestlyConfigurationError, match="set 'pagination = None'"):
+        fr.NumberedPagination(default_page_size=None)  # type: ignore[arg-type]
 
 
 def test_default_page_size_caps_a_large_result_set(client):
@@ -155,7 +109,7 @@ def test_default_page_size_caps_a_large_result_set(client):
         prefix = "/paginated-items"
         model = PaginatedItem
         schema = PaginatedItemSchema
-        default_page_size = 10
+        pagination = fr.NumberedPagination(default_page_size=10)
 
     create_tables()
 
@@ -232,7 +186,7 @@ def test_openapi_list_route_refs_the_envelope_component(client):
         prefix = "/barrels"
         model = Barrel
         schema = BarrelSchema
-        paginated = False
+        pagination = None
 
     create_tables()
     spec = client.app.openapi()

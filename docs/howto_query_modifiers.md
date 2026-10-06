@@ -5,12 +5,12 @@ pagination through URL query parameters out of the box. Filter parameters
 are derived from the response schema; sort and pagination use a fixed set
 of names.
 
-Pagination is on by default: lists are capped at
-{attr}`default_page_size <fastapi_restly.views.BaseRestView.default_page_size>`
-(50) and wrapped in a `data` envelope. Clients page with `page` and
-`page_size`. Lower the default and set
-{attr}`max_page_size <fastapi_restly.views.BaseRestView.max_page_size>` on
-public endpoints; set `paginated = False` to return every matching row uncapped.
+Pagination is on by default: lists are capped at 50 rows per page and
+wrapped in a `data` envelope. Clients page with `page` and `page_size`. The
+view's {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>`
+setting changes the limits, the parameter names and the envelope. Lower the
+default page size and the maximum on public endpoints; set `pagination = None`
+to return every matching row uncapped.
 
 Unknown query keys are rejected with 422. Filters are narrowing controls,
 so a typo or unsupported operator silently ignored could widen the result
@@ -158,35 +158,108 @@ Pagination is controlled by the `page` and `page_size` parameters:
 GET /users?page=2&page_size=50
 ```
 
-`page` is 1-based and has no fixed upper bound. The combination must satisfy
+`page` is 1-based. The combination must satisfy
 `(page - 1) * page_size <= 2**63 - 1`. A larger SQL offset is rejected with
 `422` before the query runs. `page_size` must be `>= 1` and `<= max_page_size`
 (default 1000). When the client omits `page_size`, the endpoint falls back to
-{attr}`default_page_size <fastapi_restly.views.BaseRestView.default_page_size>`
-(50). Tune both on the view class:
+`default_page_size` (50). Set them with
+{class}`fr.NumberedPagination <fastapi_restly.views.NumberedPagination>` on the
+view class. `max_page` caps the page number too:
 
 ```python
 class UserView(fr.AsyncRestView):
-    default_page_size = 25
-    max_page_size = 200
+    pagination = fr.NumberedPagination(
+        default_page_size=25, max_page_size=200, max_page=100
+    )
 ```
 
 Out-of-range pagination values produce a standard `422` response from
 FastAPI.
 
+### Parameter names
+
+Rename the two parameters with `page_query_param` and
+`page_size_query_param`:
+
+```python
+class UserView(fr.AsyncRestView):
+    pagination = fr.NumberedPagination(
+        page_query_param="p", page_size_query_param="size"
+    )
+```
+
+Clients then send `?p=2&size=50`, `page` and `page_size` become unknown keys,
+and OpenAPI lists the new names. A schema field whose public name matches a
+pagination parameter fails when the view registers. Rename the parameter or
+give the field an alias. Renaming a parameter frees its old name, so a `page`
+column gets its filter back.
+
+### Set it once for every view
+
+Views inherit `pagination`, so a project base view sets it once. A view that
+differs changes one setting with `replace()`, which returns a checked copy:
+
+```python
+APP_PAGINATION = fr.NumberedPagination(
+    page_size_query_param="size", max_page_size=100
+)
+
+
+class AppView(fr.AsyncRestView):
+    pagination = APP_PAGINATION
+
+
+class LogView(AppView):
+    pagination = APP_PAGINATION.replace(max_page_size=10)
+```
+
 ### The pagination envelope
 
 A list endpoint wraps its rows in a `data` envelope with `total_count` and
-page metadata. Set `paginated = False` to drop the count and page fields and
+page metadata. Set `pagination = None` to drop the count and page fields and
 return every matching row in a bare `data` envelope:
 
 ```python
 class UserView(fr.AsyncRestView):
-    paginated = False
+    pagination = None
 ```
 
-[Response Envelopes and List Metadata](howto_response_schema.md) is
-canonical for the envelope's shape.
+The pagination's `envelope` setting replaces the envelope model: rename its
+fields, drop some, or nest them.
+[Response Envelopes and List Metadata](howto_response_schema.md#change-the-list-envelope)
+is canonical for the envelope's shape.
+
+### Coming from fastapi-pagination
+
+fastapi-pagination's default `Page` takes `?page=` and `?size=` and returns
+`items`, `total`, `page`, `size` and `pages`. To keep that contract for
+existing clients, rename the page size parameter and the envelope fields:
+
+```python
+from typing import Generic, TypeVar
+
+import pydantic
+
+T = TypeVar("T")
+
+
+class Page(pydantic.BaseModel, Generic[T]):
+    data: list[T] = pydantic.Field(serialization_alias="items")
+    total_count: int = pydantic.Field(serialization_alias="total")
+    page: int
+    page_size: int = pydantic.Field(serialization_alias="size")
+    total_pages: int = pydantic.Field(serialization_alias="pages")
+
+
+class AppView(fr.AsyncRestView):
+    pagination = fr.NumberedPagination(
+        page_size_query_param="size", max_page_size=100, envelope=Page
+    )
+```
+
+The default page size of 50 and the maximum of 100 match fastapi-pagination's.
+fastapi-pagination has no filters or sorting. Restly adds both, as described
+above.
 
 ## Extra query parameters
 

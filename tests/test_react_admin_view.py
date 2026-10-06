@@ -666,8 +666,9 @@ def test_parse_range_uses_custom_default_page_size():
     assert parse_react_admin_range(None, default_page_size=50) == (0, 49)
 
 
-def test_default_page_size_class_attribute_overrides_default(client):
-    """A view subclass can override default_page_size to change implicit pagination."""
+def test_default_page_size_setting_overrides_default(client):
+    """A view subclass can set pagination's default_page_size to change the
+    implicit page size."""
 
     class Widget(fr.IDBase):
         name: Mapped[str]
@@ -680,7 +681,7 @@ def test_default_page_size_class_attribute_overrides_default(client):
         prefix = "/widgets"
         model = Widget
         schema = WidgetSchema
-        default_page_size = 3
+        pagination = fr.NumberedPagination(default_page_size=3)
 
     create_tables()
     for i in range(10):
@@ -833,7 +834,7 @@ def test_sync_react_admin_list_runs_the_handler_domain_and_response_seams(sync_c
 
 def test_react_admin_view_cannot_disable_pagination(client):
     """A react-admin view reports its total via Content-Range, which needs the
-    count query, so ``paginated = False`` is rejected at registration."""
+    count query, so ``pagination = None`` is rejected at registration."""
 
     class Gadget(fr.IDBase):
         name: Mapped[str]
@@ -848,4 +849,4 @@ def test_react_admin_view_cannot_disable_pagination(client):
             prefix = "/gadgets"
             model = Gadget
             schema = GadgetSchema
-            paginated = False
+            pagination = None

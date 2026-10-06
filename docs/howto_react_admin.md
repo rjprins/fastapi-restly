@@ -228,20 +228,23 @@ class can share them across views.
 
 When the frontend does not send a `range` query parameter, the react-admin
 views return the first 25 rows, overriding the framework-wide
-{attr}`default_page_size <fastapi_restly.views.BaseRestView.default_page_size>` default of 50. Set the
-attribute on the view to choose a different value:
+{attr}`default_page_size <fastapi_restly.views.NumberedPagination.default_page_size>`
+of 50. Set it in the view's
+{attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` to choose a
+different value:
 
 ```python
 @fr.include_view(app)
 class ProductView(fr.AsyncReactAdminView):
     prefix = "/products"
     model = Product
-    default_page_size = 50
+    pagination = fr.NumberedPagination(default_page_size=50)
 ```
 
-React-admin views cannot disable pagination with `paginated = False`. Their
-`Content-Range` response header requires the total count; Restly therefore
-rejects that setting at registration.
+That is the only pagination setting a react-admin view uses. It pages with
+`range` and reports the total in the `Content-Range` header, so other
+settings, such as parameter names or an envelope, fail at registration. So
+does `pagination = None`: the header requires the total count.
 
 ### Change the Content-Range unit
 
@@ -265,7 +268,7 @@ it, following the pattern in
 
 ```python
 class ReactAdminBase(fr.AsyncReactAdminView):
-    default_page_size = 100
+    pagination = fr.NumberedPagination(default_page_size=100)
 
     def get_react_admin_range_unit(self) -> str:
         return "items"

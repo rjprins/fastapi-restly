@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- One view setting, `pagination`, replaces `paginated`, `default_page_size`
+  and `max_page_size`. Write `pagination = None` for `paginated = False`, and
+  `pagination = fr.NumberedPagination(default_page_size=25, max_page_size=200)`
+  for the two sizes. A view or mixin that still sets an old name fails at class
+  definition with what to write instead. React-admin views set their default
+  page size the same way.
+- `to_listing_response` returns an instance of the envelope model instead of a
+  dict, so a direct caller reads `page.data` and `page.total_count`. The same
+  goes for calling `get_many_endpoint` in code.
+- `fr.query.create_list_params_schema` and `fr.query.apply_list_params` take
+  `pagination=` instead of `default_page_size`, `max_page_size` and
+  `paginated`. Pass the view's `pagination`.
 - Dotted filters and sorts use SQL aliases for relationship joins. Set
   `include_aliases=True` on SQLAlchemy `with_loader_criteria` rules so they
   apply to these joins.
@@ -195,6 +207,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `fr.NumberedPagination` holds a view's pagination settings. Besides the two
+  page sizes it sets `max_page`, the query parameter names
+  (`page_query_param`, `page_size_query_param`), and the list envelope model.
+  The envelope is a generic Pydantic model that Restly fills by field name, so
+  aliases rename its fields, a field left out is dropped, and a before-validator
+  can nest them. Views inherit the setting, so a project base view sets it
+  once, and `replace()` changes one setting for a view that differs. This
+  serves contracts such as fastapi-pagination's
+  `items`/`total`/`page`/`size`/`pages` or camelCase metadata, with the
+  response and OpenAPI in sync.
 - `fr.ContextNamespace` and `fr.ContextParam` support an application-defined
   `Current` context, with manual and FastAPI dependency binding.
 - Reusable query predicates through `fr.where_clause`, boolean composition,
