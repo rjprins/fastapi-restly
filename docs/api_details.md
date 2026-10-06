@@ -58,7 +58,7 @@ behavior:
 
 | Attribute | Type | Default | Purpose |
 |---|---|---|---|
-| {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` | `ClassVar[NumberedPagination \| None]` | `NumberedPagination()` | How list endpoints paginate. `None` returns every row in a plain `Envelope` (`data` only) and runs no count query. Views inherit it, so a project base view sets it once. |
+| {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` | `ClassVar[NumberedPagination \| NoPagination \| None]` | `NumberedPagination()` | How list endpoints paginate. A `NoPagination` returns every row and runs no count query; `None` is short for `NoPagination()`, a plain `Envelope` (`data` only). Views inherit it, so a project base view sets it once. |
 | {attr}`extra_query_params <fastapi_restly.views.BaseRestView.extra_query_params>` | `ClassVar[Iterable[str]]` | `()` | Query keys to allow beyond those derived from the response schema, for view-specific parameters read from the request outside the list grammar (e.g. `?include_deleted=true`). A key that the endpoint method or a dependency declares, or an `APIKeyQuery` key, needs no entry. |
 
 {class}`fr.NumberedPagination <fastapi_restly.views.NumberedPagination>` holds the
@@ -73,6 +73,10 @@ checked copy:
 | {attr}`page_query_param <fastapi_restly.views.NumberedPagination.page_query_param>` | `"page"` | Query parameter for the page number. |
 | {attr}`page_size_query_param <fastapi_restly.views.NumberedPagination.page_size_query_param>` | `"page_size"` | Query parameter for the page size. |
 | {attr}`envelope <fastapi_restly.views.NumberedPagination.envelope>` | `PaginatedEnvelope` | The list response model: a generic model filled by field name from `data`, `total_count`, `page`, `page_size` and `total_pages`. |
+
+{class}`fr.NoPagination <fastapi_restly.views.NoPagination>` has one setting,
+{attr}`envelope <fastapi_restly.views.NoPagination.envelope>`, `Envelope` by
+default, filled from `data` and `total_count`, the number of rows.
 
 The envelope's shape and custom alternatives are covered in
 [Response Envelopes and List Metadata](howto_response_schema.md).
@@ -254,7 +258,7 @@ names are identical between variants.
 | Override point | {meth}`snapshot <fastapi_restly.views.BaseRestView.snapshot>` | `(obj)` | `dict[str, Any]` | Frozen capture of an object's already-loaded column values, taken after `authorize` and before the mutation, passed as `old` to the commit hooks. |
 | Override point | {meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>` | `()` | `list[Any]` | Loader options (`selectinload(...)`) for the relationships the response schema names, applied on reads (`get_one` / `get_many`) and on the write-response reload in `save_object`. Override to eager-load relationships the schema does not name on both paths; see [Relationship Loading and Async](howto_relationship_loading.md). |
 | Helper | {meth}`to_response_schema <fastapi_restly.views.BaseRestView.to_response_schema>` | `(obj)` | response schema | Validate and serialize an ORM object with Restly's alias/reference/write-only handling. Override for custom projections or an intentional `model_construct()` fast path. |
-| Helper | {meth}`to_listing_response <fastapi_restly.views.BaseRestView.to_listing_response>` | `(query_params, listing_result)` | envelope model instance | Build the list response body: an instance of the pagination's envelope, or of `Envelope` when `pagination` is `None`. To change the shape, set the pagination's `envelope`. A non-envelope shape (bare array) needs `get_many_endpoint` replaced with a matching `response_model`. |
+| Helper | {meth}`to_listing_response <fastapi_restly.views.BaseRestView.to_listing_response>` | `(query_params, listing_result)` | envelope model instance | Build the list response body: an instance of the pagination's envelope, or of `Envelope` when `pagination` is `None`. To change the shape, set the pagination's `envelope`. A shape no envelope model can express, such as a header, needs `get_many_endpoint` replaced with a matching `response_model`. |
 | Domain utility | {meth}`make_new_object <fastapi_restly.views.RestView.make_new_object>` | `(schema_obj)` | `Model` | Build and stage a new object without flushing, resolving references and skipping read-only fields. Final. |
 | Domain utility | {meth}`update_object <fastapi_restly.views.RestView.update_object>` | `(obj, schema_obj)` | `Model` | Apply writable fields without flushing, resolving references. Final. |
 | Domain utility | {meth}`save_object <fastapi_restly.views.RestView.save_object>` | `(obj)` | `Model` | Flush and refresh a staged object, then eager-load the relationships the response schema names (via `get_relationship_loader_options`). Does not commit; `handle_<verb>` owns the commit. Final. |

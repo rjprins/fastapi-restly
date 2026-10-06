@@ -1,12 +1,13 @@
-"""Tests for the ``pagination`` view setting and ``fr.NumberedPagination``:
-query parameter names, limits, the envelope, and inheritance."""
+"""Tests for the ``pagination`` view setting, ``fr.NumberedPagination`` and
+``fr.NoPagination``: query parameter names, limits, the envelope, and
+inheritance."""
 
 import re
 from typing import Any, Generic, TypeVar
 
 import pytest
 from fastapi import FastAPI
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, RootModel, model_validator
 from pydantic.alias_generators import to_camel
 from sqlalchemy import select
 from sqlalchemy.orm import Mapped
@@ -70,6 +71,15 @@ class DataMeta(BaseModel, Generic[T]):
             values = dict(values)
             return {"data": values.pop("data"), "meta": values}
         return values
+
+
+class Items(RootModel[list[T]], Generic[T]):
+    """A bare JSON array of the items."""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _rows(cls, values: Any) -> Any:
+        return values["data"] if isinstance(values, dict) else values
 
 
 def _list_app(client, settings, *, rows=5):
@@ -252,18 +262,22 @@ def test_old_pagination_setting_on_a_mixin_names_the_mixin():
             pass
 
 
-def test_pagination_must_be_an_instance_or_none():
+@pytest.mark.parametrize("settings_class", [fr.NumberedPagination, fr.NoPagination])
+def test_pagination_must_be_an_instance(settings_class):
     with pytest.raises(
         RestlyConfigurationError,
-        match=re.escape("Create an instance: fr.NumberedPagination()."),
+        match=re.escape(f"Create an instance: fr.{settings_class.__name__}()."),
     ):
+        type("ClassNotInstance", (fr.AsyncRestView,), {"pagination": settings_class})
 
-        class ClassNotInstance(fr.AsyncRestView):
-            pagination = fr.NumberedPagination  # type: ignore[assignment]
 
+def test_pagination_must_be_settings_or_none():
     with pytest.raises(
         RestlyConfigurationError,
-        match="must be a fr.NumberedPagination instance or None, got 50",
+        match=re.escape(
+            "must be a fr.NumberedPagination or fr.NoPagination instance, "
+            "or None, got 50."
+        ),
     ):
 
         class NumberNotSettings(fr.AsyncRestView):
@@ -518,7 +532,10 @@ def test_sync_view_takes_the_same_settings(sync_db):
         prefix = "/all-things"
         model = Thing
         schema = ThingRead
-        pagination = None
+        pagination = fr.NoPagination(envelope=DataCount)
+
+        def count(self, query):
+            raise AssertionError("a view without pagination runs no count query")
 
     fr.DataclassBase.metadata.create_all(engine)
     client = RestlyTestClient(app)
@@ -533,7 +550,78 @@ def test_sync_view_takes_the_same_settings(sync_db):
         "size": 2,
         "pages": 3,
     }
-    assert len(client.get("/all-things/").json()["data"]) == 5
+    every_thing = client.get("/all-things/").json()
+    assert (len(every_thing["data"]), every_thing["count"]) == (5, 5)
+
+
+# ---------------------------------------------------------------------------
+# No pagination
+# ---------------------------------------------------------------------------
+
+
+def test_no_pagination_is_what_none_means(client):
+    assert fr.NoPagination().envelope is fr.views.Envelope
+
+    view = _list_app(client, fr.NoPagination(), rows=3)
+
+    payload = client.get("/things/").json()
+    assert set(payload) == {"data"}
+    assert len(payload["data"]) == 3
+    client.get("/things/?page_size=2", assert_status_code=422)
+    spec, operation = _list_operation(client)
+    assert _response_properties(spec, operation) == ["data"]
+    assert view.listing_param_schema.model_fields.keys().isdisjoint(
+        {"page", "page_size"}
+    )
+
+
+def test_no_pagination_envelope_gets_the_row_count(client):
+    view = _list_app(client, fr.NoPagination(envelope=DataCount))
+
+    async def count(self, query):
+        raise AssertionError("a view without pagination runs no count query")
+
+    view.count = count
+
+    payload = client.get("/things/?name__icontains=thing").json()
+    assert (len(payload["data"]), payload["count"]) == (5, 5)
+    spec, operation = _list_operation(client)
+    assert _response_properties(spec, operation) == ["data", "count"]
+
+
+def test_no_pagination_bare_array(client):
+    _list_app(client, fr.NoPagination(envelope=Items), rows=2)
+
+    assert client.get("/things/").json() == [
+        {"id": 1, "name": "Thing 0"},
+        {"id": 2, "name": "Thing 1"},
+    ]
+    spec, operation = _list_operation(client)
+    ref = operation["responses"]["200"]["content"]["application/json"]["schema"]
+    component = spec["components"]["schemas"][
+        ref["$ref"].removeprefix("#/components/schemas/")
+    ]
+    assert component["type"] == "array"
+    assert component["items"]["$ref"].endswith("/ThingRead")
+
+
+def test_no_pagination_envelope_field_restly_cannot_fill_fails_when_created():
+    with pytest.raises(RestlyConfigurationError) as excinfo:
+        fr.NoPagination(envelope=fr.views.PaginatedEnvelope)
+
+    message = str(excinfo.value)
+    assert message.startswith("NoPagination.envelope PaginatedEnvelope cannot be")
+    assert "(data, total_count)" in message
+    assert "page: Field required" in message
+    with pytest.raises(RestlyConfigurationError, match="one type parameter"):
+        fr.NoPagination(envelope=_NotGeneric)
+
+
+def test_no_pagination_replace():
+    settings = fr.NoPagination(envelope=DataCount)
+
+    assert settings.replace(envelope=Items).envelope is Items
+    assert settings.envelope is DataCount
 
 
 # ---------------------------------------------------------------------------
@@ -562,6 +650,11 @@ def test_query_helpers_take_the_pagination():
 
     assert "LIMIT 10 OFFSET 20" in sql("page=3&size=10", pagination=pagination)
     assert "LIMIT" not in sql("sort=name", pagination=None)
+    assert "LIMIT" not in sql("sort=name", pagination=fr.NoPagination())
+    unpaginated = create_list_params_schema(
+        WidgetRead, Widget, pagination=fr.NoPagination()
+    )
+    assert unpaginated.model_fields.keys().isdisjoint({"page", "page_size"})
     # without pagination, ``size`` is no parameter but an unknown filter
     with pytest.raises(fr.exc.BadQueryParam, match="Invalid attribute in URL query"):
         sql("size=10", pagination=None)

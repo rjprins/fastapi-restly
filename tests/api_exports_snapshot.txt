@@ -13,6 +13,7 @@ fastapi_restly:
   - IDSchema
   - ListingResult
   - MustExist
+  - NoPagination
   - NumberedPagination
   - ReactAdminView
   - ReadOnly
@@ -143,6 +144,7 @@ fastapi_restly.views:
   - BaseRestView
   - Envelope
   - ListingResult
+  - NoPagination
   - NumberedPagination
   - PaginatedEnvelope
   - ReactAdminView

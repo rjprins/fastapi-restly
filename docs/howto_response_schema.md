@@ -40,7 +40,8 @@ When the client omits `?page_size=`, the endpoint uses
 the ceiling above which the request is rejected with 422. Both are settings of
 the view's {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>`.
 
-To return every matching row uncapped, set `pagination` to `None`. The `data`
+To return every matching row uncapped, set `pagination` to `None`, short for
+{class}`fr.NoPagination() <fastapi_restly.views.NoPagination>`. The `data`
 envelope stays, but the count and page fields drop away:
 
 ```python
@@ -57,8 +58,8 @@ Restly keeps `response_model` and OpenAPI in sync with the envelope
 automatically: the list route's response annotation is the pagination's
 envelope wrapping the response schema, by default a generated
 {class}`PaginatedEnvelope <fastapi_restly.views.PaginatedEnvelope>` (a plain
-{class}`Envelope <fastapi_restly.views.Envelope>` when `pagination` is `None`),
-so no endpoint method code is needed.
+{class}`Envelope <fastapi_restly.views.Envelope>` without pagination), so no
+endpoint method code is needed.
 
 For how clients *request* pages (the `page` and `page_size` inputs), see
 [Pagination](howto_query_modifiers.md#pagination) in the query-modifiers
@@ -147,10 +148,45 @@ Creating the pagination settings builds an empty page from the envelope, so
 a field Restly cannot fill, such as a misspelled `totl_count`, fails at
 startup instead of on a request.
 
+### Without pagination
+
+A view that returns every row takes an envelope through
+{class}`fr.NoPagination <fastapi_restly.views.NoPagination>`. Restly fills it
+from `data` and `total_count`, the number of rows, and runs no count query. So
+the `{"data": [...], "count": 123}` model above works here too:
+
+```python
+@fr.include_view(app)
+class TagView(fr.AsyncRestView):
+    prefix = "/tags"
+    model = Tag
+    schema = TagRead
+    pagination = fr.NoPagination(envelope=DataCount)
+```
+
+For a bare JSON array, use a generic `RootModel` that keeps only `data`:
+
+```python
+class Items(pydantic.RootModel[list[T]], Generic[T]):
+    @pydantic.model_validator(mode="before")
+    @classmethod
+    def rows_only(cls, values):
+        return values["data"] if isinstance(values, dict) else values
+
+
+@fr.include_view(app)
+class TagView(fr.AsyncRestView):
+    prefix = "/tags"
+    model = Tag
+    schema = TagRead
+    pagination = fr.NoPagination(envelope=Items)
+    # Response: [ /* every TagRead */ ]
+```
+
 ## Custom envelopes
 
 An envelope around a single object, or a list shape no envelope model can
-express, such as a bare array, is a change to the HTTP contract. So
+express, such as a header, is a change to the HTTP contract. So
 [replace the endpoint method](customize.md#replace-an-endpoint-method-to-change-the-http-contract)
 and set `response_model` on the replacement.
 

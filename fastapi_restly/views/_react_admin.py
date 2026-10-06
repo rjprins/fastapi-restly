@@ -19,7 +19,7 @@ import pydantic
 import sqlalchemy
 from sqlalchemy.orm import RelationshipProperty
 
-from .._pagination import NumberedPagination
+from .._pagination import NoPagination, NumberedPagination
 from ..exc import BadQueryParam, RestlyConfigurationError
 from ..query._shared import _append_pk_tiebreak
 from ._async import AsyncRestView
@@ -252,7 +252,7 @@ class _ReactAdminViewProtocol(Protocol):
     schema: ClassVar[type[pydantic.BaseModel]]
     schema_update: ClassVar[type[pydantic.BaseModel]]
     listing_param_schema: ClassVar[type[pydantic.BaseModel]]
-    pagination: ClassVar[NumberedPagination | None]
+    pagination: ClassVar[NumberedPagination | NoPagination | None]
     extra_query_params: ClassVar[Iterable[str]]
     get_many_endpoint: ClassVar[Any]
     put: ClassVar[Any]
@@ -285,7 +285,7 @@ class _ReactAdminMixin:
 
     #: Only ``default_page_size`` applies: the implicit page size when no
     #: ``range`` parameter is sent. Override per view.
-    pagination: ClassVar[NumberedPagination | None] = NumberedPagination(
+    pagination: ClassVar[NumberedPagination | NoPagination | None] = NumberedPagination(
         default_page_size=DEFAULT_REACT_ADMIN_PAGE_SIZE
     )
 
@@ -428,10 +428,11 @@ class _ReactAdminMixin:
         # needs the count query -- gated on ``pagination``. Disabling it would
         # report a total of 0 and silently break the client's paging.
         pagination = view_cls.pagination
-        if pagination is None:
+        if not isinstance(pagination, NumberedPagination):
             raise ValueError(
                 f"{cls.__name__}: a react-admin view cannot disable pagination; "
-                "'pagination' must stay set so the Content-Range total is counted."
+                "'pagination' must stay a fr.NumberedPagination so the "
+                "Content-Range total is counted."
             )
         # react-admin reads only the default page size; any other setting
         # would be silently ignored

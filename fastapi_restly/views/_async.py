@@ -4,6 +4,7 @@ from typing import Any, cast, final
 import sqlalchemy
 from sqlalchemy import ColumnElement, func, select
 
+from .._pagination import NumberedPagination
 from ..db import AsyncSessionDep
 from ..exc import NotFound
 from ..objects import async_delete_object as object_async_delete_object
@@ -272,7 +273,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         Auth-free: ``handle_get_many`` adds ``authorize``. The query is the
         resolved scope (``fr.resolve_scope(self)``, or ``scope`` when given)
         plus :meth:`apply_query_params`. A paginated view also runs
-        :meth:`count` for ``total_count``; a view with ``pagination = None``
+        :meth:`count` for ``total_count``; a view without pagination
         returns every matching row with ``total_count=None``. Relationships the response
         schema names are eager-loaded.
 
@@ -288,7 +289,11 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         """
         query = self._apply_scope(select(self.model), scope)
         query = self.apply_query_params(query, query_params)
-        total_count = (await self.count(query)) if self.pagination is not None else None
+        total_count = (
+            (await self.count(query))
+            if isinstance(self.pagination, NumberedPagination)
+            else None
+        )
         loader_options = self.get_relationship_loader_options()
         if loader_options:
             query = query.options(*loader_options)

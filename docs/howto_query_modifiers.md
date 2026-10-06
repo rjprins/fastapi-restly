@@ -224,8 +224,9 @@ class UserView(fr.AsyncRestView):
     pagination = None
 ```
 
-The pagination's `envelope` setting replaces the envelope model: rename its
-fields, drop some, or nest them.
+`None` is short for `fr.NoPagination()`. The pagination's `envelope` setting
+replaces the envelope model: rename its fields, drop some, or nest them.
+`fr.NoPagination(envelope=...)` does the same for a view without pagination.
 [Response Envelopes and List Metadata](howto_response_schema.md#change-the-list-envelope)
 is canonical for the envelope's shape.
 

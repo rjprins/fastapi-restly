@@ -43,7 +43,9 @@ class PagedTicketView(fr.AsyncRestView):
     model = Ticket
     schema = TicketRead
     # annotated, so mypy lets a subclass turn pagination off
-    pagination: ClassVar[fr.NumberedPagination | None] = APP_PAGINATION
+    pagination: ClassVar[fr.NumberedPagination | fr.NoPagination | None] = (
+        APP_PAGINATION
+    )
 
 
 class SmallPagedTicketView(PagedTicketView):
@@ -52,3 +54,7 @@ class SmallPagedTicketView(PagedTicketView):
 
 class AllTicketView(PagedTicketView):
     pagination = None
+
+
+class ExportTicketView(PagedTicketView):
+    pagination = fr.NoPagination().replace(envelope=fr.views.Envelope)

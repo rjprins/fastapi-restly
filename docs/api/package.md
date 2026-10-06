@@ -32,6 +32,7 @@ through `fr`.
 | {class}`fr.ListingResult <fastapi_restly.views.ListingResult>` | Listing objects, total count, and query parameters before response serialization. |
 | {class}`fr.MustExist <fastapi_restly.schemas.MustExist>` | Scalar foreign-key annotation that checks the referenced row exists. |
 | {func}`fr.none_of <fastapi_restly.clauses.none_of>` | Negate a group of query clauses. |
+| {class}`fr.NoPagination <fastapi_restly.views.NoPagination>` | Settings for a view's `pagination` that returns every row, with a custom envelope. |
 | {class}`fr.NumberedPagination <fastapi_restly.views.NumberedPagination>` | Page-number pagination settings for a view's `pagination`. |
 | {func}`fr.open_async_session <fastapi_restly.db.open_async_session>` | Open an async session outside request handling. |
 | {func}`fr.open_session <fastapi_restly.db.open_session>` | Open a synchronous session outside request handling. |

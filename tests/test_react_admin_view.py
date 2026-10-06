@@ -832,9 +832,11 @@ def test_sync_react_admin_list_runs_the_handler_domain_and_response_seams(sync_c
     assert response.headers["Content-Range"].endswith("/11")
 
 
-def test_react_admin_view_cannot_disable_pagination(client):
+@pytest.mark.parametrize("unpaginated", [None, fr.NoPagination()])
+def test_react_admin_view_cannot_disable_pagination(client, unpaginated):
     """A react-admin view reports its total via Content-Range, which needs the
-    count query, so ``pagination = None`` is rejected at registration."""
+    count query, so ``pagination = None`` or a ``NoPagination`` is rejected at
+    registration."""
 
     class Gadget(fr.IDBase):
         name: Mapped[str]
@@ -849,4 +851,4 @@ def test_react_admin_view_cannot_disable_pagination(client):
             prefix = "/gadgets"
             model = Gadget
             schema = GadgetSchema
-            pagination = None
+            pagination = unpaginated

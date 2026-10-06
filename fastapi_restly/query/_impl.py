@@ -27,7 +27,7 @@ from sqlalchemy.orm.properties import ColumnProperty
 from sqlalchemy.orm.util import AliasedClass
 from starlette.datastructures import QueryParams
 
-from .._pagination import _SORT_QUERY_PARAM, NumberedPagination
+from .._pagination import _SORT_QUERY_PARAM, NoPagination, NumberedPagination
 from ..exc import BadQueryParam
 from ..schemas._base import (
     IDRef,
@@ -49,7 +49,9 @@ _DEFAULT_PAGINATION = NumberedPagination()
 _MAX_PAGINATION_OFFSET = 2**63 - 1
 
 
-def _reserved_names(pagination: NumberedPagination | None) -> frozenset[str]:
+def _reserved_names(
+    pagination: NumberedPagination | NoPagination | None,
+) -> frozenset[str]:
     """Query parameters the schema produces besides filters.
 
     A filter column whose public name is one of these would shadow pagination
@@ -57,7 +59,7 @@ def _reserved_names(pagination: NumberedPagination | None) -> frozenset[str]:
     hard error.
     """
     names = {_SORT_QUERY_PARAM}
-    if pagination is not None:
+    if isinstance(pagination, NumberedPagination):
         names |= {pagination.page_query_param, pagination.page_size_query_param}
     return frozenset(names)
 
@@ -180,7 +182,7 @@ def create_list_params_schema(
     schema_cls: SchemaType,
     model: type[DeclarativeBase],
     *,
-    pagination: NumberedPagination | None = _DEFAULT_PAGINATION,
+    pagination: NumberedPagination | NoPagination | None = _DEFAULT_PAGINATION,
 ) -> SchemaType:
     """
     Create a Pydantic model that describes and validates URL query parameters
@@ -204,20 +206,20 @@ def create_list_params_schema(
     bounds: the page at least 1 and at most ``max_page`` when set, the page
     size from 1 to ``max_page_size``. The resulting SQL offset must also fit in
     a signed 64-bit integer. Out-of-range values produce a standard 422
-    response from FastAPI. With ``pagination=None``, no pagination parameters
-    are emitted at all -- the endpoint returns every matching row -- while
-    sorting and filtering stay available.
+    response from FastAPI. With a :class:`~fastapi_restly.views.NoPagination`
+    or ``None``, no pagination parameters are emitted at all -- the endpoint
+    returns every matching row -- while sorting and filtering stay available.
 
     :param schema_cls: The response schema whose fields drive the available
         filter parameters.
     :param model: The SQLAlchemy model the list endpoint queries. Used to verify
         each field resolves to a filterable column; non-column fields are
         omitted from the generated params.
-    :param pagination: The view's pagination settings, or ``None`` for an
-        unpaginated view, which returns the full result set.
+    :param pagination: The view's pagination settings. A ``NoPagination`` or
+        ``None`` is an unpaginated view, which returns the full result set.
     """
     fields: dict[str, Any] = {}
-    if pagination is not None:
+    if isinstance(pagination, NumberedPagination):
         page_description = "1-based page number."
         if pagination.max_page is not None:
             page_description += f" At most {pagination.max_page}."
@@ -369,7 +371,7 @@ def create_list_params_schema(
     schema_name = "ListParams" + schema_cls.__name__
     validators = (
         {"_validate_pagination_offset": _pagination_offset_validator(pagination)}
-        if pagination is not None
+        if isinstance(pagination, NumberedPagination)
         else {}
     )
     return pydantic.create_model(  # type: ignore[call-overload]
@@ -383,7 +385,7 @@ def apply_list_params(
     model: type[DeclarativeBase],
     schema_cls: SchemaType,
     *,
-    pagination: NumberedPagination | None = _DEFAULT_PAGINATION,
+    pagination: NumberedPagination | NoPagination | None = _DEFAULT_PAGINATION,
 ) -> Select[Any]:
     """
     Apply pagination, sorting, and filtering on a SQL query using validated
@@ -402,7 +404,8 @@ def apply_list_params(
 
     ``pagination`` names the page and page-size parameters to read; pass the
     view's own, as the default ``apply_query_params`` does. The default reads
-    ``page`` and ``page_size``. ``None`` applies no ``LIMIT``/``OFFSET``.
+    ``page`` and ``page_size``. A ``NoPagination`` or ``None`` applies no
+    ``LIMIT``/``OFFSET``.
 
     Examples::
 
@@ -431,7 +434,7 @@ def apply_list_params(
     select_query = _apply_sorting(
         query_params, select_query, model, schema_cls, aliases=aliases
     )
-    if pagination is not None:
+    if isinstance(pagination, NumberedPagination):
         select_query = _apply_pagination(query_params, select_query, pagination)
     return select_query
 

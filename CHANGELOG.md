@@ -217,6 +217,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   serves contracts such as fastapi-pagination's
   `items`/`total`/`page`/`size`/`pages` or camelCase metadata, with the
   response and OpenAPI in sync.
+- `fr.NoPagination(envelope=...)` sets the list envelope of a view that
+  returns every row. It is filled from `data` and `total_count`, the number of
+  rows, so a `{data, count}` envelope works without pagination too, and a
+  generic `RootModel` makes the list a bare JSON array. `pagination = None`
+  stays the short form of `NoPagination()`.
 - `fr.ContextNamespace` and `fr.ContextParam` support an application-defined
   `Current` context, with manual and FastAPI dependency binding.
 - Reusable query predicates through `fr.where_clause`, boolean composition,

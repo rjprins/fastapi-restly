@@ -82,10 +82,12 @@ ReadScope = WhereClause | Unscoped | None
 _ReadWhere = ColumnElement[bool] | WhereClause | Unscoped | None
 from .._mapping import is_mapped_class, is_mapped_instance
 from .._pagination import (
+    NoPagination,
     NumberedPagination,
     _build_envelope,
     _listing_envelope,
     _numbered_page_info,
+    _unpaginated_page_info,
 )
 from ..db._globals import _fr_globals
 from ..exc import RestlyConfigurationError, RestlyMisuseWarning
@@ -1229,14 +1231,17 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     #: takes ``page`` / ``page_size`` query parameters, runs the count query,
     #: and wraps the list in its ``envelope`` (:class:`PaginatedEnvelope`:
     #: ``data`` plus ``total_count`` / ``page`` / ``page_size`` /
-    #: ``total_pages``). ``None`` returns every matching row in a plain
-    #: :class:`Envelope` (``data`` only) with no count. A view inherits it, so a
-    #: project base view sets it once; a view that differs changes one setting
-    #: with :meth:`NumberedPagination.replace` on the shared settings. For a
-    #: bare array or another shape no envelope model can express, replace
+    #: ``total_pages``). A :class:`NoPagination` returns every matching row
+    #: with no count, in its ``envelope``; ``None`` is short for
+    #: ``NoPagination()``, a plain :class:`Envelope` (``data`` only). A view
+    #: inherits it, so a project base view sets it once; a view that differs
+    #: changes one setting with ``replace()`` on the shared settings. For a
+    #: shape no envelope model can express, such as a header, replace
     #: ``get_many_endpoint`` with a matching ``response_model`` (see
     #: :class:`AsyncReactAdminView`).
-    pagination: ClassVar[NumberedPagination | None] = NumberedPagination()
+    pagination: ClassVar[NumberedPagination | NoPagination | None] = (
+        NumberedPagination()
+    )
     #: The listing grammar (filter, sort, page) as a pydantic model, generated
     #: from ``schema`` and ``model``. Any route method on the view that declares
     #: a ``query_params`` parameter takes it: typed for FastAPI and OpenAPI, and
@@ -1332,15 +1337,18 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                         )
                     )
         pagination = cls.pagination
-        if not (pagination is None or isinstance(pagination, NumberedPagination)):
+        if not (
+            pagination is None
+            or isinstance(pagination, (NumberedPagination, NoPagination))
+        ):
             hint = (
-                " Create an instance: fr.NumberedPagination()."
-                if pagination is NumberedPagination
+                f" Create an instance: fr.{pagination.__name__}()."
+                if pagination in (NumberedPagination, NoPagination)
                 else ""
             )
             raise RestlyConfigurationError(
-                f"{cls.__name__}.pagination must be a fr.NumberedPagination "
-                f"instance or None, got {pagination!r}.{hint}"
+                f"{cls.__name__}.pagination must be a fr.NumberedPagination or "
+                f"fr.NoPagination instance, or None, got {pagination!r}.{hint}"
             )
 
     def _apply_scope(self, query: Select[Any], scope: ReadScope) -> Select[Any]:
@@ -1477,21 +1485,21 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     ) -> Any:
         """Build the list response body: an instance of the envelope model.
 
-        A paginated view fills its :attr:`pagination`'s ``envelope`` (by
-        default :class:`PaginatedEnvelope`: ``data`` plus ``total_count`` /
-        ``page`` / ``page_size`` / ``total_pages``); an unpaginated one returns
-        an :class:`Envelope` (``data`` only). The route's ``response_model`` is
+        The view fills its :attr:`pagination`'s ``envelope``: by default a
+        :class:`PaginatedEnvelope` (``data`` plus ``total_count`` / ``page`` /
+        ``page_size`` / ``total_pages``), or an :class:`Envelope` (``data``
+        only) for a view without pagination. The route's ``response_model`` is
         the same envelope, fixed from :attr:`pagination` at registration. To
-        change the shape, set the pagination's ``envelope``. For a bare array
-        or a ``Content-Range`` header, replace ``get_many_endpoint`` with a
-        matching ``response_model`` (as :class:`AsyncReactAdminView` does), not
-        by overriding this method alone, which would fail response validation.
+        change the shape, set the pagination's ``envelope``. For a
+        ``Content-Range`` header, replace ``get_many_endpoint`` with a matching
+        ``response_model`` (as :class:`AsyncReactAdminView` does), not by
+        overriding this method alone, which would fail response validation.
         """
         data = [self.to_response_schema(obj) for obj in listing_result.objects]
         pagination = self.pagination
         envelope = _listing_envelope(pagination, self.schema)
-        if pagination is None:
-            return _build_envelope(envelope, {"data": data})
+        if not isinstance(pagination, NumberedPagination):
+            return _build_envelope(envelope, _unpaginated_page_info(data))
         params = self._to_query_params(query_params)
         page_info = _numbered_page_info(
             total_count=listing_result.total_count or 0,

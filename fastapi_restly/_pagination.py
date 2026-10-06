@@ -1,8 +1,8 @@
 """List pagination settings and the list response envelopes.
 
 A view's :attr:`~fastapi_restly.views.BaseRestView.pagination` holds a
-:class:`NumberedPagination`, or ``None`` for a view that returns every row.
-The names are public through :mod:`fastapi_restly.views` and the package
+:class:`NumberedPagination`, or a :class:`NoPagination` (``None`` for short)
+for a view that returns every row. The names are public through :mod:`fastapi_restly.views` and the package
 root; the page-size constants through :mod:`fastapi_restly.query`.
 """
 
@@ -36,9 +36,9 @@ DataT = TypeVar("DataT")
 class Envelope(pydantic.BaseModel, Generic[DataT]):
     """List response wrapper: ``{"data": [...]}``.
 
-    The response shape for a view that returns every row
-    (``pagination = None``). A paginated view uses its pagination's
-    ``envelope``, :class:`PaginatedEnvelope` by default.
+    The default ``envelope`` of :class:`NoPagination`, for a view that returns
+    every row. A paginated view uses its pagination's ``envelope``,
+    :class:`PaginatedEnvelope` by default.
     """
 
     data: Sequence[DataT]
@@ -117,7 +117,9 @@ class NumberedPagination:
             page_query_param=self.page_query_param,
             page_size_query_param=self.page_size_query_param,
         )
-        _check_envelope(self.envelope, _numbered_page_info_sample())
+        _check_envelope(
+            "NumberedPagination", self.envelope, _numbered_page_info_sample()
+        )
 
     def replace(self, **changes: Any) -> Self:
         """A copy with ``changes`` applied, checked like a new instance.
@@ -126,6 +128,34 @@ class NumberedPagination:
 
             pagination = APP_PAGINATION.replace(max_page_size=10)
         """
+        return dataclasses.replace(self, **changes)
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class NoPagination:
+    """No pagination: a list returns every matching row and runs no count
+    query.
+
+    ``pagination = None`` is the short form of ``NoPagination()``. Set an
+    instance to choose the list response model::
+
+        class TagView(fr.AsyncRestView):
+            pagination = fr.NoPagination(envelope=DataCount)
+
+    ``envelope`` works as for :class:`NumberedPagination`, and Restly fills it
+    by name from ``data`` and ``total_count``, the number of rows. A generic
+    ``pydantic.RootModel`` over the items whose before-validator returns
+    ``data`` makes the list a bare JSON array.
+    """
+
+    #: The list response model. :class:`Envelope` by default.
+    envelope: type[pydantic.BaseModel] = Envelope
+
+    def __post_init__(self) -> None:
+        _check_envelope("NoPagination", self.envelope, _unpaginated_page_info([]))
+
+    def replace(self, **changes: Any) -> Self:
+        """A copy with ``changes`` applied, checked like a new instance."""
         return dataclasses.replace(self, **changes)
 
 
@@ -146,11 +176,18 @@ def _numbered_page_info_sample() -> dict[str, Any]:
     return {"data": [], **_numbered_page_info(total_count=0, page=1, page_size=1)}
 
 
+def _unpaginated_page_info(data: list[Any]) -> dict[str, Any]:
+    """What a :class:`NoPagination` envelope is filled from: every row is on
+    the one page, so the total is the number of rows."""
+    return {"data": data, "total_count": len(data)}
+
+
 def _listing_envelope(
-    pagination: NumberedPagination | None, item_schema: type[pydantic.BaseModel]
+    pagination: NumberedPagination | NoPagination | None,
+    item_schema: type[pydantic.BaseModel],
 ) -> type[pydantic.BaseModel]:
     """The list response model of a view: its pagination's envelope, or
-    :class:`Envelope` without pagination, parametrized with the item schema.
+    :class:`Envelope` for ``None``, parametrized with the item schema.
     Pydantic caches the parametrized class, so every call returns the same
     one."""
     envelope: Any = Envelope if pagination is None else pagination.envelope
@@ -199,17 +236,16 @@ def _check_query_params(**params: Any) -> None:
         )
 
 
-def _check_envelope(envelope: Any, page_info: dict[str, Any]) -> None:
+def _check_envelope(owner: str, envelope: Any, page_info: dict[str, Any]) -> None:
     if not (isinstance(envelope, type) and issubclass(envelope, pydantic.BaseModel)):
         raise RestlyConfigurationError(
-            f"NumberedPagination.envelope must be a Pydantic model class, "
-            f"got {envelope!r}."
+            f"{owner}.envelope must be a Pydantic model class, got {envelope!r}."
         )
     generic = envelope.__pydantic_generic_metadata__
     if generic["origin"] is not None or len(generic["parameters"]) != 1:
         raise RestlyConfigurationError(
-            f"NumberedPagination.envelope must be a generic Pydantic model with "
-            f"one type parameter for the items, such as "
+            f"{owner}.envelope must be a generic Pydantic model with one type "
+            "parameter for the items, such as "
             f"'class Page(BaseModel, Generic[T])', got {envelope.__name__}."
         )
     try:
@@ -221,7 +257,7 @@ def _check_envelope(envelope: Any, page_info: dict[str, Any]) -> None:
             for error in exc.errors(include_url=False)
         )
         raise RestlyConfigurationError(
-            f"NumberedPagination.envelope {envelope.__name__} cannot be filled "
+            f"{owner}.envelope {envelope.__name__} cannot be filled "
             f"from the page info ({', '.join(page_info)}): {problems}. Name each "
             "field after one of these values, rename it on the wire with an "
             "alias, or give it a default."

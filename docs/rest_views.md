@@ -181,7 +181,7 @@ Configure the class according to the contract the resource needs:
 | Different create or update validation | Declare {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` or {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` |
 | A different type for the `{id}` path parameter | Set {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` |
 | Read-only or otherwise restricted routes | Set {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` with `fr.ViewRoute` values |
-| Disable pagination | Set {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` to `None` |
+| Disable pagination | Set {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` to `None`, or to a {class}`NoPagination <fastapi_restly.views.NoPagination>` to choose its envelope |
 | Change page limits, parameter names, or the list envelope | Set {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` to a {class}`NumberedPagination <fastapi_restly.views.NumberedPagination>` |
 | Accept a view-specific list query key | Declare it on the endpoint method or in a dependency, or add it to {attr}`extra_query_params <fastapi_restly.views.BaseRestView.extra_query_params>` when code reads it from the request |
 | Apply FastAPI metadata or dependencies to every route | Set {attr}`tags <fastapi_restly.views.View.tags>`, {attr}`responses <fastapi_restly.views.View.responses>`, or {attr}`dependencies <fastapi_restly.views.View.dependencies>` |
