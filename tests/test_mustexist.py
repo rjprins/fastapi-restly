@@ -563,15 +563,15 @@ def test_mustexist_with_read_only_relationship_keeps_foreign_key(sync_db):
         writer_id: Mapped[int] = mapped_column(ForeignKey("writer.id"))
         writer: Mapped[Writer] = relationship(init=False)
 
-    class WriterRead(fr.IDSchema):
+    class WriterSchema(fr.IDSchema):
         name: str
 
-    class BookRead(fr.IDSchema):
+    class BookSchema(fr.IDSchema):
         title: str
         writer_id: fr.MustExist[int, Writer]
-        writer: fr.ReadOnly[WriterRead]
+        writer: fr.ReadOnly[WriterSchema]
 
-    BookCreate = create_model_without_read_only_fields(BookRead)
+    BookCreate = create_model_without_read_only_fields(BookSchema)
 
     fr.DataclassBase.metadata.create_all(engine)
 

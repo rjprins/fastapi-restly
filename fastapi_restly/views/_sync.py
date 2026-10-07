@@ -47,7 +47,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
 
         class FooView(RestView):
             prefix = "/foo"
-            schema = FooRead
+            schema = FooSchema
             model = Foo
 
     Each verb is three tiers (see "Customizing RestView" in the docs):

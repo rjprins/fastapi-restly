@@ -20,19 +20,19 @@ def test_subclass_serves_the_schema_its_base_view_declares(view_base):
         name: Mapped[str]
         secret: Mapped[str]
 
-    class RecRead(fr.IDSchema):
+    class RecSchema(fr.IDSchema):
         name: str
 
     class Base(view_base):
         model = Rec
-        schema = RecRead
+        schema = RecSchema
 
     class Sub(Base):
         prefix = "/recs"
 
     fr.include_view(FastAPI(), Sub)
 
-    assert Sub.schema is RecRead
+    assert Sub.schema is RecSchema
     assert set(Sub.schema_create.model_fields) == {"name"}
     assert set(Sub.schema_update.model_fields) == {"name"}
     assert "schema" not in Sub.__dict__
@@ -43,12 +43,12 @@ def test_undeclared_column_does_not_leak_through_a_subclass(client):
         name: Mapped[str]
         secret: Mapped[str] = mapped_column(default="hidden")
 
-    class AccountRead(fr.IDSchema):
+    class AccountSchema(fr.IDSchema):
         name: str
 
     class Base(fr.AsyncRestView):
         model = Account
-        schema = AccountRead
+        schema = AccountSchema
 
     @fr.include_view(client.app)
     class AccountView(Base):
@@ -65,7 +65,7 @@ def test_declared_write_schemas_are_inherited():
         name: Mapped[str]
         note: Mapped[str]
 
-    class RecRead(fr.IDSchema):
+    class RecSchema(fr.IDSchema):
         name: str
         note: str
 
@@ -77,7 +77,7 @@ def test_declared_write_schemas_are_inherited():
 
     class Base(fr.AsyncRestView):
         model = Rec
-        schema = RecRead
+        schema = RecSchema
         schema_create = RecCreate
         schema_update = RecUpdate
 
@@ -95,7 +95,7 @@ def test_redeclaring_schema_rebuilds_the_write_schemas_a_parent_declared():
         name: Mapped[str]
         note: Mapped[str]
 
-    class RecRead(fr.IDSchema):
+    class RecSchema(fr.IDSchema):
         name: str
 
     class RecCreate(fr.BaseSchema):
@@ -103,7 +103,7 @@ def test_redeclaring_schema_rebuilds_the_write_schemas_a_parent_declared():
 
     class Base(fr.AsyncRestView):
         model = Rec
-        schema = RecRead
+        schema = RecSchema
         schema_create = RecCreate
 
     class WithNote(fr.IDSchema):
@@ -150,13 +150,13 @@ def test_subclass_page_size_rebuilds_the_generated_list_params():
     class Rec(fr.IDBase):
         name: Mapped[str]
 
-    class RecRead(fr.IDSchema):
+    class RecSchema(fr.IDSchema):
         name: str
 
     class Base(fr.AsyncRestView):
         prefix = "/recs"
         model = Rec
-        schema = RecRead
+        schema = RecSchema
 
     app = FastAPI()
     fr.include_view(app, Base)

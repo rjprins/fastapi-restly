@@ -225,14 +225,14 @@ def test_is_writeonly_field():
 def test_create_model_without_read_only_fields():
     """Test that create_model_without_read_only_fields removes ReadOnly fields."""
 
-    class TestRead(BaseSchema):
+    class TestSchema(BaseSchema):
         id: ReadOnly[int]
         name: str
         email: str
         created_at: ReadOnly[datetime]
 
     # Create a model without read-only fields
-    TestCreate = create_model_without_read_only_fields(TestRead)
+    TestCreate = create_model_without_read_only_fields(TestSchema)
 
     # Check that the new model has the role-suffixed contract name.
     assert TestCreate.__name__ == "TestCreate"
@@ -254,14 +254,14 @@ def test_create_model_without_read_only_fields():
 def test_create_model_with_optional_fields():
     """Test that create_model_with_optional_fields makes fields optional."""
 
-    class TestRead(BaseSchema):
+    class TestSchema(BaseSchema):
         id: ReadOnly[int]
         name: str
         email: str
         created_at: ReadOnly[datetime]
 
     # Create a model with optional fields
-    TestUpdate = create_model_with_optional_fields(TestRead)
+    TestUpdate = create_model_with_optional_fields(TestSchema)
 
     # Check that the new model has the role-suffixed contract name.
     assert TestUpdate.__name__ == "TestUpdate"
@@ -285,11 +285,11 @@ def test_create_model_with_optional_fields():
     assert schema_update.email == "updated@example.com"
 
 
-def test_generated_request_schema_names_use_resource_role_suffixes():
-    class UserRead(BaseSchema):
+def test_generated_request_schema_names_drop_a_final_schema_or_response():
+    class UserSchema(BaseSchema):
         name: str
 
-    class TeamSchema(BaseSchema):
+    class TeamResponse(BaseSchema):
         name: str
 
     class ProjectBase(BaseSchema):
@@ -298,11 +298,19 @@ def test_generated_request_schema_names_use_resource_role_suffixes():
     class Label(BaseSchema):
         name: str
 
+    class UserRead(BaseSchema):
+        name: str
+
+    class Schema(BaseSchema):
+        name: str
+
     for schema_cls, create_name, update_name in (
-        (UserRead, "UserCreate", "UserUpdate"),
-        (TeamSchema, "TeamSchemaCreate", "TeamSchemaUpdate"),
+        (UserSchema, "UserCreate", "UserUpdate"),
+        (TeamResponse, "TeamCreate", "TeamUpdate"),
         (ProjectBase, "ProjectBaseCreate", "ProjectBaseUpdate"),
         (Label, "LabelCreate", "LabelUpdate"),
+        (UserRead, "UserReadCreate", "UserReadUpdate"),
+        (Schema, "SchemaCreate", "SchemaUpdate"),
     ):
         assert create_model_without_read_only_fields(schema_cls).__name__ == create_name
         assert create_model_with_optional_fields(schema_cls).__name__ == update_name

@@ -11,16 +11,16 @@ class Task(fr.IDBase):
     title: Mapped[str]
 
 
-class TaskRead(fr.IDSchema):
+class TaskSchema(fr.IDSchema):
     title: str
 
 
-class TaskView(fr.AsyncRestView[Task, TaskRead, TaskRead, TaskRead, int]):
+class TaskView(fr.AsyncRestView[Task, TaskSchema, TaskSchema, TaskSchema, int]):
     prefix = "/tasks"
     model = Task
-    schema = TaskRead
+    schema = TaskSchema
 
 
 async def create_task(session: AsyncSession, request: Request) -> Task:
     view = TaskView(session=session, request=request)
-    return await view.handle_create(TaskRead(id=0, title="a"))
+    return await view.handle_create(TaskSchema(id=0, title="a"))

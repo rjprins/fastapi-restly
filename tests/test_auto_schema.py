@@ -47,7 +47,7 @@ def test_auto_generated_schema_in_view(client):
         model = User
         # No schema specified - should be auto-generated!
 
-    assert UserView.schema.__name__ == "UserRead"
+    assert UserView.schema.__name__ == "UserSchema"
     assert UserView.schema_create.__name__ == "UserCreate"
     assert UserView.schema_update.__name__ == "UserUpdate"
 
@@ -264,10 +264,9 @@ def test_derive_schema_preserves_json_dict_types():
     assert schema.model_fields["payload"].annotation is dict
 
 
-def test_derive_schema_defaults_to_read_schema_name():
+def test_derive_schema_names_the_class_after_the_model():
     class Report(fr.IDBase):
         title: Mapped[str]
 
-    schema = fr_schemas.derive_schema(Report)
-
-    assert schema.__name__ == "ReportRead"
+    assert fr_schemas.derive_schema(Report).__name__ == "ReportSchema"
+    assert fr_schemas.derive_schema(Report, name="Summary").__name__ == "Summary"

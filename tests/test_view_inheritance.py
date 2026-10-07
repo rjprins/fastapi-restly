@@ -411,7 +411,7 @@ def test_subclass_can_override_the_restly_session_dependency():
     class Report(fr.IDBase):
         title: Mapped[str]
 
-    class ReportRead(fr.IDSchema):
+    class ReportSchema(fr.IDSchema):
         title: str
 
     app = FastAPI()
@@ -420,7 +420,7 @@ def test_subclass_can_override_the_restly_session_dependency():
     class ReportView(fr.RestView):
         prefix = "/reports"
         model = Report
-        schema = ReportRead
+        schema = ReportSchema
         session: Annotated[Session, Depends(get_reporting_db)]
 
     try:

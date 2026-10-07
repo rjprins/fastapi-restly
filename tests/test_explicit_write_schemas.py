@@ -30,7 +30,7 @@ class _Models:
     Story: Any
     Comment: Any
     # ``story_id`` and ``note`` are ReadOnly, ``story`` a ReadOnly nested object.
-    CommentRead: Any
+    CommentSchema: Any
     # The same, with ``story`` a plain nested object.
     CommentReadNested: Any
     CommentCreate: Any
@@ -49,19 +49,19 @@ def _models() -> _Models:
         story: Mapped[Story] = relationship(default=None)
         note: Mapped[str | None] = mapped_column(default=None)
 
-    class StoryRead(fr.IDSchema):
+    class StorySchema(fr.IDSchema):
         title: str
 
-    class CommentRead(fr.IDSchema):
+    class CommentSchema(fr.IDSchema):
         body: str
         story_id: fr.ReadOnly[int]
         note: fr.ReadOnly[str | None] = None
-        story: fr.ReadOnly[StoryRead]
+        story: fr.ReadOnly[StorySchema]
 
     class CommentReadNested(fr.IDSchema):
         body: str
         story_id: fr.ReadOnly[int]
-        story: StoryRead
+        story: StorySchema
 
     class CommentCreate(fr.BaseSchema):
         body: str
@@ -84,7 +84,7 @@ def _models() -> _Models:
     return _Models(
         Story=Story,
         Comment=Comment,
-        CommentRead=CommentRead,
+        CommentSchema=CommentSchema,
         CommentReadNested=CommentReadNested,
         CommentCreate=CommentCreate,
         CommentCreateByRef=CommentCreateByRef,
@@ -122,7 +122,7 @@ def api(request: pytest.FixtureRequest) -> Iterator[_Api]:
             {
                 "prefix": "/comments",
                 "model": models.Comment,
-                "schema": models.CommentRead,
+                "schema": models.CommentSchema,
                 **comment_view_attrs,
             },
         )
@@ -177,7 +177,7 @@ def test_explicit_update_field_is_written(api):
     assert client.get(f"/comments/{created['id']}").json()["note"] == "edited"
 
 
-@pytest.mark.parametrize("read", ["CommentRead", "CommentReadNested"])
+@pytest.mark.parametrize("read", ["CommentSchema", "CommentReadNested"])
 def test_reference_the_response_embeds_is_written(api, read):
     client = api.make_client(
         schema=getattr(api.models, read), schema_create=api.models.CommentCreateByRef
@@ -361,7 +361,7 @@ def test_objects_skip_the_payload_schemas_readonly_fields(run_objects):
         # A read schema as the payload: its ReadOnly fields are not written.
         await objects.update(
             comment,
-            models.CommentRead.model_construct(
+            models.CommentSchema.model_construct(
                 _fields_set={"body", "story_id", "note"},
                 body="edited",
                 story_id=2,

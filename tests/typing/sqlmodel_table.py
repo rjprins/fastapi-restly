@@ -13,22 +13,22 @@ class Item(SQLModel, table=True):
     title: str
 
 
-class ItemRead(fr.IDSchema):
+class ItemSchema(fr.IDSchema):
     title: str
 
 
 @fr.include_view(app)
-class ItemView(fr.AsyncRestView[Item, ItemRead, ItemRead, ItemRead, int]):
+class ItemView(fr.AsyncRestView[Item, ItemSchema, ItemSchema, ItemSchema, int]):
     prefix = "/items"
     model = Item
-    schema = ItemRead
+    schema = ItemSchema
 
 
 @fr.include_view(app)
 class BareItemView(fr.AsyncRestView):
     prefix = "/bare-items"
     model = Item
-    schema = ItemRead
+    schema = ItemSchema
 
 
 class Team(SQLModel, table=True):
@@ -42,7 +42,7 @@ class Hero(SQLModel, table=True):
     team_id: int | None = Field(default=None, foreign_key="team.id")
 
 
-class HeroRead(fr.IDSchema[Hero]):
+class HeroSchema(fr.IDSchema[Hero]):
     name: str
     team: fr.IDRef[Team] | None = None
     team_id: fr.MustExist[int, Team] | None = None
@@ -50,7 +50,7 @@ class HeroRead(fr.IDSchema[Hero]):
 
 
 @fr.include_view(app)
-class HeroView(fr.AsyncRestView[Hero, HeroRead, HeroRead, HeroRead, int]):
+class HeroView(fr.AsyncRestView[Hero, HeroSchema, HeroSchema, HeroSchema, int]):
     prefix = "/heroes"
     model = Hero
-    schema = HeroRead
+    schema = HeroSchema

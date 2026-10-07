@@ -66,11 +66,11 @@ def test_idschema_accepts_uuid_relation_ids(client):
         author_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("uuid_author.id"))
         author: Mapped[Author] = relationship()
 
-    class AuthorRead(fr.BaseSchema):
+    class AuthorSchema(fr.BaseSchema):
         id: fr.ReadOnly[UUID]
         name: str
 
-    class ArticleRead(fr.IDSchema):
+    class ArticleSchema(fr.IDSchema):
         title: str
         author_id: fr.IDSchema[Author]
 
@@ -78,14 +78,14 @@ def test_idschema_accepts_uuid_relation_ids(client):
     class AuthorView(fr.AsyncRestView):
         prefix = "/uuid-authors"
         model = Author
-        schema = AuthorRead
+        schema = AuthorSchema
         id_type = UUID
 
     @fr.include_view(client.app)
     class ArticleView(fr.AsyncRestView):
         prefix = "/uuid-articles"
         model = Article
-        schema = ArticleRead
+        schema = ArticleSchema
 
     create_tables()
 
@@ -141,11 +141,11 @@ def _uuid_thing():
         )
         name: Mapped[str]
 
-    class UuidThingRead(fr.BaseSchema):
+    class UuidThingSchema(fr.BaseSchema):
         id: fr.ReadOnly[UUID]
         name: str
 
-    return UuidThing, UuidThingRead
+    return UuidThing, UuidThingSchema
 
 
 def _pk_case(kind):
@@ -155,10 +155,10 @@ def _pk_case(kind):
         class IntThing(fr.IDBase):
             name: Mapped[str]
 
-        class IntThingRead(fr.IDSchema):
+        class IntThingSchema(fr.IDSchema):
             name: str
 
-        return IntThing, IntThingRead, {"name": "a"}, "abc", {"type": "integer"}
+        return IntThing, IntThingSchema, {"name": "a"}, "abc", {"type": "integer"}
     if kind == "uuid":
         uuid_model, uuid_schema = _uuid_thing()
         return (
@@ -173,11 +173,17 @@ def _pk_case(kind):
         id: Mapped[str] = mapped_column(primary_key=True)
         name: Mapped[str]
 
-    class StrThingRead(fr.BaseSchema):
+    class StrThingSchema(fr.BaseSchema):
         id: str
         name: str
 
-    return StrThing, StrThingRead, {"id": "lamp", "name": "a"}, None, {"type": "string"}
+    return (
+        StrThing,
+        StrThingSchema,
+        {"id": "lamp", "name": "a"},
+        None,
+        {"type": "string"},
+    )
 
 
 def _id_schema(openapi, path, method):
@@ -223,14 +229,14 @@ def test_id_parameter_follows_a_primary_key_with_another_name(flavor):
         code: Mapped[str] = mapped_column(primary_key=True)
         name: Mapped[str]
 
-    class SkuRead(fr.BaseSchema):
+    class SkuSchema(fr.BaseSchema):
         code: str
         name: str
 
     class SkuView(flavor.base):
         prefix = "/skus"
         model = Sku
-        schema = SkuRead
+        schema = SkuSchema
 
     fr.include_view(flavor.client.app, SkuView)
     flavor.make_tables()
@@ -242,12 +248,12 @@ def test_id_parameter_follows_a_primary_key_with_another_name(flavor):
 
 
 def test_react_admin_put_takes_the_primary_key_type(flavor):
-    Thing, ThingRead = _uuid_thing()
+    Thing, ThingSchema = _uuid_thing()
 
     class ThingView(flavor.react_admin_base):
         prefix = "/things"
         model = Thing
-        schema = ThingRead
+        schema = ThingSchema
 
     fr.include_view(flavor.client.app, ThingView)
     flavor.make_tables()
@@ -262,12 +268,12 @@ def test_react_admin_put_takes_the_primary_key_type(flavor):
 
 def test_replaced_endpoint_on_a_uuid_model_accepts_a_uuid(flavor):
     """The reported case: a replaced endpoint annotated ``id: UUID``."""
-    Thing, ThingRead = _uuid_thing()
+    Thing, ThingSchema = _uuid_thing()
 
     class ThingView(flavor.base):
         prefix = "/things"
         model = Thing
-        schema = ThingRead
+        schema = ThingSchema
 
         if flavor.asynchronous:
 
@@ -320,12 +326,12 @@ def test_subclass_of_registered_view_derives_its_own_id_type(flavor):
 
     fr.include_view(FastAPI(), ThingView)
 
-    Gadget, GadgetRead = _uuid_thing()
+    Gadget, GadgetSchema = _uuid_thing()
 
     class GadgetView(ThingView):
         prefix = "/gadgets"
         model = Gadget
-        schema = GadgetRead
+        schema = GadgetSchema
 
     fr.include_view(flavor.client.app, GadgetView)
     flavor.make_tables()
@@ -344,7 +350,7 @@ def test_composite_primary_key_keeps_the_int_id(base):
         n: Mapped[int] = mapped_column(primary_key=True)
         name: Mapped[str]
 
-    class PairRead(fr.BaseSchema):
+    class PairSchema(fr.BaseSchema):
         code: str
         n: int
         name: str
@@ -352,7 +358,7 @@ def test_composite_primary_key_keeps_the_int_id(base):
     class PairView(base):
         prefix = "/pairs"
         model = Pair
-        schema = PairRead
+        schema = PairSchema
 
     app = FastAPI()
     fr.include_view(app, PairView)

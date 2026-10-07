@@ -16,12 +16,12 @@ def base(request):
     class Item(fr.IDBase):
         name: Mapped[str]
 
-    class ItemRead(fr.IDSchema):
+    class ItemSchema(fr.IDSchema):
         name: str
 
     class ItemBase(request.param):
         model = Item
-        schema = ItemRead
+        schema = ItemSchema
 
     return ItemBase
 

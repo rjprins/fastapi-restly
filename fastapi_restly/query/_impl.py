@@ -38,6 +38,7 @@ from ..exc import BadQueryParam
 from ..schemas._base import (
     IDRef,
     IDSchema,
+    _schema_role_name,
     _unwrap_optional_annotation,
     is_writeonly_field,
 )
@@ -411,7 +412,7 @@ def derive_schema_list_params(
                 None,
             )
 
-    schema_name = "ListParams" + schema.__name__
+    schema_name = _schema_role_name(schema, "ListParams")
     validators = (
         {"_validate_pagination_offset": _pagination_offset_validator(pagination)}
         if isinstance(pagination, NumberedPagination)

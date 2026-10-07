@@ -22,7 +22,7 @@ from fastapi_restly.testing._client import RestlyTestClient
 from .conftest import create_tables
 
 
-class ProductRead(fr.IDSchema):
+class ProductSchema(fr.IDSchema):
     name: str
     price: float
 
@@ -57,7 +57,7 @@ def test_string_annotation_on_replaced_endpoint_is_kept(request, asynchronous):
     class ProductView(base):
         prefix = "/products"
         model = Product
-        schema = ProductRead
+        schema = ProductSchema
 
         if asynchronous:
 
@@ -98,7 +98,7 @@ def test_string_any_on_replaced_endpoint_gets_the_view_types(request, asynchrono
     class ProductView(base):
         prefix = "/products"
         model = Product
-        schema = ProductRead
+        schema = ProductSchema
 
         if asynchronous:
 
@@ -129,4 +129,4 @@ def test_string_any_on_replaced_endpoint_gets_the_view_types(request, asynchrono
     operation = client.app.openapi()["paths"]["/products/{id}"]["patch"]
     assert "requestBody" in operation
     response_schema = operation["responses"]["200"]["content"]["application/json"]
-    assert response_schema["schema"]["$ref"].endswith("/ProductRead")
+    assert response_schema["schema"]["$ref"].endswith("/ProductResponse")

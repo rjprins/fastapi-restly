@@ -264,7 +264,7 @@ class TimestampsSchemaMixin(pydantic.BaseModel):
 # Unbound: a mapped class need not subclass DeclarativeBase.
 SQLAlchemyModel = TypeVar("SQLAlchemyModel", default=Any)
 _IDREF_UNSET = object()
-_SCHEMA_RESOURCE_SUFFIX = "Read"
+_SCHEMA_RESOURCE_SUFFIXES = ("Schema", "Response")
 
 
 @functools.cache
@@ -273,16 +273,19 @@ def _id_type_adapter(id_type: Any) -> pydantic.TypeAdapter[Any]:
 
 
 def _schema_resource_name(model_cls: type[pydantic.BaseModel]) -> str:
-    """Return the resource name used to derive role-specific API schemas."""
+    """The resource part of a schema's class name: the name without a final
+    ``Schema`` or ``Response``. ``UserSchema`` and ``UserResponse`` both give
+    ``User``."""
     name = model_cls.__name__
-    if name.endswith(_SCHEMA_RESOURCE_SUFFIX) and len(name) > len(
-        _SCHEMA_RESOURCE_SUFFIX
-    ):
-        return name[: -len(_SCHEMA_RESOURCE_SUFFIX)]
+    for suffix in _SCHEMA_RESOURCE_SUFFIXES:
+        if name.endswith(suffix) and len(name) > len(suffix):
+            return name[: -len(suffix)]
     return name
 
 
 def _schema_role_name(model_cls: type[pydantic.BaseModel], role: str) -> str:
+    """The name of a class that Restly generates from a schema:
+    ``<Resource><Role>``, as in ``UserCreate``."""
     return f"{_schema_resource_name(model_cls)}{role}"
 
 
@@ -350,7 +353,7 @@ class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
     """Response-schema base that adds a read-only ``id``; parametrized as a
     field type, a nested-object relationship reference.
 
-    - As a BASE CLASS (``class UserRead(IDSchema): ...``) it adds the resource's
+    - As a BASE CLASS (``class UserSchema(IDSchema): ...``) it adds the resource's
       own read-only ``id`` -- the common use.
     - As a FIELD TYPE on a RELATIONSHIP-named field (``author: IDSchema[User]``)
       the wire format is ``{"id": N}`` (JSON-API / React-Admin); Restly resolves
@@ -981,6 +984,39 @@ class OmitReadOnlyMixin(pydantic.BaseModel):
             del cls.model_fields[name]
 
         cls.model_rebuild(force=True)
+
+
+class _OmitWriteOnlyMixin(pydantic.BaseModel):
+    @classmethod
+    def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
+        super().__pydantic_init_subclass__(**kwargs)
+
+        writeonly_fields = [
+            name for name in cls.model_fields if is_writeonly_field(cls, name)
+        ]
+        for name in writeonly_fields:
+            del cls.model_fields[name]
+
+        cls.model_rebuild(force=True)
+
+
+@functools.cache
+def _derive_schema_response(
+    schema: type[pydantic.BaseModel],
+) -> type[pydantic.BaseModel]:
+    """The response class of a view's schema: the schema without its
+    WriteOnly fields, named ``<Resource>Response``.
+
+    Restly builds it also when the schema has no WriteOnly fields, so the
+    view's routes show ``UserResponse`` in OpenAPI, not the view's schema. It
+    is a subclass of the schema, so its instances are also instances of the
+    schema. Two views with the same schema share it.
+    """
+    return type(
+        _schema_role_name(schema, "Response"),
+        (_OmitWriteOnlyMixin, schema),
+        {"__module__": schema.__module__, "__doc__": schema.__doc__},
+    )
 
 
 def rebase_with_model_config(

@@ -238,7 +238,7 @@ def derive_schema(
 
     :param model: The SQLAlchemy model class.
     :param name: Name for the generated schema class. Defaults to the
-        model name followed by ``Read``.
+        model name followed by ``Schema``, as in ``UserSchema``.
     :param include_relationships: Whether to include relationship fields. Each
         one holds a nested schema of the related model, without its
         relationships and without read-only markers.
@@ -247,7 +247,7 @@ def derive_schema(
     :returns: A Pydantic schema class.
     """
     if name is None:
-        name = f"{model.__name__}Read"
+        name = f"{model.__name__}Schema"
 
     # Get field information from the model
     model_fields = get_model_fields(model)

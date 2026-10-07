@@ -27,6 +27,7 @@ from ._base import (
     ListResult,
     ResponseShape,
     _annotate,
+    _derive_schema_response,
     _typed_id_route,
     _view_id_type,
     get,
@@ -483,7 +484,7 @@ class _ReactAdminMixin:
         if hasattr(view_cls, "put"):
             _annotate(
                 view_cls.put,
-                return_annotation=view_cls.schema,
+                return_annotation=_derive_schema_response(view_cls.schema),
                 schema_obj=view_cls.schema_update,
                 id=_view_id_type(view_cls),
             )

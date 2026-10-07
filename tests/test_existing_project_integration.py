@@ -13,7 +13,7 @@ def test_restly_view_coexists_with_existing_fastapi_router():
     class User(fr.IDBase):
         name: Mapped[str]
 
-    class UserRead(fr.IDSchema):
+    class UserSchema(fr.IDSchema):
         name: str
 
     orders_router = APIRouter()
@@ -30,7 +30,7 @@ def test_restly_view_coexists_with_existing_fastapi_router():
     class UserView(fr.AsyncRestView):
         prefix = "/users"
         model = User
-        schema = UserRead
+        schema = UserSchema
 
     fr.include_view(api, UserView)
 
@@ -66,7 +66,7 @@ def test_excluded_restly_route_can_be_replaced_by_plain_fastapi_route():
     class User(fr.IDBase):
         name: Mapped[str]
 
-    class UserRead(fr.IDSchema):
+    class UserSchema(fr.IDSchema):
         name: str
 
     app = FastAPI()
@@ -75,7 +75,7 @@ def test_excluded_restly_route_can_be_replaced_by_plain_fastapi_route():
     class UserView(fr.AsyncRestView):
         prefix = "/users"
         model = User
-        schema = UserRead
+        schema = UserSchema
         exclude_routes = (fr.ViewRoute.DELETE,)
 
     fr.include_view(api, UserView)

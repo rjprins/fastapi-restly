@@ -89,14 +89,14 @@ def _list_app(client, settings, *, rows=5):
     class Thing(fr.IDBase):
         name: Mapped[str]
 
-    class ThingRead(fr.IDSchema):
+    class ThingSchema(fr.IDSchema):
         name: str
 
     @fr.include_view(client.app)
     class ThingView(fr.AsyncRestView):
         prefix = "/things"
         model = Thing
-        schema = ThingRead
+        schema = ThingSchema
         pagination = settings
 
     create_tables()
@@ -300,13 +300,13 @@ def test_settings_assigned_after_the_class_fail_at_registration(client):
     class Thing(fr.IDBase):
         name: Mapped[str]
 
-    class ThingRead(fr.IDSchema):
+    class ThingSchema(fr.IDSchema):
         name: str
 
     class CappedView(fr.AsyncRestView):
         prefix = "/things"
         model = Thing
-        schema = ThingRead
+        schema = ThingSchema
 
     CappedView.max_page_size = 5  # type: ignore[attr-defined]
     with pytest.raises(RestlyConfigurationError, match="sets max_page_size"):
@@ -315,7 +315,7 @@ def test_settings_assigned_after_the_class_fail_at_registration(client):
     class LateView(fr.AsyncRestView):
         prefix = "/late"
         model = Thing
-        schema = ThingRead
+        schema = ThingSchema
 
     LateView.pagination = fr.NumberedPagination  # type: ignore[assignment]
     with pytest.raises(RestlyConfigurationError, match="Create an instance"):
@@ -360,7 +360,7 @@ def test_a_base_view_sets_pagination_once(client):
     class Note(fr.IDBase):
         text: Mapped[str]
 
-    class NoteRead(fr.IDSchema):
+    class NoteSchema(fr.IDSchema):
         text: str
 
     app_pagination = fr.NumberedPagination(
@@ -372,7 +372,7 @@ def test_a_base_view_sets_pagination_once(client):
 
     class AppView(fr.AsyncRestView):
         model = Note
-        schema = NoteRead
+        schema = NoteSchema
         pagination = app_pagination
 
     @fr.include_view(client.app)
@@ -414,7 +414,7 @@ def test_declared_grammar_must_match_the_pagination(client):
     class Thing(fr.IDBase):
         name: Mapped[str]
 
-    class ThingRead(fr.IDSchema):
+    class ThingSchema(fr.IDSchema):
         name: str
 
     with pytest.raises(
@@ -426,18 +426,18 @@ def test_declared_grammar_must_match_the_pagination(client):
         class MismatchView(fr.AsyncRestView):
             prefix = "/mismatch"
             model = Thing
-            schema = ThingRead
+            schema = ThingSchema
             pagination = None
-            schema_list_params = derive_schema_list_params(ThingRead, Thing)
+            schema_list_params = derive_schema_list_params(ThingSchema, Thing)
 
     @fr.include_view(client.app)
     class MatchView(fr.AsyncRestView):
         prefix = "/things"
         model = Thing
-        schema = ThingRead
+        schema = ThingSchema
         pagination = None
         schema_list_params = derive_schema_list_params(
-            ThingRead, Thing, pagination=None
+            ThingSchema, Thing, pagination=None
         )
 
     create_tables()
@@ -487,14 +487,14 @@ def test_renaming_a_param_frees_its_name_for_a_filter(client):
     class Chapter(fr.IDBase):
         page: Mapped[int]
 
-    class ChapterRead(fr.IDSchema):
+    class ChapterSchema(fr.IDSchema):
         page: int
 
     @fr.include_view(client.app)
     class ChapterView(fr.AsyncRestView):
         prefix = "/chapters"
         model = Chapter
-        schema = ChapterRead
+        schema = ChapterSchema
         pagination = fr.NumberedPagination(page_query_param="p")
 
     create_tables()
@@ -513,7 +513,7 @@ def test_a_filter_named_like_a_pagination_param_fails_at_registration(client):
     class Shirt(fr.IDBase):
         size: Mapped[str]
 
-    class ShirtRead(fr.IDSchema):
+    class ShirtSchema(fr.IDSchema):
         size: str
 
     with pytest.raises(ValueError, match="cannot expose field 'size'"):
@@ -522,7 +522,7 @@ def test_a_filter_named_like_a_pagination_param_fails_at_registration(client):
         class ShirtView(fr.AsyncRestView):
             prefix = "/shirts"
             model = Shirt
-            schema = ShirtRead
+            schema = ShirtSchema
             pagination = fr.NumberedPagination(page_size_query_param="size")
 
 
@@ -620,7 +620,7 @@ def test_sync_view_takes_the_same_settings(sync_db):
     class Thing(fr.IDBase):
         name: Mapped[str]
 
-    class ThingRead(fr.IDSchema):
+    class ThingSchema(fr.IDSchema):
         name: str
 
     app = FastAPI()
@@ -629,7 +629,7 @@ def test_sync_view_takes_the_same_settings(sync_db):
     class ThingView(fr.RestView):
         prefix = "/things"
         model = Thing
-        schema = ThingRead
+        schema = ThingSchema
         pagination = fr.NumberedPagination(
             page_size_query_param="size", envelope=FastAPIPaginationPage
         )
@@ -638,7 +638,7 @@ def test_sync_view_takes_the_same_settings(sync_db):
     class AllThingView(fr.RestView):
         prefix = "/all-things"
         model = Thing
-        schema = ThingRead
+        schema = ThingSchema
         pagination = fr.NoPagination(envelope=DataCount)
 
         def count(self, query):
@@ -705,7 +705,7 @@ def test_no_pagination_bare_array(client):
     spec, operation = _list_operation(client)
     component = _response_component(spec, operation)
     assert component["type"] == "array"
-    assert component["items"]["$ref"].endswith("/ThingRead")
+    assert component["items"]["$ref"].endswith("/ThingResponse")
 
 
 def test_no_pagination_envelope_field_restly_cannot_fill_fails_when_created():
@@ -736,18 +736,20 @@ def test_query_helpers_take_the_pagination():
     class Widget(fr.IDBase):
         name: Mapped[str]
 
-    class WidgetRead(fr.IDSchema):
+    class WidgetSchema(fr.IDSchema):
         name: str
 
     pagination = fr.NumberedPagination(page_size_query_param="size")
 
-    params_model = derive_schema_list_params(WidgetRead, Widget, pagination=pagination)
+    params_model = derive_schema_list_params(
+        WidgetSchema, Widget, pagination=pagination
+    )
     assert {"page", "size", "sort"} <= set(params_model.model_fields)
     assert "page_size" not in params_model.model_fields
 
     def sql(query_string: str, **kwargs: Any) -> str:
         query = apply_list_params(
-            select(Widget), QueryParams(query_string), Widget, WidgetRead, **kwargs
+            select(Widget), QueryParams(query_string), Widget, WidgetSchema, **kwargs
         )
         return str(query.compile(compile_kwargs={"literal_binds": True}))
 
@@ -755,7 +757,7 @@ def test_query_helpers_take_the_pagination():
     assert "LIMIT" not in sql("sort=name", pagination=None)
     assert "LIMIT" not in sql("sort=name", pagination=fr.NoPagination())
     unpaginated = derive_schema_list_params(
-        WidgetRead, Widget, pagination=fr.NoPagination()
+        WidgetSchema, Widget, pagination=fr.NoPagination()
     )
     assert unpaginated.model_fields.keys().isdisjoint({"page", "page_size"})
     # without pagination, ``size`` is no parameter but an unknown filter
@@ -767,21 +769,21 @@ def test_apply_list_params_reads_the_pagination_of_its_params_model():
     class Bookmark(fr.IDBase):
         page: Mapped[int]
 
-    class BookmarkRead(fr.IDSchema):
+    class BookmarkSchema(fr.IDSchema):
         page: int
 
     def sql(params: Any) -> str:
-        query = apply_list_params(select(Bookmark), params, Bookmark, BookmarkRead)
+        query = apply_list_params(select(Bookmark), params, Bookmark, BookmarkSchema)
         return str(query.compile(compile_kwargs={"literal_binds": True}))
 
     # without pagination, ``page`` is a filter, not a page number
-    unpaginated = derive_schema_list_params(BookmarkRead, Bookmark, pagination=None)
+    unpaginated = derive_schema_list_params(BookmarkSchema, Bookmark, pagination=None)
     filtered = sql(unpaginated.model_validate({"page": ["3"]}))
     assert "bookmark.page = 3" in filtered
     assert "LIMIT" not in filtered
 
     renamed = derive_schema_list_params(
-        BookmarkRead,
+        BookmarkSchema,
         Bookmark,
         pagination=fr.NumberedPagination(
             page_query_param="p", page_size_query_param="size"
@@ -802,7 +804,7 @@ def test_react_admin_view_rejects_settings_it_would_ignore(client, settings, ign
     class Gadget(fr.IDBase):
         name: Mapped[str]
 
-    class GadgetRead(fr.IDSchema):
+    class GadgetSchema(fr.IDSchema):
         name: str
 
     with pytest.raises(
@@ -814,7 +816,7 @@ def test_react_admin_view_rejects_settings_it_would_ignore(client, settings, ign
         class GadgetView(fr.AsyncReactAdminView):
             prefix = "/gadgets"
             model = Gadget
-            schema = GadgetRead
+            schema = GadgetSchema
             pagination = fr.NumberedPagination(**settings)
 
 
@@ -822,14 +824,14 @@ def test_react_admin_range_is_checked(client):
     class Gadget(fr.IDBase):
         name: Mapped[str]
 
-    class GadgetRead(fr.IDSchema):
+    class GadgetSchema(fr.IDSchema):
         name: str
 
     @fr.include_view(client.app)
     class GadgetView(fr.AsyncReactAdminView):
         prefix = "/gadgets"
         model = Gadget
-        schema = GadgetRead
+        schema = GadgetSchema
         pagination = fr.NumberedPagination(default_page_size=5, max_page_size=10)
 
     create_tables()

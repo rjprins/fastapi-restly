@@ -23,11 +23,11 @@ class Post(fr.IDBase):
     primary_tag: Mapped[Tag] = relationship()
 
 
-class TagRead(fr.IDSchema[Tag]):
+class TagSchema(fr.IDSchema[Tag]):
     name: str
 
 
-class PostRead(fr.IDSchema[Post]):
+class PostSchema(fr.IDSchema[Post]):
     title: str
     # Single relation as a flat scalar id.
     primary_tag_id: fr.IDRef[Tag]
@@ -39,11 +39,11 @@ class PostRead(fr.IDSchema[Post]):
 class TagView(fr.AsyncRestView):
     prefix = "/tags"
     model = Tag
-    schema = TagRead
+    schema = TagSchema
 
 
 @fr.include_view(app)
 class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
-    schema = PostRead
+    schema = PostSchema

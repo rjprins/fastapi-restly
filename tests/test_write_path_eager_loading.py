@@ -78,18 +78,18 @@ def _define_schemas():
     class CompanyRef(fr.IDSchema):
         name: str
 
-    class OwnerRead(fr.IDSchema):
+    class OwnerSchema(fr.IDSchema):
         name: str
         company: CompanyRef  # second level -- exercises the recursive options
 
-    class DocRead(fr.IDSchema):
+    class DocSchema(fr.IDSchema):
         title: str
-        owner: OwnerRead
+        owner: OwnerSchema
 
     class DocCreate(fr.BaseSchema):
         title: str
 
-    return DocRead, DocCreate
+    return DocSchema, DocCreate
 
 
 def _assert_nested(body: dict, *, title: str):
@@ -105,14 +105,14 @@ def _build_nested_app(app):
     a plain ``refresh`` cannot fill it.
     """
     Company, Owner, Doc = _define_models()
-    DocRead, DocCreate = _define_schemas()
+    DocSchema, DocCreate = _define_schemas()
     owner_id: dict[str, int] = {}
 
     @fr.include_view(app)
     class DocView(fr.AsyncRestView):
         prefix = "/docs"
         model = Doc
-        schema = DocRead
+        schema = DocSchema
         schema_create = DocCreate
 
         async def create(self, schema_obj) -> Any:
@@ -172,14 +172,14 @@ def test_async_get_one_still_serializes_nested_relationship(client):
 def test_sync_create_serializes_nested_relationship(sync_client):
     """Sync views never raised, but paid hidden per-field SELECTs. Parity."""
     Company, Owner, Doc = _define_models()
-    DocRead, DocCreate = _define_schemas()
+    DocSchema, DocCreate = _define_schemas()
     owner_id: dict[str, int] = {}
 
     @fr.include_view(sync_client.app)
     class DocView(fr.RestView):
         prefix = "/docs"
         model = Doc
-        schema = DocRead
+        schema = DocSchema
         schema_create = DocCreate
 
         def create(self, schema_obj) -> Any:
@@ -221,7 +221,7 @@ def test_async_create_serializes_flat_idref(client):
         author_id: Mapped[int] = mapped_column(ForeignKey("author.id"), init=False)
         author: Mapped[Author] = relationship(init=False)
 
-    class PostRead(fr.IDSchema):
+    class PostSchema(fr.IDSchema):
         title: str
         author: fr.IDRef[Author]
 
@@ -233,7 +233,7 @@ def test_async_create_serializes_flat_idref(client):
     class PostView(fr.AsyncRestView):
         prefix = "/posts"
         model = Post
-        schema = PostRead
+        schema = PostSchema
         schema_create = PostCreate
 
     create_tables()
@@ -268,7 +268,7 @@ def test_async_create_serializes_assigned_collection(client):
     class TagRef(fr.IDSchema):
         label: str
 
-    class DocRead(fr.IDSchema):
+    class DocSchema(fr.IDSchema):
         title: str
         tags: list[TagRef]
 
@@ -279,7 +279,7 @@ def test_async_create_serializes_assigned_collection(client):
     class DocView(fr.AsyncRestView):
         prefix = "/docs"
         model = TaggedDoc
-        schema = DocRead
+        schema = DocSchema
         schema_create = DocCreate
 
         async def create(self, schema_obj) -> Any:
@@ -325,7 +325,7 @@ def test_relationship_free_schema_issues_no_reload(sync_client):
     class Plain(fr.IDBase):
         title: Mapped[str]
 
-    class PlainRead(fr.IDSchema):
+    class PlainSchema(fr.IDSchema):
         title: str
 
     class PlainCreate(fr.BaseSchema):
@@ -335,7 +335,7 @@ def test_relationship_free_schema_issues_no_reload(sync_client):
     class PlainView(fr.RestView):
         prefix = "/plain"
         model = Plain
-        schema = PlainRead
+        schema = PlainSchema
         schema_create = PlainCreate
 
     _create_sync_tables()
@@ -411,13 +411,13 @@ def test_indirection_over_a_named_relationship_rides_along(client):
     class CompanyRef(fr.IDSchema):
         name: str
 
-    class OwnerRead(fr.IDSchema):
+    class OwnerSchema(fr.IDSchema):
         name: str
         company: CompanyRef
 
-    class DocRead(fr.IDSchema):
+    class DocSchema(fr.IDSchema):
         title: str
-        owner: OwnerRead
+        owner: OwnerSchema
         owner_name: fr.ReadOnly[str]
         proxy_owner_name: fr.ReadOnly[str]
 
@@ -430,7 +430,7 @@ def test_indirection_over_a_named_relationship_rides_along(client):
     class DocView(fr.AsyncRestView):
         prefix = "/docs"
         model = Doc
-        schema = DocRead
+        schema = DocSchema
         schema_create = DocCreate
 
         async def create(self, schema_obj) -> Any:
@@ -479,7 +479,7 @@ def test_indirection_over_an_unnamed_relationship_fails_alike_on_read_and_write(
         def owner_name(self) -> str:
             return self.owner.name
 
-    class DocRead(fr.IDSchema):
+    class DocSchema(fr.IDSchema):
         title: str
         owner_name: fr.ReadOnly[str]  # `owner` itself is never named
 
@@ -490,7 +490,7 @@ def test_indirection_over_an_unnamed_relationship_fails_alike_on_read_and_write(
     class DocView(fr.AsyncRestView):
         prefix = "/docs"
         model = Doc
-        schema = DocRead
+        schema = DocSchema
         schema_create = DocCreate
 
         async def create(self, schema_obj) -> Any:
@@ -535,7 +535,7 @@ def test_awaitable_attrs_reaches_a_relationship_the_schema_never_names(client):
         title: Mapped[str]
         notes: Mapped[list[Note]] = relationship(init=False)
 
-    class DocRead(fr.IDSchema):
+    class DocSchema(fr.IDSchema):
         title: str  # `notes` deliberately absent -- nothing eager-loads it
 
     class DocCreate(fr.BaseSchema):
@@ -547,7 +547,7 @@ def test_awaitable_attrs_reaches_a_relationship_the_schema_never_names(client):
     class DocView(fr.AsyncRestView):
         prefix = "/docs"
         model = NotedDoc
-        schema = DocRead
+        schema = DocSchema
         schema_create = DocCreate
 
         async def after_action_commit(self, action, new: Any, old=None) -> None:
@@ -638,18 +638,18 @@ def test_divergent_schemas_same_instance_reload(client):
     class DepartmentRef(fr.IDSchema):
         name: str
 
-    class AuthorRead(fr.IDSchema):
+    class AuthorSchema(fr.IDSchema):
         name: str
         company: CompanyRef  # this branch names company
 
-    class ReviewerRead(fr.IDSchema):
+    class ReviewerSchema(fr.IDSchema):
         name: str
         department: DepartmentRef  # this branch names department
 
-    class DocRead(fr.IDSchema):
+    class DocSchema(fr.IDSchema):
         title: str
-        author: AuthorRead
-        reviewer: ReviewerRead
+        author: AuthorSchema
+        reviewer: ReviewerSchema
 
     class DocCreate(fr.BaseSchema):
         title: str
@@ -658,7 +658,7 @@ def test_divergent_schemas_same_instance_reload(client):
     class DocView(fr.AsyncRestView):
         prefix = "/docs"
         model = Doc
-        schema = DocRead
+        schema = DocSchema
         schema_create = DocCreate
 
         async def create(self, schema_obj) -> Any:
@@ -712,7 +712,7 @@ def test_sync_create_serializes_assigned_collection(sync_client):
     class TagRef(fr.IDSchema):
         label: str
 
-    class DocRead(fr.IDSchema):
+    class DocSchema(fr.IDSchema):
         title: str
         tags: list[TagRef]
 
@@ -723,7 +723,7 @@ def test_sync_create_serializes_assigned_collection(sync_client):
     class DocView(fr.RestView):
         prefix = "/docs"
         model = SyncTaggedDoc
-        schema = DocRead
+        schema = DocSchema
         schema_create = DocCreate
 
         def create(self, schema_obj) -> Any:
@@ -771,7 +771,7 @@ def test_write_reload_unique_guards_a_joinedload_collection(client):
     class TagRef(fr.IDSchema):
         label: str
 
-    class DocRead(fr.IDSchema):
+    class DocSchema(fr.IDSchema):
         title: str
         tags: list[TagRef]
 
@@ -782,7 +782,7 @@ def test_write_reload_unique_guards_a_joinedload_collection(client):
     class DocView(fr.AsyncRestView):
         prefix = "/docs"
         model = JoinedDoc
-        schema = DocRead
+        schema = DocSchema
         schema_create = DocCreate
 
         def get_relationship_loader_options(self) -> list[Any]:
@@ -871,7 +871,7 @@ def test_gate_skips_a_nullable_relationship_loaded_as_none(sync_db):
     class OwnerRef(fr.IDSchema):
         name: str
 
-    class DocRead(fr.IDSchema):
+    class DocSchema(fr.IDSchema):
         title: str
         owner: OwnerRef | None = None
 
@@ -884,7 +884,7 @@ def test_gate_skips_a_nullable_relationship_loaded_as_none(sync_db):
         set_committed_value(doc, "owner", None)  # loaded, and it is None
 
         assert "owner" not in sa_inspect(doc).unloaded
-        assert _schema_relationships_are_loaded(doc, Doc, DocRead) is True
+        assert _schema_relationships_are_loaded(doc, Doc, DocSchema) is True
 
 
 def test_gate_terminates_on_a_self_referential_cycle(sync_db):
@@ -899,11 +899,11 @@ def test_gate_terminates_on_a_self_referential_cycle(sync_db):
         )
         parent: Mapped["Node | None"] = relationship(init=False, remote_side="Node.id")
 
-    class NodeRead(fr.IDSchema):
+    class NodeSchema(fr.IDSchema):
         name: str
-        parent: "NodeRead | None" = None
+        parent: "NodeSchema | None" = None
 
-    NodeRead.model_rebuild()
+    NodeSchema.model_rebuild()
 
     _create_sync_tables()
     _, make_session = sync_db
@@ -914,7 +914,7 @@ def test_gate_terminates_on_a_self_referential_cycle(sync_db):
         set_committed_value(node, "parent", node)  # its own parent -> a cycle
 
         # Must terminate rather than RecursionError; parent is loaded (itself).
-        assert _schema_relationships_are_loaded(node, Node, NodeRead) is True
+        assert _schema_relationships_are_loaded(node, Node, NodeSchema) is True
 
 
 @contextmanager

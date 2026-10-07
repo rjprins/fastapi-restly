@@ -27,14 +27,14 @@ def test_view_accepts_a_mapped_class_outside_declarative_base(client):
 
     assert not issubclass(Gadget, DeclarativeBase)
 
-    class GadgetRead(fr.IDSchema):
+    class GadgetSchema(fr.IDSchema):
         name: str
 
     @fr.include_view(client.app)
     class GadgetView(fr.AsyncRestView):
         prefix = "/legacy-gadgets"
         model = Gadget
-        schema = GadgetRead
+        schema = GadgetSchema
 
     async def create_tables():
         async with fr.db.get_async_engine().begin() as conn:
@@ -126,16 +126,16 @@ def legacy_pets(request):
     """Owner and pet views on classes outside DeclarativeBase, per flavor."""
     Base, Owner, Pet = _legacy_owner_and_pet()
 
-    class OwnerRead(fr.IDSchema):
+    class OwnerSchema(fr.IDSchema):
         name: str
 
-    class PetRead(fr.IDSchema):
+    class PetSchema(fr.IDSchema):
         name: str
         owner: fr.IDRef[Owner] | None = None
 
     class PetNested(fr.IDSchema):
         name: str
-        owner: OwnerRead | None = None
+        owner: OwnerSchema | None = None
 
     if request.param == "async":
         client = request.getfixturevalue("client")
@@ -157,8 +157,8 @@ def legacy_pets(request):
             Base.metadata.create_all(engine)
 
     for prefix, model, schema in [
-        ("/owners", Owner, OwnerRead),
-        ("/pets", Pet, PetRead),
+        ("/owners", Owner, OwnerSchema),
+        ("/pets", Pet, PetSchema),
         ("/nested-pets", Pet, PetNested),
     ]:
         view = type(
@@ -220,7 +220,7 @@ def test_nested_schema_reads_a_related_row_outside_declarative_base(legacy_pets)
 
 def test_openapi_resource_ref_for_a_class_outside_declarative_base(legacy_pets):
     schemas = legacy_pets.app.openapi()["components"]["schemas"]
-    assert "owners" in str(schemas["PetRead"]["properties"]["owner"])
+    assert "owners" in str(schemas["PetResponse"]["properties"]["owner"])
 
 
 def test_foreign_key_checks_on_an_imperative_mapping(client):
@@ -251,10 +251,10 @@ def test_foreign_key_checks_on_an_imperative_mapping(client):
     mapper_registry.map_imperatively(Tool, tool_table)
     assert not hasattr(Tool, "registry")
 
-    class MakerRead(fr.IDSchema):
+    class MakerSchema(fr.IDSchema):
         name: str
 
-    class ToolRead(fr.IDSchema):
+    class ToolSchema(fr.IDSchema):
         name: str
         maker_id: fr.MustExist[int] | None = None
 
@@ -262,13 +262,13 @@ def test_foreign_key_checks_on_an_imperative_mapping(client):
     class MakerView(fr.AsyncRestView):
         prefix = "/makers"
         model = Maker
-        schema = MakerRead
+        schema = MakerSchema
 
     @fr.include_view(client.app)
     class ToolView(fr.AsyncRestView):
         prefix = "/tools"
         model = Tool
-        schema = ToolRead
+        schema = ToolSchema
 
     async def create_tables():
         async with fr.db.get_async_engine().begin() as conn:
@@ -283,5 +283,5 @@ def test_foreign_key_checks_on_an_imperative_mapping(client):
         "/tools/", json={"name": "Lost", "maker_id": 12345}, assert_status_code=404
     )
 
-    tool_schema = client.app.openapi()["components"]["schemas"]["ToolRead"]
+    tool_schema = client.app.openapi()["components"]["schemas"]["ToolResponse"]
     assert "makers" in str(tool_schema["properties"]["maker_id"])

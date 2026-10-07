@@ -13,7 +13,7 @@ class EndpointDocModel(fr.IDBase):
     name: Mapped[str]
 
 
-class EndpointDocRead(fr.IDSchema):
+class EndpointDocSchema(fr.IDSchema):
     name: str
 
 
@@ -40,7 +40,7 @@ def test_default_routes_do_not_leak_endpoint_docstrings_into_openapi():
     class PlainView(fr.AsyncRestView):
         prefix = "/endpoint-doc-plain"
         model = EndpointDocModel
-        schema = EndpointDocRead
+        schema = EndpointDocSchema
 
     spec = _spec_for(PlainView)
     for path, ops in spec["paths"].items():
@@ -52,7 +52,7 @@ def test_user_replaced_endpoint_method_keeps_its_docstring_in_openapi():
     class CustomView(fr.AsyncRestView):
         prefix = "/endpoint-doc-custom"
         model = EndpointDocModel
-        schema = EndpointDocRead
+        schema = EndpointDocSchema
 
         @fr.get("/{id}")
         async def get_one_endpoint(self, id: int):

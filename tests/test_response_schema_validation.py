@@ -6,7 +6,7 @@ import fastapi_restly as fr
 from .conftest import create_tables
 
 
-class ResponseUserRead(fr.IDSchema):
+class ResponseUserSchema(fr.IDSchema):
     name: str
     email: str
     password: fr.WriteOnly[str]
@@ -29,7 +29,7 @@ def test_to_single_response_runs_response_field_validators_and_serializers():
 
     class ResponseUserView(fr.AsyncRestView):
         model = ResponseValidationUser
-        schema = ResponseUserRead
+        schema = ResponseUserSchema
 
     user = ResponseValidationUser(
         name="Ada", email="ADA@EXAMPLE.COM", password="secret"
@@ -38,7 +38,7 @@ def test_to_single_response_runs_response_field_validators_and_serializers():
 
     schema_obj = ResponseUserView().to_single_response(user)
 
-    assert isinstance(schema_obj, ResponseUserRead)
+    assert isinstance(schema_obj, ResponseUserSchema)
     assert schema_obj.email == "ada@example.com"
 
     payload = schema_obj.model_dump(mode="json")
@@ -56,7 +56,7 @@ def test_response_serialization_runs_through_fastapi_response_model(client):
     class UserView(fr.AsyncRestView):
         prefix = "/response-users"
         model = ResponseApiUser
-        schema = ResponseUserRead
+        schema = ResponseUserSchema
 
     create_tables()
 
@@ -83,7 +83,7 @@ def test_to_single_response_with_a_narrowed_model_validate():
                 obj, strict=strict, from_attributes=from_attributes
             )
 
-    class NarrowGadgetRead(NarrowSchema):
+    class NarrowGadgetSchema(NarrowSchema):
         id: int
         display_name: str = pydantic.Field(alias="displayName")
 
@@ -92,12 +92,12 @@ def test_to_single_response_with_a_narrowed_model_validate():
 
     class NarrowGadgetView(fr.AsyncRestView):
         model = NarrowGadget
-        schema = NarrowGadgetRead
+        schema = NarrowGadgetSchema
 
     gadget = NarrowGadget(display_name="Widget")
     gadget.id = 1
 
     schema_obj = NarrowGadgetView().to_single_response(gadget)
 
-    assert isinstance(schema_obj, NarrowGadgetRead)
+    assert isinstance(schema_obj, NarrowGadgetSchema)
     assert schema_obj.model_dump(by_alias=True) == {"id": 1, "displayName": "Widget"}

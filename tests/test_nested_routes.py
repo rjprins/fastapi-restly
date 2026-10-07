@@ -64,10 +64,10 @@ def projects(request: pytest.FixtureRequest) -> Iterator[_Nested]:
         title: Mapped[str]
         project_id: Mapped[int] = mapped_column(sa.ForeignKey("project.id"), init=False)
 
-    class ProjectRead(fr.IDSchema):
+    class ProjectSchema(fr.IDSchema):
         name: str
 
-    class TaskRead(fr.IDSchema):
+    class TaskSchema(fr.IDSchema):
         title: str
         project_id: fr.ReadOnly[int]
 
@@ -80,7 +80,7 @@ def projects(request: pytest.FixtureRequest) -> Iterator[_Nested]:
     class ProjectView(base):  # type: ignore[misc,valid-type]
         prefix = "/projects"
         model = Project
-        schema = ProjectRead
+        schema = ProjectSchema
         scope = fr.where_clause(Project.archived.is_(False))
 
     def project_query(project_id: int) -> sa.Select[Any]:
@@ -111,7 +111,7 @@ def projects(request: pytest.FixtureRequest) -> Iterator[_Nested]:
     class ProjectTaskView(base):  # type: ignore[misc,valid-type]
         prefix = "/projects/{project_id}/tasks"
         model = Task
-        schema = TaskRead
+        schema = TaskSchema
         dependencies = [Parent.depends(project_id=project_from_path)]
         scope = fr.all_of(
             fr.resolve_scope(Task),
@@ -279,7 +279,7 @@ def companies(request: pytest.FixtureRequest) -> Iterator[_Nested]:
         title: Mapped[str]
         project_id: Mapped[int] = mapped_column(sa.ForeignKey("project.id"), init=False)
 
-    class TaskRead(fr.IDSchema):
+    class TaskSchema(fr.IDSchema):
         title: str
         project_id: fr.ReadOnly[int]
 
@@ -342,7 +342,7 @@ def companies(request: pytest.FixtureRequest) -> Iterator[_Nested]:
     class TaskView(ProjectScoped):
         prefix = "/tasks"
         model = Task
-        schema = TaskRead
+        schema = TaskSchema
         scope = fr.all_of(
             fr.resolve_scope(Task),
             fr.where_clause(Task.project_id == Parent.project_id),

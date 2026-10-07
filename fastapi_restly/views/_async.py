@@ -47,7 +47,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
         class FooView(AsyncRestView):
             prefix = "/foo"
-            schema = FooRead
+            schema = FooSchema
             model = Foo
 
     Each verb is three tiers (see "Customizing RestView" in the docs):

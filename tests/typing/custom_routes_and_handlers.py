@@ -13,7 +13,7 @@ class Widget(fr.IDBase):
     name: Mapped[str]
 
 
-class WidgetRead(fr.IDSchema[Widget]):
+class WidgetSchema(fr.IDSchema[Widget]):
     name: str
 
 
@@ -22,10 +22,10 @@ class WidgetInput(fr.BaseSchema):
 
 
 @fr.include_view(app)
-class WidgetView(fr.RestView[Widget, WidgetRead, WidgetInput, WidgetInput, int]):
+class WidgetView(fr.RestView[Widget, WidgetSchema, WidgetInput, WidgetInput, int]):
     prefix = "/widgets"
     model = Widget
-    schema = WidgetRead
+    schema = WidgetSchema
     schema_create = WidgetInput
     schema_update = WidgetInput
 
@@ -63,7 +63,7 @@ class WidgetView(fr.RestView[Widget, WidgetRead, WidgetInput, WidgetInput, int])
     # Request handlers (authorize + commit bracket) -- final, and typed at
     # the call site: a custom action reuses the full op and its bracket.
     @fr.post("/{id}/rename")
-    def rename(self, id: int, schema_obj: WidgetInput) -> WidgetRead:
+    def rename(self, id: int, schema_obj: WidgetInput) -> WidgetSchema:
         widget: Widget = self.handle_update(id, schema_obj)
         return self.to_single_response(widget)
 
@@ -74,7 +74,7 @@ class WidgetView(fr.RestView[Widget, WidgetRead, WidgetInput, WidgetInput, int])
 
     # A natural-key route: the predicate form keeps the model's type.
     @fr.get("/by-name/{name}")
-    def get_by_name(self, name: str) -> WidgetRead:
+    def get_by_name(self, name: str) -> WidgetSchema:
         widget: Widget = self.handle_get_one(Widget.name == name)
         return self.to_single_response(widget)
 
@@ -98,7 +98,7 @@ def create_widgets_together(view: WidgetView, items: list[WidgetInput]) -> list[
 
 
 async def async_create_widgets_together(
-    view: fr.AsyncRestView[Widget, WidgetRead, WidgetInput, WidgetInput, int],
+    view: fr.AsyncRestView[Widget, WidgetSchema, WidgetInput, WidgetInput, int],
     items: list[WidgetInput],
 ) -> list[Widget]:
     async with view.shared_write_action_commit():

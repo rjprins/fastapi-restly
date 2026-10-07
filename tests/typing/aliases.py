@@ -23,7 +23,7 @@ class Invoice(fr.IDBase):
     is_paid: Mapped[bool]
 
 
-class InvoiceRead(fr.IDSchema[Invoice]):
+class InvoiceSchema(fr.IDSchema[Invoice]):
     model_config = pydantic.ConfigDict(populate_by_name=True, from_attributes=True)
 
     customer_name: str = pydantic.Field(alias="customerName")
@@ -37,4 +37,4 @@ class InvoiceRead(fr.IDSchema[Invoice]):
 class InvoiceView(fr.AsyncRestView):
     prefix = "/invoices"
     model = Invoice
-    schema = InvoiceRead
+    schema = InvoiceSchema

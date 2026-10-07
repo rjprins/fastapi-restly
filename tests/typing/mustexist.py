@@ -26,13 +26,13 @@ class Account(Base):
     name: Mapped[str]
 
 
-class CommentRead(fr.BaseSchema):
+class CommentSchema(fr.BaseSchema):
     post_id: fr.MustExist[int]  # -> int (target model inferred from the FK)
     account_id: fr.MustExist[UUID, Account]  # -> UUID (explicit model)
 
 
 if TYPE_CHECKING:
     # `assert_type` fails the type check if a field stops resolving to the scalar.
-    _comment = cast(CommentRead, None)
+    _comment = cast(CommentSchema, None)
     assert_type(_comment.post_id, int)
     assert_type(_comment.account_id, UUID)

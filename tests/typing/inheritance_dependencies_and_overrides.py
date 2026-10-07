@@ -18,7 +18,7 @@ class Project(fr.IDBase):
     name: Mapped[str]
 
 
-class ProjectRead(fr.IDSchema[Project]):
+class ProjectSchema(fr.IDSchema[Project]):
     tenant_id: int
     name: str
 
@@ -35,11 +35,11 @@ async def bind_tenant(
 
 
 class TenantScopedView(
-    fr.AsyncRestView[Project, ProjectRead, ProjectRead, ProjectRead, int]
+    fr.AsyncRestView[Project, ProjectSchema, ProjectSchema, ProjectSchema, int]
 ):
     prefix = "/tenants"
     model = Project
-    schema = ProjectRead
+    schema = ProjectSchema
     dependencies = [Depends(bind_tenant)]
     scope = fr.where_clause(Project.tenant_id == Current.tenant_id)
 
@@ -51,30 +51,32 @@ class ProjectView(TenantScopedView):
 
 @fr.include_view(app)
 class CustomProjectView(
-    fr.AsyncRestView[Project, ProjectRead, ProjectRead, ProjectRead, int]
+    fr.AsyncRestView[Project, ProjectSchema, ProjectSchema, ProjectSchema, int]
 ):
     prefix = "/custom-projects"
     model = Project
-    schema = ProjectRead
+    schema = ProjectSchema
 
     # Custom endpoint methods override the inherited ``*_endpoint`` methods. They
     # must NOT be named after the business methods (get_many/create/...), which
     # would shadow them and make handle_<verb> -> self.<verb> recurse.
     @fr.get("/")
-    async def get_many_endpoint(self, list_params: Any) -> list[ProjectRead]:
+    async def get_many_endpoint(self, list_params: Any) -> list[ProjectSchema]:
         result = await self.handle_get_many(list_params)
         return [self.to_single_response(obj) for obj in result.objects]
 
     @fr.get("/{id}")
-    async def get_one_endpoint(self, id: int) -> ProjectRead:
+    async def get_one_endpoint(self, id: int) -> ProjectSchema:
         return self.to_single_response(await self.handle_get_one(id))
 
     @fr.post("/")
-    async def create_endpoint(self, schema_obj: ProjectRead) -> ProjectRead:
+    async def create_endpoint(self, schema_obj: ProjectSchema) -> ProjectSchema:
         return self.to_single_response(await self.handle_create(schema_obj))
 
     @fr.patch("/{id}")
-    async def update_endpoint(self, id: int, schema_obj: ProjectRead) -> ProjectRead:
+    async def update_endpoint(
+        self, id: int, schema_obj: ProjectSchema
+    ) -> ProjectSchema:
         return self.to_single_response(await self.handle_update(id, schema_obj))
 
     @fr.delete("/{id}")

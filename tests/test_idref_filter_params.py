@@ -55,11 +55,11 @@ def test_idref_fk_generates_opaque_filter_params():
         content: Mapped[str] = mapped_column()
         post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
 
-    class CommentRead(fr.IDSchema):
+    class CommentSchema(fr.IDSchema):
         content: str
         post_id: fr.IDRef[Post]
 
-    fields = set(derive_schema_list_params(CommentRead, Comment).model_fields)
+    fields = set(derive_schema_list_params(CommentSchema, Comment).model_fields)
 
     assert OPAQUE_SET <= fields
     assert NEVER.isdisjoint(fields)
@@ -77,11 +77,11 @@ def test_idref_fk_uuid_pk_yields_the_same_opaque_set():
         content: Mapped[str] = mapped_column()
         post_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("idref_filter_upost.id"))
 
-    class UCommentRead(fr.IDSchema):
+    class UCommentSchema(fr.IDSchema):
         content: str
         post_id: fr.IDRef[UPost]
 
-    fields = set(derive_schema_list_params(UCommentRead, UComment).model_fields)
+    fields = set(derive_schema_list_params(UCommentSchema, UComment).model_fields)
 
     assert OPAQUE_SET <= fields
     assert NEVER.isdisjoint(fields)
@@ -132,10 +132,10 @@ def _register_blog(app, view_base):
         content: Mapped[str] = mapped_column()
         post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
 
-    class PostRead(fr.IDSchema):
+    class PostSchema(fr.IDSchema):
         title: str
 
-    class CommentRead(fr.IDSchema):
+    class CommentSchema(fr.IDSchema):
         content: str
         post_id: fr.IDRef[Post]
 
@@ -143,13 +143,13 @@ def _register_blog(app, view_base):
     class PostView(view_base):
         prefix = "/posts"
         model = Post
-        schema = PostRead
+        schema = PostSchema
 
     @fr.include_view(app)
     class CommentView(view_base):
         prefix = "/comments"
         model = Comment
-        schema = CommentRead
+        schema = CommentSchema
 
 
 def _seed(client):

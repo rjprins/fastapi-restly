@@ -10,7 +10,7 @@ class Team(fr.IDBase):
     name: Mapped[str]
 
 
-class TeamRead(fr.IDSchema):
+class TeamSchema(fr.IDSchema):
     name: str
 
 
@@ -18,4 +18,4 @@ class TeamRead(fr.IDSchema):
 class TeamView(fr.AsyncRestView):
     prefix = "/teams"
     model = Team
-    schema = TeamRead
+    schema = TeamSchema

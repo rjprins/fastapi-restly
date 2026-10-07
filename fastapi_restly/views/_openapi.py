@@ -20,6 +20,7 @@ from sqlalchemy import inspect as sa_inspect
 
 from .._mapping import is_mapped_class
 from ..schemas import IDSchema
+from ..schemas._base import _derive_schema_response
 
 _PATCHED_ATTR = "_fr_resource_refs_patched"
 
@@ -29,6 +30,7 @@ class _Entry:
     model: type[Any]
     resource_name: str
     schema: type[pydantic.BaseModel]
+    schema_response: type[pydantic.BaseModel]
     schema_create: type[pydantic.BaseModel]
     schema_update: type[pydantic.BaseModel]
 
@@ -96,6 +98,7 @@ def _register_for_resource_ref(
         model=model,
         resource_name=resource_name,
         schema=view_cls.schema,
+        schema_response=_derive_schema_response(view_cls.schema),
         schema_create=view_cls.schema_create,
         schema_update=view_cls.schema_update,
     )
@@ -133,7 +136,7 @@ def _is_id_ref_annotation(annotation: Any) -> bool:
     """Return True if annotation is IDSchema[X], IDRef[X], or list/Optional thereof.
 
     Returns False for full nested Pydantic model objects — those are not ID references.
-    Concrete user-defined subclasses like ``AuthorRead(IDSchema)`` return False;
+    Concrete user-defined subclasses like ``AuthorSchema(IDSchema)`` return False;
     only parametrized generics like ``IDSchema[Author]`` or ``IDRef[Author]``
     return True, since those represent model ID references.
     """
@@ -158,7 +161,7 @@ def _is_id_ref_annotation(annotation: Any) -> bool:
     # __pydantic_generic_metadata__["origin"]:
     #   - Parametrized: IDSchema[Author]  → origin = IDSchema
     #   - Parametrized: IDRef[Author] → origin = IDRef
-    #   - User-defined subclass: AuthorRead(IDSchema) → origin = None (not a parametrization)
+    #   - User-defined subclass: AuthorSchema(IDSchema) → origin = None (not a parametrization)
     pydantic_meta = getattr(annotation, "__pydantic_generic_metadata__", {})
     origin_cls = pydantic_meta.get("origin")
     if inspect.isclass(origin_cls):
@@ -231,7 +234,14 @@ def _annotate_spec(
         if not refs:
             continue
 
-        for schema_cls in (entry.schema, entry.schema_create, entry.schema_update):
+        # The view's schema is in the spec only when another schema nests it
+        # or a custom route names it.
+        for schema_cls in (
+            entry.schema,
+            entry.schema_response,
+            entry.schema_create,
+            entry.schema_update,
+        ):
             props = schemas.get(schema_cls.__name__, {}).get("properties", {})
             for prop_key, resource_name in refs.items():
                 if prop_key in props:

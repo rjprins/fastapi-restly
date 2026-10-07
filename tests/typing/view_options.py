@@ -13,7 +13,7 @@ class Ticket(fr.IDBase):
     full_name: Mapped[str]
 
 
-class TicketRead(fr.IDSchema[Ticket]):
+class TicketSchema(fr.IDSchema[Ticket]):
     model_config = pydantic.ConfigDict(populate_by_name=True)
 
     full_name: str = pydantic.Field(alias="fullName")
@@ -21,7 +21,7 @@ class TicketRead(fr.IDSchema[Ticket]):
 
 class TicketBase(fr.AsyncRestView):
     model = Ticket
-    schema = TicketRead
+    schema = TicketSchema
     pagination = None
     exclude_routes = [fr.ViewRoute.DELETE]
     dependencies: ClassVar[list[Any]] = [Depends(lambda: None)]
@@ -41,7 +41,7 @@ APP_PAGINATION = fr.NumberedPagination(page_size_query_param="size", max_page_si
 
 class PagedTicketView(fr.AsyncRestView):
     model = Ticket
-    schema = TicketRead
+    schema = TicketSchema
     # annotated, so mypy lets a subclass turn pagination off
     pagination: ClassVar[fr.NumberedPagination | fr.NoPagination | None] = (
         APP_PAGINATION

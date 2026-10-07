@@ -35,31 +35,31 @@ class Project(Base):
     account: Mapped[Account] = relationship()
 
 
-class AccountRead(fr.BaseSchema):
+class AccountSchema(fr.BaseSchema):
     id: fr.ReadOnly[UUID]
     name: str
 
 
-class ProjectRead(fr.IDSchema[Project]):
+class ProjectSchema(fr.IDSchema[Project]):
     title: str
     account_id: fr.IDSchema[Account]
 
 
 @fr.include_view(app)
 class AccountView(
-    fr.AsyncRestView[Account, AccountRead, AccountRead, AccountRead, UUID]
+    fr.AsyncRestView[Account, AccountSchema, AccountSchema, AccountSchema, UUID]
 ):
     prefix = "/accounts"
     model = Account
-    schema = AccountRead
+    schema = AccountSchema
     id_type = UUID
 
 
 @fr.include_view(app)
 class ProjectView(
-    fr.AsyncRestView[Project, ProjectRead, ProjectRead, ProjectRead, UUID]
+    fr.AsyncRestView[Project, ProjectSchema, ProjectSchema, ProjectSchema, UUID]
 ):
     prefix = "/projects"
     model = Project
-    schema = ProjectRead
+    schema = ProjectSchema
     id_type = UUID

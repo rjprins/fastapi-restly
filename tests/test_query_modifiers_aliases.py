@@ -75,13 +75,13 @@ def mock_query_params():
     return _mock_query_params
 
 
-class TestCreateListParamsSchemaWithAliases:
+class TestDeriveSchemaListParamsWithAliases:
     def test_derive_schema_list_params_with_aliases(self):
         """Test creating a query param schema with aliases."""
         schema = derive_schema_list_params(SchemaWithAliases, AliasModel)
 
         # Check that the schema was created
-        assert schema.__name__ == "ListParamsSchemaWithAliases"
+        assert schema.__name__ == "SchemaWithAliasesListParams"
 
         # Check that pagination fields exist
         assert "page" in schema.model_fields

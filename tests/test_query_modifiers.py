@@ -143,13 +143,13 @@ def audit_log_select_query():
     return sqlalchemy.select(AuditLogModel)
 
 
-class TestCreateListParamsSchema:
+class TestDeriveSchemaListParams:
     def test_derive_schema_list_params_basic(self):
         """Test creating a query param schema for basic fields."""
         schema = derive_schema_list_params(WidgetSchema, WidgetModel)
 
         # Check that the schema was created
-        assert schema.__name__ == "ListParamsWidgetSchema"
+        assert schema.__name__ == "WidgetListParams"
 
         # Check that pagination fields exist
         assert "page" in schema.model_fields
@@ -670,19 +670,19 @@ def test_three_level_dotted_filter_executes_with_correct_joins(sync_db):
         city_id: Mapped[int] = mapped_column(ForeignKey("city.id"))
         city: Mapped[City] = relationship(init=False)
 
-    class CountryRead(fr.IDSchema):
+    class CountrySchema(fr.IDSchema):
         code: str
 
-    class CityRead(fr.IDSchema):
+    class CitySchema(fr.IDSchema):
         name: str
-        country: CountryRead | None = None
+        country: CountrySchema | None = None
 
-    class ResidentRead(fr.IDSchema):
+    class ResidentSchema(fr.IDSchema):
         name: str
-        city: CityRead | None = None
+        city: CitySchema | None = None
 
     # The deep path is advertised — and must therefore execute.
-    params_schema = derive_schema_list_params(ResidentRead, Resident)
+    params_schema = derive_schema_list_params(ResidentSchema, Resident)
     assert "city.country.code" in params_schema.model_fields
 
     fr.DataclassBase.metadata.create_all(engine)
@@ -710,7 +710,7 @@ def test_three_level_dotted_filter_executes_with_correct_joins(sync_db):
                 sqlalchemy.select(Resident),
                 QueryParams(query_params),
                 Resident,
-                ResidentRead,
+                ResidentSchema,
             )
             return [r.name for r in session.scalars(query).all()]
 
@@ -737,7 +737,7 @@ def test_three_level_dotted_filter_executes_with_correct_joins(sync_db):
             sqlalchemy.select(Resident),
             QueryParams({"city.country.code": "NL"}),
             Resident,
-            ResidentRead,
+            ResidentSchema,
         )
         sql = _render_sql(query)
         from_clause = sql[sql.index("FROM") : sql.index("WHERE")]

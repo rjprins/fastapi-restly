@@ -14,15 +14,15 @@ class Order(fr.IDBase):
     customer_id: Mapped[int]
 
 
-class CustomerRead(fr.IDSchema[Customer]):
+class CustomerSchema(fr.IDSchema[Customer]):
     name: str
 
 
-class OrderRead(fr.IDSchema[Order]):
+class OrderSchema(fr.IDSchema[Order]):
     item_name: str
     quantity: int
     customer_id: int
-    customer: CustomerRead | None = None
+    customer: CustomerSchema | None = None
 
 
 class OrderInput(pydantic.BaseModel):
@@ -34,6 +34,6 @@ class OrderInput(pydantic.BaseModel):
 class OrderView(fr.RestView):
     prefix = "/orders"
     model = Order
-    schema = OrderRead
+    schema = OrderSchema
     schema_create = OrderInput
     schema_update = OrderInput

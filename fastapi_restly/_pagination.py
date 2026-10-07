@@ -9,6 +9,7 @@ through :mod:`fastapi_restly.views`, and the page-size constants through
 """
 
 import dataclasses
+import functools
 from math import ceil
 from typing import Any, Generic, Sequence
 
@@ -16,6 +17,7 @@ import pydantic
 from typing_extensions import Self, TypeVar
 
 from .exc import RestlyConfigurationError
+from .schemas._base import _schema_role_name
 
 #: Default ``page_size`` applied to paginated list endpoints when the client
 #: does not send one. A bounded default keeps a forgotten ``page_size`` from
@@ -192,22 +194,42 @@ def _unpaginated_page_info(data: list[Any]) -> dict[str, Any]:
 
 def _list_envelope(
     pagination: NumberedPagination | NoPagination | None,
-    item_schema: type[pydantic.BaseModel],
+    schema_response: type[pydantic.BaseModel],
 ) -> type[pydantic.BaseModel]:
     """The list response model of a view: its pagination's envelope, or
-    :class:`Envelope` for ``None``, parametrized with the item schema.
-    Pydantic caches the parametrized class while something, such as the
-    route, holds it, so the calls during a request return the same one."""
-    envelope: Any = Envelope if pagination is None else pagination.envelope
-    return envelope[item_schema]
+    :class:`Envelope` for ``None``, filled with the response class.
+
+    It is a subclass named ``<Resource>ListResponse``, so OpenAPI shows
+    ``UserListResponse`` and not ``PaginatedEnvelope_UserResponse_``.
+    """
+    envelope = Envelope if pagination is None else pagination.envelope
+    return _named_list_envelope(envelope, schema_response)
+
+
+@functools.cache
+def _named_list_envelope(
+    envelope: type[pydantic.BaseModel], schema_response: type[pydantic.BaseModel]
+) -> type[pydantic.BaseModel]:
+    """Cached, so the route and every request use the same class, and two
+    views with the same response class and envelope share it."""
+    filled: Any = envelope[schema_response]  # type: ignore[index]
+    return type(
+        _schema_role_name(schema_response, "ListResponse"),
+        (filled,),
+        {"__module__": schema_response.__module__},
+    )
 
 
 def _build_envelope(
     envelope: type[pydantic.BaseModel], page_info: dict[str, Any]
 ) -> pydantic.BaseModel:
     """Fill ``envelope`` from ``page_info`` by field name, never by alias, so
-    an alias only renames a field on the wire."""
-    return envelope.model_validate(page_info, by_alias=False, by_name=True)
+    an alias only renames a field on the wire. An item that is an instance of
+    the view's schema, and not of the response class, is read by its
+    attributes."""
+    return envelope.model_validate(
+        page_info, by_alias=False, by_name=True, from_attributes=True
+    )
 
 
 def _is_int(value: Any) -> bool:

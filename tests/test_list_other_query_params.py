@@ -64,7 +64,7 @@ def client(flavor: str, level: str, request: pytest.FixtureRequest) -> RestlyTes
     class Item(fr.IDBase):
         name: Mapped[str]
 
-    class ItemRead(fr.IDSchema):
+    class ItemSchema(fr.IDSchema):
         name: str
 
     app_dependencies = {"app": [Depends(api_key)], "APIKeyQuery": [Depends(token)]}
@@ -73,7 +73,7 @@ def client(flavor: str, level: str, request: pytest.FixtureRequest) -> RestlyTes
     class ItemView(fr.RestView if sync else fr.AsyncRestView):  # type: ignore[misc]
         prefix = "/items"
         model = Item
-        schema = ItemRead
+        schema = ItemSchema
         if level == "view":
             dependencies = [Depends(api_key)]
         if level == "class attribute":
@@ -139,7 +139,7 @@ def search_client(flavor: str, request: pytest.FixtureRequest) -> RestlyTestClie
     class Item(fr.IDBase):
         name: Mapped[str]
 
-    class ItemRead(fr.IDSchema):
+    class ItemSchema(fr.IDSchema):
         name: str
 
     app = FastAPI()
@@ -149,7 +149,7 @@ def search_client(flavor: str, request: pytest.FixtureRequest) -> RestlyTestClie
         class ItemView(fr.RestView):
             prefix = "/items"
             model = Item
-            schema = ItemRead
+            schema = ItemSchema
             dependencies = [Depends(api_key)]
 
             @fr.get("/search")
@@ -162,7 +162,7 @@ def search_client(flavor: str, request: pytest.FixtureRequest) -> RestlyTestClie
         class ItemView(fr.AsyncRestView):  # type: ignore[no-redef]
             prefix = "/items"
             model = Item
-            schema = ItemRead
+            schema = ItemSchema
             dependencies = [Depends(api_key)]
 
             @fr.get("/search")

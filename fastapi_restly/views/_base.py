@@ -102,6 +102,7 @@ from ..query import derive_schema_list_params
 from ..query._impl import _UNKNOWN, _created_with, _query_settings
 from ..schemas import BaseSchema, IDSchema
 from ..schemas._base import (
+    _derive_schema_response,
     _model_id_type,
     _reject_buried_markers,
     _unwrap_optional_annotation,
@@ -783,40 +784,6 @@ def _get_nested_schema_annotation(annotation: Any) -> type[pydantic.BaseModel] |
     return None
 
 
-class _OmitWriteOnlyMixin(pydantic.BaseModel):
-    @classmethod
-    def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
-        super().__pydantic_init_subclass__(**kwargs)
-
-        writeonly_fields = [
-            name for name in cls.model_fields if is_writeonly_field(cls, name)
-        ]
-        for name in writeonly_fields:
-            del cls.model_fields[name]
-
-        cls.model_rebuild(force=True)
-
-
-@functools.cache
-def _create_response_validation_schema(
-    schema_cls: type[pydantic.BaseModel],
-) -> type[pydantic.BaseModel]:
-    if not any(
-        is_writeonly_field(schema_cls, name) for name in schema_cls.model_fields
-    ):
-        return schema_cls
-
-    return type(
-        f"Response{schema_cls.__name__}",
-        (_OmitWriteOnlyMixin, schema_cls),
-        {
-            "__module__": schema_cls.__module__,
-            "__doc__": (schema_cls.__doc__ or "")
-            + "\nWrite-only fields have been removed for response validation.",
-        },
-    )
-
-
 def _generated_primary_key_fields(model_cls: type[Any]) -> frozenset[str]:
     """The primary key attributes the server generates, never the client.
 
@@ -849,7 +816,7 @@ def _generated_primary_key_fields(model_cls: type[Any]) -> frozenset[str]:
 def _response_validation_adapter(
     schema_cls: type[pydantic.BaseModel],
 ) -> pydantic.TypeAdapter[pydantic.BaseModel]:
-    return pydantic.TypeAdapter(_create_response_validation_schema(schema_cls))
+    return pydantic.TypeAdapter(_derive_schema_response(schema_cls))
 
 
 def _build_relationship_loader_options(
@@ -1534,17 +1501,18 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         reject_unknown_query_keys(request, list_keys | set(self.extra_query_params))
 
     def to_single_response(self, obj: ModelT | SchemaT) -> SchemaT:
-        """Serialize one ORM object to the view's schema.
+        """Serialize one ORM object to the view's response class.
 
-        An override returns an instance of :attr:`schema`: the list envelopes
-        take their items as schema instances.
+        The response class is the view's schema without its WriteOnly fields,
+        named like ``UserResponse``. It is a subclass of :attr:`schema`. An
+        override may return an instance of :attr:`schema` instead: the
+        response reads it by its attributes, so its WriteOnly fields do not
+        go out.
 
-        WriteOnly fields are stripped from responses by ``exclude=True`` on the
-        marker itself (recursively, at serialization time), so a pre-built schema
-        instance is safe to return as-is. The ORM path below still validates
-        through the WriteOnly-omitting response schema, so a view's schema that
-        declares a WriteOnly field the ORM object doesn't carry (e.g. ``password``
-        backed by a ``password_hash`` column) doesn't fail response validation.
+        The ORM path below validates through the response class, so a view's
+        schema that declares a WriteOnly field the ORM object doesn't carry
+        (e.g. ``password`` backed by a ``password_hash`` column) doesn't fail
+        response validation.
         """
         if isinstance(obj, self.schema):
             return cast(SchemaT, obj)
@@ -1601,7 +1569,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         """
         data = [self.to_single_response(obj) for obj in list_result.objects]
         pagination = self.pagination
-        envelope = _list_envelope(pagination, self.schema)
+        envelope = _list_envelope(pagination, _derive_schema_response(self.schema))
         if not isinstance(pagination, NumberedPagination):
             return _build_envelope(envelope, _unpaginated_page_info(data))
         params = self._to_query_params(list_result.list_params)
@@ -1712,11 +1680,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             )
             _mark_generated(cls, "schema_update")
 
-        # WriteOnly fields are excluded from responses by ``exclude=True`` on the
-        # marker (recursively, and from the OpenAPI response schema, since FastAPI's
-        # serialization-mode schema drops them), so the response_model can be the
-        # full schema.
-        response_schema = cls.schema
+        response_schema = _derive_schema_response(cls.schema)
         id_type = _view_id_type(cls)
         if id_type is int:
             item_path = "/{id:int}"
@@ -2209,7 +2173,7 @@ def _init_view_cls_and_add_to_router(
     FastAPI does a lot with annotations. For example, accepted or returned JSON is
     often described with Pydantic classes like this:
 
-        def my_endpoint(foo: FooRead) -> FooRead:
+        def my_endpoint(foo: FooSchema) -> FooSchema:
 
     Most of this preparation sets the correct annotations on inherited class
     methods.
@@ -2472,8 +2436,8 @@ def _copy_all_parent_class_endpoints_into_this_subclass(view_cls: type[View]):
 
     For example, FooView.get() delegates to AsyncRestView.get() if it is not
     overridden (this is called implicit delegation through method resolution). And if
-    we add the annotation that FooView.get() returns FooRead but do not make a copy
-    then AsyncRestView.get() and all other subclasses will get the FooRead
+    we add the annotation that FooView.get() returns FooSchema but do not make a copy
+    then AsyncRestView.get() and all other subclasses will get the FooSchema
     annotation as well.
     """
     for name, endpoint in _get_all_parent_endpoints(view_cls).items():

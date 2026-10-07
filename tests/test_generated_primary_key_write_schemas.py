@@ -32,11 +32,11 @@ def test_autoincrement_id_is_left_out_of_derived_write_schemas(base):
     class Gadget(fr.IDBase):
         name: Mapped[str]
 
-    class GadgetRead(pydantic.BaseModel):
+    class GadgetSchema(pydantic.BaseModel):
         id: int
         name: str
 
-    view = _register(base, Gadget, GadgetRead)
+    view = _register(base, Gadget, GadgetSchema)
 
     assert set(view.schema.model_fields) == {"id", "name"}
     assert set(view.schema_create.model_fields) == {"name"}
@@ -50,11 +50,11 @@ def test_primary_key_with_a_column_default_is_left_out(base):
         )
         name: Mapped[str]
 
-    class TokenRead(pydantic.BaseModel):
+    class TokenSchema(pydantic.BaseModel):
         id: UUID
         name: str
 
-    view = _register(base, Token, TokenRead)
+    view = _register(base, Token, TokenSchema)
 
     assert set(view.schema_create.model_fields) == {"name"}
     assert set(view.schema_update.model_fields) == {"name"}
@@ -67,11 +67,11 @@ def test_dataclass_primary_key_outside_init_is_left_out(base):
         )
         name: Mapped[str]
 
-    class TicketRead(pydantic.BaseModel):
+    class TicketSchema(pydantic.BaseModel):
         id: UUID
         name: str
 
-    view = _register(base, Ticket, TicketRead)
+    view = _register(base, Ticket, TicketSchema)
 
     assert set(view.schema_create.model_fields) == {"name"}
 
@@ -85,11 +85,11 @@ def test_generated_primary_key_with_another_name_is_left_out(base):
         widget_id: Mapped[int] = mapped_column(primary_key=True)
         name: Mapped[str]
 
-    class WidgetRead(pydantic.BaseModel):
+    class WidgetSchema(pydantic.BaseModel):
         widget_id: int
         name: str
 
-    view = _register(base, Widget, WidgetRead)
+    view = _register(base, Widget, WidgetSchema)
 
     assert set(view.schema_create.model_fields) == {"name"}
     assert set(view.schema_update.model_fields) == {"name"}
@@ -100,11 +100,11 @@ def test_natural_key_stays_in_the_derived_create_schema(base):
         code: Mapped[str] = mapped_column(primary_key=True)
         name: Mapped[str]
 
-    class CountryRead(pydantic.BaseModel):
+    class CountrySchema(pydantic.BaseModel):
         code: str
         name: str
 
-    view = _register(base, Country, CountryRead)
+    view = _register(base, Country, CountrySchema)
 
     assert set(view.schema_create.model_fields) == {"code", "name"}
     assert view.schema_create.model_fields["code"].is_required()
@@ -116,12 +116,12 @@ def test_composite_key_stays_in_the_derived_create_schema(base):
         group_id: Mapped[int] = mapped_column(primary_key=True)
         role: Mapped[str]
 
-    class MembershipRead(pydantic.BaseModel):
+    class MembershipSchema(pydantic.BaseModel):
         user_id: int
         group_id: int
         role: str
 
-    view = _register(base, Membership, MembershipRead)
+    view = _register(base, Membership, MembershipSchema)
 
     assert set(view.schema_create.model_fields) == {"user_id", "group_id", "role"}
 
@@ -130,7 +130,7 @@ def test_explicit_write_schemas_are_left_alone(base):
     class Device(fr.IDBase):
         name: Mapped[str]
 
-    class DeviceRead(pydantic.BaseModel):
+    class DeviceSchema(pydantic.BaseModel):
         id: int
         name: str
 
@@ -139,7 +139,7 @@ def test_explicit_write_schemas_are_left_alone(base):
         name: str
 
     view = _register(
-        base, Device, DeviceRead, schema_create=DeviceWrite, schema_update=DeviceWrite
+        base, Device, DeviceSchema, schema_create=DeviceWrite, schema_update=DeviceWrite
     )
 
     assert view.schema_create is DeviceWrite
@@ -150,7 +150,7 @@ def test_client_cannot_choose_or_change_a_generated_id(client):
     class Sprocket(fr.IDBase):
         name: Mapped[str]
 
-    class SprocketRead(pydantic.BaseModel):
+    class SprocketSchema(pydantic.BaseModel):
         id: int
         name: str
 
@@ -158,7 +158,7 @@ def test_client_cannot_choose_or_change_a_generated_id(client):
     class SprocketView(fr.AsyncRestView):
         prefix = "/sprockets"
         model = Sprocket
-        schema = SprocketRead
+        schema = SprocketSchema
 
     create_tables()
 

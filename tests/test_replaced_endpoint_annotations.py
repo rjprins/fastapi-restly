@@ -47,7 +47,7 @@ def env(request):
         name: Mapped[str]
         price: Mapped[float]
 
-    class ProductRead(fr.IDSchema):
+    class ProductSchema(fr.IDSchema):
         name: str
         price: float
 
@@ -59,7 +59,7 @@ def env(request):
             fr.AsyncReactAdminView if asynchronous else fr.ReactAdminView
         ),
         Product=Product,
-        ProductRead=ProductRead,
+        ProductSchema=ProductSchema,
         make_tables=make_tables,
     )
 
@@ -95,7 +95,7 @@ def test_replaced_update_endpoint_keeps_explicit_id_and_schema_obj(env):
     class ProductView(env.base):
         prefix = "/products"
         model = env.Product
-        schema = env.ProductRead
+        schema = env.ProductSchema
 
         if env.asynchronous:
 
@@ -137,7 +137,7 @@ def test_replaced_create_endpoint_keeps_explicit_schema_obj(env):
     class ProductView(env.base):
         prefix = "/products"
         model = env.Product
-        schema = env.ProductRead
+        schema = env.ProductSchema
 
         if env.asynchronous:
 
@@ -165,7 +165,7 @@ def test_replaced_get_one_endpoint_keeps_explicit_id(env):
     class ProductView(env.base):
         prefix = "/products"
         model = env.Product
-        schema = env.ProductRead
+        schema = env.ProductSchema
 
         if env.asynchronous:
 
@@ -197,7 +197,7 @@ def test_explicit_annotation_with_unhashable_metadata_is_kept(env):
     class ProductView(env.base):
         prefix = "/products"
         model = env.Product
-        schema = env.ProductRead
+        schema = env.ProductSchema
 
         if env.asynchronous:
 
@@ -221,7 +221,7 @@ def test_replaced_delete_endpoint_keeps_explicit_id(env):
     class ProductView(env.base):
         prefix = "/products"
         model = env.Product
-        schema = env.ProductRead
+        schema = env.ProductSchema
 
         if env.asynchronous:
 
@@ -254,7 +254,7 @@ def test_replaced_endpoint_without_annotations_gets_the_view_types(env):
     class ProductView(env.base):
         prefix = "/products"
         model = env.Product
-        schema = env.ProductRead
+        schema = env.ProductSchema
 
         if env.asynchronous:
 
@@ -307,7 +307,7 @@ def test_replaced_endpoint_without_annotations_gets_the_view_types(env):
         ("/products", "post", "201"),
         ("/products/{id}", "patch", "200"),
     ]:
-        assert _response_ref(openapi, path, method, status) == "ProductRead"
+        assert _response_ref(openapi, path, method, status) == "ProductResponse"
 
 
 def test_replaced_endpoint_keeps_explicit_return_annotation(env):
@@ -317,7 +317,7 @@ def test_replaced_endpoint_keeps_explicit_return_annotation(env):
     class ProductView(env.base):
         prefix = "/products"
         model = env.Product
-        schema = env.ProductRead
+        schema = env.ProductSchema
 
         if env.asynchronous:
 
@@ -350,7 +350,7 @@ def test_subclass_of_registered_view_fills_its_own_types(env):
     class ProductView(env.base):
         prefix = "/products"
         model = env.Product
-        schema = env.ProductRead
+        schema = env.ProductSchema
 
     fr.include_view(FastAPI(), ProductView)
 
@@ -361,7 +361,7 @@ def test_subclass_of_registered_view_fills_its_own_types(env):
         name: Mapped[str]
         color: Mapped[str]
 
-    class GadgetRead(fr.BaseSchema):
+    class GadgetSchema(fr.BaseSchema):
         id: fr.ReadOnly[UUID]
         name: str
         color: str
@@ -369,13 +369,13 @@ def test_subclass_of_registered_view_fills_its_own_types(env):
     class GadgetView(ProductView):
         prefix = "/gadgets"
         model = Gadget
-        schema = GadgetRead
+        schema = GadgetSchema
         id_type = UUID
 
     openapi = _register(env, GadgetView)
     client = env.client
 
-    # ProductRead's create schema would accept this body
+    # ProductSchema's create schema would accept this body
     client.post(
         "/products/gadgets/",
         json={"name": "Lamp", "price": 1.0},
@@ -392,7 +392,7 @@ def test_subclass_of_registered_view_fills_its_own_types(env):
     assert response.json()["color"] == "blue"
 
     assert _id_param(openapi, "/products/gadgets/{id}", "get")["format"] == "uuid"
-    assert _response_ref(openapi, "/products/gadgets/{id}", "get") == "GadgetRead"
+    assert _response_ref(openapi, "/products/gadgets/{id}", "get") == "GadgetResponse"
 
 
 def test_replaced_react_admin_put_keeps_explicit_schema_obj(env):
@@ -403,7 +403,7 @@ def test_replaced_react_admin_put_keeps_explicit_schema_obj(env):
     class ProductView(env.react_admin_base):
         prefix = "/products"
         model = env.Product
-        schema = env.ProductRead
+        schema = env.ProductSchema
 
         if env.asynchronous:
 
@@ -436,7 +436,7 @@ def test_default_react_admin_put_takes_schema_update(env):
     class ProductView(env.react_admin_base):
         prefix = "/products"
         model = env.Product
-        schema = env.ProductRead
+        schema = env.ProductSchema
 
     openapi = _register(env, ProductView)
     client = env.client
@@ -457,7 +457,7 @@ def test_explicit_list_params_annotation_takes_the_view_list_params(env):
     class ProductView(env.base):
         prefix = "/products"
         model = env.Product
-        schema = env.ProductRead
+        schema = env.ProductSchema
 
         if env.asynchronous:
 

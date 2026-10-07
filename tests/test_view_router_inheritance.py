@@ -34,14 +34,14 @@ def make_client(
     class Gadget(fr.IDBase):
         name: Mapped[str]
 
-    class GadgetRead(fr.IDSchema):
+    class GadgetSchema(fr.IDSchema):
         name: str
 
     def make(*bases: type, **attrs: Any) -> RestlyTestClient:
         view = type(
             "GadgetView",
             (*bases, view_base),
-            {"prefix": "/gadgets", "model": Gadget, "schema": GadgetRead, **attrs},
+            {"prefix": "/gadgets", "model": Gadget, "schema": GadgetSchema, **attrs},
         )
         app = FastAPI()
         fr.include_view(app, view)

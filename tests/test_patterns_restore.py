@@ -25,7 +25,7 @@ def client(request: pytest.FixtureRequest) -> Iterator[RestlyTestClient]:
         name: Mapped[str]
         deleted_at: Mapped[datetime | None] = mapped_column(default=None)
 
-    class ItemRead(fr.IDSchema):
+    class ItemSchema(fr.IDSchema):
         name: str
 
     authorized: list[str] = []
@@ -38,7 +38,7 @@ def client(request: pytest.FixtureRequest) -> Iterator[RestlyTestClient]:
         class ItemView(base):  # type: ignore[misc,valid-type]
             prefix = "/items"
             model = Item
-            schema = ItemRead
+            schema = ItemSchema
             scope = fr.none_of(is_deleted)
 
             def delete(self, obj):
@@ -47,7 +47,7 @@ def client(request: pytest.FixtureRequest) -> Iterator[RestlyTestClient]:
             def authorize(self, action, *, obj=None, data=None):
                 authorized.append(str(action))
 
-            @fr.post("/{id}/restore", response_model=ItemRead, status_code=200)
+            @fr.post("/{id}/restore", response_model=ItemSchema, status_code=200)
             def restore(self, id: int):
                 obj = self.get_one(id, scope=is_deleted)
                 with self.write_action("restore", obj=obj):
@@ -60,7 +60,7 @@ def client(request: pytest.FixtureRequest) -> Iterator[RestlyTestClient]:
         class ItemView(base):  # type: ignore[no-redef,misc,valid-type]
             prefix = "/items"
             model = Item
-            schema = ItemRead
+            schema = ItemSchema
             scope = fr.none_of(is_deleted)
 
             async def delete(self, obj):
@@ -69,7 +69,7 @@ def client(request: pytest.FixtureRequest) -> Iterator[RestlyTestClient]:
             async def authorize(self, action, *, obj=None, data=None):
                 authorized.append(str(action))
 
-            @fr.post("/{id}/restore", response_model=ItemRead, status_code=200)
+            @fr.post("/{id}/restore", response_model=ItemSchema, status_code=200)
             async def restore(self, id: int):
                 obj = await self.get_one(id, scope=is_deleted)
                 async with self.write_action("restore", obj=obj):
