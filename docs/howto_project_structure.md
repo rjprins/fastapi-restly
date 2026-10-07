@@ -37,9 +37,7 @@ A single module is the right shape for a first resource.
 file, and nothing is gained by splitting it while it stays that size.
 
 Split when the second or third resource arrives, or when one resource grows
-explicit schemas and a handful of overrides. The signal is scrolling: when you
-navigate the file by searching rather than by reading, it holds more than one
-subject.
+explicit schemas and a handful of overrides.
 
 ## Organize by subject, then by type
 
