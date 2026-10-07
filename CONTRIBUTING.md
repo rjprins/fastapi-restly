@@ -91,7 +91,7 @@ make docs-serve
   heading is reworded. Both mistakes fail the build: `nitpicky = True`
   plus `-W` turns an unresolved link or role into an error.
 - Code examples in docs should be runnable as shown (or clearly marked
-  illustrative); the landing-page teaser, tutorial listing, and Patterns
+  illustrative); the landing-page teaser, the tutorial code, and Patterns
   entries are executed during review — keep them that way.
 
 ## Pull Request Conventions
@@ -121,6 +121,61 @@ make docs-serve
   layer it belongs to.
 - Internal modules are prefixed with `_` (e.g. `_base.py`, `_async.py`) and
   re-exported from package `__init__.py`.
+
+## Naming Conventions
+
+Public names follow these rules. Check a new name against them before you
+add it.
+
+1. Actions are verbs: `get_many`, `get_one`, `create`, `update`, `delete`.
+   These names stay.
+2. "List" is what `get_many` returns: the result (`ListResult`), the response
+   shape (`ResponseShape.LIST`), the list response (`to_list_response`) and
+   the list params (`schema_list_params`).
+3. An attribute puts the noun first and the role after, so it does not look
+   like a method: `schema_create`, `schema_list_params`.
+4. A function starts with a verb. It starts with an action name only if it is
+   part of that action: `update_object` is fine, `create_schema_from_model` is
+   not. Getters such as `get_relationship_loader_options` are fine.
+5. A function that builds a schema attribute is named `derive_` plus the
+   attribute name: `derive_schema_list_params` builds `schema_list_params`.
+6. A class that Restly generates is named `<Resource><Role>`. Resource is the
+   class name of the view's schema without a final `Schema` or `Response`.
+   The client only sees these names, never the view's schema itself. This
+   rule is not in place yet: today a generated class keeps the full name of
+   the view's schema, as in `UserSchemaCreate`, and a view without a schema
+   gets `UserRead`. That changes before 1.0.
+7. One word per thing. "Response" is what goes out. "List params" is the list
+   grammar and its value. "Query params" only means raw keys from the URL, as
+   in `extra_query_params`.
+
+A public function takes the same argument names as the view: `schema`, not
+`schema_cls`; `query`, not `select_query`; `list_params`, not `params`. When
+a view method and a public function do the same thing, they share the name
+and the order of the arguments, as `apply_list_params` and `make_new_object`
+do.
+
+### The view's schema
+
+`schema` is the view's schema, next to `model`. It is not the response
+schema: it can hold `WriteOnly` fields, and those never go out. Restly
+derives the response, create, update and list params schemas from it.
+
+- In docs, call it "the view's schema". Do not call it "resource schema":
+  "resource" and "response" look too much alike. Use "response schema" only
+  for what really goes out.
+- Schemas written by hand use the same names as generated ones: `UserSchema`
+  for the view's schema, and `UserCreate`, `UserUpdate` and `UserResponse`
+  for the roles. The docs and examples teach these names.
+
+### Words we do not use
+
+- "listing": in everyday English, a listing is one item on offer. Say "list":
+  the list endpoint, the list response.
+- "Read" as a role: say "Response". It matches FastAPI's `response_model`.
+- "singular" or "item" for one object: say "single". The docs use `Item` as
+  an example model.
+- `list` as a method name: it hides the builtin `list` in the class body.
 
 ## Release Process
 

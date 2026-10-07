@@ -27,19 +27,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Names around lists and schemas follow one set of rules, which are now in
+  CONTRIBUTING.md. "List" is what `get_many` returns, "list params" are the
+  filter, sort and page parameters of a list, and the word "listing" is gone.
+  Rename these in your code:
+  - `listing_param_schema` is now `schema_list_params`.
+  - `fr.ListingResult` is now `fr.ListResult`, and its field `query_params` is
+    now `list_params`.
+  - `fr.ResponseShape.LISTING` (value `"listing"`) is now
+    `fr.ResponseShape.LIST` (value `"list"`).
+  - `to_listing_response(query_params, listing_result)` is now
+    `to_list_response(list_result)`. It takes one argument: the list params
+    are in `list_result.list_params`.
+  - `to_response_schema(obj)` is now `to_single_response(obj)`.
+  - `to_response(obj_or_list, shape)` is now `to_response(result, shape)`.
+  - The `query_params` argument of `get_many`, `handle_get_many` and
+    `get_many_endpoint` is now `list_params`. So is the route parameter that
+    gives a custom route the filter, sort and page parameters, as in
+    `def trash(self, list_params)`.
+  - The view method `apply_query_params(query, query_params)` is now
+    `apply_list_params(query, list_params)`.
+  - `fr.query.apply_list_params(params, select_query, model, schema_cls)` is
+    now `fr.query.apply_list_params(query, list_params, model, schema)`. The
+    first two arguments changed places, so the function takes the same
+    arguments as the view method.
+  - `fr.query.create_list_params_schema(schema_cls, model)` is now
+    `fr.query.derive_schema_list_params(schema, model)`.
+  - `fr.schemas.create_schema_from_model` is now `fr.schemas.derive_schema`.
+    Its arguments `model_cls`, `schema_name` and `include_readonly_fields` are
+    now `model`, `name` and `include_read_only_fields`. Its
+    `include_relationships` now defaults to `False`, so it returns the same
+    schema that a view generates when it has no `schema`. Pass
+    `include_relationships=True` to keep the relationship fields.
+  - React-admin views no longer have `to_react_admin_listing_response` or
+    their own `to_response`. To change their list response, override
+    `to_list_response(list_result)`.
+  - The OpenAPI summary of `GET /{id}` is "Get" instead of "Retrieve", to
+    match the `get` operation ID.
+
+  A view that still sets `listing_param_schema`, overrides
+  `to_listing_response`, `to_response_schema` or `apply_query_params`, or has
+  a route with a `query_params` parameter fails at class definition, with an
+  error that names the new name. An old import or enum member fails on its
+  own.
 - One view setting, `pagination`, replaces `paginated`, `default_page_size`
   and `max_page_size`. Write `pagination = None` for `paginated = False`, and
   `pagination = fr.NumberedPagination(default_page_size=25, max_page_size=200)`
   for the two sizes. A view or mixin that still sets an old name fails at class
   definition, or at registration when set later, with what to write instead.
   React-admin views set their default page size the same way.
-- `to_listing_response` returns an instance of the envelope model instead of a
+- `to_list_response` returns an instance of the envelope model instead of a
   dict, so a direct caller reads its attributes, such as `page.data` with the
   default envelope. The same goes for calling `get_many_endpoint` in code.
-- `fr.query.create_list_params_schema` takes `pagination=` instead of
+- `fr.query.derive_schema_list_params` takes `pagination=` instead of
   `default_page_size`, `max_page_size` and `paginated`. `fr.query.apply_list_params`
-  gains `pagination=`; by default it reads the pagination its params model was
-  created with.
+  gains `pagination=`; by default it reads the pagination its list params model
+  was created with.
 - React-admin views answer `400` for a `range` that asks for more rows than the
   pagination's `max_page_size`, which is 1000 by default.
 - Dotted filters and sorts use SQL aliases for relationship joins. Set
@@ -142,15 +185,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   attribute, and the key of an `APIKeyQuery`. These keys used to answer
   `422 Unknown query parameter` unless the view listed them in
   `extra_query_params`. Unknown keys are still rejected.
-- A custom listing route can take its own query parameters beside
-  `query_params`, such as `def search(self, query_params, mode: SearchMode)`.
-  It used to answer 422 with `query_params` reported missing.
+- A custom list route can take its own query parameters beside
+  `list_params`, such as `def search(self, list_params, mode: SearchMode)`.
+  It used to answer 422 with the list params reported missing.
 - A list endpoint's OpenAPI lists each filter as its own parameter when the
   route also reads another query parameter, for example one a dependency
   declares. FastAPI used to collapse the filters into one required
-  `query_params` object, which also changed the method signatures of
-  generated clients.
-- A hand-written `listing_param_schema` takes a field by its alias. The alias
+  object, which also changed the method signatures of generated clients.
+- Hand-written `schema_list_params` take a field by its alias. The alias
   used to be rejected as an unknown key, and the Python field name was
   accepted and then ignored.
 - Type checkers see that models on `fr.DataclassBase` and `fr.IDBase` are
@@ -225,7 +267,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and `?pin__gte=5&sort=pin` narrowed it down. Such a filter is now an unknown
   query parameter (`422`), and such a sort key is an invalid attribute
   (`400`), the same answers a field that does not exist gets. This includes
-  nested schemas and a custom `listing_param_schema`.
+  nested schemas and a custom `schema_list_params`.
 
 ## [0.10.0] - 2026-09-23
 
