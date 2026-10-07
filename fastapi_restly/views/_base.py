@@ -1238,6 +1238,53 @@ def _check_pagination_setting(cls: type) -> None:
         )
 
 
+# Renamed before 1.0. Restly no longer reads the old names, so a definition
+# would be silently dead, or would fail only on a request.
+_RENAMED_SETTINGS = {"listing_param_schema": "schema_list_params"}
+_RENAMED_METHODS = {
+    "to_listing_response": "to_list_response",
+    "to_response_schema": "to_single_response",
+    "apply_query_params": "apply_list_params",
+}
+_RENAMED_METHOD_HINTS = {
+    "to_listing_response": (
+        " It takes only the list result: the list params are in "
+        "list_result.list_params."
+    ),
+    "apply_query_params": " Its arguments are (query, list_params).",
+}
+
+
+def _check_renamed_names(cls: type) -> None:
+    """Reject a setting, a method or a route parameter that still uses a name
+    from before the rename. Runs when the class is defined."""
+    for klass in cls.__mro__:
+        origin = "" if klass is cls else f" (from {klass.__name__})"
+        for old, new in _RENAMED_SETTINGS.items():
+            if old in vars(klass):
+                raise RestlyConfigurationError(
+                    f"{cls.__name__} sets {old}{origin}, which was renamed to "
+                    f"{new}. Rename the setting."
+                )
+        for old, new in _RENAMED_METHODS.items():
+            if old in vars(klass):
+                raise RestlyConfigurationError(
+                    f"{cls.__name__} defines {old}{origin}, which was renamed "
+                    f"to {new}.{_RENAMED_METHOD_HINTS.get(old, '')} Rename the "
+                    "method."
+                )
+        for name, value in vars(klass).items():
+            if not hasattr(value, "_api_route_args"):
+                continue
+            if "query_params" in inspect.signature(value).parameters:
+                raise RestlyConfigurationError(
+                    f"{cls.__name__}.{name}{origin} declares a query_params "
+                    "parameter, which was renamed to list_params. Rename the "
+                    "parameter, so the route still takes the filter, sort and "
+                    "page parameters."
+                )
+
+
 class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT]):
     """
     Base class for RestView implementations.
@@ -1380,6 +1427,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                         _final_handler_message(cls.__name__, name, origin)
                     )
         _check_pagination_setting(cls)
+        _check_renamed_names(cls)
 
     def _apply_scope(self, query: Select[Any], scope: ReadScope) -> Select[Any]:
         # the one path every read takes, so retrieve, list and count cannot
