@@ -15,7 +15,11 @@ from .schemas import TaskSchema
 
 
 class TaskCreate(BaseModel):
-    """Schema for creating a task (no id/timestamps)."""
+    """Schema for creating a task (no id/timestamps).
+
+    It is TaskView's ``schema_create``, so the create route, the bulk route
+    and the CSV import take the same body.
+    """
 
     title: str
     description: str = ""
@@ -79,6 +83,7 @@ class TaskView(SoftDeleteMixin, AuthenticatedView[Task]):
     prefix = "/tasks"
     model = Task
     schema = TaskSchema
+    schema_create = TaskCreate
     scope = TaskClauses.visible
 
     async def delete(self, obj: Task) -> None:
