@@ -39,8 +39,8 @@ The default routes share these conventions:
 `GET /{prefix}` accepts filter, sort, and pagination parameters derived from
 the response schema; keys use public field names (aliases included), and
 dotted paths filter on relations. The table below gives the grammar in one
-line each; the canonical treatment, including comma semantics, LIKE escaping,
-foreign-key filtering, and alias rules, is
+line each; the full description, including comma semantics, LIKE escaping,
+foreign-key filtering, and alias rules, is in
 [Filter, Sort, and Paginate Lists](howto_query_modifiers.md):
 
 | Kind | Form |

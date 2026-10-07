@@ -215,7 +215,7 @@ class ProductView(ReadOnlyBase):
 
 A base class can override the {meth}`delete <fastapi_restly.views.RestView.delete>`
 business method once for every subclass, exactly like the audit example above
-but with the soft-delete body. The canonical `deleted_at` recipe is in
+but with the soft-delete body. The full `deleted_at` recipe is in
 {ref}`Customizing RestView <soft-delete-recipe>`. The reusable mixin that also
 hides flagged rows on read is in [Compose Views with
 Mixins](howto_compose_views_with_mixins.md).

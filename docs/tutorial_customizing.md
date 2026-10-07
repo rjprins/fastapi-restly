@@ -134,7 +134,7 @@ class PostView(fr.AsyncRestView):
 `DELETE /posts/{id}` now marks the row instead of removing it.
 {meth}`delete_endpoint <fastapi_restly.views.RestView.delete_endpoint>` still
 returns 204, and {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>`
-still runs the commit bracket. Pair this with a scope clause that hides deleted rows. The canonical recipe lives in [Customizing
+still runs the commit bracket. Pair this with a scope clause that hides deleted rows. The full recipe is in [Customizing
 RestView](customize.md#delete-soft-delete-instead-of-removing-the-row). The
 reusable mixin version is in [Compose Views with
 Mixins](howto_compose_views_with_mixins.md).

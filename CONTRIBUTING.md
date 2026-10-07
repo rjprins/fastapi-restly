@@ -65,6 +65,11 @@ make docs-serve
 
 ## Documentation Conventions
 
+- Write for readers whose first language is not English. Use common words,
+  not rare or formal ones such as "canonical" or "superfluous", and no
+  idioms. Keep sentences short, with one idea each. Then read the draft again
+  word by word, and replace anything a tired reader would stumble on. This
+  applies to the docs, docstrings, error messages and the changelog.
 - Update relevant docs when user-facing behaviour changes; the docs build is
   warning-clean and CI enforces it (`make docs` runs Sphinx with `-W`).
 - One page owns each topic; other pages link to it instead of restating.

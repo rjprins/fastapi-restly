@@ -65,6 +65,7 @@ For how clients *request* pages (the `page` and `page_size` inputs), see
 [Pagination](howto_query_modifiers.md#pagination) in the query-modifiers
 guide.
 
+(change-list-envelope)=
 ## Change the list envelope
 
 The list envelope is a Pydantic model, and you can replace it. Write a
@@ -143,10 +144,10 @@ class DataMeta(pydantic.BaseModel, Generic[T]):
 ```
 
 Set the pagination on a project base view to give every list the same
-envelope; see [Set it once for every view](howto_query_modifiers.md#set-it-once-for-every-view).
+envelope; see [Set it once for every view](#set-pagination-once).
 A custom listing route on such a view names the same envelope as its
 response model, for example `response_model=APP_PAGINATION.envelope[ItemRead]`.
-[Coming from fastapi-pagination](howto_query_modifiers.md#coming-from-fastapi-pagination)
+[Coming from fastapi-pagination](#fastapi-pagination-migration)
 shows the envelope that keeps fastapi-pagination's field names.
 
 Creating the pagination settings builds an empty page from the envelope, so

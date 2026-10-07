@@ -194,6 +194,7 @@ pagination parameter fails when the view registers. Rename the parameter or
 give the field an alias. Renaming a parameter frees its old name, so a `page`
 column gets its filter back.
 
+(set-pagination-once)=
 ### Set it once for every view
 
 Views inherit `pagination`, so a project base view sets it once. A view that
@@ -227,9 +228,10 @@ class UserView(fr.AsyncRestView):
 `None` is short for `fr.NoPagination()`. The pagination's `envelope` setting
 replaces the envelope model: rename its fields, drop some, or nest them.
 `fr.NoPagination(envelope=...)` does the same for a view without pagination.
-[Response Envelopes and List Metadata](howto_response_schema.md#change-the-list-envelope)
-is canonical for the envelope's shape.
+[Response Envelopes and List Metadata](#change-list-envelope) describes how
+to change the envelope.
 
+(fastapi-pagination-migration)=
 ### Coming from fastapi-pagination
 
 fastapi-pagination's default `Page` takes `?page=` and `?size=` and returns
