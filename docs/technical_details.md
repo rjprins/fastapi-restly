@@ -75,7 +75,7 @@ on the view class before {func}`include_view() <fastapi_restly.views.include_vie
 A subclass inherits the schemas its base view declares. Registration rebuilds a
 schema for the subclass in two cases: Restly generated it for the parent, or the
 subclass declares a new `schema`, which replaces an inherited `schema_create`,
-`schema_update`, and list parameter schema.
+`schema_update`, and `schema_list_params`.
 
 (auto-generated-schemas)=
 ### Auto-Generated Schemas
@@ -207,7 +207,7 @@ control construction and cleanup, not commit ownership.
 identity, route, and list configuration. At registration,
 {meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>`
 turns that configuration into FastAPI signatures. It derives missing schemas,
-constructs the list query-parameter schema, sets the endpoint annotations, and
+builds the list params, sets the endpoint annotations, and
 removes the route marker for each exclusion. An exclusion may use a
 `ViewRoute` value or its endpoint-method string, such as `"delete_endpoint"`.
 

@@ -66,10 +66,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     match the `get` operation ID.
 
   A view that still sets `listing_param_schema`, overrides
-  `to_listing_response`, `to_response_schema` or `apply_query_params`, or has
-  a route with a `query_params` parameter fails at class definition, with an
-  error that names the new name. An old import or enum member fails on its
-  own.
+  `to_listing_response`, `to_react_admin_listing_response`,
+  `to_response_schema` or `apply_query_params`, or has a route with a
+  `query_params` parameter fails at class definition, or at registration when
+  set later, with an error that names the new name. An old import or enum
+  member fails on its own.
 - One view setting, `pagination`, replaces `paginated`, `default_page_size`
   and `max_page_size`. Write `pagination = None` for `paginated = False`, and
   `pagination = fr.NumberedPagination(default_page_size=25, max_page_size=200)`

@@ -6,11 +6,16 @@ The error names the new name.
 """
 
 import re
+import sys
 
 import pytest
+from pydantic import BaseModel
+from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 from fastapi_restly.exc import RestlyConfigurationError
+
+from .conftest import create_tables
 
 VIEW_BASES = [fr.AsyncRestView, fr.RestView, fr.AsyncReactAdminView, fr.ReactAdminView]
 
@@ -35,6 +40,11 @@ def test_old_list_params_setting_names_the_new_one(base):
             "to_list_response",
             "It takes only the list result: the list params are in "
             "list_result.list_params.",
+        ),
+        (
+            "to_react_admin_listing_response",
+            "to_list_response",
+            "The list params are in list_result.list_params.",
         ),
         ("to_response_schema", "to_single_response", ""),
         (
@@ -123,6 +133,54 @@ def test_a_plain_view_route_may_take_a_query_params_parameter():
         @fr.get("/")
         def search(self, query_params: str = ""):
             return {"query_params": query_params}
+
+
+def test_an_old_name_set_after_the_class_fails_at_registration(client):
+    class Thing(fr.IDBase):
+        name: Mapped[str]
+
+    class LateView(fr.AsyncRestView):
+        prefix = "/things"
+        model = Thing
+
+    LateView.listing_param_schema = object  # type: ignore[attr-defined]
+    with pytest.raises(
+        RestlyConfigurationError,
+        match="LateView sets listing_param_schema, which was renamed to "
+        "schema_list_params",
+    ):
+        fr.include_view(client.app, LateView)
+
+
+@pytest.mark.skipif(sys.version_info < (3, 14), reason="Deferred annotations need 3.14")
+def test_the_check_does_not_evaluate_route_annotations(client):
+    """On 3.14 a route may name a class that the module defines further down.
+    The check reads the route's parameters when the view class is defined,
+    before that name exists, so it must not evaluate the annotations."""
+
+    class Thing(fr.IDBase):
+        name: Mapped[str]
+
+    namespace = {"fr": fr, "Thing": Thing, "__name__": __name__}
+    exec(
+        "class LaterView(fr.AsyncRestView):\n"
+        "    prefix = '/things'\n"
+        "    model = Thing\n"
+        "\n"
+        "    @fr.post('/echo')\n"
+        "    async def echo(self, body: EchoBody) -> EchoBody:\n"
+        "        return body\n",
+        namespace,
+    )
+
+    class EchoBody(BaseModel):
+        text: str
+
+    namespace["EchoBody"] = EchoBody
+    fr.include_view(client.app, namespace["LaterView"])
+    create_tables()
+
+    assert client.post("/things/echo", json={"text": "hi"}).json() == {"text": "hi"}
 
 
 def test_the_new_names_define_a_view():

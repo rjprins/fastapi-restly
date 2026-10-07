@@ -17,6 +17,7 @@ import dataclasses
 import functools
 import inspect
 import re
+import sys
 import types
 import warnings
 from collections.abc import Mapping, Set
@@ -62,6 +63,9 @@ from starlette.datastructures import QueryParams
 from typing_extensions import TypeVar
 
 from .._exception_handlers import register_default_exception_handlers
+
+if sys.version_info >= (3, 14):
+    import annotationlib
 from ..clauses import (
     UNSCOPED,
     Unscoped,
@@ -1243,6 +1247,7 @@ def _check_pagination_setting(cls: type) -> None:
 _RENAMED_SETTINGS = {"listing_param_schema": "schema_list_params"}
 _RENAMED_METHODS = {
     "to_listing_response": "to_list_response",
+    "to_react_admin_listing_response": "to_list_response",
     "to_response_schema": "to_single_response",
     "apply_query_params": "apply_list_params",
 }
@@ -1251,13 +1256,31 @@ _RENAMED_METHOD_HINTS = {
         " It takes only the list result: the list params are in "
         "list_result.list_params."
     ),
+    "to_react_admin_listing_response": (
+        " The list params are in list_result.list_params."
+    ),
     "apply_query_params": " Its arguments are (query, list_params).",
 }
 
 
+def _route_parameters(route: Callable[..., Any]) -> Mapping[str, inspect.Parameter]:
+    """The parameters of ``route``, without evaluating its annotations.
+
+    On 3.14 a route may name a class that its module defines further down,
+    because annotations are read only when asked for. Evaluating them while
+    the view class is defined would raise ``NameError`` for that name.
+    """
+    if sys.version_info >= (3, 14):
+        return inspect.signature(
+            route, annotation_format=annotationlib.Format.FORWARDREF
+        ).parameters
+    return inspect.signature(route).parameters
+
+
 def _check_renamed_names(cls: type) -> None:
     """Reject a setting, a method or a route parameter that still uses a name
-    from before the rename. Runs when the class is defined."""
+    from before the rename. Runs when the class is defined and again at
+    registration, so a value assigned to the class later is caught too."""
     for klass in cls.__mro__:
         origin = "" if klass is cls else f" (from {klass.__name__})"
         for old, new in _RENAMED_SETTINGS.items():
@@ -1276,7 +1299,7 @@ def _check_renamed_names(cls: type) -> None:
         for name, value in vars(klass).items():
             if not hasattr(value, "_api_route_args"):
                 continue
-            if "query_params" in inspect.signature(value).parameters:
+            if "query_params" in _route_parameters(value):
                 raise RestlyConfigurationError(
                     f"{cls.__name__}.{name}{origin} declares a query_params "
                     "parameter, which was renamed to list_params. Rename the "
@@ -1647,6 +1670,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         are added to FastAPI.
         """
         _check_pagination_setting(cls)
+        _check_renamed_names(cls)
 
         # A declared schema is inherited like any attribute. One that Restly
         # generated for a parent is rebuilt, since the subclass may change
@@ -1722,7 +1746,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         for name, route in list(cls.__dict__.items()):
             if not hasattr(route, "_api_route_args"):
                 continue
-            if "list_params" not in inspect.signature(route).parameters:
+            if "list_params" not in _route_parameters(route):
                 continue
             if not getattr(route, "_fr_list_guard", False):
                 route = _guard_list_params(route)

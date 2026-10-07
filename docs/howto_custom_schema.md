@@ -3,7 +3,7 @@
 :::{note}
 FastAPI-Restly uses **schema** for Pydantic request/response models and
 **model** for SQLAlchemy ORM models. A `User` model is the database object;
-`UserSchema`, the view's schema, is the public API shape.
+`UserSchema`, the view's schema, defines the public API.
 :::
 
 Use explicit schemas when you need a stable public contract: aliases, hidden

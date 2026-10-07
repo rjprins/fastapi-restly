@@ -20,7 +20,7 @@ import fastapi_restly as fr
 | {mod}`fr.models <fastapi_restly.models>` | SQLAlchemy declarative bases and mixins for IDs and timestamps. |
 | {mod}`fr.db <fastapi_restly.db>` | Configuration, session dependencies, session context managers, and engine access. |
 | {mod}`fr.clauses <fastapi_restly.clauses>` | Reusable query predicates, boolean composition, and request context values. |
-| {mod}`fr.query <fastapi_restly.query>` | Filter, sort, and pagination parameter schemas and their application to SQLAlchemy queries. |
+| {mod}`fr.query <fastapi_restly.query>` | The list params (filter, sort, and pagination) and how to apply them to SQLAlchemy queries. |
 | {mod}`fr.objects <fastapi_restly.objects>` | Functions for building, updating, saving, and deleting ORM objects through a session. |
 | {mod}`fr.exc <fastapi_restly.exc>` | Configuration errors, HTTP errors, and warnings. |
 | {mod}`fr.testing <fastapi_restly.testing>` | Database test setup and synchronous and asynchronous test clients. |

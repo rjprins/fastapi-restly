@@ -829,6 +829,46 @@ def test_sync_react_admin_list_runs_the_handler_domain_and_response_seams(sync_c
     assert response.headers["Content-Range"].endswith("/11")
 
 
+@pytest.mark.parametrize("flavor", ["sync", "async"])
+def test_react_admin_list_response_is_changed_in_to_list_response(flavor, request):
+    """``to_list_response`` builds the react-admin list response, so an
+    override that calls ``super()`` keeps the array and ``Content-Range``."""
+    asynchronous = flavor == "async"
+    client = request.getfixturevalue("client" if asynchronous else "sync_client")
+
+    class CountedItem(fr.IDBase):
+        name: Mapped[str]
+
+    class CountedItemSchema(fr.IDSchema):
+        name: str
+
+    base = fr.AsyncReactAdminView if asynchronous else fr.ReactAdminView
+
+    @fr.include_view(client.app)
+    class CountedItemView(base):
+        prefix = "/counted-items"
+        model = CountedItem
+        schema = CountedItemSchema
+
+        def to_list_response(self, list_result):
+            response = super().to_list_response(list_result)
+            response.headers["X-Total-Count"] = str(list_result.total_count)
+            return response
+
+    if asynchronous:
+        create_tables()
+    else:
+        fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    for name in ("a", "b"):
+        client.post("/counted-items/", json={"name": name})
+
+    response = client.get("/counted-items/", params={"range": "[0,0]"})
+
+    assert [item["name"] for item in response.json()] == ["a"]
+    assert response.headers["Content-Range"] == "items 0-0/2"
+    assert response.headers["X-Total-Count"] == "2"
+
+
 @pytest.mark.parametrize("unpaginated", [None, fr.NoPagination()])
 def test_react_admin_view_cannot_disable_pagination(client, unpaginated):
     """A react-admin view reports its total via Content-Range, which needs the
