@@ -60,13 +60,6 @@ Restly derives two input schemas from the view's schema in
   Original field defaults from `UserSchema` are **replaced** by `None`, not
   preserved.
 
-The generated class names use resource-first role suffixes. `UserRead` derives
-`UserCreate` and `UserUpdate`. The `Read` suffix is the only suffix Restly
-strips when deriving request-schema names; other schema names are kept literally,
-so `UserSchema` derives `UserSchemaCreate` and `UserSchemaUpdate`. When `schema`
-is omitted entirely, a model named `User` auto-generates `UserRead` as the
-view's schema.
-
 Both derived schemas are stored as class attributes on the view and are frozen
 at registration time (see [List Parameters Lifecycle](#list-parameters-lifecycle)).
 They can be overridden by declaring `schema_create` or `schema_update` directly
@@ -76,6 +69,48 @@ A subclass inherits the schemas its base view declares. Registration rebuilds a
 schema for the subclass in two cases: Restly generated it for the parent, or the
 subclass declares a new `schema`, which replaces an inherited `schema_create`,
 `schema_update`, and `schema_list_params`.
+
+(generated-class-names)=
+### Generated Class Names
+
+A class that Restly generates is named `<Resource><Role>`. Resource is the
+class name of the view's schema without a final `Schema` or `Response`. For
+the view's schema `UserSchema`, the resource is `User`:
+
+| Role | Class | View attribute |
+|---|---|---|
+| response | `UserResponse` | none |
+| create body | `UserCreate` | {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` |
+| update body | `UserUpdate` | {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` |
+| list response | `UserListResponse` | none |
+| list params | `UserListParams` | {attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>` |
+
+A client sees these names in OpenAPI. It does not see the view's schema,
+unless another schema nests it or a custom route names it. The list params
+are not a class in OpenAPI either: OpenAPI shows them as separate query
+parameters.
+
+A view without a `schema` gets a generated one. For a model named `User` it
+is `UserSchema`, so the names above stay the same. A schema with another name
+keeps its full name as the resource: `UserRead` gives `UserReadCreate`.
+
+The response class is the view's schema without its `WriteOnly` fields.
+Restly builds it also when the schema has no `WriteOnly` fields, so OpenAPI
+always shows `UserResponse`. It is a subclass of the view's schema, and
+{meth}`to_single_response() <fastapi_restly.views.BaseRestView.to_single_response>`
+returns an instance of it. An override may return an instance of the view's
+schema instead: the response reads it by its attributes. The list response is
+the pagination's envelope, filled with the response class.
+
+Two views with the same schema and the same pagination show one set of names.
+Two different classes can still get the same name. For example, two views
+share a schema but only one is paginated, so both list responses are named
+`UserListResponse`. Or a schema you wrote is named `UserCreate`, and it is not
+the same as the generated `UserCreate`. OpenAPI then keeps both classes under
+longer names that Pydantic makes unique, such as
+`app__users__views__UserCreate`. To keep the short names, give one of the
+views its own schema name, as in `class AdminUserSchema(UserSchema): pass`, or
+set your `UserCreate` as the view's `schema_create`.
 
 (auto-generated-schemas)=
 ### Auto-Generated Schemas

@@ -141,10 +141,9 @@ add it.
    attribute name: `derive_schema_list_params` builds `schema_list_params`.
 6. A class that Restly generates is named `<Resource><Role>`. Resource is the
    class name of the view's schema without a final `Schema` or `Response`.
-   The client only sees these names, never the view's schema itself. This
-   rule is not in place yet: today a generated class keeps the full name of
-   the view's schema, as in `UserSchemaCreate`, and a view without a schema
-   gets `UserRead`. That changes before 1.0.
+   The client only sees these names, never the view's schema itself:
+   `UserResponse`, `UserCreate`, `UserUpdate` and `UserListResponse`. A view
+   without a schema gets a generated `UserSchema`.
 7. One word per thing. "Response" is what goes out. "List params" is the list
    grammar and its value. "Query params" only means raw keys from the URL, as
    in `extra_query_params`.

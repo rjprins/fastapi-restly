@@ -71,6 +71,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `query_params` parameter fails at class definition, or at registration when
   set later, with an error that names the new name. An old import or enum
   member fails on its own.
+- The classes that Restly generates are named `<Resource><Role>`. Resource is
+  the class name of the view's schema without a final `Schema` or `Response`.
+  Generated clients use these names as type names, so their types change. For
+  `schema = UserSchema`, OpenAPI shows:
+  - `UserResponse` instead of `UserSchema`.
+  - `UserCreate` and `UserUpdate` instead of `UserSchemaCreate` and
+    `UserSchemaUpdate`.
+  - `UserListResponse` instead of `PaginatedEnvelope_UserSchema_` or
+    `Envelope_UserSchema_`.
+
+  The list params class is `UserListParams` instead of `ListParamsUserSchema`.
+  A view without a schema gets the generated `UserSchema` instead of
+  `UserRead`, and `fr.schemas.derive_schema` names its class the same way. A
+  final `Read` is no longer removed: `UserRead` now gives `UserReadCreate`.
+- Restly always builds the response class: the view's schema without its
+  `WriteOnly` fields. Before, it built one only when the schema had
+  `WriteOnly` fields. `to_single_response` returns an instance of it, which is
+  also an instance of the view's schema. An override that returns an instance
+  of the view's schema still works: the response reads it by its attributes.
 - One view setting, `pagination`, replaces `paginated`, `default_page_size`
   and `max_page_size`. Write `pagination = None` for `paginated = False`, and
   `pagination = fr.NumberedPagination(default_page_size=25, max_page_size=200)`

@@ -105,7 +105,7 @@ first test.
 - **[React Admin ready](howto_react_admin.md)**: `AsyncReactAdminView` speaks `ra-data-simple-rest`
 - **[SQLAlchemy 2.0 support](getting_started.md)**: async-first with modern patterns
 - **[Pydantic v2 integration](howto_custom_schema.md)**: validation and serialization for public contracts
-- **[Automatic schema generation](technical_details.md#auto-generated-schemas)**: read, create, and update schemas generated automatically
+- **[Automatic schema generation](technical_details.md#auto-generated-schemas)**: response, create, and update schemas generated automatically
 - **[List parameters](howto_query_modifiers.md)**: filter, sort, and paginate from a stable URL dialect generated from the view's schema
 - **[Current context](howto_current.md)**: bind the current user once and read it in application code and column defaults
 - **[Scopes](scopes.md)**: row visibility declared once as a clause and applied to every read and reference check

@@ -77,9 +77,11 @@ A few details are worth noting:
 - {class}`RestView <fastapi_restly.views.RestView>` and {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` expect a single primary-key column; for
   composite-key tables, see
   [the view hierarchy](class_based_views.md#the-view-hierarchy).
-- With no manual schema, FastAPI-Restly auto-generates `UserRead`, `UserCreate`,
-  and `UserUpdate` from your model; see
-  [Auto-Generated Schemas](technical_details.md#auto-generated-schemas).
+- With no manual schema, FastAPI-Restly generates the view's schema
+  `UserSchema` from your model; see
+  [Auto-Generated Schemas](#auto-generated-schemas). OpenAPI shows the classes
+  derived from it: `UserResponse`, `UserCreate`, `UserUpdate` and
+  `UserListResponse`; see [Generated Class Names](#generated-class-names).
 - The lifespan hook creates tables with the async engine configured by
   {func}`fr.configure() <fastapi_restly.db.configure>`. Use
   [Alembic migrations](deploying.md#migrations-with-alembic) in production.

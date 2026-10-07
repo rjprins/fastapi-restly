@@ -118,7 +118,9 @@ custom actions document themselves like any FastAPI endpoint:
 ## Change a default CRUD route's documented contract
 
 A default route's `response_model` (and therefore its documented schema) comes
-from the view's {attr}`schema <fastapi_restly.views.BaseRestView.schema>` family. To document (and return) a different
+from the view's {attr}`schema <fastapi_restly.views.BaseRestView.schema>` family. OpenAPI shows the classes that
+Restly derives from it, such as `UserResponse` and `UserCreate`; see
+[Generated Class Names](#generated-class-names). To document (and return) a different
 shape on one verb, replace that endpoint method with your own decorator and
 `response_model`; see
 [Response Envelopes and List Metadata](howto_response_schema.md),

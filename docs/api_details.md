@@ -232,7 +232,7 @@ names are identical between variants.
 
 | Tier / kind | Method | Signature | Return | Purpose |
 |---|---|---|---|---|
-| Endpoint method | {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` | `(list_params)` | the pagination's envelope, `PaginatedEnvelope[Schema]` by default, or `Envelope[Schema]` | `GET /`; validates query parameters and serializes the list result via `to_response`. |
+| Endpoint method | {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` | `(list_params)` | the list response, such as `UserListResponse`: the pagination's envelope (`PaginatedEnvelope` by default, or `Envelope`) filled with the response class | `GET /`; validates query parameters and serializes the list result via `to_response`. |
 | Endpoint method | {meth}`get_one_endpoint <fastapi_restly.views.RestView.get_one_endpoint>` | `(id)` | response schema | `GET /{id}`; serializes one retrieved object. |
 | Endpoint method | {meth}`create_endpoint <fastapi_restly.views.RestView.create_endpoint>` | `(schema_obj)` | response schema | `POST /`; serializes the created object. |
 | Endpoint method | {meth}`update_endpoint <fastapi_restly.views.RestView.update_endpoint>` | `(id, schema_obj)` | response schema | `PATCH /{id}`; serializes the updated object. |
@@ -286,7 +286,7 @@ Every `View` subclass, CRUD or not, honors these class attributes:
 
 | Attribute | Type | Description |
 |---|---|---|
-| {attr}`schema <fastapi_restly.views.BaseRestView.schema>` | `ClassVar[type[pydantic.BaseModel]]` | The view's schema. Restly derives the response, create, update and list params schemas from it. If omitted, auto-generated from `model` as `ModelRead`. |
+| {attr}`schema <fastapi_restly.views.BaseRestView.schema>` | `ClassVar[type[pydantic.BaseModel]]` | The view's schema. Restly derives the response, create, update and list params schemas from it. If omitted, auto-generated from `model` as `<Model>Schema`. |
 | {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` | `ClassVar[type[pydantic.BaseModel]]` | Schema for `POST` input. Auto-derived by removing `ReadOnly` fields and named `ModelCreate`. |
 | {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` | `ClassVar[type[pydantic.BaseModel]]` | Schema for `PATCH` input. Auto-derived by making all writable fields optional and named `ModelUpdate`. |
 | {attr}`model <fastapi_restly.views.BaseRestView.model>` | `ClassVar[type[Any]]` | The SQLAlchemy mapped class. A class without a mapper raises at class definition. |
