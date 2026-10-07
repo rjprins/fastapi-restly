@@ -51,7 +51,7 @@ from .views import (
     Action,
     AsyncReactAdminView,
     AsyncRestView,
-    ListingResult,
+    ListResult,
     NoPagination,
     NumberedPagination,
     ReactAdminView,
@@ -118,7 +118,7 @@ __all__ = [
     # Views
     "RestView",
     "AsyncRestView",
-    "ListingResult",
+    "ListResult",
     "NumberedPagination",
     "NoPagination",
     "AsyncReactAdminView",

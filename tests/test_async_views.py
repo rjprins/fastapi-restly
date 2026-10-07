@@ -434,13 +434,13 @@ def test_async_rest_view_dispatches_to_handle_overrides():
         model = DispatchWidget
         schema = WidgetSchema
 
-        async def get_many(self, query_params, *, scope=None):
-            call_log.append("listing")
-            return await super().get_many(query_params, scope=scope)
+        async def get_many(self, list_params, *, scope=None):
+            call_log.append("get_many")
+            return await super().get_many(list_params, scope=scope)
 
-        def to_listing_response(self, query_params, listing_result):
-            call_log.append("to_listing_response")
-            return super().to_listing_response(query_params, listing_result)
+        def to_list_response(self, list_result):
+            call_log.append("to_list_response")
+            return super().to_list_response(list_result)
 
         async def get_one(self, id, *, scope=None):
             call_log.append("get")
@@ -481,8 +481,8 @@ def test_async_rest_view_dispatches_to_handle_overrides():
 
     assert call_log == [
         "create",
-        "listing",
-        "to_listing_response",
+        "get_many",
+        "to_list_response",
         "get",
         "get",
         "update",
@@ -491,7 +491,7 @@ def test_async_rest_view_dispatches_to_handle_overrides():
     ]
 
 
-def test_async_perform_listing_uses_the_scope():
+def test_async_get_many_uses_the_scope():
     """get_many applies list params on top of the view's scope."""
 
     class Widget(fr.IDBase):
@@ -539,7 +539,7 @@ def test_async_perform_listing_uses_the_scope():
 
 def test_async_scope_is_consulted_by_list_and_count():
     """get_many routes through the scope and count uses that query so a
-    single declaration filters listing AND its pagination total."""
+    single declaration filters the list AND its pagination total."""
 
     class Gizmo(fr.IDBase):
         name: Mapped[str]
@@ -581,7 +581,7 @@ def test_async_scope_is_consulted_by_list_and_count():
             assert all(g.active for g in results.objects)
 
             scoped = fr.apply_clauses(sqlalchemy.select(Gizmo), fr.resolve_scope(view))
-            query = fr.query.apply_list_params({}, scoped, Gizmo, GizmoSchema)
+            query = fr.query.apply_list_params(scoped, {}, Gizmo, GizmoSchema)
             total = await view.count(query)
             assert total == 2
 

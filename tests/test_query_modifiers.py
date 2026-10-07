@@ -13,7 +13,7 @@ from starlette.datastructures import QueryParams
 
 import fastapi_restly as fr
 from fastapi_restly.models import DataclassBase
-from fastapi_restly.query import apply_list_params, create_list_params_schema
+from fastapi_restly.query import apply_list_params, derive_schema_list_params
 from fastapi_restly.query._impl import (
     _apply_filtering,
     _apply_pagination,
@@ -144,9 +144,9 @@ def audit_log_select_query():
 
 
 class TestCreateListParamsSchema:
-    def test_create_list_params_schema_basic(self):
+    def test_derive_schema_list_params_basic(self):
         """Test creating a query param schema for basic fields."""
-        schema = create_list_params_schema(WidgetSchema, WidgetModel)
+        schema = derive_schema_list_params(WidgetSchema, WidgetModel)
 
         # Check that the schema was created
         assert schema.__name__ == "ListParamsWidgetSchema"
@@ -177,27 +177,27 @@ class TestCreateListParamsSchema:
         }
         assert schema_types == {"boolean", "null"}
 
-    def test_create_list_params_schema_nested(self):
+    def test_derive_schema_list_params_nested(self):
         """Test creating a query param schema for nested fields."""
-        schema = create_list_params_schema(NestedWidgetSchema, NestedWidgetModel)
+        schema = derive_schema_list_params(NestedWidgetSchema, NestedWidgetModel)
 
         # Check that nested field filters exist (using dot notation)
         assert "user.name" in schema.model_fields
         assert "user.age__gte" in schema.model_fields
 
-    def test_create_list_params_schema_nested_pep604_optional(self):
+    def test_derive_schema_list_params_nested_pep604_optional(self):
         """Optional nested schemas using X | None should still expand nested filters."""
 
         class OptionalNestedSchema(pydantic.BaseModel):
             user: WidgetSchema | None = None
 
-        schema = create_list_params_schema(OptionalNestedSchema, NestedWidgetModel)
+        schema = derive_schema_list_params(OptionalNestedSchema, NestedWidgetModel)
 
         assert "user.name" in schema.model_fields
         assert "user.email__contains" in schema.model_fields
         assert "user.email__icontains" in schema.model_fields
 
-    def test_create_list_params_schema_rejects_sort_field_collision(self):
+    def test_derive_schema_list_params_rejects_sort_field_collision(self):
         """A response field named ``sort`` would shadow the sorting parameter."""
 
         class SortFieldSchema(pydantic.BaseModel):
@@ -205,9 +205,9 @@ class TestCreateListParamsSchema:
             sort: str
 
         with pytest.raises(ValueError, match="reserved pagination/sort"):
-            create_list_params_schema(SortFieldSchema, WidgetModel)
+            derive_schema_list_params(SortFieldSchema, WidgetModel)
 
-    def test_create_list_params_schema_rejects_dunder_in_alias(self):
+    def test_derive_schema_list_params_rejects_dunder_in_alias(self):
         """An alias containing ``__`` would collide with operator suffixes."""
 
         class DunderAliasSchema(pydantic.BaseModel):
@@ -215,9 +215,9 @@ class TestCreateListParamsSchema:
             name: str = pydantic.Field(alias="na__me")
 
         with pytest.raises(ValueError, match="reserved for operator suffixes"):
-            create_list_params_schema(DunderAliasSchema, WidgetModel)
+            derive_schema_list_params(DunderAliasSchema, WidgetModel)
 
-    def test_create_list_params_schema_rejects_dot_in_alias(self):
+    def test_derive_schema_list_params_rejects_dot_in_alias(self):
         """An alias containing ``.`` would collide with relation traversal."""
 
         class DotAliasSchema(pydantic.BaseModel):
@@ -225,7 +225,7 @@ class TestCreateListParamsSchema:
             name: str = pydantic.Field(alias="na.me")
 
         with pytest.raises(ValueError, match="reserved for relation traversal"):
-            create_list_params_schema(DotAliasSchema, WidgetModel)
+            derive_schema_list_params(DotAliasSchema, WidgetModel)
 
 
 #: The default ``page`` / ``page_size`` pagination.
@@ -524,7 +524,7 @@ class TestApplyListParams:
         params = mock_query_params(
             page="2", page_size="25", sort="name,-age", name="John", age__gte="25"
         )
-        result = apply_list_params(params, select_query, WidgetModel, WidgetSchema)
+        result = apply_list_params(select_query, params, WidgetModel, WidgetSchema)
 
         # Should have pagination, sorting, and filtering
         assert "LIMIT :param_1" in str(result)
@@ -541,7 +541,7 @@ class TestApplyListParams:
                 with patch(
                     "fastapi_restly.query._impl._apply_pagination"
                 ) as mock_paginate:
-                    apply_list_params(params, select_query, WidgetModel, WidgetSchema)
+                    apply_list_params(select_query, params, WidgetModel, WidgetSchema)
 
                     # Check call order
                     mock_filter.assert_called_once()
@@ -682,7 +682,7 @@ def test_three_level_dotted_filter_executes_with_correct_joins(sync_db):
         city: CityRead | None = None
 
     # The deep path is advertised — and must therefore execute.
-    params_schema = create_list_params_schema(ResidentRead, Resident)
+    params_schema = derive_schema_list_params(ResidentRead, Resident)
     assert "city.country.code" in params_schema.model_fields
 
     fr.DataclassBase.metadata.create_all(engine)
@@ -707,8 +707,8 @@ def test_three_level_dotted_filter_executes_with_correct_joins(sync_db):
 
         def names(query_params: dict[str, str]) -> list[str]:
             query = apply_list_params(
-                QueryParams(query_params),
                 sqlalchemy.select(Resident),
+                QueryParams(query_params),
                 Resident,
                 ResidentRead,
             )
@@ -734,8 +734,8 @@ def test_three_level_dotted_filter_executes_with_correct_joins(sync_db):
         # allocation addresses -- so pure execution asserts could pass by
         # luck in some run contexts; the structural assert narrows that.)
         query = apply_list_params(
-            QueryParams({"city.country.code": "NL"}),
             sqlalchemy.select(Resident),
+            QueryParams({"city.country.code": "NL"}),
             Resident,
             ResidentRead,
         )
@@ -786,8 +786,8 @@ def test_relationship_filters_preserve_existing_joins_and_visibility(
                 )
             )
         query = apply_list_params(
-            QueryParams({"updater.name": "Bob", "sort": "creator.name,updater.id"}),
             query,
+            QueryParams({"updater.name": "Bob", "sort": "creator.name,updater.id"}),
             AuditLogModel,
             AuditLogSchema,
         )
@@ -796,6 +796,7 @@ def test_relationship_filters_preserve_existing_joins_and_visibility(
 
 def test_filtering_and_sorting_share_relationship_joins():
     query = apply_list_params(
+        sqlalchemy.select(AuditLogModel),
         QueryParams(
             [
                 ("creator.name__contains", "A"),
@@ -804,7 +805,6 @@ def test_filtering_and_sorting_share_relationship_joins():
                 ("sort", "creator.name,updater.id"),
             ]
         ),
-        sqlalchemy.select(AuditLogModel),
         AuditLogModel,
         AuditLogSchema,
     )

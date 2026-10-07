@@ -190,7 +190,7 @@ def _unpaginated_page_info(data: list[Any]) -> dict[str, Any]:
     return {"data": data, "total_count": len(data)}
 
 
-def _listing_envelope(
+def _list_envelope(
     pagination: NumberedPagination | NoPagination | None,
     item_schema: type[pydantic.BaseModel],
 ) -> type[pydantic.BaseModel]:
@@ -236,7 +236,7 @@ def _check_query_params(owner: str, **params: Any) -> None:
             raise RestlyConfigurationError(
                 f"{owner}.{setting} cannot be {name!r}: it is the sort parameter."
             )
-        # the listing grammar is a Pydantic model with one field per query
+        # the list params are a Pydantic model with one field per query
         # parameter; Pydantic drops a field that starts with "_", and one
         # named like a BaseModel attribute breaks or shadows it
         if name.startswith("_") or hasattr(pydantic.BaseModel, name):
@@ -286,6 +286,6 @@ def _check_envelope(owner: str, envelope: Any, page_info: dict[str, Any]) -> Non
         ) from None
 
 
-#: The pagination of a view or a listing grammar that names none: ``page`` and
+#: The pagination of a view or of list params that name none: ``page`` and
 #: ``page_size``, 50 rows by default and at most 1000.
 _DEFAULT_PAGINATION = NumberedPagination()

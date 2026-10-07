@@ -212,20 +212,20 @@ def test_a_route_reads_through_its_own_scope(client):
         schema = ScopeNoteSchema
         dependencies = [Depends(bind_tenant)]
 
-        # a route declaring `query_params` takes the listing grammar
+        # a route declaring `list_params` takes the view's list params
         @fr.get("/trash")
-        async def trash(self, query_params):
+        async def trash(self, list_params):
             result = await self.handle_get_many(
-                query_params, scope=ScopeNoteClauses.trashed
+                list_params, scope=ScopeNoteClauses.trashed
             )
-            return self.to_response(result, fr.ResponseShape.LISTING)
+            return self.to_response(result, fr.ResponseShape.LIST)
 
         @fr.get("/everything")
         async def everything(self):
             result = await self.handle_get_many(
                 self.request.query_params, scope=fr.clauses.UNSCOPED
             )
-            return self.to_response(result, fr.ResponseShape.LISTING)
+            return self.to_response(result, fr.ResponseShape.LIST)
 
         @fr.post("/{id}/restore")
         async def restore(self, id: int):
@@ -298,7 +298,7 @@ def test_a_route_reads_through_its_own_scope(client):
 
 def test_a_route_narrows_inside_the_scope_with_where(client):
     """``where=`` on the list handler narrows inside the scope instead of
-    replacing it: a nested listing keeps the visibility rules, and the page
+    replacing it: a nested list keeps the visibility rules, and the page
     total counts the narrowed rows."""
 
     class WhereTask(fr.IDBase):
@@ -340,37 +340,37 @@ def test_a_route_narrows_inside_the_scope_with_where(client):
 
         # a raw expression, the per-request value baked in
         @fr.get("/by-project/{project_id}")
-        async def by_project(self, project_id: int, query_params):
+        async def by_project(self, project_id: int, list_params):
             result = await self.handle_get_many(
-                query_params, where=WhereTask.project_id == project_id
+                list_params, where=WhereTask.project_id == project_id
             )
-            return self.to_response(result, fr.ResponseShape.LISTING)
+            return self.to_response(result, fr.ResponseShape.LIST)
 
         # the same filter passed as scope= replaces the visibility rules
         @fr.get("/replaced/{project_id}")
-        async def replaced(self, project_id: int, query_params):
+        async def replaced(self, project_id: int, list_params):
             result = await self.handle_get_many(
-                query_params, scope=fr.where_clause(WhereTask.project_id == project_id)
+                list_params, scope=fr.where_clause(WhereTask.project_id == project_id)
             )
-            return self.to_response(result, fr.ResponseShape.LISTING)
+            return self.to_response(result, fr.ResponseShape.LIST)
 
         # a declared clause narrows the same way, uncalled
         @fr.get("/urgent")
-        async def urgent(self, query_params):
+        async def urgent(self, list_params):
             result = await self.handle_get_many(
-                query_params, where=WhereTaskClauses.is_urgent
+                list_params, where=WhereTaskClauses.is_urgent
             )
-            return self.to_response(result, fr.ResponseShape.LISTING)
+            return self.to_response(result, fr.ResponseShape.LIST)
 
         # where= narrows inside a per-read scope too
         @fr.get("/trash/{project_id}")
-        async def trash(self, project_id: int, query_params):
+        async def trash(self, project_id: int, list_params):
             result = await self.handle_get_many(
-                query_params,
+                list_params,
                 scope=WhereTaskClauses.trashed,
                 where=WhereTask.project_id == project_id,
             )
-            return self.to_response(result, fr.ResponseShape.LISTING)
+            return self.to_response(result, fr.ResponseShape.LIST)
 
     create_tables()
 
@@ -455,10 +455,10 @@ def test_the_resolved_scope_and_the_reads_agree_on_the_rows_async(client):
             yield
 
     async def agreement(view, scope):
-        """The four answers for one scope: accessor, listing, retrieve, count."""
+        """The four answers for one scope: accessor, list, get_one, count."""
         resolved = fr.resolve_scope(view) if scope is None else scope
         query = fr.apply_clauses(select(AgreeRow), resolved)
-        listing = await view.handle_get_many({}, scope=scope)
+        list_result = await view.handle_get_many({}, scope=scope)
         retrieved = []
         for row_id in (await view.session.scalars(select(AgreeRow.id))).all():
             try:
@@ -469,10 +469,10 @@ def test_the_resolved_scope_and_the_reads_agree_on_the_rows_async(client):
             "accessor": sorted(
                 row.id for row in (await view.session.scalars(query)).all()
             ),
-            "listed": sorted(obj.id for obj in listing.objects),
+            "listed": sorted(obj.id for obj in list_result.objects),
             "retrieved": sorted(retrieved),
             "count": await view.count(query),
-            "total": listing.total_count,
+            "total": list_result.total_count,
         }
 
     @fr.include_view(client.app)
@@ -523,9 +523,9 @@ def test_the_resolved_scope_and_the_reads_agree_on_the_rows_async(client):
         assert payload["count"] == payload["total"] == len(expected)
 
 
-def test_a_count_route_counts_the_scoped_select_under_the_listing_grammar(client):
+def test_a_count_route_counts_the_scoped_select_under_the_list_params(client):
     """A count route applies the client's filters to the view's scoped
-    select, so it totals the rows the listing pages without fetching them."""
+    select, so it totals the rows the list pages without fetching them."""
 
     class CountRow(fr.IDBase):
         tenant_id: Mapped[int]
@@ -556,10 +556,10 @@ def test_a_count_route_counts_the_scoped_select_under_the_listing_grammar(client
 
         # deliberately not named `count`: that name is the read seam below
         @fr.get("/count")
-        async def total(self, query_params) -> int:
+        async def total(self, list_params) -> int:
             await self.authorize(fr.Action.GET_MANY)
             query = fr.apply_clauses(select(CountRow), fr.resolve_scope(self))
-            return await self.count(self.apply_query_params(query, query_params))
+            return await self.count(self.apply_list_params(query, list_params))
 
     create_tables()
 
@@ -646,7 +646,7 @@ def test_a_session_rule_holds_under_every_scope_and_reference_check(client):
             result = await self.handle_get_many(
                 self.request.query_params, scope=FloorNoteClauses.is_deleted
             )
-            return self.to_response(result, fr.ResponseShape.LISTING)
+            return self.to_response(result, fr.ResponseShape.LIST)
 
     @fr.include_view(client.app)
     class OptedOutView(TenantBase):
@@ -712,8 +712,8 @@ def test_a_session_rule_holds_under_every_scope_and_reference_check(client):
 # ---------------------------------------------------------------------------
 
 
-def test_a_sync_route_takes_the_listing_grammar(sync_db):
-    """RestView parity: a def route declaring ``query_params`` is typed and
+def test_a_sync_route_takes_the_list_params(sync_db):
+    """RestView parity: a def route declaring ``list_params`` is typed and
     guarded like ``GET /``, and a subclass's copy of it is guarded once."""
     engine, _make_session = sync_db
     from fastapi import FastAPI
@@ -748,11 +748,11 @@ def test_a_sync_route_takes_the_listing_grammar(sync_db):
             super()._reject_unknown_query_params()
 
         @fr.get("/trash")
-        def trash(self, query_params):
+        def trash(self, list_params):
             result = self.handle_get_many(
-                query_params, scope=SyncListedNoteClauses.is_deleted
+                list_params, scope=SyncListedNoteClauses.is_deleted
             )
-            return self.to_response(result, fr.ResponseShape.LISTING)
+            return self.to_response(result, fr.ResponseShape.LIST)
 
     @fr.include_view(client.app)
     class SyncListedNoteSubView(SyncListedNoteView):
@@ -1187,9 +1187,9 @@ def test_where_is_folded_into_the_scope_get_many_receives(sync_session):
     seen: list[object] = []
 
     class _Overriding(_SyncRowView):
-        def get_many(self, query_params, *, scope=None):
+        def get_many(self, list_params, *, scope=None):
             seen.append(scope)
-            return super().get_many(query_params, scope=scope)
+            return super().get_many(list_params, scope=scope)
 
     sync_session.add(SyncRow(id=3, tenant_id=1))
     sync_session.flush()
@@ -1487,7 +1487,7 @@ def test_a_per_read_scope_that_is_not_a_clause_is_rejected(sync_session):
 
 
 def test_the_resolved_scope_and_the_reads_agree_on_the_rows_sync(sync_session):
-    """The sync half of the agreement: the accessor, the listing, the
+    """The sync half of the agreement: the accessor, the list, the
     retrieves that succeed and the count answer with the same rows on
     every rung."""
 
@@ -1518,11 +1518,11 @@ def test_the_resolved_scope_and_the_reads_agree_on_the_rows_sync(sync_session):
         ):
             view = view_cls()
             view.session = sync_session
-            listing = view.get_many({}, scope=scope)
+            list_result = view.get_many({}, scope=scope)
             assert through_the_accessor(view, scope) == expected
-            assert {obj.id for obj in listing.objects} == expected
+            assert {obj.id for obj in list_result.objects} == expected
             assert through_retrieve(view, scope) == expected
-            assert listing.total_count == len(expected)
+            assert list_result.total_count == len(expected)
 
 
 def test_defining_build_query_fails_at_class_definition():

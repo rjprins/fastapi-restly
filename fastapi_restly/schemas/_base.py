@@ -46,7 +46,7 @@ class BaseSchema(pydantic.BaseModel):
 
     ``from_attributes=True`` lets Pydantic/FastAPI validate objects by
     attribute when the schema is used directly. The inherited CRUD endpoint
-    methods still serialize through ``to_response_schema()`` so Restly-specific
+    methods still serialize through ``to_single_response()`` so Restly-specific
     behavior such as ``WriteOnly`` filtering and relationship-id normalization
     is applied.
     """
@@ -397,7 +397,7 @@ class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
         # field is ``id``) accepts a bare scalar id or a related ORM row where the
         # ``{"id": ...}`` mapping is expected, so the reference type is
         # self-sufficient under plain ``from_attributes``: a scalar FK column read
-        # straight off the row in ``to_response_schema``, a related row reached
+        # straight off the row in ``to_single_response``, a related row reached
         # through a relationship, or a ``{"id": N}`` payload all validate without
         # any view-layer pre-extraction. A subclass that adds fields (a nested
         # response schema) is NOT a pure reference, so it validates normally and

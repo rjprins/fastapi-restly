@@ -2,7 +2,7 @@
 
 Reads build loader options from the response schema and apply them in
 ``get_one`` / ``get_many``. Writes used to flush-and-refresh with none, so
-``to_response_schema``'s ``getattr`` reached an unloaded relationship at
+``to_single_response``'s ``getattr`` reached an unloaded relationship at
 serialization time: a lazy load in the endpoint coroutine, where SQLAlchemy's
 asyncio layer has no greenlet to suspend into. Every create and update whose
 response schema embedded a relationship returned 500 for a row that had already
@@ -731,11 +731,11 @@ def test_sync_create_serializes_assigned_collection(sync_client):
             obj.tags = list(self.session.scalars(select(Tag)).all())
             return self.save_object(obj)
 
-        def to_response(self, obj_or_list, *args, **kwargs) -> Any:
+        def to_response(self, result, *args, **kwargs) -> Any:
             # snapshot load state after save_object, before serialization reads it
-            if isinstance(obj_or_list, SyncTaggedDoc):
-                load_state["unloaded"] = set(sa_inspect(obj_or_list).unloaded)
-            return super().to_response(obj_or_list, *args, **kwargs)
+            if isinstance(result, SyncTaggedDoc):
+                load_state["unloaded"] = set(sa_inspect(result).unloaded)
+            return super().to_response(result, *args, **kwargs)
 
     _create_sync_tables()
     with _fr_globals.make_session() as session:

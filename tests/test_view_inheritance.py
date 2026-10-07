@@ -259,8 +259,8 @@ def test_inherit_pagination_none(sync_db):
         view.create(TicketSchema(id=0, title="Bug"))
         view.create(TicketSchema(id=0, title="Feature"))
 
-        listing_result = view.get_many({})
-        result = view.to_listing_response({}, listing_result)
+        list_result = view.get_many({})
+        result = view.to_list_response(list_result)
 
     # Inherited pagination = None -> plain data envelope, no pagination metadata.
     assert isinstance(result, fr.views.Envelope)

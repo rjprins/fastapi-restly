@@ -42,7 +42,7 @@ class TestOrganizationCRUD:
         assert org["id"] == org_id
 
     def test_list_organizations(self, client):
-        """Test listing organizations."""
+        """Test the organization list."""
         # Create multiple
         client.post("/organizations", json={"name": "Org 1", "slug": "org-1"})
         client.post("/organizations", json={"name": "Org 2", "slug": "org-2"})

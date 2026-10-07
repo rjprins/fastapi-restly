@@ -90,7 +90,7 @@ def _setup_sync_item_view(client):
 
 
 @pytest.fixture(params=["sync", "async"])
-def custom_listing_client(request):
+def custom_list_client(request):
     asynchronous = request.param == "async"
     client = request.getfixturevalue("client" if asynchronous else "sync_client")
 
@@ -108,16 +108,16 @@ def custom_listing_client(request):
         if asynchronous:
 
             @fr.get("/custom")
-            async def custom(self, query_params):
-                result = await self.handle_get_many(query_params)
-                return self.to_response(result, fr.ResponseShape.LISTING)
+            async def custom(self, list_params):
+                result = await self.handle_get_many(list_params)
+                return self.to_response(result, fr.ResponseShape.LIST)
 
         else:
 
             @fr.get("/custom")
-            def custom(self, query_params):
-                result = self.handle_get_many(query_params)
-                return self.to_response(result, fr.ResponseShape.LISTING)
+            def custom(self, list_params):
+                result = self.handle_get_many(list_params)
+                return self.to_response(result, fr.ResponseShape.LIST)
 
     if asynchronous:
         create_tables()
@@ -136,33 +136,29 @@ def custom_listing_client(request):
         ({"trace": "yes"}, ["a", "b", "c"], "items 0-2/3"),
     ],
 )
-def test_custom_react_admin_listing_uses_its_dialect(
-    custom_listing_client, params, names, content_range
+def test_custom_react_admin_list_uses_its_dialect(
+    custom_list_client, params, names, content_range
 ):
-    response = custom_listing_client.get("/custom-items/custom", params=params)
+    response = custom_list_client.get("/custom-items/custom", params=params)
     assert [item["name"] for item in response.json()] == names
     assert response.headers["content-range"] == content_range
 
 
 @pytest.mark.parametrize("parameter", ["filter", "sort", "range"])
-def test_custom_react_admin_listing_rejects_invalid_json(
-    custom_listing_client, parameter
-):
-    custom_listing_client.get(
+def test_custom_react_admin_list_rejects_invalid_json(custom_list_client, parameter):
+    custom_list_client.get(
         "/custom-items/custom", params={parameter: "bad-json"}, assert_status_code=400
     )
 
 
-def test_custom_react_admin_listing_keeps_unknown_key_guard(custom_listing_client):
-    custom_listing_client.get(
+def test_custom_react_admin_list_keeps_unknown_key_guard(custom_list_client):
+    custom_list_client.get(
         "/custom-items/custom", params={"page": "2"}, assert_status_code=422
     )
 
 
-def test_custom_react_admin_listing_openapi_uses_its_dialect(custom_listing_client):
-    operation = custom_listing_client.app.openapi()["paths"]["/custom-items/custom"][
-        "get"
-    ]
+def test_custom_react_admin_list_openapi_uses_its_dialect(custom_list_client):
+    operation = custom_list_client.app.openapi()["paths"]["/custom-items/custom"]["get"]
     assert {p["name"] for p in operation["parameters"] if p["in"] == "query"} == {
         "sort",
         "range",
@@ -753,17 +749,17 @@ def test_react_admin_list_runs_the_handler_domain_and_response_seams(client):
             events.append(("authorize", action))
             await super().authorize(action, obj, data)
 
-        async def get_many(self, query_params, *, scope=None):
+        async def get_many(self, list_params, *, scope=None):
             events.append(("get_many", None))
-            return await super().get_many(query_params, scope=scope)
+            return await super().get_many(list_params, scope=scope)
 
         async def count(self, query):
             events.append(("count", None))
             return (await super().count(query)) + 10
 
-        def to_response(self, obj_or_list, shape=fr.ResponseShape.SINGLE):
+        def to_response(self, result, shape=fr.ResponseShape.SINGLE):
             events.append(("to_response", shape))
-            return super().to_response(obj_or_list, shape)
+            return super().to_response(result, shape)
 
     create_tables()
     client.post("/seam-items/", json={"name": "a"})
@@ -778,9 +774,9 @@ def test_react_admin_list_runs_the_handler_domain_and_response_seams(client):
         "to_response",
     ]
     assert events[0] == ("authorize", "get_many")
-    assert events[-1] == ("to_response", fr.ResponseShape.LISTING)
+    assert events[-1] == ("to_response", fr.ResponseShape.LIST)
     assert response.json()[0]["name"] == "a"
-    # the header reports the total the domain method put in the ListingResult
+    # the header reports the total the domain method put in the ListResult
     assert response.headers["Content-Range"].endswith("/11")
 
 
@@ -803,17 +799,17 @@ def test_sync_react_admin_list_runs_the_handler_domain_and_response_seams(sync_c
             events.append(("authorize", action))
             super().authorize(action, obj, data)
 
-        def get_many(self, query_params, *, scope=None):
+        def get_many(self, list_params, *, scope=None):
             events.append(("get_many", None))
-            return super().get_many(query_params, scope=scope)
+            return super().get_many(list_params, scope=scope)
 
         def count(self, query):
             events.append(("count", None))
             return super().count(query) + 10
 
-        def to_response(self, obj_or_list, shape=fr.ResponseShape.SINGLE):
+        def to_response(self, result, shape=fr.ResponseShape.SINGLE):
             events.append(("to_response", shape))
-            return super().to_response(obj_or_list, shape)
+            return super().to_response(result, shape)
 
     fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
     sync_client.post("/sync-seam-items/", json={"name": "a"})
@@ -828,7 +824,7 @@ def test_sync_react_admin_list_runs_the_handler_domain_and_response_seams(sync_c
         "to_response",
     ]
     assert events[0] == ("authorize", "get_many")
-    assert events[-1] == ("to_response", fr.ResponseShape.LISTING)
+    assert events[-1] == ("to_response", fr.ResponseShape.LIST)
     assert response.json()[0]["name"] == "a"
     assert response.headers["Content-Range"].endswith("/11")
 

@@ -25,7 +25,7 @@ from sqlalchemy import ForeignKey, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
-from fastapi_restly.query import create_list_params_schema
+from fastapi_restly.query import derive_schema_list_params
 from fastapi_restly.testing import RestlyTestClient
 
 from .conftest import create_tables
@@ -59,7 +59,7 @@ def test_idref_fk_generates_opaque_filter_params():
         content: str
         post_id: fr.IDRef[Post]
 
-    fields = set(create_list_params_schema(CommentRead, Comment).model_fields)
+    fields = set(derive_schema_list_params(CommentRead, Comment).model_fields)
 
     assert OPAQUE_SET <= fields
     assert NEVER.isdisjoint(fields)
@@ -81,7 +81,7 @@ def test_idref_fk_uuid_pk_yields_the_same_opaque_set():
         content: str
         post_id: fr.IDRef[UPost]
 
-    fields = set(create_list_params_schema(UCommentRead, UComment).model_fields)
+    fields = set(derive_schema_list_params(UCommentRead, UComment).model_fields)
 
     assert OPAQUE_SET <= fields
     assert NEVER.isdisjoint(fields)
@@ -106,7 +106,7 @@ def test_idref_targeting_leaves_nested_resource_dotted_traversal_intact():
         name: str
         pub: PubResource | None = None
 
-    fields = set(create_list_params_schema(AuthorSchema, Author).model_fields)
+    fields = set(derive_schema_list_params(AuthorSchema, Author).model_fields)
 
     # Dotted traversal through the embedded relationship still works.
     assert "pub.name" in fields

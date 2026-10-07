@@ -14,7 +14,7 @@ class OrganizationSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     slug: str
 
 
-class OrganizationCreateSchema(BaseModel):
+class OrganizationCreate(BaseModel):
     """Custom creation schema with stricter validation.
 
     This demonstrates using a different schema for POST operations.
@@ -44,7 +44,7 @@ class OrganizationCreateSchema(BaseModel):
         return v
 
 
-class OrganizationUpdateSchema(BaseModel):
+class OrganizationUpdate(BaseModel):
     """Custom update schema - only name can be updated, not slug.
 
     This demonstrates using a different schema for PATCH operations.

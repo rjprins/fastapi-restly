@@ -27,9 +27,8 @@ from fastapi_restly.schemas._base import (
     set_schema_title,
 )
 from fastapi_restly.schemas._generator import (
-    auto_generate_schema_for_view,
     convert_sqlalchemy_type_to_pydantic,
-    create_schema_from_model,
+    derive_schema,
     get_model_fields,
     get_relationship_target_model,
     get_sqlalchemy_field_type,
@@ -107,7 +106,7 @@ def test_idschema_reference_still_serializes_as_nested_dict():
     assert value.model_dump_json() == '{"id":5}'
 
 
-def test_idref_fields_serialize_as_scalars_through_to_response_schema():
+def test_idref_fields_serialize_as_scalars_through_to_single_response():
     class ToResponseUser(fr.IDBase):
         name: Mapped[str]
 
@@ -126,7 +125,7 @@ def test_idref_fields_serialize_as_scalars_through_to_response_schema():
     task = ToResponseTask(title="Write tests", owner_id=5)
     task.id = 1
 
-    payload = TaskView().to_response_schema(task).model_dump(mode="json")
+    payload = TaskView().to_single_response(task).model_dump(mode="json")
 
     assert payload["owner_id"] == 5
     assert isinstance(payload["owner_id"], int)
@@ -154,7 +153,7 @@ def test_idref_fields_serialize_cleanly_through_fastapi_response_model(client):
         async def make(self):
             task = ResponseModelTask(title="Write tests", owner_id=5)
             task.id = 1
-            return self.to_response_schema(task)
+            return self.to_single_response(task)
 
     response = client.post("/idref-response/make")
 
@@ -376,7 +375,7 @@ def test_schema_generator_helpers_cover_relationships_defaults_and_type_conversi
     assert model_fields["customer"]["is_relationship"] is True
     assert model_fields["customer"]["target_model"] is Customer
 
-    schema = create_schema_from_model(Order, include_relationships=True)
+    schema = derive_schema(Order, include_relationships=True)
     assert schema.model_fields["id"].is_required() is True
     assert schema.model_fields["id"].json_schema_extra["readOnly"] is True
     assert "customer" in schema.model_fields
@@ -390,14 +389,11 @@ def test_schema_generator_helpers_cover_relationships_defaults_and_type_conversi
     assert hasattr(nested_customer, "model_fields")
     assert "orders" not in nested_customer.model_fields
 
-    node_schema = create_schema_from_model(Node, include_relationships=True)
+    node_schema = derive_schema(Node, include_relationships=True)
     assert "parent" not in node_schema.model_fields
     assert "children" not in node_schema.model_fields
 
-    class AutoOrderView:
-        __name__ = "AutoOrderView"
-
-    view_schema = auto_generate_schema_for_view(AutoOrderView, Order)
+    view_schema = derive_schema(Order)
     assert "customer" not in view_schema.model_fields
     assert "customer_id" in view_schema.model_fields
 
@@ -409,10 +405,10 @@ def test_schema_generator_helpers_cover_relationships_defaults_and_type_conversi
 
         slug: Mapped[str] = mapped_column(primary_key=True)
 
-    no_id_schema = create_schema_from_model(NoIdModel)
+    no_id_schema = derive_schema(NoIdModel)
     assert "id" not in no_id_schema.model_fields
 
-    customer_schema = create_schema_from_model(Customer, include_relationships=True)
+    customer_schema = derive_schema(Customer, include_relationships=True)
     orders_annotation = customer_schema.model_fields["orders"].annotation
     if get_origin(orders_annotation) in (Union, types.UnionType):
         list_annotation = next(
@@ -451,9 +447,7 @@ def test_schema_generator_helpers_cover_relationships_defaults_and_type_conversi
     with pytest.raises(TypeError, match="Unsupported field type"):
         convert_sqlalchemy_type_to_pydantic(UnsupportedType)
 
-    custom_named_schema = auto_generate_schema_for_view(
-        AutoOrderView, Order, schema_name="CustomNamedSchema"
-    )
+    custom_named_schema = derive_schema(Order, name="CustomNamedSchema")
     assert custom_named_schema.__name__ == "CustomNamedSchema"
 
 

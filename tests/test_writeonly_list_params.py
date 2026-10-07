@@ -20,7 +20,7 @@ from starlette.datastructures import QueryParams
 
 import fastapi_restly as fr
 from fastapi_restly.exc import BadQueryParam
-from fastapi_restly.query import apply_list_params, create_list_params_schema
+from fastapi_restly.query import apply_list_params, derive_schema_list_params
 from fastapi_restly.testing import RestlyTestClient
 
 
@@ -66,7 +66,7 @@ def _secret_params(names: Any) -> set[str]:
 
 
 def test_list_params_schema_has_no_writeonly_params():
-    fields = create_list_params_schema(AccountSchema, Account).model_fields
+    fields = derive_schema_list_params(AccountSchema, Account).model_fields
 
     assert {"name", "name__gte", "owner.name", "owner.name__contains"} <= set(fields)
     assert _secret_params(fields) == set()
@@ -85,7 +85,7 @@ def test_writeonly_field_may_use_a_reserved_name():
     class TicketSchema(fr.IDSchema):
         page: fr.WriteOnly[str]
 
-    fields = create_list_params_schema(TicketSchema, Ticket).model_fields
+    fields = derive_schema_list_params(TicketSchema, Ticket).model_fields
 
     assert "page" in fields
     assert fields["page"].annotation is int
@@ -118,7 +118,7 @@ def test_apply_list_params_rejects_writeonly_keys(query):
     # Raw query params skip the generated schema, so the resolver itself
     # must refuse the field.
     with pytest.raises(BadQueryParam):
-        apply_list_params(QueryParams(query), select(Account), Account, AccountSchema)
+        apply_list_params(select(Account), QueryParams(query), Account, AccountSchema)
 
 
 @pytest.fixture(params=[fr.RestView, fr.AsyncRestView], ids=["sync", "async"])
@@ -246,14 +246,14 @@ def test_openapi_lists_no_writeonly_params(accounts):
 
 
 @pytest.mark.parametrize("query", [{"pin": "1234"}, {"sort": "-pin"}])
-def test_custom_listing_schema_cannot_reach_writeonly_column(make_client, query):
-    # A hand-written listing schema passes the unknown-key guard, so the
+def test_custom_schema_list_params_cannot_reach_writeonly_column(make_client, query):
+    # Hand-written list params pass the unknown-key guard, so the
     # resolver must still refuse the field.
     class LeakyParams(pydantic.BaseModel):
         pin: str | None = None
         sort: str | None = None
 
-    client = make_client(listing_param_schema=LeakyParams)
+    client = make_client(schema_list_params=LeakyParams)
 
     response = client.get("/accounts/", params=query, assert_status_code=400)
     assert response.json() == {"detail": "Invalid attribute in URL query: pin"}

@@ -17,7 +17,7 @@ from ._base import (
     BaseRestView,
     CreateSchemaT,
     IdT,
-    ListingResult,
+    ListResult,
     ModelT,
     ReadScope,
     ResponseShape,
@@ -70,12 +70,12 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
     # ====================================================================
 
     @get("/")
-    def get_many_endpoint(self, query_params: Any) -> Any:
+    def get_many_endpoint(self, list_params: Any) -> Any:
         """``GET /`` endpoint method. Override ``get_many`` for domain
         logic, ``to_response`` for the response shape; replace this method only
         to change the HTTP contract."""
-        result = self.handle_get_many(query_params)
-        return self.to_response(result, ResponseShape.LISTING)
+        result = self.handle_get_many(list_params)
+        return self.to_response(result, ResponseShape.LIST)
 
     @_typed_id_route
     @get("/{id}")
@@ -119,19 +119,19 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
 
     @final
     def handle_get_many(
-        self, query_params: Any, *, scope: ReadScope = None, where: _ReadWhere = None
-    ) -> ListingResult[ModelT]:
+        self, list_params: Any, *, scope: ReadScope = None, where: _ReadWhere = None
+    ) -> ListResult[ModelT]:
         """List handler: ``authorize`` then the ``get_many`` business method.
 
         Final, like every handler: override ``get_many`` for the query and
-        ``authorize`` for the gate. Call it from a custom listing route.
+        ``authorize`` for the gate. Call it from a custom list route.
 
         :param scope: a clause that replaces the view scope for this read,
             so a custom route can list another surface of the same model
-            (a trash listing); ``fr.clauses.UNSCOPED`` reads past it.
+            (a trash list); ``fr.clauses.UNSCOPED`` reads past it.
             Forwarded to ``get_many``.
         :param where: a SQLAlchemy boolean expression or a clause that
-            narrows this read inside the scope, so a nested listing
+            narrows this read inside the scope, so a nested list
             keeps the visibility rules (``where=Task.project_id == id``).
             It is ANDed into the scope as ``fr.all_of`` would, and
             ``get_many`` receives the result as ``scope``. The page and
@@ -140,7 +140,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
             loaded object), or neither an expression nor a clause.
         """
         self.authorize(Action.GET_MANY)
-        return self.get_many(query_params, scope=self._narrowed_scope(scope, where))
+        return self.get_many(list_params, scope=self._narrowed_scope(scope, where))
 
     @final
     def handle_get_one(
@@ -262,29 +262,29 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
     # ====================================================================
 
     def get_many(
-        self, query_params: Any, *, scope: ReadScope = None
-    ) -> ListingResult[ModelT]:
-        """List the rows the scope allows, filtered and paged by ``query_params``.
+        self, list_params: Any, *, scope: ReadScope = None
+    ) -> ListResult[ModelT]:
+        """List the rows the scope allows, filtered and paged by ``list_params``.
 
         Auth-free: ``handle_get_many`` adds ``authorize``. The query is the
         resolved scope (``fr.resolve_scope(self)``, or ``scope`` when given)
-        plus :meth:`apply_query_params`. A paginated view also runs
+        plus :meth:`apply_list_params`. A paginated view also runs
         :meth:`count` for ``total_count``; a view without pagination
-        returns every matching row with ``total_count=None``. Relationships the response
-        schema names are eager-loaded.
+        returns every matching row with ``total_count=None``. Relationships
+        the view's schema names are eager-loaded.
 
         The handlers always forward ``scope=``, so an override must declare
         the parameter and pass it on to ``super()``. A route's ``where=``
         arrives inside ``scope``: ``handle_get_many`` folds it in, and there
         is no separate parameter to declare.
 
-        :param query_params: the listing parameters (filter, sort, page) as
-            the endpoint receives them.
+        :param list_params: the list params (filter, sort, page) as the
+            endpoint receives them.
         :param scope: a clause that replaces the resolved scope for this
             read; ``fr.clauses.UNSCOPED`` reads unscoped.
         """
         query = self._apply_scope(select(self.model), scope)
-        query = self.apply_query_params(query, query_params)
+        query = self.apply_list_params(query, list_params)
         total_count = (
             self.count(query)
             if isinstance(self.pagination, NumberedPagination)
@@ -294,12 +294,12 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         if loader_options:
             query = query.options(*loader_options)
         scalar_result = self.session.scalars(query)
-        return ListingResult(
+        return ListResult(
             # unique(): collapse the row fan-out a to-many JOIN in the query
             # would produce, so the page never repeats the same entity.
             objects=scalar_result.unique().all(),
             total_count=total_count,
-            query_params=query_params,
+            list_params=list_params,
         )
 
     def get_one(
@@ -311,7 +311,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
         calls this directly and gates its own action. Visibility is the
         resolved scope (``fr.resolve_scope(self)``, or ``scope`` when
         given), so a row outside it is a 404 for every caller.
-        Relationships the response schema names are eager-loaded.
+        Relationships the view's schema names are eager-loaded.
 
         The handlers always forward ``scope=``, so an override must declare
         the parameter and pass it on to ``super()``.
@@ -380,14 +380,16 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
     # Read seams
     # ====================================================================
 
-    def apply_query_params(
-        self, query: sqlalchemy.Select[Any], query_params: Any
+    def apply_list_params(
+        self, query: sqlalchemy.Select[Any], list_params: Any
     ) -> sqlalchemy.Select[Any]:
-        """Apply URL filter/sort/pagination to ``query``. Override for a
-        non-default URL grammar; the common case is driven by configuration.
+        """Apply the list params (filter, sort, page) to ``query``. Override
+        for a non-default URL grammar; the common case is driven by
+        configuration. The default is :func:`fastapi_restly.query.apply_list_params`
+        with the view's model, schema and pagination.
         """
         return apply_list_params(
-            query_params, query, self.model, self.schema, pagination=self.pagination
+            query, list_params, self.model, self.schema, pagination=self.pagination
         )
 
     def count(self, query: sqlalchemy.Select[Any]) -> int:
@@ -414,7 +416,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
 
         Final: the view-bound spelling of ``fr.objects.make_new_object``,
         passing the view's model. ``schema_obj``'s own schema decides what is
-        written, not the response schema. A server-stamped field (an audit id,
+        written, not the view's schema. A server-stamped field (an audit id,
         a tenant id) is a column default on the model, which covers every
         write path; a value derived from the payload goes in a ``create``
         override, after this call.
@@ -435,7 +437,7 @@ class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT])
     @final
     def save_object(self, obj: ModelT) -> ModelT:
         """Flush the session and refresh ``obj`` from the database, eager-loading
-        the relationships the response schema names. Does not commit;
+        the relationships the view's schema names. Does not commit;
         ``handle_<verb>`` owns the commit.
 
         Final: a side effect per write belongs in ``before_action_commit`` /

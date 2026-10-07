@@ -37,7 +37,7 @@ class UserSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     updated_by_id: fr.ReadOnly[int | None] = None
 
 
-class UserPublicSchema(BaseModel):
+class UserPublicResponse(BaseModel):
     """Public user schema - excludes sensitive fields like salary.
 
     This schema is returned for non-HR users.
@@ -50,7 +50,7 @@ class UserPublicSchema(BaseModel):
     organization_id: int
 
 
-class UserFullSchema(BaseModel):
+class UserFullResponse(BaseModel):
     """Full user schema - includes all fields including salary.
 
     This schema is only returned for HR users.

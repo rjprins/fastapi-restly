@@ -35,7 +35,7 @@ def test_openapi_spec(tmp_path):
         assert snapshot.exists()
 
 
-def test_get_blog_listing():
+def test_get_blog_list():
     with TestClient(app) as client:
         response = client.post("/blogs/", json={"title": "Yolo"})
         assert response.is_success

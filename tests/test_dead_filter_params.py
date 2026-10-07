@@ -25,7 +25,7 @@ from sqlalchemy import JSON, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
-from fastapi_restly.query import create_list_params_schema
+from fastapi_restly.query import derive_schema_list_params
 
 from .conftest import create_tables
 
@@ -57,7 +57,7 @@ def test_dead_relationship_params_are_not_generated():
         publisher: PublisherSchema | None = None  # to-one nested -> dotted traversal
         books: list[fr.IDRef[DeadParamBook]]  # to-many relationship -> dead
 
-    fields = create_list_params_schema(AuthorSchema, DeadParamAuthor).model_fields
+    fields = derive_schema_list_params(AuthorSchema, DeadParamAuthor).model_fields
 
     # A real scalar column is filterable.
     assert "name" in fields
@@ -122,7 +122,7 @@ def test_collection_typed_fields_generate_only_isnull():
         clist: Optional[Annotated[list[str], pydantic.Field(min_length=1)]] = None
         wrapped: Optional[Annotated[list[str], pydantic.Field(description="x")]] = None
 
-    fields = create_list_params_schema(RowSchema, JsonColumnRow).model_fields
+    fields = derive_schema_list_params(RowSchema, JsonColumnRow).model_fields
 
     for base in (
         "meta",
@@ -163,7 +163,7 @@ def test_json_typed_field_keeps_scalar_filters():
         name: str
         jmeta: pydantic.Json[dict] | None = None
 
-    fields = create_list_params_schema(RowSchema, JsonColumnRow).model_fields
+    fields = derive_schema_list_params(RowSchema, JsonColumnRow).model_fields
 
     for alive in ("jmeta", "jmeta__in", "jmeta__ne", "jmeta__isnull"):
         assert alive in fields, alive

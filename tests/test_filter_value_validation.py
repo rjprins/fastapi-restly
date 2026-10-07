@@ -105,7 +105,7 @@ def test_filter_validator_receives_field_name_and_empty_data(mode, recursive):
     assert seen == [("first_name", {}), ("last_name", {})]
 
 
-def test_listing_filter_with_field_name_dependent_validator(client):
+def test_list_filter_with_field_name_dependent_validator(client):
     class Item(fr.IDBase):
         name: Mapped[str]
         code: Mapped[str]
@@ -248,7 +248,7 @@ def test_mutually_recursive_schema_scalar_filters():
     assert _parse_value(Child, "parent.name", "Alice") == "Alice"
 
 
-def test_listing_scalar_filter_with_recursive_schema(client):
+def test_list_scalar_filter_with_recursive_schema(client):
     class Node(fr.IDBase):
         name: Mapped[str]
 
@@ -270,7 +270,7 @@ def test_listing_scalar_filter_with_recursive_schema(client):
     assert [row["name"] for row in rows["data"]] == ["Alice"]
 
 
-def test_listing_filter_with_cross_field_validator_is_200(client):
+def test_list_filter_with_cross_field_validator_is_200(client):
     class Ticket(fr.IDBase):
         title: Mapped[str]
         kind: Mapped[str]

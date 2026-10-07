@@ -182,8 +182,8 @@ def test_idref_reads_a_related_row_outside_declarative_base(legacy_pets):
     assert fetched.json()["owner"] == owner["id"]
 
     client.post("/pets/", json={"name": "Stray"})
-    listing = client.get("/pets/").json()["data"]
-    assert [p["owner"] for p in listing] == [owner["id"], None]
+    pets = client.get("/pets/").json()["data"]
+    assert [p["owner"] for p in pets] == [owner["id"], None]
 
 
 def test_idref_moves_and_clears_a_reference_outside_declarative_base(legacy_pets):

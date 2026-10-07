@@ -14,7 +14,7 @@ from .models import Task, TaskClauses, TaskPriority, TaskStatus, TaskType
 from .schemas import TaskSchema
 
 
-class TaskCreateSchema(BaseModel):
+class TaskCreate(BaseModel):
     """Schema for creating a task (no id/timestamps)."""
 
     title: str
@@ -35,7 +35,7 @@ class TaskCreateSchema(BaseModel):
 class BulkCreateRequest(BaseModel):
     """Request body for bulk task creation."""
 
-    items: list[TaskCreateSchema]
+    items: list[TaskCreate]
 
 
 class BulkDeleteRequest(BaseModel):
@@ -70,7 +70,7 @@ class TaskView(SoftDeleteMixin, AuthenticatedView[Task]):
     tenant rule is not repeated here: the ``with_loader_criteria``
     criterion in ``tasks/models.py`` applies to ORM reads of Task, this
     scope and the trash route's alike. Retrieve
-    applies the same scope, so the predicate that filters listing also
+    applies the same scope, so the predicate that filters the list also
     returns 404 from ``GET /tasks/{id}`` for a task a member is not
     assigned to, and cascades through ``handle_update`` and
     ``handle_delete`` (both load the row through ``get_one`` first).
@@ -236,10 +236,10 @@ class TaskView(SoftDeleteMixin, AuthenticatedView[Task]):
         return task
 
     @fr.get("/trash", response_model=PaginatedEnvelope[TaskSchema])
-    async def trash(self, query_params: Any) -> Any:
-        """The trash: deleted tasks the caller may see, with the listing grammar."""
-        result = await self.handle_get_many(query_params, scope=TaskClauses.trashed)
-        return self.to_response(result, fr.ResponseShape.LISTING)
+    async def trash(self, list_params: Any) -> Any:
+        """The trash: deleted tasks the caller may see, with the list params."""
+        result = await self.handle_get_many(list_params, scope=TaskClauses.trashed)
+        return self.to_response(result, fr.ResponseShape.LIST)
 
     @fr.post("/{id}/restore", response_model=TaskSchema)
     async def restore(self, id: int) -> Task:
@@ -289,7 +289,7 @@ class TaskView(SoftDeleteMixin, AuthenticatedView[Task]):
         async with self.shared_write_action_commit():
             for row_no, row in enumerate(reader, start=2):  # row 1 is the header
                 try:
-                    schema_obj = TaskCreateSchema(
+                    schema_obj = TaskCreate(
                         title=(row.get("title") or "").strip(),
                         description=row.get("description") or "",
                         project_id=project_id,

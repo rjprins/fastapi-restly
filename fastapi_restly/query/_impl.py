@@ -48,7 +48,7 @@ _JoinAliases = dict[tuple[str, ...], AliasedClass[Any]]
 
 _AnyPagination = NumberedPagination | NoPagination | None
 
-#: The pagination each generated listing grammar was created with, so
+#: The pagination that each generated list params model was created with, so
 #: :func:`apply_list_params` and view registration can read it back.
 _CREATED_WITH: "weakref.WeakKeyDictionary[type, _AnyPagination]" = (
     weakref.WeakKeyDictionary()
@@ -69,13 +69,13 @@ _UNKNOWN = object()
 
 
 def _created_with(params_model: type) -> Any:
-    """The pagination a generated listing grammar was created with, or
-    ``_UNKNOWN`` for a hand-written one."""
+    """The pagination that generated list params were created with, or
+    ``_UNKNOWN`` for hand-written ones."""
     return _CREATED_WITH.get(params_model, _UNKNOWN)
 
 
 def _query_settings(pagination: _AnyPagination) -> tuple[Any, ...] | None:
-    """What a listing grammar's pagination fields depend on; ``None`` for
+    """What the pagination fields of list params depend on; ``None`` for
     no pagination."""
     if not isinstance(pagination, NumberedPagination):
         return None
@@ -220,18 +220,19 @@ def _pagination_offset_validator(pagination: NumberedPagination) -> Any:
     return _validate_pagination_offset
 
 
-def create_list_params_schema(
-    schema_cls: SchemaType,
+def derive_schema_list_params(
+    schema: SchemaType,
     model: type[DeclarativeBase],
     *,
     pagination: _AnyPagination = _DEFAULT_PAGINATION,
 ) -> SchemaType:
     """
-    Create a Pydantic model that describes and validates URL query parameters
-    for list endpoints.
+    Build the list params: a Pydantic model that describes and validates the
+    URL query parameters of a list endpoint. A view keeps it in
+    :attr:`~fastapi_restly.views.BaseRestView.schema_list_params`.
 
     The generated model accepts pagination (``page``, ``page_size``), sorting
-    (``sort``), and one filter parameter per response-schema field that maps to
+    (``sort``), and one filter parameter per field of ``schema`` that maps to
     a filterable column on ``model`` -- with optional ``__in``/``__ne``/``__gte``/
     ``__lte``/``__gt``/``__lt``/``__isnull``/``__contains``/``__icontains``
     suffixes. Fields that do not resolve to a column (relationship/collection
@@ -252,7 +253,7 @@ def create_list_params_schema(
     or ``None``, no pagination parameters are emitted at all -- the endpoint
     returns every matching row -- while sorting and filtering stay available.
 
-    :param schema_cls: The response schema whose fields drive the available
+    :param schema: The view's schema. Its fields decide the available
         filter parameters.
     :param model: The SQLAlchemy model the list endpoint queries. Used to verify
         each field resolves to a filterable column; non-column fields are
@@ -299,10 +300,10 @@ def create_list_params_schema(
         None,
     )
     reserved = _reserved_names(pagination)
-    for name, field in _iter_fields_including_nested(schema_cls):
+    for name, field in _iter_fields_including_nested(schema):
         if name in reserved:
             raise ValueError(
-                f"List-params schema for {schema_cls.__name__!r} cannot expose "
+                f"List params for {schema.__name__!r} cannot expose "
                 f"field {name!r}: it collides with a reserved pagination/sort "
                 "parameter. Add a Pydantic alias to expose it as a filter, or "
                 "rename the pagination parameter."
@@ -314,7 +315,7 @@ def create_list_params_schema(
         # reference traversal that does not resolve would otherwise advertise
         # filters in OpenAPI that always 400 at request time.
         try:
-            _resolve_column(model, name, schema_cls)
+            _resolve_column(model, name, schema)
         except BadQueryParam:
             continue
 
@@ -410,7 +411,7 @@ def create_list_params_schema(
                 None,
             )
 
-    schema_name = "ListParams" + schema_cls.__name__
+    schema_name = "ListParams" + schema.__name__
     validators = (
         {"_validate_pagination_offset": _pagination_offset_validator(pagination)}
         if isinstance(pagination, NumberedPagination)
@@ -424,20 +425,26 @@ def create_list_params_schema(
 
 
 def apply_list_params(
-    params: pydantic.BaseModel | QueryParams,
-    select_query: Select[Any],
+    query: Select[Any],
+    list_params: pydantic.BaseModel | QueryParams,
     model: type[DeclarativeBase],
-    schema_cls: SchemaType,
+    schema: SchemaType,
     *,
     pagination: _AnyPagination = cast(Any, _FROM_PARAMS),
 ) -> Select[Any]:
     """
-    Apply pagination, sorting, and filtering on a SQL query using validated
-    list-endpoint query parameters.
+    Apply pagination, sorting, and filtering to ``query`` using validated
+    list params.
 
-    ``params`` is normally an instance of the schema returned by
-    :func:`create_list_params_schema`. The default list endpoints always pass a
+    ``list_params`` is normally an instance of the model returned by
+    :func:`derive_schema_list_params`. The default list endpoints always pass a
     validated instance, so pagination/filter bounds have already been checked.
+    ``schema`` is the view's schema, which decides the fields a client can
+    filter and sort on.
+
+    The arguments match the view method
+    :meth:`~fastapi_restly.views.RestView.apply_list_params`, which calls this
+    function with the view's model, schema and pagination.
 
     A raw :class:`~starlette.datastructures.QueryParams` is also accepted
     for callers that build the query parameters programmatically.
@@ -447,10 +454,10 @@ def apply_list_params(
     needed to apply the SQL clauses.
 
     ``pagination`` names the page and page-size parameters to read. By default
-    it is the pagination :func:`create_list_params_schema` created the params
-    model with, and ``page`` and ``page_size`` for raw ``QueryParams`` or a
-    hand-written model. A ``NoPagination`` or ``None`` applies no
-    ``LIMIT``/``OFFSET``, and so does a missing page-size key.
+    it is the pagination that :func:`derive_schema_list_params` created the
+    list params model with, and ``page`` and ``page_size`` for raw
+    ``QueryParams`` or a hand-written model. A ``NoPagination`` or ``None``
+    applies no ``LIMIT``/``OFFSET``, and so does a missing page-size key.
 
     Examples::
 
@@ -468,39 +475,34 @@ def apply_list_params(
     """
     if isinstance(pagination, _FromParams):
         pagination = (
-            _CREATED_WITH.get(type(params), _DEFAULT_PAGINATION)
-            if isinstance(params, pydantic.BaseModel)
+            _CREATED_WITH.get(type(list_params), _DEFAULT_PAGINATION)
+            if isinstance(list_params, pydantic.BaseModel)
             else _DEFAULT_PAGINATION
         )
-    query_params = _coerce_to_query_params(params)
+    query_params = _coerce_to_query_params(list_params)
     aliases: _JoinAliases = {}
-    select_query = _apply_filtering(
-        query_params,
-        select_query,
-        model,
-        schema_cls,
-        aliases=aliases,
-        pagination=pagination,
+    query = _apply_filtering(
+        query_params, query, model, schema, aliases=aliases, pagination=pagination
     )
-    select_query = _apply_sorting(
-        query_params, select_query, model, schema_cls, aliases=aliases
-    )
+    query = _apply_sorting(query_params, query, model, schema, aliases=aliases)
     if isinstance(pagination, NumberedPagination):
-        select_query = _apply_pagination(query_params, select_query, pagination)
-    return select_query
+        query = _apply_pagination(query_params, query, pagination)
+    return query
 
 
-def _coerce_to_query_params(params: pydantic.BaseModel | QueryParams) -> QueryParams:
-    """Normalise a validated Pydantic model or raw QueryParams to QueryParams.
+def _coerce_to_query_params(
+    list_params: pydantic.BaseModel | QueryParams,
+) -> QueryParams:
+    """Normalise validated list params or raw QueryParams to QueryParams.
 
     When a dumped field is a list (e.g. a repeated ``name__contains``), each
     element is expanded to its own ``(key, value)`` tuple so that
     ``QueryParams.multi_items()`` later returns the original repeated values.
     """
-    if isinstance(params, QueryParams):
-        return params
-    if isinstance(params, pydantic.BaseModel):
-        dumped = params.model_dump(exclude_none=True, by_alias=True, mode="json")
+    if isinstance(list_params, QueryParams):
+        return list_params
+    if isinstance(list_params, pydantic.BaseModel):
+        dumped = list_params.model_dump(exclude_none=True, by_alias=True, mode="json")
         items: list[tuple[str, str]] = []
         for key, value in dumped.items():
             if isinstance(value, list):
@@ -508,7 +510,7 @@ def _coerce_to_query_params(params: pydantic.BaseModel | QueryParams) -> QueryPa
             else:
                 items.append((key, str(value)))
         return QueryParams(items)
-    return QueryParams(params)
+    return QueryParams(list_params)
 
 
 def _apply_pagination(
@@ -577,13 +579,13 @@ def _iter_fields_including_nested(
         # collision surfaces during view registration, not at request time.
         if "__" in public_name:
             raise ValueError(
-                f"List-params schema for {schema_cls.__name__!r} cannot "
+                f"List params for {schema_cls.__name__!r} cannot "
                 f"expose field {public_name!r}: ``__`` is reserved for "
                 "operator suffixes. Choose a different Pydantic alias."
             )
         if "." in public_name:
             raise ValueError(
-                f"List-params schema for {schema_cls.__name__!r} cannot "
+                f"List params for {schema_cls.__name__!r} cannot "
                 f"expose field {public_name!r}: ``.`` is reserved for "
                 "relation traversal. Choose a different Pydantic alias."
             )
@@ -602,7 +604,7 @@ def _resolve_field_name(schema_cls: SchemaType, public_name: str) -> str | None:
     field name itself. Aliased fields are *only* reachable by their alias —
     Python field names are never part of the public URL contract, even when
     the schema has ``populate_by_name=True`` (which only affects how Pydantic
-    parses input bodies, not the generated list-params query schema).
+    parses input bodies, not the generated list params).
 
     A WriteOnly field never resolves: filtering or sorting on it would let a
     client read back a value that responses leave out.

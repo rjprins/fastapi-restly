@@ -11,7 +11,7 @@ fastapi_restly:
   - IDBase
   - IDRef
   - IDSchema
-  - ListingResult
+  - ListResult
   - MustExist
   - NoPagination
   - NumberedPagination
@@ -120,7 +120,7 @@ fastapi_restly.query:
   - DEFAULT_PAGE_SIZE
   - MAX_PAGE_SIZE
   - apply_list_params
-  - create_list_params_schema
+  - derive_schema_list_params
 fastapi_restly.schemas:
   - BaseSchema
   - IDRef
@@ -130,7 +130,7 @@ fastapi_restly.schemas:
   - RefExists
   - TimestampsSchemaMixin
   - WriteOnly
-  - create_schema_from_model
+  - derive_schema
 fastapi_restly.testing:
   - AsyncRestlyTestClient
   - RestlyTestClient
@@ -143,7 +143,7 @@ fastapi_restly.views:
   - AsyncRestView
   - BaseRestView
   - Envelope
-  - ListingResult
+  - ListResult
   - NoPagination
   - NumberedPagination
   - PaginatedEnvelope
@@ -214,9 +214,9 @@ fastapi_restly.query:
   - DEFAULT_PAGE_SIZE
   - MAX_PAGE_SIZE
   - apply_list_params
-  - create_list_params_schema
+  - derive_schema_list_params
 fastapi_restly.schemas:
-  - create_schema_from_model
+  - derive_schema
 fastapi_restly.testing:
   - AsyncRestlyTestClient
   - RestlyTestClient

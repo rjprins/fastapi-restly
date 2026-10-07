@@ -62,13 +62,11 @@ def test_relationships_resolve_through_the_mapper():
         author_id: Mapped[int] = mapped_column(ForeignKey("author.id"))
         author: Mapped[Author] = relationship(back_populates="books", default=None)
 
-    author_schema = fr_schemas.create_schema_from_model(
-        Author, include_relationships=True
-    )
+    author_schema = fr_schemas.derive_schema(Author, include_relationships=True)
     books = _without_none(author_schema.model_fields["books"].annotation)
     assert get_origin(books) is list
     assert set(get_args(books)[0].model_fields) == {"id", "title", "author_id"}
 
-    book_schema = fr_schemas.create_schema_from_model(Book, include_relationships=True)
+    book_schema = fr_schemas.derive_schema(Book, include_relationships=True)
     author = _without_none(book_schema.model_fields["author"].annotation)
     assert set(author.model_fields) == {"id", "name"}

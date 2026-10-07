@@ -14,26 +14,21 @@ import fastapi_restly.schemas as fr_schemas
 from .conftest import create_tables
 
 
-def test_create_schema_from_model_is_the_only_public_schema_generator():
+def test_derive_schema_is_the_only_public_schema_generator():
     """Manual schema generation is available from the advanced schema module."""
 
-    assert not hasattr(fr, "create_schema_from_model")
-    assert "create_schema_from_model" not in fr.__all__
-    assert hasattr(fr_schemas, "create_schema_from_model")
-    assert "create_schema_from_model" in fr_schemas.__all__
-
-    assert not hasattr(fr, "auto_generate_schema_for_view")
-    assert "auto_generate_schema_for_view" not in fr.__all__
-    assert not hasattr(fr_schemas, "auto_generate_schema_for_view")
-    assert "auto_generate_schema_for_view" not in fr_schemas.__all__
+    assert not hasattr(fr, "derive_schema")
+    assert "derive_schema" not in fr.__all__
+    assert hasattr(fr_schemas, "derive_schema")
+    assert "derive_schema" in fr_schemas.__all__
 
 
-def test_create_schema_from_model_options_are_keyword_only():
+def test_derive_schema_options_are_keyword_only():
     class User(fr.IDBase):
         name: Mapped[str]
 
     with pytest.raises(TypeError):
-        fr_schemas.create_schema_from_model(User, "UserSchema")  # type: ignore[misc]
+        fr_schemas.derive_schema(User, "UserSchema")  # type: ignore[misc]
 
 
 def test_auto_generated_schema_in_view(client):
@@ -187,7 +182,7 @@ def test_auto_generated_schema_crud_operations(client):
     client.get(f"/items/{item_id}", assert_status_code=404)
 
 
-def test_create_schema_from_model_includes_nested_relationship_schema():
+def test_derive_schema_includes_nested_relationship_schema():
     """Manual schema generation should resolve relationships to nested schemas."""
 
     class User(fr.IDBase):
@@ -198,7 +193,7 @@ def test_create_schema_from_model_includes_nested_relationship_schema():
         user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
         user: Mapped[User] = relationship()
 
-    schema = fr_schemas.create_schema_from_model(Order, include_relationships=True)
+    schema = fr_schemas.derive_schema(Order, include_relationships=True)
 
     assert "user" in schema.model_fields
     user_annotation = schema.model_fields["user"].annotation
@@ -235,19 +230,44 @@ def test_view_auto_schema_excludes_relationship_fields_by_default(client):
     assert "user_id" in OrderView.schema.model_fields
 
 
-def test_create_schema_from_model_preserves_json_dict_types():
+def test_derive_schema_returns_the_schema_a_view_generates(client):
+    """With its defaults, ``derive_schema`` builds the schema of a view that
+    sets none: same name, same fields, no relationships."""
+
+    class Customer(fr.TimestampsMixin, fr.IDBase):
+        name: Mapped[str]
+
+    class Invoice(fr.IDBase):
+        number: Mapped[str]
+        note: Mapped[str | None]
+        customer_id: Mapped[int] = mapped_column(ForeignKey("customer.id"))
+        customer: Mapped[Customer] = relationship()
+
+    @fr.include_view(client.app)
+    class InvoiceView(fr.AsyncRestView):
+        prefix = "/invoices"
+        model = Invoice
+
+    derived = fr_schemas.derive_schema(Invoice)
+
+    assert derived.__name__ == InvoiceView.schema.__name__
+    assert derived.model_json_schema() == InvoiceView.schema.model_json_schema()
+    assert "customer" not in derived.model_fields
+
+
+def test_derive_schema_preserves_json_dict_types():
     class Event(fr.IDBase):
         payload: Mapped[dict] = mapped_column(JSON)
 
-    schema = fr_schemas.create_schema_from_model(Event)
+    schema = fr_schemas.derive_schema(Event)
 
     assert schema.model_fields["payload"].annotation is dict
 
 
-def test_create_schema_from_model_defaults_to_read_schema_name():
+def test_derive_schema_defaults_to_read_schema_name():
     class Report(fr.IDBase):
         title: Mapped[str]
 
-    schema = fr_schemas.create_schema_from_model(Report)
+    schema = fr_schemas.derive_schema(Report)
 
     assert schema.__name__ == "ReportRead"

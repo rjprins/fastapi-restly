@@ -48,12 +48,12 @@ def test_two_view_operation_ids_and_summaries(base):
     expected = {
         ("/items", "get"): ("items_list", "List"),
         ("/items", "post"): ("items_create", "Create"),
-        ("/items/{id}", "get"): ("items_get", "Retrieve"),
+        ("/items/{id}", "get"): ("items_get", "Get"),
         ("/items/{id}", "patch"): ("items_update", "Update"),
         ("/items/{id}", "delete"): ("items_delete", "Delete"),
         ("/users", "get"): ("users_list", "List"),
         ("/users", "post"): ("users_create", "Create"),
-        ("/users/{id}", "get"): ("users_get", "Retrieve"),
+        ("/users/{id}", "get"): ("users_get", "Get"),
         ("/users/{id}", "patch"): ("users_update", "Update"),
         ("/users/{id}", "delete"): ("users_delete", "Delete"),
     }

@@ -2,13 +2,13 @@
 
 Two layers, tested independently:
 
-* (a) ``to_response_schema`` strips WriteOnly fields even when handed a *schema
+* (a) ``to_single_response`` strips WriteOnly fields even when handed a *schema
   instance* (a custom verb, or a ``get_*`` override that returns one) -- it used
   to short-circuit and return the full-schema instance unfiltered. The custom
   route below has no ``response_model``, so it isolates this layer.
 * (c) the generated ``response_model`` is the WriteOnly-omitting response
   schema, so FastAPI itself cannot emit a WriteOnly field even if a path
-  bypasses ``to_response_schema`` -- and the OpenAPI response shape is correct.
+  bypasses ``to_single_response`` -- and the OpenAPI response shape is correct.
   WriteOnly stays in the *request* schema (it is write-only, not no-write).
 """
 
@@ -51,7 +51,7 @@ def test_writeonly_not_leaked_when_returning_a_schema_instance(client):
     body = client.get("/users/echo/1").json()
 
     assert body["name"] == "bob"
-    assert "password" not in body  # layer (a): to_response_schema stripped it
+    assert "password" not in body  # layer (a): to_single_response stripped it
 
 
 def test_writeonly_omitted_from_response_model_but_present_in_request(client):
@@ -124,7 +124,7 @@ def test_schema_instance_path_does_not_rerun_validators(client):
 def test_writeonly_stripped_in_nested_schema():
     """`exclude` on the marker recurses: a WriteOnly field on a NESTED response
     schema is stripped from serialization too. The top-level loop
-    in to_response_schema never reached this -- the field-level exclude does."""
+    in to_single_response never reached this -- the field-level exclude does."""
 
     class OrgNested(fr.IDSchema):
         name: str

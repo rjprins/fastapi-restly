@@ -15,7 +15,7 @@ from starlette.datastructures import QueryParams
 
 import fastapi_restly as fr
 from fastapi_restly.exc import RestlyConfigurationError
-from fastapi_restly.query import apply_list_params, create_list_params_schema
+from fastapi_restly.query import apply_list_params, derive_schema_list_params
 from fastapi_restly.testing import RestlyTestClient
 
 from .conftest import create_tables
@@ -419,7 +419,7 @@ def test_declared_grammar_must_match_the_pagination(client):
 
     with pytest.raises(
         RestlyConfigurationError,
-        match="listing_param_schema was created for other pagination settings",
+        match="schema_list_params was created for other pagination settings",
     ):
 
         @fr.include_view(client.app)
@@ -428,7 +428,7 @@ def test_declared_grammar_must_match_the_pagination(client):
             model = Thing
             schema = ThingRead
             pagination = None
-            listing_param_schema = create_list_params_schema(ThingRead, Thing)
+            schema_list_params = derive_schema_list_params(ThingRead, Thing)
 
     @fr.include_view(client.app)
     class MatchView(fr.AsyncRestView):
@@ -436,7 +436,7 @@ def test_declared_grammar_must_match_the_pagination(client):
         model = Thing
         schema = ThingRead
         pagination = None
-        listing_param_schema = create_list_params_schema(
+        schema_list_params = derive_schema_list_params(
             ThingRead, Thing, pagination=None
         )
 
@@ -678,9 +678,7 @@ def test_no_pagination_is_what_none_means(client, unpaginated):
     client.get("/things/?page_size=2", assert_status_code=422)
     spec, operation = _list_operation(client)
     assert _response_properties(spec, operation) == ["data"]
-    assert view.listing_param_schema.model_fields.keys().isdisjoint(
-        {"page", "page_size"}
-    )
+    assert view.schema_list_params.model_fields.keys().isdisjoint({"page", "page_size"})
 
 
 def test_no_pagination_envelope_gets_the_row_count(client):
@@ -743,20 +741,20 @@ def test_query_helpers_take_the_pagination():
 
     pagination = fr.NumberedPagination(page_size_query_param="size")
 
-    params_model = create_list_params_schema(WidgetRead, Widget, pagination=pagination)
+    params_model = derive_schema_list_params(WidgetRead, Widget, pagination=pagination)
     assert {"page", "size", "sort"} <= set(params_model.model_fields)
     assert "page_size" not in params_model.model_fields
 
     def sql(query_string: str, **kwargs: Any) -> str:
         query = apply_list_params(
-            QueryParams(query_string), select(Widget), Widget, WidgetRead, **kwargs
+            select(Widget), QueryParams(query_string), Widget, WidgetRead, **kwargs
         )
         return str(query.compile(compile_kwargs={"literal_binds": True}))
 
     assert "LIMIT 10 OFFSET 20" in sql("page=3&size=10", pagination=pagination)
     assert "LIMIT" not in sql("sort=name", pagination=None)
     assert "LIMIT" not in sql("sort=name", pagination=fr.NoPagination())
-    unpaginated = create_list_params_schema(
+    unpaginated = derive_schema_list_params(
         WidgetRead, Widget, pagination=fr.NoPagination()
     )
     assert unpaginated.model_fields.keys().isdisjoint({"page", "page_size"})
@@ -773,16 +771,16 @@ def test_apply_list_params_reads_the_pagination_of_its_params_model():
         page: int
 
     def sql(params: Any) -> str:
-        query = apply_list_params(params, select(Bookmark), Bookmark, BookmarkRead)
+        query = apply_list_params(select(Bookmark), params, Bookmark, BookmarkRead)
         return str(query.compile(compile_kwargs={"literal_binds": True}))
 
     # without pagination, ``page`` is a filter, not a page number
-    unpaginated = create_list_params_schema(BookmarkRead, Bookmark, pagination=None)
+    unpaginated = derive_schema_list_params(BookmarkRead, Bookmark, pagination=None)
     filtered = sql(unpaginated.model_validate({"page": ["3"]}))
     assert "bookmark.page = 3" in filtered
     assert "LIMIT" not in filtered
 
-    renamed = create_list_params_schema(
+    renamed = derive_schema_list_params(
         BookmarkRead,
         Bookmark,
         pagination=fr.NumberedPagination(

@@ -14,7 +14,7 @@ Name the tier that owns your change and override one method:
    usual override point.
 
 Cross-cutting seams: ``scope`` (read visibility), ``authorize`` (policy),
-``apply_query_params`` (URL grammar), ``to_response`` (wire shape),
+``apply_list_params`` (URL grammar), ``to_response`` (wire shape),
 ``write_action`` (custom write actions), ``shared_write_action_commit``
 (one commit over several writes). Under the verbs sit the final
 domain utilities (``make_new_object``, ``update_object``, ``save_object``):
@@ -28,7 +28,7 @@ from ._async import AsyncRestView
 from ._base import (
     Action,
     BaseRestView,
-    ListingResult,
+    ListResult,
     ReadScope,
     ResponseShape,
     View,
@@ -58,7 +58,7 @@ __all__ = [
     "AsyncReactAdminView",
     "ReactAdminView",
     "BaseRestView",
-    "ListingResult",
+    "ListResult",
     "NumberedPagination",
     "NoPagination",
     "Envelope",

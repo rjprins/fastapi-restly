@@ -17,7 +17,7 @@ from fastapi_restly.query._impl import (
     _iter_fields_including_nested,
     _parse_value,
     apply_list_params,
-    create_list_params_schema,
+    derive_schema_list_params,
 )
 
 
@@ -76,9 +76,9 @@ def mock_query_params():
 
 
 class TestCreateListParamsSchemaWithAliases:
-    def test_create_list_params_schema_with_aliases(self):
+    def test_derive_schema_list_params_with_aliases(self):
         """Test creating a query param schema with aliases."""
-        schema = create_list_params_schema(SchemaWithAliases, AliasModel)
+        schema = derive_schema_list_params(SchemaWithAliases, AliasModel)
 
         # Check that the schema was created
         assert schema.__name__ == "ListParamsSchemaWithAliases"
@@ -103,9 +103,9 @@ class TestCreateListParamsSchemaWithAliases:
         assert "createdAt__gte" in schema.model_fields
         assert "isActive__isnull" in schema.model_fields
 
-    def test_create_list_params_schema_without_aliases(self):
+    def test_derive_schema_list_params_without_aliases(self):
         """Test creating a query param schema without aliases."""
-        schema = create_list_params_schema(SchemaWithoutAliases, AliasModel)
+        schema = derive_schema_list_params(SchemaWithoutAliases, AliasModel)
 
         # Check that field filters use field names
         assert "user_name" in schema.model_fields
@@ -299,7 +299,7 @@ class TestApplyListParamsWithAliases:
             userName="John Doe",
             age__gte="25",
         )
-        result = apply_list_params(params, select_query, AliasModel, SchemaWithAliases)
+        result = apply_list_params(select_query, params, AliasModel, SchemaWithAliases)
 
         # Should have pagination, sorting, and filtering
         assert "LIMIT :param_1" in str(result)
@@ -322,7 +322,7 @@ class TestApplyListParamsWithAliases:
             age__gte="25",
         )
         result = apply_list_params(
-            params, select_query, AliasModel, SchemaWithPopulateByName
+            select_query, params, AliasModel, SchemaWithPopulateByName
         )
 
         assert "LIMIT :param_1" in str(result)
@@ -337,7 +337,7 @@ class TestApplyListParamsWithAliases:
         params = mock_query_params(user_name="John Doe")
         with pytest.raises(HTTPException) as exc_info:
             apply_list_params(
-                params, select_query, AliasModel, SchemaWithPopulateByName
+                select_query, params, AliasModel, SchemaWithPopulateByName
             )
         assert exc_info.value.status_code == 400
 
@@ -381,7 +381,7 @@ class TestRelationAliases:
 
     def test_schema_uses_aliases_for_both_segments(self):
         _Article, ArticleSchema = self._build()
-        fields = create_list_params_schema(ArticleSchema, _Article).model_fields
+        fields = derive_schema_list_params(ArticleSchema, _Article).model_fields
         assert "writer.authorName" in fields
         assert "writer.authorName__contains" in fields
         assert "writer.authorName__icontains" in fields

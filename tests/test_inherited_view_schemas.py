@@ -146,7 +146,7 @@ def test_generated_schema_of_a_registered_parent_is_rebuilt_for_the_subclass():
     assert set(OwnerView.schema_create.model_fields) == {"email"}
 
 
-def test_subclass_page_size_rebuilds_the_generated_listing_params():
+def test_subclass_page_size_rebuilds_the_generated_list_params():
     class Rec(fr.IDBase):
         name: Mapped[str]
 
@@ -167,5 +167,5 @@ def test_subclass_page_size_rebuilds_the_generated_listing_params():
 
     fr.include_view(app, Small)
 
-    assert Base.listing_param_schema is not Small.listing_param_schema
-    assert Small.listing_param_schema.model_fields["page_size"].default == 5
+    assert Base.schema_list_params is not Small.schema_list_params
+    assert Small.schema_list_params.model_fields["page_size"].default == 5

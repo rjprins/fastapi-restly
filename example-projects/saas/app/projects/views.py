@@ -15,7 +15,7 @@ from fastapi_restly.views import PaginatedEnvelope
 from ..current import Current
 from ..tasks.models import Task, TaskPriority, TaskStatus, TaskType
 from ..tasks.schemas import TaskSchema
-from ..tasks.views import TaskCreateSchema, TaskView
+from ..tasks.views import TaskCreate, TaskView
 from ..views import AuthenticatedView, SoftDeleteMixin
 from .models import Project, ProjectClauses, ProjectStatus
 from .schemas import ProjectSchema
@@ -60,8 +60,8 @@ class ProjectView(SoftDeleteMixin, AuthenticatedView[Project]):
     """CRUD endpoints for projects.
 
     Read visibility is the model's ``default_scope`` (``ProjectClauses``):
-    live projects under the tenant floor, feeding listing, count,
-    retrieve, and every ``project_id`` reference alike. The trash and
+    live projects under the tenant floor, for the list, the count,
+    ``get_one`` and every ``project_id`` reference alike. The trash and
     restore routes below name ``is_deleted`` as their own scope per read.
     The write side is structural too: ``Project`` mixes in
     ``TenantOwned``, ``AuditStamped``, and ``SoftDeletable`` (see
@@ -112,19 +112,19 @@ class ProjectView(SoftDeleteMixin, AuthenticatedView[Project]):
         return project
 
     async def get_many(
-        self, query_params: Any, *, scope: fr.views.ReadScope = None
-    ) -> fr.ListingResult[Project]:
+        self, list_params: Any, *, scope: fr.views.ReadScope = None
+    ) -> fr.ListResult[Project]:
         # The session enforces tenancy. The default scope hides deleted rows.
         # Here we only do project-specific response decoration on each row
         # in the page.
-        result = await super().get_many(query_params, scope=scope)
+        result = await super().get_many(list_params, scope=scope)
         decorated = [
             await self._decorate_project_response(project) for project in result.objects
         ]
-        return fr.ListingResult(
+        return fr.ListResult(
             objects=decorated,
             total_count=result.total_count,
-            query_params=result.query_params,
+            list_params=result.list_params,
         )
 
     async def get_one(
@@ -228,18 +228,18 @@ class ProjectView(SoftDeleteMixin, AuthenticatedView[Project]):
         return await self._decorate_project_response(project)
 
     @fr.get("/trash", response_model=PaginatedEnvelope[ProjectSchema])
-    async def trash(self, query_params: Any) -> Any:
+    async def trash(self, list_params: Any) -> Any:
         """The trash: deleted projects, read through ``is_deleted``.
 
-        A route that declares ``query_params`` takes the listing grammar
+        A route that declares ``list_params`` takes the view's list params
         (filter, sort, page), and the scope named here replaces the
         default for this read only; the tenant listener in ``app.models``
         holds underneath.
         """
         result = await self.handle_get_many(
-            query_params, scope=ProjectClauses.is_deleted
+            list_params, scope=ProjectClauses.is_deleted
         )
-        return self.to_response(result, fr.ResponseShape.LISTING)
+        return self.to_response(result, fr.ResponseShape.LIST)
 
     @fr.post("/{id}/restore", response_model=ProjectSchema)
     async def restore(self, id: int) -> Project:
@@ -418,7 +418,7 @@ class ProjectView(SoftDeleteMixin, AuthenticatedView[Project]):
         """
         await self.get_one(id)
         task_view = TaskView(session=self.session, request=self.request)
-        schema_obj = TaskCreateSchema(project_id=id, **request.model_dump())
+        schema_obj = TaskCreate(project_id=id, **request.model_dump())
         return await task_view.handle_create(schema_obj)
 
 

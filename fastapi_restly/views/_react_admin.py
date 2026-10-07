@@ -24,7 +24,7 @@ from ..exc import BadQueryParam, RestlyConfigurationError
 from ..query._shared import _append_pk_tiebreak
 from ._async import AsyncRestView
 from ._base import (
-    ListingResult,
+    ListResult,
     ResponseShape,
     _annotate,
     _typed_id_route,
@@ -50,7 +50,8 @@ class _ReactAdminListParams:
 
 
 class _ReactAdminQueryParams(pydantic.BaseModel):
-    """Raw query strings for generated custom listing parameters."""
+    """The list params of a react-admin view: the raw strings of its three
+    query keys."""
 
     sort: str | None = None
     range: str | None = None
@@ -145,7 +146,7 @@ def _resolve_column(model: type[Any], schema_cls: Any, field_name: str) -> Any:
     """
     Resolve a PUBLIC schema field name (or alias) to its SQLAlchemy column.
 
-    Strict: only fields exposed on the response schema may be filtered or
+    Strict: only fields exposed on the view's schema may be filtered or
     sorted. A column that exists on the model but is omitted from the schema
     (or marked write-only) is rejected, so the list endpoint cannot be used as
     an oracle to filter/sort on -- and thereby probe -- hidden data. Mirrors the
@@ -251,7 +252,7 @@ class _ReactAdminViewProtocol(Protocol):
     model: ClassVar[type[Any]]
     schema: ClassVar[type[pydantic.BaseModel]]
     schema_update: ClassVar[type[pydantic.BaseModel]]
-    listing_param_schema: ClassVar[type[pydantic.BaseModel]]
+    schema_list_params: ClassVar[type[pydantic.BaseModel]]
     pagination: ClassVar[NumberedPagination | NoPagination | None]
     extra_query_params: ClassVar[Iterable[str]]
     get_many_endpoint: ClassVar[Any]
@@ -259,7 +260,7 @@ class _ReactAdminViewProtocol(Protocol):
 
     def get_react_admin_range_unit(self) -> str: ...
     def get_relationship_loader_options(self) -> list[Any]: ...
-    def to_response_schema(self, obj: Any) -> pydantic.BaseModel: ...
+    def to_single_response(self, obj: Any) -> pydantic.BaseModel: ...
 
     @classmethod
     def before_include_view(cls) -> None: ...
@@ -296,14 +297,14 @@ class _ReactAdminMixin:
         return "items"
 
     @classmethod
-    def _check_declared_listing_param_schema(cls) -> None:
+    def _check_declared_schema_list_params(cls) -> None:
         # react-admin reads its own sort/range/filter grammar, not the
         # pagination's page parameters
         return None
 
-    #: The whole react-admin query contract. The listing grammar's own keys
-    #: (``page``, ``page_size``, per-field filters) are not part of this
-    #: dialect, so they are unknown keys here like any other typo.
+    #: The whole react-admin query contract. The keys of the default list
+    #: params (``page``, ``page_size``, per-field filters) are not part of
+    #: this dialect, so they are unknown keys here like any other typo.
     react_admin_query_params: ClassVar[frozenset[str]] = frozenset(
         {"sort", "range", "filter"}
     )
@@ -311,7 +312,7 @@ class _ReactAdminMixin:
     def _reject_unknown_query_params(self) -> None:
         """Reject any query key outside the react-admin contract.
 
-        Overrides the default listing guard: this dialect takes three
+        Overrides the default list params guard: this dialect takes three
         JSON-encoded keys, not the schema-derived grammar, so the inherited
         allow-list would wave through ``?page=2`` while still missing a typo.
         ``extra_query_params`` widens this the same way it widens the default.
@@ -328,7 +329,7 @@ class _ReactAdminMixin:
         """Parse sort, range, and filter from the current request query string.
 
         The unknown-key guard runs here rather than through the registration
-        wrapper: the react-admin list endpoint declares no ``query_params``
+        wrapper: the react-admin list endpoint declares no ``list_params``
         argument, so nothing else would run it.
         """
         view = cast(_ReactAdminViewProtocol, self)
@@ -387,12 +388,12 @@ class _ReactAdminMixin:
             )
         return _ReactAdminListParams(sort=sort, start=start, end=end, filters=filters)
 
-    def apply_query_params(
-        self, query: sqlalchemy.Select, query_params: Any
+    def apply_list_params(
+        self, query: sqlalchemy.Select, list_params: Any
     ) -> sqlalchemy.Select:
         """Apply the react-admin list grammar to the scoped base query."""
         view = cast(_ReactAdminViewProtocol, self)
-        params = self._coerce_react_admin_params(query_params)
+        params = self._coerce_react_admin_params(list_params)
         return apply_react_admin_query(
             query,
             view.model,
@@ -404,10 +405,10 @@ class _ReactAdminMixin:
         )
 
     def _serialize_items(self, items: Sequence[Any]) -> list[dict]:
-        """Serialize ORM objects to JSON-compatible dicts via the view's response schema."""
+        """Serialize ORM objects to JSON-compatible dicts via the view's schema."""
         view = cast(_ReactAdminViewProtocol, self)
         return [
-            view.to_response_schema(obj).model_dump(mode="json", by_alias=True)
+            view.to_single_response(obj).model_dump(mode="json", by_alias=True)
             for obj in items
         ]
 
@@ -427,23 +428,16 @@ class _ReactAdminMixin:
             },
         )
 
-    def to_react_admin_listing_response(
-        self, listing_result: ListingResult[Any]
-    ) -> fastapi.Response:
-        params = self._coerce_react_admin_params(listing_result.query_params)
+    def to_list_response(self, list_result: ListResult[Any]) -> fastapi.Response:
+        """Build the react-admin list response: a JSON array with a
+        ``Content-Range`` header."""
+        params = self._coerce_react_admin_params(list_result.list_params)
         return self._build_react_admin_list_response(
-            self._serialize_items(listing_result.objects),
-            listing_result.total_count or 0,
+            self._serialize_items(list_result.objects),
+            list_result.total_count or 0,
             params.start,
             params.end,
         )
-
-    def to_response(
-        self, obj_or_list: Any, shape: ResponseShape = ResponseShape.SINGLE
-    ) -> Any:
-        if shape is ResponseShape.LISTING:
-            return self.to_react_admin_listing_response(obj_or_list)
-        return cast(Any, super()).to_response(obj_or_list, shape)
 
     @classmethod
     def before_include_view(cls) -> None:
@@ -478,8 +472,8 @@ class _ReactAdminMixin:
                 "Content-Range header, so these settings do not apply: "
                 f"{', '.join(ignored)}."
             )
-        if "listing_param_schema" not in cls.__dict__:
-            view_cls.listing_param_schema = _ReactAdminQueryParams
+        if "schema_list_params" not in cls.__dict__:
+            view_cls.schema_list_params = _ReactAdminQueryParams
         cast(Any, super()).before_include_view()
         # Override the list return annotation set by BaseRestView to Response,
         # since we return a raw Response with Content-Range header.
@@ -511,7 +505,7 @@ class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
     @get("/")
     async def get_many_endpoint(self) -> Any:
         result = await self.handle_get_many(self._parse_react_admin_params())
-        return self.to_response(result, ResponseShape.LISTING)
+        return self.to_response(result, ResponseShape.LIST)
 
     @_typed_id_route
     @put("/{id}")
@@ -531,7 +525,7 @@ class ReactAdminView(_ReactAdminMixin, RestView):
     @get("/")
     def get_many_endpoint(self) -> Any:
         result = self.handle_get_many(self._parse_react_admin_params())
-        return self.to_response(result, ResponseShape.LISTING)
+        return self.to_response(result, ResponseShape.LIST)
 
     @_typed_id_route
     @put("/{id}")

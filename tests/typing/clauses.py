@@ -108,8 +108,8 @@ def unscoped_composition(
 
 # apply_clauses overloads per statement kind; the Select overload keeps
 # the precise statement type
-listing = fr.apply_clauses(select(Ticket), TicketClauses.visible)
-listing = listing.where(Ticket.tenant_id == 1).limit(1)
+visible_tickets = fr.apply_clauses(select(Ticket), TicketClauses.visible)
+visible_tickets = visible_tickets.where(Ticket.tenant_id == 1).limit(1)
 assert_type(fr.apply_clauses(update(Ticket), TicketClauses.owned_by_tenant), Update)
 assert_type(fr.apply_clauses(delete(Ticket), TicketClauses.owned_by_tenant), Delete)
 

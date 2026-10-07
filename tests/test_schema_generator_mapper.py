@@ -69,7 +69,7 @@ def test_expression_column_property_is_read_only():
         name = Column(String, nullable=False)
         shout = column_property(func.upper(name, type_=String))
 
-    schema = fr_schemas.create_schema_from_model(Person)
+    schema = fr_schemas.derive_schema(Person)
     assert schema.model_fields["shout"].annotation is str
     assert schema.model_fields["shout"].json_schema_extra["readOnly"] is True
 
@@ -97,7 +97,7 @@ def test_annotation_nearest_the_model_wins():
         id: Mapped[str] = mapped_column(primary_key=True)
         name: Mapped[str]
 
-    schema = fr_schemas.create_schema_from_model(Code)
+    schema = fr_schemas.derive_schema(Code)
     assert schema.model_fields["id"].annotation is str
 
 
@@ -109,7 +109,7 @@ def test_relationship_without_annotation_comes_from_the_mapper():
         owner_id = Column(ForeignKey("owner.id"))
         owner = relationship(Owner)
 
-    schema = fr_schemas.create_schema_from_model(Pet, include_relationships=True)
+    schema = fr_schemas.derive_schema(Pet, include_relationships=True)
     assert "owner" in schema.model_fields
 
 
@@ -129,7 +129,7 @@ def test_relationship_to_a_class_outside_declarative_base():
         owner_id = Column(ForeignKey("legacy_owner.id"))
         owner = relationship(Owner)
 
-    schema = fr_schemas.create_schema_from_model(Pet, include_relationships=True)
+    schema = fr_schemas.derive_schema(Pet, include_relationships=True)
     owner = next(
         arg
         for arg in get_args(schema.model_fields["owner"].annotation)
@@ -180,7 +180,7 @@ def test_deferred_annotation_naming_an_undefined_class(client):
 
     assert set(ParentView.schema.model_fields) == {"id", "name"}
 
-    schema = fr_schemas.create_schema_from_model(Parent, include_relationships=True)
+    schema = fr_schemas.derive_schema(Parent, include_relationships=True)
     children = schema.model_fields["children"].annotation
     assert Child.__name__ in repr(children)
 
@@ -224,6 +224,6 @@ def test_deferred_annotation_naming_an_undefined_class_on_a_dataclass_base(clien
 
     assert set(WriterView.schema.model_fields) == {"id", "name"}
 
-    schema = fr_schemas.create_schema_from_model(Writer, include_relationships=True)
+    schema = fr_schemas.derive_schema(Writer, include_relationships=True)
     novels = schema.model_fields["novels"].annotation
     assert Novel.__name__ in repr(novels)

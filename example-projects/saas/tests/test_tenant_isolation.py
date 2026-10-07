@@ -438,11 +438,11 @@ async def test_unscoped_view_reads_keep_tenant_restriction(tenants, view_type, f
     with Current.bind(**asdict(own.identity)):
         async with fr.open_async_session() as session:
             view = view_type(request=None, session=session)
-            listing = await view.get_many({}, scope=fr.clauses.UNSCOPED)
+            list_result = await view.get_many({}, scope=fr.clauses.UNSCOPED)
             row = await view.get_one(getattr(own, field), scope=fr.clauses.UNSCOPED)
             with pytest.raises(fr.exc.NotFound):
                 await view.get_one(getattr(foreign, field), scope=fr.clauses.UNSCOPED)
-    assert {row.id for row in listing.objects} == {getattr(own, field)}
+    assert {row.id for row in list_result.objects} == {getattr(own, field)}
     assert row.id == getattr(own, field)
 
 

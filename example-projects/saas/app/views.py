@@ -127,7 +127,7 @@ class SoftDeleteMixin:
     The read-side counterpart lives in the model's namespace: the default
     scope hides deleted rows unconditionally, and a trash route on the
     view names ``is_deleted`` as its own scope per read
-    (``handle_get_many(query_params, scope=...)``), restore likewise.
+    (``handle_get_many(list_params, scope=...)``), restore likewise.
     For views of a ``SoftDeletable`` model (``app.models``): the column is
     there because the model said so, so there is nothing to guard.
 

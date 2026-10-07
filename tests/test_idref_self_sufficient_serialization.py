@@ -8,9 +8,9 @@ or the raw scalar FK (a scalar-named reference). These tests pin:
 
 1. ``Schema.model_validate(orm_row, from_attributes=True)`` no longer crashes for
    ``IDRef`` / ``list[IDRef]`` -- the leak that the workaround masked everywhere
-   outside ``to_response_schema`` (nested models, custom endpoints, a raw
+   outside ``to_single_response`` (nested models, custom endpoints, a raw
    ``response_model``).
-2. ``to_response_schema`` output is unchanged for ``IDRef`` (flat id), ``IDSchema``
+2. ``to_single_response`` output is unchanged for ``IDRef`` (flat id), ``IDSchema``
    (``{"id": ...}``), ``list[IDRef]``, and the react-admin path -- for both the
    relationship-named form (read yields the row) and the scalar-named form (read
    yields the raw id).
@@ -122,13 +122,13 @@ def test_idschema_self_sufficient_under_plain_from_attributes(sync_db):
 
 
 # ---------------------------------------------------------------------------
-# 2. ``to_response_schema`` output, called directly on a loaded row. Covers the
+# 2. ``to_single_response`` output, called directly on a loaded row. Covers the
 #    relationship-named form (read yields the related ROW), which the existing
 #    e2e suite does not -- it only exercises scalar-named FK columns.
 # ---------------------------------------------------------------------------
 
 
-def test_to_response_schema_idref_relationship_serializes_flat(sync_db):
+def test_to_single_response_idref_relationship_serializes_flat(sync_db):
     engine, make_session = sync_db
 
     class Post(fr.IDBase):
@@ -155,11 +155,11 @@ def test_to_response_schema_idref_relationship_serializes_flat(sync_db):
         session.add_all([post, comment])
         session.flush()
 
-        dumped = CommentView().to_response_schema(comment).model_dump(mode="json")
+        dumped = CommentView().to_single_response(comment).model_dump(mode="json")
         assert dumped == {"id": comment.id, "content": "hi", "post": post.id}
 
 
-def test_to_response_schema_idschema_relationship_serializes_nested(sync_db):
+def test_to_single_response_idschema_relationship_serializes_nested(sync_db):
     engine, make_session = sync_db
 
     class Post(fr.IDBase):
@@ -186,11 +186,11 @@ def test_to_response_schema_idschema_relationship_serializes_nested(sync_db):
         session.add_all([post, comment])
         session.flush()
 
-        dumped = CommentView().to_response_schema(comment).model_dump(mode="json")
+        dumped = CommentView().to_single_response(comment).model_dump(mode="json")
         assert dumped == {"id": comment.id, "content": "hi", "post": {"id": post.id}}
 
 
-def test_to_response_schema_nested_idschema_subclass_keeps_all_fields(sync_db):
+def test_to_single_response_nested_idschema_subclass_keeps_all_fields(sync_db):
     """The guard: an IDSchema *subclass* that adds fields is a nested schema, not
     a bare reference, so its row is serialized in full -- never collapsed to id."""
     engine, make_session = sync_db
@@ -222,7 +222,7 @@ def test_to_response_schema_nested_idschema_subclass_keeps_all_fields(sync_db):
         session.add_all([post, comment])
         session.flush()
 
-        dumped = CommentView().to_response_schema(comment).model_dump(mode="json")
+        dumped = CommentView().to_single_response(comment).model_dump(mode="json")
         assert dumped == {
             "id": comment.id,
             "content": "hi",
@@ -288,7 +288,7 @@ def test_idref_relationship_field_serializes_flat_e2e(client):
 
 
 def test_react_admin_serializes_idref_flat_e2e(client):
-    """The react-admin serializer (``to_response_schema(...).model_dump``) renders
+    """The react-admin serializer (``to_single_response(...).model_dump``) renders
     an ``IDRef`` field as the flat id, same as the plain REST path."""
 
     class Post(fr.IDBase):

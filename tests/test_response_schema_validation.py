@@ -21,7 +21,7 @@ class ResponseUserRead(fr.IDSchema):
         return f"user:{value}"
 
 
-def test_to_response_schema_runs_response_field_validators_and_serializers():
+def test_to_single_response_runs_response_field_validators_and_serializers():
     class ResponseValidationUser(fr.IDBase):
         name: Mapped[str]
         email: Mapped[str]
@@ -36,7 +36,7 @@ def test_to_response_schema_runs_response_field_validators_and_serializers():
     )
     user.id = 1
 
-    schema_obj = ResponseUserView().to_response_schema(user)
+    schema_obj = ResponseUserView().to_single_response(user)
 
     assert isinstance(schema_obj, ResponseUserRead)
     assert schema_obj.email == "ada@example.com"
@@ -72,7 +72,7 @@ def test_response_serialization_runs_through_fastapi_response_model(client):
     assert "password" not in payload
 
 
-def test_to_response_schema_with_a_narrowed_model_validate():
+def test_to_single_response_with_a_narrowed_model_validate():
     # SQLModel overrides model_validate without by_alias and by_name.
     class NarrowSchema(pydantic.BaseModel):
         model_config = pydantic.ConfigDict(from_attributes=True)
@@ -97,7 +97,7 @@ def test_to_response_schema_with_a_narrowed_model_validate():
     gadget = NarrowGadget(display_name="Widget")
     gadget.id = 1
 
-    schema_obj = NarrowGadgetView().to_response_schema(gadget)
+    schema_obj = NarrowGadgetView().to_single_response(gadget)
 
     assert isinstance(schema_obj, NarrowGadgetRead)
     assert schema_obj.model_dump(by_alias=True) == {"id": 1, "displayName": "Widget"}

@@ -61,21 +61,21 @@ class CustomProjectView(
     # must NOT be named after the business methods (get_many/create/...), which
     # would shadow them and make handle_<verb> -> self.<verb> recurse.
     @fr.get("/")
-    async def get_many_endpoint(self, query_params: Any) -> list[ProjectRead]:
-        result = await self.handle_get_many(query_params)
-        return [self.to_response_schema(obj) for obj in result.objects]
+    async def get_many_endpoint(self, list_params: Any) -> list[ProjectRead]:
+        result = await self.handle_get_many(list_params)
+        return [self.to_single_response(obj) for obj in result.objects]
 
     @fr.get("/{id}")
     async def get_one_endpoint(self, id: int) -> ProjectRead:
-        return self.to_response_schema(await self.handle_get_one(id))
+        return self.to_single_response(await self.handle_get_one(id))
 
     @fr.post("/")
     async def create_endpoint(self, schema_obj: ProjectRead) -> ProjectRead:
-        return self.to_response_schema(await self.handle_create(schema_obj))
+        return self.to_single_response(await self.handle_create(schema_obj))
 
     @fr.patch("/{id}")
     async def update_endpoint(self, id: int, schema_obj: ProjectRead) -> ProjectRead:
-        return self.to_response_schema(await self.handle_update(id, schema_obj))
+        return self.to_single_response(await self.handle_update(id, schema_obj))
 
     @fr.delete("/{id}")
     async def delete_endpoint(self, id: int) -> Response:

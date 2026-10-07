@@ -2,8 +2,9 @@
 
 Registration fills the view's types (``id_type``, ``schema_create``,
 ``schema_update``, the response model) only into parameters and returns left
-unannotated or annotated ``Any``. ``query_params`` is the exception: it always
-takes the listing grammar, because the unknown-key guard checks against it.
+unannotated or annotated ``Any``. ``list_params`` is the exception: it always
+takes the view's list params, because the unknown-key guard checks against
+them.
 """
 
 from types import SimpleNamespace
@@ -449,9 +450,9 @@ def test_default_react_admin_put_takes_schema_update(env):
     )
 
 
-def test_explicit_query_params_annotation_takes_the_listing_grammar(env):
-    """The unknown-key guard checks against ``listing_param_schema``, so the
-    parameter takes that grammar whatever its author annotated."""
+def test_explicit_list_params_annotation_takes_the_view_list_params(env):
+    """The unknown-key guard checks against ``schema_list_params``, so the
+    parameter takes them whatever its author annotated."""
 
     class ProductView(env.base):
         prefix = "/products"
@@ -461,16 +462,16 @@ def test_explicit_query_params_annotation_takes_the_listing_grammar(env):
         if env.asynchronous:
 
             @fr.get("/search")
-            async def search(self, query_params: dict[str, str]):
-                result = await self.handle_get_many(query_params)
-                return self.to_response(result, fr.ResponseShape.LISTING)
+            async def search(self, list_params: dict[str, str]):
+                result = await self.handle_get_many(list_params)
+                return self.to_response(result, fr.ResponseShape.LIST)
 
         else:
 
             @fr.get("/search")
-            def search(self, query_params: dict[str, str]):
-                result = self.handle_get_many(query_params)
-                return self.to_response(result, fr.ResponseShape.LISTING)
+            def search(self, list_params: dict[str, str]):
+                result = self.handle_get_many(list_params)
+                return self.to_response(result, fr.ResponseShape.LIST)
 
     openapi = _register(env, ProductView)
     client = env.client

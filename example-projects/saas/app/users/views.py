@@ -12,7 +12,7 @@ from ..current import Current
 from ..views import AuthenticatedView, SoftDeleteMixin
 from .models import User
 from .roles import UserRole
-from .schemas import UserFullSchema, UserPublicSchema, UserSchema
+from .schemas import UserFullResponse, UserPublicResponse, UserSchema
 
 
 class UpdateMeRequest(BaseModel):
@@ -77,7 +77,7 @@ class UserView(SoftDeleteMixin, AuthenticatedView[User]):
         async with self.write_action("change_password", obj=user):
             user.password = hash_password(request.new_password)
             await self.save_object(user)
-        return self.to_response_schema(user)
+        return self.to_single_response(user)
 
     @fr.get("/{id}/with-permissions", response_model=dict)
     async def get_user_with_field_permissions(self, id: int) -> dict[str, Any]:
@@ -93,10 +93,10 @@ class UserView(SoftDeleteMixin, AuthenticatedView[User]):
         # Select schema based on viewer's role
         if self._can_see_salary():
             # HR/Owner gets full schema with salary
-            schema: type[BaseModel] = UserFullSchema
+            schema: type[BaseModel] = UserFullResponse
         else:
             # Others get public schema without salary
-            schema = UserPublicSchema
+            schema = UserPublicResponse
 
         return schema.model_validate(user, from_attributes=True).model_dump()
 
@@ -104,7 +104,7 @@ class UserView(SoftDeleteMixin, AuthenticatedView[User]):
     async def get_current_user(self) -> Any:
         """Get current user's profile."""
         user = await self.handle_get_one(Current.user_id())
-        return self.to_response_schema(user)
+        return self.to_single_response(user)
 
     @fr.patch("/me", response_model=UserSchema)
     async def update_current_user(self, request: UpdateMeRequest) -> Any:
@@ -117,4 +117,4 @@ class UserView(SoftDeleteMixin, AuthenticatedView[User]):
         auditing) applies here automatically.
         """
         user = await self.handle_update(Current.user_id(), request)
-        return self.to_response_schema(user)
+        return self.to_single_response(user)

@@ -134,7 +134,7 @@ omit = ["tests/*", "example-projects/*"]
 extend-exclude = ["fastapi_restly/_scaffold/templates"]
 
 [tool.ruff.format]
-# MyST examples include partial listings. Format Python source files only.
+# MyST examples include partial code. Format Python source files only.
 exclude = ["*.md"]
 skip-magic-trailing-comma = true
 

@@ -9,10 +9,10 @@ def test_create_and_list(restly_client: RestlyTestClient) -> None:
     assert created["email"] == "ada@example.com"
     assert created["name"] == "Ada"
 
-    listing = restly_client.get("/users").json()
+    page = restly_client.get("/users").json()
 
-    assert [user["id"] for user in listing["data"]] == [created["id"]]
-    assert listing["total_count"] == 1
+    assert [user["id"] for user in page["data"]] == [created["id"]]
+    assert page["total_count"] == 1
 
 
 def test_get_one(restly_client: RestlyTestClient) -> None:

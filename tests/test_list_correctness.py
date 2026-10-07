@@ -10,12 +10,12 @@ Covers two list-endpoint bugs:
   the PK). These are asserted on the compiled SQL, so they hold regardless of a
   given backend's incidental tie ordering.
 
-* **to-many JOIN fan-out**: a listing query that JOINs a to-many relationship
+* **to-many JOIN fan-out**: a list query that JOINs a to-many relationship
   fans out (one row per child), which duplicated entities in the page and
   inflated the total. ``get_many`` now de-duplicates via ``.unique()`` and
   ``count`` counts a ``DISTINCT`` subquery. (Not reachable through the public
   URL grammar -- dotted filters/sorts only traverse to-one relations -- so the
-  trigger is a collection JOIN in ``apply_query_params``, as exercised here.)
+  trigger is a collection JOIN in ``apply_list_params``, as exercised here.)
 """
 
 import pydantic
@@ -159,11 +159,11 @@ def test_react_admin_sort_appends_every_column_of_a_composite_key():
 
 
 # ---------------------------------------------------------------------------
-# A to-many JOIN in the listing query must not duplicate rows / inflate count
+# A to-many JOIN in the list query must not duplicate rows / inflate count
 # ---------------------------------------------------------------------------
 
 
-def test_to_many_join_in_listing_query_does_not_duplicate_or_inflate(client):
+def test_to_many_join_in_list_query_does_not_duplicate_or_inflate(client):
     class Author(fr.IDBase):
         name: Mapped[str]
 
@@ -184,10 +184,10 @@ def test_to_many_join_in_listing_query_does_not_duplicate_or_inflate(client):
         model = Author
         schema = AuthorSchema
 
-        def apply_query_params(self, query, query_params):
+        def apply_list_params(self, query, list_params):
             # A collection JOIN: one row per book -> fan-out without dedup.
             query = query.join(Book, Book.author_id == Author.id)
-            return super().apply_query_params(query, query_params)
+            return super().apply_list_params(query, list_params)
 
     @fr.include_view(client.app)
     class BookView(fr.AsyncRestView):
@@ -209,8 +209,8 @@ def test_to_many_join_in_listing_query_does_not_duplicate_or_inflate(client):
     assert payload["data"][0]["name"] == "A"
 
 
-def test_default_ordering_belongs_in_apply_query_params(client):
-    """A listing's default ordering precedes the client's sort order."""
+def test_default_ordering_belongs_in_apply_list_params(client):
+    """A list's default ordering precedes the client's sort order."""
 
     class RankedNote(fr.IDBase):
         rank: Mapped[int]
@@ -224,10 +224,10 @@ def test_default_ordering_belongs_in_apply_query_params(client):
         model = RankedNote
         schema = RankedNoteSchema
 
-        def apply_query_params(self, query, query_params):
+        def apply_list_params(self, query, list_params):
             # before super(): the client's ?sort= then orders within it
             query = query.order_by(RankedNote.rank.desc())
-            return super().apply_query_params(query, query_params)
+            return super().apply_list_params(query, list_params)
 
     create_tables()
     for rank in (1, 3, 2, 3):

@@ -360,8 +360,8 @@ class TestLocationHeader:
 
 class TestReadOnlyLookup:
     async def test_seeded_data_is_listable(self, async_client):
-        listing = (await async_client.get("/countries")).json()["data"]
-        codes = {c["code"] for c in listing}
+        countries = (await async_client.get("/countries")).json()["data"]
+        codes = {c["code"] for c in countries}
         assert {"NL", "DE"} <= codes
 
     def test_post_is_not_allowed(self, client):

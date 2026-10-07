@@ -385,7 +385,7 @@ class TestSoftDelete:
         """Deleted projects appear on /projects/trash and nowhere else.
 
         The trash is a route on the same view naming ``is_deleted`` as its
-        scope per read; it takes the listing grammar, and the tenant
+        scope per read; it takes the view's list params, and the tenant
         listener in ``app.models`` keeps it tenant-bound.
         """
         beta = new_tenant("beta")
@@ -402,7 +402,7 @@ class TestSoftDelete:
         client.delete(f"/projects/{deleted_id}", assert_status_code=200)
         client.delete(f"/projects/{deleted_too_id}", assert_status_code=200)
 
-        # The default listing hides the deleted rows
+        # The default list hides the deleted rows
         response = client.get("/projects")
         project_ids = [p["id"] for p in response.json()["data"]]
         assert active_id in project_ids
@@ -415,7 +415,7 @@ class TestSoftDelete:
         assert deleted_too_id in project_ids
         assert active_id not in project_ids
 
-        # It reads the same grammar as GET /projects: filter, sort, page
+        # It reads the same list params as GET /projects: filter, sort, page
         response = client.get("/projects/trash?name=Deleted Too")
         assert [p["id"] for p in response.json()["data"]] == [deleted_too_id]
         response = client.get("/projects/trash?sort=-name&page_size=1")
@@ -439,7 +439,7 @@ class TestSoftDelete:
     def test_query_params_cannot_widen_a_scope(self, client):
         """The old ``?include_deleted=true`` toggle is gone.
 
-        The listing grammar rejects it as an unknown key, and on a write
+        The list params reject it as an unknown key, and on a write
         it is ignored: the reference check keeps hiding the deleted
         project either way.
         """

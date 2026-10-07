@@ -40,9 +40,9 @@ class WidgetView(fr.RestView[Widget, WidgetRead, WidgetInput, WidgetInput, int])
     # Domain operations (auth-free, commit-free) -- the common override point.
     # The handlers always forward ``scope=``, so an override declares it.
     def get_many(
-        self, query_params: Any, *, scope: fr.views.ReadScope = None
-    ) -> fr.ListingResult[Widget]:
-        return super().get_many(query_params, scope=scope)
+        self, list_params: Any, *, scope: fr.views.ReadScope = None
+    ) -> fr.ListResult[Widget]:
+        return super().get_many(list_params, scope=scope)
 
     # ``id`` is the primary key or a predicate that replaces it, so an
     # override widens the parameter the same way.
@@ -65,7 +65,7 @@ class WidgetView(fr.RestView[Widget, WidgetRead, WidgetInput, WidgetInput, int])
     @fr.post("/{id}/rename")
     def rename(self, id: int, schema_obj: WidgetInput) -> WidgetRead:
         widget: Widget = self.handle_update(id, schema_obj)
-        return self.to_response_schema(widget)
+        return self.to_single_response(widget)
 
     @fr.post("/{id}/retire")
     def retire(self, id: int) -> dict[str, int]:
@@ -76,19 +76,19 @@ class WidgetView(fr.RestView[Widget, WidgetRead, WidgetInput, WidgetInput, int])
     @fr.get("/by-name/{name}")
     def get_by_name(self, name: str) -> WidgetRead:
         widget: Widget = self.handle_get_one(Widget.name == name)
-        return self.to_response_schema(widget)
+        return self.to_single_response(widget)
 
-    # A narrowed listing: ``where=`` takes a raw expression or a clause, and
+    # A narrowed list: ``where=`` takes a raw expression or a clause, and
     # the ``scope``-only ``get_many`` override above stays compatible.
     @fr.get("/named/{name}")
-    def list_named(self, name: str, query_params: Any) -> Any:
-        by_name = self.handle_get_many(query_params, where=Widget.name == name)
-        by_clause: fr.ListingResult[Widget] = self.handle_get_many(
-            query_params,
+    def list_named(self, name: str, list_params: Any) -> Any:
+        by_name = self.handle_get_many(list_params, where=Widget.name == name)
+        by_clause: fr.ListResult[Widget] = self.handle_get_many(
+            list_params,
             scope=fr.clauses.UNSCOPED,
             where=fr.where_clause(Widget.name == name),
         )
-        return self.to_response(by_name or by_clause, fr.ResponseShape.LISTING)
+        return self.to_response(by_name or by_clause, fr.ResponseShape.LIST)
 
 
 def create_widgets_together(view: WidgetView, items: list[WidgetInput]) -> list[Widget]:

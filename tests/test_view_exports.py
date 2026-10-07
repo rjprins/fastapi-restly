@@ -68,8 +68,10 @@ def test_rest_view_route_and_hook_names_are_current():
         "delete",
         # Read / response helpers
         "count",
-        "to_listing_response",
-        "to_response_schema",
+        "apply_list_params",
+        "to_response",
+        "to_list_response",
+        "to_single_response",
     )
 
     for view_cls in (fr.RestView, fr.AsyncRestView):

@@ -144,7 +144,7 @@ class TestNestedRoutes:
         assert all(t["project_id"] == project1_id for t in tasks)
 
     def test_list_project_tasks_follows_the_task_view_scope(self, client, auth_context):
-        """The nested listing and ``GET /tasks`` answer with the same rows.
+        """The nested list and ``GET /tasks`` answer with the same rows.
 
         ``list_project_tasks`` applies ``fr.resolve_scope(TaskView)``, so a
         member sees the tasks assigned to them on both routes. Re-spelling

@@ -522,13 +522,13 @@ def test_sync_rest_view_dispatches_to_handle_overrides(sync_db):
         model = DispatchWidget
         schema = WidgetSchema
 
-        def get_many(self, query_params, *, scope=None):
-            call_log.append("listing")
-            return super().get_many(query_params, scope=scope)
+        def get_many(self, list_params, *, scope=None):
+            call_log.append("get_many")
+            return super().get_many(list_params, scope=scope)
 
-        def to_listing_response(self, query_params, listing_result):
-            call_log.append("to_listing_response")
-            return super().to_listing_response(query_params, listing_result)
+        def to_list_response(self, list_result):
+            call_log.append("to_list_response")
+            return super().to_list_response(list_result)
 
         def get_one(self, id, *, scope=None):
             call_log.append("get")
@@ -560,8 +560,8 @@ def test_sync_rest_view_dispatches_to_handle_overrides(sync_db):
 
     assert call_log == [
         "create",
-        "listing",
-        "to_listing_response",
+        "get_many",
+        "to_list_response",
         "get",
         "get",
         "update",
@@ -572,7 +572,7 @@ def test_sync_rest_view_dispatches_to_handle_overrides(sync_db):
 
 def test_sync_build_query_is_consulted_by_list_and_count(sync_db):
     """get_many routes through build_query and count uses that query so a
-    single override filters listing AND its pagination total."""
+    single override filters the list AND its pagination total."""
     import sqlalchemy
 
     engine, make_session = sync_db
@@ -614,7 +614,7 @@ def test_sync_build_query_is_consulted_by_list_and_count(sync_db):
         assert all(g.active for g in results.objects)
 
         scoped = fr.apply_clauses(sqlalchemy.select(Gadget), fr.resolve_scope(view))
-        query = fr.query.apply_list_params({}, scoped, Gadget, GadgetSchema)
+        query = fr.query.apply_list_params(scoped, {}, Gadget, GadgetSchema)
         total = view.count(query)
         assert total == 2
 

@@ -1,9 +1,9 @@
-"""A listing next to query parameters it does not generate.
+"""A list route next to query parameters it does not generate.
 
 A query parameter that a dependency reads, at any level, or the key of an
-``APIKeyQuery`` passes the unknown-key guard like a filter. A custom listing
-takes its own typed query parameters beside ``query_params``, and OpenAPI
-lists every filter beside them instead of one collapsed ``query_params``
+``APIKeyQuery`` passes the unknown-key guard like a filter. A custom list
+route takes its own typed query parameters beside ``list_params``, and OpenAPI
+lists every filter beside them instead of one collapsed ``list_params``
 object. An unknown key still answers 422. Sync and async.
 """
 
@@ -108,7 +108,7 @@ def test_an_unknown_key_is_still_rejected(client, key):
     ]
 
 
-def test_a_react_admin_listing_accepts_a_key_that_a_dependency_reads(flavor, request):
+def test_a_react_admin_list_accepts_a_key_that_a_dependency_reads(flavor, request):
     sync = flavor == "sync"
 
     class Item(fr.IDBase):
@@ -153,8 +153,8 @@ def search_client(flavor: str, request: pytest.FixtureRequest) -> RestlyTestClie
             dependencies = [Depends(api_key)]
 
             @fr.get("/search")
-            def search(self, query_params, mode: SearchMode):
-                result = self.handle_get_many(query_params)
+            def search(self, list_params, mode: SearchMode):
+                result = self.handle_get_many(list_params)
                 return {"mode": mode, "names": [item.name for item in result.objects]}
 
     else:
@@ -166,8 +166,8 @@ def search_client(flavor: str, request: pytest.FixtureRequest) -> RestlyTestClie
             dependencies = [Depends(api_key)]
 
             @fr.get("/search")
-            async def search(self, query_params, mode: SearchMode):
-                result = await self.handle_get_many(query_params)
+            async def search(self, list_params, mode: SearchMode):
+                result = await self.handle_get_many(list_params)
                 return {"mode": mode, "names": [item.name for item in result.objects]}
 
     fr.include_view(app, ItemView)
@@ -178,7 +178,7 @@ def search_client(flavor: str, request: pytest.FixtureRequest) -> RestlyTestClie
     return test_client
 
 
-def test_a_custom_listing_takes_its_own_query_parameter(search_client):
+def test_a_custom_list_route_takes_its_own_query_parameter(search_client):
     response = search_client.get(
         "/items/search", params={"name": "Desk", "mode": "fast", "api_key": "k"}
     )
@@ -186,7 +186,7 @@ def test_a_custom_listing_takes_its_own_query_parameter(search_client):
     assert response.json() == {"mode": "fast", "names": ["Desk"]}
 
 
-def test_the_custom_listing_validates_its_parameter(search_client):
+def test_the_custom_list_route_validates_its_parameter(search_client):
     response = search_client.get(
         "/items/search", params={"mode": "slowest"}, assert_status_code=422
     )
@@ -194,7 +194,7 @@ def test_the_custom_listing_validates_its_parameter(search_client):
     assert [error["loc"] for error in response.json()["detail"]] == [["query", "mode"]]
 
 
-def test_the_custom_listing_rejects_an_unknown_key(search_client):
+def test_the_custom_list_route_rejects_an_unknown_key(search_client):
     response = search_client.get(
         "/items/search", params={"mode": "fast", "typo": "1"}, assert_status_code=422
     )
@@ -209,7 +209,7 @@ def test_openapi_lists_every_filter_beside_other_parameters(search_client, path,
     operation = search_client.app.openapi()["paths"][path]["get"]
     names = [parameter["name"] for parameter in operation["parameters"]]
 
-    assert "query_params" not in names
+    assert "list_params" not in names
     assert set(own) <= set(names)
     assert {"page", "page_size", "sort", "name", "name__in"} <= set(names)
     assert "422" in operation["responses"]
@@ -232,11 +232,11 @@ def hand_written_client(sync_db) -> RestlyTestClient:
     class ItemView(fr.RestView):
         prefix = "/items"
         model = Item
-        listing_param_schema = HandWrittenParams
+        schema_list_params = HandWrittenParams
 
         @fr.get("/custom")
-        def custom(self, query_params) -> dict[str, Any]:
-            return query_params.model_dump(mode="json")
+        def custom(self, list_params) -> dict[str, Any]:
+            return list_params.model_dump(mode="json")
 
     return RestlyTestClient(app)
 
@@ -276,7 +276,7 @@ def test_an_empty_grammar_declares_no_parameter(sync_db):
     class ItemView(fr.RestView):
         prefix = "/items"
         model = Item
-        listing_param_schema = NoParams
+        schema_list_params = NoParams
 
     operation = app.openapi()["paths"]["/items"]["get"]
     assert operation.get("parameters", []) == []

@@ -8,7 +8,7 @@ from ._base import (
     TimestampsSchemaMixin,
     WriteOnly,
 )
-from ._generator import create_schema_from_model
+from ._generator import derive_schema
 
 # Public API for ``fastapi_restly.schemas``.
 #
@@ -29,5 +29,5 @@ __all__ = [
     "RefExists",
     "TimestampsSchemaMixin",
     "WriteOnly",
-    "create_schema_from_model",
+    "derive_schema",
 ]

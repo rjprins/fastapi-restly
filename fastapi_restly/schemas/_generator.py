@@ -223,29 +223,34 @@ def get_model_fields(model_cls: type[Any]) -> dict[str, Any]:
     return fields
 
 
-def create_schema_from_model(
-    model_cls: type[Any],
+def derive_schema(
+    model: type[Any],
     *,
-    schema_name: str | None = None,
-    include_relationships: bool = True,
-    include_readonly_fields: bool = True,
+    name: str | None = None,
+    include_relationships: bool = False,
+    include_read_only_fields: bool = True,
 ) -> type[BaseSchema]:
     """
-    Auto-generate a Pydantic schema from a SQLAlchemy model.
+    Generate a Pydantic schema from a SQLAlchemy model.
 
-    :param model_cls: The SQLAlchemy model class.
-    :param schema_name: Name for the generated schema class. Defaults to the
-        model name suffixed with ``Read``.
-    :param include_relationships: Whether to include relationship fields.
-    :param include_readonly_fields: Whether to include read-only fields such as
-        ``id``, ``created_at`` and ``updated_at``.
+    With the defaults, this is the same schema that a view generates when it
+    has no ``schema``: one field per column, and no relationship fields.
+
+    :param model: The SQLAlchemy model class.
+    :param name: Name for the generated schema class. Defaults to the
+        model name followed by ``Read``.
+    :param include_relationships: Whether to include relationship fields. Each
+        one holds a nested schema of the related model, without its
+        relationships and without read-only markers.
+    :param include_read_only_fields: Whether to mark fields such as ``id``,
+        ``created_at`` and ``updated_at`` as ``ReadOnly``.
     :returns: A Pydantic schema class.
     """
-    if schema_name is None:
-        schema_name = f"{model_cls.__name__}Read"
+    if name is None:
+        name = f"{model.__name__}Read"
 
     # Get field information from the model
-    model_fields = get_model_fields(model_cls)
+    model_fields = get_model_fields(model)
 
     # Determine base classes - start with the most specific ones
     bases: list[type] = []
@@ -276,7 +281,7 @@ def create_schema_from_model(
         is_readonly = (
             field_name in ["id", "created_at", "updated_at"]
             or field_info["is_read_only"]
-        ) and include_readonly_fields
+        ) and include_read_only_fields
 
         if is_readonly:
             read_only_fields.append(field_name)
@@ -285,13 +290,13 @@ def create_schema_from_model(
             target_model = field_info["target_model"]
 
             # Skip self-referential relationship to avoid infinite recursion
-            if target_model is model_cls:
+            if target_model is model:
                 continue
 
-            target_schema = create_schema_from_model(
+            target_schema = derive_schema(
                 target_model,
                 include_relationships=False,  # Avoid circular references
-                include_readonly_fields=False,
+                include_read_only_fields=False,
             )
             if get_origin(field_info["type"]) is list:
                 pydantic_type = list[target_schema]
@@ -321,8 +326,8 @@ def create_schema_from_model(
 
     # Create the schema class using pydantic.create_model
     schema_cls = pydantic.create_model(  # type: ignore[call-overload]
-        schema_name,
-        __doc__=f"Auto-generated schema for {model_cls.__name__}",
+        name,
+        __doc__=f"Auto-generated schema for {model.__name__}",
         __base__=tuple(bases),
         **field_definitions,
     )
@@ -390,23 +395,3 @@ def convert_sqlalchemy_type_to_pydantic(
         pydantic_type = pydantic_type | None
 
     return pydantic_type
-
-
-def auto_generate_schema_for_view(
-    view_cls: type, model_cls: type[Any], schema_name: str | None = None
-) -> type[BaseSchema]:
-    """
-    Auto-generate a schema for a view class if none is specified.
-
-    :param view_cls: The view class.
-    :param model_cls: The SQLAlchemy model class.
-    :param schema_name: Name for the generated schema. Defaults to the model
-        name suffixed with ``Read``.
-    :returns: A Pydantic schema class.
-    """
-    if schema_name is None:
-        schema_name = f"{model_cls.__name__}Read"
-
-    return create_schema_from_model(
-        model_cls, schema_name=schema_name, include_relationships=False
-    )

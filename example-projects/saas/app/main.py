@@ -37,7 +37,7 @@ from .tasks.views import TaskView
 from .uploads.views import UploadView
 from .users.views import UserView
 
-# The application's views, registered in create_app(). Listing them here is what
+# The application's views, registered in create_app(). Naming them here is what
 # makes importing this module reach every view, and through each view its models.
 VIEWS = (
     OrganizationView,

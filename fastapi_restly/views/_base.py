@@ -87,14 +87,14 @@ from .._pagination import (
     NoPagination,
     NumberedPagination,
     _build_envelope,
-    _listing_envelope,
+    _list_envelope,
     _numbered_page_info,
     _unpaginated_page_info,
 )
 from ..db._globals import _fr_globals
 from ..exc import RestlyConfigurationError, RestlyMisuseWarning
 from ..objects import snapshot as _object_snapshot
-from ..query import create_list_params_schema
+from ..query import derive_schema_list_params
 from ..query._impl import _UNKNOWN, _created_with, _query_settings
 from ..schemas import BaseSchema, IDSchema
 from ..schemas._base import (
@@ -109,7 +109,7 @@ from ..schemas._base import (
     is_writeonly_field,
     reference_origin_and_target,
 )
-from ..schemas._generator import auto_generate_schema_for_view
+from ..schemas._generator import derive_schema
 from ._openapi import _register_for_resource_ref
 
 # Unbound: a mapped class need not subclass DeclarativeBase (a SQLModel table,
@@ -126,16 +126,18 @@ IdT = TypeVar("IdT", default=int)
 
 
 @dataclasses.dataclass(frozen=True)
-class ListingResult(Generic[ModelT]):
+class ListResult(Generic[ModelT]):
     """Result returned by ``get_many`` before HTTP response formatting.
 
-    ``total_count`` is ``None`` for an unpaginated listing, which does not run
-    the count query.
+    ``total_count`` is ``None`` for a list without pagination, which does not
+    run the count query. ``list_params`` holds the list params that
+    ``get_many`` received, so :meth:`BaseRestView.to_list_response` can read
+    the page from them.
     """
 
     objects: Sequence[ModelT]
     total_count: int | None = None
-    query_params: Any = None
+    list_params: Any = None
 
 
 class ViewRoute(str, Enum):
@@ -161,7 +163,7 @@ class ResponseShape(str, Enum):
     """
 
     SINGLE = "single"  # one serialized object
-    LISTING = "listing"  # a ListingResult -> array / paginated envelope
+    LIST = "list"  # a ListResult -> the list envelope
     EMPTY = "empty"  # 204 No Content
 
 
@@ -1272,8 +1274,8 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     #: falls through to another route or returns 404, instead of 422.
     id_type: ClassVar[type[Any] | None] = None
     exclude_routes: ClassVar[Iterable[str | ViewRoute]] = ()
-    #: Extra query-parameter keys to allow on listing routes beyond those
-    #: derived from the response schema. Use this when a view reads a custom
+    #: Extra query-parameter keys to allow on list routes beyond those
+    #: derived from the view's schema. Use this when a view reads a custom
     #: parameter from ``self.request`` (e.g. ``?verbose=true``). Without this,
     #: the strict unknown-key guard rejects the request with 422. A key that the
     #: route declares, on the endpoint method or in a dependency, or an
@@ -1292,13 +1294,15 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     #: ``get_many_endpoint`` with a matching ``response_model`` (see
     #: :class:`AsyncReactAdminView`).
     pagination: ClassVar[NumberedPagination | NoPagination | None] = _DEFAULT_PAGINATION
-    #: The listing grammar (filter, sort, page) as a pydantic model, generated
-    #: from ``schema`` and ``model``. Any route method on the view that declares
-    #: a ``query_params`` parameter takes it: typed for FastAPI and OpenAPI, and
-    #: guarded against unknown keys like ``GET /``, so a custom listing (a
-    #: trash route naming its own scope) reads the same grammar. The route can
-    #: take other query parameters beside it.
-    listing_param_schema: ClassVar[type[pydantic.BaseModel]]
+    #: The list params (filter, sort, page) as a pydantic model, generated
+    #: from ``schema`` and ``model`` by
+    #: :func:`~fastapi_restly.query.derive_schema_list_params`. Any route
+    #: method on the view that declares a ``list_params`` parameter takes it:
+    #: typed for FastAPI and OpenAPI, and guarded against unknown keys like
+    #: ``GET /``, so a custom list route (a trash route naming its own scope)
+    #: reads the same list params. The route can take other query parameters
+    #: beside it.
+    schema_list_params: ClassVar[type[pydantic.BaseModel]]
 
     request: fastapi.Request
 
@@ -1330,8 +1334,8 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                     f"{cls.__name__} defines build_query{origin}, which is "
                     "removed and no longer called. Declare visibility as a "
                     "clause: default_scope on the model's ClauseNamespace, or "
-                    "the scope attribute on the view. Reshape a listing in "
-                    "apply_query_params, and relationship loading in "
+                    "the scope attribute on the view. Reshape a list in "
+                    "apply_list_params, and relationship loading in "
                     "get_relationship_loader_options. See Migrating from "
                     "build_query in the Scopes guide."
                 )
@@ -1401,7 +1405,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         return all_of(scope, _checked_where(where, label))
 
     def get_relationship_loader_options(self) -> list[Any]:
-        """Loader options for the relationships the response schema names.
+        """Loader options for the relationships the view's schema names.
 
         Returns recursive ``selectinload(...)`` options derived from
         ``self.schema``, applied on reads (``get_one`` / ``get_many``) and on
@@ -1427,14 +1431,14 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         return _relationship_reload_statement(obj, options)
 
     def _reject_unknown_query_params(self) -> None:
-        """Reject any query-string key that neither the listing grammar nor
-        the route reads.
+        """Reject any query-string key that neither the list params nor the
+        route reads.
 
-        Runs before every route that declares ``query_params`` (see
-        :attr:`listing_param_schema`).
+        Runs before every route that declares ``list_params`` (see
+        :attr:`schema_list_params`).
 
-        The listing dependency (:func:`_listing_params_dependency`) reads
-        the grammar's keys and ignores any other, which would let typoed
+        The list params dependency (:func:`_list_params_dependency`) reads
+        their keys and ignores any other, which would let typoed
         filters or unsupported operators (e.g.
         ``active__gte=true`` on a boolean column where the schema does not
         emit a range operator) widen the result set without telling the
@@ -1442,24 +1446,24 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         FastAPI's 422 envelope shape so the response is consistent with
         bound-violation errors.
 
-        No-op when there's no live request (programmatic ``view.listing(...)``
-        calls outside an HTTP request) — there's no URL surface to validate
-        and the in-process caller is responsible for what they pass.
+        No-op when there is no live request, as when code calls a route
+        method directly, outside an HTTP request. Then there is no URL to
+        check, and the caller is responsible for what it passes.
         """
         request = getattr(self, "request", None)
         if request is None:
             return
-        listing_schema = getattr(self, "listing_param_schema", None)
-        if listing_schema is None:
+        schema_list_params = getattr(self, "schema_list_params", None)
+        if schema_list_params is None:
             return
-        listing_keys = {
+        list_keys = {
             _query_key(name, field)
-            for name, field in listing_schema.model_fields.items()
+            for name, field in schema_list_params.model_fields.items()
         }
-        reject_unknown_query_keys(request, listing_keys | set(self.extra_query_params))
+        reject_unknown_query_keys(request, list_keys | set(self.extra_query_params))
 
-    def to_response_schema(self, obj: ModelT | SchemaT) -> SchemaT:
-        """Serialize an ORM object to the configured response schema.
+    def to_single_response(self, obj: ModelT | SchemaT) -> SchemaT:
+        """Serialize one ORM object to the view's schema.
 
         An override returns an instance of :attr:`schema`: the list envelopes
         take their items as schema instances.
@@ -1467,7 +1471,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         WriteOnly fields are stripped from responses by ``exclude=True`` on the
         marker itself (recursively, at serialization time), so a pre-built schema
         instance is safe to return as-is. The ORM path below still validates
-        through the WriteOnly-omitting response schema, so a read schema that
+        through the WriteOnly-omitting response schema, so a view's schema that
         declares a WriteOnly field the ORM object doesn't carry (e.g. ``password``
         backed by a ``password_hash`` column) doesn't fail response validation.
         """
@@ -1497,21 +1501,19 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         )
 
     @staticmethod
-    def _to_query_params(query_params: Any) -> QueryParams:
-        if isinstance(query_params, QueryParams):
-            return query_params
-        if isinstance(query_params, pydantic.BaseModel):
-            dumped = query_params.model_dump(
+    def _to_query_params(list_params: Any) -> QueryParams:
+        if isinstance(list_params, QueryParams):
+            return list_params
+        if isinstance(list_params, pydantic.BaseModel):
+            dumped = list_params.model_dump(
                 exclude_none=True, by_alias=True, mode="json"
             )
             return QueryParams({k: str(v) for k, v in dumped.items()})
-        if isinstance(query_params, dict):
-            return QueryParams({k: str(v) for k, v in query_params.items()})
-        return QueryParams(query_params)
+        if isinstance(list_params, dict):
+            return QueryParams({k: str(v) for k, v in list_params.items()})
+        return QueryParams(list_params)
 
-    def to_listing_response(
-        self, query_params: Any, listing_result: ListingResult[ModelT]
-    ) -> Any:
+    def to_list_response(self, list_result: ListResult[ModelT]) -> Any:
         """Build the list response body: an instance of the envelope model.
 
         The view fills its :attr:`pagination`'s ``envelope``: by default a
@@ -1523,15 +1525,17 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         ``Content-Range`` header, replace ``get_many_endpoint`` with a matching
         ``response_model`` (as :class:`AsyncReactAdminView` does), not by
         overriding this method alone, which would fail response validation.
+
+        The page and page size come from ``list_result.list_params``.
         """
-        data = [self.to_response_schema(obj) for obj in listing_result.objects]
+        data = [self.to_single_response(obj) for obj in list_result.objects]
         pagination = self.pagination
-        envelope = _listing_envelope(pagination, self.schema)
+        envelope = _list_envelope(pagination, self.schema)
         if not isinstance(pagination, NumberedPagination):
             return _build_envelope(envelope, _unpaginated_page_info(data))
-        params = self._to_query_params(query_params)
+        params = self._to_query_params(list_result.list_params)
         page_info = _numbered_page_info(
-            total_count=listing_result.total_count or 0,
+            total_count=list_result.total_count or 0,
             page=int(params.get(pagination.page_query_param) or 1),
             page_size=int(
                 params.get(pagination.page_size_query_param)
@@ -1541,19 +1545,23 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         return _build_envelope(envelope, {"data": data, **page_info})
 
     def to_response(
-        self, obj_or_list: Any, shape: ResponseShape = ResponseShape.SINGLE
+        self, result: Any, shape: ResponseShape = ResponseShape.SINGLE
     ) -> Any:
         """Endpoint-method response boundary.
 
-        ``shape`` selects the wire form: single object, listing, or empty. It is
-        not the write-action name. Override for envelopes or shape-wide status
-        behavior; per-endpoint projections belong in the endpoint method.
+        ``shape`` selects the wire form, and with it what ``result`` is: one
+        object for ``SINGLE`` (:meth:`to_single_response`), a
+        :class:`ListResult` for ``LIST`` (:meth:`to_list_response`), and
+        nothing for ``EMPTY``. A plain Python list is not a valid ``result``.
+        ``shape`` is not the write-action name. Override for envelopes or
+        shape-wide status behavior; per-endpoint projections belong in the
+        endpoint method.
         """
         if shape is ResponseShape.EMPTY:
             return fastapi.Response(status_code=204)
-        if shape is ResponseShape.LISTING:
-            return self.to_listing_response(obj_or_list.query_params, obj_or_list)
-        return self.to_response_schema(obj_or_list)
+        if shape is ResponseShape.LIST:
+            return self.to_list_response(result)
+        return self.to_single_response(result)
 
     def snapshot(self, obj: Any) -> dict[str, Any]:
         """Frozen capture of an object's already-loaded column values, passed as
@@ -1565,17 +1573,17 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         return _object_snapshot(obj)
 
     @classmethod
-    def _check_declared_listing_param_schema(cls) -> None:
-        """Reject a declared grammar that ``create_list_params_schema`` made
-        for other pagination settings: it reads other page parameters than
-        the view applies, or none. A hand-written grammar is the author's to
-        keep in step."""
-        created_with = _created_with(cls.listing_param_schema)
+    def _check_declared_schema_list_params(cls) -> None:
+        """Reject declared list params that ``derive_schema_list_params`` made
+        for other pagination settings: they read other page parameters than
+        the view applies, or none. Hand-written list params are the author's
+        to keep in step."""
+        created_with = _created_with(cls.schema_list_params)
         if created_with is _UNKNOWN:
             return
         if _query_settings(created_with) != _query_settings(cls.pagination):
             raise RestlyConfigurationError(
-                f"{cls.__name__}.listing_param_schema was created for other "
+                f"{cls.__name__}.schema_list_params was created for other "
                 "pagination settings than the view's. Create it with "
                 f"pagination={cls.__name__}.pagination, or leave it out to "
                 "have it generated."
@@ -1600,23 +1608,21 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                 raise ValueError(
                     f"'{cls.__name__}.model' must be specified to auto-generate schema"
                 )
-            cls.schema = cast(
-                type[SchemaT], auto_generate_schema_for_view(cls, cls.model)
-            )
+            cls.schema = cast(type[SchemaT], derive_schema(cls.model))
             _mark_generated(cls, "schema")
 
-        if _needs_generating(cls, "listing_param_schema", derived_from="schema"):
+        if _needs_generating(cls, "schema_list_params", derived_from="schema"):
             if not hasattr(cls, "model"):
                 raise ValueError(
                     f"'{cls.__name__}.model' must be specified: it is needed to "
-                    "generate list query parameters."
+                    "generate the list params."
                 )
-            cls.listing_param_schema = create_list_params_schema(
+            cls.schema_list_params = derive_schema_list_params(
                 cls.schema, cls.model, pagination=cls.pagination
             )
-            _mark_generated(cls, "listing_param_schema")
+            _mark_generated(cls, "schema_list_params")
         else:
-            cls._check_declared_listing_param_schema()
+            cls._check_declared_schema_list_params()
         if _needs_generating(cls, "schema_create", derived_from="schema"):
             cls.schema_create = cast(
                 type[CreateSchemaT],
@@ -1652,37 +1658,35 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                 endpoint._api_route_args = (item_path, route_kwargs.copy())
 
         # Only annotate if the methods exist (they will be overridden in subclasses)
-        listing_response_annotation: Any = _listing_envelope(
-            cls.pagination, response_schema
-        )
+        list_response_annotation: Any = _list_envelope(cls.pagination, response_schema)
 
-        # Every route that declares ``query_params`` takes the listing grammar:
-        # ``GET /`` and any custom listing alike, guarded the same way. The
-        # guard checks keys against ``listing_param_schema`` whatever the
-        # annotation says, so the grammar replaces an explicit one too. A
-        # dependency reads it rather than a FastAPI query model, which
+        # Every route that declares ``list_params`` takes the view's list
+        # params: ``GET /`` and any custom list route alike, guarded the same
+        # way. The guard checks keys against ``schema_list_params`` whatever
+        # the annotation says, so they replace an explicit annotation too. A
+        # dependency reads them rather than a FastAPI query model, which
         # collapses next to any other query parameter (see
-        # :func:`_listing_params_dependency`).
-        listing_params = Annotated[
-            cls.listing_param_schema,
-            fastapi.Depends(_listing_params_dependency(cls.listing_param_schema)),
+        # :func:`_list_params_dependency`).
+        list_params = Annotated[
+            cls.schema_list_params,
+            fastapi.Depends(_list_params_dependency(cls.schema_list_params)),
         ]
         for name, route in list(cls.__dict__.items()):
             if not hasattr(route, "_api_route_args"):
                 continue
-            if "query_params" not in inspect.signature(route).parameters:
+            if "list_params" not in inspect.signature(route).parameters:
                 continue
-            if not getattr(route, "_fr_listing_guard", False):
-                route = _guard_listing_params(route)
+            if not getattr(route, "_fr_list_guard", False):
+                route = _guard_list_params(route)
                 setattr(cls, name, route)
-            _annotate(route, overwrite=True, query_params=listing_params)
+            _annotate(route, overwrite=True, list_params=list_params)
 
         # The ``*_endpoint`` methods are defined on AsyncRestView/RestView
         # subclasses and may be excluded by ``exclude_routes``, so they aren't
         # visible on BaseRestView. ``getattr`` keeps pyright happy without
         # falsely advertising them on the base class.
         if (ep := getattr(cls, "get_many_endpoint", None)) is not None:
-            _annotate(ep, return_annotation=listing_response_annotation)
+            _annotate(ep, return_annotation=list_response_annotation)
         if (ep := getattr(cls, "get_one_endpoint", None)) is not None:
             _annotate(ep, return_annotation=response_schema, id=id_type)
         if (ep := getattr(cls, "create_endpoint", None)) is not None:
@@ -1866,7 +1870,7 @@ def _not_found_message(model_cls: type[Any], id: Any) -> str:
 def reject_unknown_query_keys(request: fastapi.Request, allowed: set[str]) -> None:
     """Raise a 422 naming every query key that is not in ``allowed``.
 
-    The dialect decides what is allowed (the listing grammar for the default
+    The dialect decides what is allowed (the list params for the default
     one, ``sort``/``range``/``filter`` for react-admin); the envelope is the
     same either way, and mirrors FastAPI's own validation shape. A key that
     the route reads elsewhere is never unknown (see :func:`_route_query_keys`).
@@ -1913,7 +1917,7 @@ def _route_query_keys(request: fastapi.Request) -> set[str]:
     return keys
 
 
-def _listing_params_dependency(
+def _list_params_dependency(
     params_model: type[pydantic.BaseModel],
 ) -> Callable[..., pydantic.BaseModel]:
     """A dependency that validates ``params_model`` from the query string.
@@ -1921,10 +1925,10 @@ def _listing_params_dependency(
     FastAPI splits a query model into its fields only when it is the sole
     query parameter: at runtime per function, in OpenAPI across the route.
     Any other query parameter therefore collapses it into one required
-    ``query_params`` value. This reads the fields itself, the way FastAPI
+    ``list_params`` value. This reads the fields itself, the way FastAPI
     hands a query model its input: every value of a repeated key for a
     sequence field, the last value otherwise, a default that is not None,
-    and any other key as sent. :func:`_listing_openapi_parameters`
+    and any other key as sent. :func:`_list_openapi_parameters`
     documents the fields.
     """
     fields = [
@@ -1933,9 +1937,7 @@ def _listing_params_dependency(
     ]
     field_keys = {key for key, _, _ in fields}
 
-    def listing_params(
-        request: fastapi.Request, first: Any = None
-    ) -> pydantic.BaseModel:
+    def list_params(request: fastapi.Request, first: Any = None) -> pydantic.BaseModel:
         query = request.query_params
         data: dict[str, Any] = {}
         for key, field, every_value in fields:
@@ -1976,12 +1978,12 @@ def _listing_params_dependency(
                 annotation=Annotated[Any, marker],
             )
         )
-    listing_params.__signature__ = inspect.Signature(parameters)  # type: ignore[attr-defined]
-    return listing_params
+    list_params.__signature__ = inspect.Signature(parameters)  # type: ignore[attr-defined]
+    return list_params
 
 
 def _query_key(name: str, field: FieldInfo) -> str:
-    """The query key of a listing field: its validation alias, its alias, or
+    """The query key of a list params field: its validation alias, its alias, or
     its name, as FastAPI reads a query model."""
     if isinstance(field.validation_alias, str):
         return field.validation_alias
@@ -1989,7 +1991,7 @@ def _query_key(name: str, field: FieldInfo) -> str:
 
 
 def _reads_every_value(field: FieldInfo) -> bool:
-    """Whether a listing field reads every value of a repeated query key.
+    """Whether a list params field reads every value of a repeated query key.
 
     FastAPI's rule for a query model: a sequence or set type, alone or in a
     union, unless the value is JSON.
@@ -2011,13 +2013,13 @@ def _is_sequence_annotation(annotation: Any) -> bool:
     )
 
 
-def _listing_openapi_parameters(
+def _list_openapi_parameters(
     params_model: type[pydantic.BaseModel],
 ) -> list[dict[str, Any]]:
     """One OpenAPI query parameter per field of ``params_model``.
 
     The entries FastAPI writes for a query model it splits into fields, so
-    the listing documents the same whatever else the route reads. Built from
+    the list route documents the same whatever else the route reads. Built from
     the model's JSON schema, with references inlined: the document's
     components do not hold the model's definitions.
     """
@@ -2064,8 +2066,8 @@ def _inline_definitions(schema: Any, definitions: dict[str, Any]) -> Any:
     return inlined
 
 
-def _guard_listing_params(route: Callable) -> Callable:
-    """Run the unknown-key guard before a route that takes ``query_params``.
+def _guard_list_params(route: Callable) -> Callable:
+    """Run the unknown-key guard before a route that takes ``list_params``.
 
     A copy, like the parent-endpoint copies: ``functools.wraps`` carries the
     route args and the signature, and the marker keeps a subclass's copy
@@ -2088,7 +2090,7 @@ def _guard_listing_params(route: Callable) -> Callable:
 
         guarded = _sync_guarded
 
-    guarded._fr_listing_guard = True  # type: ignore[attr-defined]
+    guarded._fr_list_guard = True  # type: ignore[attr-defined]
     return guarded
 
 
@@ -2581,7 +2583,7 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
     )
 
     # Find all endpoint functions in this class and add them to the router
-    listing_parameters: list[dict[str, Any]] | None = None
+    list_parameters: list[dict[str, Any]] | None = None
     for name, attr in view_cls.__dict__.items():
         if not hasattr(attr, "_api_route_args"):
             continue
@@ -2608,13 +2610,13 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
             **route_kwargs,
             **view_cls.route_options.get(name, {}),
         }
-        if getattr(endpoint, "_fr_listing_guard", False):
-            if listing_parameters is None:
-                listing_parameters = _listing_openapi_parameters(
-                    cast(Any, view_cls).listing_param_schema
+        if getattr(endpoint, "_fr_list_guard", False):
+            if list_parameters is None:
+                list_parameters = _list_openapi_parameters(
+                    cast(Any, view_cls).schema_list_params
                 )
             extra = dict(route_kwargs.get("openapi_extra") or {})
-            extra["parameters"] = [*listing_parameters, *extra.get("parameters", [])]
+            extra["parameters"] = [*list_parameters, *extra.get("parameters", [])]
             route_kwargs["openapi_extra"] = extra
         _add_api_route(api_router, view_cls, path, endpoint, route_kwargs)
 
@@ -2623,7 +2625,7 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
 
 _CRUD_ROUTE_METADATA = {
     "get_many_endpoint": ("get_many", "List"),
-    "get_one_endpoint": ("get_one", "Retrieve"),
+    "get_one_endpoint": ("get_one", "Get"),
     "create_endpoint": ("create", "Create"),
     "update_endpoint": ("update", "Update"),
     "delete_endpoint": ("delete", "Delete"),
