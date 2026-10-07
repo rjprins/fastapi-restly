@@ -17,7 +17,7 @@ class InvoiceView(fr.AsyncRestView):
     tags = ["billing"]
     responses = {402: {"description": "Payment required"}}
     model = Invoice
-    schema = InvoiceRead
+    schema = InvoiceSchema
 ```
 
 (default-route-metadata)=
@@ -28,7 +28,7 @@ CRUD routes use these FastAPI route names and OpenAPI summaries:
 | Endpoint method | Route name | Operation ID at `/items` | Summary |
 |---|---|---|---|
 | `get_many_endpoint` | `get_many` | `items_list` | List |
-| `get_one_endpoint` | `get_one` | `items_get` | Retrieve |
+| `get_one_endpoint` | `get_one` | `items_get` | Get |
 | `create_endpoint` | `create` | `items_create` | Create |
 | `update_endpoint` | `update` | `items_update` | Update |
 | `delete_endpoint` | `delete` | `items_delete` | Delete |
@@ -73,7 +73,7 @@ FastAPI route keyword arguments to an existing endpoint method:
 class InvoiceView(fr.AsyncRestView):
     prefix = "/invoices"
     model = Invoice
-    schema = InvoiceRead
+    schema = InvoiceSchema
     route_options = {
         fr.ViewRoute.GET_MANY: {
             "name": "list_invoices",

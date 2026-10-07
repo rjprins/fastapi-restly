@@ -14,7 +14,7 @@ on the wire:
 
 | Route | Response body |
 |---|---|
-| `GET /{id}`, `POST`, `PATCH` | The bare object, serialized through {attr}`schema <fastapi_restly.views.BaseRestView.schema>` via {meth}`to_response_schema <fastapi_restly.views.BaseRestView.to_response_schema>` |
+| `GET /{id}`, `POST`, `PATCH` | The bare object, serialized through {attr}`schema <fastapi_restly.views.BaseRestView.schema>` via {meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>` |
 | `GET /` | A `data` envelope wrapping the page, plus pagination metadata (`total_count` / `page` / `page_size` / `total_pages`) |
 | `DELETE /{id}` | `204 No Content`, empty body |
 
@@ -25,7 +25,7 @@ List endpoints paginate by default: the route wraps the page of objects in a
 
 ```json
 {
-  "data": [ /* page of UserRead */ ],
+  "data": [ /* page of UserSchema */ ],
   "total_count": 123,
   "page": 2,
   "page_size": 50,
@@ -49,9 +49,9 @@ envelope stays, but the count and page fields drop away:
 class TagView(fr.AsyncRestView):
     prefix = "/tags"
     model = Tag
-    schema = TagRead
+    schema = TagSchema
     pagination = None
-    # Response: {"data": [ /* every TagRead */ ]}
+    # Response: {"data": [ /* every TagSchema */ ]}
 ```
 
 Restly keeps `response_model` and OpenAPI in sync with the envelope
@@ -100,7 +100,7 @@ class DataCount(pydantic.BaseModel, Generic[T]):
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    schema = UserRead
+    schema = UserSchema
     pagination = fr.NumberedPagination(envelope=DataCount)
 ```
 
@@ -145,8 +145,8 @@ class DataMeta(pydantic.BaseModel, Generic[T]):
 
 Set the pagination on a project base view to give every list the same
 envelope; see [Set it once for every view](#set-pagination-once).
-A custom listing route on such a view names the same envelope as its
-response model, for example `response_model=APP_PAGINATION.envelope[ItemRead]`.
+A custom list route on such a view names the same envelope as its
+response model, for example `response_model=APP_PAGINATION.envelope[ItemSchema]`.
 [Coming from fastapi-pagination](#fastapi-pagination-migration)
 shows the envelope that keeps fastapi-pagination's field names.
 
@@ -168,7 +168,7 @@ the `{"data": [...], "count": 123}` model above works here too:
 class TagView(fr.AsyncRestView):
     prefix = "/tags"
     model = Tag
-    schema = TagRead
+    schema = TagSchema
     pagination = fr.NoPagination(envelope=DataCount)
 ```
 
@@ -186,9 +186,9 @@ class Items(pydantic.RootModel[list[T]], Generic[T]):
 class TagView(fr.AsyncRestView):
     prefix = "/tags"
     model = Tag
-    schema = TagRead
+    schema = TagSchema
     pagination = fr.NoPagination(envelope=Items)
-    # Response: [ /* every TagRead */ ]
+    # Response: [ /* every TagSchema */ ]
 ```
 
 ## Custom envelopes
@@ -199,9 +199,9 @@ express, such as a header, is a change to the HTTP contract. So
 and set `response_model` on the replacement.
 
 In the replacement endpoint method, call
-{meth}`to_response_schema(obj) <fastapi_restly.views.BaseRestView.to_response_schema>`
+{meth}`to_single_response(obj) <fastapi_restly.views.BaseRestView.to_single_response>`
 before placing the object in the envelope. This converts the ORM object to
-the view's response schema without requiring write-only input fields.
+an instance of the view's schema, without requiring write-only input fields.
 
 For a single-object `{"data": ...}` wrapper, replace
 {meth}`get_one_endpoint <fastapi_restly.views.RestView.get_one_endpoint>` and
@@ -212,32 +212,33 @@ import pydantic
 
 
 class UserEnvelope(pydantic.BaseModel):
-    data: UserRead
+    data: UserSchema
 
 
 @fr.include_view(app)
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    schema = UserRead
+    schema = UserSchema
 
     @fr.get("/{id}", response_model=UserEnvelope)
     async def get_one_endpoint(self, id: int):
         obj = await self.handle_get_one(id)
-        return {"data": self.to_response_schema(obj)}
+        return {"data": self.to_single_response(obj)}
 
     @fr.post("/", response_model=UserEnvelope)
     async def create_endpoint(self, schema_obj):
         obj = await self.handle_create(schema_obj)
-        return {"data": self.to_response_schema(obj)}
+        return {"data": self.to_single_response(obj)}
 ```
 
 A replacement for
 {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` keeps
-the `query_params` parameter, which Restly annotates with the generated filter,
-sort, and pagination query parameters. To reuse the page math,
-{meth}`to_listing_response() <fastapi_restly.views.BaseRestView.to_listing_response>`
-returns an instance of the view's envelope model, so read its attributes, such
+the `list_params` parameter, which Restly annotates with the generated filter,
+sort, and pagination query parameters. To reuse the page math, pass the
+result of `handle_get_many` to
+{meth}`to_list_response(result) <fastapi_restly.views.BaseRestView.to_list_response>`.
+It returns an instance of the view's envelope model, so read its attributes, such
 as `page.data` and `page.total_count` with the default envelope.
 
 ### Envelope several routes at once: `to_response`
@@ -247,16 +248,16 @@ When the same wrapper applies to more than one route, centralize it in
 each replacement endpoint method delegate to it. `to_response` is the shared runtime
 boundary keyed on the wire shape:
 {attr}`SINGLE <fastapi_restly.views.ResponseShape.SINGLE>`,
-{attr}`LISTING <fastapi_restly.views.ResponseShape.LISTING>`, or
+{attr}`LIST <fastapi_restly.views.ResponseShape.LIST>`, or
 {attr}`EMPTY <fastapi_restly.views.ResponseShape.EMPTY>`. Its place among the
 override points is covered in
 [Customizing RestView](customize.md#to_response-the-one-response-method).
 
 ```python
-    def to_response(self, obj_or_list, shape=fr.ResponseShape.SINGLE):
+    def to_response(self, result, shape=fr.ResponseShape.SINGLE):
         if shape is fr.ResponseShape.SINGLE:
-            return {"data": self.to_response_schema(obj_or_list)}
-        return super().to_response(obj_or_list, shape)
+            return {"data": self.to_single_response(result)}
+        return super().to_response(result, shape)
 ```
 
 Be aware that overriding `to_response` without also replacing the endpoint

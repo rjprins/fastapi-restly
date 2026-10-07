@@ -29,7 +29,7 @@ through `fr`.
 | {class}`fr.IDRef <fastapi_restly.schemas.IDRef>` | Relationship reference serialized as a scalar ID. |
 | {class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>` | Schema base with a read-only ID, or a nested relationship reference when parameterized. |
 | {func}`fr.include_view <fastapi_restly.views.include_view>` | Register a view's endpoint methods on an app or router. |
-| {class}`fr.ListingResult <fastapi_restly.views.ListingResult>` | Listing objects, total count, and query parameters before response serialization. |
+| {class}`fr.ListResult <fastapi_restly.views.ListResult>` | The objects, total count, and list params of a list, before response serialization. |
 | {class}`fr.MustExist <fastapi_restly.schemas.MustExist>` | Scalar foreign-key annotation that checks the referenced row exists. |
 | {func}`fr.none_of <fastapi_restly.clauses.none_of>` | Negate a group of query clauses. |
 | {class}`fr.NoPagination <fastapi_restly.views.NoPagination>` | Settings for a view's `pagination` that returns every row, with a custom envelope. |
@@ -43,7 +43,7 @@ through `fr`.
 | {data}`fr.ReadOnly <fastapi_restly.schemas.ReadOnly>` | Mark a field as excluded from generated create and update schemas. |
 | {class}`fr.RefExists <fastapi_restly.schemas.RefExists>` | Validate a reference against a model with an optional scope override. |
 | {func}`fr.resolve_scope <fastapi_restly.views.resolve_scope>` | Resolve the read scope for a view or model. |
-| {class}`fr.ResponseShape <fastapi_restly.views.ResponseShape>` | Response forms for one object, a listing, or an empty body. |
+| {class}`fr.ResponseShape <fastapi_restly.views.ResponseShape>` | Response forms for one object, a list, or an empty body. |
 | {class}`fr.RestView <fastapi_restly.views.RestView>` | CRUD view using a synchronous SQLAlchemy session. |
 | {func}`fr.route <fastapi_restly.views.route>` | Decorate an endpoint method with explicit route options. |
 | {data}`fr.SessionDep <fastapi_restly.db.SessionDep>` | FastAPI dependency annotation for a synchronous session. |

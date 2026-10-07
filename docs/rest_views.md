@@ -44,14 +44,14 @@ Ordinary models based on SQLAlchemy's `DeclarativeBase` work. Restly's
 not a requirement.
 
 If the view does not declare {attr}`schema
-<fastapi_restly.views.BaseRestView.schema>`, Restly constructs a response schema
+<fastapi_restly.views.BaseRestView.schema>`, Restly generates the view's schema
 from `model` when the view is registered. It then derives the create and update
-schemas from that response schema. Declare an explicit response schema when the
+schemas from it. Write the view's schema yourself when the
 wire contract needs stable field names, validation, aliases, or fields that do
 not match the table directly:
 
 ```python
-class UserRead(fr.IDSchema):
+class UserSchema(fr.IDSchema):
     name: str
     email: str
 
@@ -60,7 +60,7 @@ class UserRead(fr.IDSchema):
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    schema = UserRead
+    schema = UserSchema
 ```
 
 The three schema attributes have separate jobs:
@@ -85,7 +85,7 @@ and include it where the app or router is assembled:
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    schema = UserRead
+    schema = UserSchema
 
 
 fr.include_view(app, UserView)

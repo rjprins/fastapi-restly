@@ -156,7 +156,7 @@ Auto-generated schemas can be replaced at any point. Replace the `UserView`
 definition above with:
 
 ```python
-class UserRead(fr.IDSchema):
+class UserSchema(fr.IDSchema):
     name: str
     email: str
 
@@ -165,11 +165,11 @@ class UserRead(fr.IDSchema):
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    schema = UserRead
+    schema = UserSchema
 ```
 
-{attr}`schema <fastapi_restly.views.BaseRestView.schema>` is the read/response contract. Restly derives `UserCreate` and
-`UserUpdate` from it unless you override {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` or {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>`.
+{attr}`schema <fastapi_restly.views.BaseRestView.schema>` is the view's schema. Responses follow it, without its `WriteOnly` fields.
+Restly derives the create and update schemas from it unless you override {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` or {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>`.
 {class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>` includes `id` as `fr.ReadOnly`: present in responses, excluded from create/update. Use `fr.ReadOnly[T]` for other response-only fields and `fr.WriteOnly[T]` for input-only fields such as passwords (see [ReadOnly and WriteOnly](howto_custom_schema.md#readonly-and-writeonly)).
 
 Choose explicit schemas for public API contracts you want to keep stable,

@@ -2,7 +2,7 @@
 
 List endpoints (`GET /{prefix}`) support filtering, sorting, and
 pagination through URL query parameters out of the box. Filter parameters
-are derived from the response schema. Sort has a fixed name, and the
+are derived from the view's schema. Sort has a fixed name, and the
 pagination names are a setting of the view.
 
 Pagination is on by default: lists are capped at 50 rows per page and
@@ -294,7 +294,7 @@ Python-name aliases.
 Consider a schema field declared with an alias:
 
 ```python
-class UserRead(BaseModel):
+class UserSchema(BaseModel):
     user_name: Annotated[str, Field(alias="userName")]
 ```
 
@@ -319,9 +319,9 @@ GET /orders?user.name__contains=ali
 The relation must be defined on both the SQLAlchemy model (as a
 `relationship`) and the Pydantic schema (as a
 [nested schema field](howto_relationship_idschema.md#nested-relationship-objects)).
-Optional nested schemas (`UserRead | None`) and deep nesting
+Optional nested schemas (`UserSchema | None`) and deep nesting
 (`?blog.author.name=Alice`) are supported. Lists of nested schemas
-(`list[UserRead]`) are not.
+(`list[UserSchema]`) are not.
 
 Paths through a self-referential relationship work too, such as
 `?manager.name=Alice` or `?manager.manager.name=Alice`. Each hop must be
@@ -343,15 +343,15 @@ set `include_aliases=True` so the rules cover these joins. See the
 [tenant row scoping recipe](#tenant-row-scoping).
 
 Aliases apply to **every** segment of the dotted path, both the relation
-field and the nested column, because the list-params keys always follow
-the response schema's public names:
+field and the nested column, because the keys of the list params always
+follow the public names of the view's schema:
 
 ```python
-class AuthorRead(BaseModel):
+class AuthorSchema(BaseModel):
     name: str = Field(alias="authorName")
 
-class ArticleRead(BaseModel):
-    author: AuthorRead = Field(alias="writer")
+class ArticleSchema(BaseModel):
+    author: AuthorSchema = Field(alias="writer")
 ```
 
 Requests must then use the aliased segments:
@@ -411,7 +411,7 @@ Declare the base filter as the view's
 {meth}`get_many <fastapi_restly.views.RestView.get_many>`,
 {meth}`count <fastapi_restly.views.RestView.count>`, and
 {meth}`get_one <fastapi_restly.views.RestView.get_one>` all apply it, so
-the filter covers listings, totals, and single-row fetches:
+the filter covers lists, totals, and single-row fetches:
 
 ```python
 import fastapi_restly as fr
@@ -425,27 +425,27 @@ class UserView(fr.AsyncRestView):
 `default_scope` form and composing clauses.
 
 The `get_many` business method does not accept a separate `query` argument.
-Keep SQL-level base query changes in the scope so listing, pagination
+Keep SQL-level base query changes in the scope so lists, pagination
 totals, and single-row fetches all see the same visibility rules.
 
 For a different URL **grammar**, such as another dialect's filter syntax, the
 seam is
-{meth}`apply_query_params(query, query_params) <fastapi_restly.views.RestView.apply_query_params>`,
+{meth}`apply_list_params(query, list_params) <fastapi_restly.views.RestView.apply_list_params>`,
 which owns translating URL parameters into the query;
 [React Admin Integration](howto_react_admin.md) is the shipped worked
 example of a view family overriding it. Reserve overriding `get_many()`
 itself for a genuinely different *result* shape, where you construct the
 query explicitly inside the method.
 
-Any route method that declares a `query_params` parameter takes the same
-listing grammar as `GET /`: Restly annotates it with the view's generated
-{attr}`listing_param_schema <fastapi_restly.views.BaseRestView.listing_param_schema>`,
+Any route method that declares a `list_params` parameter takes the same
+list params as `GET /`: Restly annotates it with the view's generated
+{attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`,
 so filters, sort and page parse and validate the same way, appear in OpenAPI,
-and an unknown key is rejected with `422`. A custom listing such as a trash
-route passes them on with `self.handle_get_many(query_params, scope=...)`;
+and an unknown key is rejected with `422`. A custom list route, such as a
+trash route, passes them on with `self.handle_get_many(list_params, scope=...)`;
 see [A route names its own scope](#per-read-scope). The route can take its
-own query parameters beside `query_params`, such as
-`def search(self, query_params, mode: SearchMode)`.
+own query parameters beside `list_params`, such as
+`def search(self, list_params, mode: SearchMode)`.
 
 ## See also
 

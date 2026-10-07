@@ -2,8 +2,8 @@
 
 :::{note}
 FastAPI-Restly uses **schema** for Pydantic request/response models and
-**model** for SQLAlchemy ORM models. A `User` model is the database object; a
-`UserRead` schema is the public API shape.
+**model** for SQLAlchemy ORM models. A `User` model is the database object;
+`UserSchema`, the view's schema, is the public API shape.
 :::
 
 Use explicit schemas when you need a stable public contract: aliases, hidden
@@ -28,7 +28,7 @@ to the section that covers it.
 ## BaseSchema
 
 {class}`fr.BaseSchema <fastapi_restly.schemas.BaseSchema>` is Restly's Pydantic base class. It enables Pydantic's
-`from_attributes=True`, which lets response schemas validate SQLAlchemy ORM
+`from_attributes=True`, which lets a schema validate SQLAlchemy ORM
 objects directly.
 
 Behaviorally, it is equivalent to:
@@ -43,13 +43,13 @@ class BaseSchema(pydantic.BaseModel):
 [ReadOnly and WriteOnly](#readonly-and-writeonly).)
 
 The inherited CRUD endpoint methods still serialize ORM objects through
-{meth}`self.to_response_schema(obj) <fastapi_restly.views.BaseRestView.to_response_schema>`. That is where Restly applies response-specific
+{meth}`self.to_single_response(obj) <fastapi_restly.views.BaseRestView.to_single_response>`. That is where Restly applies response-specific
 behavior such as `WriteOnly` filtering and relationship-id normalization.
 
 Use `BaseSchema` when you want to declare every field yourself, including `id`:
 
 ```python
-class UserRead(fr.BaseSchema):
+class UserSchema(fr.BaseSchema):
     id: int
     name: str
     email: str
@@ -61,7 +61,7 @@ create/update payloads.
 
 ## IDSchema
 
-Most response schemas inherit from {class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>`. It is essentially
+The view's schema usually inherits from {class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>`. It is essentially
 {class}`BaseSchema <fastapi_restly.schemas.BaseSchema>` with a read-only `id` field added:
 
 ```python
@@ -72,7 +72,7 @@ class IDSchema(fr.BaseSchema):
 That is why examples usually look like this:
 
 ```python
-class UserRead(fr.IDSchema):
+class UserSchema(fr.IDSchema):
     name: str
     email: str
 ```
@@ -87,7 +87,7 @@ Use {class}`fr.TimestampsSchemaMixin <fastapi_restly.schemas.TimestampsSchemaMix
 `created_at` and `updated_at` fields:
 
 ```python
-class UserRead(fr.TimestampsSchemaMixin, fr.IDSchema):
+class UserSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     name: str
 ```
 
@@ -97,7 +97,7 @@ class UserRead(fr.TimestampsSchemaMixin, fr.IDSchema):
 generated create and update inputs:
 
 ```python
-class UserRead(fr.IDSchema):
+class UserSchema(fr.IDSchema):
     name: str
     created_by_id: fr.ReadOnly[int]
 ```
@@ -106,7 +106,7 @@ class UserRead(fr.IDSchema):
 update payloads but excluded from every serialized response:
 
 ```python
-class UserRead(fr.IDSchema):
+class UserSchema(fr.IDSchema):
     email: str
     password: fr.WriteOnly[str]
 ```
@@ -129,13 +129,13 @@ An explicit
 {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` or
 {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` is the
 whole contract for its request. Restly writes every field it declares, except
-those it marks `ReadOnly` itself. The response schema's markers only shape the
-write schemas Restly generates. So a field that the response schema marks
+those it marks `ReadOnly` itself. The markers on the view's schema only shape
+the write schemas Restly generates. So a field that the view's schema marks
 `ReadOnly` and an explicit `schema_create` declares is set on create and frozen
 afterwards:
 
 ```python
-class CommentRead(fr.IDSchema):
+class CommentSchema(fr.IDSchema):
     body: str
     story_id: fr.ReadOnly[int]
 
@@ -148,7 +148,7 @@ class CommentCreate(fr.BaseSchema):
 class CommentView(fr.AsyncRestView):
     prefix = "/comments"
     model = Comment
-    schema = CommentRead
+    schema = CommentSchema
     schema_create = CommentCreate
 ```
 
@@ -174,7 +174,7 @@ database attribute:
 from pydantic import Field
 
 
-class UserRead(fr.IDSchema):
+class UserSchema(fr.IDSchema):
     first_name: str = Field(alias="firstName")
     email: str
 ```
@@ -187,7 +187,7 @@ Restly routes.
 Use {class}`fr.MustExist[int, Model] <fastapi_restly.schemas.MustExist>` for foreign-key columns (primary-key type first, then the target model):
 
 ```python
-class ArticleRead(fr.IDSchema):
+class ArticleSchema(fr.IDSchema):
     title: str
     author_id: fr.MustExist[int, Author]
 ```
@@ -211,7 +211,7 @@ If a client expects a nested relationship object, use {class}`fr.IDSchema[Model]
 field type:
 
 ```python
-class ArticleRead(fr.IDSchema):
+class ArticleSchema(fr.IDSchema):
     title: str
     author: fr.IDSchema[Author]
 ```
@@ -253,7 +253,7 @@ the SQLAlchemy model:
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    schema = UserRead
+    schema = UserSchema
 ```
 
 ## See also

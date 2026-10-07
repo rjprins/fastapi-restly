@@ -5,7 +5,7 @@ any field backed by a relationship must be loaded beforehand; a relationship
 that is still unloaded raises `MissingGreenlet`. Restly does this for you in
 most cases, through
 {meth}`get_relationship_loader_options() <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`:
-it eager-loads the relationships your response schema names, on both reads and
+it eager-loads the relationships the view's schema names, on both reads and
 writes. This guide covers what loads automatically, how to add more, and what to
 do when you still hit `MissingGreenlet`.
 
@@ -27,16 +27,16 @@ class Article(fr.IDBase):
     comments: Mapped[list["Comment"]] = relationship(default_factory=list, init=False)
 ```
 
-Naming `author` and `comments` on the response schema is all it takes. Mark
+Naming `author` and `comments` on the view's schema is all it takes. Mark
 them `fr.ReadOnly` so they stay out of the generated create and update input,
 which does not accept nested objects as write payloads (see
 [Custom Schemas and Field Types](howto_custom_schema.md)):
 
 ```python
-class ArticleRead(fr.IDSchema):
+class ArticleSchema(fr.IDSchema):
     title: str
-    author: fr.ReadOnly[UserRead]
-    comments: fr.ReadOnly[list[CommentRead]]
+    author: fr.ReadOnly[UserSchema]
+    comments: fr.ReadOnly[list[CommentSchema]]
 ```
 
 Restly inspects the schema, matches `author` and `comments` against the
@@ -45,7 +45,7 @@ them. It applies those options in
 {meth}`get_one <fastapi_restly.views.RestView.get_one>` and
 {meth}`get_many <fastapi_restly.views.RestView.get_many>`, and again in
 `save_object` after a create or update, because the refresh that follows a
-flush leaves relationships unloaded. Nested schemas recurse: if `UserRead` itself names a relationship,
+flush leaves relationships unloaded. Nested schemas recurse: if `UserSchema` itself names a relationship,
 that one loads too.
 
 The reload after a write is skipped when everything the schema names is already
@@ -72,7 +72,7 @@ from sqlalchemy.orm import selectinload
 class ArticleView(fr.AsyncRestView):
     prefix = "/articles"
     model = Article
-    schema = ArticleRead
+    schema = ArticleSchema
 
     def get_relationship_loader_options(self):
         return super().get_relationship_loader_options() + [
@@ -80,15 +80,15 @@ class ArticleView(fr.AsyncRestView):
         ]
 ```
 
-The default returns the options derived from the response schema; appending
+The default returns the options derived from the view's schema; appending
 keeps those schema-driven loads and adds yours. This is the seam that feeds
 every path: the extra load applies on reads (`get_one` / `get_many`) and on the
 create and update responses alike, because the write path reloads by primary
 key through the same options. Return a fresh list to replace the strategy
 entirely, for example to swap `selectinload` for `joinedload`.
 
-For an extra load needed only by a listing, add `.options(...)` in
-{meth}`apply_query_params <fastapi_restly.views.RestView.apply_query_params>`.
+For an extra load needed only by the list, add `.options(...)` in
+{meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`.
 This does not affect `get_one` or create and update responses.
 
 ## Reach a relationship the schema does not name
@@ -108,7 +108,7 @@ async def after_action_commit(self, action, new, old=None):
 ```
 
 `awaitable_attrs` is the right tool for a one-off read. When the same
-relationship is needed on every request, put it in the response schema or in
+relationship is needed on every request, put it in the view's schema or in
 `get_relationship_loader_options` instead, so it loads in one batched query
 rather than one lazy load at a time.
 
@@ -127,13 +127,13 @@ Restly view this is almost always response serialization reaching an unloaded
 relationship, sometimes wrapped in a Pydantic `ValidationError` when it surfaces
 in a nested model. For that case, work through these in order:
 
-1. **Is the field in your response schema?** If a serialized field names a
+1. **Is the field in the view's schema?** If a serialized field names a
    relationship, that alone loads it. A missing field is usually a name
    mismatch (see the note below).
 2. **Is a hook or property reaching it?** Load it explicitly with
    `await obj.awaitable_attrs.<name>`, or add it to
    `get_relationship_loader_options` if every request needs it.
-3. **Did you add the load only in `get_one`, `get_many`, or `apply_query_params`?**
+3. **Did you add the load only in `get_one`, `get_many`, or `apply_list_params`?**
    Write responses do not call those methods. Move the load to
    `get_relationship_loader_options`.
 
@@ -154,7 +154,7 @@ A relationship response field must keep the relationship's own Python name;
 only its *wire* name may be aliased. Eager loading matches on the Python field
 name, so an outgoing alias is safe (`Field(serialization_alias="ownerInfo")`,
 or a camelCase `alias_generator`). But renaming the field itself and bridging
-back with `alias` / `validation_alias` (`owner_info: OwnerRead =
+back with `alias` / `validation_alias` (`owner_info: OwnerSchema =
 Field(alias="owner")`) drops it from both the loader and the write-path reload,
 so it lazy-loads and raises `MissingGreenlet` on async.
 :::

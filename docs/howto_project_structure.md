@@ -174,13 +174,13 @@ view wants the same behavior, which is why a generated project does not have one
 from ..views import AuthenticatedView, SoftDeleteMixin
 
 from .models import User
-from .schemas import UserRead
+from .schemas import UserSchema
 
 
 class UserView(SoftDeleteMixin, AuthenticatedView):
     prefix = "/users"
     model = User
-    schema = UserRead
+    schema = UserSchema
 ```
 
 [Share Behaviour with Base Views](howto_inheritance.md) covers the base class,

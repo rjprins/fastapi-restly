@@ -60,7 +60,7 @@ from fastapi import Depends
 class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
-    schema = PostRead
+    schema = PostSchema
     current_user: Annotated[User, Depends(get_current_user)]
 
     async def create(self, schema_obj):
@@ -69,7 +69,7 @@ class PostView(fr.AsyncRestView):
         return await self.save_object(obj)
 ```
 
-`make_new_object` builds the ORM instance. `save_object` flushes and refreshes it, then eager-loads the relationships the response schema names, but does not commit. For a field stamped on every write, see [Stamping extra fields](#stamping-extra-fields).
+`make_new_object` builds the ORM instance. `save_object` flushes and refreshes it, then eager-loads the relationships the view's schema names, but does not commit. For a field stamped on every write, see [Stamping extra fields](#stamping-extra-fields).
 
 ### update: validate before saving
 
@@ -87,7 +87,7 @@ To reject an update based on current state, override {meth}`update <fastapi_rest
 
 ### The scope: filter results to the current user
 
-The common read customization is row visibility. {meth}`get_many <fastapi_restly.views.RestView.get_many>`, {meth}`count <fastapi_restly.views.RestView.count>`, and {meth}`get_one <fastapi_restly.views.RestView.get_one>` all apply the view's declared {attr}`scope <fastapi_restly.views.BaseRestView.scope>`, so one clause keeps listings, totals, single-row reads, updates, and deletes aligned. Here we restrict every read to the requesting user's own posts:
+The common read customization is row visibility. {meth}`get_many <fastapi_restly.views.RestView.get_many>`, {meth}`count <fastapi_restly.views.RestView.count>`, and {meth}`get_one <fastapi_restly.views.RestView.get_one>` all apply the view's declared {attr}`scope <fastapi_restly.views.BaseRestView.scope>`, so one clause keeps lists, totals, single-row reads, updates, and deletes aligned. Here we restrict every read to the requesting user's own posts:
 
 ```python
 class Current(fr.ContextNamespace):
@@ -100,7 +100,7 @@ def get_user_id(request: fastapi.Request) -> int:
 class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
-    schema = PostRead
+    schema = PostSchema
     dependencies = [Current.depends(user_id=get_user_id)]
     scope = fr.where_clause(Post.author_id == Current.user_id)
 ```
@@ -123,7 +123,7 @@ from datetime import datetime, timezone
 class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
-    schema = PostRead
+    schema = PostSchema
 
     async def delete(self, obj):
         obj.deleted_at = datetime.now(timezone.utc)
@@ -212,7 +212,7 @@ update  →  update_object(obj, schema_obj)  # apply payload (no flush)
 delete  →  removes the row + flush         # no utility: override delete itself for a soft delete
 ```
 
-`make_new_object` and `update_object` do not flush. `save_object` flushes, refreshes, and eager-loads the relationships the response schema names, but does *not* commit. The same operations are available as free functions for services and workers; the free `save_object` has no view to read a schema from, so it flushes and refreshes only.
+`make_new_object` and `update_object` do not flush. `save_object` flushes, refreshes, and eager-loads the relationships the view's schema names, but does *not* commit. The same operations are available as free functions for services and workers; the free `save_object` has no view to read a schema from, so it flushes and refreshes only.
 
 ## Custom routes
 
@@ -229,7 +229,7 @@ First we expose a summary of a post without returning the full record:
 class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
-    schema = PostRead
+    schema = PostSchema
 
     @fr.get("/{id}/summary")
     async def summary(self, id: int):
@@ -260,7 +260,7 @@ import fastapi
         return self.to_response(post)
 ```
 
-{meth}`self.to_response(post) <fastapi_restly.views.BaseRestView.to_response>` serializes through the view's response schema, the
+{meth}`self.to_response(post) <fastapi_restly.views.BaseRestView.to_response>` serializes through the view's schema, the
 same way the inherited CRUD endpoint methods do.
 
 If a custom action is just a create or update under another URL, call {meth}`handle_create <fastapi_restly.views.RestView.handle_create>` / {meth}`handle_update <fastapi_restly.views.RestView.handle_update>`:
@@ -277,7 +277,7 @@ If a custom action is just a create or update under another URL, call {meth}`han
         return self.to_response(await self.handle_create(payload))
 ```
 
-{attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` is the view's create schema, generated from `PostRead` when the view declares none, so the derived payload is validated like a `POST /` body. `handle_create` runs authorization, your {meth}`create <fastapi_restly.views.RestView.create>` override, and the commit bracket.
+{attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` is the view's create schema, generated from `PostSchema` when the view declares none, so the derived payload is validated like a `POST /` body. `handle_create` runs authorization, your {meth}`create <fastapi_restly.views.RestView.create>` override, and the commit bracket.
 
 ## Database conflict responses
 
@@ -315,14 +315,14 @@ class AuthoredBase(fr.AsyncRestView):
 class PostView(AuthoredBase):
     prefix = "/posts"
     model = Post
-    schema = PostRead
+    schema = PostSchema
 
 
 @fr.include_view(app)
 class CommentView(AuthoredBase):
     prefix = "/comments"
     model = Comment
-    schema = CommentRead
+    schema = CommentSchema
 ```
 
 FastAPI injects `self.current_user` on every subclass method. Register only concrete subclasses, not the base.
@@ -336,7 +336,7 @@ A subclass can extend a base-class business method:
 class PostView(AuthoredBase):
     prefix = "/posts"
     model = Post
-    schema = PostRead
+    schema = PostSchema
 
     async def create(self, schema_obj):
         # PostView-specific logic before the base class runs
@@ -359,7 +359,7 @@ class ProtectedBase(fr.AsyncRestView):
 class PostView(ProtectedBase):
     prefix = "/posts"
     model = Post
-    schema = PostRead
+    schema = PostSchema
 ```
 
 Every route on `/posts` now runs `require_auth` before the endpoint function.
@@ -424,13 +424,13 @@ async def fake_auth(request, call_next):
 
 # --- Schemas ---
 
-class PostRead(fr.IDSchema):
+class PostSchema(fr.IDSchema):
     title: str
     content: str
     published: bool
 
 
-class CommentRead(fr.IDSchema):
+class CommentSchema(fr.IDSchema):
     content: str
     post_id: fr.MustExist[int, Post]
 
@@ -456,7 +456,7 @@ class AuthoredBase(fr.AsyncRestView):
 class PostView(AuthoredBase):
     prefix = "/posts"
     model = Post
-    schema = PostRead
+    schema = PostSchema
 
     async def update(self, obj, schema_obj):
         if obj.published:
@@ -482,7 +482,7 @@ class PostView(AuthoredBase):
 class CommentView(AuthoredBase):
     prefix = "/comments"
     model = Comment
-    schema = CommentRead
+    schema = CommentSchema
 ```
 
 ## Try it

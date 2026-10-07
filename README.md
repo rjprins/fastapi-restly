@@ -193,12 +193,12 @@ the defaults. See
 
 ### Manual schema definition
 
-For custom validation, aliases, or stable public contracts, define an explicit read schema:
+For custom validation, aliases, or stable public contracts, write the view's schema yourself:
 
 ```python
 from datetime import datetime
 
-class UserRead(fr.IDSchema):
+class UserSchema(fr.IDSchema):
     name: str
     email: str
     password: fr.WriteOnly[str]
@@ -208,14 +208,13 @@ class UserRead(fr.IDSchema):
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    schema = UserRead
-    # schema_create = UserCreate  # auto-generated from UserRead
-    # schema_update = UserUpdate  # auto-generated from UserRead
+    schema = UserSchema
+    # schema_create and schema_update are generated from UserSchema
 ```
 
-Restly derives create and update schemas from `UserRead` by default.
-The `UserCreate` schema is created by omitting `ReadOnly` fields.
-The `UserUpdate` schema allows for partial updates by making all fields optional.
+By default, Restly derives the create and update schemas from `UserSchema`.
+The create schema leaves out the `ReadOnly` fields.
+The update schema makes all fields optional, for partial updates.
 
 When you need full control over write payloads, declare them explicitly:
 
@@ -232,7 +231,7 @@ class UserUpdate(fr.BaseSchema):
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    schema = UserRead
+    schema = UserSchema
     schema_create = UserCreate
     schema_update = UserUpdate
 ```
@@ -241,7 +240,7 @@ Use **auto-schema** for prototypes and internal tools. Use an **explicit schema*
 
 ### List endpoint query parameters
 
-List endpoints expose a stable URL parameter dialect generated from the response schema:
+List endpoints expose a stable URL parameter dialect generated from the view's schema:
 
 ```bash
 GET /users?name=John&created_at__gte=2024-01-01
@@ -249,7 +248,7 @@ GET /users?email__icontains=example
 GET /users?sort=-created_at&page=2&page_size=10
 ```
 
-Parameter keys use the **response schema's public names**, including dotted
+Parameter keys use the **public names of the view's schema**, including dotted
 relation paths; unknown keys are rejected with `422`.
 
 Pagination is on by default: list endpoints wrap rows in a `data` envelope and
@@ -269,10 +268,10 @@ See [Filter, Sort, and Paginate Lists](https://www.fastapi-restly.org/howto_quer
 `IDSchema` already provides a read-only `id`, so don't redeclare it unless you need to narrow the type.
 
 ```python
-class UserRead(fr.IDSchema):
+class UserSchema(fr.IDSchema):
     name: str
     email: str
-    password: fr.WriteOnly[str]        # stripped by to_response_schema()
+    password: fr.WriteOnly[str]        # stripped by to_single_response()
     created_at: fr.ReadOnly[datetime]  # excluded from schema_create / schema_update
 ```
 
@@ -286,9 +285,9 @@ class Order(fr.IDBase):
     customer_id: Mapped[int] = mapped_column(ForeignKey("customer.id"))
     customer: Mapped[Customer] = relationship(init=False)
 
-class OrderRead(fr.IDSchema):
+class OrderSchema(fr.IDSchema):
     customer_id: fr.MustExist[int, Customer]
-    customer: fr.ReadOnly[CustomerRead]
+    customer: fr.ReadOnly[CustomerSchema]
 ```
 
 ### Custom endpoints
@@ -330,7 +329,7 @@ Use `AsyncReactAdminView` (or `ReactAdminView` for a sync stack) for a
 class ProductView(fr.AsyncReactAdminView):
     prefix = "/products"
     model = Product
-    schema = ProductRead
+    schema = ProductSchema
 ```
 
 The view speaks the `ra-data-simple-rest` wire contract.

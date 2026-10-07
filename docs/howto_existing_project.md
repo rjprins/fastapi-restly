@@ -28,7 +28,7 @@ api.include_router(orders_router, prefix="/orders")  # existing FastAPI routes
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    schema = UserRead
+    schema = UserSchema
 
 
 fr.include_view(api, UserView)  # registers /api/users CRUD routes
@@ -62,7 +62,7 @@ add the FastAPI route yourself:
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    schema = UserRead
+    schema = UserSchema
     exclude_routes = (fr.ViewRoute.DELETE,)
 
 
@@ -116,7 +116,7 @@ A resource in mid-migration looks like this:
 class ProductView(fr.AsyncRestView):
     prefix = "/products"
     model = Product
-    schema = ProductRead          # match your old response shape exactly
+    schema = ProductSchema          # match your old response shape exactly
     exclude_routes = (fr.ViewRoute.DELETE,)  # old DELETE returns the object
 
 
@@ -271,7 +271,7 @@ ReportingSessionDep = Annotated[AsyncSession, Depends(get_reporting_db)]
 class ReportView(fr.AsyncRestView):
     prefix = "/reports"
     model = Report
-    schema = ReportRead
+    schema = ReportSchema
     session: ReportingSessionDep
 ```
 

@@ -107,10 +107,10 @@ are served directly, with no redirect involved.
 
 The `id` array form of `filter` (`{"id": [1, 2, 3]}`) is used by react-admin
 for `getMany` calls. It translates to `WHERE id IN (1, 2, 3)`. Other filter
-values match by exact equality, and only fields exposed on the response
+values match by exact equality, and only fields exposed on the view's
 schema are accepted: unknown fields, including react-admin's full-text `q`
 search parameter, are rejected with a 400. Substring or full-text search
-requires overriding the view's `apply_query_params`.
+requires overriding the view's `apply_list_params`.
 
 ### Other operations
 
@@ -292,8 +292,9 @@ class CustomerView(ReactAdminBase):
 [route replacement](customize.md#replace-an-endpoint-method-to-change-the-http-contract)
 pattern. It replaces {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` to parse the
 react-admin query string, then delegates to the standard {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>` /
-{meth}`get_many <fastapi_restly.views.RestView.get_many>` flow. The react-admin dialect itself lives in {meth}`apply_query_params <fastapi_restly.views.RestView.apply_query_params>`
-(JSON `sort` / `range` / `filter`) and `to_response(..., ResponseShape.LISTING)`
+{meth}`get_many <fastapi_restly.views.RestView.get_many>` flow. The react-admin dialect itself lives in {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
+(JSON `sort` / `range` / `filter`) and
+{meth}`to_list_response <fastapi_restly.views.BaseRestView.to_list_response>`
 (plain array body plus `Content-Range`).
 
 It also adds a `PUT /{id}` route that delegates to the standard {meth}`handle_update <fastapi_restly.views.RestView.handle_update>`

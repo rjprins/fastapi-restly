@@ -51,16 +51,16 @@ class UserView(fr.View):
     session: fr.AsyncSessionDep
 
     @fr.get("")
-    async def list_users(self) -> list[UserRead]:
+    async def list_users(self) -> list[UserSchema]:
         users = await self.session.scalars(select(User))
-        return [UserRead.model_validate(user) for user in users]
+        return [UserSchema.model_validate(user) for user in users]
 
     @fr.post("")
-    async def create_user(self, payload: UserCreate) -> UserRead:
+    async def create_user(self, payload: UserCreate) -> UserSchema:
         user = User(**payload.model_dump())
         self.session.add(user)
         await self.session.flush()
-        return UserRead.model_validate(user)
+        return UserSchema.model_validate(user)
 ```
 
 Dependencies, prefix, tags, and metadata are declared once on the class. The
@@ -231,14 +231,14 @@ class AuthenticatedView(fr.AsyncRestView):
 class InvoiceView(AuthenticatedView):
     prefix = "/invoices"
     model = Invoice
-    schema = InvoiceRead
+    schema = InvoiceSchema
 
 
 @fr.include_view(app)
 class CustomerView(AuthenticatedView):
     prefix = "/customers"
     model = Customer
-    schema = CustomerRead
+    schema = CustomerSchema
 ```
 
 The dependency binds the current tenant for both views. A session-level

@@ -7,7 +7,7 @@ the framework sets.
 
 ## Schema Generation Under the Hood
 
-FastAPI-Restly builds request and response schemas from your declared schema class,
+FastAPI-Restly builds request and response schemas from the view's schema,
 or auto-generates one from the SQLAlchemy model when {attr}`schema <fastapi_restly.views.BaseRestView.schema>` is omitted on a
 view.
 
@@ -17,7 +17,7 @@ view.
 `typing.Annotated` metadata. A schema declares them inline:
 
 ```python
-class UserRead(IDSchema):
+class UserSchema(IDSchema):
     id: ReadOnly[int]
     email: str
     password: WriteOnly[str]
@@ -44,20 +44,20 @@ The user-facing behaviour of both markers is covered in
 
 ### Generated Input Schemas
 
-Restly derives two input schemas from the declared view schema in
-{meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>`. For a view schema `UserRead`:
+Restly derives two input schemas from the view's schema in
+{meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>`. For the view's schema `UserSchema`:
 
 - {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>`: produced by `create_model_without_read_only_fields()`,
-  which creates a subclass mixing in `OmitReadOnlyMixin` before `UserRead` in
+  which creates a subclass mixing in `OmitReadOnlyMixin` before `UserSchema` in
   the MRO. `OmitReadOnlyMixin.__pydantic_init_subclass__` directly deletes
   `ReadOnly` entries from `cls.model_fields` and calls `model_rebuild(force=True)`.
-  The subclass still inherits validators from `UserRead` for the fields that
+  The subclass still inherits validators from `UserSchema` for the fields that
   remain.
 - {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>`: produced by `create_model_with_optional_fields()`, which
   mixes in both `PatchMixin` and `OmitReadOnlyMixin`. After `OmitReadOnlyMixin`
   strips the read-only fields, `PatchMixin.__pydantic_init_subclass__` sets
   `field.default = None` and wraps every remaining annotation in `Optional[...]`.
-  Original field defaults from `UserRead` are **replaced** by `None`, not
+  Original field defaults from `UserSchema` are **replaced** by `None`, not
   preserved.
 
 The generated class names use resource-first role suffixes. `UserRead` derives
@@ -65,7 +65,7 @@ The generated class names use resource-first role suffixes. `UserRead` derives
 strips when deriving request-schema names; other schema names are kept literally,
 so `UserSchema` derives `UserSchemaCreate` and `UserSchemaUpdate`. When `schema`
 is omitted entirely, a model named `User` auto-generates `UserRead` as the
-response schema.
+view's schema.
 
 Both derived schemas are stored as class attributes on the view and are frozen
 at registration time (see [List Parameters Lifecycle](#list-parameters-lifecycle)).
@@ -80,9 +80,9 @@ subclass declares a new `schema`, which replaces an inherited `schema_create`,
 (auto-generated-schemas)=
 ### Auto-Generated Schemas
 
-{func}`create_schema_from_model(model_cls, ...) <fastapi_restly.schemas.create_schema_from_model>` builds a Pydantic schema with one
-field per column and relationship on the model's SQLAlchemy mapper, inherited
-ones included. A column's type comes from its `Mapped[T]` annotation, or from
+{func}`derive_schema(model, ...) <fastapi_restly.schemas.derive_schema>` builds a Pydantic schema with one
+field per column on the model's SQLAlchemy mapper, inherited ones included.
+With `include_relationships=True`, it also adds one field per relationship. A column's type comes from its `Mapped[T]` annotation, or from
 the plain annotation on a SQLModel table. Under
 `from __future__ import annotations`, the annotation string is evaluated against
 the model's module. When no annotation resolves, the column type's
@@ -97,18 +97,18 @@ behind them already have one. Three of its behaviours are worth noting:
   accidentally named `id` will receive `IDSchema` as a base.
 - **ReadOnly annotation**: Three field names are automatically marked
   `ReadOnly`: `"id"`, `"created_at"`, and `"updated_at"` (controlled by
-  `include_readonly_fields=True`). So is a `column_property` over a SQL
+  `include_read_only_fields=True`). So is a `column_property` over a SQL
   expression, which cannot be written. Any other server-side default or
   auto-populated column will **not** be marked `ReadOnly` by auto-generation.
-- **Relationship fields**: Included when `include_relationships=True` (the
-  default for `create_schema_from_model`). Relationship fields are set to
+- **Relationship fields**: Included only when `include_relationships=True`.
+  The default is `False`. Relationship fields are set to
   `Optional` with `default=None` in the generated schema and nested schemas are
   generated recursively (one level deep, without relationships, to avoid circular
   references).
 
-When a {class}`RestView <fastapi_restly.views.RestView>` / {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` omits {attr}`schema <fastapi_restly.views.BaseRestView.schema>`, the internal view setup calls
-`create_schema_from_model(model_cls, schema_name=schema_name, include_relationships=False)`.
-It does not apply any other filtering beyond excluding relationship attributes;
+When a {class}`RestView <fastapi_restly.views.RestView>` / {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` omits {attr}`schema <fastapi_restly.views.BaseRestView.schema>`, the view setup calls
+`derive_schema(model)` with its defaults, so the view and a direct call get the
+same schema. It leaves out relationship attributes and nothing else;
 foreign-key columns appear in the generated schema as ordinary scalar fields.
 
 ### SQLAlchemy-to-Pydantic Type Mapping
@@ -148,8 +148,8 @@ custom column types, declare an explicit schema and bypass auto-generation.
 A `JSON` column maps to a bare `dict`, which does not validate the document's
 fields. To validate its shape, declare an explicit schema with a nested
 Pydantic model. Restly calls `model_dump(mode="json")` before assigning the
-document to the column. The response schema validates the stored document
-when reading it back.
+document to the column. The view's schema validates the stored document
+when it is read back.
 
 Documents containing {data}`WriteOnly <fastapi_restly.schemas.WriteOnly>` or
 `Field(exclude=True)` fields raise
@@ -234,7 +234,7 @@ class MyView(fr.AsyncRestView):
 ```
 
 Both forms call {meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>` (which generates derived schemas,
-annotates endpoint signatures, and registers the {attr}`listing_param_schema <fastapi_restly.views.BaseRestView.listing_param_schema>`), then
+annotates endpoint signatures, and registers the {attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`), then
 attach an `APIRouter` to the parent app/router.
 
 ### The Three Tiers of a CRUD Verb
@@ -246,7 +246,7 @@ override decision table live in
 
 The implementation detail worth knowing here is that the endpoint method calls
 {meth}`to_response(obj, shape) <fastapi_restly.views.BaseRestView.to_response>`, the single response method, which delegates to
-{meth}`to_response_schema(obj) <fastapi_restly.views.BaseRestView.to_response_schema>` for the per-object serialization
+{meth}`to_single_response(obj) <fastapi_restly.views.BaseRestView.to_single_response>` for the per-object serialization
 (relationship-id normalization and response-schema validation).
 
 ### Nested Response Schemas vs Write Payloads
@@ -283,7 +283,7 @@ Nested schemas serve two different roles in Restly today:
   scalar, relationship object, or both based on the model constructor. If the
   client supplies both fields, Restly checks they refer to the same row.
 
-If you declare a nested input field like `address: AddressRead` on a write
+If you declare a nested input field like `address: AddressSchema` on a write
 schema, the default CRUD implementation will pass that nested Pydantic object
 through to the SQLAlchemy model constructor or attribute setter, which usually
 does not match the ORM model shape. Use a flattened schema or override the
@@ -301,13 +301,13 @@ List endpoints accept URL query parameters of the form
 [Filter, Sort, and Paginate Lists](howto_query_modifiers.md).
 
 During {meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>`, the framework freezes a single class-level
-attribute, {attr}`cls.listing_param_schema <fastapi_restly.views.BaseRestView.listing_param_schema>`: the query-parameter Pydantic schema generated
-by {func}`create_list_params_schema(cls.schema, cls.model, pagination=cls.pagination) <fastapi_restly.query.create_list_params_schema>`. The schema covers pagination, sorting, and one filter
-parameter per response-schema field that maps to a filterable column on the
+attribute, {attr}`cls.schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`: the list params, a Pydantic model generated
+by {func}`derive_schema_list_params(cls.schema, cls.model, pagination=cls.pagination) <fastapi_restly.query.derive_schema_list_params>`. It covers pagination, sorting, and one filter
+parameter per field of the view's schema that maps to a filterable column on the
 model, with optional operator suffixes. It is generated once per registration
 and never re-derived.
 
-A route reads the schema through a dependency, not as a FastAPI query model.
+A route reads the list params through a dependency, not as a FastAPI query model.
 FastAPI splits a query model into separate parameters only when it is the
 route's only query parameter, so a dependency's `?api_key=` would collapse
 the filters into one required object. Restly validates the model from the

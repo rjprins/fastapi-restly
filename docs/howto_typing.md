@@ -32,14 +32,14 @@ class UserView(fr.AsyncRestView):
     model = User
 ```
 
-## Use `IDSchema` for response schemas
+## Use `IDSchema` for the view's schema
 
 {class}`IDSchema <fastapi_restly.schemas.IDSchema>` is the usual base for
-response schemas because it adds the resource's own read-only `id` field. You
+the view's schema because it adds the resource's own read-only `id` field. You
 can subclass it directly:
 
 ```python
-class UserRead(fr.IDSchema):
+class UserSchema(fr.IDSchema):
     name: str
     email: str
 ```
@@ -48,12 +48,12 @@ You can also parameterize it when you want the schema class itself to carry
 the SQLAlchemy model type:
 
 ```python
-class UserRead(fr.IDSchema[User]):
+class UserSchema(fr.IDSchema[User]):
     name: str
     email: str
 ```
 
-For most top-level response schemas, either form is fine; the bare form is the
+For the view's schema, either form is fine; the bare form is the
 recommended starting point.
 
 For a `*_id` foreign-key column, use
@@ -91,7 +91,7 @@ verbs:
 from sqlalchemy import ColumnElement
 
 
-class UserRead(fr.IDSchema[User]):
+class UserSchema(fr.IDSchema[User]):
     name: str
     email: str
 
@@ -108,11 +108,11 @@ class UserUpdate(fr.BaseSchema):
 
 @fr.include_view(app)
 class UserView(
-    fr.AsyncRestView[User, UserRead, UserCreate, UserUpdate, int]
+    fr.AsyncRestView[User, UserSchema, UserCreate, UserUpdate, int]
 ):
     prefix = "/users"
     model = User
-    schema = UserRead
+    schema = UserSchema
     schema_create = UserCreate
     schema_update = UserUpdate
 
@@ -128,7 +128,7 @@ class UserView(
         return await super().update(obj, schema_obj)
 ```
 
-The type parameters are, in order: the model, the response schema, the create
+The type parameters are, in order: the model, the view's schema, the create
 schema, the update schema, and the id type. With them in place, `schema_obj`
 in `create` is a `UserCreate`, `obj` in `update` is a `User`, and the return
 types are checked too.
@@ -224,7 +224,7 @@ gives you the typing help you want:
 - Use {class}`IDSchema[Model] <fastapi_restly.schemas.IDSchema>` as a field
   annotation only when you intentionally want a nested relationship-object
   field. Parameterizing your top-level schema's *base class*, as in
-  `class UserRead(IDSchema[User])`, is a separate, optional choice: the bare
+  `class UserSchema(IDSchema[User])`, is a separate, optional choice: the bare
   base is supported, and the parameterized base carries the model type.
 - Use view generics only when you want precise typing on the methods you
   override; they mainly help on the business methods and the endpoint

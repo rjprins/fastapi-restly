@@ -14,7 +14,7 @@ filter by its foreign key; the filter parameter is generated automatically for
 {class}`MustExist <fastapi_restly.schemas.MustExist>` fields:
 
 ```python
-class TaskRead(fr.IDSchema):
+class TaskSchema(fr.IDSchema):
     title: str
     project_id: fr.MustExist[int, Project]
 
@@ -23,7 +23,7 @@ class TaskRead(fr.IDSchema):
 class TaskView(fr.AsyncRestView):
     prefix = "/tasks"
     model = Task
-    schema = TaskRead
+    schema = TaskSchema
 ```
 
 Clients then scope the list through the query string:
@@ -62,11 +62,11 @@ class UserSummary(fr.IDSchema):
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    schema = UserRead  # detail routes keep the full schema
+    schema = UserSchema  # detail routes keep the full schema
 
     @fr.get("/", response_model=list[UserSummary])
-    async def get_many_endpoint(self, query_params):
-        result = await self.handle_get_many(query_params)
+    async def get_many_endpoint(self, list_params):
+        result = await self.handle_get_many(list_params)
         return [
             UserSummary.model_validate(u, from_attributes=True)
             for u in result.objects
@@ -90,13 +90,13 @@ is_deleted = fr.where_clause(Item.deleted_at.is_not(None))
 class ItemView(fr.AsyncRestView):
     prefix = "/items"
     model = Item
-    schema = ItemRead
+    schema = ItemSchema
     scope = fr.none_of(is_deleted)
 
     async def delete(self, obj):
         obj.deleted_at = datetime.now(timezone.utc)
 
-    @fr.post("/{id}/restore", response_model=ItemRead, status_code=200)
+    @fr.post("/{id}/restore", response_model=ItemSchema, status_code=200)
     async def restore(self, id: int):
         # Reads through the complement of the view scope: only a deleted
         # row can be restored, and the bypass is visible on purpose.
