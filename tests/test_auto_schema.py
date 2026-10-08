@@ -1,8 +1,5 @@
 """Test auto-generated schemas."""
 
-import types
-from typing import Union, get_args, get_origin
-
 import pytest
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -183,33 +180,6 @@ def test_auto_generated_schema_crud_operations(client):
     client.get(f"/items/{item_id}", assert_status_code=404)
 
 
-def test_derive_schema_includes_nested_relationship_schema():
-    """Manual schema generation should resolve relationships to nested schemas."""
-
-    class User(fr.IDBase):
-        name: Mapped[str]
-        email: Mapped[str]
-
-    class Order(fr.IDBase):
-        user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
-        user: Mapped[User] = relationship()
-
-    schema = fr_schemas.derive_schema(Order, include_relationships=True)
-
-    assert "user" in schema.model_fields
-    user_annotation = schema.model_fields["user"].annotation
-    if get_origin(user_annotation) in (types.UnionType, Union):
-        nested_annotation = next(
-            arg for arg in get_args(user_annotation) if arg is not type(None)
-        )
-    else:
-        nested_annotation = user_annotation
-    assert nested_annotation is not str
-    assert hasattr(nested_annotation, "model_fields")
-    assert "name" in nested_annotation.model_fields
-    assert "email" in nested_annotation.model_fields
-
-
 def test_view_auto_schema_excludes_relationship_fields_by_default(client):
     """View auto-schema should stay focused on scalar/FK fields unless opted in explicitly."""
 
@@ -256,10 +226,9 @@ def test_derive_schema_returns_the_schema_a_view_generates(client):
     assert "customer" not in derived.model_fields
 
 
-def test_derive_schema_marks_read_only_fields_but_not_nested_references():
-    """The schema's own id and timestamps are ReadOnly. The nested schema of a
-    relationship has no ReadOnly marks: it is also in the create and update
-    bodies, where its id is required."""
+def test_derive_schema_marks_read_only_fields_and_leaves_out_relationships():
+    """The id and timestamps are ReadOnly. A relationship gets no field: the
+    foreign key column is an ordinary field."""
 
     class Customer(fr.TimestampsMixin, fr.IDBase):
         name: Mapped[str]
@@ -268,17 +237,12 @@ def test_derive_schema_marks_read_only_fields_but_not_nested_references():
         customer_id: Mapped[int] = mapped_column(ForeignKey("customer.id"))
         customer: Mapped[Customer] = relationship()
 
-    schema = fr_schemas.derive_schema(Invoice, include_relationships=True)
-    [nested] = [
-        arg
-        for arg in get_args(schema.model_fields["customer"].annotation)
-        if arg is not type(None)
-    ]
-    assert nested.__name__ == "CustomerSchema"
+    schema = fr_schemas.derive_schema(Invoice)
 
+    assert set(schema.model_fields) == {"id", "created_at", "updated_at", "customer_id"}
     for field in ("id", "created_at", "updated_at"):
         assert is_readonly_field(schema, field)
-        assert not is_readonly_field(nested, field)
+    assert not is_readonly_field(schema, "customer_id")
 
 
 def test_derive_schema_preserves_json_dict_types():

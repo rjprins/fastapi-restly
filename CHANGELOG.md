@@ -67,9 +67,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     Its `include_readonly_fields` is removed. It did not add or remove any
     field: it only turned off the `ReadOnly` mark on `id`, `created_at`,
     `updated_at` and read-only columns, and `derive_schema` now always sets
-    that mark. Its `include_relationships` now defaults to `False`, so it
-    returns the same schema that a view generates when it has no `schema`.
-    Pass `include_relationships=True` to keep the relationship fields.
+    that mark. Its `include_relationships` is removed too, so it always
+    returns the same schema that a view generates when it has no `schema`,
+    without relationship fields. The nested schemas it built could not be
+    written: a create or update with a nested object failed. For a related
+    row, write the schema yourself, for example with an `IDRef[Model]`
+    field.
   - React-admin views no longer have `to_react_admin_listing_response` or
     their own `to_response`. To change their list response, override
     `to_list_response(list_result)`.

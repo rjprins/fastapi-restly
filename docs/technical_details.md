@@ -129,7 +129,7 @@ to avoid it.
 
 {func}`derive_schema(model, ...) <fastapi_restly.schemas.derive_schema>` builds a Pydantic schema with one
 field per column on the model's SQLAlchemy mapper, inherited ones included.
-With `include_relationships=True`, it also adds one field per relationship. A column's type comes from its `Mapped[T]` annotation, or from
+A column's type comes from its `Mapped[T]` annotation, or from
 the plain annotation on a SQLModel table. Under
 `from __future__ import annotations`, the annotation string is evaluated against
 the model's module. When no annotation resolves, the column type's
@@ -146,20 +146,13 @@ behind them already have one. Three of its behaviours are worth noting:
   `ReadOnly`: `"id"`, `"created_at"`, and `"updated_at"`. So is a
   `column_property` over a SQL expression, which cannot be written. Any other server-side default or
   auto-populated column will **not** be marked `ReadOnly` by auto-generation.
-- **Relationship fields**: Included only when `include_relationships=True`.
-  The default is `False`. Relationship fields are set to
-  `Optional` with `default=None` in the generated schema and nested schemas are
-  generated recursively (one level deep, without relationships, to avoid circular
-  references). A nested schema has no `ReadOnly` marks. It is also in the
-  create and update bodies, and there its `id` is required, so OpenAPI must
-  not call that `id` read-only. Restly does not write a nested object: a
-  client sends the foreign key column instead, such as `customer_id`. See
-  [Nested Response Schemas vs Write Payloads](#nested-schemas-vs-write-payloads).
+- **Relationship fields**: Never included. A foreign key column, such as
+  `customer_id`, is an ordinary field. To show a related row in a response,
+  write the schema yourself, for example with an `IDRef[Customer]` field; see
+  [Work with Foreign Keys and Relationships](howto_relationship_idschema.md).
 
 When a {class}`RestView <fastapi_restly.views.RestView>` / {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` omits {attr}`schema <fastapi_restly.views.BaseRestView.schema>`, the view setup calls
-`derive_schema(model)` with its defaults, so the view and a direct call get the
-same schema. It leaves out relationship attributes and nothing else;
-foreign-key columns appear in the generated schema as ordinary scalar fields.
+`derive_schema(model)`, so the view and a direct call get the same schema.
 
 ### SQLAlchemy-to-Pydantic Type Mapping
 
@@ -299,7 +292,6 @@ The implementation detail worth knowing here is that the endpoint method calls
 {meth}`to_single_response(obj) <fastapi_restly.views.BaseRestView.to_single_response>` for the per-object serialization
 (relationship-id normalization and response-schema validation).
 
-(nested-schemas-vs-write-payloads)=
 ### Nested Response Schemas vs Write Payloads
 
 Nested schemas serve two different roles in Restly today:

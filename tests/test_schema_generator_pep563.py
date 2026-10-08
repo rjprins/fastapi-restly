@@ -7,9 +7,6 @@ plain one. Kept in its own ``from __future__ import annotations`` module.
 
 from __future__ import annotations
 
-import types
-from typing import Union, get_args, get_origin
-
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -17,12 +14,6 @@ import fastapi_restly as fr
 import fastapi_restly.schemas as fr_schemas
 
 from .conftest import create_tables
-
-
-def _without_none(annotation):
-    if get_origin(annotation) in (Union, types.UnionType):
-        return next(arg for arg in get_args(annotation) if arg is not type(None))
-    return annotation
 
 
 def test_view_schema_keeps_every_column(client):
@@ -50,7 +41,7 @@ def test_view_schema_keeps_every_column(client):
     assert created == {"id": created["id"], "name": "Pen", "price": 1.5, "note": None}
 
 
-def test_relationships_resolve_through_the_mapper():
+def test_relationships_are_left_out():
     class Author(fr.IDBase):
         name: Mapped[str]
         books: Mapped[list[Book]] = relationship(
@@ -62,11 +53,8 @@ def test_relationships_resolve_through_the_mapper():
         author_id: Mapped[int] = mapped_column(ForeignKey("author.id"))
         author: Mapped[Author] = relationship(back_populates="books", default=None)
 
-    author_schema = fr_schemas.derive_schema(Author, include_relationships=True)
-    books = _without_none(author_schema.model_fields["books"].annotation)
-    assert get_origin(books) is list
-    assert set(get_args(books)[0].model_fields) == {"id", "title", "author_id"}
+    author_schema = fr_schemas.derive_schema(Author)
+    book_schema = fr_schemas.derive_schema(Book)
 
-    book_schema = fr_schemas.derive_schema(Book, include_relationships=True)
-    author = _without_none(book_schema.model_fields["author"].annotation)
-    assert set(author.model_fields) == {"id", "name"}
+    assert set(author_schema.model_fields) == {"id", "name"}
+    assert set(book_schema.model_fields) == {"id", "title", "author_id"}

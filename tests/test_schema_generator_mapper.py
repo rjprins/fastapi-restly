@@ -6,7 +6,6 @@ annotation nor a Python column type raises instead of dropping out.
 
 import asyncio
 import sys
-from typing import get_args
 
 import pytest
 from sqlalchemy import Column, ForeignKey, Integer, String, func
@@ -101,7 +100,7 @@ def test_annotation_nearest_the_model_wins():
     assert schema.model_fields["id"].annotation is str
 
 
-def test_relationship_without_annotation_comes_from_the_mapper():
+def test_relationship_without_annotation_is_left_out():
     class Owner(fr.IDBase):
         name: Mapped[str]
 
@@ -109,8 +108,8 @@ def test_relationship_without_annotation_comes_from_the_mapper():
         owner_id = Column(ForeignKey("owner.id"))
         owner = relationship(Owner)
 
-    schema = fr_schemas.derive_schema(Pet, include_relationships=True)
-    assert "owner" in schema.model_fields
+    schema = fr_schemas.derive_schema(Pet)
+    assert set(schema.model_fields) == {"id", "owner_id"}
 
 
 def test_relationship_to_a_class_outside_declarative_base():
@@ -129,13 +128,8 @@ def test_relationship_to_a_class_outside_declarative_base():
         owner_id = Column(ForeignKey("legacy_owner.id"))
         owner = relationship(Owner)
 
-    schema = fr_schemas.derive_schema(Pet, include_relationships=True)
-    owner = next(
-        arg
-        for arg in get_args(schema.model_fields["owner"].annotation)
-        if arg is not type(None)
-    )
-    assert set(owner.model_fields) == {"id", "name"}
+    schema = fr_schemas.derive_schema(Pet)
+    assert set(schema.model_fields) == {"id", "owner_id"}
 
 
 @pytest.mark.skipif(sys.version_info < (3, 14), reason="Deferred annotations need 3.14")
@@ -180,10 +174,6 @@ def test_deferred_annotation_naming_an_undefined_class(client):
 
     assert set(ParentView.schema.model_fields) == {"id", "name"}
 
-    schema = fr_schemas.derive_schema(Parent, include_relationships=True)
-    children = schema.model_fields["children"].annotation
-    assert Child.__name__ in repr(children)
-
 
 @pytest.mark.skipif(sys.version_info < (3, 14), reason="Deferred annotations need 3.14")
 def test_deferred_annotation_naming_an_undefined_class_on_a_dataclass_base(client):
@@ -223,7 +213,3 @@ def test_deferred_annotation_naming_an_undefined_class_on_a_dataclass_base(clien
         model = Writer
 
     assert set(WriterView.schema.model_fields) == {"id", "name"}
-
-    schema = fr_schemas.derive_schema(Writer, include_relationships=True)
-    novels = schema.model_fields["novels"].annotation
-    assert Novel.__name__ in repr(novels)

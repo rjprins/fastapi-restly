@@ -168,8 +168,8 @@ def get_model_fields(model_cls: type[Any]) -> dict[str, Any]:
 
         if isinstance(prop, RelationshipProperty):
             target_model = prop.mapper.class_
-            # Relationship fields are response-oriented in generated schemas.
-            # Keep them optional so create/update inputs can rely on FK columns.
+            # Listed so a caller can tell a relationship from a column.
+            # derive_schema leaves relationships out.
             fields[name] = {
                 "type": list[target_model] if prop.uselist else target_model,
                 "is_relationship": True,
@@ -223,44 +223,23 @@ def get_model_fields(model_cls: type[Any]) -> dict[str, Any]:
     return fields
 
 
-def derive_schema(
-    model: type[Any], *, name: str | None = None, include_relationships: bool = False
-) -> type[BaseSchema]:
+def derive_schema(model: type[Any], *, name: str | None = None) -> type[BaseSchema]:
     """
     Generate a Pydantic schema from a SQLAlchemy model.
 
-    With the defaults, this is the same schema that a view generates when it
-    has no ``schema``: one field per column, and no relationship fields. The
-    fields ``id``, ``created_at`` and ``updated_at``, and read-only columns
-    such as a ``column_property``, are marked ``ReadOnly``.
+    This is the same schema that a view generates when it has no ``schema``:
+    one field per column, and no relationship fields. A foreign key column,
+    such as ``author_id``, is an ordinary field. The fields ``id``,
+    ``created_at`` and ``updated_at``, and read-only columns such as a
+    ``column_property``, are marked ``ReadOnly``.
 
     :param model: The SQLAlchemy model class.
     :param name: Name for the generated schema class. Defaults to the
         model name followed by ``Schema``, as in ``UserSchema``.
-    :param include_relationships: Whether to include relationship fields. Each
-        one holds a nested schema of the related model, without its
-        relationships and without read-only markers.
     :returns: A Pydantic schema class.
     """
-    return _derive_schema(
-        model,
-        name=f"{model.__name__}Schema" if name is None else name,
-        include_relationships=include_relationships,
-        mark_read_only=True,
-    )
-
-
-def _derive_schema(
-    model: type[Any], *, name: str, include_relationships: bool, mark_read_only: bool
-) -> type[BaseSchema]:
-    """The body of :func:`derive_schema`.
-
-    The nested schema of a relationship is built with ``mark_read_only=False``.
-    It is also in the create and update bodies, and there pydantic requires
-    its ``id``. A ``ReadOnly`` mark would make OpenAPI call that required
-    ``id`` read-only. Restly does not write a nested object: a client sends
-    the foreign key column instead, such as ``author_id``.
-    """
+    if name is None:
+        name = f"{model.__name__}Schema"
 
     # Get field information from the model
     model_fields = get_model_fields(model)
@@ -286,43 +265,18 @@ def _derive_schema(
     read_only_fields: list[str] = []
 
     for field_name, field_info in model_fields.items():
-        # Skip relationships if not requested
-        if field_info["is_relationship"] and not include_relationships:
+        if field_info["is_relationship"]:
             continue
 
-        # Determine if field should be read-only
-        is_readonly = (
+        if (
             field_name in ["id", "created_at", "updated_at"]
             or field_info["is_read_only"]
-        ) and mark_read_only
-
-        if is_readonly:
+        ):
             read_only_fields.append(field_name)
 
-        if field_info["is_relationship"]:
-            target_model = field_info["target_model"]
-
-            # Skip self-referential relationship to avoid infinite recursion
-            if target_model is model:
-                continue
-
-            target_schema = _derive_schema(
-                target_model,
-                name=f"{target_model.__name__}Schema",
-                include_relationships=False,  # Avoid circular references
-                mark_read_only=False,
-            )
-            if get_origin(field_info["type"]) is list:
-                pydantic_type = list[target_schema]
-            else:
-                pydantic_type = target_schema
-
-            if field_info["is_optional"]:
-                pydantic_type = pydantic_type | None
-        else:
-            pydantic_type = convert_sqlalchemy_type_to_pydantic(
-                field_info["type"], field_info["is_optional"]
-            )
+        pydantic_type = convert_sqlalchemy_type_to_pydantic(
+            field_info["type"], field_info["is_optional"]
+        )
 
         # Add field to definitions - use proper Pydantic field format
         # Don't include SQLAlchemy defaults as they're not JSON-serializable

@@ -1,7 +1,6 @@
 import enum
-import types
 from datetime import date, datetime, time
-from typing import Any, Optional, Union, get_args, get_origin
+from typing import Any, Optional, get_args
 from unittest.mock import patch
 
 import pytest
@@ -375,27 +374,15 @@ def test_schema_generator_helpers_cover_relationships_defaults_and_type_conversi
     assert model_fields["customer"]["is_relationship"] is True
     assert model_fields["customer"]["target_model"] is Customer
 
-    schema = derive_schema(Order, include_relationships=True)
+    schema = derive_schema(Order)
     assert schema.model_fields["id"].is_required() is True
     assert schema.model_fields["id"].json_schema_extra["readOnly"] is True
-    assert "customer" in schema.model_fields
-    assert type(None) in get_args(schema.model_fields["customer"].annotation)
+    assert "customer" not in schema.model_fields
+    assert "customer_id" in schema.model_fields
 
-    nested_customer = next(
-        arg
-        for arg in get_args(schema.model_fields["customer"].annotation)
-        if arg is not type(None)
-    )
-    assert hasattr(nested_customer, "model_fields")
-    assert "orders" not in nested_customer.model_fields
-
-    node_schema = derive_schema(Node, include_relationships=True)
+    node_schema = derive_schema(Node)
     assert "parent" not in node_schema.model_fields
     assert "children" not in node_schema.model_fields
-
-    view_schema = derive_schema(Order)
-    assert "customer" not in view_schema.model_fields
-    assert "customer_id" in view_schema.model_fields
 
     class DeclarativeModelBase(DeclarativeBase):
         pass
@@ -408,19 +395,8 @@ def test_schema_generator_helpers_cover_relationships_defaults_and_type_conversi
     no_id_schema = derive_schema(NoIdModel)
     assert "id" not in no_id_schema.model_fields
 
-    customer_schema = derive_schema(Customer, include_relationships=True)
-    orders_annotation = customer_schema.model_fields["orders"].annotation
-    if get_origin(orders_annotation) in (Union, types.UnionType):
-        list_annotation = next(
-            arg for arg in get_args(orders_annotation) if arg is not type(None)
-        )
-    else:
-        list_annotation = orders_annotation
-
-    assert get_origin(list_annotation) is list
-    nested_order_schema = get_args(list_annotation)[0]
-    assert hasattr(nested_order_schema, "model_fields")
-    assert "customer" not in nested_order_schema.model_fields
+    customer_schema = derive_schema(Customer)
+    assert "orders" not in customer_schema.model_fields
 
     class Priority(enum.Enum):
         HIGH = "high"
