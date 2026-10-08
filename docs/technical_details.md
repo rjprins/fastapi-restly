@@ -104,13 +104,15 @@ the pagination's envelope, filled with the response class.
 
 Two views with the same schema and the same pagination show one set of names.
 Two different classes can still get the same name. For example, two views
-share a schema but only one is paginated, so both list responses are named
-`UserListResponse`. Or a schema you wrote is named `UserCreate`, and it is not
-the same as the generated `UserCreate`. OpenAPI then keeps both classes under
-longer names that Pydantic makes unique, such as
-`app__users__views__UserCreate`. To keep the short names, give one of the
-views its own schema name, as in `class AdminUserSchema(UserSchema): pass`, or
-set your `UserCreate` as the view's `schema_create`.
+share a schema but only one is paginated, or you wrote a `UserCreate` that is
+not the same as the generated one. Pydantic then shows both classes under long
+names built from the module path, such as `app__users__views__UserCreate`.
+When the module path is the same too, it numbers them, and the numbers follow
+the order in which the views are registered. When the app builds its OpenAPI
+spec, Restly checks for this and warns with a
+{class}`RestlyMisuseWarning <fastapi_restly.exc.RestlyMisuseWarning>` that
+names the classes and the views. [Name your schemas](#name-your-schemas) shows
+how to avoid it.
 
 (auto-generated-schemas)=
 ### Auto-Generated Schemas

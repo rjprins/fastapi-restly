@@ -370,7 +370,7 @@ fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
 
 `fr.configure(...)` must receive at least one setup option: an app, database URL, engine, session maker, custom session generator, `health=`, or a `warn_on_uncommitted` / `warn_on_misuse` setting. A bare `fr.configure()` raises `TypeError`.
 
-Pass `warn_on_misuse=True` to enable opt-in registration-time misuse warnings (`fr.exc.RestlyMisuseWarning`): `include_view` then flags endpoint method overrides, direct `session.commit()` calls in view methods, CRUD route sets hand-rolled on a bare `View`, and an `IDRef` / `IDSchema` field named like a scalar foreign-key column, each with the idiomatic fix named. It is off by default and intended for development, project templates, and CI.
+Pass `warn_on_misuse=True` to enable opt-in registration-time misuse warnings (`fr.exc.RestlyMisuseWarning`): `include_view` then flags endpoint method overrides, direct `session.commit()` calls in view methods, CRUD route sets hand-rolled on a bare `View`, and an `IDRef` / `IDSchema` field named like a scalar foreign-key column, each with the idiomatic fix named. It is off by default and intended for development, project templates, and CI. One check is always on: when the app builds its OpenAPI spec, Restly warns if more than one class has the same name; see [Name your schemas](#name-your-schemas).
 
 For multiple databases, use FastAPI and SQLAlchemy directly: add a custom dependency on a view, or pass a custom session generator to `fr.configure(...)`. Restly does not provide a public multi-context or multi-engine API. See [Use a custom session dependency on one view](howto_existing_project.md#use-a-custom-session-dependency-on-one-view).
 

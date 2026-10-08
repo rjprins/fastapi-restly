@@ -167,6 +167,10 @@ derives the response, create, update and list params schemas from it.
 - Schemas written by hand use the same names as generated ones: `UserSchema`
   for the view's schema, and `UserCreate`, `UserUpdate` and `UserResponse`
   for the roles. The docs and examples teach these names.
+- A class with a role name is set on the view, as in `schema_create`, so
+  there is only one. A class for another purpose gets a name that says what
+  it is, such as `UserSummary`. OpenAPI has no modules, so each class name
+  must be unique in the app.
 
 ### Words we do not use
 

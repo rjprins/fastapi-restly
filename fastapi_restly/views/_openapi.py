@@ -1,5 +1,6 @@
 """
-Internal OpenAPI post-processing: x-resource-ref annotations.
+Internal OpenAPI post-processing: x-resource-ref annotations, and a warning
+when two classes in the spec have the same name (see ``_openapi_names``).
 
 Called automatically by include_view() — no public API.
 
@@ -21,12 +22,14 @@ from sqlalchemy import inspect as sa_inspect
 from .._mapping import is_mapped_class
 from ..schemas import IDSchema
 from ..schemas._base import _derive_schema_response
+from ._openapi_names import _warn_on_name_clashes
 
 _PATCHED_ATTR = "_fr_resource_refs_patched"
 
 
 @dataclass
 class _Entry:
+    view: type
     model: type[Any]
     resource_name: str
     schema: type[pydantic.BaseModel]
@@ -95,6 +98,7 @@ def _register_for_resource_ref(
     ).lstrip("/")
 
     entry = _Entry(
+        view=view_cls,
         model=model,
         resource_name=resource_name,
         schema=view_cls.schema,
@@ -108,14 +112,15 @@ def _register_for_resource_ref(
 
     # Only the FastAPI app generates the OpenAPI spec; APIRouter parents have
     # no ``.openapi`` to patch. Views registered on a router lose x-resource-ref
-    # annotations until the framework can walk to a root app, which is a
-    # separate gap.
+    # annotations and the name check until the framework can walk to a root
+    # app, which is a separate gap.
     if isinstance(parent_router, fastapi.FastAPI):
         _ensure_patched(parent_router)
 
 
 def _ensure_patched(app: fastapi.FastAPI) -> None:
-    """Wrap app.openapi() once so annotations are injected on first call."""
+    """Wrap app.openapi() once so annotations are injected on first call, and
+    the spec is checked for two classes with the same name."""
     if getattr(app, _PATCHED_ATTR, False):
         return
 
@@ -126,6 +131,7 @@ def _ensure_patched(app: fastapi.FastAPI) -> None:
         entries = _registered_entries(app)
         model_to_resource = {e.model: e.resource_name for e in entries}
         _annotate_spec(spec, entries, model_to_resource)
+        _warn_on_name_clashes(app, spec, [entry.view for entry in entries])
         return spec
 
     app.openapi = patched_openapi  # type: ignore[method-assign]

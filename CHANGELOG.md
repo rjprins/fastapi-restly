@@ -24,6 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rows, so a `{data, count}` envelope works without pagination too, and a
   generic `RootModel` makes the list a bare JSON array. `pagination = None`
   stays the short form of `NoPagination()`.
+- Restly warns with `RestlyMisuseWarning` when the app builds its OpenAPI spec
+  and more than one class has the same name. OpenAPI then shows those classes
+  under long names that can change, such as `app__tasks__views__TaskCreate`,
+  and generated clients use these names as type names. The warning names the
+  classes, the views that use them, and what to do. Projects that
+  `restly new` creates have a test that turns the warning into an error.
 
 ### Changed
 

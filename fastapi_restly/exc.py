@@ -80,16 +80,22 @@ class RestlyUncommittedChangesWarning(UserWarning):
 
 
 class RestlyMisuseWarning(UserWarning):
-    """Emitted at view registration for common framework-misuse patterns.
+    """Emitted for common framework-misuse patterns.
 
-    Opt-in: enable with ``fr.configure(warn_on_misuse=True)``. When a view
-    class is registered via ``include_view``, the framework then flags the
-    dominant misuses -- overriding an endpoint method (``<verb>_endpoint``) where
-    a business-method override was meant, calling ``session.commit()`` directly in a
-    view method, hand-rolling a CRUD route set on a bare ``View`` instead of
-    subclassing ``RestView`` / ``AsyncRestView``, and typing a scalar
-    foreign-key column (``post_id``) as an ``IDRef`` / ``IDSchema`` reference
-    instead of ``fr.MustExist[int, Model]``.
+    Most checks are opt-in: enable them with ``fr.configure(warn_on_misuse=True)``.
+    When a view class is registered via ``include_view``, the framework then
+    flags the dominant misuses -- overriding an endpoint method
+    (``<verb>_endpoint``) where a business-method override was meant, calling
+    ``session.commit()`` directly in a view method, hand-rolling a CRUD route
+    set on a bare ``View`` instead of subclassing ``RestView`` /
+    ``AsyncRestView``, and typing a scalar foreign-key column (``post_id``) as
+    an ``IDRef`` / ``IDSchema`` reference instead of
+    ``fr.MustExist[int, Model]``.
+
+    One check is always on. When the app builds its OpenAPI spec, Restly warns
+    if more than one class has the same name. OpenAPI then shows those classes
+    under long names that can change, and generated clients use them as type
+    names. To silence one such warning, filter on its message.
     """
 
 

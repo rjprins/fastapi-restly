@@ -24,6 +24,7 @@ to the section that covers it.
 | Checked foreign-key column | [`MustExist`](#mustexist) |
 | Relationship as a flat id | [`IDRef`](howto_relationship_idschema.md#choosing-a-reference-style) |
 | Relationship as a nested object | [`IDSchema[Model]`](#nested-relationship-objects) |
+| Clear type names in OpenAPI and generated clients | [Name your schemas](#name-your-schemas) |
 
 ## BaseSchema
 
@@ -255,6 +256,55 @@ class UserView(fr.AsyncRestView):
     model = User
     schema = UserSchema
 ```
+
+(name-your-schemas)=
+## Name your schemas
+
+OpenAPI keeps all classes in one list, by name. It has no modules. A
+generated client uses these names as type names. So each class in your API
+needs its own name, also when Python keeps two classes apart in different
+modules.
+
+Restly names the classes it generates after the view's schema. For
+`UserSchema`, OpenAPI shows `UserResponse`, `UserCreate`, `UserUpdate` and
+`UserListResponse`; see [Generated Class Names](#generated-class-names).
+Follow these rules for the classes you write:
+
+- Name the view's schema after the resource that the client sees: `UserSchema`,
+  or `AdminUserSchema` for an admin view of users. Two schemas named
+  `UserSchema` in different modules clash.
+- Use the names `UserCreate` and `UserUpdate` only for a view's create and
+  update body, and set the class on the view:
+
+  ```python
+  class TaskCreate(fr.BaseSchema):
+      title: str
+
+
+  class TaskView(fr.AsyncRestView):
+      prefix = "/tasks"
+      model = Task
+      schema = TaskSchema
+      schema_create = TaskCreate
+  ```
+
+  A class for another purpose, such as the body of a bulk route, gets a name
+  that says what it is: `TaskBulkItem`, `UserSummary`.
+- Two views that share a schema also share the classes that Restly generates.
+  When the classes differ, for example because only one view is paginated,
+  give one view a schema of its own:
+
+  ```python
+  class AllTasksSchema(TaskSchema):
+      pass
+  ```
+
+When two different classes still have the same name, OpenAPI shows both under
+long names that can change, such as `app__tasks__views__TaskCreate`. Restly
+then warns with a
+{class}`RestlyMisuseWarning <fastapi_restly.exc.RestlyMisuseWarning>` that
+names the classes and the views that use them. Two classes with the same name
+and the same fields are not a problem: OpenAPI shows them as one.
 
 ## See also
 
