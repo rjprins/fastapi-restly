@@ -302,7 +302,7 @@ Follow these rules for the classes you write:
 When two different classes still have the same name, OpenAPI shows both under
 long names that can change, such as `app__tasks__views__TaskCreate`. Restly
 then warns with a
-{class}`RestlyMisuseWarning <fastapi_restly.exc.RestlyMisuseWarning>` that
+{class}`RestlyDuplicateSchemaNameWarning <fastapi_restly.exc.RestlyDuplicateSchemaNameWarning>` that
 names the classes and the views that use them. Two classes with the same name
 and the same fields are not a problem: OpenAPI shows them as one.
 

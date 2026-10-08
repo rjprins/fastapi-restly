@@ -1,6 +1,6 @@
 import warnings
 
-from fastapi_restly.exc import RestlyMisuseWarning
+from fastapi_restly.exc import RestlyDuplicateSchemaNameWarning
 from fastapi_restly.testing import RestlyTestClient
 
 
@@ -9,5 +9,5 @@ def test_openapi_class_names_are_unique(restly_client: RestlyTestClient) -> None
     then shows them under long names that can change, and generated clients
     use these names as type names. This test turns the warning into an error."""
     with warnings.catch_warnings():
-        warnings.simplefilter("error", RestlyMisuseWarning)
+        warnings.simplefilter("error", RestlyDuplicateSchemaNameWarning)
         restly_client.app.openapi()

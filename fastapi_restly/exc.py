@@ -80,22 +80,30 @@ class RestlyUncommittedChangesWarning(UserWarning):
 
 
 class RestlyMisuseWarning(UserWarning):
-    """Emitted for common framework-misuse patterns.
+    """Emitted at view registration for common framework-misuse patterns.
 
-    Most checks are opt-in: enable them with ``fr.configure(warn_on_misuse=True)``.
-    When a view class is registered via ``include_view``, the framework then
-    flags the dominant misuses -- overriding an endpoint method
-    (``<verb>_endpoint``) where a business-method override was meant, calling
-    ``session.commit()`` directly in a view method, hand-rolling a CRUD route
-    set on a bare ``View`` instead of subclassing ``RestView`` /
-    ``AsyncRestView``, and typing a scalar foreign-key column (``post_id``) as
-    an ``IDRef`` / ``IDSchema`` reference instead of
-    ``fr.MustExist[int, Model]``.
+    Opt-in: enable with ``fr.configure(warn_on_misuse=True)``. When a view
+    class is registered via ``include_view``, the framework then flags the
+    dominant misuses -- overriding an endpoint method (``<verb>_endpoint``) where
+    a business-method override was meant, calling ``session.commit()`` directly in a
+    view method, hand-rolling a CRUD route set on a bare ``View`` instead of
+    subclassing ``RestView`` / ``AsyncRestView``, and typing a scalar
+    foreign-key column (``post_id``) as an ``IDRef`` / ``IDSchema`` reference
+    instead of ``fr.MustExist[int, Model]``.
+    """
 
-    One check is always on. When the app builds its OpenAPI spec, Restly warns
-    if more than one class has the same name. OpenAPI then shows those classes
-    under long names that can change, and generated clients use them as type
-    names. To silence one such warning, filter on its message.
+
+class RestlyDuplicateSchemaNameWarning(UserWarning):
+    """Emitted when more than one class in the OpenAPI spec has the same name.
+
+    Restly checks this each time the app builds its OpenAPI spec. OpenAPI
+    keeps all classes in one list, by name. So pydantic shows the classes
+    under long names that can change, such as
+    ``app__tasks__views__TaskCreate``, and generated clients use these names
+    as type names. The warning names the classes and the views that use them.
+
+    The check is always on. A project test can turn the warning into an error
+    with ``warnings.simplefilter("error", RestlyDuplicateSchemaNameWarning)``.
     """
 
 
@@ -105,6 +113,7 @@ __all__ = [
     "Forbidden",
     "NotFound",
     "RestlyConfigurationError",
+    "RestlyDuplicateSchemaNameWarning",
     "RestlyError",
     "RestlyHTTPError",
     "RestlyMisuseWarning",

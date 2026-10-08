@@ -82,6 +82,7 @@ fastapi_restly.exc:
   - Forbidden
   - NotFound
   - RestlyConfigurationError
+  - RestlyDuplicateSchemaNameWarning
   - RestlyError
   - RestlyHTTPError
   - RestlyMisuseWarning
@@ -179,6 +180,7 @@ fastapi_restly.exc:
   - Forbidden
   - NotFound
   - RestlyConfigurationError
+  - RestlyDuplicateSchemaNameWarning
   - RestlyError
   - RestlyHTTPError
   - RestlyMisuseWarning

@@ -110,7 +110,7 @@ names built from the module path, such as `app__users__views__UserCreate`.
 When the module path is the same too, it numbers them, and the numbers follow
 the order in which the views are registered. When the app builds its OpenAPI
 spec, Restly checks for this and warns with a
-{class}`RestlyMisuseWarning <fastapi_restly.exc.RestlyMisuseWarning>` that
+{class}`RestlyDuplicateSchemaNameWarning <fastapi_restly.exc.RestlyDuplicateSchemaNameWarning>` that
 names the classes and the views. [Name your schemas](#name-your-schemas) shows
 how to avoid it.
 

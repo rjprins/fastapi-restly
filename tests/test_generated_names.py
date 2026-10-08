@@ -16,7 +16,7 @@ import pytest
 from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
-from fastapi_restly.exc import RestlyMisuseWarning
+from fastapi_restly.exc import RestlyDuplicateSchemaNameWarning
 
 from .conftest import create_tables
 
@@ -27,7 +27,7 @@ def _spec(app_or_spec: fastapi.FastAPI | Spec) -> Spec:
     if isinstance(app_or_spec, dict):
         return app_or_spec
     with warnings.catch_warnings():
-        warnings.simplefilter("error", RestlyMisuseWarning)
+        warnings.simplefilter("error", RestlyDuplicateSchemaNameWarning)
         return app_or_spec.openapi()
 
 
@@ -287,7 +287,7 @@ def test_two_list_responses_with_one_name_warn_and_stay_in_openapi():
     app = fastapi.FastAPI()
     _shop_views(app)
 
-    with pytest.warns(RestlyMisuseWarning) as record:
+    with pytest.warns(RestlyDuplicateSchemaNameWarning) as record:
         spec = app.openapi()
 
     paginated = _ref(spec, "/shops", "get")
@@ -351,7 +351,7 @@ def test_a_hand_written_class_with_a_generated_name_warns_and_stays_in_openapi()
     Restly warns."""
     app = _order_app(set_on_view=False)
 
-    with pytest.warns(RestlyMisuseWarning) as record:
+    with pytest.warns(RestlyDuplicateSchemaNameWarning) as record:
         spec = app.openapi()
 
     generated = _body_ref(spec, "/orders", "post")
@@ -384,7 +384,7 @@ def test_the_warning_comes_each_time_the_spec_is_read():
     app = _order_app(set_on_view=False)
 
     for _ in range(2):
-        with pytest.warns(RestlyMisuseWarning, match="name OrderCreate"):
+        with pytest.warns(RestlyDuplicateSchemaNameWarning, match="name OrderCreate"):
             app.openapi()
 
 
@@ -446,7 +446,7 @@ def test_two_generic_classes_with_one_name_warn():
         async def get_second(self) -> fr.views.Envelope[second]:  # type: ignore[valid-type]
             return fr.views.Envelope(data=[])
 
-    with pytest.warns(RestlyMisuseWarning) as record:
+    with pytest.warns(RestlyDuplicateSchemaNameWarning) as record:
         app.openapi()
 
     names = sorted(str(w.message).split(".", 1)[0] for w in record)

@@ -21,7 +21,7 @@ from pydantic.json_schema import GenerateJsonSchema
 from starlette.routing import BaseRoute
 
 from .._pagination import _list_envelope
-from ..exc import RestlyMisuseWarning
+from ..exc import RestlyDuplicateSchemaNameWarning
 from ..schemas._base import _derive_schema_response
 
 _CLASHES_ATTR = "_fr_openapi_name_clashes"
@@ -43,7 +43,7 @@ def _warn_on_name_clashes(
         cached = (spec, _clash_messages(app.routes, spec, views))
         setattr(app, _CLASHES_ATTR, cached)
     for message in cached[1]:
-        warnings.warn(message, RestlyMisuseWarning, stacklevel=3)
+        warnings.warn(message, RestlyDuplicateSchemaNameWarning, stacklevel=3)
 
 
 def _clash_messages(
