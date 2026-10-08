@@ -152,7 +152,10 @@ pyproject.write_text(
             cp .env.example .env
         fi
 
-        uv sync --quiet
+        # uv keeps the build of a path source and only builds it again when
+        # pyproject.toml changes. Without a rebuild, the matrix tests an old
+        # Restly and passes or fails for the wrong reason.
+        uv sync --quiet --reinstall-package fastapi-restly
 
         if [ "$migrations" = alembic ]; then
             # The scaffold ships no migration on purpose, so the documented
