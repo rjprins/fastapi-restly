@@ -25,11 +25,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   generic `RootModel` makes the list a bare JSON array. `pagination = None`
   stays the short form of `NoPagination()`.
 - Restly warns with the new `fr.exc.RestlyDuplicateSchemaNameWarning` when the
-  app builds its OpenAPI spec and more than one class has the same name. OpenAPI then shows those classes
-  under long names that can change, such as `app__tasks__views__TaskCreate`,
-  and generated clients use these names as type names. The warning names the
-  classes, the views that use them, and what to do. Projects that
-  `restly new` creates have a test that turns the warning into an error.
+  app builds its OpenAPI spec and more than one class has the same name.
+  OpenAPI then shows those classes under long names that can change, such as
+  `app__tasks__views__TaskCreate`, and generated clients use these names as
+  type names. The warning names the classes, the views that use them, and what
+  to do. Restly checks an app that you pass to `fr.configure(app, ...)` or
+  `fr.testing.configure_tests(app=...)`, or that you include a view on.
+  Projects that `restly new` creates have a test that turns the warning into
+  an error.
 
 ### Changed
 
@@ -97,7 +100,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `WriteOnly` fields. Before, it built one only when the schema had
   `WriteOnly` fields. `to_single_response` returns an instance of it, which is
   also an instance of the view's schema. An override that returns an instance
-  of the view's schema still works: the response reads it by its attributes.
+  of the view's schema still works: the response class copies its values and
+  does not validate them again. Because the class is different, a response is
+  no longer equal (`==`) to an instance of the view's schema with the same
+  values, so compare `model_dump()` instead. A response also cannot be
+  pickled, because its class is not in a module.
 - One view setting, `pagination`, replaces `paginated`, `default_page_size`
   and `max_page_size`. Write `pagination = None` for `paginated = False`, and
   `pagination = fr.NumberedPagination(default_page_size=25, max_page_size=200)`

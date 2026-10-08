@@ -209,9 +209,13 @@ a write action gates its own action inside
 {meth}`write_action <fastapi_restly.views.RestView.write_action>`; a live
 item is a 404 here, since the trash is the surface this route reads.
 `fr.clauses.UNSCOPED` is the per-read opt-out, in the same spelling as
-everywhere else. The route's response model is the view's list envelope; a
-view whose pagination sets its own envelope names that one instead, such as
-`APP_PAGINATION.envelope[ItemSchema]`.
+everywhere else. The route's response model is `PaginatedEnvelope`, the
+envelope of the default pagination, filled with the view's schema. A view
+whose pagination sets its own envelope names that one instead, such as
+`APP_PAGINATION.envelope[ItemSchema]`. OpenAPI shows these two routes with
+their own types, `PaginatedEnvelope_ItemSchema_` and `ItemSchema`, next to the
+`ItemListResponse` and `ItemResponse` of the CRUD routes; see
+[Generated Class Names](#generated-class-names).
 
 The argument replaces the scope, it does not narrow it. Put rules that may
 never be replaced, such as tenant isolation, at the session level. A `get_one`

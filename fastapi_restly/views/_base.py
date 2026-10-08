@@ -102,6 +102,7 @@ from ..query import derive_schema_list_params
 from ..query._impl import _UNKNOWN, _created_with, _query_settings
 from ..schemas import BaseSchema, IDSchema
 from ..schemas._base import (
+    _as_response,
     _derive_schema_response,
     _model_id_type,
     _reject_buried_markers,
@@ -111,7 +112,6 @@ from ..schemas._base import (
     get_writable_inputs,
     is_readonly_field,
     is_reference_field,
-    is_writeonly_field,
     reference_origin_and_target,
 )
 from ..schemas._generator import derive_schema
@@ -1505,9 +1505,9 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
         The response class is the view's schema without its WriteOnly fields,
         named like ``UserResponse``. It is a subclass of :attr:`schema`. An
-        override may return an instance of :attr:`schema` instead: the
-        response reads it by its attributes, so its WriteOnly fields do not
-        go out.
+        override may return an instance of :attr:`schema` instead. The
+        response class copies its values without validating them again, and
+        its WriteOnly fields do not go out.
 
         The ORM path below validates through the response class, so a view's
         schema that declares a WriteOnly field the ORM object doesn't carry
@@ -1515,7 +1515,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         response validation.
         """
         if isinstance(obj, self.schema):
-            return cast(SchemaT, obj)
+            return cast(SchemaT, _as_response(self.schema, obj))
 
         # Build a payload of raw attribute values keyed by schema field name;
         # re-validating it below serializes each field through its own type. The
@@ -1524,9 +1524,8 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         # view-layer special-casing. Alias rendering happens when FastAPI
         # serializes the response model.
         payload: dict[str, Any] = {}
-        for field_name, field_info in self.schema.model_fields.items():
-            if is_writeonly_field(self.schema, field_name):
-                continue
+        schema_response = _derive_schema_response(self.schema)
+        for field_name, field_info in schema_response.model_fields.items():
             if hasattr(obj, field_name):
                 payload[field_name] = getattr(obj, field_name)
             elif field_info.alias and hasattr(obj, field_info.alias):
@@ -1567,7 +1566,11 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
         The page and page size come from ``list_result.list_params``.
         """
-        data = [self.to_single_response(obj) for obj in list_result.objects]
+        # An override may return instances of the view's schema.
+        data = [
+            _as_response(self.schema, self.to_single_response(obj))
+            for obj in list_result.objects
+        ]
         pagination = self.pagination
         envelope = _list_envelope(pagination, _derive_schema_response(self.schema))
         if not isinstance(pagination, NumberedPagination):
@@ -1600,7 +1603,8 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             return fastapi.Response(status_code=204)
         if shape is ResponseShape.LIST:
             return self.to_list_response(result)
-        return self.to_single_response(result)
+        # An override may return an instance of the view's schema.
+        return _as_response(self.schema, self.to_single_response(result))
 
     def snapshot(self, obj: Any) -> dict[str, Any]:
         """Frozen capture of an object's already-loaded column values, passed as

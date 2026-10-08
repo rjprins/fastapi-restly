@@ -106,6 +106,9 @@ class ItemView(fr.AsyncRestView):
         return self.to_response(obj)
 ```
 
+OpenAPI shows `ItemSchema` for the restore route, next to the `ItemResponse`
+of the CRUD routes; see [Generated Class Names](#generated-class-names).
+
 `scope=` replaces the view scope for that read; it does not narrow it. Keep
 rules that a restore must never skip, such as tenant isolation, at the
 session level ([Tenant scoping](#tenant-scoping)). [A route names its own

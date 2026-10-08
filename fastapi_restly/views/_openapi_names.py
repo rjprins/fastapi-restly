@@ -8,15 +8,16 @@ names, and they change when a module moves or when the views are registered
 in another order. Restly warns when the spec is built, and names the classes.
 """
 
+import inspect
 import re
 import warnings
 from collections import defaultdict
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 from typing import Any
 
 import fastapi
-import pydantic
 from fastapi.openapi.utils import get_fields_from_routes
+from fastapi.routing import APIRoute
 from pydantic.json_schema import GenerateJsonSchema
 from starlette.routing import BaseRoute
 
@@ -29,10 +30,13 @@ _normalize = GenerateJsonSchema().normalize_name
 # What pydantic adds to a long name: the mode, then the number.
 _LONG_NAME_SUFFIX = re.compile(r"(?:-Input|-Output)?(?:__\d+)?$")
 
+# A role, and what Restly generates the class from (None: you wrote it).
+_Role = tuple[str, str | None]
+# For each class, its roles and the views that use it in that role.
+_Roles = dict[type, dict[_Role, list[str]]]
 
-def _warn_on_name_clashes(
-    app: fastapi.FastAPI, spec: dict[str, Any], views: Iterable[type]
-) -> None:
+
+def _warn_on_name_clashes(app: fastapi.FastAPI, spec: dict[str, Any]) -> None:
     """Warn once for each name that more than one class in ``spec`` has.
 
     The check runs once per spec. The warnings come on every call, so a test
@@ -40,15 +44,15 @@ def _warn_on_name_clashes(
     """
     cached = app.__dict__.get(_CLASHES_ATTR)
     if cached is None or cached[0] is not spec:
-        cached = (spec, _clash_messages(app.routes, spec, views))
+        # The same routes that FastAPI builds the spec from.
+        routes = [*app.routes, *app.webhooks.routes]
+        cached = (spec, _clash_messages(routes, spec))
         setattr(app, _CLASHES_ATTR, cached)
     for message in cached[1]:
         warnings.warn(message, RestlyDuplicateSchemaNameWarning, stacklevel=3)
 
 
-def _clash_messages(
-    routes: Sequence[BaseRoute], spec: dict[str, Any], views: Iterable[type]
-) -> list[str]:
+def _clash_messages(routes: Sequence[BaseRoute], spec: dict[str, Any]) -> list[str]:
     keys_by_long_name: dict[str, set[str]] = defaultdict(set)
     for key in spec.get("components", {}).get("schemas", {}):
         keys_by_long_name[_LONG_NAME_SUFFIX.sub("", key)].add(key)
@@ -64,7 +68,7 @@ def _clash_messages(
     if not classes:
         return []
 
-    roles = _view_roles(views)
+    roles = _view_roles(routes)
     return [
         _clash_message(name, list(classes[name]), sorted(keys[name]), roles)
         for name in sorted(classes)
@@ -76,11 +80,8 @@ def _component_classes(routes: Sequence[BaseRoute]) -> dict[str, type]:
     found: dict[str, type] = {}
     seen: set[int] = set()
     for field in get_fields_from_routes(routes):
-        try:
-            core_schema = pydantic.TypeAdapter(field.field_info.annotation).core_schema
-        except Exception:  # noqa: BLE001 - FastAPI reports a type it cannot use
-            continue
-        _collect_classes(core_schema, found, seen)
+        # FastAPI builds the spec from this same core schema.
+        _collect_classes(field._type_adapter.core_schema, found, seen)
     return found
 
 
@@ -111,34 +112,68 @@ def _component_names(core_ref: str) -> tuple[str, str]:
     return _normalize(short), _normalize("".join(parts))
 
 
-def _view_roles(views: Iterable[type]) -> dict[type, dict[str, list[str]]]:
-    """For each class a view uses in a role, the role and the views."""
-    roles: dict[type, dict[str, list[str]]] = defaultdict(lambda: defaultdict(list))
-    for view in views:
-        generated = getattr(view, "_fr_generated", frozenset())
-        response = _derive_schema_response(view.schema)
-        roles[response]["the response class that Restly generates for"].append(
-            view.__name__
-        )
-        roles[_list_envelope(view.pagination, response)][
-            "the list response that Restly generates for"
-        ].append(view.__name__)
-        for attribute, role in (
-            ("schema_create", "create"),
-            ("schema_update", "update"),
-        ):
-            made = "that Restly generates " if attribute in generated else ""
-            roles[getattr(view, attribute)][f"the {role} body {made}for"].append(
-                view.__name__
-            )
+def _view_roles(routes: Sequence[BaseRoute]) -> _Roles:
+    """For each class that a view's route uses in a role, the role and the
+    views. Only the routes that are in the app count, so a route that a view
+    excludes, or a list route that returns a plain response, adds no role."""
+    roles: _Roles = defaultdict(lambda: defaultdict(list))
+    for route in routes:
+        if not isinstance(route, APIRoute):
+            continue
+        view = _route_view(route)
+        if view is None:
+            continue
+        used = [route.response_model]
+        if route.body_field is not None:
+            used.append(route.body_field.field_info.annotation)
+        view_roles = _roles_of(view)
+        for cls in used:
+            for role in view_roles.get(cls, ()):
+                if view.__name__ not in roles[cls][role]:
+                    roles[cls][role].append(view.__name__)
+    return roles
+
+
+def _route_view(route: APIRoute) -> type | None:
+    """The Restly view of a route: the class that FastAPI builds as the
+    route's ``self``."""
+    from ._base import BaseRestView
+
+    for dependency in route.dependant.dependencies:
+        call = dependency.call
+        if inspect.isclass(call) and issubclass(call, BaseRestView):
+            return call
+    return None
+
+
+def _roles_of(view: Any) -> dict[type, list[_Role]]:
+    """The classes of a view by role. For a class that Restly generates, the
+    role also says what Restly generates it from."""
+    generated = view.__dict__.get("_fr_generated", frozenset())
+    # A view without a schema gets one from its model, and the other classes
+    # come from that schema.
+    if "schema" in generated:
+        from_schema = f"from the model {_path(view.model)}"
+    else:
+        from_schema = f"from {_path(view.schema)}"
+
+    def source(attribute: str) -> str | None:
+        return from_schema if attribute in generated else None
+
+    response = _derive_schema_response(view.schema)
+    roles: dict[type, list[_Role]] = defaultdict(list)
+    roles[view.schema].append(("schema", source("schema")))
+    roles[response].append(("response class", from_schema))
+    roles[_list_envelope(view.pagination, response)].append(
+        ("list response", from_schema)
+    )
+    roles[view.schema_create].append(("create body", source("schema_create")))
+    roles[view.schema_update].append(("update body", source("schema_update")))
     return roles
 
 
 def _clash_message(
-    name: str,
-    classes: list[type],
-    keys: list[str],
-    roles: dict[type, dict[str, list[str]]],
+    name: str, classes: list[type], keys: list[str], roles: _Roles
 ) -> str:
     lines = [
         f"More than one class has the name {name}. OpenAPI shows them under "
@@ -146,18 +181,35 @@ def _clash_message(
         "these names as type names."
     ]
     for cls in sorted(classes, key=_path):
-        role = "; ".join(
-            f"{phrase} {' and '.join(views)}"
-            for phrase, views in roles.get(cls, {}).items()
-        )
-        lines.append(f"- {_path(cls)}: {role}" if role else f"- {_path(cls)}")
+        lines.append(f"- {_describe(cls, roles.get(cls, {}))}")
     lines.append(
         "Give each class its own name. A class that you wrote for a view's "
         "role goes on the view, for example as schema_create. Restly names "
         "the classes it generates after the view's schema, so to change those "
-        'names, rename the view\'s schema. See "Name your schemas" in the docs.'
+        "names, rename the view's schema, or give a view without a schema "
+        'one of its own. See "Name your schemas" in the docs.'
     )
     return "\n".join(lines)
+
+
+def _describe(cls: type, roles: dict[_Role, list[str]]) -> str:
+    """One line for a class in the warning.
+
+    A class that Restly generates is not in the module that its path names,
+    so its line says what Restly generates it from instead.
+    """
+    phrases = []
+    for (role, source), views in roles.items():
+        names = " and ".join(views)
+        if source is None:
+            phrases.append(f"the {role} of {names}")
+        else:
+            phrases.append(f"the {role} that Restly generates {source} for {names}")
+    if not phrases:
+        return _path(cls)
+    if all(source is not None for _, source in roles):
+        return "; ".join(phrases)
+    return f"{_path(cls)}: {'; '.join(phrases)}"
 
 
 def _path(cls: type) -> str:

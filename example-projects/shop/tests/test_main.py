@@ -1,8 +1,11 @@
 """Test the shop example."""
 
+import warnings
+
 import pytest
 from shop.main import app
 
+from fastapi_restly.exc import RestlyDuplicateSchemaNameWarning
 from fastapi_restly.testing import RestlyTestClient
 
 
@@ -47,3 +50,12 @@ def test_orders_rest(client):
     data = response.json()
     assert "id" in data
     assert data["email"] == "test@example.com"
+
+
+def test_openapi_class_names_are_unique() -> None:
+    """Restly warns when two classes in the API have the same name: OpenAPI
+    then shows them under long names that can change, and generated clients
+    use these names as type names. This test turns the warning into an error."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RestlyDuplicateSchemaNameWarning)
+        app.openapi()

@@ -1,9 +1,11 @@
 import json
+import warnings
 
 from blog.main import BlogView, app
 from fastapi.testclient import TestClient
 
 import fastapi_restly as fr
+from fastapi_restly.exc import RestlyDuplicateSchemaNameWarning
 
 
 def test_blog_view_uses_sync_auto_schema():
@@ -42,3 +44,12 @@ def test_get_blog_list():
 
         response = client.get("/blogs/")
         assert response.is_success
+
+
+def test_openapi_class_names_are_unique() -> None:
+    """Restly warns when two classes in the API have the same name: OpenAPI
+    then shows them under long names that can change, and generated clients
+    use these names as type names. This test turns the warning into an error."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RestlyDuplicateSchemaNameWarning)
+        app.openapi()

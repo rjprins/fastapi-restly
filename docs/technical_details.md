@@ -90,6 +90,11 @@ unless another schema nests it or a custom route names it. The list params
 are not a class in OpenAPI either: OpenAPI shows them as separate query
 parameters.
 
+Restly does not yet give a custom route a way to name `UserResponse` or
+`UserListResponse`. A custom route that names `UserSchema` or
+`PaginatedEnvelope[UserSchema]` therefore shows a type of its own in OpenAPI,
+next to the type of the CRUD routes. The JSON is the same.
+
 A view without a `schema` gets a generated one. For a model named `User` it
 is `UserSchema`, so the names above stay the same. A schema with another name
 keeps its full name as the resource: `UserRead` gives `UserReadCreate`.
@@ -99,8 +104,10 @@ Restly builds it also when the schema has no `WriteOnly` fields, so OpenAPI
 always shows `UserResponse`. It is a subclass of the view's schema, and
 {meth}`to_single_response() <fastapi_restly.views.BaseRestView.to_single_response>`
 returns an instance of it. An override may return an instance of the view's
-schema instead: the response reads it by its attributes. The list response is
-the pagination's envelope, filled with the response class.
+schema instead: the response class copies its values and does not validate
+them again. The list response is the pagination's envelope, filled with the
+response class. A react-admin view has no list response class: its list
+route returns a plain JSON list.
 
 Two views with the same schema and the same pagination show one set of names.
 Two different classes can still get the same name. For example, two views
@@ -111,8 +118,11 @@ When the module path is the same too, it numbers them, and the numbers follow
 the order in which the views are registered. When the app builds its OpenAPI
 spec, Restly checks for this and warns with a
 {class}`RestlyDuplicateSchemaNameWarning <fastapi_restly.exc.RestlyDuplicateSchemaNameWarning>` that
-names the classes and the views. [Name your schemas](#name-your-schemas) shows
-how to avoid it.
+names the classes and the views. Restly checks an app that you pass to
+{func}`fr.configure(app, ...) <fastapi_restly.db.configure>` or
+{func}`configure_tests(app=...) <fastapi_restly.testing.configure_tests>`, or
+that you include a view on. [Name your schemas](#name-your-schemas) shows how
+to avoid it.
 
 (auto-generated-schemas)=
 ### Auto-Generated Schemas
@@ -140,8 +150,11 @@ behind them already have one. Three of its behaviours are worth noting:
   The default is `False`. Relationship fields are set to
   `Optional` with `default=None` in the generated schema and nested schemas are
   generated recursively (one level deep, without relationships, to avoid circular
-  references). A nested schema has no `ReadOnly` marks: Restly reads it as a
-  reference to the related row, so a client sends its `id` in a request body.
+  references). A nested schema has no `ReadOnly` marks. It is also in the
+  create and update bodies, and there its `id` is required, so OpenAPI must
+  not call that `id` read-only. Restly does not write a nested object: a
+  client sends the foreign key column instead, such as `customer_id`. See
+  [Nested Response Schemas vs Write Payloads](#nested-schemas-vs-write-payloads).
 
 When a {class}`RestView <fastapi_restly.views.RestView>` / {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` omits {attr}`schema <fastapi_restly.views.BaseRestView.schema>`, the view setup calls
 `derive_schema(model)` with its defaults, so the view and a direct call get the
@@ -286,6 +299,7 @@ The implementation detail worth knowing here is that the endpoint method calls
 {meth}`to_single_response(obj) <fastapi_restly.views.BaseRestView.to_single_response>` for the per-object serialization
 (relationship-id normalization and response-schema validation).
 
+(nested-schemas-vs-write-payloads)=
 ### Nested Response Schemas vs Write Payloads
 
 Nested schemas serve two different roles in Restly today:

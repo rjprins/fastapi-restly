@@ -133,7 +133,7 @@ The valid route values for exclusion are `fr.ViewRoute.GET_MANY`, `fr.ViewRoute.
 The inherited CRUD endpoint methods derive their request and response schemas
 from the view's configuration:
 
-- The response schema defaults to `schema` (or an auto-generated `*Read` schema when omitted).
+- The response schema is the response class that Restly builds from `schema`: the schema without its `WriteOnly` fields, named like `UserResponse`. Without a `schema`, Restly generates one from the model, named like `UserSchema` (see [Generated Class Names](#generated-class-names)).
 - The input schema for `POST` defaults to the schema without read-only fields (`schema_create`, generated as `*Create`).
 - The input schema for `PATCH` defaults to the optionalized schema (`schema_update`, generated as `*Update`).
 - Alias-aware serialization is applied, so response payload keys follow schema aliases.

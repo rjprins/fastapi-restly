@@ -18,7 +18,7 @@ from .db import async_engine          # the async engine your app already builds
 from .orders import router as orders_router
 
 app = FastAPI()
-fr.configure(async_engine=async_engine)
+fr.configure(app, async_engine=async_engine)
 
 api = APIRouter(prefix="/api")
 
@@ -38,7 +38,10 @@ app.include_router(api)
 
 `fr.include_view` works as a direct call (`fr.include_view(api, UserView)`,
 above) or as a class decorator (`@fr.include_view(app)`, used later in this
-guide); both register the same routes.
+guide); both register the same routes. Pass `app` to `fr.configure`, also
+when the views are on a router: then Restly can check the app's OpenAPI spec
+for two classes with the same name
+([Name your schemas](#name-your-schemas)).
 
 Adoption is per resource. In the example above, orders stay hand-written while
 users use `UserView`. Adding a `ProductView` later does not require changing the

@@ -119,7 +119,9 @@ def configure_tests(
     it. Database configuration performed afterwards is rejected so schema setup,
     cleanup and requests cannot disagree.
 
-    ``app`` becomes what the ``restly_app`` fixture returns. The schema is
+    ``app`` becomes what the ``restly_app`` fixture returns, and Restly checks
+    its OpenAPI spec for two classes with the same name (see
+    :class:`~fastapi_restly.exc.RestlyDuplicateSchemaNameWarning`). The schema is
     optionally built once before tests start, and every test gets a clean
     database by the strategy ``db_cleanup`` names. Client-only tests are covered
     too.
@@ -233,6 +235,10 @@ def configure_tests(
     _reject_split_databases(setup, ROLLBACK)
     _setup = setup
     _fr_globals.database_configuration_locked = True
+    if app is not None:
+        from .views._openapi import _ensure_patched
+
+        _ensure_patched(app)
 
 
 def _validate_database_sources(setup: _TestSetup, mode: str) -> None:

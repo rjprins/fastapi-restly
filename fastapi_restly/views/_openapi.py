@@ -2,7 +2,9 @@
 Internal OpenAPI post-processing: x-resource-ref annotations, and a warning
 when two classes in the spec have the same name (see ``_openapi_names``).
 
-Called automatically by include_view() — no public API.
+Called automatically by include_view() — no public API. ``fr.configure(app)``
+and ``configure_tests(app=app)`` also patch the app, so the name check runs
+when all views are on an APIRouter.
 
 FK columns and SQLAlchemy relationship fields backed by IDSchema/IDRef
 are annotated with ``x-resource-ref: "<resource-name>"`` in the generated spec.
@@ -29,7 +31,6 @@ _PATCHED_ATTR = "_fr_resource_refs_patched"
 
 @dataclass
 class _Entry:
-    view: type
     model: type[Any]
     resource_name: str
     schema: type[pydantic.BaseModel]
@@ -98,7 +99,6 @@ def _register_for_resource_ref(
     ).lstrip("/")
 
     entry = _Entry(
-        view=view_cls,
         model=model,
         resource_name=resource_name,
         schema=view_cls.schema,
@@ -112,8 +112,9 @@ def _register_for_resource_ref(
 
     # Only the FastAPI app generates the OpenAPI spec; APIRouter parents have
     # no ``.openapi`` to patch. Views registered on a router lose x-resource-ref
-    # annotations and the name check until the framework can walk to a root
-    # app, which is a separate gap.
+    # annotations until the framework can walk to a root app, which is a
+    # separate gap. The name check reads the app's routes, so it covers them
+    # when fr.configure(app) or configure_tests(app=app) patched the app.
     if isinstance(parent_router, fastapi.FastAPI):
         _ensure_patched(parent_router)
 
@@ -131,7 +132,7 @@ def _ensure_patched(app: fastapi.FastAPI) -> None:
         entries = _registered_entries(app)
         model_to_resource = {e.model: e.resource_name for e in entries}
         _annotate_spec(spec, entries, model_to_resource)
-        _warn_on_name_clashes(app, spec, [entry.view for entry in entries])
+        _warn_on_name_clashes(app, spec)
         return spec
 
     app.openapi = patched_openapi  # type: ignore[method-assign]

@@ -224,12 +224,8 @@ def _build_envelope(
     envelope: type[pydantic.BaseModel], page_info: dict[str, Any]
 ) -> pydantic.BaseModel:
     """Fill ``envelope`` from ``page_info`` by field name, never by alias, so
-    an alias only renames a field on the wire. An item that is an instance of
-    the view's schema, and not of the response class, is read by its
-    attributes."""
-    return envelope.model_validate(
-        page_info, by_alias=False, by_name=True, from_attributes=True
-    )
+    an alias only renames a field on the wire."""
+    return envelope.model_validate(page_info, by_alias=False, by_name=True)
 
 
 def _is_int(value: Any) -> bool:

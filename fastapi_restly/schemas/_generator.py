@@ -256,8 +256,10 @@ def _derive_schema(
     """The body of :func:`derive_schema`.
 
     The nested schema of a relationship is built with ``mark_read_only=False``.
-    Restly reads it as a reference to the related row, so a client sends its
-    ``id`` in a request body, and OpenAPI must not call that ``id`` read-only.
+    It is also in the create and update bodies, and there pydantic requires
+    its ``id``. A ``ReadOnly`` mark would make OpenAPI call that required
+    ``id`` read-only. Restly does not write a nested object: a client sends
+    the foreign key column instead, such as ``author_id``.
     """
 
     # Get field information from the model
@@ -337,10 +339,13 @@ def _derive_schema(
             field_definitions[field_name] = (ReadOnly[original_type], field_info)
 
     # Create the schema class using pydantic.create_model
+    # The model's module, so OpenAPI's long names for this class point to
+    # the project and not to Restly.
     schema_cls = pydantic.create_model(  # type: ignore[call-overload]
         name,
         __doc__=f"Auto-generated schema for {model.__name__}",
         __base__=tuple(bases),
+        __module__=model.__module__,
         **field_definitions,
     )
 

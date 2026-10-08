@@ -141,9 +141,10 @@ add it.
    attribute name: `derive_schema_list_params` builds `schema_list_params`.
 6. A class that Restly generates is named `<Resource><Role>`. Resource is the
    class name of the view's schema without a final `Schema` or `Response`.
-   The client only sees these names, never the view's schema itself:
-   `UserResponse`, `UserCreate`, `UserUpdate` and `UserListResponse`. A view
-   without a schema gets a generated `UserSchema`.
+   The client sees these names: `UserResponse`, `UserCreate`, `UserUpdate`
+   and `UserListResponse`. It sees the view's schema only when another schema
+   nests it or a custom route names it. A view without a schema gets a
+   generated `UserSchema`.
 7. One word per thing. "Response" is what goes out. "List params" is the list
    grammar and its value. "Query params" only means raw keys from the URL, as
    in `extra_query_params`.
@@ -165,8 +166,10 @@ derives the response, create, update and list params schemas from it.
   "resource" and "response" look too much alike. Use "response schema" only
   for what really goes out.
 - Schemas written by hand use the same names as generated ones: `UserSchema`
-  for the view's schema, and `UserCreate`, `UserUpdate` and `UserResponse`
-  for the roles. The docs and examples teach these names.
+  for the view's schema, and `UserCreate` and `UserUpdate` for the roles. A
+  hand-written `UserResponse` is the view's `schema`: Restly drops the final
+  `Response` from the resource name, so the response class keeps that name.
+  The docs and examples teach these names.
 - A class with a role name is set on the view, as in `schema_create`, so
   there is only one. A class for another purpose gets a name that says what
   it is, such as `UserSummary`. OpenAPI has no modules, so each class name

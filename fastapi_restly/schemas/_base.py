@@ -1,13 +1,15 @@
+import dataclasses
 import functools
 import inspect
 import sys
 import types
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from datetime import datetime
 from typing import (
     TYPE_CHECKING,
     Annotated,
     Any,
+    ClassVar,
     ForwardRef,
     Generic,
     Literal,
@@ -987,17 +989,106 @@ class OmitReadOnlyMixin(pydantic.BaseModel):
 
 
 class _OmitWriteOnlyMixin(pydantic.BaseModel):
+    """Mixin for the response class: removes the WriteOnly fields."""
+
+    #: The names and aliases of the removed WriteOnly fields.
+    __restly_writeonly_keys__: ClassVar[frozenset[str]] = frozenset()
+
     @classmethod
     def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
         super().__pydantic_init_subclass__(**kwargs)
 
-        writeonly_fields = [
-            name for name in cls.model_fields if is_writeonly_field(cls, name)
-        ]
+        writeonly_fields = {
+            name: field_info
+            for name, field_info in cls.model_fields.items()
+            if _is_writeonly(field_info)
+        }
+        if not writeonly_fields:
+            return
+        cls.__restly_writeonly_keys__ = frozenset(
+            key
+            for name, field_info in writeonly_fields.items()
+            for key in _input_keys(name, field_info)
+        )
         for name in writeonly_fields:
             del cls.model_fields[name]
+        _skip_field_checks(cls, set(writeonly_fields))
 
-        cls.model_rebuild(force=True)
+        # A forward reference that is not defined yet does not fail here:
+        # pydantic builds the class again when it is first used.
+        cls.model_rebuild(force=True, raise_errors=False)
+
+    # "before", not "wrap": pydantic does not pass ``by_name`` through a wrap
+    # validator to the nested models.
+    @pydantic.model_validator(mode="before")
+    @classmethod
+    def _drop_writeonly_keys(cls, value: Any) -> Any:
+        """Drop WriteOnly keys from a dict. With ``extra="allow"`` they would
+        otherwise go out as extra fields."""
+        keys = cls.__restly_writeonly_keys__
+        if keys and isinstance(value, Mapping):
+            return {key: item for key, item in value.items() if key not in keys}
+        return value
+
+
+def _input_keys(name: str, field_info: FieldInfo) -> set[str]:
+    """The keys under which a field can be in a dict: its name and aliases."""
+    keys = {name}
+    if field_info.alias is not None:
+        keys.add(field_info.alias)
+    validation_alias = field_info.validation_alias
+    if isinstance(validation_alias, str):
+        keys.add(validation_alias)
+    elif isinstance(validation_alias, pydantic.AliasChoices):
+        keys.update(
+            choice for choice in validation_alias.choices if isinstance(choice, str)
+        )
+    return keys
+
+
+def _skip_field_checks(cls: type[pydantic.BaseModel], removed: set[str]) -> None:
+    """Let validators and serializers of the removed fields stay on ``cls``.
+
+    Pydantic checks that each field validator and serializer names a field of
+    the class. A ``@field_validator("password")`` on the view's schema would
+    then fail the response class, which has no ``password``. Without the
+    check, pydantic does not use it there.
+    """
+    decorators = cls.__pydantic_decorators__
+    for group in (
+        decorators.validators,
+        decorators.field_validators,
+        decorators.field_serializers,
+    ):
+        for name, decorator in list(group.items()):
+            if removed.intersection(decorator.info.fields):
+                info = dataclasses.replace(decorator.info, check_fields=False)
+                group[name] = dataclasses.replace(decorator, info=info)  # type: ignore[assignment]
+
+
+def _as_response(schema: type[pydantic.BaseModel], value: Any) -> Any:
+    """An instance of the view's schema as an instance of its response class.
+
+    Restly copies the values and does not validate them again: they are
+    already valid, and a validator that changes a value would change it
+    twice. Fields that the response class does not have, such as WriteOnly
+    fields, stay behind. Any other value comes back as it is.
+    """
+    cls = _derive_schema_response(schema)
+    if not isinstance(value, schema) or isinstance(value, cls):
+        return value
+    fields = cls.model_fields
+    values = {name: item for name, item in value.__dict__.items() if name in fields}
+    copy = cls.model_construct(
+        _fields_set=value.model_fields_set & fields.keys(),
+        **(value.__pydantic_extra__ or {}),
+        **values,
+    )
+    if value.__pydantic_private__ is not None:
+        object.__setattr__(
+            copy, "__pydantic_private__", dict(value.__pydantic_private__)
+        )
+    return copy
 
 
 @functools.cache
@@ -1011,6 +1102,9 @@ def _derive_schema_response(
     view's routes show ``UserResponse`` in OpenAPI, not the view's schema. It
     is a subclass of the schema, so its instances are also instances of the
     schema. Two views with the same schema share it.
+
+    :func:`_as_response` turns an instance of the schema into an instance
+    of the response class.
     """
     return type(
         _schema_role_name(schema, "Response"),

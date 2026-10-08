@@ -290,8 +290,8 @@ Follow these rules for the classes you write:
 
   A class for another purpose, such as the body of a bulk route, gets a name
   that says what it is: `TaskBulkItem`, `UserSummary`.
-- Two views that share a schema also share the classes that Restly generates.
-  When the classes differ, for example because only one view is paginated,
+- Two views that share a schema also get the same names for the classes that
+  Restly generates. When the classes differ, for example because only one view is paginated,
   give one view a schema of its own:
 
   ```python
@@ -303,8 +303,11 @@ When two different classes still have the same name, OpenAPI shows both under
 long names that can change, such as `app__tasks__views__TaskCreate`. Restly
 then warns with a
 {class}`RestlyDuplicateSchemaNameWarning <fastapi_restly.exc.RestlyDuplicateSchemaNameWarning>` that
-names the classes and the views that use them. Two classes with the same name
-and the same fields are not a problem: OpenAPI shows them as one.
+names the classes and the views that use them. It checks an app that you
+pass to `fr.configure(app, ...)` or `fr.testing.configure_tests(app=...)`, or
+that you include a view on. Two classes with the same name are not a problem
+when their JSON schemas are the same, also their docstrings and defaults:
+OpenAPI then shows them as one.
 
 ## See also
 

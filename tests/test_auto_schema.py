@@ -258,8 +258,8 @@ def test_derive_schema_returns_the_schema_a_view_generates(client):
 
 def test_derive_schema_marks_read_only_fields_but_not_nested_references():
     """The schema's own id and timestamps are ReadOnly. The nested schema of a
-    relationship is a reference: a client sends its id in a request body, so
-    it has no ReadOnly marks."""
+    relationship has no ReadOnly marks: it is also in the create and update
+    bodies, where its id is required."""
 
     class Customer(fr.TimestampsMixin, fr.IDBase):
         name: Mapped[str]

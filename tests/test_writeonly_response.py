@@ -12,6 +12,9 @@ Two layers, tested independently:
   WriteOnly stays in the *request* schema (it is write-only, not no-write).
 """
 
+import types
+
+import pydantic
 from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
@@ -172,3 +175,74 @@ def test_writeonly_optional_recommended_form_is_stripped():
 
     assert "secret" not in S(id=1, name="x", secret="z").model_dump()
     assert "secret" not in S(id=1, name="x").model_dump()
+
+
+def test_writeonly_keys_in_a_dict_do_not_go_out_as_extra_fields(client):
+    """The response class has no ``password`` field. With ``extra="allow"``, a
+    ``password`` key in a dict would go out as an extra field, so the response
+    class drops it first."""
+
+    class Vault(fr.IDBase):
+        name: Mapped[str]
+        password: Mapped[str]
+
+    class VaultSchema(fr.IDSchema):
+        model_config = pydantic.ConfigDict(extra="allow")
+
+        name: str
+        password: fr.WriteOnly[str]
+
+    @fr.include_view(client.app)
+    class VaultView(fr.AsyncRestView):
+        prefix = "/vaults"
+        model = Vault
+        schema = VaultSchema
+
+        async def get_one(self, id, *, scope=None):
+            return types.SimpleNamespace(id=id, name="bob", password="secret")
+
+        def to_single_response(self, obj):
+            return {"id": obj.id, "name": obj.name, "password": obj.password}
+
+    assert client.get("/vaults/1").json() == {"id": 1, "name": "bob"}
+
+
+def test_a_validator_on_a_writeonly_field_stays_on_the_request_side(client):
+    """The response class has no ``password`` field, and pydantic rejects a
+    validator or serializer for a field that a class does not have. Restly
+    keeps them for the request, where the field is."""
+
+    class Login(fr.IDBase):
+        name: Mapped[str]
+        password: Mapped[str]
+
+    class LoginSchema(fr.IDSchema):
+        name: str
+        password: fr.WriteOnly[str]
+
+        @pydantic.field_validator("password")
+        @classmethod
+        def _long_enough(cls, value: str) -> str:
+            if len(value) < 8:
+                raise ValueError("use 8 characters or more")
+            return value
+
+        @pydantic.field_serializer("password")
+        def _hidden(self, value: str) -> str:
+            return "***"
+
+    @fr.include_view(client.app)
+    class LoginView(fr.AsyncRestView):
+        prefix = "/logins"
+        model = Login
+        schema = LoginSchema
+
+    create_tables()
+
+    client.post(
+        "/logins/", json={"name": "bob", "password": "short"}, assert_status_code=422
+    )
+    created = client.post("/logins/", json={"name": "bob", "password": "long enough"})
+
+    assert created.json() == {"id": 1, "name": "bob"}
+    assert client.get("/logins/1").json() == {"id": 1, "name": "bob"}

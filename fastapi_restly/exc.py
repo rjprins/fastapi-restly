@@ -96,14 +96,18 @@ class RestlyMisuseWarning(UserWarning):
 class RestlyDuplicateSchemaNameWarning(UserWarning):
     """Emitted when more than one class in the OpenAPI spec has the same name.
 
-    Restly checks this each time the app builds its OpenAPI spec. OpenAPI
-    keeps all classes in one list, by name. So pydantic shows the classes
-    under long names that can change, such as
+    OpenAPI keeps all classes in one list, by name. So pydantic shows the
+    classes under long names that can change, such as
     ``app__tasks__views__TaskCreate``, and generated clients use these names
     as type names. The warning names the classes and the views that use them.
 
-    The check is always on. A project test can turn the warning into an error
-    with ``warnings.simplefilter("error", RestlyDuplicateSchemaNameWarning)``.
+    Restly checks the spec each time the app builds it. It knows the app when
+    you pass it to :func:`~fastapi_restly.db.configure` or
+    :func:`~fastapi_restly.testing.configure_tests`, or when you include a
+    view on the app itself. Then the check also covers the views that you
+    include on an ``APIRouter``. There is no setting that turns the check
+    off. A project test can turn the warning into an error with
+    ``warnings.simplefilter("error", RestlyDuplicateSchemaNameWarning)``.
     """
 
 

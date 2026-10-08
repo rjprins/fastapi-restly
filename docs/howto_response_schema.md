@@ -146,8 +146,11 @@ class DataMeta(pydantic.BaseModel, Generic[T]):
 
 Set the pagination on a project base view to give every list the same
 envelope; see [Set it once for every view](#set-pagination-once).
-A custom list route on such a view names the same envelope as its
-response model, for example `response_model=APP_PAGINATION.envelope[ItemSchema]`.
+A custom list route on such a view names the same envelope class as its
+response model, filled with the view's schema, for example
+`response_model=APP_PAGINATION.envelope[ItemSchema]`. OpenAPI shows it as a
+type of its own, next to the `ItemListResponse` of `GET /`; see
+[Generated Class Names](#generated-class-names).
 [Coming from fastapi-pagination](#fastapi-pagination-migration)
 shows the envelope that keeps fastapi-pagination's field names.
 

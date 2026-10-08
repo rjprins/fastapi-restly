@@ -141,7 +141,10 @@ styles are covered in
 [Work with Foreign Keys and Relationships](howto_relationship_idschema.md).
 
 There is a known limit: views included on an `APIRouter` rather than the app
-currently lose these annotations.
+currently lose these annotations. The check for two classes with the same
+name still covers them when you pass the app to
+{func}`fr.configure(app, ...) <fastapi_restly.db.configure>`; see
+[Name your schemas](#name-your-schemas).
 
 ## See also
 

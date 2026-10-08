@@ -27,6 +27,7 @@ from ._base import (
     ListResult,
     ResponseShape,
     _annotate,
+    _as_response,
     _derive_schema_response,
     _typed_id_route,
     _view_id_type,
@@ -406,10 +407,15 @@ class _ReactAdminMixin:
         )
 
     def _serialize_items(self, items: Sequence[Any]) -> list[dict]:
-        """Serialize ORM objects to JSON-compatible dicts via the view's schema."""
+        """Serialize ORM objects to JSON-compatible dicts via the view's
+        response class, as the other routes do: an instance of the view's
+        schema from a ``to_single_response`` override goes out without its
+        WriteOnly fields."""
         view = cast(_ReactAdminViewProtocol, self)
         return [
-            view.to_single_response(obj).model_dump(mode="json", by_alias=True)
+            _as_response(view.schema, view.to_single_response(obj)).model_dump(
+                mode="json", by_alias=True
+            )
             for obj in items
         ]
 

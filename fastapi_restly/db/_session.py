@@ -148,7 +148,9 @@ def configure(
     enabling managed testing; changing them afterwards raises.
 
     :param app: Application to install the default exception handlers and the
-        health route on.
+        health route on. Restly also checks its OpenAPI spec for two classes
+        with the same name (see
+        :class:`~fastapi_restly.exc.RestlyDuplicateSchemaNameWarning`).
     :param async_database_url: Async URL to build an
         :class:`~sqlalchemy.ext.asyncio.AsyncEngine` from.
     :param async_engine: Async engine to use as given.
@@ -275,6 +277,10 @@ def configure(
     if sync_session_generator is not None:
         _fr_globals.sync_session_generator = sync_session_generator
     if app is not None:
+        from ..views._openapi import _ensure_patched
+
+        # The check for two classes with the same name in OpenAPI.
+        _ensure_patched(app)
         if install_default_exception_handlers:
             register_default_exception_handlers(app)
         if health is not None:
