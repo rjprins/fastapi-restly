@@ -60,11 +60,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `fr.query.create_list_params_schema(schema_cls, model)` is now
     `fr.query.derive_schema_list_params(schema, model)`.
   - `fr.schemas.create_schema_from_model` is now `fr.schemas.derive_schema`.
-    Its arguments `model_cls`, `schema_name` and `include_readonly_fields` are
-    now `model`, `name` and `include_read_only_fields`. Its
-    `include_relationships` now defaults to `False`, so it returns the same
-    schema that a view generates when it has no `schema`. Pass
-    `include_relationships=True` to keep the relationship fields.
+    Its arguments `model_cls` and `schema_name` are now `model` and `name`.
+    Its `include_readonly_fields` is removed. It did not add or remove any
+    field: it only turned off the `ReadOnly` mark on `id`, `created_at`,
+    `updated_at` and read-only columns, and `derive_schema` now always sets
+    that mark. Its `include_relationships` now defaults to `False`, so it
+    returns the same schema that a view generates when it has no `schema`.
+    Pass `include_relationships=True` to keep the relationship fields.
   - React-admin views no longer have `to_react_admin_listing_response` or
     their own `to_response`. To change their list response, override
     `to_list_response(list_result)`.

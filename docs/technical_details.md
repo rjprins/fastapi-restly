@@ -132,16 +132,16 @@ behind them already have one. Three of its behaviours are worth noting:
   classes to mix in ({class}`IDSchema <fastapi_restly.schemas.IDSchema>`, {class}`TimestampsSchemaMixin <fastapi_restly.schemas.TimestampsSchemaMixin>`, {class}`BaseSchema <fastapi_restly.schemas.BaseSchema>`). It does
   **not** inspect the model's Python inheritance hierarchy; a model with a field
   accidentally named `id` will receive `IDSchema` as a base.
-- **ReadOnly annotation**: Three field names are automatically marked
-  `ReadOnly`: `"id"`, `"created_at"`, and `"updated_at"` (controlled by
-  `include_read_only_fields=True`). So is a `column_property` over a SQL
-  expression, which cannot be written. Any other server-side default or
+- **ReadOnly annotation**: Three field names are always marked
+  `ReadOnly`: `"id"`, `"created_at"`, and `"updated_at"`. So is a
+  `column_property` over a SQL expression, which cannot be written. Any other server-side default or
   auto-populated column will **not** be marked `ReadOnly` by auto-generation.
 - **Relationship fields**: Included only when `include_relationships=True`.
   The default is `False`. Relationship fields are set to
   `Optional` with `default=None` in the generated schema and nested schemas are
   generated recursively (one level deep, without relationships, to avoid circular
-  references).
+  references). A nested schema has no `ReadOnly` marks: Restly reads it as a
+  reference to the related row, so a client sends its `id` in a request body.
 
 When a {class}`RestView <fastapi_restly.views.RestView>` / {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` omits {attr}`schema <fastapi_restly.views.BaseRestView.schema>`, the view setup calls
 `derive_schema(model)` with its defaults, so the view and a direct call get the

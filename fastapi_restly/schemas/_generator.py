@@ -224,17 +224,15 @@ def get_model_fields(model_cls: type[Any]) -> dict[str, Any]:
 
 
 def derive_schema(
-    model: type[Any],
-    *,
-    name: str | None = None,
-    include_relationships: bool = False,
-    include_read_only_fields: bool = True,
+    model: type[Any], *, name: str | None = None, include_relationships: bool = False
 ) -> type[BaseSchema]:
     """
     Generate a Pydantic schema from a SQLAlchemy model.
 
     With the defaults, this is the same schema that a view generates when it
-    has no ``schema``: one field per column, and no relationship fields.
+    has no ``schema``: one field per column, and no relationship fields. The
+    fields ``id``, ``created_at`` and ``updated_at``, and read-only columns
+    such as a ``column_property``, are marked ``ReadOnly``.
 
     :param model: The SQLAlchemy model class.
     :param name: Name for the generated schema class. Defaults to the
@@ -242,12 +240,25 @@ def derive_schema(
     :param include_relationships: Whether to include relationship fields. Each
         one holds a nested schema of the related model, without its
         relationships and without read-only markers.
-    :param include_read_only_fields: Whether to mark fields such as ``id``,
-        ``created_at`` and ``updated_at`` as ``ReadOnly``.
     :returns: A Pydantic schema class.
     """
-    if name is None:
-        name = f"{model.__name__}Schema"
+    return _derive_schema(
+        model,
+        name=f"{model.__name__}Schema" if name is None else name,
+        include_relationships=include_relationships,
+        mark_read_only=True,
+    )
+
+
+def _derive_schema(
+    model: type[Any], *, name: str, include_relationships: bool, mark_read_only: bool
+) -> type[BaseSchema]:
+    """The body of :func:`derive_schema`.
+
+    The nested schema of a relationship is built with ``mark_read_only=False``.
+    Restly reads it as a reference to the related row, so a client sends its
+    ``id`` in a request body, and OpenAPI must not call that ``id`` read-only.
+    """
 
     # Get field information from the model
     model_fields = get_model_fields(model)
@@ -281,7 +292,7 @@ def derive_schema(
         is_readonly = (
             field_name in ["id", "created_at", "updated_at"]
             or field_info["is_read_only"]
-        ) and include_read_only_fields
+        ) and mark_read_only
 
         if is_readonly:
             read_only_fields.append(field_name)
@@ -293,10 +304,11 @@ def derive_schema(
             if target_model is model:
                 continue
 
-            target_schema = derive_schema(
+            target_schema = _derive_schema(
                 target_model,
+                name=f"{target_model.__name__}Schema",
                 include_relationships=False,  # Avoid circular references
-                include_read_only_fields=False,
+                mark_read_only=False,
             )
             if get_origin(field_info["type"]) is list:
                 pydantic_type = list[target_schema]

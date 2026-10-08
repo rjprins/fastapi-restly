@@ -10,6 +10,7 @@ from sqlalchemy.types import JSON
 
 import fastapi_restly as fr
 import fastapi_restly.schemas as fr_schemas
+from fastapi_restly.schemas._base import is_readonly_field
 
 from .conftest import create_tables
 
@@ -253,6 +254,31 @@ def test_derive_schema_returns_the_schema_a_view_generates(client):
     assert derived.__name__ == InvoiceView.schema.__name__
     assert derived.model_json_schema() == InvoiceView.schema.model_json_schema()
     assert "customer" not in derived.model_fields
+
+
+def test_derive_schema_marks_read_only_fields_but_not_nested_references():
+    """The schema's own id and timestamps are ReadOnly. The nested schema of a
+    relationship is a reference: a client sends its id in a request body, so
+    it has no ReadOnly marks."""
+
+    class Customer(fr.TimestampsMixin, fr.IDBase):
+        name: Mapped[str]
+
+    class Invoice(fr.TimestampsMixin, fr.IDBase):
+        customer_id: Mapped[int] = mapped_column(ForeignKey("customer.id"))
+        customer: Mapped[Customer] = relationship()
+
+    schema = fr_schemas.derive_schema(Invoice, include_relationships=True)
+    [nested] = [
+        arg
+        for arg in get_args(schema.model_fields["customer"].annotation)
+        if arg is not type(None)
+    ]
+    assert nested.__name__ == "CustomerSchema"
+
+    for field in ("id", "created_at", "updated_at"):
+        assert is_readonly_field(schema, field)
+        assert not is_readonly_field(nested, field)
 
 
 def test_derive_schema_preserves_json_dict_types():
