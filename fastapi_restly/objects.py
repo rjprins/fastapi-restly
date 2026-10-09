@@ -63,6 +63,9 @@ def update_object(session: _Session, obj: _T, schema_obj: _pydantic.BaseModel) -
     resolved = _resolve_ids_to_sqlalchemy_objects(session, schema_obj)
     _check_ref_exists(session, type(obj), schema_obj)
     validate_resolved_reference_consistency(type(obj), schema_obj, resolved)
+    unloaded = _unloaded_written_collections(obj, schema_obj)
+    if unloaded:
+        session.refresh(obj, unloaded)
     apply_update_to_object(obj, schema_obj, resolved)
     return obj
 
@@ -162,33 +165,43 @@ async def async_update_object(
     resolved = await _async_resolve_ids_to_sqlalchemy_objects(session, schema_obj)
     await _async_check_ref_exists(session, type(obj), schema_obj)
     validate_resolved_reference_consistency(type(obj), schema_obj, resolved)
-    unloaded = _unloaded_written_relationships(obj, schema_obj)
+    unloaded = _unloaded_written_collections(obj, schema_obj)
     if unloaded:
         await session.refresh(obj, unloaded)
     apply_update_to_object(obj, schema_obj, resolved)
     return obj
 
 
-def _unloaded_written_relationships(
+def _unloaded_written_collections(
     obj: object, schema_obj: _pydantic.BaseModel
 ) -> list[str]:
-    """The relationships that ``schema_obj`` writes and that are not loaded
-    on ``obj``.
+    """The collections that ``schema_obj`` writes and that are not loaded on
+    ``obj``. The update loads them first.
 
     To replace a collection, SQLAlchemy first reads the old one. On an async
-    session it cannot read inside the assignment, so the update fails with
-    ``MissingGreenlet``. The view loads only the relationships of its
-    response class, and an update can write others: a ``WriteOnly`` field,
-    or a field of a ``schema_update`` that the response class does not have.
+    session it cannot read inside the assignment and fails with
+    ``MissingGreenlet``, and a relationship with ``lazy="raise"`` refuses
+    the read on both. A scalar relationship needs no load: SQLAlchemy sets
+    it without the old value, or reads that value at flush. Only
+    ``active_history`` makes it read the old value at once.
+
+    The view loads only the relationships of its response class, and an
+    update can write others: a ``WriteOnly`` field, or a field of a
+    ``schema_update`` that the response class does not have. The update
+    loads them with ``session.refresh``, which also loads a relationship with
+    ``lazy="raise"``.
     """
     state = _sa_inspect(obj)
     if not state.persistent:
         return []
     relationships = state.mapper.relationships
+    unloaded = state.unloaded
     return [
         name
         for name in _get_writable_inputs(schema_obj)
-        if name in relationships and name in state.unloaded
+        if name in relationships
+        and name in unloaded
+        and (relationships[name].uselist or relationships[name].active_history)
     ]
 
 

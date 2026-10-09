@@ -234,10 +234,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - With `extra="allow"`, a key with the name of a `WriteOnly` field that is
   not the field's alias went into the extra fields. A response built from an
   instance of the view's schema then sent it.
-- An async update can write a to-many relationship that the view does not
-  load, such as one that only `schema_update` declares. It used to answer
-  `500` with `MissingGreenlet`, because SQLAlchemy reads the old collection
-  before it replaces it. The update now loads such a relationship first.
+- An update can write a to-many relationship that the view does not load,
+  such as one that only `schema_update` declares. SQLAlchemy reads the old
+  collection before it replaces it. On an async view that answered `500`
+  with `MissingGreenlet`, and a relationship with `lazy="raise"` failed on
+  both. The update now loads such a collection first.
 - React-admin views answer `400` for a `range` with a negative start or an end
   before its start. It used to become a negative `LIMIT` or `OFFSET`: every
   row on SQLite, a `500` on PostgreSQL.
