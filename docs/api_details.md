@@ -88,8 +88,10 @@ endpoints that need the same list grammar, and pass validated list params
 instead of raw `QueryParams`. Pass the view's settings to
 `derive_schema_list_params` as `pagination=self.pagination`;
 `apply_list_params` then reads them from the list params model. It takes
-`(query, list_params, model, schema)`, the same arguments in the same order as
-the view method `apply_list_params(query, list_params)`.
+`(query, list_params, model, schema_response)`, the same arguments in the same
+order as the view method `apply_list_params(query, list_params)`. Pass the
+view's `self.schema_response`, not `self.schema`: the list params follow the
+response class.
 
 (endpoint-decorators)=
 ## Endpoint Decorators

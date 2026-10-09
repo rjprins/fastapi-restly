@@ -221,7 +221,7 @@ def _pagination_offset_validator(pagination: NumberedPagination) -> Any:
 
 
 def derive_schema_list_params(
-    schema: SchemaType,
+    schema_response: SchemaType,
     model: type[DeclarativeBase],
     *,
     pagination: _AnyPagination = _DEFAULT_PAGINATION,
@@ -232,7 +232,7 @@ def derive_schema_list_params(
     :attr:`~fastapi_restly.views.BaseRestView.schema_list_params`.
 
     The generated model accepts pagination (``page``, ``page_size``), sorting
-    (``sort``), and one filter parameter per field of ``schema`` that maps to
+    (``sort``), and one filter parameter per field of ``schema_response`` that maps to
     a filterable column on ``model`` -- with optional ``__in``/``__ne``/``__gte``/
     ``__lte``/``__gt``/``__lt``/``__isnull``/``__contains``/``__icontains``
     suffixes. Fields that do not resolve to a column (relationship/collection
@@ -253,9 +253,9 @@ def derive_schema_list_params(
     or ``None``, no pagination parameters are emitted at all -- the endpoint
     returns every matching row -- while sorting and filtering stay available.
 
-    :param schema: The schema whose fields decide the available filter
-        parameters. A view passes its ``schema_response``, so a client can
-        filter on what it can see.
+    :param schema_response: The response class whose fields decide the
+        available filter parameters. A view passes its ``schema_response``, so
+        a client can filter only on what it can see.
     :param model: The SQLAlchemy model the list endpoint queries. Used to verify
         each field resolves to a filterable column; non-column fields are
         omitted from the generated params.
@@ -301,10 +301,10 @@ def derive_schema_list_params(
         None,
     )
     reserved = _reserved_names(pagination)
-    for name, field in _iter_fields_including_nested(schema):
+    for name, field in _iter_fields_including_nested(schema_response):
         if name in reserved:
             raise ValueError(
-                f"List params for {schema.__name__!r} cannot expose "
+                f"List params for {_written_name(schema_response)!r} cannot expose "
                 f"field {name!r}: it collides with a reserved pagination/sort "
                 "parameter. Add a Pydantic alias to expose it as a filter, or "
                 "rename the pagination parameter."
@@ -316,7 +316,7 @@ def derive_schema_list_params(
         # reference traversal that does not resolve would otherwise advertise
         # filters in OpenAPI that always 400 at request time.
         try:
-            _resolve_column(model, name, schema)
+            _resolve_column(model, name, schema_response)
         except BadQueryParam:
             continue
 
@@ -412,7 +412,7 @@ def derive_schema_list_params(
                 None,
             )
 
-    schema_name = _schema_role_name(schema, "ListParams")
+    schema_name = _schema_role_name(schema_response, "ListParams")
     validators = (
         {"_validate_pagination_offset": _pagination_offset_validator(pagination)}
         if isinstance(pagination, NumberedPagination)
@@ -429,7 +429,7 @@ def apply_list_params(
     query: Select[Any],
     list_params: pydantic.BaseModel | QueryParams,
     model: type[DeclarativeBase],
-    schema: SchemaType,
+    schema_response: SchemaType,
     *,
     pagination: _AnyPagination = cast(Any, _FROM_PARAMS),
 ) -> Select[Any]:
@@ -440,8 +440,8 @@ def apply_list_params(
     ``list_params`` is normally an instance of the model returned by
     :func:`derive_schema_list_params`. The default list endpoints always pass a
     validated instance, so pagination/filter bounds have already been checked.
-    ``schema`` decides the fields a client can filter and sort on. A view
-    passes its ``schema_response``.
+    ``schema_response`` decides the fields a client can filter and sort on.
+    A view passes its response class.
 
     The arguments match the view method
     :meth:`~fastapi_restly.views.RestView.apply_list_params`, which calls this
@@ -483,9 +483,14 @@ def apply_list_params(
     query_params = _coerce_to_query_params(list_params)
     aliases: _JoinAliases = {}
     query = _apply_filtering(
-        query_params, query, model, schema, aliases=aliases, pagination=pagination
+        query_params,
+        query,
+        model,
+        schema_response,
+        aliases=aliases,
+        pagination=pagination,
     )
-    query = _apply_sorting(query_params, query, model, schema, aliases=aliases)
+    query = _apply_sorting(query_params, query, model, schema_response, aliases=aliases)
     if isinstance(pagination, NumberedPagination):
         query = _apply_pagination(query_params, query, pagination)
     return query
@@ -564,6 +569,12 @@ def _apply_sorting(
     return _append_pk_tiebreak(select_query, model, sorted_on)
 
 
+def _written_name(schema_cls: SchemaType) -> str:
+    """The name of the class that the user wrote: for a response class that
+    Restly derived, the view's schema."""
+    return schema_cls.__dict__.get("__restly_response_of__", schema_cls).__name__
+
+
 def _iter_fields_including_nested(
     schema_cls: SchemaType, prefix: str = ""
 ) -> Iterator[tuple[str, FieldInfo]]:
@@ -581,13 +592,13 @@ def _iter_fields_including_nested(
         # collision surfaces during view registration, not at request time.
         if "__" in public_name:
             raise ValueError(
-                f"List params for {schema_cls.__name__!r} cannot "
+                f"List params for {_written_name(schema_cls)!r} cannot "
                 f"expose field {public_name!r}: ``__`` is reserved for "
                 "operator suffixes. Choose a different Pydantic alias."
             )
         if "." in public_name:
             raise ValueError(
-                f"List params for {schema_cls.__name__!r} cannot "
+                f"List params for {_written_name(schema_cls)!r} cannot "
                 f"expose field {public_name!r}: ``.`` is reserved for "
                 "relation traversal. Choose a different Pydantic alias."
             )

@@ -155,11 +155,12 @@ add it.
    in `extra_query_params`.
 
 A public function takes the same argument names as the view: `schema`, not
-`schema_cls`; `query`, not `select_query`; `list_params`, not `params`. When
-a view method and a public function do the same thing, they share the name,
-and the arguments they share come in the same order: the view method
+`schema_cls`; `query`, not `select_query`; `list_params`, not `params`. An
+argument that takes the response class is `schema_response`. When a view
+method and a public function do the same thing, they share the name, and the
+arguments they share come in the same order: the view method
 `apply_list_params(query, list_params)` and the function
-`fr.query.apply_list_params(query, list_params, model, schema)`.
+`fr.query.apply_list_params(query, list_params, model, schema_response)`.
 
 ### The view's schema
 
