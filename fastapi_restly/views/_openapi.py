@@ -22,8 +22,7 @@ import pydantic
 from sqlalchemy import inspect as sa_inspect
 
 from .._mapping import is_mapped_class
-from ..schemas import IDSchema
-from ..schemas._base import _derive_schema_response
+from ..schemas import IDSchema, derive_schema_response
 from ._openapi_names import _warn_on_name_clashes
 
 _PATCHED_ATTR = "_fr_resource_refs_patched"
@@ -102,7 +101,7 @@ def _register_for_resource_ref(
         model=model,
         resource_name=resource_name,
         schema=view_cls.schema,
-        schema_response=_derive_schema_response(view_cls.schema),
+        schema_response=derive_schema_response(view_cls.schema),
         schema_create=view_cls.schema_create,
         schema_update=view_cls.schema_update,
     )

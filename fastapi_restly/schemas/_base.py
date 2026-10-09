@@ -15,6 +15,7 @@ from typing import (
     Literal,
     Optional,
     Union,
+    cast,
     final,
     get_args,
     get_origin,
@@ -30,6 +31,12 @@ from sqlalchemy.orm.session import Session as SA_Session
 from typing_extensions import TypeAliasType, TypeVar
 
 from .._mapping import is_mapped_instance
+from .._pagination import (
+    _DEFAULT_PAGINATION,
+    Envelope,
+    NoPagination,
+    NumberedPagination,
+)
 from ..clauses import Unscoped, WhereClause, apply_clauses
 from ..clauses._scopes import _default_scope
 from ..exc import NotFound, RestlyConfigurationError
@@ -1074,7 +1081,7 @@ def _as_response(schema: type[pydantic.BaseModel], value: Any) -> Any:
     twice. Fields that the response class does not have, such as WriteOnly
     fields, stay behind. Any other value comes back as it is.
     """
-    cls = _derive_schema_response(schema)
+    cls = derive_schema_response(schema)
     if not isinstance(value, schema) or isinstance(value, cls):
         return value
     fields = cls.model_fields
@@ -1091,21 +1098,44 @@ def _as_response(schema: type[pydantic.BaseModel], value: Any) -> Any:
     return copy
 
 
+_SchemaT = TypeVar("_SchemaT", bound=pydantic.BaseModel)
+
+
+def derive_schema_response(schema: type[_SchemaT]) -> type[_SchemaT]:
+    """Build the response class of a view's schema: the schema without its
+    ``WriteOnly`` fields, named ``<Resource>Response``.
+
+    A view without its own
+    :attr:`~fastapi_restly.views.BaseRestView.schema_response` gets this
+    class. Restly builds it also when the schema has no ``WriteOnly`` fields,
+    so OpenAPI shows ``UserResponse`` and not the view's schema.
+
+    The class is a subclass of ``schema``. Each call with the same schema
+    returns the same class, so a custom route can name the class that the
+    view uses::
+
+        UserResponse = fr.schemas.derive_schema_response(UserSchema)
+
+
+        class UserView(fr.AsyncRestView):
+            schema = UserSchema
+
+            @fr.get("/me", response_model=UserResponse)
+            async def me(self): ...
+
+    :param schema: The view's schema.
+    :returns: The response class.
+    """
+    return cast(type[_SchemaT], _derive_schema_response(schema))
+
+
 @functools.cache
 def _derive_schema_response(
     schema: type[pydantic.BaseModel],
 ) -> type[pydantic.BaseModel]:
-    """The response class of a view's schema: the schema without its
-    WriteOnly fields, named ``<Resource>Response``.
-
-    Restly builds it also when the schema has no WriteOnly fields, so the
-    view's routes show ``UserResponse`` in OpenAPI, not the view's schema. It
-    is a subclass of the schema, so its instances are also instances of the
-    schema. Two views with the same schema share it.
-
-    :func:`_as_response` turns an instance of the schema into an instance
-    of the response class.
-    """
+    """Cached, so a view, a custom route and every request use the same
+    class. :func:`_as_response` turns an instance of the schema into an
+    instance of this class."""
     cls = type(
         _schema_role_name(schema, "Response"),
         (_OmitWriteOnlyMixin, schema),
@@ -1118,6 +1148,64 @@ def _derive_schema_response(
     namespace[schema.__name__] = schema
     cls.model_rebuild(force=True, raise_errors=False, _types_namespace=namespace)
     return cls
+
+
+def derive_schema_list_response(
+    schema_response: type[pydantic.BaseModel],
+    *,
+    pagination: NumberedPagination | NoPagination | None = _DEFAULT_PAGINATION,
+) -> type[pydantic.BaseModel]:
+    """Build the list response class of a view: the envelope of its
+    pagination, filled with its response class, named
+    ``<Resource>ListResponse``.
+
+    ``GET /`` of a view returns this class. A custom list route names it, so
+    OpenAPI shows one type for both routes::
+
+        UserResponse = fr.schemas.derive_schema_response(UserSchema)
+        UserListResponse = fr.schemas.derive_schema_list_response(
+            UserResponse, pagination=AppView.pagination
+        )
+
+
+        class UserView(AppView):
+            schema = UserSchema
+
+            @fr.get("/inactive", response_model=UserListResponse)
+            async def inactive(self, list_params): ...
+
+    Each call with the same response class and envelope returns the same
+    class. Only the envelope of the pagination matters: two paginations with
+    the same envelope give the same class. A view has no attribute for this
+    class. To change it, change the view's ``schema_response`` or the
+    envelope of its ``pagination``.
+
+    :param schema_response: The view's response class, such as the one from
+        :func:`derive_schema_response`.
+    :param pagination: The view's pagination. ``None`` is a view without
+        pagination, as on the view. The default is the default pagination.
+    :returns: The list response class.
+    """
+    envelope = Envelope if pagination is None else pagination.envelope
+    return _named_list_envelope(envelope, schema_response)
+
+
+@functools.cache
+def _named_list_envelope(
+    envelope: type[pydantic.BaseModel], schema_response: type[pydantic.BaseModel]
+) -> type[pydantic.BaseModel]:
+    """Cached, so the route and every request use the same class, and two
+    views with the same response class and envelope share it.
+
+    It is a subclass, so OpenAPI shows ``UserListResponse`` and not
+    ``PaginatedEnvelope_UserResponse_``.
+    """
+    filled: Any = envelope[schema_response]  # type: ignore[index]
+    return type(
+        _schema_role_name(schema_response, "ListResponse"),
+        (filled,),
+        {"__module__": schema_response.__module__},
+    )
 
 
 def rebase_with_model_config(

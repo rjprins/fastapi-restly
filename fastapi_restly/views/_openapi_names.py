@@ -21,9 +21,8 @@ from fastapi.routing import APIRoute
 from pydantic.json_schema import GenerateJsonSchema
 from starlette.routing import BaseRoute
 
-from .._pagination import _list_envelope
 from ..exc import RestlyDuplicateSchemaNameWarning
-from ..schemas._base import _derive_schema_response
+from ..schemas import derive_schema_list_response, derive_schema_response
 
 _CLASHES_ATTR = "_fr_openapi_name_clashes"
 _normalize = GenerateJsonSchema().normalize_name
@@ -160,11 +159,11 @@ def _roles_of(view: Any) -> dict[type, list[_Role]]:
     def source(attribute: str) -> str | None:
         return from_schema if attribute in generated else None
 
-    response = _derive_schema_response(view.schema)
+    response = derive_schema_response(view.schema)
     roles: dict[type, list[_Role]] = defaultdict(list)
     roles[view.schema].append(("schema", source("schema")))
     roles[response].append(("response class", from_schema))
-    roles[_list_envelope(view.pagination, response)].append(
+    roles[derive_schema_list_response(response, pagination=view.pagination)].append(
         ("list response", from_schema)
     )
     roles[view.schema_create].append(("create body", source("schema_create")))

@@ -132,6 +132,8 @@ fastapi_restly.schemas:
   - TimestampsSchemaMixin
   - WriteOnly
   - derive_schema
+  - derive_schema_list_response
+  - derive_schema_response
 fastapi_restly.testing:
   - AsyncRestlyTestClient
   - RestlyTestClient
@@ -219,6 +221,8 @@ fastapi_restly.query:
   - derive_schema_list_params
 fastapi_restly.schemas:
   - derive_schema
+  - derive_schema_list_response
+  - derive_schema_response
 fastapi_restly.testing:
   - AsyncRestlyTestClient
   - RestlyTestClient

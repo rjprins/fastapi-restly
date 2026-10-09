@@ -91,7 +91,6 @@ from .._pagination import (
     NoPagination,
     NumberedPagination,
     _build_envelope,
-    _list_envelope,
     _numbered_page_info,
     _unpaginated_page_info,
 )
@@ -100,10 +99,14 @@ from ..exc import RestlyConfigurationError, RestlyMisuseWarning
 from ..objects import snapshot as _object_snapshot
 from ..query import derive_schema_list_params
 from ..query._impl import _UNKNOWN, _created_with, _query_settings
-from ..schemas import BaseSchema, IDSchema
+from ..schemas import (
+    BaseSchema,
+    IDSchema,
+    derive_schema_list_response,
+    derive_schema_response,
+)
 from ..schemas._base import (
     _as_response,
-    _derive_schema_response,
     _model_id_type,
     _reject_buried_markers,
     _unwrap_optional_annotation,
@@ -816,7 +819,7 @@ def _generated_primary_key_fields(model_cls: type[Any]) -> frozenset[str]:
 def _response_validation_adapter(
     schema_cls: type[pydantic.BaseModel],
 ) -> pydantic.TypeAdapter[pydantic.BaseModel]:
-    return pydantic.TypeAdapter(_derive_schema_response(schema_cls))
+    return pydantic.TypeAdapter(derive_schema_response(schema_cls))
 
 
 def _build_relationship_loader_options(
@@ -1524,7 +1527,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         # view-layer special-casing. Alias rendering happens when FastAPI
         # serializes the response model.
         payload: dict[str, Any] = {}
-        schema_response = _derive_schema_response(self.schema)
+        schema_response = derive_schema_response(self.schema)
         for field_name, field_info in schema_response.model_fields.items():
             if hasattr(obj, field_name):
                 payload[field_name] = getattr(obj, field_name)
@@ -1572,7 +1575,9 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             for obj in list_result.objects
         ]
         pagination = self.pagination
-        envelope = _list_envelope(pagination, _derive_schema_response(self.schema))
+        envelope = derive_schema_list_response(
+            derive_schema_response(self.schema), pagination=pagination
+        )
         if not isinstance(pagination, NumberedPagination):
             return _build_envelope(envelope, _unpaginated_page_info(data))
         params = self._to_query_params(list_result.list_params)
@@ -1684,7 +1689,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             )
             _mark_generated(cls, "schema_update")
 
-        response_schema = _derive_schema_response(cls.schema)
+        response_schema = derive_schema_response(cls.schema)
         id_type = _view_id_type(cls)
         if id_type is int:
             item_path = "/{id:int}"
@@ -1698,7 +1703,9 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                 endpoint._api_route_args = (item_path, route_kwargs.copy())
 
         # Only annotate if the methods exist (they will be overridden in subclasses)
-        list_response_annotation: Any = _list_envelope(cls.pagination, response_schema)
+        list_response_annotation: Any = derive_schema_list_response(
+            response_schema, pagination=cls.pagination
+        )
 
         # Every route that declares ``list_params`` takes the view's list
         # params: ``GET /`` and any custom list route alike, guarded the same

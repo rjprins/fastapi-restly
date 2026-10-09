@@ -9,7 +9,6 @@ through :mod:`fastapi_restly.views`, and the page-size constants through
 """
 
 import dataclasses
-import functools
 from math import ceil
 from typing import Any, Generic, Sequence
 
@@ -17,7 +16,6 @@ import pydantic
 from typing_extensions import Self, TypeVar
 
 from .exc import RestlyConfigurationError
-from .schemas._base import _schema_role_name
 
 #: Default ``page_size`` applied to paginated list endpoints when the client
 #: does not send one. A bounded default keeps a forgotten ``page_size`` from
@@ -190,34 +188,6 @@ def _unpaginated_page_info(data: list[Any]) -> dict[str, Any]:
     """What a :class:`NoPagination` envelope is filled from: every row is on
     the one page, so the total is the number of rows."""
     return {"data": data, "total_count": len(data)}
-
-
-def _list_envelope(
-    pagination: NumberedPagination | NoPagination | None,
-    schema_response: type[pydantic.BaseModel],
-) -> type[pydantic.BaseModel]:
-    """The list response model of a view: its pagination's envelope, or
-    :class:`Envelope` for ``None``, filled with the response class.
-
-    It is a subclass named ``<Resource>ListResponse``, so OpenAPI shows
-    ``UserListResponse`` and not ``PaginatedEnvelope_UserResponse_``.
-    """
-    envelope = Envelope if pagination is None else pagination.envelope
-    return _named_list_envelope(envelope, schema_response)
-
-
-@functools.cache
-def _named_list_envelope(
-    envelope: type[pydantic.BaseModel], schema_response: type[pydantic.BaseModel]
-) -> type[pydantic.BaseModel]:
-    """Cached, so the route and every request use the same class, and two
-    views with the same response class and envelope share it."""
-    filled: Any = envelope[schema_response]  # type: ignore[index]
-    return type(
-        _schema_role_name(schema_response, "ListResponse"),
-        (filled,),
-        {"__module__": schema_response.__module__},
-    )
 
 
 def _build_envelope(
