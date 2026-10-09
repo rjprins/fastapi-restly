@@ -970,11 +970,14 @@ class OmitReadOnlyMixin(pydantic.BaseModel):
     calls ``model_rebuild(force=True)`` to regenerate the validator/serializer.
     Pydantic v2 does not officially document mutation of ``model_fields`` as
     a supported customisation hook, but this approach has been stable since
-    pydantic 2.0 and works on the pinned minimum (``pydantic>=2.11.7``). If
-    a future pydantic release freezes the dict, switch to constructing a new
-    model via ``pydantic.create_model(...)`` over the kept fields. The
+    pydantic 2.0 and works on the pinned minimum (``pydantic>=2.11.7``). The
     regression test ``tests/test_pydantic_model_fields_mutation.py`` exercises
     this contract on the currently-installed pydantic.
+
+    Building the class with ``pydantic.create_model(...)`` over the kept
+    fields was tried first, and it is harder: validators, config, generics
+    and serializers do not carry over the way inheritance carries them. Only
+    revisit that if pydantic stops allowing this mutation.
     """
 
     @classmethod
