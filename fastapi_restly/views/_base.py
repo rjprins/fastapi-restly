@@ -109,6 +109,7 @@ from ..schemas._base import (
     _as_response,
     _model_id_type,
     _reject_buried_markers,
+    _response_adapter,
     _unwrap_optional_annotation,
     create_model_with_optional_fields,
     create_model_without_read_only_fields,
@@ -815,13 +816,6 @@ def _generated_primary_key_fields(model_cls: type[Any]) -> frozenset[str]:
     return frozenset(generated)
 
 
-@functools.cache
-def _response_validation_adapter(
-    schema_response: type[pydantic.BaseModel],
-) -> pydantic.TypeAdapter[pydantic.BaseModel]:
-    return pydantic.TypeAdapter(schema_response)
-
-
 def _build_relationship_loader_options(
     model_cls: type[Any],
     schema_cls: type[pydantic.BaseModel],
@@ -1523,9 +1517,12 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         WriteOnly fields, named like ``UserResponse``. It is a subclass of
         :attr:`schema`, so an override may return an instance of
         :attr:`schema` instead. The response class copies its values without
-        validating them again, and its WriteOnly fields do not go out. A view
-        that sets its own ``schema_response`` returns an instance of that
-        class.
+        validating them again, and its WriteOnly fields do not go out. An
+        override may also return an instance of another model: Restly
+        validates it into the response class from its attributes, so only
+        the fields of the response class go out. This is also how an instance
+        of :attr:`schema` goes out on a view that sets its own
+        ``schema_response``.
 
         The ORM path below validates through the response class, so a view's
         schema that declares a WriteOnly field the ORM object doesn't carry
@@ -1550,9 +1547,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             elif field_info.alias and hasattr(obj, field_info.alias):
                 payload[field_name] = getattr(obj, field_info.alias)
 
-        # through the adapter, not model_validate: a schema may narrow that
-        # classmethod's signature (SQLModel drops by_alias and by_name)
-        adapter = _response_validation_adapter(schema_response)
+        adapter = _response_adapter(schema_response)
         return cast(
             SchemaT, adapter.validate_python(payload, by_alias=False, by_name=True)
         )

@@ -205,7 +205,10 @@ class AccountView(fr.AsyncRestView):
 `POST /accounts` takes `name`, `email` and `team_id`. Every response shows
 `id`, `name` and the nested `team`, which the view loads. `?email=...` is not
 a filter, because a client does not see `email`. Restly uses the class as you
-wrote it: it does not remove `WriteOnly` fields from it.
+wrote it: it does not remove `WriteOnly` fields from it. If a
+`to_single_response` override returns an instance of `AccountSchema`, Restly
+validates it into `AccountResponse`, so only the fields of `AccountResponse`
+go out.
 
 Name the class `<Resource>Response`, as in `AccountResponse`. Restly names the
 list response and the list params after it: `AccountListResponse` and

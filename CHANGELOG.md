@@ -211,6 +211,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The list of a react-admin view sends only the fields of the response class.
+  When a `to_single_response` override returned an instance of another model,
+  the list sent all fields of that model. The other routes were not affected,
+  because FastAPI validates their responses.
 - An async update can write a to-many relationship that the view does not
   load, such as one that only `schema_update` declares. It used to answer
   `500` with `MissingGreenlet`, because SQLAlchemy reads the old collection

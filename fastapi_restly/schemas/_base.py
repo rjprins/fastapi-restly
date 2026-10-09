@@ -1074,18 +1074,28 @@ def _skip_field_checks(cls: type[pydantic.BaseModel], removed: set[str]) -> None
 
 
 def _as_response(cls: type[pydantic.BaseModel], value: Any) -> Any:
-    """An instance of the view's schema as an instance of the response class
-    ``cls`` that :func:`derive_schema_response` built from it.
+    """An instance of another model as an instance of the response class
+    ``cls``. Fields that ``cls`` does not have stay behind, also on a route
+    without a response model, such as the list of a react-admin view.
 
-    Restly copies the values and does not validate them again: they are
-    already valid, and a validator that changes a value would change it
-    twice. Fields that the response class does not have, such as WriteOnly
-    fields, stay behind. Any other value comes back as it is, and so does
-    every value for a response class that a view sets itself.
+    For a response class that :func:`derive_schema_response` built, Restly
+    copies the values of an instance of the view's schema and does not
+    validate them again: they are already valid, and a validator that
+    changes a value would change it twice.
+
+    Any other model is validated into ``cls`` from its attributes. A response
+    class that a view sets itself can have other fields and types, so Restly
+    cannot copy into it.
+
+    A value that is not a model, such as an ORM object, comes back as it is.
     """
-    schema = cls.__dict__.get("__restly_response_of__")
-    if schema is None or not isinstance(value, schema) or isinstance(value, cls):
+    if isinstance(value, cls) or not isinstance(value, pydantic.BaseModel):
         return value
+    schema = cls.__dict__.get("__restly_response_of__")
+    if schema is None or not isinstance(value, schema):
+        return _response_adapter(cls).validate_python(
+            value, from_attributes=True, by_alias=False, by_name=True
+        )
     fields = cls.model_fields
     values = {name: item for name, item in value.__dict__.items() if name in fields}
     copy = cls.model_construct(
@@ -1098,6 +1108,16 @@ def _as_response(cls: type[pydantic.BaseModel], value: Any) -> Any:
             copy, "__pydantic_private__", dict(value.__pydantic_private__)
         )
     return copy
+
+
+@functools.cache
+def _response_adapter(
+    schema_response: type[pydantic.BaseModel],
+) -> pydantic.TypeAdapter[pydantic.BaseModel]:
+    """Validates into a response class. Through an adapter, not
+    ``model_validate``: a schema may narrow that classmethod's signature
+    (SQLModel drops ``by_alias`` and ``by_name``)."""
+    return pydantic.TypeAdapter(schema_response)
 
 
 _SchemaT = TypeVar("_SchemaT", bound=pydantic.BaseModel)

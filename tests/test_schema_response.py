@@ -7,6 +7,7 @@ resource.
 """
 
 import asyncio
+import collections
 import warnings
 from collections.abc import Iterator
 from typing import Any, Generic, TypeVar
@@ -456,3 +457,93 @@ def test_a_react_admin_view_follows_the_response_class(client):
         "name": "mint",
     }
     client.get("/herbs/", params={"filter": '{"notes": "dry"}'}, assert_status_code=400)
+
+
+@pytest.mark.parametrize(
+    "base", [fr.AsyncRestView, fr.AsyncReactAdminView], ids=["rest", "react-admin"]
+)
+def test_an_instance_of_the_schema_goes_out_through_the_view_s_response_class(
+    client, base
+):
+    """An override returns an instance of the view's schema. Restly validates
+    it into the view's own response class, on every route: also on the list
+    of a react-admin view, which has no response model to do it."""
+    runs: collections.Counter[str] = collections.Counter()
+
+    class Bird(fr.IDBase):
+        name: Mapped[str]
+        secret: Mapped[str] = ""
+
+    class BirdSchema(fr.IDSchema):
+        name: str
+        secret: str = ""
+
+        @pydantic.field_validator("name")
+        @classmethod
+        def count_schema(cls, value: str) -> str:
+            runs["schema"] += 1
+            return value
+
+    class BirdResponse(fr.IDSchema):
+        name: str
+
+        @pydantic.field_validator("name")
+        @classmethod
+        def count_response(cls, value: str) -> str:
+            runs["response"] += 1
+            return value
+
+    @fr.include_view(client.app)
+    class BirdView(base):  # type: ignore[valid-type,misc]
+        prefix = "/birds"
+        model = Bird
+        schema = BirdSchema
+        schema_response = BirdResponse
+
+        def to_single_response(self, obj):
+            return BirdSchema.model_validate(obj, from_attributes=True)
+
+    create_tables()
+    client.post("/birds/", json={"name": "tit", "secret": "s3"})
+
+    for path in ("/birds/1", "/birds/"):
+        runs.clear()
+        body = client.get(path).json()
+        if path == "/birds/":
+            body = body[0] if isinstance(body, list) else body["data"][0]
+        assert body == {"id": 1, "name": "tit"}, path
+        # Each class validates once: the override into the schema, and Restly
+        # into the response class.
+        assert runs == {"schema": 1, "response": 1}, path
+
+
+def test_an_instance_of_another_model_goes_out_through_the_response_class(client):
+    """Also on a view whose response class Restly derives: an instance of a
+    model that is neither the schema nor the response class is validated
+    into the response class, so its other fields stay behind."""
+
+    class Fish(fr.IDBase):
+        name: Mapped[str]
+        secret: Mapped[str] = ""
+
+    class FishSchema(fr.IDSchema):
+        name: str
+
+    class FishWithSecret(fr.IDSchema):
+        name: str
+        secret: str
+
+    @fr.include_view(client.app)
+    class FishView(fr.AsyncReactAdminView):
+        prefix = "/fish"
+        model = Fish
+        schema = FishSchema
+
+        def to_single_response(self, obj):
+            return FishWithSecret.model_validate(obj, from_attributes=True)
+
+    create_tables()
+    client.post("/fish/", json={"name": "cod"})
+
+    assert client.get("/fish/").json() == [{"id": 1, "name": "cod"}]
+    assert client.get("/fish/1").json() == {"id": 1, "name": "cod"}

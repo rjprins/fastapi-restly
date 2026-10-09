@@ -154,7 +154,9 @@ OpenAPI always shows `UserResponse`. It is a subclass of the view's schema, and
 {meth}`to_single_response() <fastapi_restly.views.BaseRestView.to_single_response>`
 returns an instance of it. An override may return an instance of the view's
 schema instead: the response class copies its values and does not validate
-them again. A view can also set its own response class; see
+them again. An override that returns an instance of another model gets it
+validated into the response class from its attributes, so only the fields of
+the response class go out. A view can also set its own response class; see
 [Your own response class](#own-response-class). The list response is the
 pagination's envelope, filled with the response class. A react-admin view has
 no list response class: its list route returns a plain JSON list.
