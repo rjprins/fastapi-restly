@@ -1078,30 +1078,39 @@ def _as_response(cls: type[pydantic.BaseModel], value: Any) -> Any:
     ``cls``. Fields that ``cls`` does not have stay behind, also on a route
     without a response model, such as the list of a react-admin view.
 
-    For a response class that :func:`derive_schema_response` built, Restly
-    copies the values of an instance of the view's schema and does not
-    validate them again: they are already valid, and a validator that
-    changes a value would change it twice.
+    Restly copies the values of an instance of a subclass of ``cls``, and of
+    an instance of the view's schema for a response class that
+    :func:`derive_schema_response` built. It does not validate them again:
+    they are already valid, and a validator that changes a value would
+    change it twice.
 
     Any other model is validated into ``cls`` from its attributes. A response
     class that a view sets itself can have other fields and types, so Restly
     cannot copy into it.
 
-    A value that is not a model, such as an ORM object, comes back as it is.
+    A value that is not a model comes back as it is. So does an ORM object,
+    also a SQLModel table row, which is a model too: the view serializes it
+    as an ORM object.
     """
-    if isinstance(value, cls) or not isinstance(value, pydantic.BaseModel):
+    if type(value) is cls or not isinstance(value, pydantic.BaseModel):
+        return value
+    if is_mapped_instance(value):
         return value
     schema = cls.__dict__.get("__restly_response_of__")
-    if schema is None or not isinstance(value, schema):
+    if not isinstance(value, cls) and (schema is None or not isinstance(value, schema)):
         return _response_adapter(cls).validate_python(
             value, from_attributes=True, by_alias=False, by_name=True
         )
     fields = cls.model_fields
     values = {name: item for name, item in value.__dict__.items() if name in fields}
+    writeonly_keys = getattr(cls, "__restly_writeonly_keys__", frozenset())
+    extra = {
+        key: item
+        for key, item in (value.__pydantic_extra__ or {}).items()
+        if key not in writeonly_keys
+    }
     copy = cls.model_construct(
-        _fields_set=value.model_fields_set & fields.keys(),
-        **(value.__pydantic_extra__ or {}),
-        **values,
+        _fields_set=value.model_fields_set & fields.keys(), **extra, **values
     )
     if value.__pydantic_private__ is not None:
         object.__setattr__(

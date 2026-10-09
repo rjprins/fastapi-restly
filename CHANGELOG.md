@@ -56,7 +56,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   response class, not the view's schema. For a view without its own
   `schema_response` the filters stay the same, because the response class is
   the view's schema without its `WriteOnly` fields. A relationship that only
-  a `WriteOnly` field names is no longer loaded for a response.
+  a `WriteOnly` field names is no longer loaded for a response. A
+  `to_single_response` override that builds the view's schema from the ORM
+  object reads that relationship anyway, which fails on an async view: add it
+  in `get_relationship_loader_options`, or build the response class instead.
 
 - Names around lists and schemas follow one set of rules, which are now in
   CONTRIBUTING.md. "List" is what `get_many` returns, "list params" are the
@@ -220,6 +223,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   When a `to_single_response` override returned an instance of another model,
   the list sent all fields of that model. The other routes were not affected,
   because FastAPI validates their responses.
+- With `extra="allow"`, a key with the name of a `WriteOnly` field that is
+  not the field's alias went into the extra fields. A response built from an
+  instance of the view's schema then sent it.
 - An async update can write a to-many relationship that the view does not
   load, such as one that only `schema_update` declares. It used to answer
   `500` with `MissingGreenlet`, because SQLAlchemy reads the old collection

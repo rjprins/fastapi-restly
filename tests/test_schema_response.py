@@ -66,7 +66,7 @@ def _response_model(app: fastapi.FastAPI, path: str, method: str) -> Any:
 def test_derive_schema_response_returns_the_class_the_view_uses():
     class Account(fr.IDBase):
         name: Mapped[str]
-        password_hash: Mapped[str] = ""
+        password_hash: Mapped[str] = mapped_column(default="")
 
     class AccountSchema(fr.IDSchema):
         name: str
@@ -388,7 +388,7 @@ def test_openapi_shows_the_view_s_response_class(members):
 def test_a_subclass_keeps_or_rebuilds_the_response_class():
     class Plant(fr.IDBase):
         name: Mapped[str]
-        secret: Mapped[str] = ""
+        secret: Mapped[str] = mapped_column(default="")
 
     class PlantSchema(fr.IDSchema):
         name: str
@@ -432,7 +432,7 @@ def test_a_subclass_keeps_or_rebuilds_the_response_class():
 def test_a_react_admin_view_follows_the_response_class(client):
     class Herb(fr.IDBase):
         name: Mapped[str]
-        notes: Mapped[str] = ""
+        notes: Mapped[str] = mapped_column(default="")
 
     class HerbSchema(fr.IDSchema):
         name: str
@@ -472,7 +472,7 @@ def test_an_instance_of_the_schema_goes_out_through_the_view_s_response_class(
 
     class Bird(fr.IDBase):
         name: Mapped[str]
-        secret: Mapped[str] = ""
+        secret: Mapped[str] = mapped_column(default="")
 
     class BirdSchema(fr.IDSchema):
         name: str
@@ -517,6 +517,85 @@ def test_an_instance_of_the_schema_goes_out_through_the_view_s_response_class(
         assert runs == {"schema": 1, "response": 1}, path
 
 
+@pytest.mark.parametrize(
+    "base", [fr.AsyncRestView, fr.AsyncReactAdminView], ids=["rest", "react-admin"]
+)
+def test_an_instance_of_a_subclass_goes_out_without_its_other_fields(client, base):
+    """The view's schema adds fields to its own response class. An override
+    returns an instance of the schema: only the fields of the response class
+    go out, also where no response model removes the others."""
+
+    class Eel(fr.IDBase):
+        name: Mapped[str]
+        secret: Mapped[str] = mapped_column(default="")
+
+    class EelResponse(fr.IDSchema):
+        name: str
+
+    class EelSchema(EelResponse):
+        secret: str = ""
+
+    @fr.include_view(client.app)
+    class EelView(base):  # type: ignore[valid-type,misc]
+        prefix = "/eels"
+        model = Eel
+        schema = EelSchema
+        schema_response = EelResponse
+
+        def to_single_response(self, obj):
+            return EelSchema.model_validate(obj, from_attributes=True)
+
+        @fr.get("/{id}/plain", response_model=None)
+        async def plain(self, id: int) -> Any:
+            return self.to_response(await self.handle_get_one(id))
+
+    create_tables()
+    client.post("/eels/", json={"name": "conger", "secret": "s3"})
+
+    for path in ("/eels/1", "/eels/", "/eels/1/plain"):
+        body = client.get(path).json()
+        if path == "/eels/":
+            body = body[0] if isinstance(body, list) else body["data"][0]
+        assert body == {"id": 1, "name": "conger"}, path
+
+
+def test_writeonly_keys_in_the_extra_fields_do_not_go_out():
+    class Key(fr.IDSchema):
+        model_config = pydantic.ConfigDict(extra="allow")
+
+        password: fr.WriteOnly[str] = pydantic.Field(alias="pwd")
+
+    KeyResponse = fr.schemas.derive_schema_response(Key)
+    key = Key.model_validate({"id": 1, "pwd": "p1", "password": "p2", "tag": "a"})
+
+    response = fr.schemas._base._as_response(KeyResponse, key)
+
+    assert response.model_dump() == {"id": 1, "tag": "a"}
+
+
+def test_a_sqlmodel_table_row_goes_out_as_an_orm_object():
+    sqlmodel = pytest.importorskip("sqlmodel")
+
+    class Hero(sqlmodel.SQLModel, table=True):
+        id: int | None = sqlmodel.Field(default=None, primary_key=True)
+        name: str
+
+    class HeroSchema(fr.IDSchema):
+        title: str = pydantic.Field(alias="name")
+
+    class HeroView(fr.RestView):
+        prefix = "/heroes"
+        model = Hero
+        schema = HeroSchema
+
+    fr.include_view(fastapi.FastAPI(), HeroView)
+    view = object.__new__(HeroView)
+
+    response = view.to_single_response(Hero(id=1, name="Ann"))
+
+    assert response.model_dump() == {"id": 1, "title": "Ann"}
+
+
 def test_an_instance_of_another_model_goes_out_through_the_response_class(client):
     """Also on a view whose response class Restly derives: an instance of a
     model that is neither the schema nor the response class is validated
@@ -524,7 +603,7 @@ def test_an_instance_of_another_model_goes_out_through_the_response_class(client
 
     class Fish(fr.IDBase):
         name: Mapped[str]
-        secret: Mapped[str] = ""
+        secret: Mapped[str] = mapped_column(default="")
 
     class FishSchema(fr.IDSchema):
         name: str

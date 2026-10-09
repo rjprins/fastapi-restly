@@ -1514,15 +1514,20 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         """Serialize one ORM object to the view's :attr:`schema_response`.
 
         By default the response class is the view's schema without its
-        WriteOnly fields, named like ``UserResponse``. It is a subclass of
-        :attr:`schema`, so an override may return an instance of
-        :attr:`schema` instead. The response class copies its values without
-        validating them again, and its WriteOnly fields do not go out. An
-        override may also return an instance of another model: Restly
-        validates it into the response class from its attributes, so only
-        the fields of the response class go out. This is also how an instance
-        of :attr:`schema` goes out on a view that sets its own
-        ``schema_response``.
+        WriteOnly fields, named like ``UserResponse``. An override may return
+        an instance of another model, such as :attr:`schema`. Only the fields
+        of the response class go out. Restly copies the values of an instance
+        of a subclass of the response class, and of :attr:`schema` when
+        Restly derived the response class, without validating them again. It
+        validates any other model into the response class from its
+        attributes.
+
+        The view loads only the relationships that the response class names.
+        An override that builds :attr:`schema` from the ORM object also reads
+        the relationships of its WriteOnly fields. On an async view that fails
+        with ``MissingGreenlet``: add them in
+        :meth:`get_relationship_loader_options`, or build the response class
+        instead.
 
         The ORM path below validates through the response class, so a view's
         schema that declares a WriteOnly field the ORM object doesn't carry
