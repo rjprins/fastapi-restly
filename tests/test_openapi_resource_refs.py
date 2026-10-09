@@ -153,6 +153,50 @@ def test_unregistered_fk_target_not_annotated():
     assert "x-resource-ref" not in props["tag_id"]
 
 
+def test_each_class_gets_the_refs_of_its_own_fields():
+    """The view's schema takes a team id, its own response class sends the
+    nested team. Only the id gets x-resource-ref."""
+
+    class Team(fr.IDBase):
+        name: Mapped[str]
+
+    class Player(fr.IDBase):
+        name: Mapped[str]
+        team_id: Mapped[int] = mapped_column(sa.ForeignKey(Team.id))
+        team: Mapped[Team] = relationship(lazy="selectin")
+
+    class TeamSchema(fr.IDSchema):
+        name: str
+
+    class PlayerSchema(fr.IDSchema):
+        name: str
+        team: fr.IDRef[Team]
+
+    class PlayerResponse(fr.IDSchema):
+        name: str
+        team: TeamSchema
+
+    app = fastapi.FastAPI()
+
+    @fr.include_view(app)
+    class TeamView(fr.AsyncRestView):
+        prefix = "/teams"
+        model = Team
+        schema = TeamSchema
+
+    @fr.include_view(app)
+    class PlayerView(fr.AsyncRestView):
+        prefix = "/players"
+        model = Player
+        schema = PlayerSchema
+        schema_response = PlayerResponse
+
+    create_tables()
+    schemas = app.openapi()["components"]["schemas"]
+    assert "x-resource-ref" not in schemas["PlayerResponse"]["properties"]["team"]
+    assert schemas["PlayerCreate"]["properties"]["team"]["x-resource-ref"] == "teams"
+
+
 def test_spec_is_idempotent_on_multiple_openapi_calls():
     """Calling app.openapi() twice must not duplicate or corrupt annotations."""
     app = _build_app()

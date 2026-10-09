@@ -236,22 +236,19 @@ def _annotate_spec(
         return
 
     for entry in entries:
-        # A response class that the view sets can have fields of its own.
-        refs = {
-            **_compute_refs(entry.schema, entry.model, model_to_resource),
-            **_compute_refs(entry.schema_response, entry.model, model_to_resource),
-        }
-        if not refs:
-            continue
-
-        # The view's schema is in the spec only when another schema nests it
-        # or a custom route names it.
-        for schema_cls in (
-            entry.schema,
-            entry.schema_response,
-            entry.schema_create,
-            entry.schema_update,
+        # Each class gets the refs of its own fields: a class that the view
+        # sets can give a field another type, such as a nested object for an
+        # id. The view's schema is in the spec only when another schema nests
+        # it or a custom route names it.
+        for schema_cls in dict.fromkeys(
+            (
+                entry.schema,
+                entry.schema_response,
+                entry.schema_create,
+                entry.schema_update,
+            )
         ):
+            refs = _compute_refs(schema_cls, entry.model, model_to_resource)
             props = schemas.get(schema_cls.__name__, {}).get("properties", {})
             for prop_key, resource_name in refs.items():
                 if prop_key in props:
