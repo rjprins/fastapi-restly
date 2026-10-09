@@ -50,22 +50,26 @@ Most customization lives here. The business method is the domain operation: buil
 
 ### create: inject server-side fields
 
-Real APIs rarely accept every field from the client. This example stamps the author from request context:
+Real APIs rarely accept every field from the client. This example stamps the author from the current user, injected by your own auth dependency `get_current_user`:
 
 ```python
+from typing import Annotated
+from fastapi import Depends
+
 @fr.include_view(app)
 class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
-    schema = PostRead
+    schema = PostSchema
+    current_user: Annotated[User, Depends(get_current_user)]
 
     async def create(self, schema_obj):
         obj = await self.make_new_object(schema_obj)
-        obj.author_id = self.request.state.user_id   # set server-side
+        obj.author_id = self.current_user.id   # set server-side
         return await self.save_object(obj)
 ```
 
-`make_new_object` builds the ORM instance. `save_object` flushes and refreshes it, then eager-loads the relationships the response schema names, but does not commit. For a field stamped on every write, see [Stamping extra fields](#stamping-extra-fields).
+`make_new_object` builds the ORM instance. `save_object` flushes and refreshes it, then eager-loads the relationships the response names, but does not commit. For a field stamped on every write, see [Stamping extra fields](#stamping-extra-fields).
 
 ### update: validate before saving
 
@@ -83,7 +87,7 @@ To reject an update based on current state, override {meth}`update <fastapi_rest
 
 ### The scope: filter results to the current user
 
-The common read customization is row visibility. {meth}`get_many <fastapi_restly.views.RestView.get_many>`, {meth}`count <fastapi_restly.views.RestView.count>`, and {meth}`get_one <fastapi_restly.views.RestView.get_one>` all apply the view's declared {attr}`scope <fastapi_restly.views.BaseRestView.scope>`, so one clause keeps listings, totals, single-row reads, updates, and deletes aligned. Here we restrict every read to the requesting user's own posts:
+The common read customization is row visibility. {meth}`get_many <fastapi_restly.views.RestView.get_many>`, {meth}`count <fastapi_restly.views.RestView.count>`, and {meth}`get_one <fastapi_restly.views.RestView.get_one>` all apply the view's declared {attr}`scope <fastapi_restly.views.BaseRestView.scope>`, so one clause keeps lists, totals, single-row reads, updates, and deletes aligned. Here we restrict every read to the requesting user's own posts:
 
 ```python
 class Current(fr.ContextNamespace):
@@ -96,7 +100,7 @@ def get_user_id(request: fastapi.Request) -> int:
 class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
-    schema = PostRead
+    schema = PostSchema
     dependencies = [Current.depends(user_id=get_user_id)]
     scope = fr.where_clause(Post.author_id == Current.user_id)
 ```
@@ -119,7 +123,7 @@ from datetime import datetime, timezone
 class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
-    schema = PostRead
+    schema = PostSchema
 
     async def delete(self, obj):
         obj.deleted_at = datetime.now(timezone.utc)
@@ -130,7 +134,7 @@ class PostView(fr.AsyncRestView):
 `DELETE /posts/{id}` now marks the row instead of removing it.
 {meth}`delete_endpoint <fastapi_restly.views.RestView.delete_endpoint>` still
 returns 204, and {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>`
-still runs the commit bracket. Pair this with a scope clause that hides deleted rows. The canonical recipe lives in [Customizing
+still runs the commit bracket. Pair this with a scope clause that hides deleted rows. The full recipe is in [Customizing
 RestView](customize.md#delete-soft-delete-instead-of-removing-the-row). The
 reusable mixin version is in [Compose Views with
 Mixins](howto_compose_views_with_mixins.md).
@@ -158,7 +162,7 @@ handle_delete  →  get_one(id)
 The write handlers call two transaction hooks, which are the override points at this tier:
 
 - {meth}`before_action_commit(action, new, old=None) <fastapi_restly.views.RestView.before_action_commit>` runs an in-transaction side effect (an outbox row, an audit row) that commits atomically with the write.
-- {meth}`after_action_commit(action, new, old=None) <fastapi_restly.views.RestView.after_action_commit>` runs a post-commit side effect (an email, a webhook, a cache invalidation) only after the write is durable.
+- {meth}`after_action_commit(action, new, old=None) <fastapi_restly.views.RestView.after_action_commit>` runs a post-commit side effect (an email, a webhook, a cache invalidation) only after the write is durable. An exception there cannot undo the write; [When `after_action_commit` raises](customize.md#when-after_action_commit-raises) shows how to handle one.
 
 Both receive `old`, the pre-mutation snapshot produced by {meth}`snapshot(obj) <fastapi_restly.views.BaseRestView.snapshot>`, so you can fire only on a real change:
 
@@ -180,11 +184,13 @@ class Current(fr.ContextNamespace):
 class Post(fr.TimestampsMixin, fr.IDBase):
     title: Mapped[str]
     created_by_id: Mapped[int | None] = mapped_column(
-        ForeignKey("user.id"), default=None, insert_default=lambda: Current.user_id()
+        ForeignKey("user.id"),
+        default_factory=lambda: None,
+        insert_default=lambda: Current.user_id(),
     )
     updated_by_id: Mapped[int | None] = mapped_column(
         ForeignKey("user.id"),
-        default=None,
+        default_factory=lambda: None,
         insert_default=lambda: Current.user_id(),
         onupdate=lambda: Current.user_id(),
     )
@@ -206,7 +212,7 @@ update  →  update_object(obj, schema_obj)  # apply payload (no flush)
 delete  →  removes the row + flush         # no utility: override delete itself for a soft delete
 ```
 
-`make_new_object` and `update_object` do not flush. `save_object` flushes, refreshes, and eager-loads the relationships the response schema names, but does *not* commit. The same operations are available as free functions for services and workers; the free `save_object` has no view to read a schema from, so it flushes and refreshes only.
+`make_new_object` and `update_object` do not flush. `save_object` flushes, refreshes, and eager-loads the relationships the response names, but does *not* commit. The same operations are available as free functions for services and workers; the free `save_object` has no view to read a schema from, so it flushes and refreshes only.
 
 ## Custom routes
 
@@ -223,7 +229,7 @@ First we expose a summary of a post without returning the full record:
 class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
-    schema = PostRead
+    schema = PostSchema
 
     @fr.get("/{id}/summary")
     async def summary(self, id: int):
@@ -254,7 +260,7 @@ import fastapi
         return self.to_response(post)
 ```
 
-{meth}`self.to_response(post) <fastapi_restly.views.BaseRestView.to_response>` serializes through the view's response schema, the
+{meth}`self.to_response(post) <fastapi_restly.views.BaseRestView.to_response>` serializes through the view's schema, the
 same way the inherited CRUD endpoint methods do.
 
 If a custom action is just a create or update under another URL, call {meth}`handle_create <fastapi_restly.views.RestView.handle_create>` / {meth}`handle_update <fastapi_restly.views.RestView.handle_update>`:
@@ -271,7 +277,7 @@ If a custom action is just a create or update under another URL, call {meth}`han
         return self.to_response(await self.handle_create(payload))
 ```
 
-{attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` is the view's create schema, generated from `PostRead` when the view declares none, so the derived payload is validated like a `POST /` body. `handle_create` runs authorization, your {meth}`create <fastapi_restly.views.RestView.create>` override, and the commit bracket.
+{attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` is the view's create schema, generated from `PostSchema` when the view declares none, so the derived payload is validated like a `POST /` body. `handle_create` runs authorization, your {meth}`create <fastapi_restly.views.RestView.create>` override, and the commit bracket.
 
 ## Database conflict responses
 
@@ -309,14 +315,14 @@ class AuthoredBase(fr.AsyncRestView):
 class PostView(AuthoredBase):
     prefix = "/posts"
     model = Post
-    schema = PostRead
+    schema = PostSchema
 
 
 @fr.include_view(app)
 class CommentView(AuthoredBase):
     prefix = "/comments"
     model = Comment
-    schema = CommentRead
+    schema = CommentSchema
 ```
 
 FastAPI injects `self.current_user` on every subclass method. Register only concrete subclasses, not the base.
@@ -330,7 +336,7 @@ A subclass can extend a base-class business method:
 class PostView(AuthoredBase):
     prefix = "/posts"
     model = Post
-    schema = PostRead
+    schema = PostSchema
 
     async def create(self, schema_obj):
         # PostView-specific logic before the base class runs
@@ -353,7 +359,7 @@ class ProtectedBase(fr.AsyncRestView):
 class PostView(ProtectedBase):
     prefix = "/posts"
     model = Post
-    schema = PostRead
+    schema = PostSchema
 ```
 
 Every route on `/posts` now runs `require_auth` before the endpoint function.
@@ -418,13 +424,13 @@ async def fake_auth(request, call_next):
 
 # --- Schemas ---
 
-class PostRead(fr.IDSchema):
+class PostSchema(fr.IDSchema):
     title: str
     content: str
     published: bool
 
 
-class CommentRead(fr.IDSchema):
+class CommentSchema(fr.IDSchema):
     content: str
     post_id: fr.MustExist[int, Post]
 
@@ -450,7 +456,7 @@ class AuthoredBase(fr.AsyncRestView):
 class PostView(AuthoredBase):
     prefix = "/posts"
     model = Post
-    schema = PostRead
+    schema = PostSchema
 
     async def update(self, obj, schema_obj):
         if obj.published:
@@ -476,7 +482,7 @@ class PostView(AuthoredBase):
 class CommentView(AuthoredBase):
     prefix = "/comments"
     model = Comment
-    schema = CommentRead
+    schema = CommentSchema
 ```
 
 ## Try it

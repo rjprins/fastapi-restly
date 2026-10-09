@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Response Envelopes and List Metadata &#8212; FastAPI-Restly 0.10.0 documentation</title>
+    <title>Response Envelopes and List Metadata &#8212; FastAPI-Restly 0.11.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=82662543"></script>
+    <script src="_static/documentation_options.js?v=f3b36f1a"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -66,7 +66,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.10" />
+  <meta name="docsearch:version" content="0.11" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -464,6 +464,7 @@
 <li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
 <li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_nested.html">Nested Resources</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
@@ -552,7 +553,7 @@ on the wire:</p>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code>, <code class="docutils literal notranslate"><span class="pre">POST</span></code>, <code class="docutils literal notranslate"><span class="pre">PATCH</span></code></p></td>
-<td><p>The bare object, serialized through <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a> via <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response_schema" title="fastapi_restly.views.BaseRestView.to_response_schema"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_response_schema</span></code></a></p></td>
+<td><p>The bare object, serialized through <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_response" title="fastapi_restly.views.BaseRestView.schema_response"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_response</span></code></a> via <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_single_response" title="fastapi_restly.views.BaseRestView.to_single_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_single_response</span></code></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code></p></td>
 <td><p>A <code class="docutils literal notranslate"><span class="pre">data</span></code> envelope wrapping the page, plus pagination metadata (<code class="docutils literal notranslate"><span class="pre">total_count</span></code> / <code class="docutils literal notranslate"><span class="pre">page</span></code> / <code class="docutils literal notranslate"><span class="pre">page_size</span></code> / <code class="docutils literal notranslate"><span class="pre">total_pages</span></code>)</p></td>
@@ -569,7 +570,7 @@ on the wire:</p>
 <p>List endpoints paginate by default: the route wraps the page of objects in a
 <code class="docutils literal notranslate"><span class="pre">data</span></code> envelope and adds pagination metadata.</p>
 <div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;data&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="cm">/* page of UserRead */</span><span class="w"> </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;data&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="cm">/* page of UserSchema */</span><span class="w"> </span><span class="p">],</span>
 <span class="w">  </span><span class="nt">&quot;total_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">123</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;page&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;page_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">50</span><span class="p">,</span>
@@ -578,40 +579,169 @@ on the wire:</p>
 </pre></div>
 </div>
 <p>When the client omits <code class="docutils literal notranslate"><span class="pre">?page_size=</span></code>, the endpoint uses
-<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.default_page_size" title="fastapi_restly.views.BaseRestView.default_page_size"><code class="xref py py-attr docutils literal notranslate"><span class="pre">default_page_size</span></code></a>
+<a class="reference internal" href="api/views.html#fastapi_restly.views.NumberedPagination.default_page_size" title="fastapi_restly.views.NumberedPagination.default_page_size"><code class="xref py py-attr docutils literal notranslate"><span class="pre">default_page_size</span></code></a>
 (50). An explicit <code class="docutils literal notranslate"><span class="pre">page_size</span></code> may be smaller or larger than that default;
-<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.max_page_size" title="fastapi_restly.views.BaseRestView.max_page_size"><code class="xref py py-attr docutils literal notranslate"><span class="pre">max_page_size</span></code></a> is the
-ceiling above which the request is rejected with 422.</p>
-<p>To return every matching row uncapped, set
-<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.paginated" title="fastapi_restly.views.BaseRestView.paginated"><code class="xref py py-attr docutils literal notranslate"><span class="pre">paginated</span></code></a> to <code class="docutils literal notranslate"><span class="pre">False</span></code>. The
-<code class="docutils literal notranslate"><span class="pre">data</span></code> envelope stays, but the count and page fields drop away:</p>
+<a class="reference internal" href="api/views.html#fastapi_restly.views.NumberedPagination.max_page_size" title="fastapi_restly.views.NumberedPagination.max_page_size"><code class="xref py py-attr docutils literal notranslate"><span class="pre">max_page_size</span></code></a> is
+the ceiling above which the request is rejected with 422. Both are settings of
+the view’s <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.pagination" title="fastapi_restly.views.BaseRestView.pagination"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pagination</span></code></a>.</p>
+<p>To return every matching row uncapped, set <code class="docutils literal notranslate"><span class="pre">pagination</span></code> to <code class="docutils literal notranslate"><span class="pre">None</span></code>, short for
+<a class="reference internal" href="api/views.html#fastapi_restly.views.NoPagination" title="fastapi_restly.views.NoPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.NoPagination()</span></code></a>. The <code class="docutils literal notranslate"><span class="pre">data</span></code>
+envelope stays, but the count and page fields drop away:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">TagView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/tags&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Tag</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">TagRead</span>
-    <span class="n">paginated</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="c1"># Response: {&quot;data&quot;: [ /* every TagRead */ ]}</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">TagSchema</span>
+    <span class="n">pagination</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="c1"># Response: {&quot;data&quot;: [ /* every TagSchema */ ]}</span>
 </pre></div>
 </div>
 <p>Restly keeps <code class="docutils literal notranslate"><span class="pre">response_model</span></code> and OpenAPI in sync with the envelope
-automatically: the list route’s response annotation is a generated
-<a class="reference internal" href="api/views.html#fastapi_restly.views.PaginatedEnvelope" title="fastapi_restly.views.PaginatedEnvelope"><code class="xref py py-class docutils literal notranslate"><span class="pre">PaginatedEnvelope</span></code></a> wrapping the
-response schema (a plain <a class="reference internal" href="api/views.html#fastapi_restly.views.Envelope" title="fastapi_restly.views.Envelope"><code class="xref py py-class docutils literal notranslate"><span class="pre">Envelope</span></code></a> when
-<code class="docutils literal notranslate"><span class="pre">paginated</span></code> is false), so no endpoint method code is needed.</p>
+automatically: the list route’s response annotation is the pagination’s
+envelope filled with the response class, by default a
+<a class="reference internal" href="api/views.html#fastapi_restly.views.PaginatedEnvelope" title="fastapi_restly.views.PaginatedEnvelope"><code class="xref py py-class docutils literal notranslate"><span class="pre">PaginatedEnvelope</span></code></a> (a plain
+<a class="reference internal" href="api/views.html#fastapi_restly.views.Envelope" title="fastapi_restly.views.Envelope"><code class="xref py py-class docutils literal notranslate"><span class="pre">Envelope</span></code></a> without pagination), so no
+endpoint method code is needed. OpenAPI names it after the response class:
+<code class="docutils literal notranslate"><span class="pre">TagListResponse</span></code> for <code class="docutils literal notranslate"><span class="pre">TagResponse</span></code>, which Restly derives from <code class="docutils literal notranslate"><span class="pre">TagSchema</span></code>.</p>
 <p>For how clients <em>request</em> pages (the <code class="docutils literal notranslate"><span class="pre">page</span></code> and <code class="docutils literal notranslate"><span class="pre">page_size</span></code> inputs), see
 <a class="reference internal" href="howto_query_modifiers.html#pagination"><span class="std std-ref">Pagination</span></a> in the query-modifiers
 guide.</p>
 </section>
+<section id="change-the-list-envelope">
+<span id="change-list-envelope"></span><h2>Change the list envelope<a class="headerlink" href="#change-the-list-envelope" title="Link to this heading">#</a></h2>
+<p>The list envelope is a Pydantic model, and you can replace it. Write a
+generic model with one type parameter for the items, and set it as the
+<code class="docutils literal notranslate"><span class="pre">envelope</span></code> of the view’s pagination. Restly fills its fields by name from
+<code class="docutils literal notranslate"><span class="pre">data</span></code>, <code class="docutils literal notranslate"><span class="pre">total_count</span></code>, <code class="docutils literal notranslate"><span class="pre">page</span></code>, <code class="docutils literal notranslate"><span class="pre">page_size</span></code> and <code class="docutils literal notranslate"><span class="pre">total_pages</span></code>. The response
+and OpenAPI follow the model.</p>
+<ul class="simple">
+<li><p>Leave a field out to drop it from the response.</p></li>
+<li><p>Rename a field on the wire with <code class="docutils literal notranslate"><span class="pre">alias</span></code>, or rename them all
+with an <code class="docutils literal notranslate"><span class="pre">alias_generator</span></code>.</p></li>
+<li><p>Give an extra field a default, and it is sent as is.</p></li>
+<li><p>Reshape the values in a <code class="docutils literal notranslate"><span class="pre">model_validator(mode=&quot;before&quot;)</span></code>, which receives
+them as a dict.</p></li>
+</ul>
+<p>The FastAPI full-stack template’s <code class="docutils literal notranslate"><span class="pre">{&quot;data&quot;:</span> <span class="pre">[...],</span> <span class="pre">&quot;count&quot;:</span> <span class="pre">123}</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Generic</span><span class="p">,</span> <span class="n">TypeVar</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pydantic</span>
+
+<span class="n">T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;T&quot;</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">DataCount</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">,</span> <span class="n">Generic</span><span class="p">[</span><span class="n">T</span><span class="p">]):</span>
+    <span class="n">data</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">T</span><span class="p">]</span>
+    <span class="n">total_count</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">&quot;count&quot;</span><span class="p">)</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
+    <span class="n">pagination</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">NumberedPagination</span><span class="p">(</span><span class="n">envelope</span><span class="o">=</span><span class="n">DataCount</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>camelCase field names, <code class="docutils literal notranslate"><span class="pre">totalCount</span></code>, <code class="docutils literal notranslate"><span class="pre">pageSize</span></code> and <code class="docutils literal notranslate"><span class="pre">totalPages</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic.alias_generators</span><span class="w"> </span><span class="kn">import</span> <span class="n">to_camel</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">CamelPage</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">,</span> <span class="n">Generic</span><span class="p">[</span><span class="n">T</span><span class="p">]):</span>
+    <span class="n">model_config</span> <span class="o">=</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">ConfigDict</span><span class="p">(</span><span class="n">alias_generator</span><span class="o">=</span><span class="n">to_camel</span><span class="p">)</span>
+
+    <span class="n">data</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">T</span><span class="p">]</span>
+    <span class="n">total_count</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">page</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">page_size</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">total_pages</span><span class="p">:</span> <span class="nb">int</span>
+</pre></div>
+</div>
+<p>The metadata nested under <code class="docutils literal notranslate"><span class="pre">meta</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">PageMeta</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">total_count</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">page</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">page_size</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">total_pages</span><span class="p">:</span> <span class="nb">int</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">DataMeta</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">,</span> <span class="n">Generic</span><span class="p">[</span><span class="n">T</span><span class="p">]):</span>
+    <span class="n">data</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">T</span><span class="p">]</span>
+    <span class="n">meta</span><span class="p">:</span> <span class="n">PageMeta</span>
+
+    <span class="nd">@pydantic</span><span class="o">.</span><span class="n">model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">nest_meta</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;meta&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">values</span><span class="p">:</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">values</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">),</span> <span class="s2">&quot;meta&quot;</span><span class="p">:</span> <span class="n">values</span><span class="p">}</span>
+        <span class="k">return</span> <span class="n">values</span>
+</pre></div>
+</div>
+<p>Set the pagination on a project base view to give every list the same
+envelope; see <a class="reference internal" href="howto_query_modifiers.html#set-pagination-once"><span class="std std-ref">Set it once for every view</span></a>.
+A custom list route on such a view names the view’s list response class.
+Build it at module level from the response class and the same pagination:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">ItemResponse</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">derive_schema_response</span><span class="p">(</span><span class="n">ItemSchema</span><span class="p">)</span>
+<span class="n">ItemListResponse</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">derive_schema_list_response</span><span class="p">(</span>
+    <span class="n">ItemResponse</span><span class="p">,</span> <span class="n">pagination</span><span class="o">=</span><span class="n">APP_PAGINATION</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Then <code class="docutils literal notranslate"><span class="pre">response_model=ItemListResponse</span></code> gives the custom route the same type
+in OpenAPI as <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>; see
+<a class="reference internal" href="technical_details.html#name-the-response-classes"><span class="std std-ref">A custom route names the same classes</span></a>.
+<a class="reference internal" href="howto_query_modifiers.html#fastapi-pagination-migration"><span class="std std-ref">Coming from fastapi-pagination</span></a>
+shows the envelope that keeps fastapi-pagination’s field names.</p>
+<p>Creating the pagination settings builds an empty page from the envelope, so
+a required field Restly cannot fill, such as a misspelled <code class="docutils literal notranslate"><span class="pre">totl_count</span></code>, fails
+at startup instead of on a request. Leave the envelope’s <code class="docutils literal notranslate"><span class="pre">extra</span></code> setting at
+its default: Restly passes it every page value, and it keeps the fields it
+declares.</p>
+<section id="without-pagination">
+<h3>Without pagination<a class="headerlink" href="#without-pagination" title="Link to this heading">#</a></h3>
+<p>A view that returns every row takes an envelope through
+<a class="reference internal" href="api/views.html#fastapi_restly.views.NoPagination" title="fastapi_restly.views.NoPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.NoPagination</span></code></a>. Restly fills it
+from <code class="docutils literal notranslate"><span class="pre">data</span></code> and <code class="docutils literal notranslate"><span class="pre">total_count</span></code>, the number of rows, and runs no count query. So
+the <code class="docutils literal notranslate"><span class="pre">{&quot;data&quot;:</span> <span class="pre">[...],</span> <span class="pre">&quot;count&quot;:</span> <span class="pre">123}</span></code> model above works here too:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TagView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/tags&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Tag</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">TagSchema</span>
+    <span class="n">pagination</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">NoPagination</span><span class="p">(</span><span class="n">envelope</span><span class="o">=</span><span class="n">DataCount</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For a bare JSON array, use a generic <code class="docutils literal notranslate"><span class="pre">RootModel</span></code> that keeps only <code class="docutils literal notranslate"><span class="pre">data</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Items</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">RootModel</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">T</span><span class="p">]],</span> <span class="n">Generic</span><span class="p">[</span><span class="n">T</span><span class="p">]):</span>
+    <span class="nd">@pydantic</span><span class="o">.</span><span class="n">model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">rows_only</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">values</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="n">values</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TagView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/tags&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Tag</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">TagSchema</span>
+    <span class="n">pagination</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">NoPagination</span><span class="p">(</span><span class="n">envelope</span><span class="o">=</span><span class="n">Items</span><span class="p">)</span>
+    <span class="c1"># Response: [ /* every TagSchema */ ]</span>
+</pre></div>
+</div>
+</section>
+</section>
 <section id="custom-envelopes">
 <h2>Custom envelopes<a class="headerlink" href="#custom-envelopes" title="Link to this heading">#</a></h2>
-<p>Any other envelope is a change to the HTTP contract, so
+<p>An envelope around a single object, or a list shape no envelope model can
+express, such as a header, is a change to the HTTP contract. So
 <a class="reference internal" href="customize.html#replace-an-endpoint-method-to-change-the-http-contract"><span class="std std-ref">replace the endpoint method</span></a>
 and set <code class="docutils literal notranslate"><span class="pre">response_model</span></code> on the replacement.</p>
 <p>In the replacement endpoint method, call
-<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response_schema" title="fastapi_restly.views.BaseRestView.to_response_schema"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_response_schema(obj)</span></code></a>
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_single_response" title="fastapi_restly.views.BaseRestView.to_single_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_single_response(obj)</span></code></a>
 before placing the object in the envelope. This converts the ORM object to
-the view’s response schema without requiring write-only input fields.</p>
+an instance of the view’s response class, without requiring write-only input
+fields.</p>
 <p>For a single-object <code class="docutils literal notranslate"><span class="pre">{&quot;data&quot;:</span> <span class="pre">...}</span></code> wrapper, replace
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one_endpoint" title="fastapi_restly.views.RestView.get_one_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one_endpoint</span></code></a> and
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create_endpoint" title="fastapi_restly.views.RestView.create_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create_endpoint</span></code></a>:</p>
@@ -619,70 +749,34 @@ the view’s response schema without requiring write-only input fields.</p>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">UserEnvelope</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
-    <span class="n">data</span><span class="p">:</span> <span class="n">UserRead</span>
+    <span class="n">data</span><span class="p">:</span> <span class="n">UserSchema</span>
 
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
 
     <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">UserEnvelope</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_one_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
-        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response_schema</span><span class="p">(</span><span class="n">obj</span><span class="p">)}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_single_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)}</span>
 
     <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">UserEnvelope</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_create</span><span class="p">(</span><span class="n">schema_obj</span><span class="p">)</span>
-        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response_schema</span><span class="p">(</span><span class="n">obj</span><span class="p">)}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_single_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)}</span>
 </pre></div>
 </div>
-<p>For a list <code class="docutils literal notranslate"><span class="pre">{&quot;data&quot;:</span> <span class="pre">...,</span> <span class="pre">&quot;meta&quot;:</span> <span class="pre">...}</span></code> wrapper, replace
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many_endpoint" title="fastapi_restly.views.RestView.get_many_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many_endpoint</span></code></a>.
-Keep the <code class="docutils literal notranslate"><span class="pre">query_params</span></code> parameter, which Restly annotates with the generated
-filter, sort, and pagination query parameters, and reshape the default envelope
-from
-<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_listing_response" title="fastapi_restly.views.BaseRestView.to_listing_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_listing_response()</span></code></a>
-rather than redoing the page math by hand:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pydantic</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">PageMeta</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
-    <span class="n">total_count</span><span class="p">:</span> <span class="nb">int</span>
-    <span class="n">page</span><span class="p">:</span> <span class="nb">int</span>
-    <span class="n">page_size</span><span class="p">:</span> <span class="nb">int</span>
-    <span class="n">total_pages</span><span class="p">:</span> <span class="nb">int</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">UserListEnvelope</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
-    <span class="n">data</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">UserRead</span><span class="p">]</span>
-    <span class="n">meta</span><span class="p">:</span> <span class="n">PageMeta</span>
-
-
-<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
-    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserRead</span>
-    <span class="n">default_page_size</span> <span class="o">=</span> <span class="mi">50</span>
-
-    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">UserListEnvelope</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_many_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_params</span><span class="p">):</span>
-        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span><span class="n">query_params</span><span class="p">)</span>
-        <span class="n">page</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_listing_response</span><span class="p">(</span><span class="n">query_params</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
-        <span class="k">return</span> <span class="p">{</span>
-            <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">page</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">],</span>
-            <span class="s2">&quot;meta&quot;</span><span class="p">:</span> <span class="p">{</span>
-                <span class="s2">&quot;total_count&quot;</span><span class="p">:</span> <span class="n">page</span><span class="p">[</span><span class="s2">&quot;total_count&quot;</span><span class="p">],</span>
-                <span class="s2">&quot;page&quot;</span><span class="p">:</span> <span class="n">page</span><span class="p">[</span><span class="s2">&quot;page&quot;</span><span class="p">],</span>
-                <span class="s2">&quot;page_size&quot;</span><span class="p">:</span> <span class="n">page</span><span class="p">[</span><span class="s2">&quot;page_size&quot;</span><span class="p">],</span>
-                <span class="s2">&quot;total_pages&quot;</span><span class="p">:</span> <span class="n">page</span><span class="p">[</span><span class="s2">&quot;total_pages&quot;</span><span class="p">],</span>
-            <span class="p">},</span>
-        <span class="p">}</span>
-</pre></div>
-</div>
+<p>A replacement for
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many_endpoint" title="fastapi_restly.views.RestView.get_many_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many_endpoint</span></code></a> keeps
+the <code class="docutils literal notranslate"><span class="pre">list_params</span></code> parameter, which Restly annotates with the generated filter,
+sort, and pagination query parameters. To reuse the page math, pass the
+result of <code class="docutils literal notranslate"><span class="pre">handle_get_many</span></code> to
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_list_response" title="fastapi_restly.views.BaseRestView.to_list_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_list_response(result)</span></code></a>.
+It returns an instance of the view’s envelope model, so read its attributes, such
+as <code class="docutils literal notranslate"><span class="pre">page.data</span></code> and <code class="docutils literal notranslate"><span class="pre">page.total_count</span></code> with the default envelope.</p>
 <section id="envelope-several-routes-at-once-to-response">
 <h3>Envelope several routes at once: <code class="docutils literal notranslate"><span class="pre">to_response</span></code><a class="headerlink" href="#envelope-several-routes-at-once-to-response" title="Link to this heading">#</a></h3>
 <p>When the same wrapper applies to more than one route, centralize it in
@@ -690,14 +784,14 @@ rather than redoing the page math by hand:</p>
 each replacement endpoint method delegate to it. <code class="docutils literal notranslate"><span class="pre">to_response</span></code> is the shared runtime
 boundary keyed on the wire shape:
 <a class="reference internal" href="api/views.html#fastapi_restly.views.ResponseShape.SINGLE" title="fastapi_restly.views.ResponseShape.SINGLE"><code class="xref py py-attr docutils literal notranslate"><span class="pre">SINGLE</span></code></a>,
-<a class="reference internal" href="api/views.html#fastapi_restly.views.ResponseShape.LISTING" title="fastapi_restly.views.ResponseShape.LISTING"><code class="xref py py-attr docutils literal notranslate"><span class="pre">LISTING</span></code></a>, or
+<a class="reference internal" href="api/views.html#fastapi_restly.views.ResponseShape.LIST" title="fastapi_restly.views.ResponseShape.LIST"><code class="xref py py-attr docutils literal notranslate"><span class="pre">LIST</span></code></a>, or
 <a class="reference internal" href="api/views.html#fastapi_restly.views.ResponseShape.EMPTY" title="fastapi_restly.views.ResponseShape.EMPTY"><code class="xref py py-attr docutils literal notranslate"><span class="pre">EMPTY</span></code></a>. Its place among the
 override points is covered in
 <a class="reference internal" href="customize.html#to-response-the-one-response-method"><span class="std std-ref">Customizing RestView</span></a>.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">def</span><span class="w"> </span><span class="nf">to_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj_or_list</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">ResponseShape</span><span class="o">.</span><span class="n">SINGLE</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">def</span><span class="w"> </span><span class="nf">to_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">result</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">ResponseShape</span><span class="o">.</span><span class="n">SINGLE</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">shape</span> <span class="ow">is</span> <span class="n">fr</span><span class="o">.</span><span class="n">ResponseShape</span><span class="o">.</span><span class="n">SINGLE</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response_schema</span><span class="p">(</span><span class="n">obj_or_list</span><span class="p">)}</span>
-        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">obj_or_list</span><span class="p">,</span> <span class="n">shape</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_single_response</span><span class="p">(</span><span class="n">result</span><span class="p">)}</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">shape</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Be aware that overriding <code class="docutils literal notranslate"><span class="pre">to_response</span></code> without also replacing the endpoint
@@ -769,6 +863,10 @@ override for the runtime shape, and a replacement endpoint method with a matchin
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-restly-returns-by-default">What Restly returns by default</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-list-envelope">The list envelope</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#change-the-list-envelope">Change the list envelope</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#without-pagination">Without pagination</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#custom-envelopes">Custom envelopes</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#envelope-several-routes-at-once-to-response">Envelope several routes at once: <code class="docutils literal notranslate"><span class="pre">to_response</span></code></a></li>
 </ul>

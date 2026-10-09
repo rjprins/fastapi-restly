@@ -26,7 +26,7 @@ for what embedding supports.
 | {class}`author_id: fr.MustExist[int, User] <fastapi_restly.schemas.MustExist>` | `1` | scalar foreign key |
 | {class}`author: fr.IDRef[User] <fastapi_restly.schemas.IDRef>` | `1` | resolves to `User` |
 | {class}`author: fr.IDSchema[User] <fastapi_restly.schemas.IDSchema>` | `{"id": 1}` | resolves to `User` |
-| `author: fr.ReadOnly[UserRead]` | the full object | read-only relationship embed |
+| `author: fr.ReadOnly[UserSchema]` | the full object | read-only relationship embed |
 | `author_id: int` | `1` | scalar foreign key |
 
 The three checked forms (`MustExist`, `IDRef`, `IDSchema`) return `404` when
@@ -81,11 +81,11 @@ With the models in place, declare the foreign-key column on the schema as a
 checked reference:
 
 ```python
-class UserRead(fr.IDSchema):
+class UserSchema(fr.IDSchema):
     name: str
 
 
-class ArticleRead(fr.IDSchema):
+class ArticleSchema(fr.IDSchema):
     title: str
     author_id: fr.MustExist[int, User]
 ```
@@ -121,7 +121,7 @@ the schema:
 class ArticleView(fr.AsyncRestView):
     prefix = "/articles"
     model = Article
-    schema = ArticleRead
+    schema = ArticleSchema
 ```
 
 On create and update, Restly looks up the `User` with `id=1`. If it does not
@@ -136,7 +136,7 @@ The FK field is filterable on the list endpoint by its own public name, as in
 `author_id__ne`, and `author_id__isnull` are available as well, and because a
 `MustExist[int, ...]` id is a plain integer, so is the range family
 `author_id__gte` / `__lte` / `__gt` / `__lt`. See
-[Foreign-key filtering](howto_query_modifiers.md#foreign-key-filtering) for the
+[Foreign-key filtering](#foreign-key-filtering) for the
 full behavior.
 
 ## Field naming
@@ -183,7 +183,7 @@ Restly sets the FK column and leaves the relationship to you.
 A to-many reference serializes as a plain id array with {class}`list[fr.IDRef[Model]] <fastapi_restly.schemas.IDRef>`:
 
 ```python
-class OrderRead(fr.IDSchema):
+class OrderSchema(fr.IDSchema):
     customer_name: str
     products: list[fr.IDRef[Product]]  # serializes as [1, 2, 3]
 ```
@@ -236,7 +236,7 @@ Some clients model relationships as objects. For that shape, annotate the
 relationship field with {class}`fr.IDSchema[Model] <fastapi_restly.schemas.IDSchema>`:
 
 ```python
-class ArticleRead(fr.IDSchema):
+class ArticleSchema(fr.IDSchema):
     title: str
     author: fr.IDSchema[User]
 ```
@@ -258,46 +258,25 @@ difference is the API shape: flat id versus nested object.
 
 {class}`fr.IDBase <fastapi_restly.models.IDBase>` uses SQLAlchemy's
 `MappedAsDataclass`, which generates an `__init__` from the model fields.
-Restly's create/update helpers are aware of that constructor shape when an
-{class}`IDRef <fastapi_restly.schemas.IDRef>` /
-{class}`IDSchema <fastapi_restly.schemas.IDSchema>` relationship field has been
-resolved to an ORM object.
-
-For an FK-first dataclass model, keep the relationship out of the generated
-constructor and leave it unset:
+Restly passes that constructor the values it requires, whether the schema
+writes the foreign key, the relationship, or both. You can declare the foreign
+key and the relationship with any `init` and `default` options:
 
 ```python
 author_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
-author: Mapped["User"] = relationship(init=False)
-```
-
-With that model and `author: fr.IDRef[User]`, Restly passes the scalar FK when
-the constructor needs it and assigns `author` after construction. With a
-scalar `author_id: fr.MustExist[int, User]` field, leaving `author` unset keeps
-SQLAlchemy from replacing the supplied foreign key with `NULL` during flush.
-
-Do not add `default=None` to an `init=False` relationship paired with a
-required scalar foreign key. SQLAlchemy assigns that relationship default to
-each new object, and the relationship value takes precedence over the foreign
-key during flush.
-
-If your model is relationship-first, Restly adapts there too:
-
-```python
-author_id: Mapped[int] = mapped_column(ForeignKey("user.id"), init=False)
 author: Mapped["User"] = relationship(default=None)
 ```
 
-In that shape, Restly passes the resolved `User` object to the constructor and
-keeps `author_id` in sync. More generally, Restly supplies the constructor
-values your dataclass model requires: FK scalar, relationship object, or both.
+A relationship the request does not send never overrides a foreign key it
+does send. If such a relationship is `None` after construction, for example
+from `default=None`, Restly removes the `None`. Otherwise SQLAlchemy's flush
+would write `NULL` over the foreign key.
 
-Optional references follow the same contract. A field typed
-`author: fr.IDRef[User] | None` accepts an explicit `null`, and may simply be
-omitted when it defaults to `None`; the row is created with a `NULL` foreign
-key, with the constructor again receiving whatever the dataclass requires. A
-`null` against a `NOT NULL` column fails at the database and surfaces as the
-standard `409`, not a server error.
+Optional references work the same way. A field typed
+`author: fr.IDRef[User] | None` accepts an explicit `null`, and may be omitted
+when it defaults to `None`. Unless another field sends the foreign key, the
+row gets a `NULL` foreign key. A `null` for a `NOT NULL` column fails in the
+database, and the request returns the standard `409`, not a server error.
 
 If a schema exposes the same link as two reference fields, for example a
 FK-named {class}`IDRef <fastapi_restly.schemas.IDRef>` field alongside the
@@ -314,7 +293,9 @@ Conflicting references, such as `"author_id": 1` with `"author": {"id": 2}`,
 return `422`. Explicit `null` also participates in this check: `author_id: 1`
 with `author: null` is a conflict, while omitting `author` entirely is not. A
 plain {class}`MustExist <fastapi_restly.schemas.MustExist>` scalar does not take
-part in this reference-pair check; it is a checked column value.
+part in this reference-pair check; it is a checked column value. When a
+request sends it together with a different relationship value, including
+`null`, Restly saves the relationship value.
 
 ### Standard SQLAlchemy declarative models
 
@@ -364,7 +345,7 @@ skips validation. For a
 from fastapi_restly.objects import async_make_new_object
 
 
-link_schema = TaskLabelRead.model_construct(
+link_schema = TaskLabelSchema.model_construct(
     task_id=request.task_id,
     label_id=label.id,
 )
@@ -385,24 +366,24 @@ If those fields were {class}`IDRef <fastapi_restly.schemas.IDRef>` /
 instead, wrap them explicitly before calling the object helper:
 
 ```python
-link_schema = TaskLabelRead.model_construct(
+link_schema = TaskLabelSchema.model_construct(
     task=fr.IDRef[Task](id=request.task_id),
     label=fr.IDRef[Label](id=label.id),
 )
 ```
 
-If you instead use {class}`IDSchema[Model] <fastapi_restly.schemas.IDSchema>` as a nested relationship-object field in a custom response schema, serialize the ORM object through {meth}`self.to_response_schema(obj) <fastapi_restly.views.BaseRestView.to_response_schema>` before returning it:
+If you instead use {class}`IDSchema[Model] <fastapi_restly.schemas.IDSchema>` as a nested relationship-object field in a custom response schema, serialize the ORM object through {meth}`self.to_single_response(obj) <fastapi_restly.views.BaseRestView.to_single_response>` before returning it:
 
 ```python
-class TaskLabelNestedRead(fr.IDSchema):
+class TaskLabelNestedSchema(fr.IDSchema):
     task: fr.IDSchema[Task]
     label: fr.IDSchema[Label]
 
 
-@fr.post("/attach", response_model=TaskLabelNestedRead, status_code=201)
+@fr.post("/attach", response_model=TaskLabelNestedSchema, status_code=201)
 async def attach(self, request: AttachRequest):
     obj = await create_task_label(...)
-    return self.to_response_schema(obj)
+    return self.to_single_response(obj)
 ```
 
 The raw ORM object usually has scalar FK columns, while a nested schema expects
@@ -442,7 +423,7 @@ requested id (and a list field is a list of references):
 class ArticleView(fr.AsyncRestView):
     prefix = "/articles"
     model = Article
-    schema = ArticleRead
+    schema = ArticleSchema
 
     async def authorize(self, action, obj=None, data=None):
         if data is not None and data.author_id is not None:

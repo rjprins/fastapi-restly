@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Using RestView &#8212; FastAPI-Restly 0.10.0 documentation</title>
+    <title>Using RestView &#8212; FastAPI-Restly 0.11.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=82662543"></script>
+    <script src="_static/documentation_options.js?v=f3b36f1a"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -66,7 +66,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.10" />
+  <meta name="docsearch:version" content="0.11" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -553,12 +553,12 @@ mapped class that the routes read and write.</p></li>
 <p>Ordinary models based on SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">DeclarativeBase</span></code> work. Restly’s
 <a class="reference internal" href="api/models.html#fastapi_restly.models.IDBase" title="fastapi_restly.models.IDBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDBase</span></code></a> is an optional convenience base,
 not a requirement.</p>
-<p>If the view does not declare <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a>, Restly constructs a response schema
+<p>If the view does not declare <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a>, Restly generates the view’s schema
 from <code class="docutils literal notranslate"><span class="pre">model</span></code> when the view is registered. It then derives the create and update
-schemas from that response schema. Declare an explicit response schema when the
+schemas from it. Write the view’s schema yourself when the
 wire contract needs stable field names, validation, aliases, or fields that do
 not match the table directly:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
 
@@ -567,10 +567,10 @@ not match the table directly:</p>
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
 </pre></div>
 </div>
-<p>The three schema attributes have separate jobs:</p>
+<p>The four schema attributes have separate jobs:</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>
 <tr class="row-odd"><th class="head"><p>Attribute</p></th>
@@ -580,20 +580,27 @@ not match the table directly:</p>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">GET</span></code> responses and successful write responses</p></td>
+<td><p>The source that Restly derives the other three from</p></td>
 <td><p>Constructed from <code class="docutils literal notranslate"><span class="pre">model</span></code> when omitted</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_response" title="fastapi_restly.views.BaseRestView.schema_response"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_response</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">GET</span></code> responses and successful write responses</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">schema</span></code> without <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">POST</span></code> request body</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">schema</span></code> without <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> fields</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">PATCH</span></code> request body</p></td>
 <td><p>Writable fields from <code class="docutils literal notranslate"><span class="pre">schema</span></code>, made optional</p></td>
 </tr>
 </tbody>
 </table>
 </div>
+<p>Both derived schemas also leave out a primary key the server generates
+(autoincrement, a column default, or a dataclass field with <code class="docutils literal notranslate"><span class="pre">init=False</span></code>),
+marked <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> or not. A natural key stays writable.</p>
 <p><a class="reference internal" href="howto_custom_schema.html"><span class="std std-doc">Custom Schemas and Field Types</span></a> owns field markers,
 aliases, validation, and the choice between explicit and constructed schemas.</p>
 <p>For larger applications, define the class without registration side effects
@@ -601,7 +608,7 @@ and include it where the app or router is assembled:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
 
 
 <span class="n">fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">UserView</span><span class="p">)</span>
@@ -690,6 +697,45 @@ commit.</p>
 action unless a subclass overrides it. Add authentication through FastAPI
 dependencies, then enforce per-action policy in <code class="docutils literal notranslate"><span class="pre">authorize()</span></code> where needed.</p>
 </div>
+<section id="item-paths-and-static-routes">
+<span id="item-route-matching"></span><h3>Item paths and static routes<a class="headerlink" href="#item-paths-and-static-routes" title="Link to this heading">#</a></h3>
+<p>The built-in <code class="docutils literal notranslate"><span class="pre">GET</span></code>, <code class="docutils literal notranslate"><span class="pre">PATCH</span></code>, and <code class="docutils literal notranslate"><span class="pre">DELETE</span></code> item paths follow
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.id_type" title="fastapi_restly.views.BaseRestView.id_type"><code class="xref py py-attr docutils literal notranslate"><span class="pre">id_type</span></code></a>. By default, it is
+inferred from the model’s primary key. React Admin’s <code class="docutils literal notranslate"><span class="pre">PUT</span></code> uses the same path.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>ID type</p></th>
+<th class="head"><p>Registered item path</p></th>
+<th class="head"><p>Matching values</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/{id:int}</span></code></p></td>
+<td><p>Non-negative digits, including <code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">uuid.UUID</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/{id:uuid}</span></code></p></td>
+<td><p>UUIDs accepted by Starlette’s converter</p></td>
+</tr>
+<tr class="row-even"><td><p>Any other type</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/{id}</span></code></p></td>
+<td><p>Any single path segment, then FastAPI validation</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>An integer or UUID item route leaves <code class="docutils literal notranslate"><span class="pre">/users/me</span></code> available to a static route
+registered after the view. A value that does not match the converter returns
+<code class="docutils literal notranslate"><span class="pre">404</span></code> instead of the previous <code class="docutils literal notranslate"><span class="pre">422</span></code>, unless another route handles it. Negative
+integer IDs do not match, even if the row exists. OpenAPI still shows
+<code class="docutils literal notranslate"><span class="pre">/users/{id}</span></code> with the integer or UUID parameter schema.</p>
+<p>Custom endpoint declarations keep their paths. To accept negative integer
+IDs, replace each needed item endpoint with an untyped path such as
+<code class="docutils literal notranslate"><span class="pre">&#64;fr.get(&quot;/{id}&quot;)</span></code> and annotate its <code class="docutils literal notranslate"><span class="pre">id</span></code> parameter as <code class="docutils literal notranslate"><span class="pre">int</span></code>. See
+<a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a> for endpoint replacements. Register
+static routes before untyped item routes, including views with string IDs.</p>
+</section>
 </section>
 <section id="configure-a-view">
 <h2>Configure a view<a class="headerlink" href="#configure-a-view" title="Link to this heading">#</a></h2>
@@ -707,25 +753,28 @@ dependencies, then enforce per-action policy in <code class="docutils literal no
 <tr class="row-odd"><td><p>Different create or update validation</p></td>
 <td><p>Declare <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a> or <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a></p></td>
 </tr>
-<tr class="row-even"><td><p>UUID or another scalar ID type</p></td>
+<tr class="row-even"><td><p>A different type for the <code class="docutils literal notranslate"><span class="pre">{id}</span></code> path parameter</p></td>
 <td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.id_type" title="fastapi_restly.views.BaseRestView.id_type"><code class="xref py py-attr docutils literal notranslate"><span class="pre">id_type</span></code></a></p></td>
 </tr>
 <tr class="row-odd"><td><p>Read-only or otherwise restricted routes</p></td>
 <td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_routes" title="fastapi_restly.views.BaseRestView.exclude_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_routes</span></code></a> with <code class="docutils literal notranslate"><span class="pre">fr.ViewRoute</span></code> values</p></td>
 </tr>
 <tr class="row-even"><td><p>Disable pagination</p></td>
-<td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.paginated" title="fastapi_restly.views.BaseRestView.paginated"><code class="xref py py-attr docutils literal notranslate"><span class="pre">paginated</span></code></a> to <code class="docutils literal notranslate"><span class="pre">False</span></code></p></td>
+<td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.pagination" title="fastapi_restly.views.BaseRestView.pagination"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pagination</span></code></a> to <code class="docutils literal notranslate"><span class="pre">None</span></code>, or to a <a class="reference internal" href="api/views.html#fastapi_restly.views.NoPagination" title="fastapi_restly.views.NoPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">NoPagination</span></code></a> to choose its envelope</p></td>
 </tr>
-<tr class="row-odd"><td><p>Change page limits</p></td>
-<td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.default_page_size" title="fastapi_restly.views.BaseRestView.default_page_size"><code class="xref py py-attr docutils literal notranslate"><span class="pre">default_page_size</span></code></a> and <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.max_page_size" title="fastapi_restly.views.BaseRestView.max_page_size"><code class="xref py py-attr docutils literal notranslate"><span class="pre">max_page_size</span></code></a></p></td>
+<tr class="row-odd"><td><p>Change page limits, parameter names, or the list envelope</p></td>
+<td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.pagination" title="fastapi_restly.views.BaseRestView.pagination"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pagination</span></code></a> to a <a class="reference internal" href="api/views.html#fastapi_restly.views.NumberedPagination" title="fastapi_restly.views.NumberedPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">NumberedPagination</span></code></a></p></td>
 </tr>
 <tr class="row-even"><td><p>Accept a view-specific list query key</p></td>
-<td><p>Add it to <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.extra_query_params" title="fastapi_restly.views.BaseRestView.extra_query_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">extra_query_params</span></code></a></p></td>
+<td><p>Declare it on the endpoint method or in a dependency, or add it to <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.extra_query_params" title="fastapi_restly.views.BaseRestView.extra_query_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">extra_query_params</span></code></a> when code reads it from the request</p></td>
 </tr>
 <tr class="row-odd"><td><p>Apply FastAPI metadata or dependencies to every route</p></td>
 <td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.View.tags" title="fastapi_restly.views.View.tags"><code class="xref py py-attr docutils literal notranslate"><span class="pre">tags</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.View.responses" title="fastapi_restly.views.View.responses"><code class="xref py py-attr docutils literal notranslate"><span class="pre">responses</span></code></a>, or <a class="reference internal" href="api/views.html#fastapi_restly.views.View.dependencies" title="fastapi_restly.views.View.dependencies"><code class="xref py py-attr docutils literal notranslate"><span class="pre">dependencies</span></code></a></p></td>
 </tr>
-<tr class="row-even"><td><p>Use another session dependency</p></td>
+<tr class="row-even"><td><p>Set a route name, summary, or operation ID</p></td>
+<td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.View.route_options" title="fastapi_restly.views.View.route_options"><code class="xref py py-attr docutils literal notranslate"><span class="pre">route_options</span></code></a> as shown in <a class="reference internal" href="howto_openapi.html#default-route-metadata"><span class="std std-ref">OpenAPI customization</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>Use another session dependency</p></td>
 <td><p>Override the <code class="docutils literal notranslate"><span class="pre">session</span></code> annotation with <code class="docutils literal notranslate"><span class="pre">Annotated[...,</span> <span class="pre">Depends(...)]</span></code></p></td>
 </tr>
 </tbody>
@@ -784,8 +833,9 @@ override decision table, and worked recipes.</p>
 <h2>Limits and alternatives<a class="headerlink" href="#limits-and-alternatives" title="Link to this heading">#</a></h2>
 <p>The default CRUD contract has these boundaries:</p>
 <ul class="simple">
-<li><p>Resource identity is one scalar primary key on the generated routes. Set
-<code class="docutils literal notranslate"><span class="pre">id_type</span></code> for UUID or another scalar type. A composite key is reached from
+<li><p>Resource identity is one scalar primary key on the generated routes. The
+<code class="docutils literal notranslate"><span class="pre">{id}</span></code> path parameter takes the key’s Python type, so a UUID or string key
+needs no configuration. A composite key is reached from
 a custom route that loads with a predicate
 (<a class="reference internal" href="customize.html#natural-key-route"><span class="std std-ref">Look a row up by another key</span></a>), or from
 <a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a> with explicit route paths.</p></li>
@@ -866,7 +916,10 @@ and defaults.</p></li>
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#choose-async-or-sync">Choose async or sync</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#define-the-resource">Define the resource</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#default-crud-behavior">Default CRUD behavior</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#default-crud-behavior">Default CRUD behavior</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#item-paths-and-static-routes">Item paths and static routes</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#configure-a-view">Configure a view</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#change-behavior">Change behavior</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#limits-and-alternatives">Limits and alternatives</a></li>

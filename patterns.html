@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Patterns &#8212; FastAPI-Restly 0.10.0 documentation</title>
+    <title>Patterns &#8212; FastAPI-Restly 0.11.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=82662543"></script>
+    <script src="_static/documentation_options.js?v=f3b36f1a"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -61,12 +61,12 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Share Behaviour with Base Views" href="howto_inheritance.html" />
+    <link rel="next" title="Nested Resources" href="howto_nested.html" />
     <link rel="prev" title="Shape Error Responses" href="howto_error_responses.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.10" />
+  <meta name="docsearch:version" content="0.11" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -464,6 +464,7 @@
 <li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Patterns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_nested.html">Nested Resources</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
@@ -537,12 +538,12 @@
 each. Entries are short on purpose: each states the problem, shows the
 recommended shape in one example, and links to the page that owns the depth.
 Every example on this page runs against the current release.</p>
-<section id="nested-resources-projects-id-tasks">
-<span id="patterns-nested-resources"></span><h2>Nested resources (<code class="docutils literal notranslate"><span class="pre">/projects/{id}/tasks</span></code>)<a class="headerlink" href="#nested-resources-projects-id-tasks" title="Link to this heading">#</a></h2>
+<section id="nested-resources-projects-project-id-tasks">
+<span id="patterns-nested-resources"></span><h2>Nested resources (<code class="docutils literal notranslate"><span class="pre">/projects/{project_id}/tasks</span></code>)<a class="headerlink" href="#nested-resources-projects-project-id-tasks" title="Link to this heading">#</a></h2>
 <p>To expose child rows under a parent, model the child as a flat resource and
 filter by its foreign key; the filter parameter is generated automatically for
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">MustExist</span></code></a> fields:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">TaskRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">TaskSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">project_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">MustExist</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Project</span><span class="p">]</span>
 
@@ -551,7 +552,7 @@ filter by its foreign key; the filter parameter is generated automatically for
 <span class="k">class</span><span class="w"> </span><span class="nc">TaskView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/tasks&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Task</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">TaskRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">TaskSchema</span>
 </pre></div>
 </div>
 <p>Clients then scope the list through the query string:</p>
@@ -559,33 +560,12 @@ filter by its foreign key; the filter parameter is generated automatically for
 GET /tasks?project_id__in=1,2   # tasks of several projects
 </pre></div>
 </div>
-<p>When the nested URL is part of your API contract, add a custom route on the
-<em>parent</em> view, so that parent scoping and 404 behavior come from the parent’s
-read path:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sa</span>
-
-<span class="k">class</span><span class="w"> </span><span class="nc">ProjectView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/projects&quot;</span>
-    <span class="n">model</span> <span class="o">=</span> <span class="n">Project</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">ProjectRead</span>
-
-    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/tasks&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="nb">list</span><span class="p">[</span><span class="n">TaskRead</span><span class="p">])</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
-        <span class="n">project</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>  <span class="c1"># scoping, 404, and read-auth</span>
-        <span class="n">query</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">apply_clauses</span><span class="p">(</span>
-            <span class="n">sa</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">Task</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Task</span><span class="o">.</span><span class="n">project_id</span> <span class="o">==</span> <span class="n">project</span><span class="o">.</span><span class="n">id</span><span class="p">),</span>
-            <span class="n">fr</span><span class="o">.</span><span class="n">resolve_scope</span><span class="p">(</span><span class="n">TaskView</span><span class="p">),</span>  <span class="c1"># the child&#39;s own visibility</span>
-        <span class="p">)</span>
-        <span class="n">tasks</span> <span class="o">=</span> <span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">scalars</span><span class="p">(</span><span class="n">query</span><span class="p">))</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
-        <span class="k">return</span> <span class="p">[</span><span class="n">TaskRead</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">from_attributes</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tasks</span><span class="p">]</span>
-</pre></div>
-</div>
-<p>The parent’s read path covers the project: scope, 404, read-auth. It says
-nothing about the tasks, so the child rows need the child’s visibility, and
-<a class="reference internal" href="api/views.html#fastapi_restly.views.resolve_scope" title="fastapi_restly.views.resolve_scope"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.resolve_scope</span></code></a> takes it from
-<code class="docutils literal notranslate"><span class="pre">TaskView</span></code> rather than repeating the clause here. Without it this listing
-returns rows <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/tasks</span></code> hides, such as another member’s or a soft-deleted
-one. See <a class="reference internal" href="scopes.html"><span class="std std-doc">Reading the resolved scope</span></a>.</p>
+<p>When the nested URL is part of your API, serve the child view under the
+parent instead: a path parameter in its <code class="docutils literal notranslate"><span class="pre">prefix</span></code>, a lookup that answers <code class="docutils literal notranslate"><span class="pre">404</span></code>
+for an unknown or hidden parent, and a scope that keeps that parent’s rows.
+Every CRUD route keeps paging, filters and sort.
+<a class="reference internal" href="howto_nested.html"><span class="std std-doc">Nested Resources</span></a> shows the full example, how to create
+children, and deeper nesting.</p>
 <p>The filter grammar, including
 <a class="reference internal" href="howto_query_modifiers.html#foreign-key-filtering"><span class="std std-ref">foreign-key filtering</span></a>, is
 documented in <a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">Filter, Sort, and Paginate Lists</span></a>;
@@ -606,11 +586,11 @@ Filtering, sorting, and pagination parameters keep working:</p>
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserRead</span>  <span class="c1"># detail routes keep the full schema</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>  <span class="c1"># detail routes keep the full schema</span>
 
     <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="nb">list</span><span class="p">[</span><span class="n">UserSummary</span><span class="p">])</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_many_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_params</span><span class="p">):</span>
-        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span><span class="n">query_params</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_many_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span><span class="n">list_params</span><span class="p">)</span>
         <span class="k">return</span> <span class="p">[</span>
             <span class="n">UserSummary</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">from_attributes</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">objects</span>
@@ -628,17 +608,18 @@ therefore reads through the <em>complementary</em> clause, then mutates inside
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.write_action" title="fastapi_restly.views.RestView.write_action"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_action</span></code></a> so that
 authorization and the commit bracket still run:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">is_deleted</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span><span class="n">Item</span><span class="o">.</span><span class="n">deleted_at</span><span class="o">.</span><span class="n">is_not</span><span class="p">(</span><span class="kc">None</span><span class="p">))</span>
+<span class="n">ItemResponse</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">derive_schema_response</span><span class="p">(</span><span class="n">ItemSchema</span><span class="p">)</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">ItemView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/items&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Item</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">ItemRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ItemSchema</span>
     <span class="n">scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">none_of</span><span class="p">(</span><span class="n">is_deleted</span><span class="p">)</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
         <span class="n">obj</span><span class="o">.</span><span class="n">deleted_at</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
 
-    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/restore&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">ItemRead</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/restore&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">ItemResponse</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">restore</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
         <span class="c1"># Reads through the complement of the view scope: only a deleted</span>
         <span class="c1"># row can be restored, and the bypass is visible on purpose.</span>
@@ -648,6 +629,13 @@ authorization and the commit bracket still run:</p>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>The restore route names the view’s response class, so OpenAPI shows
+<code class="docutils literal notranslate"><span class="pre">ItemResponse</span></code>, as for the CRUD routes; see
+<a class="reference internal" href="technical_details.html#name-the-response-classes"><span class="std std-ref">A custom route names the same classes</span></a>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">scope=</span></code> replaces the view scope for that read; it does not narrow it. Keep
+rules that a restore must never skip, such as tenant isolation, at the
+session level (<a class="reference internal" href="#tenant-scoping">Tenant scoping</a>). <a class="reference internal" href="scopes.html#a-route-names-its-own-scope"><span class="std std-ref">A route names its own
+scope</span></a> owns the details.</p>
 <p>Soft delete itself is covered as a one-off override in
 <a class="reference internal" href="customize.html#delete-soft-delete-instead-of-removing-the-row"><span class="std std-ref">Customizing RestView</span></a>
 and as a reusable mixin in
@@ -680,7 +668,8 @@ handlers, so a bare <code class="docutils literal notranslate"><span class="pre"
 </div>
 <p>For <em>outbound</em> webhooks (calling someone else after a write), use the
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_action_commit" title="fastapi_restly.views.RestView.after_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_action_commit</span></code></a> hook
-instead. See <a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a>.</p>
+instead, or an outbox row for a webhook that must arrive. See
+<a class="reference internal" href="customize.html#when-after-action-commit-raises"><span class="std std-ref">When <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> raises</span></a>.</p>
 <p>The decision between <code class="docutils literal notranslate"><span class="pre">View</span></code> and <code class="docutils literal notranslate"><span class="pre">RestView</span></code> is covered in
 <a class="reference internal" href="class_based_views.html#id3"><span class="std std-ref">When to use <code class="docutils literal notranslate"><span class="pre">View</span></code> directly</span></a>.</p>
 </section>
@@ -734,11 +723,11 @@ owns the complete pattern.</p>
       </div>
     </a>
     <a class="right-next"
-       href="howto_inheritance.html"
+       href="howto_nested.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Share Behaviour with Base Views</p>
+        <p class="prev-next-title">Nested Resources</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -761,7 +750,7 @@ owns the complete pattern.</p>
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nested-resources-projects-id-tasks">Nested resources (<code class="docutils literal notranslate"><span class="pre">/projects/{id}/tasks</span></code>)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nested-resources-projects-project-id-tasks">Nested resources (<code class="docutils literal notranslate"><span class="pre">/projects/{project_id}/tasks</span></code>)</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#a-different-schema-for-the-list-endpoint">A different schema for the list endpoint</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#restore-a-soft-deleted-row">Restore a soft-deleted row</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#receive-a-webhook-inbound">Receive a webhook (inbound)</a></li>

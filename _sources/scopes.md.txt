@@ -65,10 +65,10 @@ identity, return types, and validation.
 
 The scope guards reads *of* the model and references *to* it; it does
 not reach through relationships. A scoped model serialized inside
-another model's response (`ItemRead.comments` embedding a soft-deleted
+another model's response (`ItemSchema.comments` embedding a soft-deleted
 comment, say) is loaded through the relationship, unscoped, and a
 dotted query-parameter filter or sort (`?items.name=x`) joins the
-related table without its scope. Shape the response schema, or override
+related table without its scope. Shape the view's schema, or override
 {meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`,
 where embedded rows must be filtered.
 
@@ -99,7 +99,7 @@ own {attr}`scope <fastapi_restly.views.BaseRestView.scope>`:
 class ItemView(fr.AsyncRestView):
     prefix = "/items"
     model = Item
-    schema = ItemRead
+    schema = ItemSchema
     # no scope declared: reads apply ItemClauses.default_scope
 
 
@@ -107,7 +107,7 @@ class ItemView(fr.AsyncRestView):
 class TrashView(fr.AsyncRestView):
     prefix = "/trash"
     model = Item
-    schema = ItemRead
+    schema = ItemSchema
     scope = ItemClauses.trashed          # the deviating view declares
 ```
 
@@ -136,7 +136,7 @@ separately whether an admin may cross tenants:
 class AdminItemView(fr.AsyncRestView):
     prefix = "/admin/items"
     model = Item
-    schema = ItemRead
+    schema = ItemSchema
     scope = fr.clauses.UNSCOPED
 ```
 
@@ -177,39 +177,47 @@ clause without opening one.
 
 A custom route that reads another surface of the same model passes a
 clause as `scope=` to the handler, and that clause replaces the resolved
-scope for that one read. The trash listing and the restore action are
+scope for that one read. The trash list and the restore action are
 then routes on the view rather than a second view class:
 
 ```python
+ItemResponse = fr.schemas.derive_schema_response(ItemSchema)
+ItemListResponse = fr.schemas.derive_schema_list_response(ItemResponse)
+
+
 @fr.include_view(app)
 class ItemView(fr.AsyncRestView):
     prefix = "/items"
     model = Item
-    schema = ItemRead
+    schema = ItemSchema
     # no scope declared: reads apply ItemClauses.default_scope
 
-    @fr.get("/trash", response_model=fr.views.PaginatedEnvelope[ItemRead])
-    async def trash(self, query_params):
-        result = await self.handle_get_many(query_params, scope=ItemClauses.trashed)
-        return self.to_response(result, fr.ResponseShape.LISTING)
+    @fr.get("/trash", response_model=ItemListResponse)
+    async def trash(self, list_params):
+        result = await self.handle_get_many(list_params, scope=ItemClauses.trashed)
+        return self.to_response(result, fr.ResponseShape.LIST)
 
-    @fr.post("/{id}/restore", response_model=ItemRead, status_code=200)
+    @fr.post("/{id}/restore", response_model=ItemResponse, status_code=200)
     async def restore(self, id: int):
         item = await self.get_one(id, scope=ItemClauses.trashed)
         async with self.write_action("restore", obj=item):
             item.deleted_at = None
-        return item
+        return self.to_response(item)
 ```
 
 `handle_get_many` runs `authorize` and forwards `scope=` to `get_many`;
-declaring `query_params` gives the route the listing grammar of `GET /`
+declaring `list_params` gives the route the list params of `GET /`
 ([Filter, Sort, and Paginate Lists](howto_query_modifiers.md)). The restore
 loads with `get_one(id, scope=...)` rather than `handle_get_one`, because
 a write action gates its own action inside
 {meth}`write_action <fastapi_restly.views.RestView.write_action>`; a live
 item is a 404 here, since the trash is the surface this route reads.
 `fr.clauses.UNSCOPED` is the per-read opt-out, in the same spelling as
-everywhere else.
+everywhere else. The two routes name the response classes of the view,
+`ItemListResponse` and `ItemResponse`, so OpenAPI shows the same types as for
+the CRUD routes. A view with other pagination passes it, as in
+{func}`derive_schema_list_response(ItemResponse, pagination=AppView.pagination) <fastapi_restly.schemas.derive_schema_list_response>`;
+see [A custom route names the same classes](#name-the-response-classes).
 
 The argument replaces the scope, it does not narrow it. Put rules that may
 never be replaced, such as tenant isolation, at the session level. A `get_one`
@@ -221,19 +229,16 @@ fails on its first call instead of serving the wrong rows.
 ### Narrowing inside the scope
 
 {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>`
-also takes `where=`, which narrows the read and keeps the scope. A listing
+also takes `where=`, which narrows the read and keeps the scope. A list
 of one collection's items still hides deleted items:
 
 ```python
-@fr.get(
-    "/in-collection/{collection_id}",
-    response_model=fr.views.PaginatedEnvelope[ItemRead],
-)
-async def in_collection(self, collection_id: int, query_params):
+@fr.get("/in-collection/{collection_id}", response_model=ItemListResponse)
+async def in_collection(self, collection_id: int, list_params):
     result = await self.handle_get_many(
-        query_params, where=Item.collection_id == collection_id
+        list_params, where=Item.collection_id == collection_id
     )
-    return self.to_response(result, fr.ResponseShape.LISTING)
+    return self.to_response(result, fr.ResponseShape.LIST)
 ```
 
 `where=` accepts a SQLAlchemy boolean expression or a clause. It is ANDed
@@ -243,7 +248,7 @@ given. The page and `total_count` both apply it, and the client's filters,
 sort and page apply on top.
 
 Passing the same expression as `scope=fr.where_clause(...)` replaces the
-scope, so that listing would include deleted items.
+scope, so that list would include deleted items.
 
 The handler folds `where=` into the `scope` it forwards. A `get_many`
 override receives one combined clause and declares no `where` parameter.
@@ -261,27 +266,30 @@ filters to the scoped select:
 
 ```python
 @fr.get("/count")
-async def total(self, query_params) -> int:
+async def total(self, list_params) -> int:
     await self.authorize(fr.Action.GET_MANY)
     query = fr.apply_clauses(sa.select(Task), fr.resolve_scope(self))
-    return await self.count(self.apply_query_params(query, query_params))
+    return await self.count(self.apply_list_params(query, list_params))
 ```
 
 Do not name that route method `count`: it would shadow the
 {meth}`count <fastapi_restly.views.RestView.count>` seam it calls.
 
-Pass another view to follow that view's visibility from a route on this
-one, which is how a nested listing stays in step with the child's own
-endpoint:
+Pass another view to follow that view's visibility in code that builds its
+own query. The parent lookup of a [nested view](howto_nested.md) does this,
+so a project that `GET /projects/{id}` hides also answers `404` under
+`/projects/{project_id}/tasks`:
 
 ```python
-@fr.get("/{id}/tasks", response_model=list[TaskRead])
-async def list_tasks(self, id: int):
-    await self.handle_get_one(id)
+async def project_from_path(project_id: int, session: fr.AsyncSessionDep) -> int:
     query = fr.apply_clauses(
-        sa.select(Task).where(Task.project_id == id), fr.resolve_scope(TaskView)
+        sa.select(Project.id).where(Project.id == project_id),
+        fr.resolve_scope(ProjectView),
     )
-    return list(await self.session.scalars(query))
+    found = await session.scalar(query)
+    if found is None:
+        raise fr.exc.NotFound(f"Project with id {project_id} was not found")
+    return found
 ```
 
 Pass a mapped model class, `fr.resolve_scope(Task)`, for the model rung
@@ -356,18 +364,18 @@ class ItemClauses(fr.ClauseNamespace):
 
 Relationship loading that lived in `build_query` belongs in
 {meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`.
-Other `Select` changes to a listing, such as a join or a default
+Other `Select` changes to a list, such as a join or a default
 ordering, belong in an
-{meth}`apply_query_params <fastapi_restly.views.RestView.apply_query_params>`
+{meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
 override:
 
 ```python
 class ItemView(fr.AsyncRestView):
     ...
 
-    def apply_query_params(self, query, query_params):
+    def apply_list_params(self, query, list_params):
         query = query.order_by(Item.created_at.desc())
-        return super().apply_query_params(query, query_params)
+        return super().apply_list_params(query, list_params)
 ```
 
 An ordering added before `super()` comes first, so a client `?sort=`

@@ -2,15 +2,18 @@
 
 List endpoints (`GET /{prefix}`) support filtering, sorting, and
 pagination through URL query parameters out of the box. Filter parameters
-are derived from the response schema; sort and pagination use a fixed set
-of names.
+are derived from the view's response class, so a client can filter and sort
+only on what it can see. By default the response class is the view's schema
+without its `WriteOnly` fields; see
+[Your own response class](#own-response-class). Sort has a fixed name, and
+the pagination names are a setting of the view.
 
-Pagination is on by default: lists are capped at
-{attr}`default_page_size <fastapi_restly.views.BaseRestView.default_page_size>`
-(50) and wrapped in a `data` envelope. Clients page with `page` and
-`page_size`. Lower the default and set
-{attr}`max_page_size <fastapi_restly.views.BaseRestView.max_page_size>` on
-public endpoints; set `paginated = False` to return every matching row uncapped.
+Pagination is on by default: lists are capped at 50 rows per page and
+wrapped in a `data` envelope. Clients page with `page` and `page_size`. The
+view's {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>`
+setting changes the limits, the parameter names and the envelope. Lower the
+default page size and the maximum on public endpoints; set `pagination = None`
+to return every matching row uncapped.
 
 Unknown query keys are rejected with 422. Filters are narrowing controls,
 so a typo or unsupported operator silently ignored could widen the result
@@ -54,7 +57,10 @@ types; they are omitted for booleans and UUIDs. `__contains` and
 `__icontains` are only generated for string fields. Collection-typed fields
 (`dict`/`list`, typically `JSON` or `ARRAY` columns) generate only
 `__isnull`: a query-string value cannot coerce into a collection, so the
-other operators would fail on every request.
+other operators would fail on every request. A
+{data}`WriteOnly <fastapi_restly.schemas.WriteOnly>` field, or a field with
+`Field(exclude=True)`, gets no filters and is not a sort key, since either
+would let a client read its value back.
 
 A datetime value without a UTC offset is read as UTC when the column is
 timezone-aware, which is the default for `Mapped[datetime]`; a column
@@ -156,41 +162,124 @@ Pagination is controlled by the `page` and `page_size` parameters:
 GET /users?page=2&page_size=50
 ```
 
-`page` is 1-based and has no fixed upper bound. The combination must satisfy
+`page` is 1-based. The combination must satisfy
 `(page - 1) * page_size <= 2**63 - 1`. A larger SQL offset is rejected with
 `422` before the query runs. `page_size` must be `>= 1` and `<= max_page_size`
 (default 1000). When the client omits `page_size`, the endpoint falls back to
-{attr}`default_page_size <fastapi_restly.views.BaseRestView.default_page_size>`
-(50). Tune both on the view class:
+`default_page_size` (50). Set them with
+{class}`fr.NumberedPagination <fastapi_restly.views.NumberedPagination>` on the
+view class. `max_page` caps the page number too:
 
 ```python
 class UserView(fr.AsyncRestView):
-    default_page_size = 25
-    max_page_size = 200
+    pagination = fr.NumberedPagination(
+        default_page_size=25, max_page_size=200, max_page=100
+    )
 ```
 
 Out-of-range pagination values produce a standard `422` response from
 FastAPI.
 
+### Parameter names
+
+Rename the two parameters with `page_query_param` and
+`page_size_query_param`:
+
+```python
+class UserView(fr.AsyncRestView):
+    pagination = fr.NumberedPagination(
+        page_query_param="p", page_size_query_param="size"
+    )
+```
+
+Clients then send `?p=2&size=50`, `page` and `page_size` become unknown keys,
+and OpenAPI lists the new names. A schema field whose public name matches a
+pagination parameter fails when the view registers. Rename the parameter or
+give the field an alias. Renaming a parameter frees its old name, so a `page`
+column gets its filter back.
+
+(set-pagination-once)=
+### Set it once for every view
+
+Views inherit `pagination`, so a project base view sets it once. A view that
+differs changes one setting with `replace()`, which returns a checked copy:
+
+```python
+APP_PAGINATION = fr.NumberedPagination(
+    page_size_query_param="size", max_page_size=100
+)
+
+
+class AppView(fr.AsyncRestView):
+    pagination = APP_PAGINATION
+
+
+class LogView(AppView):
+    pagination = APP_PAGINATION.replace(default_page_size=10, max_page_size=10)
+```
+
 ### The pagination envelope
 
 A list endpoint wraps its rows in a `data` envelope with `total_count` and
-page metadata. Set `paginated = False` to drop the count and page fields and
+page metadata. Set `pagination = None` to drop the count and page fields and
 return every matching row in a bare `data` envelope:
 
 ```python
 class UserView(fr.AsyncRestView):
-    paginated = False
+    pagination = None
 ```
 
-[Response Envelopes and List Metadata](howto_response_schema.md) is
-canonical for the envelope's shape.
+`None` is short for `fr.NoPagination()`. The pagination's `envelope` setting
+replaces the envelope model: rename its fields, drop some, or nest them.
+`fr.NoPagination(envelope=...)` does the same for a view without pagination.
+[Response Envelopes and List Metadata](#change-list-envelope) describes how
+to change the envelope.
+
+(fastapi-pagination-migration)=
+### Coming from fastapi-pagination
+
+fastapi-pagination's default `Page` takes `?page=` and `?size=` and returns
+`items`, `total`, `page`, `size` and `pages`. To keep that contract for
+existing clients, rename the page size parameter and the envelope fields:
+
+```python
+from typing import Generic, TypeVar
+
+import pydantic
+
+T = TypeVar("T")
+
+
+class Page(pydantic.BaseModel, Generic[T]):
+    data: list[T] = pydantic.Field(alias="items")
+    total_count: int = pydantic.Field(alias="total")
+    page: int
+    page_size: int = pydantic.Field(alias="size")
+    total_pages: int = pydantic.Field(alias="pages")
+
+
+class AppView(fr.AsyncRestView):
+    pagination = fr.NumberedPagination(
+        page_size_query_param="size", max_page_size=100, envelope=Page
+    )
+```
+
+The default page size of 50 and the maximum of 100 match fastapi-pagination's.
+fastapi-pagination has no filters or sorting. Restly adds both, as described
+above.
 
 ## Extra query parameters
 
-A view that consumes a custom query parameter outside the schema-derived
-grammar (read in an override via `self.request.query_params`) must
-declare it, or the 422 validation rejects it as an unknown key:
+A query parameter that the route declares needs no setup: one the endpoint
+method takes, or one a dependency reads, wherever the dependency is
+declared (on the app or a router, in the view's `dependencies`, or on a
+class attribute). The key of an `APIKeyQuery` counts too. The unknown-key
+check accepts these keys like filters, and OpenAPI lists them beside the
+filters.
+
+A view that reads a custom key straight from `self.request.query_params`
+(in an override) must name it, or the 422 validation rejects it as an
+unknown key:
 
 ```python
 class UserView(fr.AsyncRestView):
@@ -209,7 +298,7 @@ Python-name aliases.
 Consider a schema field declared with an alias:
 
 ```python
-class UserRead(BaseModel):
+class UserSchema(BaseModel):
     user_name: Annotated[str, Field(alias="userName")]
 ```
 
@@ -234,24 +323,39 @@ GET /orders?user.name__contains=ali
 The relation must be defined on both the SQLAlchemy model (as a
 `relationship`) and the Pydantic schema (as a
 [nested schema field](howto_relationship_idschema.md#nested-relationship-objects)).
-Optional nested schemas (`UserRead | None`) and deep nesting
+Optional nested schemas (`UserSchema | None`) and deep nesting
 (`?blog.author.name=Alice`) are supported. Lists of nested schemas
-(`list[UserRead]`) are not. Two current limitations: paths through a
-self-referential relationship (`?manager.name=...` on a model relating to
-itself), and combining two filter paths that reach the same table
-(`?city.country.code=NL&club.country.code=NL`), are not supported — the
-joins are not aliased per path.
+(`list[UserSchema]`) are not.
+
+Paths through a self-referential relationship work too, such as
+`?manager.name=Alice` or `?manager.manager.name=Alice`. Each hop must be
+exposed by a nested schema. Different relationships to the same model can
+be filtered together:
+
+```text
+GET /people?home_city.name=Amsterdam&work_city.name=Berlin
+GET /people?home_city.country.code=NL&work_city.country.code=DE
+```
+
+Sorting accepts the same paths. A filter and sort on the same relationship
+share its join. These are inner joins: filtering or sorting through an
+absent relationship excludes the row, including a dotted `__isnull` filter.
+
+Relationship joins use SQL aliases. If you use
+{func}`sqlalchemy.orm.with_loader_criteria` for tenant or visibility rules,
+set `include_aliases=True` so the rules cover these joins. See the
+[tenant row scoping recipe](#tenant-row-scoping).
 
 Aliases apply to **every** segment of the dotted path, both the relation
-field and the nested column, because the list-params keys always follow
-the response schema's public names:
+field and the nested column, because the keys of the list params always
+follow the public names of the response class:
 
 ```python
-class AuthorRead(BaseModel):
+class AuthorSchema(BaseModel):
     name: str = Field(alias="authorName")
 
-class ArticleRead(BaseModel):
-    author: AuthorRead = Field(alias="writer")
+class ArticleSchema(BaseModel):
+    author: AuthorSchema = Field(alias="writer")
 ```
 
 Requests must then use the aliased segments:
@@ -261,6 +365,7 @@ GET /articles?writer.authorName=Alice    # supported (aliased segments)
 GET /articles?author.name=Alice          # rejected, use public aliases
 ```
 
+(foreign-key-filtering)=
 ## Foreign-key filtering
 
 A scalar foreign key declared with
@@ -310,7 +415,7 @@ Declare the base filter as the view's
 {meth}`get_many <fastapi_restly.views.RestView.get_many>`,
 {meth}`count <fastapi_restly.views.RestView.count>`, and
 {meth}`get_one <fastapi_restly.views.RestView.get_one>` all apply it, so
-the filter covers listings, totals, and single-row fetches:
+the filter covers lists, totals, and single-row fetches:
 
 ```python
 import fastapi_restly as fr
@@ -324,29 +429,31 @@ class UserView(fr.AsyncRestView):
 `default_scope` form and composing clauses.
 
 The `get_many` business method does not accept a separate `query` argument.
-Keep SQL-level base query changes in the scope so listing, pagination
+Keep SQL-level base query changes in the scope so lists, pagination
 totals, and single-row fetches all see the same visibility rules.
 
-For a different URL **grammar** (other parameter names, another dialect's
-filter syntax), the seam is
-{meth}`apply_query_params(query, query_params) <fastapi_restly.views.RestView.apply_query_params>`,
+For a different URL **grammar**, such as another dialect's filter syntax, the
+seam is
+{meth}`apply_list_params(query, list_params) <fastapi_restly.views.RestView.apply_list_params>`,
 which owns translating URL parameters into the query;
 [React Admin Integration](howto_react_admin.md) is the shipped worked
 example of a view family overriding it. Reserve overriding `get_many()`
 itself for a genuinely different *result* shape, where you construct the
 query explicitly inside the method.
 
-Any route method that declares a `query_params` parameter takes the same
-listing grammar as `GET /`: Restly annotates it with the view's generated
-{attr}`listing_param_schema <fastapi_restly.views.BaseRestView.listing_param_schema>`,
+Any route method that declares a `list_params` parameter takes the same
+list params as `GET /`: Restly annotates it with the view's generated
+{attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`,
 so filters, sort and page parse and validate the same way, appear in OpenAPI,
-and an unknown key is rejected with `422`. A custom listing such as a trash
-route passes them on with `self.handle_get_many(query_params, scope=...)`;
-see [A route names its own scope](#per-read-scope).
+and an unknown key is rejected with `422`. A custom list route, such as a
+trash route, passes them on with `self.handle_get_many(list_params, scope=...)`;
+see [A route names its own scope](#per-read-scope). The route can take its
+own query parameters beside `list_params`, such as
+`def search(self, list_params, mode: SearchMode)`.
 
 ## See also
 
 - [List-parameters lifecycle](technical_details.md#list-parameters-lifecycle):
   how the filter grammar is generated and frozen at registration time.
-- [Patterns: nested resources](patterns.md#nested-resources-projectsidtasks):
-  foreign-key filtering as the sub-resource idiom.
+- [Nested Resources](howto_nested.md): serving a child resource under its
+  parent, such as `/projects/{project_id}/tasks`.

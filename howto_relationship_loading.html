@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Relationship Loading and Async &#8212; FastAPI-Restly 0.10.0 documentation</title>
+    <title>Relationship Loading and Async &#8212; FastAPI-Restly 0.11.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=82662543"></script>
+    <script src="_static/documentation_options.js?v=f3b36f1a"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -66,7 +66,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.10" />
+  <meta name="docsearch:version" content="0.11" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -464,6 +464,7 @@
 <li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
 <li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_nested.html">Nested Resources</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
@@ -538,8 +539,9 @@ any field backed by a relationship must be loaded beforehand; a relationship
 that is still unloaded raises <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. Restly does this for you in
 most cases, through
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.get_relationship_loader_options" title="fastapi_restly.views.BaseRestView.get_relationship_loader_options"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_relationship_loader_options()</span></code></a>:
-it eager-loads the relationships your response schema names, on both reads and
-writes. This guide covers what loads automatically, how to add more, and what to
+it eager-loads the relationships the view’s response class names, on both
+reads and writes. By default the response class is the view’s schema without
+its <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields; see <a class="reference internal" href="howto_custom_schema.html#own-response-class"><span class="std std-ref">Your own response class</span></a>. This guide covers what loads automatically, how to add more, and what to
 do when you still hit <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -557,14 +559,14 @@ eagerly. Take an article with an author and comments:</p>
     <span class="n">comments</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="s2">&quot;Comment&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Naming <code class="docutils literal notranslate"><span class="pre">author</span></code> and <code class="docutils literal notranslate"><span class="pre">comments</span></code> on the response schema is all it takes. Mark
+<p>Naming <code class="docutils literal notranslate"><span class="pre">author</span></code> and <code class="docutils literal notranslate"><span class="pre">comments</span></code> on the view’s schema is all it takes. Mark
 them <code class="docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code> so they stay out of the generated create and update input,
 which does not accept nested objects as write payloads (see
 <a class="reference internal" href="howto_custom_schema.html"><span class="std std-doc">Custom Schemas and Field Types</span></a>):</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ArticleRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ArticleSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">author</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="n">UserRead</span><span class="p">]</span>
-    <span class="n">comments</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">CommentRead</span><span class="p">]]</span>
+    <span class="n">author</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="n">UserSchema</span><span class="p">]</span>
+    <span class="n">comments</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">CommentSchema</span><span class="p">]]</span>
 </pre></div>
 </div>
 <p>Restly inspects the schema, matches <code class="docutils literal notranslate"><span class="pre">author</span></code> and <code class="docutils literal notranslate"><span class="pre">comments</span></code> against the
@@ -573,10 +575,10 @@ them. It applies those options in
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> and
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a>, and again in
 <code class="docutils literal notranslate"><span class="pre">save_object</span></code> after a create or update, because the refresh that follows a
-flush leaves relationships unloaded. Nested schemas recurse: if <code class="docutils literal notranslate"><span class="pre">UserRead</span></code> itself names a relationship,
+flush leaves relationships unloaded. Nested schemas recurse: if <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code> itself names a relationship,
 that one loads too.</p>
-<p>The reload after a write is skipped when everything the schema names is already
-loaded, and it runs without <code class="docutils literal notranslate"><span class="pre">populate_existing</span></code>, so a relationship you assigned
+<p>The reload after a write is skipped when everything the response class names
+is already loaded, and it runs without <code class="docutils literal notranslate"><span class="pre">populate_existing</span></code>, so a relationship you assigned
 in a hook keeps the value you gave it.</p>
 <p>On a <strong>sync</strong> view the same options apply; only the failure mode when something
 is missing differs. Sync sessions lazy-load a missing relationship with an
@@ -596,7 +598,7 @@ and append to it:</p>
 <span class="k">class</span><span class="w"> </span><span class="nc">ArticleView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/articles&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Article</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">ArticleRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ArticleSchema</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">get_relationship_loader_options</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_relationship_loader_options</span><span class="p">()</span> <span class="o">+</span> <span class="p">[</span>
@@ -604,14 +606,14 @@ and append to it:</p>
         <span class="p">]</span>
 </pre></div>
 </div>
-<p>The default returns the options derived from the response schema; appending
-keeps those schema-driven loads and adds yours. This is the seam that feeds
+<p>The default returns the options derived from the response class; appending
+keeps those loads and adds yours. This is the seam that feeds
 every path: the extra load applies on reads (<code class="docutils literal notranslate"><span class="pre">get_one</span></code> / <code class="docutils literal notranslate"><span class="pre">get_many</span></code>) and on the
 create and update responses alike, because the write path reloads by primary
 key through the same options. Return a fresh list to replace the strategy
 entirely, for example to swap <code class="docutils literal notranslate"><span class="pre">selectinload</span></code> for <code class="docutils literal notranslate"><span class="pre">joinedload</span></code>.</p>
-<p>For an extra load needed only by a listing, add <code class="docutils literal notranslate"><span class="pre">.options(...)</span></code> in
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_query_params" title="fastapi_restly.views.RestView.apply_query_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_query_params</span></code></a>.
+<p>For an extra load needed only by the list, add <code class="docutils literal notranslate"><span class="pre">.options(...)</span></code> in
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_list_params" title="fastapi_restly.views.RestView.apply_list_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_list_params</span></code></a>.
 This does not affect <code class="docutils literal notranslate"><span class="pre">get_one</span></code> or create and update responses.</p>
 </section>
 <section id="reach-a-relationship-the-schema-does-not-name">
@@ -629,7 +631,7 @@ so any such attribute can be awaited explicitly:</p>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">awaitable_attrs</span></code> is the right tool for a one-off read. When the same
-relationship is needed on every request, put it in the response schema or in
+relationship is needed on every request, put it in the response class or in
 <code class="docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code> instead, so it loads in one batched query
 rather than one lazy load at a time.</p>
 </section>
@@ -646,13 +648,14 @@ Restly view this is almost always response serialization reaching an unloaded
 relationship, sometimes wrapped in a Pydantic <code class="docutils literal notranslate"><span class="pre">ValidationError</span></code> when it surfaces
 in a nested model. For that case, work through these in order:</p>
 <ol class="arabic simple">
-<li><p><strong>Is the field in your response schema?</strong> If a serialized field names a
-relationship, that alone loads it. A missing field is usually a name
+<li><p><strong>Is the field in the response class?</strong> If a serialized field names a
+relationship, that alone loads it. A <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> field is not in the
+response class, so its relationship does not load. A missing field is usually a name
 mismatch (see the note below).</p></li>
 <li><p><strong>Is a hook or property reaching it?</strong> Load it explicitly with
 <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">obj.awaitable_attrs.&lt;name&gt;</span></code>, or add it to
 <code class="docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code> if every request needs it.</p></li>
-<li><p><strong>Did you add the load only in <code class="docutils literal notranslate"><span class="pre">get_one</span></code>, <code class="docutils literal notranslate"><span class="pre">get_many</span></code>, or <code class="docutils literal notranslate"><span class="pre">apply_query_params</span></code>?</strong>
+<li><p><strong>Did you add the load only in <code class="docutils literal notranslate"><span class="pre">get_one</span></code>, <code class="docutils literal notranslate"><span class="pre">get_many</span></code>, or <code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code>?</strong>
 Write responses do not call those methods. Move the load to
 <code class="docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code>.</p></li>
 </ol>
@@ -672,7 +675,7 @@ covers the full set of techniques.</p>
 only its <em>wire</em> name may be aliased. Eager loading matches on the Python field
 name, so an outgoing alias is safe (<code class="docutils literal notranslate"><span class="pre">Field(serialization_alias=&quot;ownerInfo&quot;)</span></code>,
 or a camelCase <code class="docutils literal notranslate"><span class="pre">alias_generator</span></code>). But renaming the field itself and bridging
-back with <code class="docutils literal notranslate"><span class="pre">alias</span></code> / <code class="docutils literal notranslate"><span class="pre">validation_alias</span></code> (<code class="docutils literal notranslate"><span class="pre">owner_info:</span> <span class="pre">OwnerRead</span> <span class="pre">=</span> <span class="pre">Field(alias=&quot;owner&quot;)</span></code>) drops it from both the loader and the write-path reload,
+back with <code class="docutils literal notranslate"><span class="pre">alias</span></code> / <code class="docutils literal notranslate"><span class="pre">validation_alias</span></code> (<code class="docutils literal notranslate"><span class="pre">owner_info:</span> <span class="pre">OwnerSchema</span> <span class="pre">=</span> <span class="pre">Field(alias=&quot;owner&quot;)</span></code>) drops it from both the loader and the write-path reload,
 so it lazy-loads and raises <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code> on async.</p>
 </div>
 </section>

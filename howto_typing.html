@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Use Type Annotations &#8212; FastAPI-Restly 0.10.0 documentation</title>
+    <title>Use Type Annotations &#8212; FastAPI-Restly 0.11.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=82662543"></script>
+    <script src="_static/documentation_options.js?v=f3b36f1a"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -66,7 +66,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.10" />
+  <meta name="docsearch:version" content="0.11" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -464,6 +464,7 @@
 <li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
 <li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_nested.html">Nested Resources</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Use Type Annotations</a></li>
@@ -563,24 +564,24 @@ is the recommended starting point:</p>
 </pre></div>
 </div>
 </section>
-<section id="use-idschema-for-response-schemas">
-<h2>Use <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> for response schemas<a class="headerlink" href="#use-idschema-for-response-schemas" title="Link to this heading">#</a></h2>
+<section id="use-idschema-for-the-view-s-schema">
+<h2>Use <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> for the view’s schema<a class="headerlink" href="#use-idschema-for-the-view-s-schema" title="Link to this heading">#</a></h2>
 <p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a> is the usual base for
-response schemas because it adds the resource’s own read-only <code class="docutils literal notranslate"><span class="pre">id</span></code> field. You
+the view’s schema because it adds the resource’s own read-only <code class="docutils literal notranslate"><span class="pre">id</span></code> field. You
 can subclass it directly:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
 </pre></div>
 </div>
 <p>You can also parameterize it when you want the schema class itself to carry
 the SQLAlchemy model type:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">[</span><span class="n">User</span><span class="p">]):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">[</span><span class="n">User</span><span class="p">]):</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
 </pre></div>
 </div>
-<p>For most top-level response schemas, either form is fine; the bare form is the
+<p>For the view’s schema, either form is fine; the bare form is the
 recommended starting point.</p>
 <p>For a <code class="docutils literal notranslate"><span class="pre">*_id</span></code> foreign-key column, use
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code></a>, which
@@ -614,7 +615,7 @@ verbs:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnElement</span>
 
 
-<span class="k">class</span><span class="w"> </span><span class="nc">UserRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">[</span><span class="n">User</span><span class="p">]):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">[</span><span class="n">User</span><span class="p">]):</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
 
@@ -631,11 +632,11 @@ verbs:</p>
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span>
-    <span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">[</span><span class="n">User</span><span class="p">,</span> <span class="n">UserRead</span><span class="p">,</span> <span class="n">UserCreate</span><span class="p">,</span> <span class="n">UserUpdate</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>
+    <span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">[</span><span class="n">User</span><span class="p">,</span> <span class="n">UserSchema</span><span class="p">,</span> <span class="n">UserCreate</span><span class="p">,</span> <span class="n">UserUpdate</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>
 <span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
     <span class="n">schema_create</span> <span class="o">=</span> <span class="n">UserCreate</span>
     <span class="n">schema_update</span> <span class="o">=</span> <span class="n">UserUpdate</span>
 
@@ -651,10 +652,17 @@ verbs:</p>
         <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The type parameters are, in order: the model, the response schema, the create
+<p>The type parameters are, in order: the model, the response type, the create
 schema, the update schema, and the id type. With them in place, <code class="docutils literal notranslate"><span class="pre">schema_obj</span></code>
 in <code class="docutils literal notranslate"><span class="pre">create</span></code> is a <code class="docutils literal notranslate"><span class="pre">UserCreate</span></code>, <code class="docutils literal notranslate"><span class="pre">obj</span></code> in <code class="docutils literal notranslate"><span class="pre">update</span></code> is a <code class="docutils literal notranslate"><span class="pre">User</span></code>, and the return
 types are checked too.</p>
+<p>The response type is what
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_single_response" title="fastapi_restly.views.BaseRestView.to_single_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_single_response</span></code></a>
+returns. Put the view’s schema there: the response class that Restly builds
+is a subclass of it. A view that sets its own
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_response" title="fastapi_restly.views.BaseRestView.schema_response"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_response</span></code></a>
+puts that class there instead, as in
+<code class="docutils literal notranslate"><span class="pre">fr.AsyncRestView[User,</span> <span class="pre">UserResponse]</span></code>.</p>
 <p>Note the signatures: <code class="docutils literal notranslate"><span class="pre">create</span></code> takes the create schema and returns the model;
 <code class="docutils literal notranslate"><span class="pre">update</span></code> takes the already-loaded <code class="docutils literal notranslate"><span class="pre">obj</span></code> plus the update schema. Id resolution
 and the 404 happen one tier up, in the final
@@ -740,7 +748,7 @@ relationship-named reference fields.</p></li>
 <li><p>Use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema[Model]</span></code></a> as a field
 annotation only when you intentionally want a nested relationship-object
 field. Parameterizing your top-level schema’s <em>base class</em>, as in
-<code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">UserRead(IDSchema[User])</span></code>, is a separate, optional choice: the bare
+<code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">UserSchema(IDSchema[User])</span></code>, is a separate, optional choice: the bare
 base is supported, and the parameterized base carries the model type.</p></li>
 <li><p>Use view generics only when you want precise typing on the methods you
 override; they mainly help on the business methods and the endpoint
@@ -814,7 +822,7 @@ runtime semantics of
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#start-simple">Start simple</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-idschema-for-response-schemas">Use <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> for response schemas</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-idschema-for-the-view-s-schema">Use <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> for the view’s schema</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#when-view-generics-are-useful">When view generics are useful</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#do-custom-routes-need-generics">Do custom routes need generics?</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-the-type-checker-cannot-fully-model">What the type checker cannot fully model</a></li>

@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>API Modules &#8212; FastAPI-Restly 0.10.0 documentation</title>
+    <title>API Modules &#8212; FastAPI-Restly 0.11.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=82662543"></script>
+    <script src="../_static/documentation_options.js?v=f3b36f1a"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -66,7 +66,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.10" />
+  <meta name="docsearch:version" content="0.11" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -571,6 +571,7 @@ The module references document their definitions and signatures.</p>
 <li class="toctree-l2"><a class="reference internal" href="exc.html#fastapi_restly.exc.Forbidden"><code class="docutils literal notranslate"><span class="pre">Forbidden</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="exc.html#fastapi_restly.exc.NotFound"><code class="docutils literal notranslate"><span class="pre">NotFound</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="exc.html#fastapi_restly.exc.RestlyConfigurationError"><code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="exc.html#fastapi_restly.exc.RestlyDuplicateSchemaNameWarning"><code class="docutils literal notranslate"><span class="pre">RestlyDuplicateSchemaNameWarning</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="exc.html#fastapi_restly.exc.RestlyError"><code class="docutils literal notranslate"><span class="pre">RestlyError</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="exc.html#fastapi_restly.exc.RestlyHTTPError"><code class="docutils literal notranslate"><span class="pre">RestlyHTTPError</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="exc.html#fastapi_restly.exc.RestlyMisuseWarning"><code class="docutils literal notranslate"><span class="pre">RestlyMisuseWarning</span></code></a></li>
@@ -598,7 +599,7 @@ The module references document their definitions and signatures.</p>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="query.html">Query API</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="query.html#fastapi_restly.query.apply_list_params"><code class="docutils literal notranslate"><span class="pre">apply_list_params()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="query.html#fastapi_restly.query.create_list_params_schema"><code class="docutils literal notranslate"><span class="pre">create_list_params_schema()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="query.html#fastapi_restly.query.derive_schema_list_params"><code class="docutils literal notranslate"><span class="pre">derive_schema_list_params()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas API</a><ul>
@@ -610,7 +611,9 @@ The module references document their definitions and signatures.</p>
 <li class="toctree-l2"><a class="reference internal" href="schemas.html#fastapi_restly.schemas.MustExist"><code class="docutils literal notranslate"><span class="pre">MustExist</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="schemas.html#fastapi_restly.schemas.RefExists"><code class="docutils literal notranslate"><span class="pre">RefExists</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="schemas.html#fastapi_restly.schemas.TimestampsSchemaMixin"><code class="docutils literal notranslate"><span class="pre">TimestampsSchemaMixin</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="schemas.html#fastapi_restly.schemas.create_schema_from_model"><code class="docutils literal notranslate"><span class="pre">create_schema_from_model()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="schemas.html#fastapi_restly.schemas.derive_schema"><code class="docutils literal notranslate"><span class="pre">derive_schema()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="schemas.html#fastapi_restly.schemas.derive_schema_list_response"><code class="docutils literal notranslate"><span class="pre">derive_schema_list_response()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="schemas.html#fastapi_restly.schemas.derive_schema_response"><code class="docutils literal notranslate"><span class="pre">derive_schema_response()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="views.html">Views API</a><ul>
@@ -619,7 +622,9 @@ The module references document their definitions and signatures.</p>
 <li class="toctree-l2"><a class="reference internal" href="views.html#fastapi_restly.views.AsyncRestView"><code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="views.html#fastapi_restly.views.BaseRestView"><code class="docutils literal notranslate"><span class="pre">BaseRestView</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="views.html#fastapi_restly.views.Envelope"><code class="docutils literal notranslate"><span class="pre">Envelope</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="views.html#fastapi_restly.views.ListingResult"><code class="docutils literal notranslate"><span class="pre">ListingResult</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="views.html#fastapi_restly.views.ListResult"><code class="docutils literal notranslate"><span class="pre">ListResult</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="views.html#fastapi_restly.views.NoPagination"><code class="docutils literal notranslate"><span class="pre">NoPagination</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="views.html#fastapi_restly.views.NumberedPagination"><code class="docutils literal notranslate"><span class="pre">NumberedPagination</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="views.html#fastapi_restly.views.PaginatedEnvelope"><code class="docutils literal notranslate"><span class="pre">PaginatedEnvelope</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="views.html#fastapi_restly.views.ReactAdminView"><code class="docutils literal notranslate"><span class="pre">ReactAdminView</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="views.html#fastapi_restly.views.ResponseShape"><code class="docutils literal notranslate"><span class="pre">ResponseShape</span></code></a></li>

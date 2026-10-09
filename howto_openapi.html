@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Customize the OpenAPI Schema &#8212; FastAPI-Restly 0.10.0 documentation</title>
+    <title>Customize the OpenAPI Schema &#8212; FastAPI-Restly 0.11.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=82662543"></script>
+    <script src="_static/documentation_options.js?v=f3b36f1a"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -66,7 +66,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.10" />
+  <meta name="docsearch:version" content="0.11" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -464,6 +464,7 @@
 <li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
 <li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_nested.html">Nested Resources</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
@@ -539,22 +540,123 @@ customization points.</p>
 <section id="per-view-metadata">
 <h2>Per-view metadata<a class="headerlink" href="#per-view-metadata" title="Link to this heading">#</a></h2>
 <p>To apply OpenAPI metadata across a whole view, set the
-<a class="reference internal" href="api/views.html#fastapi_restly.views.View.tags" title="fastapi_restly.views.View.tags"><code class="xref py py-attr docutils literal notranslate"><span class="pre">tags</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.View.responses" title="fastapi_restly.views.View.responses"><code class="xref py py-attr docutils literal notranslate"><span class="pre">responses</span></code></a>, and <a class="reference internal" href="api/views.html#fastapi_restly.views.View.dependencies" title="fastapi_restly.views.View.dependencies"><code class="xref py py-attr docutils literal notranslate"><span class="pre">dependencies</span></code></a> class attributes;
-they exist on every view and apply to all of its routes, default and custom:</p>
+<a class="reference internal" href="api/views.html#fastapi_restly.views.View.tags" title="fastapi_restly.views.View.tags"><code class="xref py py-attr docutils literal notranslate"><span class="pre">tags</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.View.responses" title="fastapi_restly.views.View.responses"><code class="xref py py-attr docutils literal notranslate"><span class="pre">responses</span></code></a>, and <a class="reference internal" href="api/views.html#fastapi_restly.views.View.dependencies" title="fastapi_restly.views.View.dependencies"><code class="xref py py-attr docutils literal notranslate"><span class="pre">dependencies</span></code></a> class attributes.
+They exist on every view and apply to all of its routes, default and custom:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">InvoiceView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/invoices&quot;</span>
     <span class="n">tags</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;billing&quot;</span><span class="p">]</span>
     <span class="n">responses</span> <span class="o">=</span> <span class="p">{</span><span class="mi">402</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Payment required&quot;</span><span class="p">}}</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Invoice</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">InvoiceRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">InvoiceSchema</span>
 </pre></div>
 </div>
 </section>
+<section id="default-route-names-and-operation-ids">
+<span id="default-route-metadata"></span><h2>Default route names and operation IDs<a class="headerlink" href="#default-route-names-and-operation-ids" title="Link to this heading">#</a></h2>
+<p>CRUD routes use these FastAPI route names and OpenAPI summaries:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Endpoint method</p></th>
+<th class="head"><p>Route name</p></th>
+<th class="head"><p>Operation ID at <code class="docutils literal notranslate"><span class="pre">/items</span></code></p></th>
+<th class="head"><p>Summary</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">get_many_endpoint</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">get_many</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">items_list</span></code></p></td>
+<td><p>List</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">get_one_endpoint</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">get_one</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">items_get</span></code></p></td>
+<td><p>Get</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">create_endpoint</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">create</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">items_create</span></code></p></td>
+<td><p>Create</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">update_endpoint</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">update</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">items_update</span></code></p></td>
+<td><p>Update</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">delete_endpoint</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">delete</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">items_delete</span></code></p></td>
+<td><p>Delete</p></td>
+</tr>
+<tr class="row-odd"><td><p>React Admin <code class="docutils literal notranslate"><span class="pre">put</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">put</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">items_put</span></code></p></td>
+<td><p>Update (PUT)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Default CRUD operation IDs combine the full resource path and the action.
+They omit the final member parameter and the HTTP method suffix. Mounting a
+view under <code class="docutils literal notranslate"><span class="pre">/v1</span></code> changes <code class="docutils literal notranslate"><span class="pre">items_list</span></code> to <code class="docutils literal notranslate"><span class="pre">v1_items_list</span></code>, so mounting the same
+view under <code class="docutils literal notranslate"><span class="pre">/v1</span></code> and <code class="docutils literal notranslate"><span class="pre">/v2</span></code> gives distinct IDs. Renaming the view class or
+changing its tags does not change these IDs.</p>
+<p>Parent path parameters remain in the resource name as <code class="docutils literal notranslate"><span class="pre">by_&lt;parameter&gt;</span></code>.
+For <code class="docutils literal notranslate"><span class="pre">/projects/{project_id}/items</span></code>, the list ID is
+<code class="docutils literal notranslate"><span class="pre">projects_by_project_id_items_list</span></code>. Punctuation becomes underscores, so
+<code class="docutils literal notranslate"><span class="pre">/order-items</span></code> uses <code class="docutils literal notranslate"><span class="pre">order_items_list</span></code>. Resource spelling is preserved:
+<code class="docutils literal notranslate"><span class="pre">/people</span></code> uses <code class="docutils literal notranslate"><span class="pre">people_get</span></code>, without singularizing it. Paths that normalize
+to the same name, such as <code class="docutils literal notranslate"><span class="pre">/order-items</span></code> and <code class="docutils literal notranslate"><span class="pre">/order_items</span></code>, need explicit
+operation IDs when included in one schema.</p>
+<p>Changing a CRUD route’s <code class="docutils literal notranslate"><span class="pre">name</span></code> changes the action part of its generated ID.
+For example, <code class="docutils literal notranslate"><span class="pre">name=&quot;search&quot;</span></code> on the list route produces <code class="docutils literal notranslate"><span class="pre">items_search</span></code>.
+Custom routes and plain <a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a> routes use
+FastAPI’s normal operation ID rules.</p>
+<p>Explicit <code class="docutils literal notranslate"><span class="pre">operation_id</span></code> values take precedence. Applications can also supply
+FastAPI’s
+<a class="reference external" href="https://fastapi.tiangolo.com/advanced/generate-clients/#custom-generate-unique-id-function"><code class="docutils literal notranslate"><span class="pre">generate_unique_id_function</span></code></a>.
+Generators supplied on a route, router, router inclusion, or app replace the
+CRUD defaults using FastAPI’s normal precedence. They receive the route names
+above, so a generator based on tag and name can produce IDs such as
+<code class="docutils literal notranslate"><span class="pre">items-get_many</span></code>.</p>
+<p>Regenerate clients when adopting these defaults. To preserve an existing
+operation ID, set <code class="docutils literal notranslate"><span class="pre">operation_id</span></code> in the route’s options.</p>
+</section>
+<section id="per-route-metadata-without-replacing-a-method">
+<h2>Per-route metadata without replacing a method<a class="headerlink" href="#per-route-metadata-without-replacing-a-method" title="Link to this heading">#</a></h2>
+<p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.View.route_options" title="fastapi_restly.views.View.route_options"><code class="xref py py-attr docutils literal notranslate"><span class="pre">route_options</span></code></a> to pass
+FastAPI route keyword arguments to an existing endpoint method:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">InvoiceView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/invoices&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Invoice</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">InvoiceSchema</span>
+    <span class="n">route_options</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">GET_MANY</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;list_invoices&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;summary&quot;</span><span class="p">:</span> <span class="s2">&quot;List invoices&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;operation_id&quot;</span><span class="p">:</span> <span class="s2">&quot;billing_list_invoices&quot;</span><span class="p">,</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;create_endpoint&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;summary&quot;</span><span class="p">:</span> <span class="s2">&quot;Create an invoice&quot;</span><span class="p">},</span>
+    <span class="p">}</span>
+</pre></div>
+</div>
+<p>Keys are endpoint method names or <a class="reference internal" href="api/views.html#fastapi_restly.views.ViewRoute" title="fastapi_restly.views.ViewRoute"><code class="xref py py-class docutils literal notranslate"><span class="pre">ViewRoute</span></code></a> values. Use <code class="docutils literal notranslate"><span class="pre">&quot;put&quot;</span></code> for React Admin’s PUT
+route and the method name for a custom route. Values accept the same keyword
+arguments as a route decorator, except its path. An unknown method name raises
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>
+at registration. Options for an excluded route are ignored.</p>
+<p>The options override decorator metadata, which overrides the defaults. A
+subclass inherits the mapping. Declaring a new mapping on the subclass
+replaces it, without merging entries from the parent.</p>
+<p>Default route names repeat across resources. Set distinct <code class="docutils literal notranslate"><span class="pre">name</span></code> values when
+using <code class="docutils literal notranslate"><span class="pre">app.url_path_for()</span></code> to reverse routes from several views. Explicit
+<code class="docutils literal notranslate"><span class="pre">operation_id</span></code> values must be unique across the application’s OpenAPI schema.</p>
+</section>
 <section id="per-route-metadata-on-custom-routes">
 <h2>Per-route metadata on custom routes<a class="headerlink" href="#per-route-metadata-on-custom-routes" title="Link to this heading">#</a></h2>
-<p>To document a custom route, pass keyword arguments to its route decorator;
-the decorators forward them to FastAPI’s <code class="docutils literal notranslate"><span class="pre">add_api_route()</span></code>, so
+<p>To document a custom route, pass keyword arguments to its route decorator.
+The decorators forward them to FastAPI’s <code class="docutils literal notranslate"><span class="pre">add_api_route()</span></code>, so
 custom actions document themselves like any FastAPI endpoint:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
         <span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/publish&quot;</span><span class="p">,</span>
@@ -569,7 +671,9 @@ custom actions document themselves like any FastAPI endpoint:</p>
 <section id="change-a-default-crud-route-s-documented-contract">
 <h2>Change a default CRUD route’s documented contract<a class="headerlink" href="#change-a-default-crud-route-s-documented-contract" title="Link to this heading">#</a></h2>
 <p>A default route’s <code class="docutils literal notranslate"><span class="pre">response_model</span></code> (and therefore its documented schema) comes
-from the view’s <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a> family. To document (and return) a different
+from the view’s <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a> family. OpenAPI shows the classes that
+Restly derives from it, such as <code class="docutils literal notranslate"><span class="pre">UserResponse</span></code> and <code class="docutils literal notranslate"><span class="pre">UserCreate</span></code>; see
+<a class="reference internal" href="technical_details.html#generated-class-names"><span class="std std-ref">Generated Class Names</span></a>. To document (and return) a different
 shape on one verb, replace that endpoint method with your own decorator and
 <code class="docutils literal notranslate"><span class="pre">response_model</span></code>; see
 <a class="reference internal" href="howto_response_schema.html"><span class="std std-doc">Response Envelopes and List Metadata</span></a>,
@@ -588,7 +692,10 @@ carry the vendor extension <code class="docutils literal notranslate"><span clas
 styles are covered in
 <a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys and Relationships</span></a>.</p>
 <p>There is a known limit: views included on an <code class="docutils literal notranslate"><span class="pre">APIRouter</span></code> rather than the app
-currently lose these annotations.</p>
+currently lose these annotations. The check for two classes with the same
+name still covers them when you pass the app to
+<a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure(app,</span> <span class="pre">...)</span></code></a>; see
+<a class="reference internal" href="howto_custom_schema.html#name-your-schemas"><span class="std std-ref">Name your schemas</span></a>.</p>
 </section>
 <section id="see-also">
 <h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
@@ -649,6 +756,8 @@ surface and pass-through keyword arguments.</p></li>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#per-view-metadata">Per-view metadata</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#default-route-names-and-operation-ids">Default route names and operation IDs</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#per-route-metadata-without-replacing-a-method">Per-route metadata without replacing a method</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#per-route-metadata-on-custom-routes">Per-route metadata on custom routes</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#change-a-default-crud-route-s-documented-contract">Change a default CRUD route’s documented contract</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#resource-references-x-resource-ref">Resource references (<code class="docutils literal notranslate"><span class="pre">x-resource-ref</span></code>)</a></li>

@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Compose Views with Mixins &#8212; FastAPI-Restly 0.10.0 documentation</title>
+    <title>Compose Views with Mixins &#8212; FastAPI-Restly 0.11.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=82662543"></script>
+    <script src="_static/documentation_options.js?v=f3b36f1a"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -66,7 +66,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.10" />
+  <meta name="docsearch:version" content="0.11" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -464,6 +464,7 @@
 <li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
 <li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_nested.html">Nested Resources</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Compose Views with Mixins</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
@@ -585,7 +586,7 @@ function, put it where it is easiest to find, and call it from both:</p>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
         <span class="n">user</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_new_object</span><span class="p">(</span><span class="n">schema_obj</span><span class="p">)</span>
@@ -808,7 +809,7 @@ against it, and a view stacks only the verb mixin:</p>
 <span class="k">class</span><span class="w"> </span><span class="nc">ProjectView</span><span class="p">(</span><span class="n">SoftDeleteMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/projects&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Project</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">ProjectRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ProjectSchema</span>
     <span class="c1"># no scope declared: reads apply ProjectClauses.default_scope</span>
 </pre></div>
 </div>
@@ -816,7 +817,7 @@ against it, and a view stacks only the verb mixin:</p>
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.count" title="fastapi_restly.views.RestView.count"><code class="xref py py-meth docutils literal notranslate"><span class="pre">count</span></code></a>, and
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> all apply the
 default scope. The session listener also applies the tenant predicate to those
-reads and to every reference check. Together they cover listings, totals,
+reads and to every reference check. Together they cover lists, totals,
 single-row reads, updates, and deletes. The columns stamp themselves on every
 write.</p>
 </section>

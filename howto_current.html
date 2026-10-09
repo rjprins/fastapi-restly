@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Current context &#8212; FastAPI-Restly 0.10.0 documentation</title>
+    <title>Current context &#8212; FastAPI-Restly 0.11.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=82662543"></script>
+    <script src="_static/documentation_options.js?v=f3b36f1a"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -66,7 +66,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.10" />
+  <meta name="docsearch:version" content="0.11" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -464,6 +464,7 @@
 <li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
 <li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_nested.html">Nested Resources</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
@@ -663,7 +664,7 @@ restores the previous value, including when an exception leaves the block:</p>
     <span class="k">assert</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">()</span> <span class="o">==</span> <span class="mi">42</span>
 </pre></div>
 </div>
-<p>Bindings use <a class="reference external" href="https://docs.python.org/3/library/contextvars.html#contextvars.ContextVar" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">contextvars.ContextVar</span></code></a>, not process-wide mutable
+<p>Bindings use <a class="reference external" href="https://docs.python.org/3/library/contextvars.html#contextvars.ContextVar" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">contextvars.ContextVar</span></code></a>, not process-wide mutable
 class attributes. Async tasks inherit the context in which they are
 created. Resetting a parent binding does not clear a task’s inherited
 context. Bind explicitly when starting work for a different user.</p>
@@ -686,8 +687,8 @@ Committing it includes pending changes from all those helpers.
 Keep responsibility for creating, committing, rolling back, and closing
 the session explicit. See SQLAlchemy’s
 <a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/session_basics.html#when-do-i-construct-a-session-when-do-i-commit-it-and-when-do-i-close-it">session lifecycle guidance</a>.</p>
-<p>Coroutines scheduled with <a class="reference external" href="https://docs.python.org/3/library/asyncio-task.html#asyncio.create_task" title="(in Python v3.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">asyncio.create_task()</span></code></a> or
-<a class="reference external" href="https://docs.python.org/3/library/asyncio-task.html#asyncio.gather" title="(in Python v3.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">asyncio.gather()</span></code></a> inherit the current bindings by default.
+<p>Coroutines scheduled with <a class="reference external" href="https://docs.python.org/3/library/asyncio-task.html#asyncio.create_task" title="(in Python v3.15)"><code class="xref py py-func docutils literal notranslate"><span class="pre">asyncio.create_task()</span></code></a> or
+<a class="reference external" href="https://docs.python.org/3/library/asyncio-task.html#asyncio.gather" title="(in Python v3.15)"><code class="xref py py-func docutils literal notranslate"><span class="pre">asyncio.gather()</span></code></a> inherit the current bindings by default.
 If <code class="docutils literal notranslate"><span class="pre">Current.session</span></code> is bound, they receive the same session object,
 not separate sessions. Give concurrent database tasks separate sessions.
 SQLAlchemy’s

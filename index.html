@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>FastAPI-Restly &#8212; FastAPI-Restly 0.10.0 documentation</title>
+    <title>FastAPI-Restly &#8212; FastAPI-Restly 0.11.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=82662543"></script>
+    <script src="_static/documentation_options.js?v=f3b36f1a"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -65,7 +65,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.10" />
+  <meta name="docsearch:version" content="0.11" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -481,10 +481,9 @@
 Pydantic v2. Views are real Python classes that support inheritance and mixins.
 Designed for customization.</p>
 <blockquote>
-<div><p><strong>Status:</strong> <code class="docutils literal notranslate"><span class="pre">0.10.0</span></code>, a public beta after
-<a class="reference internal" href="about.html"><span class="std std-doc">four years of internal use</span></a>. Expect small breaking changes in
-deeper extension points on the way to <code class="docutils literal notranslate"><span class="pre">1.0.0</span></code>; see the
-<a class="reference internal" href="changelog.html"><span class="std std-doc">changelog</span></a>.</p>
+<div><p><strong>Status:</strong> <code class="docutils literal notranslate"><span class="pre">0.11.0</span></code>, a public beta after
+<a class="reference internal" href="about.html"><span class="std std-doc">four years of internal use</span></a>. Until <code class="docutils literal notranslate"><span class="pre">1.0.0</span></code>, each minor release
+can have breaking changes; see the <a class="reference internal" href="changelog.html"><span class="std std-doc">changelog</span></a>.</p>
 </div></blockquote>
 <p>With FastAPI-Restly imported as <code class="docutils literal notranslate"><span class="pre">fr</span></code>, a CRUD resource is four lines once <code class="docutils literal notranslate"><span class="pre">app</span></code>
 and <code class="docutils literal notranslate"><span class="pre">User</span></code> exist:</p>
@@ -571,8 +570,8 @@ first test.</p>
 <li><p><strong><a class="reference internal" href="howto_react_admin.html"><span class="std std-doc">React Admin ready</span></a></strong>: <code class="docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code> speaks <code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code></p></li>
 <li><p><strong><a class="reference internal" href="getting_started.html"><span class="std std-doc">SQLAlchemy 2.0 support</span></a></strong>: async-first with modern patterns</p></li>
 <li><p><strong><a class="reference internal" href="howto_custom_schema.html"><span class="std std-doc">Pydantic v2 integration</span></a></strong>: validation and serialization for public contracts</p></li>
-<li><p><strong><a class="reference internal" href="technical_details.html#id1"><span class="std std-ref">Automatic schema generation</span></a></strong>: read, create, and update schemas generated automatically</p></li>
-<li><p><strong><a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">List parameters</span></a></strong>: filter, sort, and paginate from a stable URL dialect generated from the response schema</p></li>
+<li><p><strong><a class="reference internal" href="technical_details.html#id2"><span class="std std-ref">Automatic schema generation</span></a></strong>: response, create, and update schemas generated automatically</p></li>
+<li><p><strong><a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">List parameters</span></a></strong>: filter, sort, and paginate from a stable URL dialect generated from the view’s schema</p></li>
 <li><p><strong><a class="reference internal" href="howto_current.html"><span class="std std-doc">Current context</span></a></strong>: bind the current user once and read it in application code and column defaults</p></li>
 <li><p><strong><a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a></strong>: row visibility declared once as a clause and applied to every read and reference check</p></li>
 <li><p><strong><a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Relationship support</span></a></strong>: handle foreign keys and nested objects</p></li>

@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Use Restly in an Existing Project &#8212; FastAPI-Restly 0.10.0 documentation</title>
+    <title>Use Restly in an Existing Project &#8212; FastAPI-Restly 0.11.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=82662543"></script>
+    <script src="_static/documentation_options.js?v=f3b36f1a"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -66,7 +66,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.10" />
+  <meta name="docsearch:version" content="0.11" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -464,6 +464,7 @@
 <li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
 <li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_nested.html">Nested Resources</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
@@ -548,7 +549,7 @@ and views can share the same parent app or router:</p>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.orders</span><span class="w"> </span><span class="kn">import</span> <span class="n">router</span> <span class="k">as</span> <span class="n">orders_router</span>
 
 <span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">()</span>
-<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">async_engine</span><span class="o">=</span><span class="n">async_engine</span><span class="p">)</span>
+<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">async_engine</span><span class="o">=</span><span class="n">async_engine</span><span class="p">)</span>
 
 <span class="n">api</span> <span class="o">=</span> <span class="n">APIRouter</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/api&quot;</span><span class="p">)</span>
 
@@ -558,7 +559,7 @@ and views can share the same parent app or router:</p>
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
 
 
 <span class="n">fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">UserView</span><span class="p">)</span>  <span class="c1"># registers /api/users CRUD routes</span>
@@ -568,7 +569,10 @@ and views can share the same parent app or router:</p>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">fr.include_view</span></code> works as a direct call (<code class="docutils literal notranslate"><span class="pre">fr.include_view(api,</span> <span class="pre">UserView)</span></code>,
 above) or as a class decorator (<code class="docutils literal notranslate"><span class="pre">&#64;fr.include_view(app)</span></code>, used later in this
-guide); both register the same routes.</p>
+guide); both register the same routes. Pass <code class="docutils literal notranslate"><span class="pre">app</span></code> to <code class="docutils literal notranslate"><span class="pre">fr.configure</span></code>, also
+when the views are on a router: then Restly can check the app’s OpenAPI spec
+for two classes with the same name
+(<a class="reference internal" href="howto_custom_schema.html#name-your-schemas"><span class="std std-ref">Name your schemas</span></a>).</p>
 <p>Adoption is per resource. In the example above, orders stay hand-written while
 users use <code class="docutils literal notranslate"><span class="pre">UserView</span></code>. Adding a <code class="docutils literal notranslate"><span class="pre">ProductView</span></code> later does not require changing the
 orders router.</p>
@@ -587,7 +591,7 @@ add the FastAPI route yourself:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
     <span class="n">exclude_routes</span> <span class="o">=</span> <span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">DELETE</span><span class="p">,)</span>
 
 
@@ -638,7 +642,7 @@ status drift shows up immediately.</p></li>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ProductView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/products&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Product</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">ProductRead</span>          <span class="c1"># match your old response shape exactly</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ProductSchema</span>          <span class="c1"># match your old response shape exactly</span>
     <span class="n">exclude_routes</span> <span class="o">=</span> <span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">DELETE</span><span class="p">,)</span>  <span class="c1"># old DELETE returns the object</span>
 
 
@@ -687,9 +691,10 @@ out). <a class="reference internal" href="api/views.html#fastapi_restly.views.Re
 <span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
 
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">my_get_db</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">AsyncIterator</span><span class="p">[</span><span class="n">AsyncSession</span><span class="p">]:</span>
-    <span class="o">...</span>
-    <span class="k">yield</span> <span class="n">MyAsyncSession</span><span class="p">()</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="n">MyAsyncSession</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">session</span>
 
+<span class="c1"># Before registering routes or including views.</span>
 <span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">session_generator</span><span class="o">=</span><span class="n">my_get_db</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -699,17 +704,48 @@ out). <a class="reference internal" href="api/views.html#fastapi_restly.views.Re
 <span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">my_get_db</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">Session</span><span class="p">]:</span>
-    <span class="o">...</span>
-    <span class="k">yield</span> <span class="n">MySession</span><span class="p">()</span>
+    <span class="k">with</span> <span class="n">MySession</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">session</span>
 
+<span class="c1"># Before registering routes or including views.</span>
 <span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">sync_session_generator</span><span class="o">=</span><span class="n">my_get_db</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The <a class="reference internal" href="howto_testing.html#restly-session"><span class="std std-ref">test fixtures</span></a> clear a configured
-generator for the duration of a test, so the request receives the fixture’s
-isolated session. Configure a sessionmaker (or a database URL) for the tests as
-well, and note that whatever the generator body runs per session does not run
-there.</p>
+<p>Restly resolves the configured generator through FastAPI’s dependency graph.
+An existing <code class="docutils literal notranslate"><span class="pre">Depends(my_get_db)</span></code> in an authentication dependency or route and
+the view’s <code class="docutils literal notranslate"><span class="pre">self.session</span></code> receive the same session within a request. That means
+a user loaded by authentication can be assigned directly to a relationship in
+the view. The generator runs once, with one cleanup, under FastAPI’s normal
+dependency caching. Custom <code class="docutils literal notranslate"><span class="pre">use_cache=False</span></code>, dependency scopes, and security
+scopes follow FastAPI’s own caching rules.</p>
+<p>Configure the generator before registering any route that uses
+<a class="reference internal" href="api/db.html#fastapi_restly.db.SessionDep" title="fastapi_restly.db.SessionDep"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.SessionDep</span></code></a> or
+<a class="reference internal" href="api/db.html#fastapi_restly.db.AsyncSessionDep" title="fastapi_restly.db.AsyncSessionDep"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.AsyncSessionDep</span></code></a>, including plain
+FastAPI routes. FastAPI fixes the
+dependency graph at registration, so setting or replacing that generator later
+raises <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>.
+An explicit <code class="docutils literal notranslate"><span class="pre">session:</span> <span class="pre">Annotated[...,</span> <span class="pre">Depends(reporting_get_db)]</span></code> on a view keeps
+using <code class="docutils literal notranslate"><span class="pre">reporting_get_db</span></code>.</p>
+<p>Sharing also works when Restly owns session creation. Use its public aliases in
+your application’s dependencies and plain routes. This example assumes your
+application supplies <code class="docutils literal notranslate"><span class="pre">User</span></code> and <code class="docutils literal notranslate"><span class="pre">current_user_id()</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">async_engine</span><span class="o">=</span><span class="n">existing_async_engine</span><span class="p">)</span>
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_current_user</span><span class="p">(</span><span class="n">session</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncSessionDep</span><span class="p">):</span>
+    <span class="k">return</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">User</span><span class="p">,</span> <span class="n">current_user_id</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>Views and application dependencies using <code class="docutils literal notranslate"><span class="pre">fr.AsyncSessionDep</span></code> share one session.
+Use <code class="docutils literal notranslate"><span class="pre">fr.SessionDep</span></code> for sync code. Both aliases keep Restly’s uncommitted-changes
+warning, including when used on plain routes.</p>
+<p>The <a class="reference internal" href="howto_testing.html#restly-session"><span class="std std-ref">test fixtures</span></a> override the configured
+generator through <code class="docutils literal notranslate"><span class="pre">app.dependency_overrides</span></code> under rollback isolation. Native
+application dependencies and Restly then share an isolated request session.
+The generator body does not run for requests during those tests. If no factory
+is configured, setup opens the generator to discover its session’s bind.
+Generators needing request arguments require an explicit test engine or
+sessionmaker as well. For your own overrides, use
+<code class="docutils literal notranslate"><span class="pre">app.dependency_overrides[my_get_db]</span> <span class="pre">=</span> <span class="pre">test_get_db</span></code>.</p>
 </section>
 <section id="use-a-custom-session-dependency-on-one-view">
 <h2>Use a Custom Session Dependency on One View<a class="headerlink" href="#use-a-custom-session-dependency-on-one-view" title="Link to this heading">#</a></h2>
@@ -747,7 +783,7 @@ the view’s <code class="docutils literal notranslate"><span class="pre">sessio
 <span class="k">class</span><span class="w"> </span><span class="nc">ReportView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/reports&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Report</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">ReportRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ReportSchema</span>
     <span class="n">session</span><span class="p">:</span> <span class="n">ReportingSessionDep</span>
 </pre></div>
 </div>
@@ -800,7 +836,7 @@ you can use those models directly in a
 </div>
 <p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> supports these models for
 default CRUD routes and
-<a class="reference internal" href="technical_details.html#id1"><span class="std std-ref">auto-generated schemas</span></a>. When
+<a class="reference internal" href="technical_details.html#id2"><span class="std std-ref">auto-generated schemas</span></a>. When
 creating tables, use your own base metadata (for example
 <code class="docutils literal notranslate"><span class="pre">AppBase.metadata.create_all(...)</span></code>).</p>
 </section>

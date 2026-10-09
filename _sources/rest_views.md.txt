@@ -44,14 +44,14 @@ Ordinary models based on SQLAlchemy's `DeclarativeBase` work. Restly's
 not a requirement.
 
 If the view does not declare {attr}`schema
-<fastapi_restly.views.BaseRestView.schema>`, Restly constructs a response schema
+<fastapi_restly.views.BaseRestView.schema>`, Restly generates the view's schema
 from `model` when the view is registered. It then derives the create and update
-schemas from that response schema. Declare an explicit response schema when the
+schemas from it. Write the view's schema yourself when the
 wire contract needs stable field names, validation, aliases, or fields that do
 not match the table directly:
 
 ```python
-class UserRead(fr.IDSchema):
+class UserSchema(fr.IDSchema):
     name: str
     email: str
 
@@ -60,16 +60,21 @@ class UserRead(fr.IDSchema):
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    schema = UserRead
+    schema = UserSchema
 ```
 
-The three schema attributes have separate jobs:
+The four schema attributes have separate jobs:
 
 | Attribute | Used for | Default |
 |---|---|---|
-| {attr}`schema <fastapi_restly.views.BaseRestView.schema>` | `GET` responses and successful write responses | Constructed from `model` when omitted |
+| {attr}`schema <fastapi_restly.views.BaseRestView.schema>` | The source that Restly derives the other three from | Constructed from `model` when omitted |
+| {attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>` | `GET` responses and successful write responses | `schema` without `WriteOnly` fields |
 | {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` | `POST` request body | `schema` without `ReadOnly` fields |
 | {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` | `PATCH` request body | Writable fields from `schema`, made optional |
+
+Both derived schemas also leave out a primary key the server generates
+(autoincrement, a column default, or a dataclass field with `init=False`),
+marked `ReadOnly` or not. A natural key stays writable.
 
 [Custom Schemas and Field Types](howto_custom_schema.md) owns field markers,
 aliases, validation, and the choice between explicit and constructed schemas.
@@ -81,7 +86,7 @@ and include it where the app or router is assembled:
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    schema = UserRead
+    schema = UserSchema
 
 
 fr.include_view(app, UserView)
@@ -142,6 +147,31 @@ action unless a subclass overrides it. Add authentication through FastAPI
 dependencies, then enforce per-action policy in `authorize()` where needed.
 :::
 
+(item-route-matching)=
+### Item paths and static routes
+
+The built-in `GET`, `PATCH`, and `DELETE` item paths follow
+{attr}`id_type <fastapi_restly.views.BaseRestView.id_type>`. By default, it is
+inferred from the model's primary key. React Admin's `PUT` uses the same path.
+
+| ID type | Registered item path | Matching values |
+|---|---|---|
+| `int` | `/{id:int}` | Non-negative digits, including `0` |
+| `uuid.UUID` | `/{id:uuid}` | UUIDs accepted by Starlette's converter |
+| Any other type | `/{id}` | Any single path segment, then FastAPI validation |
+
+An integer or UUID item route leaves `/users/me` available to a static route
+registered after the view. A value that does not match the converter returns
+`404` instead of the previous `422`, unless another route handles it. Negative
+integer IDs do not match, even if the row exists. OpenAPI still shows
+`/users/{id}` with the integer or UUID parameter schema.
+
+Custom endpoint declarations keep their paths. To accept negative integer
+IDs, replace each needed item endpoint with an untyped path such as
+`@fr.get("/{id}")` and annotate its `id` parameter as `int`. See
+[Customizing RestView](customize.md) for endpoint replacements. Register
+static routes before untyped item routes, including views with string IDs.
+
 ## Configure a view
 
 Configure the class according to the contract the resource needs:
@@ -150,12 +180,13 @@ Configure the class according to the contract the resource needs:
 |---|---|
 | Stable response fields | Declare {attr}`schema <fastapi_restly.views.BaseRestView.schema>` |
 | Different create or update validation | Declare {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` or {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` |
-| UUID or another scalar ID type | Set {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` |
+| A different type for the `{id}` path parameter | Set {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` |
 | Read-only or otherwise restricted routes | Set {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` with `fr.ViewRoute` values |
-| Disable pagination | Set {attr}`paginated <fastapi_restly.views.BaseRestView.paginated>` to `False` |
-| Change page limits | Set {attr}`default_page_size <fastapi_restly.views.BaseRestView.default_page_size>` and {attr}`max_page_size <fastapi_restly.views.BaseRestView.max_page_size>` |
-| Accept a view-specific list query key | Add it to {attr}`extra_query_params <fastapi_restly.views.BaseRestView.extra_query_params>` |
+| Disable pagination | Set {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` to `None`, or to a {class}`NoPagination <fastapi_restly.views.NoPagination>` to choose its envelope |
+| Change page limits, parameter names, or the list envelope | Set {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` to a {class}`NumberedPagination <fastapi_restly.views.NumberedPagination>` |
+| Accept a view-specific list query key | Declare it on the endpoint method or in a dependency, or add it to {attr}`extra_query_params <fastapi_restly.views.BaseRestView.extra_query_params>` when code reads it from the request |
 | Apply FastAPI metadata or dependencies to every route | Set {attr}`tags <fastapi_restly.views.View.tags>`, {attr}`responses <fastapi_restly.views.View.responses>`, or {attr}`dependencies <fastapi_restly.views.View.dependencies>` |
+| Set a route name, summary, or operation ID | Set {attr}`route_options <fastapi_restly.views.View.route_options>` as shown in [OpenAPI customization](#default-route-metadata) |
 | Use another session dependency | Override the `session` annotation with `Annotated[..., Depends(...)]` |
 
 [Behavior and Configuration Reference](api_details.md) lists the exact
@@ -187,8 +218,9 @@ override decision table, and worked recipes.
 
 The default CRUD contract has these boundaries:
 
-- Resource identity is one scalar primary key on the generated routes. Set
-  `id_type` for UUID or another scalar type. A composite key is reached from
+- Resource identity is one scalar primary key on the generated routes. The
+  `{id}` path parameter takes the key's Python type, so a UUID or string key
+  needs no configuration. A composite key is reached from
   a custom route that loads with a predicate
   ([Look a row up by another key](#natural-key-route)), or from
   {class}`View <fastapi_restly.views.View>` with explicit route paths.

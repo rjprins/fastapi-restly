@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Shape Error Responses &#8212; FastAPI-Restly 0.10.0 documentation</title>
+    <title>Shape Error Responses &#8212; FastAPI-Restly 0.11.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=82662543"></script>
+    <script src="_static/documentation_options.js?v=f3b36f1a"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -66,7 +66,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.10" />
+  <meta name="docsearch:version" content="0.11" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -464,6 +464,7 @@
 <li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Shape Error Responses</a></li>
 <li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_nested.html">Nested Resources</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
@@ -578,9 +579,10 @@ a plain FastAPI app.</p>
 routes), and they render through whatever handler is installed:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ArticleView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="o">...</span>
+    <span class="n">current_user</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">User</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_current_user</span><span class="p">)]</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">authorize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="s2">&quot;delete&quot;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="s2">&quot;delete&quot;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">Forbidden</span><span class="p">(</span><span class="s2">&quot;deletes need an admin token&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -588,9 +590,10 @@ routes), and they render through whatever handler is installed:</p>
 <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyError" title="fastapi_restly.exc.RestlyError"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.RestlyError</span></code></a> and
 <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>
 are setup-time framework errors, and the warnings
-<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyUncommittedChangesWarning" title="fastapi_restly.exc.RestlyUncommittedChangesWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyUncommittedChangesWarning</span></code></a> and
-<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyMisuseWarning" title="fastapi_restly.exc.RestlyMisuseWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyMisuseWarning</span></code></a> also
-live there.</p>
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyUncommittedChangesWarning" title="fastapi_restly.exc.RestlyUncommittedChangesWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyUncommittedChangesWarning</span></code></a>,
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyMisuseWarning" title="fastapi_restly.exc.RestlyMisuseWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyMisuseWarning</span></code></a> and
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyDuplicateSchemaNameWarning" title="fastapi_restly.exc.RestlyDuplicateSchemaNameWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyDuplicateSchemaNameWarning</span></code></a>
+also live there.</p>
 </section>
 <section id="vs-400-on-list-endpoints">
 <h2>422 vs 400 on list endpoints<a class="headerlink" href="#vs-400-on-list-endpoints" title="Link to this heading">#</a></h2>

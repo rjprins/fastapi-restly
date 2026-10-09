@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Query Clauses &#8212; FastAPI-Restly 0.10.0 documentation</title>
+    <title>Query Clauses &#8212; FastAPI-Restly 0.11.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=82662543"></script>
+    <script src="_static/documentation_options.js?v=f3b36f1a"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -66,7 +66,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.10" />
+  <meta name="docsearch:version" content="0.11" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -464,6 +464,7 @@
 <li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
 <li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_nested.html">Nested Resources</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
@@ -558,7 +559,7 @@ non-deleted tasks:</p>
 
 
 <span class="k">with</span> <span class="n">Current</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">user_id</span><span class="o">=</span><span class="mi">42</span><span class="p">):</span>
-    <span class="n">listing</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">apply_clauses</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">Task</span><span class="p">),</span> <span class="n">TaskClauses</span><span class="o">.</span><span class="n">visible</span><span class="p">)</span>
+    <span class="n">tasks</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">apply_clauses</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">Task</span><span class="p">),</span> <span class="n">TaskClauses</span><span class="o">.</span><span class="n">visible</span><span class="p">)</span>
     <span class="n">count</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">apply_clauses</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">func</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">Task</span><span class="o">.</span><span class="n">id</span><span class="p">)),</span> <span class="n">TaskClauses</span><span class="o">.</span><span class="n">visible</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -821,6 +822,11 @@ in its body:</p>
     <span class="k">return</span> <span class="n">Item</span><span class="o">.</span><span class="n">user_id</span> <span class="o">==</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">()</span>
 </pre></div>
 </div>
+<p>Arithmetic with the member first, such as <code class="docutils literal notranslate"><span class="pre">Current.now</span> <span class="pre">-</span> <span class="pre">Item.created_at</span></code>,
+and a member inside a plain tuple raise <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> when the clause is
+applied: SQLAlchemy would pass the member object to the database as a value.
+Wrap the member with <code class="docutils literal notranslate"><span class="pre">sqlalchemy.type_coerce(Current.now,</span> <span class="pre">DateTime)</span></code>, and
+write a tuple as <code class="docutils literal notranslate"><span class="pre">sqlalchemy.tuple_(...)</span></code>.</p>
 <p>Both forms read the member when the clause is applied: by
 <code class="docutils literal notranslate"><span class="pre">apply_clauses</span></code>, by a view read, by a reference check, or when the clause
 is called. The statement carries the values with it, so it can run after
@@ -944,8 +950,8 @@ clause. Write a plain function that returns the expression:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">all_of</span><span class="p">(</span><span class="n">ItemClauses</span><span class="o">.</span><span class="n">visible</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span><span class="n">name_matches</span><span class="p">(</span><span class="n">term</span><span class="p">)))</span>
 </pre></div>
 </div>
-<p>A view listing takes the expression directly:
-<a class="reference internal" href="scopes.html#per-read-where"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">handle_get_many(query_params,</span> <span class="pre">where=...)</span></code></span></a> narrows
+<p>A list route on a view takes the expression directly:
+<a class="reference internal" href="scopes.html#per-read-where"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">handle_get_many(list_params,</span> <span class="pre">where=...)</span></code></span></a> narrows
 inside the scope.</p>
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>

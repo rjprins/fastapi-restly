@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Work with Foreign Keys and Relationships &#8212; FastAPI-Restly 0.10.0 documentation</title>
+    <title>Work with Foreign Keys and Relationships &#8212; FastAPI-Restly 0.11.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=82662543"></script>
+    <script src="_static/documentation_options.js?v=f3b36f1a"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -66,7 +66,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.10" />
+  <meta name="docsearch:version" content="0.11" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -464,6 +464,7 @@
 <li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
 <li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_nested.html">Nested Resources</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
@@ -572,7 +573,7 @@ for what embedding supports.</p>
 <td><p><code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">1}</span></code></p></td>
 <td><p>resolves to <code class="docutils literal notranslate"><span class="pre">User</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">author:</span> <span class="pre">fr.ReadOnly[UserRead]</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">author:</span> <span class="pre">fr.ReadOnly[UserSchema]</span></code></p></td>
 <td><p>the full object</p></td>
 <td><p>read-only relationship embed</p></td>
 </tr>
@@ -632,11 +633,11 @@ is why <code class="docutils literal notranslate"><span class="pre">ForeignKey(&
 <h2>Schema setup<a class="headerlink" href="#schema-setup" title="Link to this heading">#</a></h2>
 <p>With the models in place, declare the foreign-key column on the schema as a
 checked reference:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
 
 
-<span class="k">class</span><span class="w"> </span><span class="nc">ArticleRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ArticleSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">author_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">MustExist</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">User</span><span class="p">]</span>
 </pre></div>
@@ -667,7 +668,7 @@ the schema:</p>
 <span class="k">class</span><span class="w"> </span><span class="nc">ArticleView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/articles&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Article</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">ArticleRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ArticleSchema</span>
 </pre></div>
 </div>
 <p>On create and update, Restly looks up the <code class="docutils literal notranslate"><span class="pre">User</span></code> with <code class="docutils literal notranslate"><span class="pre">id=1</span></code>. If it does not
@@ -733,7 +734,7 @@ Restly sets the FK column and leaves the relationship to you.</p>
 <section id="lists-of-references">
 <h2>Lists of references<a class="headerlink" href="#lists-of-references" title="Link to this heading">#</a></h2>
 <p>A to-many reference serializes as a plain id array with <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">list[fr.IDRef[Model]]</span></code></a>:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">OrderRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">OrderSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">customer_name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">products</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">fr</span><span class="o">.</span><span class="n">IDRef</span><span class="p">[</span><span class="n">Product</span><span class="p">]]</span>  <span class="c1"># serializes as [1, 2, 3]</span>
 </pre></div>
@@ -780,7 +781,7 @@ class.</p>
 <h2>Nested relationship objects<a class="headerlink" href="#nested-relationship-objects" title="Link to this heading">#</a></h2>
 <p>Some clients model relationships as objects. For that shape, annotate the
 relationship field with <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDSchema[Model]</span></code></a>:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ArticleRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ArticleSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">author</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">[</span><span class="n">User</span><span class="p">]</span>
 </pre></div>
@@ -800,38 +801,22 @@ difference is the API shape: flat id versus nested object.</p>
 <h2>Dataclass relationship setup<a class="headerlink" href="#dataclass-relationship-setup" title="Link to this heading">#</a></h2>
 <p><a class="reference internal" href="api/models.html#fastapi_restly.models.IDBase" title="fastapi_restly.models.IDBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDBase</span></code></a> uses SQLAlchemy’s
 <code class="docutils literal notranslate"><span class="pre">MappedAsDataclass</span></code>, which generates an <code class="docutils literal notranslate"><span class="pre">__init__</span></code> from the model fields.
-Restly’s create/update helpers are aware of that constructor shape when an
-<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef</span></code></a> /
-<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a> relationship field has been
-resolved to an ORM object.</p>
-<p>For an FK-first dataclass model, keep the relationship out of the generated
-constructor and leave it unset:</p>
+Restly passes that constructor the values it requires, whether the schema
+writes the foreign key, the relationship, or both. You can declare the foreign
+key and the relationship with any <code class="docutils literal notranslate"><span class="pre">init</span></code> and <code class="docutils literal notranslate"><span class="pre">default</span></code> options:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">author_id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;user.id&quot;</span><span class="p">))</span>
-<span class="n">author</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="s2">&quot;User&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>With that model and <code class="docutils literal notranslate"><span class="pre">author:</span> <span class="pre">fr.IDRef[User]</span></code>, Restly passes the scalar FK when
-the constructor needs it and assigns <code class="docutils literal notranslate"><span class="pre">author</span></code> after construction. With a
-scalar <code class="docutils literal notranslate"><span class="pre">author_id:</span> <span class="pre">fr.MustExist[int,</span> <span class="pre">User]</span></code> field, leaving <code class="docutils literal notranslate"><span class="pre">author</span></code> unset keeps
-SQLAlchemy from replacing the supplied foreign key with <code class="docutils literal notranslate"><span class="pre">NULL</span></code> during flush.</p>
-<p>Do not add <code class="docutils literal notranslate"><span class="pre">default=None</span></code> to an <code class="docutils literal notranslate"><span class="pre">init=False</span></code> relationship paired with a
-required scalar foreign key. SQLAlchemy assigns that relationship default to
-each new object, and the relationship value takes precedence over the foreign
-key during flush.</p>
-<p>If your model is relationship-first, Restly adapts there too:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">author_id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;user.id&quot;</span><span class="p">),</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="n">author</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="s2">&quot;User&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>In that shape, Restly passes the resolved <code class="docutils literal notranslate"><span class="pre">User</span></code> object to the constructor and
-keeps <code class="docutils literal notranslate"><span class="pre">author_id</span></code> in sync. More generally, Restly supplies the constructor
-values your dataclass model requires: FK scalar, relationship object, or both.</p>
-<p>Optional references follow the same contract. A field typed
-<code class="docutils literal notranslate"><span class="pre">author:</span> <span class="pre">fr.IDRef[User]</span> <span class="pre">|</span> <span class="pre">None</span></code> accepts an explicit <code class="docutils literal notranslate"><span class="pre">null</span></code>, and may simply be
-omitted when it defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code>; the row is created with a <code class="docutils literal notranslate"><span class="pre">NULL</span></code> foreign
-key, with the constructor again receiving whatever the dataclass requires. A
-<code class="docutils literal notranslate"><span class="pre">null</span></code> against a <code class="docutils literal notranslate"><span class="pre">NOT</span> <span class="pre">NULL</span></code> column fails at the database and surfaces as the
-standard <code class="docutils literal notranslate"><span class="pre">409</span></code>, not a server error.</p>
+<p>A relationship the request does not send never overrides a foreign key it
+does send. If such a relationship is <code class="docutils literal notranslate"><span class="pre">None</span></code> after construction, for example
+from <code class="docutils literal notranslate"><span class="pre">default=None</span></code>, Restly removes the <code class="docutils literal notranslate"><span class="pre">None</span></code>. Otherwise SQLAlchemy’s flush
+would write <code class="docutils literal notranslate"><span class="pre">NULL</span></code> over the foreign key.</p>
+<p>Optional references work the same way. A field typed
+<code class="docutils literal notranslate"><span class="pre">author:</span> <span class="pre">fr.IDRef[User]</span> <span class="pre">|</span> <span class="pre">None</span></code> accepts an explicit <code class="docutils literal notranslate"><span class="pre">null</span></code>, and may be omitted
+when it defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code>. Unless another field sends the foreign key, the
+row gets a <code class="docutils literal notranslate"><span class="pre">NULL</span></code> foreign key. A <code class="docutils literal notranslate"><span class="pre">null</span></code> for a <code class="docutils literal notranslate"><span class="pre">NOT</span> <span class="pre">NULL</span></code> column fails in the
+database, and the request returns the standard <code class="docutils literal notranslate"><span class="pre">409</span></code>, not a server error.</p>
 <p>If a schema exposes the same link as two reference fields, for example a
 FK-named <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef</span></code></a> field alongside the
 relationship, Restly validates that they match:</p>
@@ -845,7 +830,9 @@ relationship, Restly validates that they match:</p>
 return <code class="docutils literal notranslate"><span class="pre">422</span></code>. Explicit <code class="docutils literal notranslate"><span class="pre">null</span></code> also participates in this check: <code class="docutils literal notranslate"><span class="pre">author_id:</span> <span class="pre">1</span></code>
 with <code class="docutils literal notranslate"><span class="pre">author:</span> <span class="pre">null</span></code> is a conflict, while omitting <code class="docutils literal notranslate"><span class="pre">author</span></code> entirely is not. A
 plain <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">MustExist</span></code></a> scalar does not take
-part in this reference-pair check; it is a checked column value.</p>
+part in this reference-pair check; it is a checked column value. When a
+request sends it together with a different relationship value, including
+<code class="docutils literal notranslate"><span class="pre">null</span></code>, Restly saves the relationship value.</p>
 <section id="standard-sqlalchemy-declarative-models">
 <h3>Standard SQLAlchemy declarative models<a class="headerlink" href="#standard-sqlalchemy-declarative-models" title="Link to this heading">#</a></h3>
 <p>If you use a normal SQLAlchemy <code class="docutils literal notranslate"><span class="pre">DeclarativeBase</span></code>, the dataclass constructor
@@ -888,7 +875,7 @@ skips validation. For a
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.objects</span><span class="w"> </span><span class="kn">import</span> <span class="n">async_make_new_object</span>
 
 
-<span class="n">link_schema</span> <span class="o">=</span> <span class="n">TaskLabelRead</span><span class="o">.</span><span class="n">model_construct</span><span class="p">(</span>
+<span class="n">link_schema</span> <span class="o">=</span> <span class="n">TaskLabelSchema</span><span class="o">.</span><span class="n">model_construct</span><span class="p">(</span>
     <span class="n">task_id</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">task_id</span><span class="p">,</span>
     <span class="n">label_id</span><span class="o">=</span><span class="n">label</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
 <span class="p">)</span>
@@ -906,22 +893,22 @@ require response-only fields such as <code class="docutils literal notranslate">
 <p>If those fields were <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef</span></code></a> /
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a> relationship references
 instead, wrap them explicitly before calling the object helper:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">link_schema</span> <span class="o">=</span> <span class="n">TaskLabelRead</span><span class="o">.</span><span class="n">model_construct</span><span class="p">(</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">link_schema</span> <span class="o">=</span> <span class="n">TaskLabelSchema</span><span class="o">.</span><span class="n">model_construct</span><span class="p">(</span>
     <span class="n">task</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">IDRef</span><span class="p">[</span><span class="n">Task</span><span class="p">](</span><span class="nb">id</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">task_id</span><span class="p">),</span>
     <span class="n">label</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">IDRef</span><span class="p">[</span><span class="n">Label</span><span class="p">](</span><span class="nb">id</span><span class="o">=</span><span class="n">label</span><span class="o">.</span><span class="n">id</span><span class="p">),</span>
 <span class="p">)</span>
 </pre></div>
 </div>
-<p>If you instead use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema[Model]</span></code></a> as a nested relationship-object field in a custom response schema, serialize the ORM object through <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response_schema" title="fastapi_restly.views.BaseRestView.to_response_schema"><code class="xref py py-meth docutils literal notranslate"><span class="pre">self.to_response_schema(obj)</span></code></a> before returning it:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">TaskLabelNestedRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+<p>If you instead use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema[Model]</span></code></a> as a nested relationship-object field in a custom response schema, serialize the ORM object through <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_single_response" title="fastapi_restly.views.BaseRestView.to_single_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">self.to_single_response(obj)</span></code></a> before returning it:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">TaskLabelNestedSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">task</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">[</span><span class="n">Task</span><span class="p">]</span>
     <span class="n">label</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">[</span><span class="n">Label</span><span class="p">]</span>
 
 
-<span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/attach&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">TaskLabelNestedRead</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span><span class="p">)</span>
+<span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/attach&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">TaskLabelNestedSchema</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">attach</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">AttachRequest</span><span class="p">):</span>
     <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="n">create_task_label</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
-    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response_schema</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_single_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The raw ORM object usually has scalar FK columns, while a nested schema expects
@@ -957,7 +944,7 @@ requested id (and a list field is a list of references):</p>
 <span class="k">class</span><span class="w"> </span><span class="nc">ArticleView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/articles&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Article</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">ArticleRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ArticleSchema</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">authorize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">data</span><span class="o">.</span><span class="n">author_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>

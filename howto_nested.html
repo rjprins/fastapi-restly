@@ -1,0 +1,947 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" data-theme="auto">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Nested Resources &#8212; FastAPI-Restly 0.11.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "auto";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "auto";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=f3b36f1a"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'howto_nested';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://www.fastapi-restly.org/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <link rel="canonical" href="https://www.fastapi-restly.org/howto_nested.html" />
+    <link rel="icon" href="_static/favicon.svg"/>
+    <link rel="author" title="About these documents" href="about.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Share Behaviour with Base Views" href="howto_inheritance.html" />
+    <link rel="prev" title="Patterns" href="patterns.html" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.11" />
+<meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700&amp;display=swap"
+      rel="stylesheet" />
+<!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
+<script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="auto">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/fr-monogram.svg" class="logo__image only-light" alt=""/>
+    <img src="_static/fr-monogram-dark.svg" class="logo__image only-dark pst-js-only" alt=""/>
+  
+  
+    <p class="title logo__title">FastAPI-Restly</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="getting_started.html">
+    Getting Started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="class_based_views.html">
+    CRUD Views
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="user_guide.html">
+    How-To
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="getting_started.html">
+    Getting Started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="class_based_views.html">
+    CRUD Views
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="user_guide.html">
+    How-To
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Project structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_relationship_loading.html">Relationship Loading and Async</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_query_modifiers.html">Filter, Sort, and Paginate Lists</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_current.html">Current context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Nested Resources</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_react_admin.html">React Admin Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_openapi.html">Customize the OpenAPI Schema</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_testing.html">Test APIs with RestlyTestClient and Fixtures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="user_guide.html" class="nav-link">How-To Guides</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Nested Resources</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="nested-resources">
+<span id="id1"></span><h1>Nested Resources<a class="headerlink" href="#nested-resources" title="Link to this heading">#</a></h1>
+<p>A nested resource is a child resource served under its parent in the URL,
+such as <code class="docutils literal notranslate"><span class="pre">/projects/{project_id}/tasks</span></code>. In Restly it is an ordinary
+<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> with three
+additions: a path parameter in its <code class="docutils literal notranslate"><span class="pre">prefix</span></code>, a dependency that looks up the
+parent, and a <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.scope" title="fastapi_restly.views.BaseRestView.scope"><code class="xref py py-attr docutils literal notranslate"><span class="pre">scope</span></code></a> that
+limits the rows to that parent. Every CRUD route keeps working, including
+paging, filters and sort.</p>
+<p>A flat view filtered by the foreign key, <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/tasks?project_id=17</span></code>, needs no
+extra code; see <a class="reference internal" href="howto_query_modifiers.html#foreign-key-filtering"><span class="std std-ref">Foreign-key filtering</span></a>. Nest the
+view when the nested URL is part of your API.</p>
+<section id="one-level">
+<span id="nested-one-level"></span><h2>One level<a class="headerlink" href="#one-level" title="Link to this heading">#</a></h2>
+<p>This example serves the tasks of a project at
+<code class="docutils literal notranslate"><span class="pre">/projects/{project_id}/tasks</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sa</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mapped</span><span class="p">,</span> <span class="n">mapped_column</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Project</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDBase</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">archived</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Task</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDBase</span><span class="p">):</span>
+    <span class="n">title</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">project_id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">sa</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;project.id&quot;</span><span class="p">),</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ProjectSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">TaskSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">project_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Parent</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ContextNamespace</span><span class="p">):</span>
+    <span class="n">project_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ContextParam</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">()</span>
+<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">async_database_url</span><span class="o">=</span><span class="s2">&quot;sqlite+aiosqlite:///app.db&quot;</span><span class="p">)</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ProjectView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/projects&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Project</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ProjectSchema</span>
+    <span class="n">scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span><span class="n">Project</span><span class="o">.</span><span class="n">archived</span><span class="o">.</span><span class="n">is_</span><span class="p">(</span><span class="kc">False</span><span class="p">))</span>
+
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">project_from_path</span><span class="p">(</span><span class="n">project_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">session</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncSessionDep</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="n">query</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">apply_clauses</span><span class="p">(</span>
+        <span class="n">sa</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">Project</span><span class="o">.</span><span class="n">id</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Project</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">project_id</span><span class="p">),</span>
+        <span class="n">fr</span><span class="o">.</span><span class="n">resolve_scope</span><span class="p">(</span><span class="n">ProjectView</span><span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">found</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">found</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">NotFound</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Project with id </span><span class="si">{</span><span class="n">project_id</span><span class="si">}</span><span class="s2"> was not found&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">found</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ProjectTaskView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/projects/</span><span class="si">{project_id}</span><span class="s2">/tasks&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Task</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">TaskSchema</span>
+    <span class="n">dependencies</span> <span class="o">=</span> <span class="p">[</span><span class="n">Parent</span><span class="o">.</span><span class="n">depends</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">project_from_path</span><span class="p">)]</span>
+    <span class="n">scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">all_of</span><span class="p">(</span>
+        <span class="n">fr</span><span class="o">.</span><span class="n">resolve_scope</span><span class="p">(</span><span class="n">Task</span><span class="p">),</span>
+        <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span><span class="n">Task</span><span class="o">.</span><span class="n">project_id</span> <span class="o">==</span> <span class="n">Parent</span><span class="o">.</span><span class="n">project_id</span><span class="p">),</span>
+    <span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
+        <span class="n">task</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_new_object</span><span class="p">(</span><span class="n">schema_obj</span><span class="p">)</span>
+        <span class="n">task</span><span class="o">.</span><span class="n">project_id</span> <span class="o">=</span> <span class="n">Parent</span><span class="o">.</span><span class="n">project_id</span><span class="p">()</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_object</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">ProjectTaskView</span></code> differs from a flat view in these places:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">prefix</span></code> contains <code class="docutils literal notranslate"><span class="pre">{project_id}</span></code>, so every route of the view sits under a
+project.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">project_from_path</span></code> reads <code class="docutils literal notranslate"><span class="pre">project_id</span></code> from the path. FastAPI checks that it
+is an integer and lists it in OpenAPI on every route. The function answers
+<code class="docutils literal notranslate"><span class="pre">404</span></code> when the project does not exist or <code class="docutils literal notranslate"><span class="pre">ProjectView</span></code> hides it.</p></li>
+<li><p><a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.ContextNamespace.depends" title="fastapi_restly.clauses.ContextNamespace.depends"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Parent.depends</span></code></a>
+binds the project id for the request. <code class="docutils literal notranslate"><span class="pre">Parent</span></code> is a
+<a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.ContextNamespace" title="fastapi_restly.clauses.ContextNamespace"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ContextNamespace</span></code></a>, like
+<code class="docutils literal notranslate"><span class="pre">Current</span></code> in <a class="reference internal" href="howto_current.html#current-request-binding"><span class="std std-ref">Current context</span></a>. One <code class="docutils literal notranslate"><span class="pre">Parent</span></code>
+serves every nested view in the app.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">scope</span></code> limits every read to the tasks of that project: the list, its
+total count, get one, update and delete. A task of another project answers
+<code class="docutils literal notranslate"><span class="pre">404</span></code>. A view’s scope replaces the model’s default scope
+(<a class="reference internal" href="scopes.html#view-scope"><span class="std std-ref">View scopes</span></a>), so <code class="docutils literal notranslate"><span class="pre">fr.resolve_scope(Task)</span></code> adds it back.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">create</span></code> sets the project id; see <a class="reference internal" href="#nested-create">Create a child</a>.</p></li>
+</ul>
+<p>The routes then answer like this:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET    /projects/1/tasks?sort=-title   the tasks of project 1, by title, descending
+POST   /projects/1/tasks               a new task in project 1
+GET    /projects/2/tasks/7             404 when task 7 is in another project
+GET    /projects/99/tasks              404 when project 99 does not exist
+GET    /projects/x/tasks               422, x is not an integer
+</pre></div>
+</div>
+</section>
+<section id="create-a-child">
+<span id="nested-create"></span><h2>Create a child<a class="headerlink" href="#create-a-child" title="Link to this heading">#</a></h2>
+<p>The project id comes from the path, not from the request body. <code class="docutils literal notranslate"><span class="pre">TaskSchema</span></code>
+marks <code class="docutils literal notranslate"><span class="pre">project_id</span></code> as <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code></a>,
+so the generated create and update schemas leave it out. The <code class="docutils literal notranslate"><span class="pre">create</span></code>
+override sets it from <code class="docutils literal notranslate"><span class="pre">Parent</span></code> after
+<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView.make_new_object" title="fastapi_restly.views.AsyncRestView.make_new_object"><code class="xref py py-meth docutils literal notranslate"><span class="pre">make_new_object</span></code></a>
+builds the task.</p>
+<p>Declare the foreign key with <code class="docutils literal notranslate"><span class="pre">init=False</span></code>. <code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> builds the task
+from the request body, which has no <code class="docutils literal notranslate"><span class="pre">project_id</span></code>. Without <code class="docutils literal notranslate"><span class="pre">init=False</span></code> the
+model requires it there, and the create answers <code class="docutils literal notranslate"><span class="pre">500</span></code>.</p>
+<p>Keep the parent id out of every write schema of the nested view. If
+<code class="docutils literal notranslate"><span class="pre">TaskSchema</span></code> declared a writable <code class="docutils literal notranslate"><span class="pre">project_id</span></code>, the generated update schema would
+include it. An <a class="reference internal" href="howto_custom_schema.html#explicit-write-schemas"><span class="std std-ref">explicit write schema</span></a> writes every
+field it declares. Either way, a <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> could move the task to a project the
+URL never named, past the lookup.</p>
+<p>Set the parent id in the view, not in a column default that reads
+<code class="docutils literal notranslate"><span class="pre">Parent.project_id</span></code>. With such a default, creating a task anywhere else fails,
+for example in a flat view or a script, because nothing binds <code class="docutils literal notranslate"><span class="pre">Parent</span></code> there.</p>
+</section>
+<section id="which-parents-a-client-can-reach">
+<span id="nested-parent-access"></span><h2>Which parents a client can reach<a class="headerlink" href="#which-parents-a-client-can-reach" title="Link to this heading">#</a></h2>
+<p>The lookup decides which parents a client can reach. <code class="docutils literal notranslate"><span class="pre">project_from_path</span></code>
+applies the scope of <code class="docutils literal notranslate"><span class="pre">ProjectView</span></code> through
+<a class="reference internal" href="api/views.html#fastapi_restly.views.resolve_scope" title="fastapi_restly.views.resolve_scope"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.resolve_scope</span></code></a>, so a project
+that <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/projects/{id}</span></code> hides also answers <code class="docutils literal notranslate"><span class="pre">404</span></code> here, with all of its tasks.
+In the example, that is an archived project.</p>
+<p>Without this check, <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/projects/{project_id}/tasks</span></code> creates a task in any
+project whose id a client can guess.</p>
+<p>The lookup does not run the
+<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView.authorize" title="fastapi_restly.views.AsyncRestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a> method of
+<code class="docutils literal notranslate"><span class="pre">ProjectView</span></code>. Put rules about which rows a user may see in a scope, so that
+both views apply them. The nested view still runs its own <code class="docutils literal notranslate"><span class="pre">authorize</span></code> on each
+of its routes.</p>
+</section>
+<section id="deeper-nesting">
+<span id="nested-deeper"></span><h2>Deeper nesting<a class="headerlink" href="#deeper-nesting" title="Link to this heading">#</a></h2>
+<p>For more levels, build a chain of base views, one per level. Each base adds
+its segment to <code class="docutils literal notranslate"><span class="pre">prefix</span></code> and its lookup to <code class="docutils literal notranslate"><span class="pre">dependencies</span></code>. Both add up from
+base to subclass; see <a class="reference internal" href="howto_inheritance.html#prefix-concatenation"><span class="std std-ref">Concatenate URL prefixes</span></a>. This
+example serves tasks at <code class="docutils literal notranslate"><span class="pre">/companies/{company_id}/projects/{project_id}/tasks</span></code>.
+It is a separate app. It uses the imports, <code class="docutils literal notranslate"><span class="pre">app</span></code>, <code class="docutils literal notranslate"><span class="pre">Task</span></code> and <code class="docutils literal notranslate"><span class="pre">TaskSchema</span></code> of the
+first example, and its own <code class="docutils literal notranslate"><span class="pre">Project</span></code>, <code class="docutils literal notranslate"><span class="pre">Parent</span></code> and lookups:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">Depends</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Company</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDBase</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Project</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDBase</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">company_id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">sa</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;company.id&quot;</span><span class="p">),</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Parent</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ContextNamespace</span><span class="p">):</span>
+    <span class="n">company_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ContextParam</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+    <span class="n">project_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ContextParam</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">company_from_path</span><span class="p">(</span><span class="n">company_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">session</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncSessionDep</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="n">query</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">apply_clauses</span><span class="p">(</span>
+        <span class="n">sa</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">Company</span><span class="o">.</span><span class="n">id</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Company</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">company_id</span><span class="p">),</span>
+        <span class="n">fr</span><span class="o">.</span><span class="n">resolve_scope</span><span class="p">(</span><span class="n">Company</span><span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">found</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">found</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">NotFound</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Company with id </span><span class="si">{</span><span class="n">company_id</span><span class="si">}</span><span class="s2"> was not found&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">found</span>
+
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">project_from_path</span><span class="p">(</span>
+    <span class="n">project_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">company_id</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">company_from_path</span><span class="p">)],</span>
+    <span class="n">session</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncSessionDep</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="n">query</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">apply_clauses</span><span class="p">(</span>
+        <span class="n">sa</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">Project</span><span class="o">.</span><span class="n">id</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+            <span class="n">Project</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">project_id</span><span class="p">,</span> <span class="n">Project</span><span class="o">.</span><span class="n">company_id</span> <span class="o">==</span> <span class="n">company_id</span>
+        <span class="p">),</span>
+        <span class="n">fr</span><span class="o">.</span><span class="n">resolve_scope</span><span class="p">(</span><span class="n">Project</span><span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">found</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">found</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">NotFound</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Project with id </span><span class="si">{</span><span class="n">project_id</span><span class="si">}</span><span class="s2"> was not found&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">found</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">CompanyScoped</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/companies/</span><span class="si">{company_id}</span><span class="s2">&quot;</span>
+    <span class="n">dependencies</span> <span class="o">=</span> <span class="p">[</span><span class="n">Parent</span><span class="o">.</span><span class="n">depends</span><span class="p">(</span><span class="n">company_id</span><span class="o">=</span><span class="n">company_from_path</span><span class="p">)]</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ProjectScoped</span><span class="p">(</span><span class="n">CompanyScoped</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/projects/</span><span class="si">{project_id}</span><span class="s2">&quot;</span>
+    <span class="n">dependencies</span> <span class="o">=</span> <span class="p">[</span><span class="n">Parent</span><span class="o">.</span><span class="n">depends</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">project_from_path</span><span class="p">)]</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ProjectTaskView</span><span class="p">(</span><span class="n">ProjectScoped</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/tasks&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Task</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">TaskSchema</span>
+    <span class="n">scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">all_of</span><span class="p">(</span>
+        <span class="n">fr</span><span class="o">.</span><span class="n">resolve_scope</span><span class="p">(</span><span class="n">Task</span><span class="p">),</span>
+        <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span><span class="n">Task</span><span class="o">.</span><span class="n">project_id</span> <span class="o">==</span> <span class="n">Parent</span><span class="o">.</span><span class="n">project_id</span><span class="p">),</span>
+    <span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
+        <span class="n">task</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_new_object</span><span class="p">(</span><span class="n">schema_obj</span><span class="p">)</span>
+        <span class="n">task</span><span class="o">.</span><span class="n">project_id</span> <span class="o">=</span> <span class="n">Parent</span><span class="o">.</span><span class="n">project_id</span><span class="p">()</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_object</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">project_from_path</span></code> gets the company id from <code class="docutils literal notranslate"><span class="pre">company_from_path</span></code> as a FastAPI
+sub-dependency. FastAPI runs the company lookup first, once per request, and
+answers <code class="docutils literal notranslate"><span class="pre">404</span></code> for an unknown company. The project query also checks that the
+project belongs to that company, so <code class="docutils literal notranslate"><span class="pre">/companies/2/projects/1/tasks</span></code> answers
+<code class="docutils literal notranslate"><span class="pre">404</span></code> when project 1 is in company 1.</p>
+<p>Each lookup applies the scope of its parent, as in
+<a class="reference internal" href="#nested-parent-access">Which parents a client can reach</a>. This example has
+no views for companies or projects, so it passes the models. When a view
+serves the parent, such as a <code class="docutils literal notranslate"><span class="pre">ProjectView</span></code>, pass the view instead, so the
+nested routes hide what that view hides.</p>
+<p>Do not read <code class="docutils literal notranslate"><span class="pre">Parent.company_id()</span></code> in <code class="docutils literal notranslate"><span class="pre">project_from_path</span></code> instead. When the
+company id in the path is not an integer, FastAPI still runs the project
+lookup, <code class="docutils literal notranslate"><span class="pre">Parent.company_id</span></code> is not bound, and the request answers <code class="docutils literal notranslate"><span class="pre">500</span></code>
+instead of <code class="docutils literal notranslate"><span class="pre">422</span></code>.</p>
+<p>Let each base inherit the one above it, as <code class="docutils literal notranslate"><span class="pre">ProjectScoped</span></code> inherits
+<code class="docutils literal notranslate"><span class="pre">CompanyScoped</span></code>. Two mixins side by side,
+<code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">ProjectTaskView(CompanyMixin,</span> <span class="pre">ProjectMixin,</span> <span class="pre">fr.AsyncRestView)</span></code>, add their
+segments in reverse order: <code class="docutils literal notranslate"><span class="pre">/projects/{project_id}/companies/{company_id}/tasks</span></code>.</p>
+</section>
+<section id="things-to-know">
+<h2>Things to know<a class="headerlink" href="#things-to-know" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p>Name the path segment after the parent, such as <code class="docutils literal notranslate"><span class="pre">{project_id}</span></code>. The item
+routes already use <code class="docutils literal notranslate"><span class="pre">{id}</span></code>, and FastAPI raises an error for the duplicate
+when you include the view.</p></li>
+<li><p>A model can have a flat view and nested views at the same time, such as a
+<code class="docutils literal notranslate"><span class="pre">TaskView</span></code> at <code class="docutils literal notranslate"><span class="pre">/tasks</span></code> next to <code class="docutils literal notranslate"><span class="pre">ProjectTaskView</span></code>. Both appear under the
+“Tasks” tag in OpenAPI unless you set
+<a class="reference internal" href="api/views.html#fastapi_restly.views.View.tags" title="fastapi_restly.views.View.tags"><code class="xref py py-attr docutils literal notranslate"><span class="pre">tags</span></code></a>. Watch two things:</p>
+<ul>
+<li><p>Each view applies its own scope. Rows that the scope of <code class="docutils literal notranslate"><span class="pre">TaskView</span></code> hides,
+such as another user’s tasks, still show under the nested URL. To hide
+them there too, use <code class="docutils literal notranslate"><span class="pre">fr.resolve_scope(TaskView)</span></code> instead of
+<code class="docutils literal notranslate"><span class="pre">fr.resolve_scope(Task)</span></code> in the scope of <code class="docutils literal notranslate"><span class="pre">ProjectTaskView</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">TaskView</span></code> cannot create tasks with <code class="docutils literal notranslate"><span class="pre">TaskSchema</span></code>, because <code class="docutils literal notranslate"><span class="pre">project_id</span></code> is
+read-only there. Give <code class="docutils literal notranslate"><span class="pre">TaskView</span></code> its own <code class="docutils literal notranslate"><span class="pre">schema_create</span></code>, a
+<code class="docutils literal notranslate"><span class="pre">fr.BaseSchema</span></code> with <code class="docutils literal notranslate"><span class="pre">project_id:</span> <span class="pre">fr.MustExist[int,</span> <span class="pre">Project]</span></code>. Keep
+<code class="docutils literal notranslate"><span class="pre">project_id</span></code> read-only in <code class="docutils literal notranslate"><span class="pre">TaskSchema</span></code>; see <a class="reference internal" href="#nested-create">Create a child</a>.</p></li>
+</ul>
+</li>
+<li><p>OpenAPI marks a field that refers to a task, such as
+<code class="docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Task]</span></code>, with <code class="docutils literal notranslate"><span class="pre">x-resource-ref</span></code>. Its value comes from the
+prefix of the last view of <code class="docutils literal notranslate"><span class="pre">Task</span></code> that you include. Include the flat view
+after the nested one, so the value is <code class="docutils literal notranslate"><span class="pre">tasks</span></code>. With only a nested view, the
+value is <code class="docutils literal notranslate"><span class="pre">projects/{project_id}/tasks</span></code>, which a client cannot use as a
+resource name.</p></li>
+<li><p>A sync <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.RestView</span></code></a> works the same
+way. Write the lookups as plain functions that take
+<a class="reference internal" href="api/db.html#fastapi_restly.db.SessionDep" title="fastapi_restly.db.SessionDep"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.SessionDep</span></code></a>, and the <code class="docutils literal notranslate"><span class="pre">create</span></code>
+override as a plain <code class="docutils literal notranslate"><span class="pre">def</span></code> without <code class="docutils literal notranslate"><span class="pre">await</span></code>.</p></li>
+<li><p>Each level adds one query to every request.</p></li>
+</ul>
+</section>
+<section id="see-also">
+<h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="howto_current.html"><span class="std std-doc">Current context</span></a>: binding a value for each request.</p></li>
+<li><p><a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a>: what a view’s scope covers, and how it replaces the
+model’s default scope.</p></li>
+<li><p><a class="reference internal" href="howto_inheritance.html"><span class="std std-doc">Share Behaviour with Base Views</span></a>: how <code class="docutils literal notranslate"><span class="pre">prefix</span></code>,
+<code class="docutils literal notranslate"><span class="pre">dependencies</span></code> and <code class="docutils literal notranslate"><span class="pre">responses</span></code> add up from base to subclass.</p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="patterns.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Patterns</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="howto_inheritance.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Share Behaviour with Base Views</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#one-level">One level</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#create-a-child">Create a child</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#which-parents-a-client-can-reach">Which parents a client can reach</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#deeper-nesting">Deeper nesting</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#things-to-know">Things to know</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+<p class="sidebar-newsletter">
+  <a href="newsletter.html">Subscribe to newsletter</a>
+</p></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, Rutger Prins.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

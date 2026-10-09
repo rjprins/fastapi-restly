@@ -30,9 +30,10 @@ routes), and they render through whatever handler is installed:
 ```python
 class ArticleView(fr.AsyncRestView):
     ...
+    current_user: Annotated[User, Depends(get_current_user)]
 
     async def authorize(self, action, obj=None, data=None):
-        if action == "delete" and not self.request.state.is_admin:
+        if action == "delete" and not self.current_user.is_admin:
             raise fr.exc.Forbidden("deletes need an admin token")
 ```
 
@@ -40,9 +41,10 @@ The remaining names in `fr.exc` are not HTTP errors:
 {class}`fr.exc.RestlyError <fastapi_restly.exc.RestlyError>` and
 {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
 are setup-time framework errors, and the warnings
-{class}`RestlyUncommittedChangesWarning <fastapi_restly.exc.RestlyUncommittedChangesWarning>` and
-{class}`RestlyMisuseWarning <fastapi_restly.exc.RestlyMisuseWarning>` also
-live there.
+{class}`RestlyUncommittedChangesWarning <fastapi_restly.exc.RestlyUncommittedChangesWarning>`,
+{class}`RestlyMisuseWarning <fastapi_restly.exc.RestlyMisuseWarning>` and
+{class}`RestlyDuplicateSchemaNameWarning <fastapi_restly.exc.RestlyDuplicateSchemaNameWarning>`
+also live there.
 
 ## 422 vs 400 on list endpoints
 

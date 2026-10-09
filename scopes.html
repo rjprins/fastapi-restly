@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Scopes &#8212; FastAPI-Restly 0.10.0 documentation</title>
+    <title>Scopes &#8212; FastAPI-Restly 0.11.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=82662543"></script>
+    <script src="_static/documentation_options.js?v=f3b36f1a"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -66,7 +66,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.10" />
+  <meta name="docsearch:version" content="0.11" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -464,6 +464,7 @@
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Scopes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_error_responses.html">Shape Error Responses</a></li>
 <li class="toctree-l1"><a class="reference internal" href="patterns.html">Patterns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_nested.html">Nested Resources</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_inheritance.html">Share Behaviour with Base Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_compose_views_with_mixins.html">Compose Views with Mixins</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_typing.html">Use Type Annotations</a></li>
@@ -608,10 +609,10 @@ other filters on a statement. See the
 identity, return types, and validation.</p>
 <p>The scope guards reads <em>of</em> the model and references <em>to</em> it; it does
 not reach through relationships. A scoped model serialized inside
-another model’s response (<code class="docutils literal notranslate"><span class="pre">ItemRead.comments</span></code> embedding a soft-deleted
+another model’s response (<code class="docutils literal notranslate"><span class="pre">ItemSchema.comments</span></code> embedding a soft-deleted
 comment, say) is loaded through the relationship, unscoped, and a
 dotted query-parameter filter or sort (<code class="docutils literal notranslate"><span class="pre">?items.name=x</span></code>) joins the
-related table without its scope. Shape the response schema, or override
+related table without its scope. Shape the view’s schema, or override
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.get_relationship_loader_options" title="fastapi_restly.views.BaseRestView.get_relationship_loader_options"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code></a>,
 where embedded rows must be filtered.</p>
 <p><code class="docutils literal notranslate"><span class="pre">default_scope</span></code> is a
@@ -636,7 +637,7 @@ own <a class="reference internal" href="api/views.html#fastapi_restly.views.Base
 <span class="k">class</span><span class="w"> </span><span class="nc">ItemView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/items&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Item</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">ItemRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ItemSchema</span>
     <span class="c1"># no scope declared: reads apply ItemClauses.default_scope</span>
 
 
@@ -644,7 +645,7 @@ own <a class="reference internal" href="api/views.html#fastapi_restly.views.Base
 <span class="k">class</span><span class="w"> </span><span class="nc">TrashView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/trash&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Item</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">ItemRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ItemSchema</span>
     <span class="n">scope</span> <span class="o">=</span> <span class="n">ItemClauses</span><span class="o">.</span><span class="n">trashed</span>          <span class="c1"># the deviating view declares</span>
 </pre></div>
 </div>
@@ -669,7 +670,7 @@ separately whether an admin may cross tenants:</p>
 <span class="k">class</span><span class="w"> </span><span class="nc">AdminItemView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/admin/items&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Item</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">ItemRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ItemSchema</span>
     <span class="n">scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">clauses</span><span class="o">.</span><span class="n">UNSCOPED</span>
 </pre></div>
 </div>
@@ -707,37 +708,45 @@ clause without opening one.</p>
 <span id="per-read-scope"></span><h2>A route names its own scope<a class="headerlink" href="#a-route-names-its-own-scope" title="Link to this heading">#</a></h2>
 <p>A custom route that reads another surface of the same model passes a
 clause as <code class="docutils literal notranslate"><span class="pre">scope=</span></code> to the handler, and that clause replaces the resolved
-scope for that one read. The trash listing and the restore action are
+scope for that one read. The trash list and the restore action are
 then routes on the view rather than a second view class:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">ItemResponse</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">derive_schema_response</span><span class="p">(</span><span class="n">ItemSchema</span><span class="p">)</span>
+<span class="n">ItemListResponse</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">derive_schema_list_response</span><span class="p">(</span><span class="n">ItemResponse</span><span class="p">)</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ItemView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/items&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Item</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">ItemRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ItemSchema</span>
     <span class="c1"># no scope declared: reads apply ItemClauses.default_scope</span>
 
-    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/trash&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">views</span><span class="o">.</span><span class="n">PaginatedEnvelope</span><span class="p">[</span><span class="n">ItemRead</span><span class="p">])</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">trash</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_params</span><span class="p">):</span>
-        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span><span class="n">query_params</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">ItemClauses</span><span class="o">.</span><span class="n">trashed</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">ResponseShape</span><span class="o">.</span><span class="n">LISTING</span><span class="p">)</span>
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/trash&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">ItemListResponse</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">trash</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span><span class="n">list_params</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">ItemClauses</span><span class="o">.</span><span class="n">trashed</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">ResponseShape</span><span class="o">.</span><span class="n">LIST</span><span class="p">)</span>
 
-    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/restore&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">ItemRead</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/restore&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">ItemResponse</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">restore</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
         <span class="n">item</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">ItemClauses</span><span class="o">.</span><span class="n">trashed</span><span class="p">)</span>
         <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="s2">&quot;restore&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">item</span><span class="p">):</span>
             <span class="n">item</span><span class="o">.</span><span class="n">deleted_at</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="k">return</span> <span class="n">item</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">handle_get_many</span></code> runs <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and forwards <code class="docutils literal notranslate"><span class="pre">scope=</span></code> to <code class="docutils literal notranslate"><span class="pre">get_many</span></code>;
-declaring <code class="docutils literal notranslate"><span class="pre">query_params</span></code> gives the route the listing grammar of <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>
+declaring <code class="docutils literal notranslate"><span class="pre">list_params</span></code> gives the route the list params of <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>
 (<a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">Filter, Sort, and Paginate Lists</span></a>). The restore
 loads with <code class="docutils literal notranslate"><span class="pre">get_one(id,</span> <span class="pre">scope=...)</span></code> rather than <code class="docutils literal notranslate"><span class="pre">handle_get_one</span></code>, because
 a write action gates its own action inside
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.write_action" title="fastapi_restly.views.RestView.write_action"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_action</span></code></a>; a live
 item is a 404 here, since the trash is the surface this route reads.
 <code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code> is the per-read opt-out, in the same spelling as
-everywhere else.</p>
+everywhere else. The two routes name the response classes of the view,
+<code class="docutils literal notranslate"><span class="pre">ItemListResponse</span></code> and <code class="docutils literal notranslate"><span class="pre">ItemResponse</span></code>, so OpenAPI shows the same types as for
+the CRUD routes. A view with other pagination passes it, as in
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.derive_schema_list_response" title="fastapi_restly.schemas.derive_schema_list_response"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_schema_list_response(ItemResponse,</span> <span class="pre">pagination=AppView.pagination)</span></code></a>;
+see <a class="reference internal" href="technical_details.html#name-the-response-classes"><span class="std std-ref">A custom route names the same classes</span></a>.</p>
 <p>The argument replaces the scope, it does not narrow it. Put rules that may
 never be replaced, such as tenant isolation, at the session level. A <code class="docutils literal notranslate"><span class="pre">get_one</span></code>
 or <code class="docutils literal notranslate"><span class="pre">get_many</span></code> override declares the <code class="docutils literal notranslate"><span class="pre">scope</span></code> parameter and passes it on to
@@ -746,17 +755,14 @@ fails on its first call instead of serving the wrong rows.</p>
 <section id="narrowing-inside-the-scope">
 <span id="per-read-where"></span><h3>Narrowing inside the scope<a class="headerlink" href="#narrowing-inside-the-scope" title="Link to this heading">#</a></h3>
 <p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_many" title="fastapi_restly.views.RestView.handle_get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_many</span></code></a>
-also takes <code class="docutils literal notranslate"><span class="pre">where=</span></code>, which narrows the read and keeps the scope. A listing
+also takes <code class="docutils literal notranslate"><span class="pre">where=</span></code>, which narrows the read and keeps the scope. A list
 of one collection’s items still hides deleted items:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;/in-collection/</span><span class="si">{collection_id}</span><span class="s2">&quot;</span><span class="p">,</span>
-    <span class="n">response_model</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">views</span><span class="o">.</span><span class="n">PaginatedEnvelope</span><span class="p">[</span><span class="n">ItemRead</span><span class="p">],</span>
-<span class="p">)</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">in_collection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">collection_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">query_params</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/in-collection/</span><span class="si">{collection_id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">ItemListResponse</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">in_collection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">collection_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">list_params</span><span class="p">):</span>
     <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span>
-        <span class="n">query_params</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="n">Item</span><span class="o">.</span><span class="n">collection_id</span> <span class="o">==</span> <span class="n">collection_id</span>
+        <span class="n">list_params</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="n">Item</span><span class="o">.</span><span class="n">collection_id</span> <span class="o">==</span> <span class="n">collection_id</span>
     <span class="p">)</span>
-    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">ResponseShape</span><span class="o">.</span><span class="n">LISTING</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">ResponseShape</span><span class="o">.</span><span class="n">LIST</span><span class="p">)</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">where=</span></code> accepts a SQLAlchemy boolean expression or a clause. It is ANDed
@@ -765,7 +771,7 @@ would: the resolved scope by default, or the <code class="docutils literal notra
 given. The page and <code class="docutils literal notranslate"><span class="pre">total_count</span></code> both apply it, and the client’s filters,
 sort and page apply on top.</p>
 <p>Passing the same expression as <code class="docutils literal notranslate"><span class="pre">scope=fr.where_clause(...)</span></code> replaces the
-scope, so that listing would include deleted items.</p>
+scope, so that list would include deleted items.</p>
 <p>The handler folds <code class="docutils literal notranslate"><span class="pre">where=</span></code> into the <code class="docutils literal notranslate"><span class="pre">scope</span></code> it forwards. A <code class="docutils literal notranslate"><span class="pre">get_many</span></code>
 override receives one combined clause and declares no <code class="docutils literal notranslate"><span class="pre">where</span></code> parameter.
 <code class="docutils literal notranslate"><span class="pre">get_many</span></code> itself does not take <code class="docutils literal notranslate"><span class="pre">where=</span></code>; a route that calls it directly
@@ -780,24 +786,27 @@ clause a view’s reads apply, so a route that builds its own query sees
 the rows <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code> and <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code> see. A count route applies the client’s
 filters to the scoped select:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/count&quot;</span><span class="p">)</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">total</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_params</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">total</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
     <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">authorize</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">GET_MANY</span><span class="p">)</span>
     <span class="n">query</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">apply_clauses</span><span class="p">(</span><span class="n">sa</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">Task</span><span class="p">),</span> <span class="n">fr</span><span class="o">.</span><span class="n">resolve_scope</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
-    <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">apply_query_params</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">query_params</span><span class="p">))</span>
+    <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">apply_list_params</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">list_params</span><span class="p">))</span>
 </pre></div>
 </div>
 <p>Do not name that route method <code class="docutils literal notranslate"><span class="pre">count</span></code>: it would shadow the
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.count" title="fastapi_restly.views.RestView.count"><code class="xref py py-meth docutils literal notranslate"><span class="pre">count</span></code></a> seam it calls.</p>
-<p>Pass another view to follow that view’s visibility from a route on this
-one, which is how a nested listing stays in step with the child’s own
-endpoint:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/tasks&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="nb">list</span><span class="p">[</span><span class="n">TaskRead</span><span class="p">])</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
-    <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+<p>Pass another view to follow that view’s visibility in code that builds its
+own query. The parent lookup of a <a class="reference internal" href="howto_nested.html"><span class="std std-doc">nested view</span></a> does this,
+so a project that <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/projects/{id}</span></code> hides also answers <code class="docutils literal notranslate"><span class="pre">404</span></code> under
+<code class="docutils literal notranslate"><span class="pre">/projects/{project_id}/tasks</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">project_from_path</span><span class="p">(</span><span class="n">project_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">session</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncSessionDep</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
     <span class="n">query</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">apply_clauses</span><span class="p">(</span>
-        <span class="n">sa</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">Task</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Task</span><span class="o">.</span><span class="n">project_id</span> <span class="o">==</span> <span class="nb">id</span><span class="p">),</span> <span class="n">fr</span><span class="o">.</span><span class="n">resolve_scope</span><span class="p">(</span><span class="n">TaskView</span><span class="p">)</span>
+        <span class="n">sa</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">Project</span><span class="o">.</span><span class="n">id</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Project</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">project_id</span><span class="p">),</span>
+        <span class="n">fr</span><span class="o">.</span><span class="n">resolve_scope</span><span class="p">(</span><span class="n">ProjectView</span><span class="p">),</span>
     <span class="p">)</span>
-    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">scalars</span><span class="p">(</span><span class="n">query</span><span class="p">))</span>
+    <span class="n">found</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">found</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">NotFound</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Project with id </span><span class="si">{</span><span class="n">project_id</span><span class="si">}</span><span class="s2"> was not found&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">found</span>
 </pre></div>
 </div>
 <p>Pass a mapped model class, <code class="docutils literal notranslate"><span class="pre">fr.resolve_scope(Task)</span></code>, for the model rung
@@ -866,16 +875,16 @@ chains, scopes replace, so a chain of filters becomes one composed clause:</p>
 </div>
 <p>Relationship loading that lived in <code class="docutils literal notranslate"><span class="pre">build_query</span></code> belongs in
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.get_relationship_loader_options" title="fastapi_restly.views.BaseRestView.get_relationship_loader_options"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code></a>.
-Other <code class="docutils literal notranslate"><span class="pre">Select</span></code> changes to a listing, such as a join or a default
+Other <code class="docutils literal notranslate"><span class="pre">Select</span></code> changes to a list, such as a join or a default
 ordering, belong in an
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_query_params" title="fastapi_restly.views.RestView.apply_query_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_query_params</span></code></a>
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_list_params" title="fastapi_restly.views.RestView.apply_list_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_list_params</span></code></a>
 override:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ItemView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="o">...</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">apply_query_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">query_params</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply_list_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">list_params</span><span class="p">):</span>
         <span class="n">query</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="n">Item</span><span class="o">.</span><span class="n">created_at</span><span class="o">.</span><span class="n">desc</span><span class="p">())</span>
-        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">apply_query_params</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">query_params</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">apply_list_params</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">list_params</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>An ordering added before <code class="docutils literal notranslate"><span class="pre">super()</span></code> comes first, so a client <code class="docutils literal notranslate"><span class="pre">?sort=</span></code>

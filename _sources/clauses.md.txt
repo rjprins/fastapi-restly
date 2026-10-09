@@ -28,7 +28,7 @@ class TaskClauses(fr.ClauseNamespace):
 
 
 with Current.bind(user_id=42):
-    listing = fr.apply_clauses(select(Task), TaskClauses.visible)
+    tasks = fr.apply_clauses(select(Task), TaskClauses.visible)
     count = fr.apply_clauses(select(func.count(Task.id)), TaskClauses.visible)
 ```
 
@@ -313,6 +313,12 @@ def owned_by_current_user() -> ColumnElement[bool]:
     return Item.user_id == Current.user_id()
 ```
 
+Arithmetic with the member first, such as `Current.now - Item.created_at`,
+and a member inside a plain tuple raise `TypeError` when the clause is
+applied: SQLAlchemy would pass the member object to the database as a value.
+Wrap the member with `sqlalchemy.type_coerce(Current.now, DateTime)`, and
+write a tuple as `sqlalchemy.tuple_(...)`.
+
 Both forms read the member when the clause is applied: by
 `apply_clauses`, by a view read, by a reference check, or when the clause
 is called. The statement carries the values with it, so it can run after
@@ -457,8 +463,8 @@ Wrap the expression where a clause is required, such as a per-read
 scope = fr.all_of(ItemClauses.visible, fr.where_clause(name_matches(term)))
 ```
 
-A view listing takes the expression directly:
-[`handle_get_many(query_params, where=...)`](#per-read-where) narrows
+A list route on a view takes the expression directly:
+[`handle_get_many(list_params, where=...)`](#per-read-where) narrows
 inside the scope.
 
 ```{seealso}
