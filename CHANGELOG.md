@@ -146,6 +146,9 @@ There will be more breaking changes every minor release until that time.
 
 ### Fixed
 
+- A schema field with a `default_factory`, such as
+  `Field(default_factory=list)`, no longer makes `/openapi.json` and `/docs`
+  answer `500`.
 - React-admin views answer `400` for a `range` with a negative start or an end
   before its start, instead of every row or a `500`.
 - An explicit `schema_create` or `schema_update` writes every field it

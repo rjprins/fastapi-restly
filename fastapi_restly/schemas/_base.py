@@ -1305,6 +1305,9 @@ class PatchMixin(pydantic.BaseModel):
 
         for field in cls.model_fields.values():
             field.default = None
+            # A field cannot have both. FastAPI builds the field again from
+            # its attributes for OpenAPI, which raises with both.
+            field.default_factory = None
             # Only wrap if not already Optional, to avoid Optional[Optional[T]]
             annotation = field.annotation
             if isinstance(annotation, types.UnionType):

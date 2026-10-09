@@ -17,8 +17,11 @@ upgrade triggers a CI failure if the contract changes.
 
 from typing import Annotated
 
+import fastapi
 import pydantic
 import pytest
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.types import JSON
 
 import fastapi_restly as fr
 from fastapi_restly.schemas._base import (
@@ -128,6 +131,32 @@ def test_patch_mixin_preserves_already_optional_fields() -> None:
     # And passing `field.default = None` must not have replaced an existing
     # default if the field was already None.
     assert info.default is None
+
+
+def test_patch_mixin_drops_a_default_factory() -> None:
+    """A field cannot have both a default and a default factory. FastAPI
+    builds the field again for OpenAPI, so with both, ``/openapi.json``
+    answered 500 for the whole app."""
+
+    class Item(fr.IDBase):
+        tags: Mapped[list[str]] = mapped_column(JSON, default_factory=list)
+
+    class ItemSchema(fr.IDSchema):
+        tags: list[str] = pydantic.Field(default_factory=list)
+
+    app = fastapi.FastAPI()
+
+    @fr.include_view(app)
+    class ItemView(fr.AsyncRestView):
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+
+    info = ItemView.schema_update.model_fields["tags"]
+    assert info.default is None
+    assert info.default_factory is None
+    assert ItemView.schema_update().tags is None  # type: ignore[call-arg]
+    assert "ItemUpdate" in app.openapi()["components"]["schemas"]
 
 
 def test_model_fields_is_still_mutable_dict() -> None:
