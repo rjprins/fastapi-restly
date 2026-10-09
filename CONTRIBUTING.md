@@ -210,8 +210,21 @@ Releases are cut by maintainers. The flow is:
    make scaffold-check
    ```
 
-4. Commit, tag (`git tag vX.Y.Z`), and push the tag.
-5. CI publishes the release artifacts.
+4. Commit and push to `main`. Then tag the commit and push the tag:
+
+   ```bash
+   git tag -a vX.Y.Z -m "Release X.Y.Z"
+   git push origin vX.Y.Z
+   ```
+
+5. Publish a GitHub Release for the tag. The tag alone publishes nothing. The
+   release starts `.github/workflows/publish.yml`, which uploads the package
+   to PyPI. Use the new changelog section as the release notes, without its
+   heading:
+
+   ```bash
+   gh release create vX.Y.Z --verify-tag --title vX.Y.Z --notes-file notes.md
+   ```
 
 ## Getting Help
 
