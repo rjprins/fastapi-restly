@@ -1194,8 +1194,9 @@ def derive_schema_list_response(
     pagination, filled with its response class, named
     ``<Resource>ListResponse``.
 
-    ``GET /`` of a view returns this class. A custom list route names it, so
-    OpenAPI shows one type for both routes::
+    ``GET /`` of a view returns this class, except on a react-admin view,
+    which returns a plain list. A custom list route names it, so OpenAPI
+    shows one type for both routes::
 
         UserResponse = fr.schemas.derive_schema_response(UserSchema)
         UserListResponse = fr.schemas.derive_schema_list_response(

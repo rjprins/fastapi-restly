@@ -168,8 +168,8 @@ arguments they share come in the same order: the view method
 schema: it can hold `WriteOnly` fields, and those never go out. Restly
 derives the response, create and update schemas from it. Everything that
 goes out follows `schema_response`, which a view can also set itself: the
-responses, the list params and the relationships the view loads. Everything
-that comes in follows `schema_create` and `schema_update`.
+responses, the list params and the relationships the view loads. The
+request bodies follow `schema_create` and `schema_update`.
 
 - In docs, call it "the view's schema". Do not call it "resource schema":
   "resource" and "response" look too much alike. Use "response schema" only

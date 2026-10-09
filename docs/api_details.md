@@ -37,7 +37,7 @@ The default routes share these conventions:
 ## List Endpoint Behavior
 
 `GET /{prefix}` accepts filter, sort, and pagination parameters derived from
-the view's schema; keys use public field names (aliases included), and
+the view's response class; keys use public field names (aliases included), and
 dotted paths filter on relations. The table below gives the grammar in one
 line each; the full description, including comma semantics, LIKE escaping,
 foreign-key filtering, and alias rules, is in
@@ -59,7 +59,7 @@ behavior:
 | Attribute | Type | Default | Purpose |
 |---|---|---|---|
 | {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` | `ClassVar[NumberedPagination \| NoPagination \| None]` | `NumberedPagination()` | How list endpoints paginate. A `NoPagination` returns every row and runs no count query; `None` is short for `NoPagination()`, a plain `Envelope` (`data` only). Views inherit it, so a project base view sets it once. |
-| {attr}`extra_query_params <fastapi_restly.views.BaseRestView.extra_query_params>` | `ClassVar[Iterable[str]]` | `()` | Query keys to allow beyond those derived from the view's schema, for view-specific parameters read from the request outside the list grammar (e.g. `?include_deleted=true`). A key that the endpoint method or a dependency declares, or an `APIKeyQuery` key, needs no entry. |
+| {attr}`extra_query_params <fastapi_restly.views.BaseRestView.extra_query_params>` | `ClassVar[Iterable[str]]` | `()` | Query keys to allow beyond those derived from the response class, for view-specific parameters read from the request outside the list grammar (e.g. `?include_deleted=true`). A key that the endpoint method or a dependency declares, or an `APIKeyQuery` key, needs no entry. |
 
 {class}`fr.NumberedPagination <fastapi_restly.views.NumberedPagination>` holds the
 settings. Each is a keyword argument, and `replace(**changes)` returns a
@@ -194,7 +194,7 @@ These classes and markers define how model data crosses the wire; the reference-
 | {data}`fr.WriteOnly[T] <fastapi_restly.schemas.WriteOnly>` | Type annotation marker. Fields are accepted on input and excluded from Pydantic serialization, including CRUD responses and direct `model_dump()` calls. |
 | {func}`fastapi_restly.schemas.derive_schema(model) <fastapi_restly.schemas.derive_schema>` | Auto-generate a Pydantic schema from a SQLAlchemy model. With its defaults, it returns the schema that a view generates when it has none. Useful for scaffolding, prototypes, and internal tools; prefer explicit schemas for stable public API contracts. Import from `fastapi_restly.schemas`; it is intentionally not exported at the top level. |
 | {func}`fastapi_restly.schemas.derive_schema_response(schema) <fastapi_restly.schemas.derive_schema_response>` | The response class that a view builds from its schema: the schema without its `WriteOnly` fields, named like `UserResponse`. Returns the same class as the view, so a custom route can name it. |
-| {func}`fastapi_restly.schemas.derive_schema_list_response(schema_response, pagination=...) <fastapi_restly.schemas.derive_schema_list_response>` | The list response class of a view: the envelope of its pagination, filled with its response class, named like `UserListResponse`. Returns the same class as the view, so a custom list route can name it. |
+| {func}`fastapi_restly.schemas.derive_schema_list_response(schema_response, pagination=...) <fastapi_restly.schemas.derive_schema_list_response>` | The list response class of a view: the envelope of its pagination, filled with its response class, named like `UserListResponse`. With the view's pagination, it returns the same class as the view, so a custom list route can name it. |
 
 ### View Classes
 
@@ -263,7 +263,7 @@ names are identical between variants.
 | Override point | {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>` | `(result, shape=ResponseShape.SINGLE)` | response payload | The single wire-level response method, called by the endpoint methods with the wire `ResponseShape` (`SINGLE` / `LIST` / `EMPTY`), not the write action. Override for envelopes or custom status codes; for a per-verb HTTP contract change, override that verb's endpoint method. |
 | Override point | {meth}`snapshot <fastapi_restly.views.BaseRestView.snapshot>` | `(obj)` | `dict[str, Any]` | Frozen capture of an object's already-loaded column values, taken after `authorize` and before the mutation, passed as `old` to the commit hooks. |
 | Override point | {meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>` | `()` | `list[Any]` | Loader options (`selectinload(...)`) for the relationships the response class names, applied on reads (`get_one` / `get_many`) and on the write-response reload in `save_object`. Override to eager-load relationships the response class does not name on both paths; see [Relationship Loading and Async](howto_relationship_loading.md). |
-| Helper | {meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>` | `(obj)` | instance of `schema` | Validate and serialize one ORM object with Restly's alias/reference/write-only handling. Override for custom projections or an intentional `model_construct()` fast path. |
+| Helper | {meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>` | `(obj)` | instance of `schema_response` | Validate and serialize one ORM object with Restly's alias/reference/write-only handling. Override for custom projections or an intentional `model_construct()` fast path. |
 | Helper | {meth}`to_list_response <fastapi_restly.views.BaseRestView.to_list_response>` | `(list_result)` | envelope model instance | Build the list response body: an instance of the pagination's envelope, or of `Envelope` when `pagination` is `None`. The page comes from `list_result.list_params`. To change the shape, set the pagination's `envelope`. A shape no envelope model can express, such as a header, needs `get_many_endpoint` replaced with a matching `response_model`. |
 | Domain utility | {meth}`make_new_object <fastapi_restly.views.RestView.make_new_object>` | `(schema_obj)` | `Model` | Build and stage a new object without flushing, resolving references and skipping read-only fields. Final. |
 | Domain utility | {meth}`update_object <fastapi_restly.views.RestView.update_object>` | `(obj, schema_obj)` | `Model` | Apply writable fields without flushing, resolving references. Final. |

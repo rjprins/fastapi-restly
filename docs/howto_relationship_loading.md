@@ -81,8 +81,8 @@ class ArticleView(fr.AsyncRestView):
         ]
 ```
 
-The default returns the options derived from the view's schema; appending
-keeps those schema-driven loads and adds yours. This is the seam that feeds
+The default returns the options derived from the response class; appending
+keeps those loads and adds yours. This is the seam that feeds
 every path: the extra load applies on reads (`get_one` / `get_many`) and on the
 create and update responses alike, because the write path reloads by primary
 key through the same options. Return a fresh list to replace the strategy
@@ -109,7 +109,7 @@ async def after_action_commit(self, action, new, old=None):
 ```
 
 `awaitable_attrs` is the right tool for a one-off read. When the same
-relationship is needed on every request, put it in the view's schema or in
+relationship is needed on every request, put it in the response class or in
 `get_relationship_loader_options` instead, so it loads in one batched query
 rather than one lazy load at a time.
 
@@ -128,8 +128,9 @@ Restly view this is almost always response serialization reaching an unloaded
 relationship, sometimes wrapped in a Pydantic `ValidationError` when it surfaces
 in a nested model. For that case, work through these in order:
 
-1. **Is the field in the view's schema?** If a serialized field names a
-   relationship, that alone loads it. A missing field is usually a name
+1. **Is the field in the response class?** If a serialized field names a
+   relationship, that alone loads it. A `WriteOnly` field is not in the
+   response class, so its relationship does not load. A missing field is usually a name
    mismatch (see the note below).
 2. **Is a hook or property reaching it?** Load it explicitly with
    `await obj.awaitable_attrs.<name>`, or add it to

@@ -512,18 +512,18 @@ documents the response with the original response model. See
         )
 ```
 
-For object serialization, {meth}`to_single_response(obj) <fastapi_restly.views.BaseRestView.to_single_response>` builds the view's schema, strips `WriteOnly` fields, normalizes relationship ids, and validates through Pydantic. Override it for a different projection or a faster trusted path:
+For object serialization, {meth}`to_single_response(obj) <fastapi_restly.views.BaseRestView.to_single_response>` builds the view's response class, normalizes relationship ids, and validates through Pydantic. By default the response class is the view's schema without its `WriteOnly` fields. Override it for a different projection or a faster trusted path:
 
 ```python
-    def to_single_response(self, obj: User) -> UserSchema:
-        return self.schema.model_construct(
+    def to_single_response(self, obj: User):
+        return self.schema_response.model_construct(
             id=obj.id,
             name=obj.name,
             email=obj.email,
         )
 ```
 
-`model_construct()` bypasses validators and required-field checks. Keep the payload aligned with your response contract, and never include `WriteOnly` fields.
+`model_construct()` bypasses validators and required-field checks. Keep the payload aligned with your response contract. Build the response class, not the view's schema: Restly sends an instance of the response class as it is, and converts an instance of any other class first.
 
 ### Replace the list endpoint method
 

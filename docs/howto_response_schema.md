@@ -59,8 +59,8 @@ automatically: the list route's response annotation is the pagination's
 envelope filled with the response class, by default a
 {class}`PaginatedEnvelope <fastapi_restly.views.PaginatedEnvelope>` (a plain
 {class}`Envelope <fastapi_restly.views.Envelope>` without pagination), so no
-endpoint method code is needed. OpenAPI names it after the view's schema:
-`TagListResponse` for `TagSchema`.
+endpoint method code is needed. OpenAPI names it after the response class:
+`TagListResponse` for `TagResponse`, which Restly derives from `TagSchema`.
 
 For how clients *request* pages (the `page` and `page_size` inputs), see
 [Pagination](howto_query_modifiers.md#pagination) in the query-modifiers

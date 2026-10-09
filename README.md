@@ -240,7 +240,7 @@ Use **auto-schema** for prototypes and internal tools. Use an **explicit schema*
 
 ### List endpoint query parameters
 
-List endpoints expose a stable URL parameter dialect generated from the view's schema:
+List endpoints expose a stable URL parameter dialect generated from the view's response class:
 
 ```bash
 GET /users?name=John&created_at__gte=2024-01-01
@@ -248,7 +248,7 @@ GET /users?email__icontains=example
 GET /users?sort=-created_at&page=2&page_size=10
 ```
 
-Parameter keys use the **public names of the view's schema**, including dotted
+Parameter keys use the **public names of the view's response class**, including dotted
 relation paths; unknown keys are rejected with `422`.
 
 Pagination is on by default: list endpoints wrap rows in a `data` envelope and

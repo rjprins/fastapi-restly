@@ -37,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   attribute, on sync and async views. Everything that goes out follows it:
   the single responses, the items of the list response, the fields that the
   list params filter and sort on, and the relationships that the view loads.
-  Everything that comes in still follows `schema_create` and `schema_update`,
+  The request bodies still follow `schema_create` and `schema_update`,
   which Restly derives from `schema`. A view that sets no `schema_response`
   gets the class that Restly built before: the view's schema without its
   `WriteOnly` fields. For type checkers, put your own response class in the

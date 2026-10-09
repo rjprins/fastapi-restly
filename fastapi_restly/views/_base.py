@@ -1317,7 +1317,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     id_type: ClassVar[type[Any] | None] = None
     exclude_routes: ClassVar[Iterable[str | ViewRoute]] = ()
     #: Extra query-parameter keys to allow on list routes beyond those
-    #: derived from the view's schema. Use this when a view reads a custom
+    #: derived from the response class. Use this when a view reads a custom
     #: parameter from ``self.request`` (e.g. ``?verbose=true``). Without this,
     #: the strict unknown-key guard rejects the request with 422. A key that the
     #: route declares, on the endpoint method or in a dependency, or an

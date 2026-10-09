@@ -216,7 +216,7 @@ item is a 404 here, since the trash is the surface this route reads.
 everywhere else. The two routes name the response classes of the view,
 `ItemListResponse` and `ItemResponse`, so OpenAPI shows the same types as for
 the CRUD routes. A view with other pagination passes it, as in
-`derive_schema_list_response(ItemResponse, pagination=AppView.pagination)`;
+{func}`derive_schema_list_response(ItemResponse, pagination=AppView.pagination) <fastapi_restly.schemas.derive_schema_list_response>`;
 see [A custom route names the same classes](#name-the-response-classes).
 
 The argument replaces the scope, it does not narrow it. Put rules that may

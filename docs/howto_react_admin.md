@@ -107,8 +107,8 @@ are served directly, with no redirect involved.
 
 The `id` array form of `filter` (`{"id": [1, 2, 3]}`) is used by react-admin
 for `getMany` calls. It translates to `WHERE id IN (1, 2, 3)`. Other filter
-values match by exact equality, and only fields exposed on the view's
-schema are accepted: unknown fields, including react-admin's full-text `q`
+values match by exact equality, and only fields that the view's response
+class sends are accepted: unknown fields, including react-admin's full-text `q`
 search parameter, are rejected with a 400. Substring or full-text search
 requires overriding the view's `apply_list_params`.
 

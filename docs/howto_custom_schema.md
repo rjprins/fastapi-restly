@@ -180,8 +180,8 @@ on the view. Everything that goes out follows it:
   only on what it can see;
 - the relationships that the view loads.
 
-What comes in still follows `schema_create` and `schema_update`, which Restly
-derives from `schema`:
+The request bodies still follow `schema_create` and `schema_update`, which
+Restly derives from `schema`:
 
 ```python
 class AccountSchema(fr.IDSchema):
