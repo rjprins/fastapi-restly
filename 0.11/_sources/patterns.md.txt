@@ -1,0 +1,185 @@
+# Patterns
+
+This page collects common scenarios and gives the idiomatic Restly answer to
+each. Entries are short on purpose: each states the problem, shows the
+recommended shape in one example, and links to the page that owns the depth.
+Every example on this page runs against the current release.
+
+(patterns-nested-resources)=
+
+## Nested resources (`/projects/{project_id}/tasks`)
+
+To expose child rows under a parent, model the child as a flat resource and
+filter by its foreign key; the filter parameter is generated automatically for
+{class}`MustExist <fastapi_restly.schemas.MustExist>` fields:
+
+```python
+class TaskSchema(fr.IDSchema):
+    title: str
+    project_id: fr.MustExist[int, Project]
+
+
+@fr.include_view(app)
+class TaskView(fr.AsyncRestView):
+    prefix = "/tasks"
+    model = Task
+    schema = TaskSchema
+```
+
+Clients then scope the list through the query string:
+
+```text
+GET /tasks?project_id=17        # all tasks of one project
+GET /tasks?project_id__in=1,2   # tasks of several projects
+```
+
+When the nested URL is part of your API, serve the child view under the
+parent instead: a path parameter in its `prefix`, a lookup that answers `404`
+for an unknown or hidden parent, and a scope that keeps that parent's rows.
+Every CRUD route keeps paging, filters and sort.
+[Nested Resources](howto_nested.md) shows the full example, how to create
+children, and deeper nesting.
+
+The filter grammar, including
+[foreign-key filtering](#foreign-key-filtering), is
+documented in [Filter, Sort, and Paginate Lists](howto_query_modifiers.md);
+custom routes are covered in
+[Customizing RestView](customize.md).
+
+## A different schema for the list endpoint
+
+There is no `schema_list` attribute. A different list shape is an
+HTTP-contract change, so it belongs in the endpoint method: replace
+{meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>`
+with your own `response_model` and serialize through the slimmer schema.
+Filtering, sorting, and pagination parameters keep working:
+
+```python
+class UserSummary(fr.IDSchema):
+    name: str
+
+
+class UserView(fr.AsyncRestView):
+    prefix = "/users"
+    model = User
+    schema = UserSchema  # detail routes keep the full schema
+
+    @fr.get("/", response_model=list[UserSummary])
+    async def get_many_endpoint(self, list_params):
+        result = await self.handle_get_many(list_params)
+        return [
+            UserSummary.model_validate(u, from_attributes=True)
+            for u in result.objects
+        ]
+```
+
+Replacing an endpoint method is the outermost override; see
+[Replace an endpoint method to change the HTTP contract](customize.md#replace-an-endpoint-method-to-change-the-http-contract).
+
+## Restore a soft-deleted row
+
+The soft-delete [scope](scopes.md) hides deleted rows from every default
+read, including the read your restore action needs. The restore route
+therefore reads through the *complementary* clause, then mutates inside
+{meth}`write_action <fastapi_restly.views.RestView.write_action>` so that
+authorization and the commit bracket still run:
+
+```python
+is_deleted = fr.where_clause(Item.deleted_at.is_not(None))
+ItemResponse = fr.schemas.derive_schema_response(ItemSchema)
+
+class ItemView(fr.AsyncRestView):
+    prefix = "/items"
+    model = Item
+    schema = ItemSchema
+    scope = fr.none_of(is_deleted)
+
+    async def delete(self, obj):
+        obj.deleted_at = datetime.now(timezone.utc)
+
+    @fr.post("/{id}/restore", response_model=ItemResponse, status_code=200)
+    async def restore(self, id: int):
+        # Reads through the complement of the view scope: only a deleted
+        # row can be restored, and the bypass is visible on purpose.
+        obj = await self.get_one(id, scope=is_deleted)
+        async with self.write_action("restore", obj=obj):
+            obj.deleted_at = None
+        return self.to_response(obj)
+```
+
+The restore route names the view's response class, so OpenAPI shows
+`ItemResponse`, as for the CRUD routes; see
+[A custom route names the same classes](#name-the-response-classes).
+
+`scope=` replaces the view scope for that read; it does not narrow it. Keep
+rules that a restore must never skip, such as tenant isolation, at the
+session level ([Tenant scoping](#tenant-scoping)). [A route names its own
+scope](scopes.md#a-route-names-its-own-scope) owns the details.
+
+Soft delete itself is covered as a one-off override in
+[Customizing RestView](customize.md#delete-soft-delete-instead-of-removing-the-row)
+and as a reusable mixin in
+[Compose Views with Mixins](#soft-delete-mixin),
+which also discusses the admin bypass.
+
+## Receive a webhook (inbound)
+
+An inbound webhook receiver is not CRUD, so use a bare
+{class}`fr.View <fastapi_restly.views.View>` with the raw `Request`. Verify
+the signature before parsing, and commit explicitly: the framework's
+auto-commit bracket only wraps {class}`RestView <fastapi_restly.views.RestView>`
+handlers, so a bare `View` route owns its commit (the same contract as
+{func}`fr.open_async_session() <fastapi_restly.db.open_async_session>`).
+
+```python
+from fastapi import Request
+
+@fr.include_view(app)
+class PaymentWebhookView(fr.View):
+    prefix = "/webhooks"
+    session: fr.AsyncSessionDep
+
+    @fr.post("/payments", status_code=204)
+    async def receive_payment_event(self, request: Request):
+        payload = await request.body()
+        verify_signature(payload, request.headers.get("X-Signature"))
+        event = json.loads(payload)
+        self.session.add(PaymentEvent(kind=event["type"], data=payload.decode()))
+        await self.session.commit()  # a bare View owns its commit
+```
+
+For *outbound* webhooks (calling someone else after a write), use the
+{meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>` hook
+instead, or an outbox row for a webhook that must arrive. See
+[When `after_action_commit` raises](customize.md#when-after_action_commit-raises).
+
+The decision between `View` and `RestView` is covered in
+[When to use `View` directly](class_based_views.md#when-to-use-view-directly).
+
+## An app-wide base view
+
+Declare `session`, `current_user`, and the rest of your request context once
+on a bare {class}`View <fastapi_restly.views.View>` base; every endpoint group
+(CRUD or not) subclasses it and reads from `self`. [One base view for the whole
+app](class_based_views.md#one-base-view-for-the-whole-app) owns this pattern.
+
+## Login and other auth flows
+
+An `AuthView` with `/login`, `/refresh`, and `/logout` routes is the worked
+example in
+[When to use `View` directly](class_based_views.md#when-to-use-view-directly),
+which owns this pattern.
+
+## Custom action routes (`POST /{id}/publish`)
+
+Reuse `handle_<verb>` when the action is CRUD under another URL; use
+{meth}`write_action("publish", ...) <fastapi_restly.views.RestView.write_action>`
+when the action has its own identity. [Add a custom action
+route](customize.md#add-a-custom-action-route) provides the full walkthrough.
+
+## Tenant scoping
+
+A session-level `with_loader_criteria` rule filters every ORM `SELECT`,
+including reads that replace a model's [default scope](scopes.md). The model
+stamps its tenant column on every write. [Tenant row scoping](#tenant-row-scoping)
+owns the complete pattern.

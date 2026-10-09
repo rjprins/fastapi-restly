@@ -1,0 +1,18 @@
+Views API
+=========
+
+``fastapi_restly.views`` implements the class-based view layer. ``RestView``
+and ``AsyncRestView`` define CRUD endpoint methods for a model. ``View`` is the
+bare primitive for hand-written endpoint groups. ``include_view()`` registers
+either on a FastAPI app.
+
+.. automodule:: fastapi_restly.views
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. seealso::
+
+   :doc:`/class_based_views` introduces the class-based view concept and
+   hierarchy, and :doc:`/customize` explains the three-tier override model
+   and collects the task-shaped override recipes.
