@@ -7,355 +7,202 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Many breaking changes this release, a bit more than "deeper extension points"
+this time. If this affects your project: First of all, thank you for being one
+of the very first users. Secondly, we are working towards the best API we can
+make before freezing it in 1.0. That's when the promise of stability comes.
+There will be more breaking changes every minor release until that time.
+
 ### Added
 
-- `fr.NumberedPagination` holds a view's pagination settings. Besides the two
-  page sizes it sets `max_page`, the query parameter names
-  (`page_query_param`, `page_size_query_param`), and the list envelope model.
-  The envelope is a generic Pydantic model that Restly fills by field name, so
-  aliases rename its fields, a field left out is dropped, and a before-validator
-  can nest them. Views inherit the setting, so a project base view sets it
-  once, and `replace()` changes one setting for a view that differs. This
-  serves contracts such as fastapi-pagination's
-  `items`/`total`/`page`/`size`/`pages` or camelCase metadata, with the
-  response and OpenAPI in sync.
+- `fr.NumberedPagination` holds a view's pagination settings: the page sizes,
+  `max_page`, the query parameter names and the list envelope model. Views
+  inherit it, and `replace()` changes one setting.
 - `fr.NoPagination(envelope=...)` sets the list envelope of a view that
-  returns every row. It is filled from `data` and `total_count`, the number of
-  rows, so a `{data, count}` envelope works without pagination too, and a
-  generic `RootModel` makes the list a bare JSON array. `pagination = None`
-  stays the short form of `NoPagination()`.
-- Restly warns with the new `fr.exc.RestlyDuplicateSchemaNameWarning` when the
-  app builds its OpenAPI spec and more than one class has the same name.
-  OpenAPI then shows those classes under long names that can change, such as
-  `app__tasks__views__TaskCreate`, and generated clients use these names as
-  type names. The warning names the classes, the views that use them, and what
-  to do. Restly checks an app that you pass to `fr.configure(app, ...)` or
-  `fr.testing.configure_tests(app=...)`, or that you include a view on.
-  Projects that `restly new` creates have a test that turns the warning into
-  an error.
-- A view can set its own response class with the new `schema_response`
-  attribute, on sync and async views. Everything that goes out follows it:
-  the single responses, the items of the list response, the fields that the
-  list params filter and sort on, and the relationships that the view loads.
-  The request bodies still follow `schema_create` and `schema_update`,
-  which Restly derives from `schema`. A view that sets no `schema_response`
-  gets the class that Restly built before: the view's schema without its
-  `WriteOnly` fields. For type checkers, put your own response class in the
-  second parameter, as in `fr.AsyncRestView[User, UserResponse]`.
-- `fr.schemas.derive_schema_response(schema)` returns the response class
-  that a view builds from its schema, and
-  `fr.schemas.derive_schema_list_response(schema_response, pagination=...)`
-  returns the list response class of a view. Each returns the same class as
-  the view, so a custom route can name it as its `response_model`. OpenAPI
-  then shows `UserResponse` and `UserListResponse` for the custom route too,
-  not `UserSchema` or `PaginatedEnvelope_UserSchema_`.
+  returns every row.
+- The `schema_response` view attribute sets a view's own response class.
+  Responses, the list params and the relationships that the view loads follow
+  it. Request bodies still follow `schema_create` and `schema_update`. For type
+  checkers, put it in the second parameter, as in
+  `fr.AsyncRestView[User, UserResponse]`.
+- `fr.schemas.derive_schema_response` and
+  `fr.schemas.derive_schema_list_response` return the response classes that a
+  view builds, so a custom route can use them as its `response_model`.
+- `fr.exc.RestlyDuplicateSchemaNameWarning`: Restly warns when two classes in
+  the OpenAPI spec have the same name, because OpenAPI then shows them under
+  long names that can change. Projects that `restly new` creates turn the
+  warning into an error in a test.
 
 ### Changed
 
-- The list params and the relationships that a view loads now follow the
-  response class, not the view's schema. The argument of
-  `fr.query.derive_schema_list_params` and `fr.query.apply_list_params` that
-  takes this class is now named `schema_response`, not `schema`. For a view
-  without its own `schema_response` the filters stay the same, because the
-  response class is the view's schema without its `WriteOnly` fields. A relationship that only
-  a `WriteOnly` field names is no longer loaded for a response. A
-  `to_single_response` override that builds the view's schema from the ORM
-  object reads that relationship anyway, which fails on an async view: add it
-  in `get_relationship_loader_options`, or build the response class instead.
-
 - Names around lists and schemas follow one set of rules, which are now in
-  CONTRIBUTING.md. "List" is what `get_many` returns, "list params" are the
-  filter, sort and page parameters of a list, and the word "listing" is gone.
-  Rename these in your code:
+  CONTRIBUTING.md: "list" is what `get_many` returns, "list params" are its
+  filter, sort and page parameters, and the word "listing" is gone. Rename
+  these in your code:
   - `listing_param_schema` is now `schema_list_params`.
   - `fr.ListingResult` is now `fr.ListResult`, and its field `query_params` is
     now `list_params`.
   - `fr.ResponseShape.LISTING` (value `"listing"`) is now
     `fr.ResponseShape.LIST` (value `"list"`).
   - `to_listing_response(query_params, listing_result)` is now
-    `to_list_response(list_result)`. It takes one argument: the list params
-    are in `list_result.list_params`.
+    `to_list_response(list_result)`. The list params are in
+    `list_result.list_params`.
   - `to_response_schema(obj)` is now `to_single_response(obj)`.
   - `to_response(obj_or_list, shape)` is now `to_response(result, shape)`.
-  - The `query_params` argument of `get_many`, `handle_get_many` and
-    `get_many_endpoint` is now `list_params`. So is the route parameter that
-    gives a custom route the filter, sort and page parameters, as in
-    `def trash(self, list_params)`.
+  - The `query_params` argument of `get_many`, `handle_get_many`,
+    `get_many_endpoint` and a custom list route is now `list_params`.
   - The view method `apply_query_params(query, query_params)` is now
     `apply_list_params(query, list_params)`.
   - `fr.query.apply_list_params(params, select_query, model, schema_cls)` is
-    now `fr.query.apply_list_params(query, list_params, model, schema)`. The
-    first two arguments changed places, so the function takes the same
-    arguments as the view method.
+    now `fr.query.apply_list_params(query, list_params, model,
+    schema_response)`. The first two arguments changed places.
   - `fr.query.create_list_params_schema(schema_cls, model)` is now
-    `fr.query.derive_schema_list_params(schema, model)`.
-  - `fr.schemas.create_schema_from_model` is now `fr.schemas.derive_schema`.
-    Its arguments `model_cls` and `schema_name` are now `model` and `name`.
-    Its `include_readonly_fields` is removed. It did not add or remove any
-    field: it only turned off the `ReadOnly` mark on `id`, `created_at`,
-    `updated_at` and read-only columns, and `derive_schema` now always sets
-    that mark. Its `include_relationships` is removed too, so it always
-    returns the same schema that a view generates when it has no `schema`,
-    without relationship fields. The nested schemas it built could not be
-    written: a create or update with a nested object failed. For a related
-    row, write the schema yourself, for example with an `IDRef[Model]`
-    field.
+    `fr.query.derive_schema_list_params(schema_response, model)`.
+  - `fr.schemas.create_schema_from_model` is now `fr.schemas.derive_schema`,
+    and its arguments `model_cls` and `schema_name` are now `model` and
+    `name`. Its `include_readonly_fields` and `include_relationships` are
+    removed: it always returns the schema that a view without a `schema`
+    generates. For a related row, write the schema yourself, for example with
+    an `IDRef[Model]` field.
   - React-admin views no longer have `to_react_admin_listing_response` or
-    their own `to_response`. To change their list response, override
-    `to_list_response(list_result)`.
-  - The OpenAPI summary of `GET /{id}` is "Get" instead of "Retrieve", to
-    match the `get` operation ID.
+    their own `to_response`. Override `to_list_response(list_result)` instead.
+  - The OpenAPI summary of `GET /{id}` is "Get" instead of "Retrieve".
 
-  A view that still sets `listing_param_schema`, overrides
-  `to_listing_response`, `to_react_admin_listing_response`,
-  `to_response_schema` or `apply_query_params`, or has a route with a
-  `query_params` parameter fails at class definition, or at registration when
-  set later, with an error that names the new name. An old import or enum
-  member fails on its own.
+  A view that still uses an old name fails at class definition, or at
+  registration when set later, with an error that names the new name. An old
+  import or enum member fails on its own.
 - The classes that Restly generates are named `<Resource><Role>`. Resource is
   the class name of the view's schema without a final `Schema` or `Response`.
   Generated clients use these names as type names, so their types change. For
-  `schema = UserSchema`, OpenAPI shows:
-  - `UserResponse` instead of `UserSchema`.
-  - `UserCreate` and `UserUpdate` instead of `UserSchemaCreate` and
-    `UserSchemaUpdate`.
-  - `UserListResponse` instead of `PaginatedEnvelope_UserSchema_` or
-    `Envelope_UserSchema_`.
-
-  The list params class is `UserListParams` instead of `ListParamsUserSchema`.
-  A view without a schema gets the generated `UserSchema` instead of
-  `UserRead`, and `fr.schemas.derive_schema` names its class the same way. A
-  final `Read` is no longer removed: `UserRead` now gives `UserReadCreate`.
+  `schema = UserSchema`, OpenAPI shows `UserResponse` instead of `UserSchema`,
+  `UserCreate` and `UserUpdate` instead of `UserSchemaCreate` and
+  `UserSchemaUpdate`, and `UserListResponse` instead of
+  `PaginatedEnvelope_UserSchema_` or `Envelope_UserSchema_`. The list params
+  class is `UserListParams`. A view without a schema gets `UserSchema` instead
+  of `UserRead`. A final `Read` is no longer removed: `UserRead` gives
+  `UserReadCreate`.
 - Restly always builds the response class: the view's schema without its
   `WriteOnly` fields. Before, it built one only when the schema had
-  `WriteOnly` fields. `to_single_response` returns an instance of it, which is
-  also an instance of the view's schema. An override that returns an instance
-  of the view's schema still works: the response class copies its values and
-  does not validate them again. Because the class is different, a response is
-  no longer equal (`==`) to an instance of the view's schema with the same
-  values, so compare `model_dump()` instead. A response also cannot be
-  pickled, because its class is not in a module.
+  `WriteOnly` fields. `to_single_response` returns an instance of it, so a
+  response is no longer equal (`==`) to an instance of the view's schema with
+  the same values. Compare `model_dump()` instead. A response cannot be
+  pickled.
+- The list params and the relationships that a view loads follow the response
+  class, not the view's schema. A relationship that only a `WriteOnly` field
+  names is no longer loaded for a response. A `to_single_response` override
+  that reads it fails on an async view: add it in
+  `get_relationship_loader_options`.
 - One view setting, `pagination`, replaces `paginated`, `default_page_size`
-  and `max_page_size`. Write `pagination = None` for `paginated = False`, and
+  and `max_page_size`, also on react-admin views. Write `pagination = None` for
+  `paginated = False`, and
   `pagination = fr.NumberedPagination(default_page_size=25, max_page_size=200)`
   for the two sizes. A view or mixin that still sets an old name fails at class
-  definition, or at registration when set later, with what to write instead.
-  React-admin views set their default page size the same way.
-- `to_list_response` returns an instance of the envelope model instead of a
-  dict, so a direct caller reads its attributes, such as `page.data` with the
-  default envelope. The same goes for calling `get_many_endpoint` in code.
+  definition, or at registration when set later.
+- `to_list_response` and `get_many_endpoint` return an instance of the
+  envelope model instead of a dict, so a direct caller reads attributes such as
+  `page.data`.
 - `fr.query.derive_schema_list_params` takes `pagination=` instead of
-  `default_page_size`, `max_page_size` and `paginated`. `fr.query.apply_list_params`
-  gains `pagination=`; by default it reads the pagination its list params model
-  was created with.
-- React-admin views answer `400` for a `range` that asks for more rows than the
-  pagination's `max_page_size`, which is 1000 by default.
-- Dotted filters and sorts use SQL aliases for relationship joins. Set
+  `default_page_size`, `max_page_size` and `paginated`.
+  `fr.query.apply_list_params` gains `pagination=`.
+- React-admin views answer `400` for a `range` that asks for more rows than
+  `max_page_size`, which is 1000 by default.
+- Dotted filters and sorts join relationships through SQL aliases. Set
   `include_aliases=True` on SQLAlchemy `with_loader_criteria` rules so they
   apply to these joins.
 - Built-in item routes use `/{id:int}` for integer keys and `/{id:uuid}` for
-  UUID keys, including React Admin's `PUT`. Later static routes such as
-  `/users/me` remain reachable. Values that do not match now return `404`
-  instead of `422`, unless another route handles them. Integer item paths
-  accept non-negative digits, including zero. Negative IDs require explicit
-  custom item routes. Custom route declarations and OpenAPI path shapes stay
-  unchanged.
-- Default CRUD route names are `get_many`, `get_one`, `create`, `update`, and
-  `delete`, with summaries such as "List" and "Create". React Admin's PUT route
-  is named `put`. Default operation IDs use the resource path and action:
-  `items_list`, `items_get`, `items_create`, `items_update`, and `items_delete`
-  for `/items`. Router prefixes remain in the ID, such as `v1_items_list`.
-  Explicit operation IDs and application-supplied generators take precedence.
-  Regenerate clients or set explicit operation IDs to keep existing names.
-  Set `route_options` on a view to override a route's name, summary, operation
-  ID, or other FastAPI route keyword arguments without replacing its endpoint
-  method.
-- Configure custom session generators before registering routes that use
-  `SessionDep` or `AsyncSessionDep`. Setting or replacing a generator after
-  registration raises a configuration error.
-- The minimum SQLAlchemy version is 2.0.45, up from 2.0.22. On Python 3.14,
-  earlier versions raise `NameError` for a mapped dataclass, such as a model on
-  `fr.IDBase`, whose relationship names a class imported under `TYPE_CHECKING`.
+  UUID keys. A value that does not match answers `404` instead of `422`, unless
+  another route handles it. A negative integer id needs a custom item route.
+- Default CRUD route names are `get_many`, `get_one`, `create`, `update` and
+  `delete`, and React Admin's PUT route is `put`. Default operation IDs are
+  `items_list`, `items_get`, `items_create`, `items_update` and
+  `items_delete` for `/items`. Regenerate clients, or set explicit operation
+  IDs to keep the old names. A view's `route_options` sets a route's name,
+  summary, operation ID or other FastAPI route arguments.
+- Set custom session generators before you register routes that use
+  `SessionDep` or `AsyncSessionDep`. Setting one later raises a configuration
+  error.
+- The minimum SQLAlchemy version is 2.0.45, up from 2.0.22.
 - `fr.ContextParam` no longer inherits SQLAlchemy's `ColumnOperators`, so it
-  has no `in_()`, `like()` or other operator methods. Using an operator on a
-  member raises `TypeError` where it raised `NotImplementedError`. An ordering
-  comparison with the member first, such as `Current.limit < Item.size`, now
-  builds the same SQL as the column-first form.
+  has no `in_()`, `like()` or other operator methods.
 - A create or update schema derived from `schema` leaves out a primary key
-  the server generates, even when the schema does not mark it `ReadOnly`.
-  Generated means an autoincrement column, a column default, or a dataclass
-  field with `init=False`. A plain `id: int` field used to stay in both
-  schemas: create required it and the client chose the key. A natural key
-  without a default stays writable. To let clients supply a generated key,
-  declare `schema_create`.
+  that the server generates, even when `schema` does not mark it `ReadOnly`.
+  To let clients send such a key, declare `schema_create`.
 - A view's `dependencies` and `responses` add up down the class hierarchy,
-  base first, as `prefix` does. A subclass that set its own `dependencies`
-  used to replace the base's list, which dropped a base guard without any
-  error, and its own `responses` dropped the documented `404`. A subclass can
-  no longer remove a base dependency or a base response, not even with
-  `dependencies = []` or `responses = {}`; move it out of the base instead. A
-  subclass that lists a base's dependency again, as in
-  `[own, *Base.dependencies]`, keeps its order, and each entry runs once. A
-  mixin listed after the view base, as in `class V(fr.View, AuthMixin)`, used
-  to have its `dependencies` and `responses` ignored; they now apply. A base
-  `Security(..., scopes=[...])` and a subclass one with other scopes now both
-  run, so a request needs both sets of scopes.
+  base first, as `prefix` does. A subclass can no longer remove a base
+  dependency or response, not even with `dependencies = []`: move it out of
+  the base instead. A mixin listed after the view base, as in
+  `class V(fr.View, AuthMixin)`, now adds its `dependencies` and `responses`
+  too. A base `Security(..., scopes=[...])` and a subclass one with other
+  scopes now both run.
 - `fr.objects.make_new_object`, `update_object` and their async versions no
   longer take a `schema_cls` argument: the payload's own schema decides what is
-  written. Remove the argument from calls. A field that an explicit
-  `schema_create` or `schema_update` declares is now written even when the
-  response schema marks it `ReadOnly`, so keep a server-stamped field such as a
-  tenant id out of explicit write schemas.
+  written. A field that an explicit `schema_create` or `schema_update` declares
+  is now written even when the response schema marks it `ReadOnly`, so keep a
+  server-stamped field such as a tenant id out of explicit write schemas.
 - A view class attribute with a `Path()`, `Query()`, `Header()`, `Cookie()`,
   `Body()`, `Form()` or `File()` marker raises `RestlyConfigurationError` when
-  the view is registered. FastAPI never set such an attribute: it kept its
-  class default whatever the request sent, and OpenAPI did not list the
-  parameter. Declare the parameter on the endpoint method that reads it, or
-  read it in a dependency and annotate the attribute with
-  `Annotated[..., Depends(...)]`.
+  the view is registered. FastAPI never set such an attribute. Declare the
+  parameter on the endpoint method, or use `Annotated[..., Depends(...)]`.
 
 ### Fixed
 
-- A subclass of a view keeps the `schema_response`, `schema_create`,
-  `schema_update` and `schema_list_params` that its base declares, unless the
-  subclass changes what they are built from. A class that Restly generated
-  for the subclass used to count as such a change. So a base with `model` and
-  `schema_create` but no `schema` lost its `schema_create` in every subclass.
-- The list of a react-admin view sends only the fields of the response class.
-  When a `to_single_response` override returned an instance of another model,
-  the list sent all fields of that model. The other routes were not affected,
-  because FastAPI validates their responses.
-- A field with `Field(exclude=True)` is no longer a filter or sort key, like a
-  `WriteOnly` field. Responses leave it out, so a filter on it let a client
-  read its value back.
-- OpenAPI gives each class the `x-resource-ref` of its own fields. A field
-  that a `schema_create` or `schema_update` of the view declares as a nested
-  object used to get the mark when the view's schema declared it as an id.
-- With `extra="allow"`, a key with the name of a `WriteOnly` field that is
-  not the field's alias went into the extra fields. A response built from an
-  instance of the view's schema then sent it.
-- An update can write a to-many relationship that the view does not load,
-  such as one that only `schema_update` declares. SQLAlchemy reads the old
-  collection before it replaces it. On an async view that answered `500`
-  with `MissingGreenlet`, and a relationship with `lazy="raise"` failed on
-  both. The update now loads such a collection first.
 - React-admin views answer `400` for a `range` with a negative start or an end
-  before its start. It used to become a negative `LIMIT` or `OFFSET`: every
-  row on SQLite, a `500` on PostgreSQL.
+  before its start, instead of every row or a `500`.
 - An explicit `schema_create` or `schema_update` writes every field it
-  declares. A field that the response schema marks `ReadOnly` used to be
-  dropped: a required one answered `500`, an optional one was saved as `null`,
-  and a `PATCH` left it unchanged. An `IDRef` field for a relationship that the
-  response schema embeds as a nested object answered `500`. For a field set on
-  create and frozen afterwards, mark it `ReadOnly` on the response schema and
-  declare it in `schema_create`.
-- Dotted filters and sorts support self-referential relationships and
-  different paths to the same model. Requests such as
-  `?home_city.name=Amsterdam&work_city.name=Berlin` used to return 500.
-  Repeated paths share their join across filtering and sorting.
-- A create saves the `post_id` the request sends. When the schema also had an
-  optional `post: fr.IDRef[Post] | None` field and the request left it out,
-  the create saved `NULL` instead, or answered `409` on a `NOT NULL` column.
-  On SQLAlchemy 2.0 this also happened without that field, for a `post_id`
-  typed `int` or `MustExist` and for a generated schema, when the model
-  declared `relationship(default=None)`.
+  declares, also a field that the response schema marks `ReadOnly`.
+- Dotted filters and sorts work over a self-referential relationship and over
+  two paths to the same model.
+- A create saves the foreign key that the request sends, such as `post_id`,
+  also when the schema has an optional relationship field for it.
 - A create works when a dataclass relationship has no default and the schema
-  has no field for it. The relationship is then a required `__init__`
-  argument, and the create used to answer 500. Restly passes `None` for it.
-- Building a view by hand, such as `TaskView(session=..., request=...)`,
-  type-checks. mypy used to report the keyword arguments as unexpected.
+  has no field for it.
+- An update can write a to-many relationship that the view does not load. It
+  used to answer `500` on an async view, and with `lazy="raise"` on both.
 - On Python 3.10, a view registers when a class attribute has a parameterized
-  generic type, such as `seen: list[str]` or
-  `roles: Annotated[list[str], Depends(get_roles)]`. Registration used to
-  raise `TypeError: issubclass() arg 1 must be a class`.
-- A list endpoint accepts a query parameter that a dependency reads, whether
-  the dependency is on the app, a router, the view's `dependencies` or a class
-  attribute, and the key of an `APIKeyQuery`. These keys used to answer
-  `422 Unknown query parameter` unless the view listed them in
-  `extra_query_params`. Unknown keys are still rejected.
-- A custom list route can take its own query parameters beside
-  `list_params`, such as `def search(self, list_params, mode: SearchMode)`.
-  It used to answer 422 with the list params reported missing.
-- A list endpoint's OpenAPI lists each filter as its own parameter when the
-  route also reads another query parameter, for example one a dependency
-  declares. FastAPI used to collapse the filters into one required
-  object, which also changed the method signatures of generated clients.
-- Hand-written `schema_list_params` take a field by its alias. The alias
-  used to be rejected as an unknown key, and the Python field name was
-  accepted and then ignored.
-- Type checkers see that models on `fr.DataclassBase` and `fr.IDBase` are
-  keyword-only. mypy and pyright used to reject a column without a default
-  after one with a default, although it works at runtime.
-- Reference types work with a mapped class that does not subclass
-  `DeclarativeBase`: a SQLModel table, a `registry.mapped` or
-  `declarative_base()` class, or an imperative mapping. Reading an `IDRef` or
-  nested schema over such a relationship used to answer 500, and the OpenAPI
-  `x-resource-ref` was missing. `IDSchema[Model]`, `IDRef[Model]` and
-  `MustExist[pk, Model]` also accept such a class under mypy and pyright.
-- A view whose `schema` is a SQLModel data class returns responses. SQLModel
-  narrows the signature of `model_validate`, so serializing a row raised
-  `TypeError` and every route answered 500.
-- A view's `model` accepts any SQLAlchemy mapped class under mypy and pyright,
-  so a SQLModel table or an imperatively mapped class needs no `type: ignore`.
-  The same holds for `ClauseNamespace.model`, the `fr.objects` helpers, and
-  `fr.resolve_scope`, which used to raise `TypeError` for such a class. A view
-  whose `model` has no mapper now raises `RestlyConfigurationError` at class
-  definition.
-- Subclassing `fr.ContextNamespace` or `fr.ClauseNamespace` passes
-  `mypy --strict`. The untyped `__init_subclass__` hooks used to report
-  `no-untyped-call` on the class line.
-- Configured session generators participate in FastAPI's dependency cache.
-  Application dependencies and Restly views share one request session, so
-  related ORM objects loaded by authentication can be assigned in a view.
-  Explicit view session dependencies keep their declared source.
-- Rollback test fixtures override configured generators on the app, sharing
-  isolated request sessions with native FastAPI dependencies. Generator-only
-  setups can discover a factory from a yielded session's bind.
-- A view subclass keeps the `schema`, `schema_create`, and `schema_update` its
-  base view declares. Registration used to replace them with schemas generated
-  from the model, so columns the declared schema left out appeared in
-  responses and request bodies.
-- Query clauses bind context values on SQLAlchemy 2.1 without calling the
-  deprecated expression-level `params()` method.
-- `apply_clauses` preserves the type of a multi-column `Select` with
-  SQLAlchemy 2.1's variadic row types.
-- Server-stamped field examples use `default_factory` with `insert_default`,
-  preserving optional constructor arguments on SQLAlchemy 2.0 and 2.1.
-- An unknown column type still raises a schema error naming the attribute when
-  SQLAlchemy 2.1 reports its Python type as `object`.
+  generic type, such as `list[str]`.
+- A list endpoint accepts the query parameters that its dependencies read, and
+  a custom list route can take its own query parameters beside `list_params`.
+  OpenAPI lists each filter as its own parameter.
+- A hand-written `schema_list_params` takes a field by its alias.
+- A view subclass keeps the schemas that its base declares.
+- The list of a react-admin view sends only the fields of the response class.
+- With `extra="allow"`, a response no longer sends a key that has the name of a
+  `WriteOnly` field.
+- OpenAPI gives each class the `x-resource-ref` of its own fields.
+- mypy and pyright accept a view built by hand, keyword-only fields on
+  `fr.DataclassBase` and `fr.IDBase`, any mapped class as a view's `model`,
+  and a subclass of `fr.ContextNamespace` or `fr.ClauseNamespace` under
+  `--strict`.
+- Mapped classes that do not subclass `DeclarativeBase`, such as SQLModel
+  tables, work with reference types and `fr.resolve_scope`. A SQLModel data
+  class works as a view's `schema`. A view whose `model` has no mapper raises
+  `RestlyConfigurationError` at class definition.
+- Configured session generators share one request session with the app's own
+  dependencies, also in the rollback test fixtures.
+- Query clauses, `apply_clauses` types and schema generation work with
+  SQLAlchemy 2.1.
 - A context member that SQLAlchemy would bind as a plain value raises
-  `TypeError` when the clause is applied, where the database driver used to
-  reject it at execution. This covers arithmetic with the member first
-  (`Current.now - Item.created_at`) and a member inside a plain tuple.
-- Context members work as `mapped_column(default=Current.user_id)` on
-  non-dataclass models.
-- A replaced endpoint method keeps its own `id`, `schema_obj`, and return
-  annotations. Registration used to replace them with the view's types, so a
-  stricter body schema on `update_endpoint` or react-admin `put` accepted a
-  partial body.
+  `TypeError` when the clause is applied, instead of a database error later.
+- Context members work as `mapped_column(default=Current.user_id)` on models
+  that are not dataclasses.
+- A replaced endpoint method keeps its own `id`, `schema_obj` and return
+  annotations.
 - The `{id}` path parameter takes the model's primary key type, so a UUID or
-  string key works without setting `id_type`. `id_type` now defaults to `None`
-  and still overrides the derived type.
-- Auto-generated schemas take their fields from the SQLAlchemy mapper instead
-  of `Mapped[...]` annotations. A model module with
-  `from __future__ import annotations`, a SQLModel table, and a class mapped
-  with plain `Column` attributes each used to get a schema without its columns.
-  On Python 3.14, a relationship to a class imported under `TYPE_CHECKING` no
-  longer raises `NameError` during schema generation or `{id}` typing.
-- A column whose Python type cannot be determined raises `TypeError` naming the
-  attribute, instead of being left out of the generated schema.
-- A generated schema uses the annotation nearest the model, so a subclass that
-  redefines an inherited column gets its own type. A `column_property` over a
-  SQL expression is `ReadOnly`.
+  string key works without `id_type`. `id_type` now defaults to `None`.
+- Generated schemas take their fields from the SQLAlchemy mapper. A model with
+  `from __future__ import annotations`, a SQLModel table and plain `Column`
+  attributes get all their columns. A column whose type cannot be found raises
+  `TypeError` instead of being left out. A subclass that redefines a column
+  gets its own type, and a `column_property` is `ReadOnly`.
+- On Python 3.14, a relationship to a class imported under `TYPE_CHECKING` no
+  longer raises `NameError`.
 
 ### Security
 
-- List endpoints no longer filter or sort on `WriteOnly` fields. A client
-  could read a hidden value back: `?pin=1234` returned the row with that PIN,
-  and `?pin__gte=5&sort=pin` narrowed it down. Such a filter is now an unknown
-  query parameter (`422`), and such a sort key is an invalid attribute
-  (`400`), the same answers a field that does not exist gets. This includes
-  nested schemas and a custom `schema_list_params`.
+- List endpoints no longer filter or sort on `WriteOnly` fields or on fields
+  with `Field(exclude=True)`. A client could read a hidden value back, as with
+  `?pin=1234`. Such a filter now answers `422`, and such a sort key `400`, as
+  for a field that does not exist.
 
 ## [0.10.0] - 2026-09-23
 
