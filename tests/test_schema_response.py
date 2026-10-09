@@ -23,6 +23,8 @@ import fastapi_restly as fr
 from fastapi_restly.exc import RestlyDuplicateSchemaNameWarning
 from fastapi_restly.testing import RestlyTestClient
 
+from ._openapi_spec import components as _components
+from ._openapi_spec import response_ref as _ref
 from .conftest import create_tables
 
 T = TypeVar("T")
@@ -31,25 +33,6 @@ T = TypeVar("T")
 class DataCount(pydantic.BaseModel, Generic[T]):
     data: list[T]
     total_count: int
-
-
-def _spec(app: fastapi.FastAPI) -> dict[str, Any]:
-    with warnings.catch_warnings():
-        warnings.simplefilter("error", RestlyDuplicateSchemaNameWarning)
-        return app.openapi()
-
-
-def _components(app: fastapi.FastAPI) -> set[str]:
-    return set(_spec(app)["components"]["schemas"]) - {
-        "HTTPValidationError",
-        "ValidationError",
-    }
-
-
-def _ref(app: fastapi.FastAPI, path: str, method: str, status: str = "200") -> str:
-    operation = _spec(app)["paths"][path][method]
-    schema = operation["responses"][status]["content"]["application/json"]["schema"]
-    return schema["$ref"].removeprefix("#/components/schemas/")
 
 
 def _response_model(app: fastapi.FastAPI, path: str, method: str) -> Any:

@@ -8,8 +8,6 @@ the same name, Restly warns.
 """
 
 import re
-import warnings
-from typing import Any
 
 import fastapi
 import pydantic
@@ -20,32 +18,11 @@ from sqlalchemy.orm import Mapped
 import fastapi_restly as fr
 from fastapi_restly.exc import RestlyDuplicateSchemaNameWarning
 
+from ._openapi_spec import Spec
+from ._openapi_spec import components as _components
+from ._openapi_spec import response_ref as _ref
+from ._openapi_spec import spec as _spec
 from .conftest import create_tables
-
-Spec = dict[str, Any]
-
-
-def _spec(app_or_spec: fastapi.FastAPI | Spec) -> Spec:
-    if isinstance(app_or_spec, dict):
-        return app_or_spec
-    with warnings.catch_warnings():
-        warnings.simplefilter("error", RestlyDuplicateSchemaNameWarning)
-        return app_or_spec.openapi()
-
-
-def _components(app_or_spec: fastapi.FastAPI | Spec) -> set[str]:
-    return set(_spec(app_or_spec)["components"]["schemas"]) - {
-        "HTTPValidationError",
-        "ValidationError",
-    }
-
-
-def _ref(
-    app_or_spec: fastapi.FastAPI | Spec, path: str, method: str, status: str = "200"
-) -> str:
-    operation = _spec(app_or_spec)["paths"][path][method]
-    schema = operation["responses"][status]["content"]["application/json"]["schema"]
-    return schema["$ref"].removeprefix("#/components/schemas/")
 
 
 def _body_ref(app_or_spec: fastapi.FastAPI | Spec, path: str, method: str) -> str:

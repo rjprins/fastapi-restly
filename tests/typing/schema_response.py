@@ -75,3 +75,10 @@ class NoteView(fr.RestView[Note, NoteSchema]):
     def touch(self, id: int) -> NoteSchema:
         note = self.get_one(id)
         return self.to_single_response(note)
+
+
+# A function builds the derived class, so a type checker does not accept it in
+# an annotation. At runtime it is a normal class: the docs tell users to add
+# this ignore, and mypy's warn_unused_ignores fails here if it is not needed.
+def show_note(note: NoteResponse) -> None:  # type: ignore[valid-type]
+    ...

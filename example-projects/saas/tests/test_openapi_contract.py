@@ -1,10 +1,13 @@
 """Pin the canonical spelling of collection endpoints."""
 
+import inspect
 import warnings
 
 import pytest
 from fastapi import FastAPI
+from fastapi.routing import APIRoute
 
+import fastapi_restly as fr
 from fastapi_restly.exc import RestlyDuplicateSchemaNameWarning
 
 
@@ -49,29 +52,33 @@ def test_openapi_class_names_are_unique(restly_app: FastAPI) -> None:
         restly_app.openapi()
 
 
-# The resources that have a view. A custom route names the response classes
-# of the view, so a generated client gets one type per resource.
-VIEW_RESOURCES = [
-    "Country",
-    "Label",
-    "Organization",
-    "Project",
-    "Task",
-    "TaskLabel",
-    "Upload",
-    "User",
-]
+def _view_resources(app: FastAPI) -> set[str]:
+    """The resources that have a view: the views are the classes that FastAPI
+    builds as the ``self`` of their routes."""
+    views = {
+        dependency.call
+        for route in app.routes
+        if isinstance(route, APIRoute)
+        for dependency in route.dependant.dependencies
+        if inspect.isclass(dependency.call)
+        and issubclass(dependency.call, fr.views.BaseRestView)
+    }
+    return {view.schema_response.__name__.removesuffix("Response") for view in views}
 
 
 def test_each_resource_has_one_type_in_openapi(restly_app: FastAPI) -> None:
-    """No route shows the view's schema or a ``PaginatedEnvelope_`` class
-    next to ``<Resource>Response`` and ``<Resource>ListResponse``."""
+    """A custom route names the response classes of the view, so a generated
+    client gets one type per resource. No route shows the view's schema or a
+    ``PaginatedEnvelope_`` class next to ``<Resource>Response`` and
+    ``<Resource>ListResponse``."""
+    resources = _view_resources(restly_app)
     components = set(restly_app.openapi()["components"]["schemas"])
 
+    assert {"Task", "Project", "User"} <= resources
     assert {name for name in components if "Envelope_" in name} == set()
-    assert components & {f"{name}Schema" for name in VIEW_RESOURCES} == set()
-    assert {f"{name}Response" for name in VIEW_RESOURCES} <= components
-    assert {f"{name}ListResponse" for name in VIEW_RESOURCES} <= components
+    assert components & {f"{name}Schema" for name in resources} == set()
+    assert {f"{name}Response" for name in resources} <= components
+    assert {f"{name}ListResponse" for name in resources} <= components
 
 
 @pytest.mark.parametrize(

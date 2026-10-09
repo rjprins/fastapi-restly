@@ -58,6 +58,7 @@ Coverage checklist:
 - [x] `IDRef[...]`
 - [x] UUID / non-int primary key flows
 - [x] SQLModel table as a view's `model`
+- [x] A view's own `schema_response`, and `derive_schema_response` / `derive_schema_list_response` in custom routes
 - [x] Keyword-only dataclass models: a required column after a defaulted one
 - [ ] Write-only and read-only field markers in consumer schemas
 - [x] Direct override of built-in `get_many/get_one/create/update/delete` route methods as a documented pattern
