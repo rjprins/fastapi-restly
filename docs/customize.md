@@ -240,7 +240,7 @@ For reusable soft-delete that also hides rows on read, see `SoftDeleteMixin` in 
 
 ### `get_one`: eager-load extra relationships
 
-The default {meth}`get_one <fastapi_restly.views.RestView.get_one>` loads through the view scope and schema-derived loader options. If one endpoint needs an extra relationship, delegate to ``super()`` so the scoped load and its 404 stay intact, then load the extra attribute explicitly. An override declares the ``scope`` parameter and passes it on; the handlers always forward it:
+The default {meth}`get_one <fastapi_restly.views.RestView.get_one>` loads through the view scope and the loader options derived from the response class. If one endpoint needs an extra relationship, delegate to ``super()`` so the scoped load and its 404 stay intact, then load the extra attribute explicitly. An override declares the ``scope`` parameter and passes it on; the handlers always forward it:
 
 ```python
     async def get_one(self, id, *, scope=None):
@@ -435,7 +435,7 @@ The business methods are built from three utilities. Call them from your {meth}`
 |---|---|
 | `self.make_new_object(schema_obj)` | Constructs a new ORM object from the schema, resolving references and skipping the fields the schema marks read-only, and adds it to the session. Does not flush. |
 | `self.update_object(obj, schema_obj)` | Applies writable fields onto an existing object, resolving references. Does not flush. |
-| `self.save_object(obj)` | Flushes and refreshes `obj`, then eager-loads the relationships the view's schema names. Does not commit. |
+| `self.save_object(obj)` | Flushes and refreshes `obj`, then eager-loads the relationships the response class names. Does not commit. |
 
 The same operations are available as free functions for use outside a view (scripts, workers, services): {func}`fr.objects.async_make_new_object <fastapi_restly.objects.async_make_new_object>`, {func}`async_update_object <fastapi_restly.objects.async_update_object>`, {func}`async_save_object <fastapi_restly.objects.async_save_object>`, {func}`async_delete_object <fastapi_restly.objects.async_delete_object>`, plus their sync counterparts. See [Advanced Object Helpers](#advanced-object-helpers).
 

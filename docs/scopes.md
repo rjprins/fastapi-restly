@@ -181,6 +181,10 @@ scope for that one read. The trash list and the restore action are
 then routes on the view rather than a second view class:
 
 ```python
+ItemResponse = fr.schemas.derive_schema_response(ItemSchema)
+ItemListResponse = fr.schemas.derive_schema_list_response(ItemResponse)
+
+
 @fr.include_view(app)
 class ItemView(fr.AsyncRestView):
     prefix = "/items"
@@ -188,17 +192,17 @@ class ItemView(fr.AsyncRestView):
     schema = ItemSchema
     # no scope declared: reads apply ItemClauses.default_scope
 
-    @fr.get("/trash", response_model=fr.views.PaginatedEnvelope[ItemSchema])
+    @fr.get("/trash", response_model=ItemListResponse)
     async def trash(self, list_params):
         result = await self.handle_get_many(list_params, scope=ItemClauses.trashed)
         return self.to_response(result, fr.ResponseShape.LIST)
 
-    @fr.post("/{id}/restore", response_model=ItemSchema, status_code=200)
+    @fr.post("/{id}/restore", response_model=ItemResponse, status_code=200)
     async def restore(self, id: int):
         item = await self.get_one(id, scope=ItemClauses.trashed)
         async with self.write_action("restore", obj=item):
             item.deleted_at = None
-        return item
+        return self.to_response(item)
 ```
 
 `handle_get_many` runs `authorize` and forwards `scope=` to `get_many`;
@@ -209,13 +213,11 @@ a write action gates its own action inside
 {meth}`write_action <fastapi_restly.views.RestView.write_action>`; a live
 item is a 404 here, since the trash is the surface this route reads.
 `fr.clauses.UNSCOPED` is the per-read opt-out, in the same spelling as
-everywhere else. The route's response model is `PaginatedEnvelope`, the
-envelope of the default pagination, filled with the view's schema. A view
-whose pagination sets its own envelope names that one instead, such as
-`APP_PAGINATION.envelope[ItemSchema]`. OpenAPI shows these two routes with
-their own types, `PaginatedEnvelope_ItemSchema_` and `ItemSchema`, next to the
-`ItemListResponse` and `ItemResponse` of the CRUD routes; see
-[Generated Class Names](#generated-class-names).
+everywhere else. The two routes name the response classes of the view,
+`ItemListResponse` and `ItemResponse`, so OpenAPI shows the same types as for
+the CRUD routes. A view with other pagination passes it, as in
+`derive_schema_list_response(ItemResponse, pagination=AppView.pagination)`;
+see [A custom route names the same classes](#name-the-response-classes).
 
 The argument replaces the scope, it does not narrow it. Put rules that may
 never be replaced, such as tenant isolation, at the session level. A `get_one`
@@ -231,10 +233,7 @@ also takes `where=`, which narrows the read and keeps the scope. A list
 of one collection's items still hides deleted items:
 
 ```python
-@fr.get(
-    "/in-collection/{collection_id}",
-    response_model=fr.views.PaginatedEnvelope[ItemSchema],
-)
+@fr.get("/in-collection/{collection_id}", response_model=ItemListResponse)
 async def in_collection(self, collection_id: int, list_params):
     result = await self.handle_get_many(
         list_params, where=Item.collection_id == collection_id

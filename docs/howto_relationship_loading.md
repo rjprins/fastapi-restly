@@ -5,8 +5,9 @@ any field backed by a relationship must be loaded beforehand; a relationship
 that is still unloaded raises `MissingGreenlet`. Restly does this for you in
 most cases, through
 {meth}`get_relationship_loader_options() <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`:
-it eager-loads the relationships the view's schema names, on both reads and
-writes. This guide covers what loads automatically, how to add more, and what to
+it eager-loads the relationships the view's response class names, on both
+reads and writes. By default the response class is the view's schema without
+its `WriteOnly` fields; see [Your own response class](#own-response-class). This guide covers what loads automatically, how to add more, and what to
 do when you still hit `MissingGreenlet`.
 
 :::{note}
@@ -48,8 +49,8 @@ them. It applies those options in
 flush leaves relationships unloaded. Nested schemas recurse: if `UserSchema` itself names a relationship,
 that one loads too.
 
-The reload after a write is skipped when everything the schema names is already
-loaded, and it runs without `populate_existing`, so a relationship you assigned
+The reload after a write is skipped when everything the response class names
+is already loaded, and it runs without `populate_existing`, so a relationship you assigned
 in a hook keeps the value you gave it.
 
 On a **sync** view the same options apply; only the failure mode when something

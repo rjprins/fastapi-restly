@@ -67,8 +67,9 @@ on the view class before {func}`include_view() <fastapi_restly.views.include_vie
 
 A subclass inherits the schemas its base view declares. Registration rebuilds a
 schema for the subclass in two cases: Restly generated it for the parent, or the
-subclass declares a new `schema`, which replaces an inherited `schema_create`,
-`schema_update`, and `schema_list_params`.
+subclass declares a new `schema`, which replaces an inherited `schema_response`,
+`schema_create`, `schema_update`, and `schema_list_params`. A subclass that
+declares a new `schema_response` also gets new `schema_list_params`.
 
 (generated-class-names)=
 ### Generated Class Names
@@ -79,7 +80,7 @@ the view's schema `UserSchema`, the resource is `User`:
 
 | Role | Class | View attribute |
 |---|---|---|
-| response | `UserResponse` | none |
+| response | `UserResponse` | {attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>` |
 | create body | `UserCreate` | {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` |
 | update body | `UserUpdate` | {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` |
 | list response | `UserListResponse` | none |
@@ -90,24 +91,70 @@ unless another schema nests it or a custom route names it. The list params
 are not a class in OpenAPI either: OpenAPI shows them as separate query
 parameters.
 
-Restly does not yet give a custom route a way to name `UserResponse` or
-`UserListResponse`. A custom route that names `UserSchema` or
-`PaginatedEnvelope[UserSchema]` therefore shows a type of its own in OpenAPI,
-next to the type of the CRUD routes. The JSON is the same.
+The list response has no view attribute, because it has nothing of its own
+to set: it is the envelope of the view's
+{attr}`pagination <fastapi_restly.views.BaseRestView.pagination>`, filled with
+the response class. To change it, change one of those two.
+
+(name-the-response-classes)=
+#### A custom route names the same classes
+
+A route decorator runs in the class body, before Restly builds the response
+classes. So a custom route gets the classes from two functions, at module
+level. Each returns the same class that the view uses:
+{func}`derive_schema_response(schema) <fastapi_restly.schemas.derive_schema_response>`
+and
+{func}`derive_schema_list_response(schema_response, pagination=...) <fastapi_restly.schemas.derive_schema_list_response>`.
+Pass the view's pagination as it is, also when it is `None`:
+
+```python
+UserResponse = fr.schemas.derive_schema_response(UserSchema)
+UserListResponse = fr.schemas.derive_schema_list_response(
+    UserResponse, pagination=AppView.pagination
+)
+
+
+@fr.include_view(app)
+class UserView(AppView):
+    prefix = "/users"
+    model = User
+    schema = UserSchema
+
+    @fr.get("/inactive", response_model=UserListResponse)
+    async def inactive(self, list_params):
+        result = await self.handle_get_many(list_params, where=User.active.is_(False))
+        return self.to_response(result, fr.ResponseShape.LIST)
+
+    @fr.post("/{id}/activate", response_model=UserResponse)
+    async def activate(self, id: int):
+        user = await self.get_one(id)
+        async with self.write_action("activate", obj=user):
+            user.active = True
+        return self.to_response(user)
+```
+
+OpenAPI then shows `UserListResponse` and `UserResponse` for these routes,
+as for the CRUD routes. A view with its own `schema_response` passes that
+class to `derive_schema_list_response` instead. A custom route that names
+`UserSchema` or `PaginatedEnvelope[UserSchema]` sends the same JSON, but
+shows a type of its own in OpenAPI. If a route passes another pagination
+than the view's, there are two classes named `UserListResponse`, and Restly
+warns as described below.
 
 A view without a `schema` gets a generated one. For a model named `User` it
 is `UserSchema`, so the names above stay the same. A schema with another name
 keeps its full name as the resource: `UserRead` gives `UserReadCreate`.
 
-The response class is the view's schema without its `WriteOnly` fields.
-Restly builds it also when the schema has no `WriteOnly` fields, so OpenAPI
-always shows `UserResponse`. It is a subclass of the view's schema, and
+By default the response class is the view's schema without its `WriteOnly`
+fields. Restly builds it also when the schema has no `WriteOnly` fields, so
+OpenAPI always shows `UserResponse`. It is a subclass of the view's schema, and
 {meth}`to_single_response() <fastapi_restly.views.BaseRestView.to_single_response>`
 returns an instance of it. An override may return an instance of the view's
 schema instead: the response class copies its values and does not validate
-them again. The list response is the pagination's envelope, filled with the
-response class. A react-admin view has no list response class: its list
-route returns a plain JSON list.
+them again. A view can also set its own response class; see
+[Your own response class](#own-response-class). The list response is the
+pagination's envelope, filled with the response class. A react-admin view has
+no list response class: its list route returns a plain JSON list.
 
 Two views with the same schema and the same pagination show one set of names.
 Two different classes can still get the same name. For example, two views
@@ -304,11 +351,11 @@ Nested schemas serve two different roles in Restly today:
   relationships unloaded. Without that, serializing a create or update response
   would reach them one lazy query at a time, which on an async session raises
   `MissingGreenlet` rather than merely costing queries. The reload is skipped
-  when everything the schema names is already loaded, and it runs without
+  when everything the response class names is already loaded, and it runs without
   `populate_existing`, so a relationship the caller has already populated keeps
   its value.
 
-  Loader options follow relationships the schema *names*. Code that reaches
+  Loader options follow relationships the response class *names*. Code that reaches
   past that set -- an `after_action_commit` hook, a custom business method, a
   `@property` walking a relationship nothing else loads -- runs in plain async
   context, where a bare attribute access raises `MissingGreenlet`. Restly's
@@ -345,9 +392,10 @@ List endpoints accept URL query parameters of the form
 
 During {meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>`, the framework freezes a single class-level
 attribute, {attr}`cls.schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`: the list params, a Pydantic model generated
-by {func}`derive_schema_list_params(cls.schema, cls.model, pagination=cls.pagination) <fastapi_restly.query.derive_schema_list_params>`. It covers pagination, sorting, and one filter
-parameter per field of the view's schema that maps to a filterable column on the
-model, with optional operator suffixes. It is generated once per registration
+by {func}`derive_schema_list_params(cls.schema_response, cls.model, pagination=cls.pagination) <fastapi_restly.query.derive_schema_list_params>`. It covers pagination, sorting, and one filter
+parameter per field of the response class that maps to a filterable column on the
+model, with optional operator suffixes. A client can filter and sort only on
+what it can see. It is generated once per registration
 and never re-derived.
 
 A route reads the list params through a dependency, not as a FastAPI query model.

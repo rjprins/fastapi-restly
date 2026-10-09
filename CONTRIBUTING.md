@@ -137,10 +137,15 @@ add it.
 4. A function starts with a verb. It starts with an action name only if it is
    part of that action: `update_object` is fine, `create_schema_from_model` is
    not. Getters such as `get_relationship_loader_options` are fine.
-5. A function that builds a schema attribute is named `derive_` plus the
-   attribute name: `derive_schema_list_params` builds `schema_list_params`.
+5. A function that builds one of a view's classes is named `derive_schema`
+   plus the role: `derive_schema_response` builds `schema_response`, and
+   `derive_schema_list_params` builds `schema_list_params`. A role without a
+   view attribute follows the same pattern: `derive_schema_list_response`
+   builds the list response.
 6. A class that Restly generates is named `<Resource><Role>`. Resource is the
    class name of the view's schema without a final `Schema` or `Response`.
+   The list response and the list params take it from the response class,
+   which gives the same resource when it follows these names.
    The client sees these names: `UserResponse`, `UserCreate`, `UserUpdate`
    and `UserListResponse`. It sees the view's schema only when another schema
    nests it or a custom route names it. A view without a schema gets a
@@ -160,16 +165,19 @@ and the arguments they share come in the same order: the view method
 
 `schema` is the view's schema, next to `model`. It is not the response
 schema: it can hold `WriteOnly` fields, and those never go out. Restly
-derives the response, create, update and list params schemas from it.
+derives the response, create and update schemas from it. Everything that
+goes out follows `schema_response`, which a view can also set itself: the
+responses, the list params and the relationships the view loads. Everything
+that comes in follows `schema_create` and `schema_update`.
 
 - In docs, call it "the view's schema". Do not call it "resource schema":
   "resource" and "response" look too much alike. Use "response schema" only
   for what really goes out.
 - Schemas written by hand use the same names as generated ones: `UserSchema`
-  for the view's schema, and `UserCreate` and `UserUpdate` for the roles. A
-  hand-written `UserResponse` is the view's `schema`: Restly drops the final
-  `Response` from the resource name, so the response class keeps that name.
-  The docs and examples teach these names.
+  for the view's schema, and `UserResponse`, `UserCreate` and `UserUpdate`
+  for the roles. A view can also use a hand-written `UserResponse` as its
+  `schema`: Restly drops the final `Response` from the resource name, so the
+  response class keeps that name. The docs and examples teach these names.
 - A class with a role name is set on the view, as in `schema_create`, so
   there is only one. A class for another purpose gets a name that says what
   it is, such as `UserSummary`. OpenAPI has no modules, so each class name

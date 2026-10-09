@@ -63,11 +63,12 @@ class UserView(fr.AsyncRestView):
     schema = UserSchema
 ```
 
-The three schema attributes have separate jobs:
+The four schema attributes have separate jobs:
 
 | Attribute | Used for | Default |
 |---|---|---|
-| {attr}`schema <fastapi_restly.views.BaseRestView.schema>` | `GET` responses and successful write responses | Constructed from `model` when omitted |
+| {attr}`schema <fastapi_restly.views.BaseRestView.schema>` | The source that Restly derives the other three from | Constructed from `model` when omitted |
+| {attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>` | `GET` responses and successful write responses | `schema` without `WriteOnly` fields |
 | {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` | `POST` request body | `schema` without `ReadOnly` fields |
 | {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` | `PATCH` request body | Writable fields from `schema`, made optional |
 

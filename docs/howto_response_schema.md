@@ -14,7 +14,7 @@ on the wire:
 
 | Route | Response body |
 |---|---|
-| `GET /{id}`, `POST`, `PATCH` | The bare object, serialized through {attr}`schema <fastapi_restly.views.BaseRestView.schema>` via {meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>` |
+| `GET /{id}`, `POST`, `PATCH` | The bare object, serialized through {attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>` via {meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>` |
 | `GET /` | A `data` envelope wrapping the page, plus pagination metadata (`total_count` / `page` / `page_size` / `total_pages`) |
 | `DELETE /{id}` | `204 No Content`, empty body |
 
@@ -146,11 +146,19 @@ class DataMeta(pydantic.BaseModel, Generic[T]):
 
 Set the pagination on a project base view to give every list the same
 envelope; see [Set it once for every view](#set-pagination-once).
-A custom list route on such a view names the same envelope class as its
-response model, filled with the view's schema, for example
-`response_model=APP_PAGINATION.envelope[ItemSchema]`. OpenAPI shows it as a
-type of its own, next to the `ItemListResponse` of `GET /`; see
-[Generated Class Names](#generated-class-names).
+A custom list route on such a view names the view's list response class.
+Build it at module level from the response class and the same pagination:
+
+```python
+ItemResponse = fr.schemas.derive_schema_response(ItemSchema)
+ItemListResponse = fr.schemas.derive_schema_list_response(
+    ItemResponse, pagination=APP_PAGINATION
+)
+```
+
+Then `response_model=ItemListResponse` gives the custom route the same type
+in OpenAPI as `GET /`; see
+[A custom route names the same classes](#name-the-response-classes).
 [Coming from fastapi-pagination](#fastapi-pagination-migration)
 shows the envelope that keeps fastapi-pagination's field names.
 
@@ -205,7 +213,8 @@ and set `response_model` on the replacement.
 In the replacement endpoint method, call
 {meth}`to_single_response(obj) <fastapi_restly.views.BaseRestView.to_single_response>`
 before placing the object in the envelope. This converts the ORM object to
-an instance of the view's schema, without requiring write-only input fields.
+an instance of the view's response class, without requiring write-only input
+fields.
 
 For a single-object `{"data": ...}` wrapper, replace
 {meth}`get_one_endpoint <fastapi_restly.views.RestView.get_one_endpoint>` and

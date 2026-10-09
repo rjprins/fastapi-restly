@@ -30,6 +30,7 @@ def client(request: pytest.FixtureRequest) -> Iterator[RestlyTestClient]:
 
     authorized: list[str] = []
     is_deleted = fr.where_clause(Item.deleted_at.is_not(None))
+    ItemResponse = fr.schemas.derive_schema_response(ItemSchema)
     app = FastAPI()
 
     if sync:
@@ -47,7 +48,7 @@ def client(request: pytest.FixtureRequest) -> Iterator[RestlyTestClient]:
             def authorize(self, action, *, obj=None, data=None):
                 authorized.append(str(action))
 
-            @fr.post("/{id}/restore", response_model=ItemSchema, status_code=200)
+            @fr.post("/{id}/restore", response_model=ItemResponse, status_code=200)
             def restore(self, id: int):
                 obj = self.get_one(id, scope=is_deleted)
                 with self.write_action("restore", obj=obj):
@@ -69,7 +70,7 @@ def client(request: pytest.FixtureRequest) -> Iterator[RestlyTestClient]:
             async def authorize(self, action, *, obj=None, data=None):
                 authorized.append(str(action))
 
-            @fr.post("/{id}/restore", response_model=ItemSchema, status_code=200)
+            @fr.post("/{id}/restore", response_model=ItemResponse, status_code=200)
             async def restore(self, id: int):
                 obj = await self.get_one(id, scope=is_deleted)
                 async with self.write_action("restore", obj=obj):
@@ -114,3 +115,11 @@ def test_restore_runs_authorize_with_its_action(client):
 def test_only_a_deleted_row_can_be_restored(client):
     client.post("/items/1/restore", assert_status_code=404)
     client.post("/items/99/restore", assert_status_code=404)
+
+
+def test_the_restore_route_shows_the_view_s_response_class(client):
+    spec = client.app.openapi()
+    restore = spec["paths"]["/items/{id}/restore"]["post"]
+    schema = restore["responses"]["200"]["content"]["application/json"]["schema"]
+    assert schema["$ref"] == "#/components/schemas/ItemResponse"
+    assert "ItemSchema" not in spec["components"]["schemas"]

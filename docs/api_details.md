@@ -133,7 +133,7 @@ The valid route values for exclusion are `fr.ViewRoute.GET_MANY`, `fr.ViewRoute.
 The inherited CRUD endpoint methods derive their request and response schemas
 from the view's configuration:
 
-- The response schema is the response class that Restly builds from `schema`: the schema without its `WriteOnly` fields, named like `UserResponse`. Without a `schema`, Restly generates one from the model, named like `UserSchema` (see [Generated Class Names](#generated-class-names)).
+- The response schema is `schema_response`. By default, Restly builds it from `schema`: the schema without its `WriteOnly` fields, named like `UserResponse`. Without a `schema`, Restly generates one from the model, named like `UserSchema` (see [Generated Class Names](#generated-class-names)).
 - The input schema for `POST` defaults to the schema without read-only fields (`schema_create`, generated as `*Create`).
 - The input schema for `PATCH` defaults to the optionalized schema (`schema_update`, generated as `*Update`).
 - Alias-aware serialization is applied, so response payload keys follow schema aliases.
@@ -191,6 +191,8 @@ These classes and markers define how model data crosses the wire; the reference-
 | `fr.ReadOnly[T]` | Type annotation marker. Fields annotated `ReadOnly[T]` are left out of the generated create/update input schemas, and never written from a payload whose own schema marks them. An [explicit write schema](#explicit-write-schemas) decides for itself. |
 | {data}`fr.WriteOnly[T] <fastapi_restly.schemas.WriteOnly>` | Type annotation marker. Fields are accepted on input and excluded from Pydantic serialization, including CRUD responses and direct `model_dump()` calls. |
 | {func}`fastapi_restly.schemas.derive_schema(model) <fastapi_restly.schemas.derive_schema>` | Auto-generate a Pydantic schema from a SQLAlchemy model. With its defaults, it returns the schema that a view generates when it has none. Useful for scaffolding, prototypes, and internal tools; prefer explicit schemas for stable public API contracts. Import from `fastapi_restly.schemas`; it is intentionally not exported at the top level. |
+| {func}`fastapi_restly.schemas.derive_schema_response(schema) <fastapi_restly.schemas.derive_schema_response>` | The response class that a view builds from its schema: the schema without its `WriteOnly` fields, named like `UserResponse`. Returns the same class as the view, so a custom route can name it. |
+| {func}`fastapi_restly.schemas.derive_schema_list_response(schema_response, pagination=...) <fastapi_restly.schemas.derive_schema_list_response>` | The list response class of a view: the envelope of its pagination, filled with its response class, named like `UserListResponse`. Returns the same class as the view, so a custom list route can name it. |
 
 ### View Classes
 
@@ -258,12 +260,12 @@ names are identical between variants.
 | Override point | {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>` | `(action, new, old=None)` | `None` | Post-commit side effect (email, webhook, cache invalidation). `old` enables dirty detection. An exception here fails the request but cannot undo the write; see [When `after_action_commit` raises](customize.md#when-after_action_commit-raises). |
 | Override point | {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>` | `(result, shape=ResponseShape.SINGLE)` | response payload | The single wire-level response method, called by the endpoint methods with the wire `ResponseShape` (`SINGLE` / `LIST` / `EMPTY`), not the write action. Override for envelopes or custom status codes; for a per-verb HTTP contract change, override that verb's endpoint method. |
 | Override point | {meth}`snapshot <fastapi_restly.views.BaseRestView.snapshot>` | `(obj)` | `dict[str, Any]` | Frozen capture of an object's already-loaded column values, taken after `authorize` and before the mutation, passed as `old` to the commit hooks. |
-| Override point | {meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>` | `()` | `list[Any]` | Loader options (`selectinload(...)`) for the relationships the view's schema names, applied on reads (`get_one` / `get_many`) and on the write-response reload in `save_object`. Override to eager-load relationships the schema does not name on both paths; see [Relationship Loading and Async](howto_relationship_loading.md). |
+| Override point | {meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>` | `()` | `list[Any]` | Loader options (`selectinload(...)`) for the relationships the response class names, applied on reads (`get_one` / `get_many`) and on the write-response reload in `save_object`. Override to eager-load relationships the response class does not name on both paths; see [Relationship Loading and Async](howto_relationship_loading.md). |
 | Helper | {meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>` | `(obj)` | instance of `schema` | Validate and serialize one ORM object with Restly's alias/reference/write-only handling. Override for custom projections or an intentional `model_construct()` fast path. |
 | Helper | {meth}`to_list_response <fastapi_restly.views.BaseRestView.to_list_response>` | `(list_result)` | envelope model instance | Build the list response body: an instance of the pagination's envelope, or of `Envelope` when `pagination` is `None`. The page comes from `list_result.list_params`. To change the shape, set the pagination's `envelope`. A shape no envelope model can express, such as a header, needs `get_many_endpoint` replaced with a matching `response_model`. |
 | Domain utility | {meth}`make_new_object <fastapi_restly.views.RestView.make_new_object>` | `(schema_obj)` | `Model` | Build and stage a new object without flushing, resolving references and skipping read-only fields. Final. |
 | Domain utility | {meth}`update_object <fastapi_restly.views.RestView.update_object>` | `(obj, schema_obj)` | `Model` | Apply writable fields without flushing, resolving references. Final. |
-| Domain utility | {meth}`save_object <fastapi_restly.views.RestView.save_object>` | `(obj)` | `Model` | Flush and refresh a staged object, then eager-load the relationships the view's schema names (via `get_relationship_loader_options`). Does not commit; `handle_<verb>` owns the commit. Final. |
+| Domain utility | {meth}`save_object <fastapi_restly.views.RestView.save_object>` | `(obj)` | `Model` | Flush and refresh a staged object, then eager-load the relationships the response class names (via `get_relationship_loader_options`). Does not commit; `handle_<verb>` owns the commit. Final. |
 
 Internal methods prefixed with `_`, such as `_reject_unknown_query_params`, are implementation details even though they are visible on instances.
 
@@ -286,13 +288,14 @@ Every `View` subclass, CRUD or not, honors these class attributes:
 
 | Attribute | Type | Description |
 |---|---|---|
-| {attr}`schema <fastapi_restly.views.BaseRestView.schema>` | `ClassVar[type[pydantic.BaseModel]]` | The view's schema. Restly derives the response, create, update and list params schemas from it. If omitted, auto-generated from `model` as `<Model>Schema`. |
+| {attr}`schema <fastapi_restly.views.BaseRestView.schema>` | `ClassVar[type[pydantic.BaseModel]]` | The view's schema. Restly derives the response, create and update schemas from it. If omitted, auto-generated from `model` as `<Model>Schema`. |
+| {attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>` | `ClassVar[type[pydantic.BaseModel]]` | The class of everything that goes out: the responses, the list items, the fields the list params filter on, and the relationships the view loads. Auto-derived by removing `WriteOnly` fields and named `ModelResponse`. See [Your own response class](#own-response-class). |
 | {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` | `ClassVar[type[pydantic.BaseModel]]` | Schema for `POST` input. Auto-derived by removing `ReadOnly` fields and named `ModelCreate`. |
 | {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` | `ClassVar[type[pydantic.BaseModel]]` | Schema for `PATCH` input. Auto-derived by making all writable fields optional and named `ModelUpdate`. |
 | {attr}`model <fastapi_restly.views.BaseRestView.model>` | `ClassVar[type[Any]]` | The SQLAlchemy mapped class. A class without a mapper raises at class definition. |
 | {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` | `ClassVar[type \| None]` | Type of the `{id}` path parameter on the default routes. `None` (the default) takes the model's primary key type; a composite key gets `int`. |
 | {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` | `ClassVar[Iterable[str \| ViewRoute]]` | Route names to suppress. |
-| {attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>` | `ClassVar[type[pydantic.BaseModel]]` | The list params (filter, sort, page) as a Pydantic model, generated from `schema` by `fr.query.derive_schema_list_params`. Any route method that declares a `list_params` parameter is annotated with it, so a custom list route takes the same parameters as `GET /`. |
+| {attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>` | `ClassVar[type[pydantic.BaseModel]]` | The list params (filter, sort, page) as a Pydantic model, generated from `schema_response` by `fr.query.derive_schema_list_params`. Any route method that declares a `list_params` parameter is annotated with it, so a custom list route takes the same parameters as `GET /`. |
 
 The list-tuning attributes (`pagination`, `extra_query_params`) are tabulated under [List Endpoint Behavior](#list-endpoint-behavior).
 

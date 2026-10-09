@@ -86,6 +86,7 @@ authorization and the commit bracket still run:
 
 ```python
 is_deleted = fr.where_clause(Item.deleted_at.is_not(None))
+ItemResponse = fr.schemas.derive_schema_response(ItemSchema)
 
 class ItemView(fr.AsyncRestView):
     prefix = "/items"
@@ -96,7 +97,7 @@ class ItemView(fr.AsyncRestView):
     async def delete(self, obj):
         obj.deleted_at = datetime.now(timezone.utc)
 
-    @fr.post("/{id}/restore", response_model=ItemSchema, status_code=200)
+    @fr.post("/{id}/restore", response_model=ItemResponse, status_code=200)
     async def restore(self, id: int):
         # Reads through the complement of the view scope: only a deleted
         # row can be restored, and the bypass is visible on purpose.
@@ -106,8 +107,9 @@ class ItemView(fr.AsyncRestView):
         return self.to_response(obj)
 ```
 
-OpenAPI shows `ItemSchema` for the restore route, next to the `ItemResponse`
-of the CRUD routes; see [Generated Class Names](#generated-class-names).
+The restore route names the view's response class, so OpenAPI shows
+`ItemResponse`, as for the CRUD routes; see
+[A custom route names the same classes](#name-the-response-classes).
 
 `scope=` replaces the view scope for that read; it does not narrow it. Keep
 rules that a restore must never skip, such as tenant isolation, at the

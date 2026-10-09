@@ -128,10 +128,18 @@ class UserView(
         return await super().update(obj, schema_obj)
 ```
 
-The type parameters are, in order: the model, the view's schema, the create
+The type parameters are, in order: the model, the response type, the create
 schema, the update schema, and the id type. With them in place, `schema_obj`
 in `create` is a `UserCreate`, `obj` in `update` is a `User`, and the return
 types are checked too.
+
+The response type is what
+{meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>`
+returns. Put the view's schema there: the response class that Restly builds
+is a subclass of it. A view that sets its own
+{attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>`
+puts that class there instead, as in
+`fr.AsyncRestView[User, UserResponse]`.
 
 Note the signatures: `create` takes the create schema and returns the model;
 `update` takes the already-loaded `obj` plus the update schema. Id resolution

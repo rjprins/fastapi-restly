@@ -2,8 +2,11 @@
 
 List endpoints (`GET /{prefix}`) support filtering, sorting, and
 pagination through URL query parameters out of the box. Filter parameters
-are derived from the view's schema. Sort has a fixed name, and the
-pagination names are a setting of the view.
+are derived from the view's response class, so a client can filter and sort
+only on what it can see. By default the response class is the view's schema
+without its `WriteOnly` fields; see
+[Your own response class](#own-response-class). Sort has a fixed name, and
+the pagination names are a setting of the view.
 
 Pagination is on by default: lists are capped at 50 rows per page and
 wrapped in a `data` envelope. Clients page with `page` and `page_size`. The
@@ -344,7 +347,7 @@ set `include_aliases=True` so the rules cover these joins. See the
 
 Aliases apply to **every** segment of the dotted path, both the relation
 field and the nested column, because the keys of the list params always
-follow the public names of the view's schema:
+follow the public names of the response class:
 
 ```python
 class AuthorSchema(BaseModel):
