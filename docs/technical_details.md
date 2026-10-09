@@ -66,10 +66,14 @@ They can be overridden by declaring `schema_create` or `schema_update` directly
 on the view class before {func}`include_view() <fastapi_restly.views.include_view>` is called.
 
 A subclass inherits the schemas its base view declares. Registration rebuilds a
-schema for the subclass in two cases: Restly generated it for the parent, or the
-subclass declares a new `schema`, which replaces an inherited `schema_response`,
-`schema_create`, `schema_update`, and `schema_list_params`. A subclass that
-declares a new `schema_response` also gets new `schema_list_params`.
+schema for the subclass in two cases: Restly generated it for the parent, or
+what it is built from changes. A subclass that declares a new `schema` gets a
+new `schema_response`, `schema_create`, `schema_update`, and
+`schema_list_params`. A subclass that declares a new `schema_response` gets new
+`schema_list_params`. A view without a schema builds it from `model`, so there
+a new `model` counts as a new `schema`. A class that Restly generates for the
+subclass is not a change of its own, so it does not replace a class that the
+base declares.
 
 (generated-class-names)=
 ### Generated Class Names

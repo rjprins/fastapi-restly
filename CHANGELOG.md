@@ -211,6 +211,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A subclass of a view keeps the `schema_response`, `schema_create`,
+  `schema_update` and `schema_list_params` that its base declares, unless the
+  subclass changes what they are built from. A class that Restly generated
+  for the subclass used to count as such a change. So a base with `model` and
+  `schema_create` but no `schema` lost its `schema_create` in every subclass.
 - The list of a react-admin view sends only the fields of the response class.
   When a `to_single_response` override returned an instance of another model,
   the list sent all fields of that model. The other routes were not affected,

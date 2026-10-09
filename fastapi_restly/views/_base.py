@@ -1672,11 +1672,11 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             cls.schema = cast(type[SchemaT], derive_schema(cls.model))
             _mark_generated(cls, "schema")
 
-        if _needs_generating(cls, "schema_response", derived_from="schema"):
+        if _needs_generating(cls, "schema_response"):
             cls.schema_response = derive_schema_response(cls.schema)
             _mark_generated(cls, "schema_response")
 
-        if _needs_generating(cls, "schema_list_params", derived_from="schema_response"):
+        if _needs_generating(cls, "schema_list_params"):
             if not hasattr(cls, "model"):
                 raise ValueError(
                     f"'{cls.__name__}.model' must be specified: it is needed to "
@@ -1688,7 +1688,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             _mark_generated(cls, "schema_list_params")
         else:
             cls._check_declared_schema_list_params()
-        if _needs_generating(cls, "schema_create", derived_from="schema"):
+        if _needs_generating(cls, "schema_create"):
             cls.schema_create = cast(
                 type[CreateSchemaT],
                 create_model_without_read_only_fields(
@@ -1696,7 +1696,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                 ),
             )
             _mark_generated(cls, "schema_create")
-        if _needs_generating(cls, "schema_update", derived_from="schema"):
+        if _needs_generating(cls, "schema_update"):
             cls.schema_update = cast(
                 type[UpdateSchemaT],
                 create_model_with_optional_fields(
@@ -1768,12 +1768,14 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         _exclude_routes(cls)
 
 
-def _owner_index(cls: type, name: str) -> int | None:
-    """Position in the MRO of the class that sets ``name``, or None."""
-    for index, klass in enumerate(cls.__mro__):
-        if name in klass.__dict__:
-            return index
-    return None
+#: What registration builds each class of a view from.
+_BUILT_FROM = {
+    "schema": "model",
+    "schema_response": "schema",
+    "schema_list_params": "schema_response",
+    "schema_create": "schema",
+    "schema_update": "schema",
+}
 
 
 def _mark_generated(cls: type, name: str) -> None:
@@ -1781,23 +1783,51 @@ def _mark_generated(cls: type, name: str) -> None:
     cls._fr_generated = generated | {name}  # type: ignore[attr-defined]
 
 
-def _needs_generating(cls: type, name: str, *, derived_from: str | None = None) -> bool:
+def _declared_at(cls: type, name: str) -> int | None:
+    """Position in the MRO of the class that declares ``name``, or None.
+
+    A value that registration generated is not a declaration.
+    """
+    for index, klass in enumerate(cls.__mro__):
+        if name in klass.__dict__ and name not in klass.__dict__.get(
+            "_fr_generated", ()
+        ):
+            return index
+    return None
+
+
+def _decided_at(cls: type, name: str) -> int | None:
+    """Position in the MRO of the class that decides the value of ``name``.
+
+    A declared value is decided where it is declared, unless what it is built
+    from is decided nearer to ``cls``: then registration rebuilds it. A
+    generated value is decided where its source is decided. So a copy that
+    registration wrote into a subclass does not count as a change.
+    """
+    declared = _declared_at(cls, name)
+    source = _BUILT_FROM.get(name)
+    if source is None:
+        return declared
+    source_at = _decided_at(cls, source)
+    if declared is None:
+        return source_at
+    # A declared schema stays, whatever model a subclass sets.
+    if name != "schema" and source_at is not None and source_at < declared:
+        return source_at
+    return declared
+
+
+def _needs_generating(cls: type, name: str) -> bool:
     """Whether registration must build ``name`` for this view class.
 
-    A declared value is inherited. It is rebuilt when no class sets it, when a
-    parent's value was generated, or when the attribute it derives from is set
-    nearer to ``cls`` than the value itself.
+    A declared value is inherited. Registration builds it when no class
+    declares it, or when what it is built from is decided nearer to ``cls``,
+    as in a subclass that declares a new ``schema``.
     """
-    index = _owner_index(cls, name)
-    if index is None:
-        return True
-    owner = cls.__mro__[index]
-    if name in owner.__dict__.get("_fr_generated", ()):
-        return owner is not cls
-    if derived_from is not None:
-        source_index = _owner_index(cls, derived_from)
-        return source_index is not None and source_index < index
-    return False
+    if name in cls.__dict__.get("_fr_generated", ()):
+        return False
+    declared = _declared_at(cls, name)
+    return declared is None or _decided_at(cls, name) != declared
 
 
 def _schema_response(view_cls: type) -> type[pydantic.BaseModel]:
@@ -1807,7 +1837,7 @@ def _schema_response(view_cls: type) -> type[pydantic.BaseModel]:
     yet, or a subclass that changes ``schema``, gets the class that
     registration would set.
     """
-    if _needs_generating(view_cls, "schema_response", derived_from="schema"):
+    if _needs_generating(view_cls, "schema_response"):
         return derive_schema_response(view_cls.schema)
     return view_cls.schema_response
 
