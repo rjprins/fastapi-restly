@@ -49,7 +49,9 @@ nitpicky = True
 nitpick_ignore_regex = [
     (r"py:.*", r"(.*\.)?_.*"),  # private modules and classes, and their TypeVars
     (r"py:.*", r"httpx2\..*"),  # httpx2 publishes no intersphinx inventory
-    (r"py:.*", r"typing\.Annotated\[.*"),
+    # Annotated[X, ...] has no page. On Python 3.10, Annotated also takes the
+    # module of X, so autodoc writes datetime.Annotated, which has no page too.
+    (r"py:.*", r"[\w.]+\.Annotated(\[.*)?"),
 ]
 nitpick_ignore = [
     # Names autodoc reads off an annotation unqualified, so intersphinx cannot
@@ -63,6 +65,8 @@ nitpick_ignore = [
     ("py:class", "starlette.datastructures.QueryParams"),
     ("py:class", "fr.ReadOnly"),
     ("py:class", "function"),
+    # Python 3.10 only: Self comes from typing_extensions there, not typing.
+    ("py:class", "typing_extensions.Self"),
 ]
 
 intersphinx_mapping = {
