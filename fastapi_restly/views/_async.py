@@ -20,8 +20,8 @@ from ._base import (
     ListResult,
     ModelT,
     ReadScope,
+    ResponseSchemaT,
     ResponseShape,
-    SchemaT,
     UpdateSchemaT,
     _identity_criterion,
     _not_found_message,
@@ -41,7 +41,9 @@ from ._lifecycle import (
 )
 
 
-class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT]):
+class AsyncRestView(
+    BaseRestView[ModelT, ResponseSchemaT, CreateSchemaT, UpdateSchemaT, IdT]
+):
     """
     AsyncRestView creates an async CRUD/REST interface for database objects.
     Basic usage::

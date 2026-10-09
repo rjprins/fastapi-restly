@@ -27,7 +27,6 @@ from ._base import (
     ListResult,
     ResponseShape,
     _annotate,
-    _as_response,
     _schema_response,
     _typed_id_route,
     _view_id_type,
@@ -251,7 +250,6 @@ def apply_react_admin_query(
 class _ReactAdminViewProtocol(Protocol):
     request: fastapi.Request
     model: ClassVar[type[Any]]
-    schema: ClassVar[type[pydantic.BaseModel]]
     schema_response: ClassVar[type[pydantic.BaseModel]]
     schema_update: ClassVar[type[pydantic.BaseModel]]
     schema_list_params: ClassVar[type[pydantic.BaseModel]]
@@ -262,7 +260,7 @@ class _ReactAdminViewProtocol(Protocol):
 
     def get_react_admin_range_unit(self) -> str: ...
     def get_relationship_loader_options(self) -> list[Any]: ...
-    def to_single_response(self, obj: Any) -> pydantic.BaseModel: ...
+    def _single_response(self, obj: Any) -> pydantic.BaseModel: ...
 
     @classmethod
     def before_include_view(cls) -> None: ...
@@ -412,11 +410,8 @@ class _ReactAdminMixin:
         schema from a ``to_single_response`` override goes out without its
         WriteOnly fields."""
         view = cast(_ReactAdminViewProtocol, self)
-        schema_response = _schema_response(type(self))
         return [
-            _as_response(schema_response, view.to_single_response(obj)).model_dump(
-                mode="json", by_alias=True
-            )
+            view._single_response(obj).model_dump(mode="json", by_alias=True)
             for obj in items
         ]
 

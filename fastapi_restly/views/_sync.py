@@ -20,8 +20,8 @@ from ._base import (
     ListResult,
     ModelT,
     ReadScope,
+    ResponseSchemaT,
     ResponseShape,
-    SchemaT,
     UpdateSchemaT,
     _identity_criterion,
     _not_found_message,
@@ -41,7 +41,9 @@ from ._lifecycle import (
 )
 
 
-class RestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT]):
+class RestView(
+    BaseRestView[ModelT, ResponseSchemaT, CreateSchemaT, UpdateSchemaT, IdT]
+):
     """
     RestView creates a sync CRUD/REST interface for database objects.
     Basic usage::

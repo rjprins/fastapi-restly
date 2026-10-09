@@ -124,7 +124,9 @@ from ._openapi import _register_for_resource_ref
 # Unbound: a mapped class need not subclass DeclarativeBase (a SQLModel table,
 # an imperative mapping). ``BaseRestView`` checks the mapping at class definition.
 ModelT = TypeVar("ModelT", default=Any)
-SchemaT = TypeVar("SchemaT", bound=pydantic.BaseModel, default=BaseSchema)
+ResponseSchemaT = TypeVar(
+    "ResponseSchemaT", bound=pydantic.BaseModel, default=BaseSchema
+)
 CreateSchemaT = TypeVar(
     "CreateSchemaT", bound=pydantic.BaseModel, default=pydantic.BaseModel
 )
@@ -1272,7 +1274,9 @@ def _check_renamed_names(cls: type) -> None:
                 )
 
 
-class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, IdT]):
+class BaseRestView(
+    View, Generic[ModelT, ResponseSchemaT, CreateSchemaT, UpdateSchemaT, IdT]
+):
     """
     Base class for RestView implementations.
 
@@ -1510,7 +1514,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         }
         reject_unknown_query_keys(request, list_keys | set(self.extra_query_params))
 
-    def to_single_response(self, obj: ModelT | SchemaT) -> SchemaT:
+    def to_single_response(self, obj: ModelT | ResponseSchemaT) -> ResponseSchemaT:
         """Serialize one ORM object to the view's :attr:`schema_response`.
 
         By default the response class is the view's schema without its
@@ -1537,7 +1541,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         schema_response = _schema_response(type(self))
         response = _as_response(schema_response, obj)
         if isinstance(response, schema_response):
-            return cast(SchemaT, response)
+            return cast(ResponseSchemaT, response)
 
         # Build a payload of raw attribute values keyed by schema field name;
         # re-validating it below serializes each field through its own type. The
@@ -1554,8 +1558,14 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
         adapter = _response_adapter(schema_response)
         return cast(
-            SchemaT, adapter.validate_python(payload, by_alias=False, by_name=True)
+            ResponseSchemaT,
+            adapter.validate_python(payload, by_alias=False, by_name=True),
         )
+
+    def _single_response(self, obj: Any) -> pydantic.BaseModel:
+        """One object as an instance of the response class. An override of
+        :meth:`to_single_response` may return an instance of another model."""
+        return _as_response(_schema_response(type(self)), self.to_single_response(obj))
 
     @staticmethod
     def _to_query_params(list_params: Any) -> QueryParams:
@@ -1585,14 +1595,11 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
         The page and page size come from ``list_result.list_params``.
         """
-        # An override may return instances of the view's schema.
-        schema_response = _schema_response(type(self))
-        data = [
-            _as_response(schema_response, self.to_single_response(obj))
-            for obj in list_result.objects
-        ]
+        data = [self._single_response(obj) for obj in list_result.objects]
         pagination = self.pagination
-        envelope = derive_schema_list_response(schema_response, pagination=pagination)
+        envelope = derive_schema_list_response(
+            _schema_response(type(self)), pagination=pagination
+        )
         if not isinstance(pagination, NumberedPagination):
             return _build_envelope(envelope, _unpaginated_page_info(data))
         params = self._to_query_params(list_result.list_params)
@@ -1623,10 +1630,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             return fastapi.Response(status_code=204)
         if shape is ResponseShape.LIST:
             return self.to_list_response(result)
-        # An override may return an instance of the view's schema.
-        return _as_response(
-            _schema_response(type(self)), self.to_single_response(result)
-        )
+        return self._single_response(result)
 
     def snapshot(self, obj: Any) -> dict[str, Any]:
         """Frozen capture of an object's already-loaded column values, passed as
@@ -1674,7 +1678,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
                 raise ValueError(
                     f"'{cls.__name__}.model' must be specified to auto-generate schema"
                 )
-            cls.schema = cast(type[SchemaT], derive_schema(cls.model))
+            cls.schema = derive_schema(cls.model)
             _mark_generated(cls, "schema")
 
         if _needs_generating(cls, "schema_response"):
