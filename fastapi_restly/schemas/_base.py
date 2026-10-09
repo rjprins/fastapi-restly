@@ -1106,11 +1106,18 @@ def _derive_schema_response(
     :func:`_as_response` turns an instance of the schema into an instance
     of the response class.
     """
-    return type(
+    cls = type(
         _schema_role_name(schema, "Response"),
         (_OmitWriteOnlyMixin, schema),
         {"__module__": schema.__module__, "__doc__": schema.__doc__},
     )
+    # A recursive schema refers to itself by name, like list["NodeSchema"].
+    # Pydantic finds a class's own name, but not the name of a parent class
+    # that was defined in a function. So the response class gets that name.
+    namespace = {**(schema.__pydantic_parent_namespace__ or {})}
+    namespace[schema.__name__] = schema
+    cls.model_rebuild(force=True, raise_errors=False, _types_namespace=namespace)
+    return cls
 
 
 def rebase_with_model_config(
