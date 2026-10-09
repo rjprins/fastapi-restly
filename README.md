@@ -35,7 +35,7 @@ behavior.
 > **Status:** public beta release ([changelog](https://github.com/rjprins/fastapi-restly/blob/main/CHANGELOG.md)).
 >
 > Restly is public after four years of internal use. The API is settling on the
-> way to `1.0.0`; expect small breaking changes in deeper extension points.
+> way to `1.0.0`. Until then, each minor release can have breaking changes.
 > Feedback is welcome.
 
 ```bash
