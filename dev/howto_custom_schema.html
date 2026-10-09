@@ -567,16 +567,19 @@ to the section that covers it.</p>
 <tr class="row-odd"><td><p>Field set on create, frozen afterwards</p></td>
 <td><p><a class="reference internal" href="#explicit-write-schemas">Explicit write schema</a></p></td>
 </tr>
-<tr class="row-even"><td><p>Checked foreign-key column</p></td>
+<tr class="row-even"><td><p>Response that differs from the input</p></td>
+<td><p><a class="reference internal" href="#own-response-class">Your own response class</a></p></td>
+</tr>
+<tr class="row-odd"><td><p>Checked foreign-key column</p></td>
 <td><p><a class="reference internal" href="#mustexist"><code class="docutils literal notranslate"><span class="pre">MustExist</span></code></a></p></td>
 </tr>
-<tr class="row-odd"><td><p>Relationship as a flat id</p></td>
+<tr class="row-even"><td><p>Relationship as a flat id</p></td>
 <td><p><a class="reference internal" href="howto_relationship_idschema.html#choosing-a-reference-style"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">IDRef</span></code></span></a></p></td>
 </tr>
-<tr class="row-even"><td><p>Relationship as a nested object</p></td>
+<tr class="row-odd"><td><p>Relationship as a nested object</p></td>
 <td><p><a class="reference internal" href="#nested-relationship-objects"><code class="docutils literal notranslate"><span class="pre">IDSchema[Model]</span></code></a></p></td>
 </tr>
-<tr class="row-odd"><td><p>Clear type names in OpenAPI and generated clients</p></td>
+<tr class="row-even"><td><p>Clear type names in OpenAPI and generated clients</p></td>
 <td><p><a class="reference internal" href="#name-your-schemas">Name your schemas</a></p></td>
 </tr>
 </tbody>
@@ -699,6 +702,51 @@ write-only field, write <code class="docutils literal notranslate"><span class="
 <p>For <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields inside a JSON document, use an explicit column type.
 See <a class="reference internal" href="technical_details.html#json-document-columns"><span class="std std-ref">JSON document columns</span></a>.</p>
 </section>
+<section id="your-own-response-class">
+<span id="own-response-class"></span><h2>Your own response class<a class="headerlink" href="#your-own-response-class" title="Link to this heading">#</a></h2>
+<p>By default, a response is the view’s schema without its <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields.
+When what goes out differs more from what comes in, set
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_response" title="fastapi_restly.views.BaseRestView.schema_response"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_response</span></code></a>
+on the view. Everything that goes out follows it:</p>
+<ul class="simple">
+<li><p>every single response, and each item of the list response;</p></li>
+<li><p>the fields that the list params filter and sort on, so a client can filter
+only on what it can see;</p></li>
+<li><p>the relationships that the view loads.</p></li>
+</ul>
+<p>The request bodies still follow <code class="docutils literal notranslate"><span class="pre">schema_create</span></code> and <code class="docutils literal notranslate"><span class="pre">schema_update</span></code>, which
+Restly derives from <code class="docutils literal notranslate"><span class="pre">schema</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">AccountSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">team_id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">AccountResponse</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">team</span><span class="p">:</span> <span class="n">TeamSchema</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">AccountView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/accounts&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Account</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">AccountSchema</span>
+    <span class="n">schema_response</span> <span class="o">=</span> <span class="n">AccountResponse</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/accounts</span></code> takes <code class="docutils literal notranslate"><span class="pre">name</span></code>, <code class="docutils literal notranslate"><span class="pre">email</span></code> and <code class="docutils literal notranslate"><span class="pre">team_id</span></code>. Every response shows
+<code class="docutils literal notranslate"><span class="pre">id</span></code>, <code class="docutils literal notranslate"><span class="pre">name</span></code> and the nested <code class="docutils literal notranslate"><span class="pre">team</span></code>, which the view loads. <code class="docutils literal notranslate"><span class="pre">?email=...</span></code> is not
+a filter, because a client does not see <code class="docutils literal notranslate"><span class="pre">email</span></code>. Restly uses the class as you
+wrote it: it does not remove <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields from it. If a
+<code class="docutils literal notranslate"><span class="pre">to_single_response</span></code> override returns an instance of <code class="docutils literal notranslate"><span class="pre">AccountSchema</span></code>, Restly
+validates it into <code class="docutils literal notranslate"><span class="pre">AccountResponse</span></code>, so only the fields of <code class="docutils literal notranslate"><span class="pre">AccountResponse</span></code>
+go out.</p>
+<p>Name the class <code class="docutils literal notranslate"><span class="pre">&lt;Resource&gt;Response</span></code>, as in <code class="docutils literal notranslate"><span class="pre">AccountResponse</span></code>. Restly names the
+list response and the list params after it: <code class="docutils literal notranslate"><span class="pre">AccountListResponse</span></code> and
+<code class="docutils literal notranslate"><span class="pre">AccountListParams</span></code>. For type checkers, put the class in the second parameter
+of the view, as in <code class="docutils literal notranslate"><span class="pre">fr.AsyncRestView[Account,</span> <span class="pre">AccountResponse]</span></code>; see
+<a class="reference internal" href="howto_typing.html"><span class="std std-doc">Typing</span></a>.</p>
+</section>
 <section id="aliases">
 <h2>Aliases<a class="headerlink" href="#aliases" title="Link to this heading">#</a></h2>
 <p>Use normal Pydantic aliases when the API field name differs from the Python or
@@ -785,14 +833,17 @@ needs its own name, also when Python keeps two classes apart in different
 modules.</p>
 <p>Restly names the classes it generates after the view’s schema. For
 <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code>, OpenAPI shows <code class="docutils literal notranslate"><span class="pre">UserResponse</span></code>, <code class="docutils literal notranslate"><span class="pre">UserCreate</span></code>, <code class="docutils literal notranslate"><span class="pre">UserUpdate</span></code> and
-<code class="docutils literal notranslate"><span class="pre">UserListResponse</span></code>; see <a class="reference internal" href="technical_details.html#generated-class-names"><span class="std std-ref">Generated Class Names</span></a>.
+<code class="docutils literal notranslate"><span class="pre">UserListResponse</span></code>; see <a class="reference internal" href="technical_details.html#generated-class-names"><span class="std std-ref">Generated Class Names</span></a>. A
+custom route names the same classes; see
+<a class="reference internal" href="technical_details.html#name-the-response-classes"><span class="std std-ref">A custom route names the same classes</span></a>.
 Follow these rules for the classes you write:</p>
 <ul>
 <li><p>Name the view’s schema after the resource that the client sees: <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code>,
 or <code class="docutils literal notranslate"><span class="pre">AdminUserSchema</span></code> for an admin view of users. Two schemas named
 <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code> in different modules clash.</p></li>
-<li><p>Use the names <code class="docutils literal notranslate"><span class="pre">UserCreate</span></code> and <code class="docutils literal notranslate"><span class="pre">UserUpdate</span></code> only for a view’s create and
-update body, and set the class on the view:</p>
+<li><p>Use the names <code class="docutils literal notranslate"><span class="pre">UserResponse</span></code>, <code class="docutils literal notranslate"><span class="pre">UserCreate</span></code> and <code class="docutils literal notranslate"><span class="pre">UserUpdate</span></code> only for a
+view’s response class and its create and update body, and set the class on
+the view:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">TaskCreate</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">BaseSchema</span><span class="p">):</span>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
 
@@ -814,6 +865,9 @@ give one view a schema of its own:</p>
     <span class="k">pass</span>
 </pre></div>
 </div>
+<p>The list response takes its name from the response class. So when the two
+views set the same <code class="docutils literal notranslate"><span class="pre">schema_response</span></code>, give one view a response class of
+its own in the same way.</p>
 </li>
 </ul>
 <p>When two different classes still have the same name, OpenAPI shows both under
@@ -889,6 +943,7 @@ list and detail routes need different shapes.</p></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#idschema">IDSchema</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#timestamps">Timestamps</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#readonly-and-writeonly">ReadOnly and WriteOnly</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#your-own-response-class">Your own response class</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#aliases">Aliases</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mustexist">MustExist</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nested-relationship-objects">Nested relationship objects</a></li>

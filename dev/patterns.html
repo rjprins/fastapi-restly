@@ -609,6 +609,7 @@ therefore reads through the <em>complementary</em> clause, then mutates inside
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.write_action" title="fastapi_restly.views.RestView.write_action"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_action</span></code></a> so that
 authorization and the commit bracket still run:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">is_deleted</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span><span class="n">Item</span><span class="o">.</span><span class="n">deleted_at</span><span class="o">.</span><span class="n">is_not</span><span class="p">(</span><span class="kc">None</span><span class="p">))</span>
+<span class="n">ItemResponse</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">derive_schema_response</span><span class="p">(</span><span class="n">ItemSchema</span><span class="p">)</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">ItemView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/items&quot;</span>
@@ -619,7 +620,7 @@ authorization and the commit bracket still run:</p>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
         <span class="n">obj</span><span class="o">.</span><span class="n">deleted_at</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
 
-    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/restore&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">ItemSchema</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/restore&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">ItemResponse</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">restore</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
         <span class="c1"># Reads through the complement of the view scope: only a deleted</span>
         <span class="c1"># row can be restored, and the bypass is visible on purpose.</span>
@@ -629,8 +630,9 @@ authorization and the commit bracket still run:</p>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>OpenAPI shows <code class="docutils literal notranslate"><span class="pre">ItemSchema</span></code> for the restore route, next to the <code class="docutils literal notranslate"><span class="pre">ItemResponse</span></code>
-of the CRUD routes; see <a class="reference internal" href="technical_details.html#generated-class-names"><span class="std std-ref">Generated Class Names</span></a>.</p>
+<p>The restore route names the view’s response class, so OpenAPI shows
+<code class="docutils literal notranslate"><span class="pre">ItemResponse</span></code>, as for the CRUD routes; see
+<a class="reference internal" href="technical_details.html#name-the-response-classes"><span class="std std-ref">A custom route names the same classes</span></a>.</p>
 <p><code class="docutils literal notranslate"><span class="pre">scope=</span></code> replaces the view scope for that read; it does not narrow it. Keep
 rules that a restore must never skip, such as tenant isolation, at the
 session level (<a class="reference internal" href="#tenant-scoping">Tenant scoping</a>). <a class="reference internal" href="scopes.html#a-route-names-its-own-scope"><span class="std std-ref">A route names its own

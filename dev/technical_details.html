@@ -592,9 +592,14 @@ at registration time (see <a class="reference internal" href="#list-parameters-l
 They can be overridden by declaring <code class="docutils literal notranslate"><span class="pre">schema_create</span></code> or <code class="docutils literal notranslate"><span class="pre">schema_update</span></code> directly
 on the view class before <a class="reference internal" href="api/views.html#fastapi_restly.views.include_view" title="fastapi_restly.views.include_view"><code class="xref py py-func docutils literal notranslate"><span class="pre">include_view()</span></code></a> is called.</p>
 <p>A subclass inherits the schemas its base view declares. Registration rebuilds a
-schema for the subclass in two cases: Restly generated it for the parent, or the
-subclass declares a new <code class="docutils literal notranslate"><span class="pre">schema</span></code>, which replaces an inherited <code class="docutils literal notranslate"><span class="pre">schema_create</span></code>,
-<code class="docutils literal notranslate"><span class="pre">schema_update</span></code>, and <code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code>.</p>
+schema for the subclass in two cases: Restly generated it for the parent, or
+what it is built from changes. A subclass that declares a new <code class="docutils literal notranslate"><span class="pre">schema</span></code> gets a
+new <code class="docutils literal notranslate"><span class="pre">schema_response</span></code>, <code class="docutils literal notranslate"><span class="pre">schema_create</span></code>, <code class="docutils literal notranslate"><span class="pre">schema_update</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code>. A subclass that declares a new <code class="docutils literal notranslate"><span class="pre">schema_response</span></code> gets new
+<code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code>. A view without a schema builds it from <code class="docutils literal notranslate"><span class="pre">model</span></code>, so there
+a new <code class="docutils literal notranslate"><span class="pre">model</span></code> counts as a new <code class="docutils literal notranslate"><span class="pre">schema</span></code>. A class that Restly generates for the
+subclass is not a change of its own, so it does not replace a class that the
+base declares.</p>
 </section>
 <section id="generated-class-names">
 <span id="id1"></span><h3>Generated Class Names<a class="headerlink" href="#generated-class-names" title="Link to this heading">#</a></h3>
@@ -611,7 +616,7 @@ the view’s schema <code class="docutils literal notranslate"><span class="pre"
 <tbody>
 <tr class="row-even"><td><p>response</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">UserResponse</span></code></p></td>
-<td><p>none</p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_response" title="fastapi_restly.views.BaseRestView.schema_response"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_response</span></code></a></p></td>
 </tr>
 <tr class="row-odd"><td><p>create body</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">UserCreate</span></code></p></td>
@@ -636,22 +641,71 @@ the view’s schema <code class="docutils literal notranslate"><span class="pre"
 unless another schema nests it or a custom route names it. The list params
 are not a class in OpenAPI either: OpenAPI shows them as separate query
 parameters.</p>
-<p>Restly does not yet give a custom route a way to name <code class="docutils literal notranslate"><span class="pre">UserResponse</span></code> or
-<code class="docutils literal notranslate"><span class="pre">UserListResponse</span></code>. A custom route that names <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code> or
-<code class="docutils literal notranslate"><span class="pre">PaginatedEnvelope[UserSchema]</span></code> therefore shows a type of its own in OpenAPI,
-next to the type of the CRUD routes. The JSON is the same.</p>
+<p>The list response has no view attribute, because it has nothing of its own
+to set: it is the envelope of the view’s
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.pagination" title="fastapi_restly.views.BaseRestView.pagination"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pagination</span></code></a>, filled with
+the response class. To change it, change one of those two.</p>
+<section id="a-custom-route-names-the-same-classes">
+<span id="name-the-response-classes"></span><h4>A custom route names the same classes<a class="headerlink" href="#a-custom-route-names-the-same-classes" title="Link to this heading">#</a></h4>
+<p>A route decorator runs in the class body, before Restly builds the response
+classes. So a custom route gets the classes from two functions, at module
+level. Each returns the same class that the view uses:
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.derive_schema_response" title="fastapi_restly.schemas.derive_schema_response"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_schema_response(schema)</span></code></a>
+and
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.derive_schema_list_response" title="fastapi_restly.schemas.derive_schema_list_response"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_schema_list_response(schema_response,</span> <span class="pre">pagination=...)</span></code></a>.
+Pass the view’s pagination as it is, also when it is <code class="docutils literal notranslate"><span class="pre">None</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">UserResponse</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">derive_schema_response</span><span class="p">(</span><span class="n">UserSchema</span><span class="p">)</span>
+<span class="n">UserListResponse</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">derive_schema_list_response</span><span class="p">(</span>
+    <span class="n">UserResponse</span><span class="p">,</span> <span class="n">pagination</span><span class="o">=</span><span class="n">AppView</span><span class="o">.</span><span class="n">pagination</span>
+<span class="p">)</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">AppView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/inactive&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">UserListResponse</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">inactive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span><span class="n">list_params</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="n">User</span><span class="o">.</span><span class="n">active</span><span class="o">.</span><span class="n">is_</span><span class="p">(</span><span class="kc">False</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">ResponseShape</span><span class="o">.</span><span class="n">LIST</span><span class="p">)</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/activate&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">UserResponse</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">activate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="s2">&quot;activate&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">user</span><span class="p">):</span>
+            <span class="n">user</span><span class="o">.</span><span class="n">active</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>OpenAPI then shows <code class="docutils literal notranslate"><span class="pre">UserListResponse</span></code> and <code class="docutils literal notranslate"><span class="pre">UserResponse</span></code> for these routes,
+as for the CRUD routes. A function builds these classes, so type checkers do
+not accept them in an annotation, as in <code class="docutils literal notranslate"><span class="pre">data:</span> <span class="pre">UserResponse</span></code>. mypy also does
+not accept them inside a type in other places, as in
+<code class="docutils literal notranslate"><span class="pre">response_model=list[UserResponse]</span></code>. At runtime they are normal classes, so
+add <code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">type:</span> <span class="pre">ignore[valid-type]</span></code> on such a line. A view with its own
+<code class="docutils literal notranslate"><span class="pre">schema_response</span></code> passes that class to <code class="docutils literal notranslate"><span class="pre">derive_schema_list_response</span></code> instead.
+A custom route that names <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code> or <code class="docutils literal notranslate"><span class="pre">PaginatedEnvelope[UserSchema]</span></code>
+sends the same JSON, but shows a type of its own in OpenAPI. If a route passes
+a pagination with another envelope than the view’s, its list response has
+another shape, for example <code class="docutils literal notranslate"><span class="pre">data</span></code> without <code class="docutils literal notranslate"><span class="pre">total_count</span></code>. There are then two
+classes named <code class="docutils literal notranslate"><span class="pre">UserListResponse</span></code>, and Restly warns as described below.</p>
 <p>A view without a <code class="docutils literal notranslate"><span class="pre">schema</span></code> gets a generated one. For a model named <code class="docutils literal notranslate"><span class="pre">User</span></code> it
 is <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code>, so the names above stay the same. A schema with another name
 keeps its full name as the resource: <code class="docutils literal notranslate"><span class="pre">UserRead</span></code> gives <code class="docutils literal notranslate"><span class="pre">UserReadCreate</span></code>.</p>
-<p>The response class is the view’s schema without its <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields.
-Restly builds it also when the schema has no <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields, so OpenAPI
-always shows <code class="docutils literal notranslate"><span class="pre">UserResponse</span></code>. It is a subclass of the view’s schema, and
+<p>By default the response class is the view’s schema without its <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code>
+fields. Restly builds it also when the schema has no <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields, so
+OpenAPI always shows <code class="docutils literal notranslate"><span class="pre">UserResponse</span></code>. It is a subclass of the view’s schema, and
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_single_response" title="fastapi_restly.views.BaseRestView.to_single_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_single_response()</span></code></a>
 returns an instance of it. An override may return an instance of the view’s
 schema instead: the response class copies its values and does not validate
-them again. The list response is the pagination’s envelope, filled with the
-response class. A react-admin view has no list response class: its list
-route returns a plain JSON list.</p>
+them again. An override that returns an instance of another model gets it
+validated into the response class from its attributes, so only the fields of
+the response class go out. A view can also set its own response class; see
+<a class="reference internal" href="howto_custom_schema.html#own-response-class"><span class="std std-ref">Your own response class</span></a>. The list response is the
+pagination’s envelope, filled with the response class. A react-admin view has
+no list response class: its list route returns a plain JSON list.</p>
 <p>Two views with the same schema and the same pagination show one set of names.
 Two different classes can still get the same name. For example, two views
 share a schema but only one is paginated, or you wrote a <code class="docutils literal notranslate"><span class="pre">UserCreate</span></code> that is
@@ -666,6 +720,7 @@ names the classes and the views. Restly checks an app that you pass to
 <a class="reference internal" href="api/testing.html#fastapi_restly.testing.configure_tests" title="fastapi_restly.testing.configure_tests"><code class="xref py py-func docutils literal notranslate"><span class="pre">configure_tests(app=...)</span></code></a>, or
 that you include a view on. <a class="reference internal" href="howto_custom_schema.html#name-your-schemas"><span class="std std-ref">Name your schemas</span></a> shows how
 to avoid it.</p>
+</section>
 </section>
 <section id="auto-generated-schemas">
 <span id="id2"></span><h3>Auto-Generated Schemas<a class="headerlink" href="#auto-generated-schemas" title="Link to this heading">#</a></h3>
@@ -880,10 +935,10 @@ ones in <code class="docutils literal notranslate"><span class="pre">save_object
 relationships unloaded. Without that, serializing a create or update response
 would reach them one lazy query at a time, which on an async session raises
 <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code> rather than merely costing queries. The reload is skipped
-when everything the schema names is already loaded, and it runs without
+when everything the response class names is already loaded, and it runs without
 <code class="docutils literal notranslate"><span class="pre">populate_existing</span></code>, so a relationship the caller has already populated keeps
 its value.</p>
-<p>Loader options follow relationships the schema <em>names</em>. Code that reaches
+<p>Loader options follow relationships the response class <em>names</em>. Code that reaches
 past that set – an <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> hook, a custom business method, a
 <code class="docutils literal notranslate"><span class="pre">&#64;property</span></code> walking a relationship nothing else loads – runs in plain async
 context, where a bare attribute access raises <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. Restly’s
@@ -920,9 +975,10 @@ describes the supported reference-field patterns.</p>
 <a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">Filter, Sort, and Paginate Lists</span></a>.</p>
 <p>During <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.before_include_view" title="fastapi_restly.views.BaseRestView.before_include_view"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_include_view()</span></code></a>, the framework freezes a single class-level
 attribute, <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_list_params" title="fastapi_restly.views.BaseRestView.schema_list_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">cls.schema_list_params</span></code></a>: the list params, a Pydantic model generated
-by <a class="reference internal" href="api/query.html#fastapi_restly.query.derive_schema_list_params" title="fastapi_restly.query.derive_schema_list_params"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_schema_list_params(cls.schema,</span> <span class="pre">cls.model,</span> <span class="pre">pagination=cls.pagination)</span></code></a>. It covers pagination, sorting, and one filter
-parameter per field of the view’s schema that maps to a filterable column on the
-model, with optional operator suffixes. It is generated once per registration
+by <a class="reference internal" href="api/query.html#fastapi_restly.query.derive_schema_list_params" title="fastapi_restly.query.derive_schema_list_params"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_schema_list_params(cls.schema_response,</span> <span class="pre">cls.model,</span> <span class="pre">pagination=cls.pagination)</span></code></a>. It covers pagination, sorting, and one filter
+parameter per field of the response class that maps to a filterable column on the
+model, with optional operator suffixes. A client can filter and sort only on
+what it can see. It is generated once per registration
 and never re-derived.</p>
 <p>A route reads the list params through a dependency, not as a FastAPI query model.
 FastAPI splits a query model into separate parameters only when it is the
@@ -1177,7 +1233,10 @@ filter, sort, and pagination reference.</p></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#schema-generation-under-the-hood">Schema Generation Under the Hood</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#readonly-and-writeonly">ReadOnly and WriteOnly</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#generated-input-schemas">Generated Input Schemas</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#generated-class-names">Generated Class Names</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#generated-class-names">Generated Class Names</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#a-custom-route-names-the-same-classes">A custom route names the same classes</a></li>
+</ul>
+</li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#auto-generated-schemas">Auto-Generated Schemas</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sqlalchemy-to-pydantic-type-mapping">SQLAlchemy-to-Pydantic Type Mapping</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#json-document-columns">JSON document columns</a></li>

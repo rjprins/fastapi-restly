@@ -540,8 +540,9 @@ any field backed by a relationship must be loaded beforehand; a relationship
 that is still unloaded raises <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. Restly does this for you in
 most cases, through
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.get_relationship_loader_options" title="fastapi_restly.views.BaseRestView.get_relationship_loader_options"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_relationship_loader_options()</span></code></a>:
-it eager-loads the relationships the view’s schema names, on both reads and
-writes. This guide covers what loads automatically, how to add more, and what to
+it eager-loads the relationships the view’s response class names, on both
+reads and writes. By default the response class is the view’s schema without
+its <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields; see <a class="reference internal" href="howto_custom_schema.html#own-response-class"><span class="std std-ref">Your own response class</span></a>. This guide covers what loads automatically, how to add more, and what to
 do when you still hit <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -577,8 +578,8 @@ them. It applies those options in
 <code class="docutils literal notranslate"><span class="pre">save_object</span></code> after a create or update, because the refresh that follows a
 flush leaves relationships unloaded. Nested schemas recurse: if <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code> itself names a relationship,
 that one loads too.</p>
-<p>The reload after a write is skipped when everything the schema names is already
-loaded, and it runs without <code class="docutils literal notranslate"><span class="pre">populate_existing</span></code>, so a relationship you assigned
+<p>The reload after a write is skipped when everything the response class names
+is already loaded, and it runs without <code class="docutils literal notranslate"><span class="pre">populate_existing</span></code>, so a relationship you assigned
 in a hook keeps the value you gave it.</p>
 <p>On a <strong>sync</strong> view the same options apply; only the failure mode when something
 is missing differs. Sync sessions lazy-load a missing relationship with an
@@ -606,8 +607,8 @@ and append to it:</p>
         <span class="p">]</span>
 </pre></div>
 </div>
-<p>The default returns the options derived from the view’s schema; appending
-keeps those schema-driven loads and adds yours. This is the seam that feeds
+<p>The default returns the options derived from the response class; appending
+keeps those loads and adds yours. This is the seam that feeds
 every path: the extra load applies on reads (<code class="docutils literal notranslate"><span class="pre">get_one</span></code> / <code class="docutils literal notranslate"><span class="pre">get_many</span></code>) and on the
 create and update responses alike, because the write path reloads by primary
 key through the same options. Return a fresh list to replace the strategy
@@ -631,7 +632,7 @@ so any such attribute can be awaited explicitly:</p>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">awaitable_attrs</span></code> is the right tool for a one-off read. When the same
-relationship is needed on every request, put it in the view’s schema or in
+relationship is needed on every request, put it in the response class or in
 <code class="docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code> instead, so it loads in one batched query
 rather than one lazy load at a time.</p>
 </section>
@@ -648,8 +649,9 @@ Restly view this is almost always response serialization reaching an unloaded
 relationship, sometimes wrapped in a Pydantic <code class="docutils literal notranslate"><span class="pre">ValidationError</span></code> when it surfaces
 in a nested model. For that case, work through these in order:</p>
 <ol class="arabic simple">
-<li><p><strong>Is the field in the view’s schema?</strong> If a serialized field names a
-relationship, that alone loads it. A missing field is usually a name
+<li><p><strong>Is the field in the response class?</strong> If a serialized field names a
+relationship, that alone loads it. A <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> field is not in the
+response class, so its relationship does not load. A missing field is usually a name
 mismatch (see the note below).</p></li>
 <li><p><strong>Is a hook or property reaching it?</strong> Load it explicitly with
 <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">obj.awaitable_attrs.&lt;name&gt;</span></code>, or add it to

@@ -576,7 +576,7 @@ handle_&lt;verb&gt;     the handler: runs authorize and the commit bracket
         <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_object</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> builds the ORM instance. <code class="docutils literal notranslate"><span class="pre">save_object</span></code> flushes and refreshes it, then eager-loads the relationships the view’s schema names, but does not commit. For a field stamped on every write, see <a class="reference internal" href="#stamping-extra-fields">Stamping extra fields</a>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> builds the ORM instance. <code class="docutils literal notranslate"><span class="pre">save_object</span></code> flushes and refreshes it, then eager-loads the relationships the response names, but does not commit. For a field stamped on every write, see <a class="reference internal" href="#stamping-extra-fields">Stamping extra fields</a>.</p>
 </section>
 <section id="update-validate-before-saving">
 <h3>update: validate before saving<a class="headerlink" href="#update-validate-before-saving" title="Link to this heading">#</a></h3>
@@ -707,7 +707,7 @@ update  →  update_object(obj, schema_obj)  # apply payload (no flush)
 delete  →  removes the row + flush         # no utility: override delete itself for a soft delete
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> and <code class="docutils literal notranslate"><span class="pre">update_object</span></code> do not flush. <code class="docutils literal notranslate"><span class="pre">save_object</span></code> flushes, refreshes, and eager-loads the relationships the view’s schema names, but does <em>not</em> commit. The same operations are available as free functions for services and workers; the free <code class="docutils literal notranslate"><span class="pre">save_object</span></code> has no view to read a schema from, so it flushes and refreshes only.</p>
+<p><code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> and <code class="docutils literal notranslate"><span class="pre">update_object</span></code> do not flush. <code class="docutils literal notranslate"><span class="pre">save_object</span></code> flushes, refreshes, and eager-loads the relationships the response names, but does <em>not</em> commit. The same operations are available as free functions for services and workers; the free <code class="docutils literal notranslate"><span class="pre">save_object</span></code> has no view to read a schema from, so it flushes and refreshes only.</p>
 </section>
 <section id="custom-routes">
 <h2>Custom routes<a class="headerlink" href="#custom-routes" title="Link to this heading">#</a></h2>

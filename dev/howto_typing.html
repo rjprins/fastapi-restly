@@ -653,10 +653,17 @@ verbs:</p>
         <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The type parameters are, in order: the model, the view’s schema, the create
+<p>The type parameters are, in order: the model, the response type, the create
 schema, the update schema, and the id type. With them in place, <code class="docutils literal notranslate"><span class="pre">schema_obj</span></code>
 in <code class="docutils literal notranslate"><span class="pre">create</span></code> is a <code class="docutils literal notranslate"><span class="pre">UserCreate</span></code>, <code class="docutils literal notranslate"><span class="pre">obj</span></code> in <code class="docutils literal notranslate"><span class="pre">update</span></code> is a <code class="docutils literal notranslate"><span class="pre">User</span></code>, and the return
 types are checked too.</p>
+<p>The response type is what
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_single_response" title="fastapi_restly.views.BaseRestView.to_single_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_single_response</span></code></a>
+returns. Put the view’s schema there: the response class that Restly builds
+is a subclass of it. A view that sets its own
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_response" title="fastapi_restly.views.BaseRestView.schema_response"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_response</span></code></a>
+puts that class there instead, as in
+<code class="docutils literal notranslate"><span class="pre">fr.AsyncRestView[User,</span> <span class="pre">UserResponse]</span></code>.</p>
 <p>Note the signatures: <code class="docutils literal notranslate"><span class="pre">create</span></code> takes the create schema and returns the model;
 <code class="docutils literal notranslate"><span class="pre">update</span></code> takes the already-loaded <code class="docutils literal notranslate"><span class="pre">obj</span></code> plus the update schema. Id resolution
 and the 404 happen one tier up, in the final

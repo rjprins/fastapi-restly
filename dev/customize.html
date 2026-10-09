@@ -777,7 +777,7 @@ request context through <code class="docutils literal notranslate"><span class="
 </section>
 <section id="get-one-eager-load-extra-relationships">
 <span id="eager-load-extra-relationships"></span><h3><code class="docutils literal notranslate"><span class="pre">get_one</span></code>: eager-load extra relationships<a class="headerlink" href="#get-one-eager-load-extra-relationships" title="Link to this heading">#</a></h3>
-<p>The default <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> loads through the view scope and schema-derived loader options. If one endpoint needs an extra relationship, delegate to <code class="docutils literal notranslate"><span class="pre">super()</span></code> so the scoped load and its 404 stay intact, then load the extra attribute explicitly. An override declares the <code class="docutils literal notranslate"><span class="pre">scope</span></code> parameter and passes it on; the handlers always forward it:</p>
+<p>The default <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> loads through the view scope and the loader options derived from the response class. If one endpoint needs an extra relationship, delegate to <code class="docutils literal notranslate"><span class="pre">super()</span></code> so the scoped load and its 404 stay intact, then load the extra attribute explicitly. An override declares the <code class="docutils literal notranslate"><span class="pre">scope</span></code> parameter and passes it on; the handlers always forward it:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_one</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">scope</span><span class="p">)</span>   <span class="c1"># scoped load + 404</span>
         <span class="k">await</span> <span class="n">obj</span><span class="o">.</span><span class="n">awaitable_attrs</span><span class="o">.</span><span class="n">audit_log</span>
@@ -960,7 +960,7 @@ rejects combining <code class="docutils literal notranslate"><span class="pre">d
 <td><p>Applies writable fields onto an existing object, resolving references. Does not flush.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">self.save_object(obj)</span></code></p></td>
-<td><p>Flushes and refreshes <code class="docutils literal notranslate"><span class="pre">obj</span></code>, then eager-loads the relationships the view’s schema names. Does not commit.</p></td>
+<td><p>Flushes and refreshes <code class="docutils literal notranslate"><span class="pre">obj</span></code>, then eager-loads the relationships the response class names. Does not commit.</p></td>
 </tr>
 </tbody>
 </table>
@@ -1026,16 +1026,16 @@ documents the response with the original response model. See
         <span class="p">)</span>
 </pre></div>
 </div>
-<p>For object serialization, <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_single_response" title="fastapi_restly.views.BaseRestView.to_single_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_single_response(obj)</span></code></a> builds the view’s schema, strips <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields, normalizes relationship ids, and validates through Pydantic. Override it for a different projection or a faster trusted path:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">def</span><span class="w"> </span><span class="nf">to_single_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">:</span> <span class="n">User</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UserSchema</span><span class="p">:</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">model_construct</span><span class="p">(</span>
+<p>For object serialization, <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_single_response" title="fastapi_restly.views.BaseRestView.to_single_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_single_response(obj)</span></code></a> builds the view’s response class, normalizes relationship ids, and validates through Pydantic. By default the response class is the view’s schema without its <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields. Override it for a different projection or a faster trusted path:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">def</span><span class="w"> </span><span class="nf">to_single_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">:</span> <span class="n">User</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema_response</span><span class="o">.</span><span class="n">model_construct</span><span class="p">(</span>
             <span class="nb">id</span><span class="o">=</span><span class="n">obj</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
             <span class="n">name</span><span class="o">=</span><span class="n">obj</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
             <span class="n">email</span><span class="o">=</span><span class="n">obj</span><span class="o">.</span><span class="n">email</span><span class="p">,</span>
         <span class="p">)</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">model_construct()</span></code> bypasses validators and required-field checks. Keep the payload aligned with your response contract, and never include <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields.</p>
+<p><code class="docutils literal notranslate"><span class="pre">model_construct()</span></code> bypasses validators and required-field checks. Keep the payload aligned with your response contract. Build the response class, not the view’s schema: Restly sends an instance of the response class as it is, and converts an instance of any other class first.</p>
 </section>
 <section id="replace-the-list-endpoint-method">
 <h3>Replace the list endpoint method<a class="headerlink" href="#replace-the-list-endpoint-method" title="Link to this heading">#</a></h3>

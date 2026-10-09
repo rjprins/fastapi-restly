@@ -648,8 +648,8 @@ collection routes both with and without the trailing slash, so these requests
 are served directly, with no redirect involved.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">id</span></code> array form of <code class="docutils literal notranslate"><span class="pre">filter</span></code> (<code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">[1,</span> <span class="pre">2,</span> <span class="pre">3]}</span></code>) is used by react-admin
 for <code class="docutils literal notranslate"><span class="pre">getMany</span></code> calls. It translates to <code class="docutils literal notranslate"><span class="pre">WHERE</span> <span class="pre">id</span> <span class="pre">IN</span> <span class="pre">(1,</span> <span class="pre">2,</span> <span class="pre">3)</span></code>. Other filter
-values match by exact equality, and only fields exposed on the view’s
-schema are accepted: unknown fields, including react-admin’s full-text <code class="docutils literal notranslate"><span class="pre">q</span></code>
+values match by exact equality, and only fields that the view’s response
+class sends are accepted: unknown fields, including react-admin’s full-text <code class="docutils literal notranslate"><span class="pre">q</span></code>
 search parameter, are rejected with a 400. Substring or full-text search
 requires overriding the view’s <code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code>.</p>
 </section>

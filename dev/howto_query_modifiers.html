@@ -537,8 +537,11 @@
 <h1>Filter, Sort, and Paginate Lists<a class="headerlink" href="#filter-sort-and-paginate-lists" title="Link to this heading">#</a></h1>
 <p>List endpoints (<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{prefix}</span></code>) support filtering, sorting, and
 pagination through URL query parameters out of the box. Filter parameters
-are derived from the view’s schema. Sort has a fixed name, and the
-pagination names are a setting of the view.</p>
+are derived from the view’s response class, so a client can filter and sort
+only on what it can see. By default the response class is the view’s schema
+without its <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields; see
+<a class="reference internal" href="howto_custom_schema.html#own-response-class"><span class="std std-ref">Your own response class</span></a>. Sort has a fixed name, and
+the pagination names are a setting of the view.</p>
 <p>Pagination is on by default: lists are capped at 50 rows per page and
 wrapped in a <code class="docutils literal notranslate"><span class="pre">data</span></code> envelope. Clients page with <code class="docutils literal notranslate"><span class="pre">page</span></code> and <code class="docutils literal notranslate"><span class="pre">page_size</span></code>. The
 view’s <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.pagination" title="fastapi_restly.views.BaseRestView.pagination"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pagination</span></code></a>
@@ -621,8 +624,9 @@ types; they are omitted for booleans and UUIDs. <code class="docutils literal no
 (<code class="docutils literal notranslate"><span class="pre">dict</span></code>/<code class="docutils literal notranslate"><span class="pre">list</span></code>, typically <code class="docutils literal notranslate"><span class="pre">JSON</span></code> or <code class="docutils literal notranslate"><span class="pre">ARRAY</span></code> columns) generate only
 <code class="docutils literal notranslate"><span class="pre">__isnull</span></code>: a query-string value cannot coerce into a collection, so the
 other operators would fail on every request. A
-<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.WriteOnly" title="fastapi_restly.schemas.WriteOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">WriteOnly</span></code></a> field gets no filters
-and is not a sort key, since either would let a client read its value back.</p>
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.WriteOnly" title="fastapi_restly.schemas.WriteOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">WriteOnly</span></code></a> field, or a field with
+<code class="docutils literal notranslate"><span class="pre">Field(exclude=True)</span></code>, gets no filters and is not a sort key, since either
+would let a client read its value back.</p>
 <p>A datetime value without a UTC offset is read as UTC when the column is
 timezone-aware, which is the default for <code class="docutils literal notranslate"><span class="pre">Mapped[datetime]</span></code>; a column
 declared <code class="docutils literal notranslate"><span class="pre">DateTime()</span></code> compares the naive value as given.</p>
@@ -868,7 +872,7 @@ set <code class="docutils literal notranslate"><span class="pre">include_aliases
 <a class="reference internal" href="howto_compose_views_with_mixins.html#tenant-row-scoping"><span class="std std-ref">tenant row scoping recipe</span></a>.</p>
 <p>Aliases apply to <strong>every</strong> segment of the dotted path, both the relation
 field and the nested column, because the keys of the list params always
-follow the public names of the view’s schema:</p>
+follow the public names of the response class:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">AuthorSchema</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">&quot;authorName&quot;</span><span class="p">)</span>
 

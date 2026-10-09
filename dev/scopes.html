@@ -711,24 +711,28 @@ clause without opening one.</p>
 clause as <code class="docutils literal notranslate"><span class="pre">scope=</span></code> to the handler, and that clause replaces the resolved
 scope for that one read. The trash list and the restore action are
 then routes on the view rather than a second view class:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">ItemResponse</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">derive_schema_response</span><span class="p">(</span><span class="n">ItemSchema</span><span class="p">)</span>
+<span class="n">ItemListResponse</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">derive_schema_list_response</span><span class="p">(</span><span class="n">ItemResponse</span><span class="p">)</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ItemView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/items&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Item</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">ItemSchema</span>
     <span class="c1"># no scope declared: reads apply ItemClauses.default_scope</span>
 
-    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/trash&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">views</span><span class="o">.</span><span class="n">PaginatedEnvelope</span><span class="p">[</span><span class="n">ItemSchema</span><span class="p">])</span>
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/trash&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">ItemListResponse</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">trash</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">):</span>
         <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span><span class="n">list_params</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">ItemClauses</span><span class="o">.</span><span class="n">trashed</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">ResponseShape</span><span class="o">.</span><span class="n">LIST</span><span class="p">)</span>
 
-    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/restore&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">ItemSchema</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/restore&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">ItemResponse</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">restore</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
         <span class="n">item</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">ItemClauses</span><span class="o">.</span><span class="n">trashed</span><span class="p">)</span>
         <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="s2">&quot;restore&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">item</span><span class="p">):</span>
             <span class="n">item</span><span class="o">.</span><span class="n">deleted_at</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="k">return</span> <span class="n">item</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">handle_get_many</span></code> runs <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and forwards <code class="docutils literal notranslate"><span class="pre">scope=</span></code> to <code class="docutils literal notranslate"><span class="pre">get_many</span></code>;
@@ -739,13 +743,11 @@ a write action gates its own action inside
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.write_action" title="fastapi_restly.views.RestView.write_action"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_action</span></code></a>; a live
 item is a 404 here, since the trash is the surface this route reads.
 <code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code> is the per-read opt-out, in the same spelling as
-everywhere else. The route’s response model is <code class="docutils literal notranslate"><span class="pre">PaginatedEnvelope</span></code>, the
-envelope of the default pagination, filled with the view’s schema. A view
-whose pagination sets its own envelope names that one instead, such as
-<code class="docutils literal notranslate"><span class="pre">APP_PAGINATION.envelope[ItemSchema]</span></code>. OpenAPI shows these two routes with
-their own types, <code class="docutils literal notranslate"><span class="pre">PaginatedEnvelope_ItemSchema_</span></code> and <code class="docutils literal notranslate"><span class="pre">ItemSchema</span></code>, next to the
-<code class="docutils literal notranslate"><span class="pre">ItemListResponse</span></code> and <code class="docutils literal notranslate"><span class="pre">ItemResponse</span></code> of the CRUD routes; see
-<a class="reference internal" href="technical_details.html#generated-class-names"><span class="std std-ref">Generated Class Names</span></a>.</p>
+everywhere else. The two routes name the response classes of the view,
+<code class="docutils literal notranslate"><span class="pre">ItemListResponse</span></code> and <code class="docutils literal notranslate"><span class="pre">ItemResponse</span></code>, so OpenAPI shows the same types as for
+the CRUD routes. A view with other pagination passes it, as in
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.derive_schema_list_response" title="fastapi_restly.schemas.derive_schema_list_response"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_schema_list_response(ItemResponse,</span> <span class="pre">pagination=AppView.pagination)</span></code></a>;
+see <a class="reference internal" href="technical_details.html#name-the-response-classes"><span class="std std-ref">A custom route names the same classes</span></a>.</p>
 <p>The argument replaces the scope, it does not narrow it. Put rules that may
 never be replaced, such as tenant isolation, at the session level. A <code class="docutils literal notranslate"><span class="pre">get_one</span></code>
 or <code class="docutils literal notranslate"><span class="pre">get_many</span></code> override declares the <code class="docutils literal notranslate"><span class="pre">scope</span></code> parameter and passes it on to
@@ -756,10 +758,7 @@ fails on its first call instead of serving the wrong rows.</p>
 <p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_many" title="fastapi_restly.views.RestView.handle_get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_many</span></code></a>
 also takes <code class="docutils literal notranslate"><span class="pre">where=</span></code>, which narrows the read and keeps the scope. A list
 of one collection’s items still hides deleted items:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;/in-collection/</span><span class="si">{collection_id}</span><span class="s2">&quot;</span><span class="p">,</span>
-    <span class="n">response_model</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">views</span><span class="o">.</span><span class="n">PaginatedEnvelope</span><span class="p">[</span><span class="n">ItemSchema</span><span class="p">],</span>
-<span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/in-collection/</span><span class="si">{collection_id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">ItemListResponse</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">in_collection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">collection_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">list_params</span><span class="p">):</span>
     <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span>
         <span class="n">list_params</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="n">Item</span><span class="o">.</span><span class="n">collection_id</span> <span class="o">==</span> <span class="n">collection_id</span>

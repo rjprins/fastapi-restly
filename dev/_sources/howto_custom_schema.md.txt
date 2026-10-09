@@ -21,6 +21,7 @@ to the section that covers it.
 | Input field hidden from responses | [`WriteOnly`](#readonly-and-writeonly) |
 | Server-owned field, ignored on input | [`ReadOnly`](#readonly-and-writeonly) |
 | Field set on create, frozen afterwards | [Explicit write schema](#explicit-write-schemas) |
+| Response that differs from the input | [Your own response class](#own-response-class) |
 | Checked foreign-key column | [`MustExist`](#mustexist) |
 | Relationship as a flat id | [`IDRef`](howto_relationship_idschema.md#choosing-a-reference-style) |
 | Relationship as a nested object | [`IDSchema[Model]`](#nested-relationship-objects) |
@@ -166,6 +167,55 @@ write-only field, write `WriteOnly[Optional[str]]`.
 For `WriteOnly` fields inside a JSON document, use an explicit column type.
 See [JSON document columns](#json-document-columns).
 
+(own-response-class)=
+## Your own response class
+
+By default, a response is the view's schema without its `WriteOnly` fields.
+When what goes out differs more from what comes in, set
+{attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>`
+on the view. Everything that goes out follows it:
+
+- every single response, and each item of the list response;
+- the fields that the list params filter and sort on, so a client can filter
+  only on what it can see;
+- the relationships that the view loads.
+
+The request bodies still follow `schema_create` and `schema_update`, which
+Restly derives from `schema`:
+
+```python
+class AccountSchema(fr.IDSchema):
+    name: str
+    email: str
+    team_id: int | None = None
+
+
+class AccountResponse(fr.IDSchema):
+    name: str
+    team: TeamSchema | None = None
+
+
+class AccountView(fr.AsyncRestView):
+    prefix = "/accounts"
+    model = Account
+    schema = AccountSchema
+    schema_response = AccountResponse
+```
+
+`POST /accounts` takes `name`, `email` and `team_id`. Every response shows
+`id`, `name` and the nested `team`, which the view loads. `?email=...` is not
+a filter, because a client does not see `email`. Restly uses the class as you
+wrote it: it does not remove `WriteOnly` fields from it. If a
+`to_single_response` override returns an instance of `AccountSchema`, Restly
+validates it into `AccountResponse`, so only the fields of `AccountResponse`
+go out.
+
+Name the class `<Resource>Response`, as in `AccountResponse`. Restly names the
+list response and the list params after it: `AccountListResponse` and
+`AccountListParams`. For type checkers, put the class in the second parameter
+of the view, as in `fr.AsyncRestView[Account, AccountResponse]`; see
+[Typing](howto_typing.md).
+
 ## Aliases
 
 Use normal Pydantic aliases when the API field name differs from the Python or
@@ -267,14 +317,17 @@ modules.
 
 Restly names the classes it generates after the view's schema. For
 `UserSchema`, OpenAPI shows `UserResponse`, `UserCreate`, `UserUpdate` and
-`UserListResponse`; see [Generated Class Names](#generated-class-names).
+`UserListResponse`; see [Generated Class Names](#generated-class-names). A
+custom route names the same classes; see
+[A custom route names the same classes](#name-the-response-classes).
 Follow these rules for the classes you write:
 
 - Name the view's schema after the resource that the client sees: `UserSchema`,
   or `AdminUserSchema` for an admin view of users. Two schemas named
   `UserSchema` in different modules clash.
-- Use the names `UserCreate` and `UserUpdate` only for a view's create and
-  update body, and set the class on the view:
+- Use the names `UserResponse`, `UserCreate` and `UserUpdate` only for a
+  view's response class and its create and update body, and set the class on
+  the view:
 
   ```python
   class TaskCreate(fr.BaseSchema):
@@ -298,6 +351,10 @@ Follow these rules for the classes you write:
   class AllTasksSchema(TaskSchema):
       pass
   ```
+
+  The list response takes its name from the response class. So when the two
+  views set the same `schema_response`, give one view a response class of
+  its own in the same way.
 
 When two different classes still have the same name, OpenAPI shows both under
 long names that can change, such as `app__tasks__views__TaskCreate`. Restly

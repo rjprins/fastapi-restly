@@ -5,9 +5,8 @@ Pydantic v2. Views are real Python classes that support inheritance and mixins.
 Designed for customization.
 
 > **Status:** {{ release }}, a public beta after
-> [four years of internal use](about.md). Expect small breaking changes in
-> deeper extension points on the way to `1.0.0`; see the
-> [changelog](changelog.md).
+> [four years of internal use](about.md). Until `1.0.0`, each minor release
+> can have breaking changes; see the [changelog](changelog.md).
 
 With FastAPI-Restly imported as `fr`, a CRUD resource is four lines once `app`
 and `User` exist:

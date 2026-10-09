@@ -554,7 +554,7 @@ on the wire:</p>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code>, <code class="docutils literal notranslate"><span class="pre">POST</span></code>, <code class="docutils literal notranslate"><span class="pre">PATCH</span></code></p></td>
-<td><p>The bare object, serialized through <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a> via <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_single_response" title="fastapi_restly.views.BaseRestView.to_single_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_single_response</span></code></a></p></td>
+<td><p>The bare object, serialized through <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_response" title="fastapi_restly.views.BaseRestView.schema_response"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_response</span></code></a> via <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_single_response" title="fastapi_restly.views.BaseRestView.to_single_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_single_response</span></code></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code></p></td>
 <td><p>A <code class="docutils literal notranslate"><span class="pre">data</span></code> envelope wrapping the page, plus pagination metadata (<code class="docutils literal notranslate"><span class="pre">total_count</span></code> / <code class="docutils literal notranslate"><span class="pre">page</span></code> / <code class="docutils literal notranslate"><span class="pre">page_size</span></code> / <code class="docutils literal notranslate"><span class="pre">total_pages</span></code>)</p></td>
@@ -602,8 +602,8 @@ automatically: the list route’s response annotation is the pagination’s
 envelope filled with the response class, by default a
 <a class="reference internal" href="api/views.html#fastapi_restly.views.PaginatedEnvelope" title="fastapi_restly.views.PaginatedEnvelope"><code class="xref py py-class docutils literal notranslate"><span class="pre">PaginatedEnvelope</span></code></a> (a plain
 <a class="reference internal" href="api/views.html#fastapi_restly.views.Envelope" title="fastapi_restly.views.Envelope"><code class="xref py py-class docutils literal notranslate"><span class="pre">Envelope</span></code></a> without pagination), so no
-endpoint method code is needed. OpenAPI names it after the view’s schema:
-<code class="docutils literal notranslate"><span class="pre">TagListResponse</span></code> for <code class="docutils literal notranslate"><span class="pre">TagSchema</span></code>.</p>
+endpoint method code is needed. OpenAPI names it after the response class:
+<code class="docutils literal notranslate"><span class="pre">TagListResponse</span></code> for <code class="docutils literal notranslate"><span class="pre">TagResponse</span></code>, which Restly derives from <code class="docutils literal notranslate"><span class="pre">TagSchema</span></code>.</p>
 <p>For how clients <em>request</em> pages (the <code class="docutils literal notranslate"><span class="pre">page</span></code> and <code class="docutils literal notranslate"><span class="pre">page_size</span></code> inputs), see
 <a class="reference internal" href="howto_query_modifiers.html#pagination"><span class="std std-ref">Pagination</span></a> in the query-modifiers
 guide.</p>
@@ -681,11 +681,17 @@ them as a dict.</p></li>
 </div>
 <p>Set the pagination on a project base view to give every list the same
 envelope; see <a class="reference internal" href="howto_query_modifiers.html#set-pagination-once"><span class="std std-ref">Set it once for every view</span></a>.
-A custom list route on such a view names the same envelope class as its
-response model, filled with the view’s schema, for example
-<code class="docutils literal notranslate"><span class="pre">response_model=APP_PAGINATION.envelope[ItemSchema]</span></code>. OpenAPI shows it as a
-type of its own, next to the <code class="docutils literal notranslate"><span class="pre">ItemListResponse</span></code> of <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>; see
-<a class="reference internal" href="technical_details.html#generated-class-names"><span class="std std-ref">Generated Class Names</span></a>.
+A custom list route on such a view names the view’s list response class.
+Build it at module level from the response class and the same pagination:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">ItemResponse</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">derive_schema_response</span><span class="p">(</span><span class="n">ItemSchema</span><span class="p">)</span>
+<span class="n">ItemListResponse</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">derive_schema_list_response</span><span class="p">(</span>
+    <span class="n">ItemResponse</span><span class="p">,</span> <span class="n">pagination</span><span class="o">=</span><span class="n">APP_PAGINATION</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Then <code class="docutils literal notranslate"><span class="pre">response_model=ItemListResponse</span></code> gives the custom route the same type
+in OpenAPI as <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>; see
+<a class="reference internal" href="technical_details.html#name-the-response-classes"><span class="std std-ref">A custom route names the same classes</span></a>.
 <a class="reference internal" href="howto_query_modifiers.html#fastapi-pagination-migration"><span class="std std-ref">Coming from fastapi-pagination</span></a>
 shows the envelope that keeps fastapi-pagination’s field names.</p>
 <p>Creating the pagination settings builds an empty page from the envelope, so
@@ -735,7 +741,8 @@ and set <code class="docutils literal notranslate"><span class="pre">response_mo
 <p>In the replacement endpoint method, call
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_single_response" title="fastapi_restly.views.BaseRestView.to_single_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_single_response(obj)</span></code></a>
 before placing the object in the envelope. This converts the ORM object to
-an instance of the view’s schema, without requiring write-only input fields.</p>
+an instance of the view’s response class, without requiring write-only input
+fields.</p>
 <p>For a single-object <code class="docutils literal notranslate"><span class="pre">{&quot;data&quot;:</span> <span class="pre">...}</span></code> wrapper, replace
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one_endpoint" title="fastapi_restly.views.RestView.get_one_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one_endpoint</span></code></a> and
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create_endpoint" title="fastapi_restly.views.RestView.create_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create_endpoint</span></code></a>:</p>

@@ -665,7 +665,7 @@ restores the previous value, including when an exception leaves the block:</p>
     <span class="k">assert</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">()</span> <span class="o">==</span> <span class="mi">42</span>
 </pre></div>
 </div>
-<p>Bindings use <a class="reference external" href="https://docs.python.org/3/library/contextvars.html#contextvars.ContextVar" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">contextvars.ContextVar</span></code></a>, not process-wide mutable
+<p>Bindings use <a class="reference external" href="https://docs.python.org/3/library/contextvars.html#contextvars.ContextVar" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">contextvars.ContextVar</span></code></a>, not process-wide mutable
 class attributes. Async tasks inherit the context in which they are
 created. Resetting a parent binding does not clear a task’s inherited
 context. Bind explicitly when starting work for a different user.</p>
@@ -688,8 +688,8 @@ Committing it includes pending changes from all those helpers.
 Keep responsibility for creating, committing, rolling back, and closing
 the session explicit. See SQLAlchemy’s
 <a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/session_basics.html#when-do-i-construct-a-session-when-do-i-commit-it-and-when-do-i-close-it">session lifecycle guidance</a>.</p>
-<p>Coroutines scheduled with <a class="reference external" href="https://docs.python.org/3/library/asyncio-task.html#asyncio.create_task" title="(in Python v3.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">asyncio.create_task()</span></code></a> or
-<a class="reference external" href="https://docs.python.org/3/library/asyncio-task.html#asyncio.gather" title="(in Python v3.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">asyncio.gather()</span></code></a> inherit the current bindings by default.
+<p>Coroutines scheduled with <a class="reference external" href="https://docs.python.org/3/library/asyncio-task.html#asyncio.create_task" title="(in Python v3.15)"><code class="xref py py-func docutils literal notranslate"><span class="pre">asyncio.create_task()</span></code></a> or
+<a class="reference external" href="https://docs.python.org/3/library/asyncio-task.html#asyncio.gather" title="(in Python v3.15)"><code class="xref py py-func docutils literal notranslate"><span class="pre">asyncio.gather()</span></code></a> inherit the current bindings by default.
 If <code class="docutils literal notranslate"><span class="pre">Current.session</span></code> is bound, they receive the same session object,
 not separate sessions. Give concurrent database tasks separate sessions.
 SQLAlchemy’s

@@ -2,8 +2,11 @@
 
 List endpoints (`GET /{prefix}`) support filtering, sorting, and
 pagination through URL query parameters out of the box. Filter parameters
-are derived from the view's schema. Sort has a fixed name, and the
-pagination names are a setting of the view.
+are derived from the view's response class, so a client can filter and sort
+only on what it can see. By default the response class is the view's schema
+without its `WriteOnly` fields; see
+[Your own response class](#own-response-class). Sort has a fixed name, and
+the pagination names are a setting of the view.
 
 Pagination is on by default: lists are capped at 50 rows per page and
 wrapped in a `data` envelope. Clients page with `page` and `page_size`. The
@@ -55,8 +58,9 @@ types; they are omitted for booleans and UUIDs. `__contains` and
 (`dict`/`list`, typically `JSON` or `ARRAY` columns) generate only
 `__isnull`: a query-string value cannot coerce into a collection, so the
 other operators would fail on every request. A
-{data}`WriteOnly <fastapi_restly.schemas.WriteOnly>` field gets no filters
-and is not a sort key, since either would let a client read its value back.
+{data}`WriteOnly <fastapi_restly.schemas.WriteOnly>` field, or a field with
+`Field(exclude=True)`, gets no filters and is not a sort key, since either
+would let a client read its value back.
 
 A datetime value without a UTC offset is read as UTC when the column is
 timezone-aware, which is the default for `Mapped[datetime]`; a column
@@ -344,7 +348,7 @@ set `include_aliases=True` so the rules cover these joins. See the
 
 Aliases apply to **every** segment of the dotted path, both the relation
 field and the nested column, because the keys of the list params always
-follow the public names of the view's schema:
+follow the public names of the response class:
 
 ```python
 class AuthorSchema(BaseModel):
