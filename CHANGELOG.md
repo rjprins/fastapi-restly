@@ -55,9 +55,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The list params and the relationships that a view loads now follow the
   response class, not the view's schema. The argument of
   `fr.query.derive_schema_list_params` and `fr.query.apply_list_params` that
-  takes this class is now named `schema_response`, not `schema`. For a view without its own
-  `schema_response` the filters stay the same, because the response class is
-  the view's schema without its `WriteOnly` fields. A relationship that only
+  takes this class is now named `schema_response`, not `schema`. For a view
+  without its own `schema_response` the filters stay the same, because the
+  response class is the view's schema without its `WriteOnly` fields. A relationship that only
   a `WriteOnly` field names is no longer loaded for a response. A
   `to_single_response` override that builds the view's schema from the ORM
   object reads that relationship anyway, which fails on an async view: add it
