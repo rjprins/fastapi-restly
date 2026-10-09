@@ -120,6 +120,8 @@ filterwarnings = [
 [tool.coverage.run]
 branch = true
 source = ["fastapi_restly"]
+# SQLAlchemy's async session runs the ORM inside greenlets.
+concurrency = ["greenlet", "thread"]
 
 [tool.coverage.report]
 show_missing = true
