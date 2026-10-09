@@ -51,3 +51,8 @@ class ProjectSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
         if self.completed_task_count is None:
             return 0.0
         return round((self.completed_task_count / self.task_count) * 100, 1)
+
+
+# The response class that the view builds from ProjectSchema. A custom route
+# names it, so OpenAPI shows ProjectResponse there, as on the CRUD routes.
+ProjectResponse = fr.schemas.derive_schema_response(ProjectSchema)

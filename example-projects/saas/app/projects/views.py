@@ -10,15 +10,19 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 import fastapi_restly as fr
-from fastapi_restly.views import PaginatedEnvelope
 
 from ..current import Current
 from ..tasks.models import Task, TaskPriority, TaskStatus, TaskType
-from ..tasks.schemas import TaskSchema
+from ..tasks.schemas import TaskResponse
 from ..tasks.views import TaskCreate, TaskView
 from ..views import AuthenticatedView, SoftDeleteMixin
 from .models import Project, ProjectClauses, ProjectStatus
-from .schemas import ProjectSchema
+from .schemas import ProjectResponse, ProjectSchema
+
+# The list response class of ProjectView, for the trash route.
+ProjectListResponse = fr.schemas.derive_schema_list_response(
+    ProjectResponse, pagination=AuthenticatedView.pagination
+)
 
 
 def _slugify(text: str) -> str:
@@ -214,7 +218,7 @@ class ProjectView(SoftDeleteMixin, AuthenticatedView[Project]):
             n += 1
             candidate = f"{base}-{n}"
 
-    @fr.delete("/{id}", status_code=200, response_model=ProjectSchema)
+    @fr.delete("/{id}", status_code=200, response_model=ProjectResponse)
     async def soft_delete(self, id: int) -> Project:
         """Soft delete: sets deleted_at instead of removing the row.
 
@@ -227,7 +231,7 @@ class ProjectView(SoftDeleteMixin, AuthenticatedView[Project]):
             await self.delete(project)
         return await self._decorate_project_response(project)
 
-    @fr.get("/trash", response_model=PaginatedEnvelope[ProjectSchema])
+    @fr.get("/trash", response_model=ProjectListResponse)
     async def trash(self, list_params: Any) -> Any:
         """The trash: deleted projects, read through ``is_deleted``.
 
@@ -241,7 +245,7 @@ class ProjectView(SoftDeleteMixin, AuthenticatedView[Project]):
         )
         return self.to_response(result, fr.ResponseShape.LIST)
 
-    @fr.post("/{id}/restore", response_model=ProjectSchema)
+    @fr.post("/{id}/restore", response_model=ProjectResponse)
     async def restore(self, id: int) -> Project:
         """Restore a soft-deleted project.
 
@@ -255,7 +259,7 @@ class ProjectView(SoftDeleteMixin, AuthenticatedView[Project]):
             await self.save_object(project)
         return await self._decorate_project_response(project)
 
-    @fr.post("/{id}/archive", response_model=ProjectSchema)
+    @fr.post("/{id}/archive", response_model=ProjectResponse)
     async def archive_project(self, id: int) -> Project:
         """Archive a project (prevents new task creation).
 
@@ -271,7 +275,7 @@ class ProjectView(SoftDeleteMixin, AuthenticatedView[Project]):
             await self.save_object(project)
         return await self._decorate_project_response(project)
 
-    @fr.post("/{id}/clone", response_model=ProjectSchema)
+    @fr.post("/{id}/clone", response_model=ProjectResponse)
     async def clone_project(self, id: int, request: CloneRequest) -> Project:
         """Clone a project with all its tasks.
 
@@ -319,7 +323,7 @@ class ProjectView(SoftDeleteMixin, AuthenticatedView[Project]):
 
         return await self._decorate_project_response(new_project)
 
-    @fr.get("/by-slug/{slug}", response_model=ProjectSchema)
+    @fr.get("/by-slug/{slug}", response_model=ProjectResponse)
     async def get_by_slug(self, slug: str) -> Project:
         """Retrieve by the natural key instead of the id.
 
@@ -332,7 +336,7 @@ class ProjectView(SoftDeleteMixin, AuthenticatedView[Project]):
         """
         return await self.handle_get_one(self._by_slug(slug))
 
-    @fr.patch("/by-slug/{slug}", response_model=ProjectSchema)
+    @fr.patch("/by-slug/{slug}", response_model=ProjectResponse)
     async def update_by_slug(self, slug: str, request: ProjectPatchRequest) -> Project:
         """Update by the natural key, through the standard commit bracket.
 
@@ -390,7 +394,9 @@ class ProjectView(SoftDeleteMixin, AuthenticatedView[Project]):
             completion_percent=completion,
         )
 
-    @fr.get("/{id}/tasks", response_model=list[TaskSchema])
+    # TaskResponse is a class that a function builds, so mypy does not accept
+    # it inside a type such as list[...]. At runtime it is a normal class.
+    @fr.get("/{id}/tasks", response_model=list[TaskResponse])  # type: ignore[valid-type]
     async def list_project_tasks(self, id: int) -> list[Task]:
         """List one project's tasks, through TaskView's own visibility.
 
@@ -409,7 +415,7 @@ class ProjectView(SoftDeleteMixin, AuthenticatedView[Project]):
         )
         return list((await self.session.scalars(query)).all())
 
-    @fr.post("/{id}/tasks", response_model=TaskSchema, status_code=201)
+    @fr.post("/{id}/tasks", response_model=TaskResponse, status_code=201)
     async def create_project_task(self, id: int, request: "TaskCreateRequest") -> Task:
         """Create through the task handler using the current request and session.
 

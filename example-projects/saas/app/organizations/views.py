@@ -8,7 +8,12 @@ import fastapi_restly as fr
 
 from ..current import Current, SetCurrentContextDep
 from .models import Organization
-from .schemas import OrganizationCreate, OrganizationSchema, OrganizationUpdate
+from .schemas import (
+    OrganizationCreate,
+    OrganizationResponse,
+    OrganizationSchema,
+    OrganizationUpdate,
+)
 
 
 class OrganizationView(fr.AsyncRestView[Organization]):
@@ -33,7 +38,7 @@ class OrganizationView(fr.AsyncRestView[Organization]):
     schema_update = OrganizationUpdate
     exclude_routes = [fr.ViewRoute.CREATE]
 
-    @fr.post("/", response_model=OrganizationSchema, status_code=201)
+    @fr.post("/", response_model=OrganizationResponse, status_code=201)
     async def create_with_location(
         self, schema_obj: OrganizationCreate, response: Response
     ) -> Organization:

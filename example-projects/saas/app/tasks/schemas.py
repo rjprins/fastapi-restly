@@ -40,3 +40,8 @@ class TaskSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     deleted_at: fr.ReadOnly[datetime | None] = None
     created_by_id: fr.ReadOnly[int | None] = None
     updated_by_id: fr.ReadOnly[int | None] = None
+
+
+# The response class that the view builds from TaskSchema. A custom route
+# names it, so OpenAPI shows TaskResponse there, as on the CRUD routes.
+TaskResponse = fr.schemas.derive_schema_response(TaskSchema)

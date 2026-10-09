@@ -12,7 +12,7 @@ from ..current import Current
 from ..views import AuthenticatedView, SoftDeleteMixin
 from .models import User
 from .roles import UserRole
-from .schemas import UserFullResponse, UserPublicResponse, UserSchema
+from .schemas import UserFullResponse, UserPublicResponse, UserResponse, UserSchema
 
 
 class UpdateMeRequest(BaseModel):
@@ -60,7 +60,7 @@ class UserView(SoftDeleteMixin, AuthenticatedView[User]):
             user.password = hash_password(schema_obj.password)
         return await self.save_object(user)
 
-    @fr.post("/{id}/change-password", response_model=UserSchema)
+    @fr.post("/{id}/change-password", response_model=UserResponse)
     async def change_password(self, id: int, request: ChangePasswordRequest) -> Any:
         """Change a user's password.
 
@@ -100,13 +100,13 @@ class UserView(SoftDeleteMixin, AuthenticatedView[User]):
 
         return schema.model_validate(user, from_attributes=True).model_dump()
 
-    @fr.get("/me", response_model=UserSchema)
+    @fr.get("/me", response_model=UserResponse)
     async def get_current_user(self) -> Any:
         """Get current user's profile."""
         user = await self.handle_get_one(Current.user_id())
         return self.to_single_response(user)
 
-    @fr.patch("/me", response_model=UserSchema)
+    @fr.patch("/me", response_model=UserResponse)
     async def update_current_user(self, request: UpdateMeRequest) -> Any:
         """Update current user's profile.
 

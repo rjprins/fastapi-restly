@@ -47,3 +47,51 @@ def test_openapi_class_names_are_unique(restly_app: FastAPI) -> None:
     with warnings.catch_warnings():
         warnings.simplefilter("error", RestlyDuplicateSchemaNameWarning)
         restly_app.openapi()
+
+
+# The resources that have a view. A custom route names the response classes
+# of the view, so a generated client gets one type per resource.
+VIEW_RESOURCES = [
+    "Country",
+    "Label",
+    "Organization",
+    "Project",
+    "Task",
+    "TaskLabel",
+    "Upload",
+    "User",
+]
+
+
+def test_each_resource_has_one_type_in_openapi(restly_app: FastAPI) -> None:
+    """No route shows the view's schema or a ``PaginatedEnvelope_`` class
+    next to ``<Resource>Response`` and ``<Resource>ListResponse``."""
+    components = set(restly_app.openapi()["components"]["schemas"])
+
+    assert {name for name in components if "Envelope_" in name} == set()
+    assert components & {f"{name}Schema" for name in VIEW_RESOURCES} == set()
+    assert {f"{name}Response" for name in VIEW_RESOURCES} <= components
+    assert {f"{name}ListResponse" for name in VIEW_RESOURCES} <= components
+
+
+@pytest.mark.parametrize(
+    ("path", "method", "status", "name"),
+    [
+        ("/tasks/trash", "get", "200", "TaskListResponse"),
+        ("/tasks/{id}/restore", "post", "201", "TaskResponse"),
+        ("/tasks/{id}/start", "post", "201", "TaskResponse"),
+        ("/projects/trash", "get", "200", "ProjectListResponse"),
+        ("/projects/{id}/restore", "post", "201", "ProjectResponse"),
+        ("/projects/by-slug/{slug}", "get", "200", "ProjectResponse"),
+        ("/organizations", "post", "201", "OrganizationResponse"),
+        ("/users/me", "get", "200", "UserResponse"),
+        ("/uploads", "post", "201", "UploadResponse"),
+        ("/task-labels/create-and-attach", "post", "201", "TaskLabelResponse"),
+    ],
+)
+def test_custom_routes_name_the_view_s_response_classes(
+    restly_app: FastAPI, path: str, method: str, status: str, name: str
+) -> None:
+    operation = restly_app.openapi()["paths"][path][method]
+    schema = operation["responses"][status]["content"]["application/json"]["schema"]
+    assert schema["$ref"] == f"#/components/schemas/{name}"

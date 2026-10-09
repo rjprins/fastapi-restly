@@ -23,7 +23,7 @@ import fastapi_restly as fr
 
 from ..views import AuthenticatedView
 from .models import Upload, UploadLine
-from .schemas import UploadLineSchema, UploadSchema
+from .schemas import UploadLineSchema, UploadResponse, UploadSchema
 
 
 class UploadView(AuthenticatedView[Upload]):
@@ -39,7 +39,7 @@ class UploadView(AuthenticatedView[Upload]):
     schema = UploadSchema
     exclude_routes = [fr.ViewRoute.CREATE]
 
-    @fr.post("/", response_model=UploadSchema, status_code=201)
+    @fr.post("/", response_model=UploadResponse, status_code=201)
     async def upload_csv(
         self,
         file: fastapi.UploadFile = fastapi.File(...),  # noqa: B008 — fastapi style

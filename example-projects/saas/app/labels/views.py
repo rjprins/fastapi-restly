@@ -11,7 +11,7 @@ from fastapi_restly.objects import async_make_new_object, async_save_object
 from ..tasks.models import Task, TaskClauses
 from ..views import AuthenticatedView
 from .models import Label, TaskLabel
-from .schemas import LabelSchema, TaskLabelSchema
+from .schemas import LabelSchema, TaskLabelResponse, TaskLabelSchema
 
 
 class CreateAndAttachLabelRequest(BaseModel):
@@ -70,7 +70,7 @@ class TaskLabelView(AuthenticatedView[TaskLabel]):
         if task_id is None:
             raise fr.exc.Forbidden("Changing a task's labels requires the task")
 
-    @fr.post("/create-and-attach", response_model=TaskLabelSchema, status_code=201)
+    @fr.post("/create-and-attach", response_model=TaskLabelResponse, status_code=201)
     async def create_and_attach(
         self, request: CreateAndAttachLabelRequest
     ) -> TaskLabel:

@@ -7,11 +7,10 @@ from fastapi import HTTPException
 from pydantic import BaseModel
 
 import fastapi_restly as fr
-from fastapi_restly.views import PaginatedEnvelope
 
 from ..views import AuthenticatedView, SoftDeleteMixin
 from .models import Task, TaskClauses, TaskPriority, TaskStatus, TaskType
-from .schemas import TaskSchema
+from .schemas import TaskResponse, TaskSchema
 
 
 class TaskCreate(BaseModel):
@@ -54,6 +53,12 @@ class BulkResult(BaseModel):
     success: int
     failed: int
     errors: list[str] = []
+
+
+# The list response class of TaskView, for the trash route.
+TaskListResponse = fr.schemas.derive_schema_list_response(
+    TaskResponse, pagination=AuthenticatedView.pagination
+)
 
 
 # Valid state transitions for task workflow
@@ -240,13 +245,13 @@ class TaskView(SoftDeleteMixin, AuthenticatedView[Task]):
             await self.save_object(task)
         return task
 
-    @fr.get("/trash", response_model=PaginatedEnvelope[TaskSchema])
+    @fr.get("/trash", response_model=TaskListResponse)
     async def trash(self, list_params: Any) -> Any:
         """The trash: deleted tasks the caller may see, with the list params."""
         result = await self.handle_get_many(list_params, scope=TaskClauses.trashed)
         return self.to_response(result, fr.ResponseShape.LIST)
 
-    @fr.post("/{id}/restore", response_model=TaskSchema)
+    @fr.post("/{id}/restore", response_model=TaskResponse)
     async def restore(self, id: int) -> Task:
         """Restore a soft-deleted task and put its story points back on the project.
 
@@ -363,21 +368,21 @@ class TaskView(SoftDeleteMixin, AuthenticatedView[Task]):
 
         return BulkResult(success=success, failed=failed, errors=errors)
 
-    @fr.post("/{id}/start", response_model=TaskSchema)
+    @fr.post("/{id}/start", response_model=TaskResponse)
     async def start_task(self, id: int) -> Task:
         """Move task from TODO to IN_PROGRESS."""
         return await self._transition_task(
             id, TaskStatus.TODO, TaskStatus.IN_PROGRESS, "start"
         )
 
-    @fr.post("/{id}/complete", response_model=TaskSchema)
+    @fr.post("/{id}/complete", response_model=TaskResponse)
     async def complete_task(self, id: int) -> Task:
         """Move task from IN_PROGRESS to DONE."""
         return await self._transition_task(
             id, TaskStatus.IN_PROGRESS, TaskStatus.DONE, "complete"
         )
 
-    @fr.post("/{id}/reopen", response_model=TaskSchema)
+    @fr.post("/{id}/reopen", response_model=TaskResponse)
     async def reopen_task(self, id: int) -> Task:
         """Reopen a completed task back to IN_PROGRESS."""
         return await self._transition_task(

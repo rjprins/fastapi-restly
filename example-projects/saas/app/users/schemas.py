@@ -62,3 +62,8 @@ class UserFullResponse(BaseModel):
     role: UserRole
     organization_id: int
     salary: int | None = None
+
+
+# The response class that the view builds from UserSchema. A custom route
+# names it, so OpenAPI shows UserResponse there, as on the CRUD routes.
+UserResponse = fr.schemas.derive_schema_response(UserSchema)
