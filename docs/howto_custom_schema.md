@@ -352,6 +352,10 @@ Follow these rules for the classes you write:
       pass
   ```
 
+  The list response takes its name from the response class. So when the two
+  views set the same `schema_response`, give one view a response class of
+  its own in the same way.
+
 When two different classes still have the same name, OpenAPI shows both under
 long names that can change, such as `app__tasks__views__TaskCreate`. Restly
 then warns with a

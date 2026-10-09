@@ -160,15 +160,14 @@ def _roles_of(view: Any) -> dict[type, list[_Role]]:
         return from_schema if attribute in generated else None
 
     response = view.schema_response
-    # The list response comes from the response class, which can be the
-    # view's own.
-    from_response = from_schema if "schema_response" in generated else None
     list_response = derive_schema_list_response(response, pagination=view.pagination)
     roles: dict[type, list[_Role]] = defaultdict(list)
     roles[view.schema].append(("schema", source("schema")))
     roles[response].append(("response class", source("schema_response")))
+    # The list response comes from the response class, which can be the
+    # view's own.
     roles[list_response].append(
-        ("list response", from_response or f"from {_path(response)}")
+        ("list response", source("schema_response") or f"from {_path(response)}")
     )
     roles[view.schema_create].append(("create body", source("schema_create")))
     roles[view.schema_update].append(("update body", source("schema_update")))
@@ -188,10 +187,17 @@ def _clash_message(
     lines.append(
         "Give each class its own name. A class that you wrote for a view's "
         "role goes on the view, for example as schema_create. Restly names "
-        "the classes it generates after the view's schema, so to change those "
-        "names, rename the view's schema, or give a view without a schema "
-        'one of its own. See "Name your schemas" in the docs.'
+        "the classes it generates after the view's schema, and the list "
+        "response after the response class. To change those names, rename "
+        "that class, or give a view without a schema one of its own."
     )
+    if any("__restly_list_response_of__" in cls.__dict__ for cls in classes):
+        lines.append(
+            "A list response gets its envelope from the pagination. A custom "
+            "route that names the list response of a view passes the view's "
+            "pagination to derive_schema_list_response."
+        )
+    lines.append('See "Name your schemas" in the docs.')
     return "\n".join(lines)
 
 
@@ -209,6 +215,13 @@ def _describe(cls: type, roles: dict[_Role, list[str]]) -> str:
         else:
             phrases.append(f"the {role} that Restly generates {source} for {names}")
     if not phrases:
+        list_response_of = cls.__dict__.get("__restly_list_response_of__")
+        if list_response_of is not None:
+            envelope, response = list_response_of
+            return (
+                f"a list response with the envelope {envelope.__name__} that "
+                f"Restly generates from {_path(response)}"
+            )
         return _path(cls)
     if all(source is not None for _, source in roles):
         return "; ".join(phrases)

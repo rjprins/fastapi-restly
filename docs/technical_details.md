@@ -138,15 +138,17 @@ class UserView(AppView):
 ```
 
 OpenAPI then shows `UserListResponse` and `UserResponse` for these routes,
-as for the CRUD routes. A function builds these classes, so mypy does not
-accept them inside a type, as in `response_model=list[UserResponse]` or
-`data: UserResponse`. At runtime they are normal classes, so add
-`# type: ignore[valid-type]` on such a line. A view with its own `schema_response` passes that
-class to `derive_schema_list_response` instead. A custom route that names
-`UserSchema` or `PaginatedEnvelope[UserSchema]` sends the same JSON, but
-shows a type of its own in OpenAPI. If a route passes another pagination
-than the view's, there are two classes named `UserListResponse`, and Restly
-warns as described below.
+as for the CRUD routes. A function builds these classes, so type checkers do
+not accept them in an annotation, as in `data: UserResponse`. mypy also does
+not accept them inside a type in other places, as in
+`response_model=list[UserResponse]`. At runtime they are normal classes, so
+add `# type: ignore[valid-type]` on such a line. A view with its own
+`schema_response` passes that class to `derive_schema_list_response` instead.
+A custom route that names `UserSchema` or `PaginatedEnvelope[UserSchema]`
+sends the same JSON, but shows a type of its own in OpenAPI. If a route passes
+a pagination with another envelope than the view's, its list response has
+another shape, for example `data` without `total_count`. There are then two
+classes named `UserListResponse`, and Restly warns as described below.
 
 A view without a `schema` gets a generated one. For a model named `User` it
 is `UserSchema`, so the names above stay the same. A schema with another name

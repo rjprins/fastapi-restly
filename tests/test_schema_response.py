@@ -214,11 +214,16 @@ def test_the_wrong_pagination_gives_a_second_class_and_a_warning():
         warnings.simplefilter("always", RestlyDuplicateSchemaNameWarning)
         app.openapi()
 
-    assert any(
-        issubclass(warning.category, RestlyDuplicateSchemaNameWarning)
-        and "ShelfListResponse" in str(warning.message)
+    [message] = [
+        str(warning.message)
         for warning in caught
-    )
+        if issubclass(warning.category, RestlyDuplicateSchemaNameWarning)
+    ]
+    assert "More than one class has the name ShelfListResponse." in message
+    # The class that the route built says where it comes from, and the
+    # warning says how to get the view's class.
+    assert "a list response with the envelope PaginatedEnvelope" in message
+    assert "passes the view's pagination to derive_schema_list_response" in message
 
 
 # A view whose own schema_response differs from its schema. The schema is

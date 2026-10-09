@@ -1239,7 +1239,11 @@ def _named_list_envelope(
     return type(
         _schema_role_name(schema_response, "ListResponse"),
         (filled,),
-        {"__module__": schema_response.__module__},
+        {
+            "__module__": schema_response.__module__,
+            # For the warning about two classes with one name.
+            "__restly_list_response_of__": (envelope, schema_response),
+        },
     )
 
 

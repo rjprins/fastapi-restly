@@ -375,7 +375,8 @@ def test_two_list_responses_with_one_name_warn_and_stay_in_openapi():
     schema_path = "tests.test_generated_names._shop_views.<locals>"
     assert generated.format(schema_path, "ShopView") in message
     assert generated.format(schema_path, "AllShopsView") in message
-    assert "rename the view's schema" in message
+    assert "the list response after the response class" in message
+    assert "passes the view's pagination to derive_schema_list_response" in message
 
 
 def test_views_on_a_router_are_checked_through_configure():
