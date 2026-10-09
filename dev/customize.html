@@ -587,7 +587,7 @@ commits after this method returns:</p>
     <span class="n">password</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>  <span class="c1"># stores the hash. UserView.create writes it</span>
 
 
-<span class="k">class</span><span class="w"> </span><span class="nc">UserRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">password</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">WriteOnly</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>  <span class="c1"># accepted on input, never serialized</span>
 
@@ -596,7 +596,7 @@ commits after this method returns:</p>
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_new_object</span><span class="p">(</span><span class="n">schema_obj</span><span class="p">)</span>
@@ -655,7 +655,7 @@ tier:</p>
 place across list, count, and single-row reads: a hidden row returns 404 from
 <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code>. <code class="docutils literal notranslate"><span class="pre">get_one</span></code> itself stays auth-free; <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a> handles policy.</p>
 <p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a> works the same way: the scope establishes visibility,
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_query_params" title="fastapi_restly.views.RestView.apply_query_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_query_params</span></code></a> applies filtering, sorting, and pagination, and
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_list_params" title="fastapi_restly.views.RestView.apply_list_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_list_params</span></code></a> applies filtering, sorting, and pagination, and
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.count" title="fastapi_restly.views.RestView.count"><code class="xref py py-meth docutils literal notranslate"><span class="pre">count</span></code></a> produces the total, with <code class="docutils literal notranslate"><span class="pre">authorize(&quot;get_many&quot;)</span></code> added by
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_many" title="fastapi_restly.views.RestView.handle_get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_many</span></code></a>.</p>
 </section>
@@ -682,7 +682,7 @@ place across list, count, and single-row reads: a hidden row returns 404 from
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_one" title="fastapi_restly.views.RestView.handle_get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_one</span></code></a> with a predicate, in a custom route (<a class="reference internal" href="#natural-key-route">below</a>)</p></td>
 <td><p>handler</p></td>
 </tr>
-<tr class="row-odd"><td><p>A listing of a subset (one project’s tasks)</p></td>
+<tr class="row-odd"><td><p>A list of a subset (one project’s tasks)</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_many" title="fastapi_restly.views.RestView.handle_get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_many</span></code></a> with <code class="docutils literal notranslate"><span class="pre">where=</span></code>, in a custom route (<a class="reference internal" href="scopes.html#per-read-where"><span class="std std-ref">Scopes</span></a>)</p></td>
 <td><p>handler</p></td>
 </tr>
@@ -695,7 +695,7 @@ place across list, count, and single-row reads: a hidden row returns 404 from
 <td><p>read extension point</p></td>
 </tr>
 <tr class="row-even"><td><p>Filter / sort / pagination grammar</p></td>
-<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_query_params" title="fastapi_restly.views.RestView.apply_query_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_query_params</span></code></a></p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_list_params" title="fastapi_restly.views.RestView.apply_list_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_list_params</span></code></a></p></td>
 <td><p>read extension point</p></td>
 </tr>
 <tr class="row-odd"><td><p>The list total</p></td>
@@ -793,12 +793,12 @@ instead; see <a class="reference internal" href="howto_relationship_loading.html
 <h3><code class="docutils literal notranslate"><span class="pre">get_many</span></code>: decorate results after the query<a class="headerlink" href="#get-many-decorate-results-after-the-query" title="Link to this heading">#</a></h3>
 <p>For post-query decoration, override <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a> and delegate to <code class="docutils literal notranslate"><span class="pre">super()</span></code>.
 Use a <a class="reference internal" href="scopes.html"><span class="std std-doc">scope</span></a> for row visibility.
-Put listing joins and ordering in
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_query_params" title="fastapi_restly.views.RestView.apply_query_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_query_params</span></code></a>.
+Put joins and ordering for the list in
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_list_params" title="fastapi_restly.views.RestView.apply_list_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_list_params</span></code></a>.
 Put eager loading in
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.get_relationship_loader_options" title="fastapi_restly.views.BaseRestView.get_relationship_loader_options"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code></a>.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_many</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_params</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_many</span><span class="p">(</span><span class="n">query_params</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">scope</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_many</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_many</span><span class="p">(</span><span class="n">list_params</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">scope</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">objects</span><span class="p">:</span>
             <span class="n">obj</span><span class="o">.</span><span class="n">_display_name</span> <span class="o">=</span> <span class="n">derive_display_name</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">result</span>
@@ -828,7 +828,7 @@ view scope: a <a class="reference internal" href="clauses.html"><span class="std
 <span class="k">class</span><span class="w"> </span><span class="nc">DocumentView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/documents&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Document</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">DocumentRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">DocumentSchema</span>
     <span class="n">scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span><span class="n">Document</span><span class="o">.</span><span class="n">owner_id</span> <span class="o">==</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -858,7 +858,7 @@ definition with a pointer to
 <span class="k">class</span><span class="w"> </span><span class="nc">InvoiceView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/invoices&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Invoice</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">InvoiceRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">InvoiceSchema</span>
     <span class="n">current_user</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">User</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_current_user</span><span class="p">)]</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">authorize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -898,6 +898,24 @@ once the mark is durable:</p>
             <span class="k">await</span> <span class="n">enqueue_async_delete</span><span class="p">(</span><span class="n">old</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">])</span>  <span class="c1"># the real delete runs off-request</span>
 </pre></div>
 </div>
+<section id="when-after-action-commit-raises">
+<h3>When <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> raises<a class="headerlink" href="#when-after-action-commit-raises" title="Link to this heading">#</a></h3>
+<p>The write is already committed, so an exception from the hook cannot undo it.
+The request still fails, and a client that retries repeats the write. For a
+best-effort effect, catch and log the error in the hook:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">after_action_commit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">new</span><span class="p">,</span> <span class="n">old</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="s2">&quot;create&quot;</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">await</span> <span class="n">send_confirmation_email</span><span class="p">(</span><span class="n">new</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>  <span class="c1"># the order is saved; don&#39;t fail the request</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Confirmation email failed for order </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">new</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>An effect that must happen belongs in an outbox row written in
+<code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code>, which a worker delivers and retries. Make delivery
+idempotent, since a retry can repeat it. FastAPI’s <code class="docutils literal notranslate"><span class="pre">BackgroundTasks</span></code> is no
+substitute: a crash loses the task, and nothing retries it.</p>
+</section>
 </section>
 <section id="server-stamped-fields-column-defaults-on-the-model">
 <h2>Server-stamped fields: column defaults on the model<a class="headerlink" href="#server-stamped-fields-column-defaults-on-the-model" title="Link to this heading">#</a></h2>
@@ -942,7 +960,7 @@ rejects combining <code class="docutils literal notranslate"><span class="pre">d
 <td><p>Applies writable fields onto an existing object, resolving references. Does not flush.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">self.save_object(obj)</span></code></p></td>
-<td><p>Flushes and refreshes <code class="docutils literal notranslate"><span class="pre">obj</span></code>, then eager-loads the relationships the response schema names. Does not commit.</p></td>
+<td><p>Flushes and refreshes <code class="docutils literal notranslate"><span class="pre">obj</span></code>, then eager-loads the relationships the view’s schema names. Does not commit.</p></td>
 </tr>
 </tbody>
 </table>
@@ -970,26 +988,26 @@ rejects combining <code class="docutils literal notranslate"><span class="pre">d
 <span class="k">class</span><span class="w"> </span><span class="nc">ProductView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/products&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Product</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">ProductRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ProductSchema</span>
 
     <span class="nd">@fr</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>               <span class="c1"># load (scoped, 404)</span>
-        <span class="n">serialized</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response_schema</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">)</span>
+        <span class="n">serialized</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_single_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">)</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_delete</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>               <span class="c1"># authorize + delete + commit</span>
         <span class="k">return</span> <span class="n">serialized</span>
 </pre></div>
 </div>
 <p>At view registration, a directly defined endpoint method replaces the inherited method with the same name. The other inherited endpoint methods remain unchanged.</p>
-<p>Registration fills in the view’s types for annotations that are missing or <code class="docutils literal notranslate"><span class="pre">Any</span></code>. <code class="docutils literal notranslate"><span class="pre">id</span></code> gets <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.id_type" title="fastapi_restly.views.BaseRestView.id_type"><code class="xref py py-attr docutils literal notranslate"><span class="pre">id_type</span></code></a>, <code class="docutils literal notranslate"><span class="pre">schema_obj</span></code> gets <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a> or <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a>, and the return annotation gets the route’s default response model. An annotation you write is kept, so <code class="docutils literal notranslate"><span class="pre">schema_obj:</span> <span class="pre">ProductReplace</span></code> validates the request body against <code class="docutils literal notranslate"><span class="pre">ProductReplace</span></code>. <code class="docutils literal notranslate"><span class="pre">query_params</span></code> is the exception: it always gets the view’s <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.listing_param_schema" title="fastapi_restly.views.BaseRestView.listing_param_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">listing_param_schema</span></code></a>.</p>
+<p>Registration fills in the view’s types for annotations that are missing or <code class="docutils literal notranslate"><span class="pre">Any</span></code>. <code class="docutils literal notranslate"><span class="pre">id</span></code> gets <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.id_type" title="fastapi_restly.views.BaseRestView.id_type"><code class="xref py py-attr docutils literal notranslate"><span class="pre">id_type</span></code></a>, <code class="docutils literal notranslate"><span class="pre">schema_obj</span></code> gets <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a> or <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a>, and the return annotation gets the route’s default response model. An annotation you write is kept, so <code class="docutils literal notranslate"><span class="pre">schema_obj:</span> <span class="pre">ProductReplace</span></code> validates the request body against <code class="docutils literal notranslate"><span class="pre">ProductReplace</span></code>. <code class="docutils literal notranslate"><span class="pre">list_params</span></code> is the exception: it always gets the view’s <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_list_params" title="fastapi_restly.views.BaseRestView.schema_list_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_list_params</span></code></a>.</p>
 <p>The default <code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/{id}</span></code> returns <code class="docutils literal notranslate"><span class="pre">204</span> <span class="pre">No</span> <span class="pre">Content</span></code>; this version returns the deleted record, as <code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code> expects (see <a class="reference internal" href="howto_react_admin.html"><span class="std std-doc">React Admin Integration</span></a>).</p>
 <section id="to-response-the-one-response-method">
 <h3><code class="docutils literal notranslate"><span class="pre">to_response</span></code>: the one response method<a class="headerlink" href="#to-response-the-one-response-method" title="Link to this heading">#</a></h3>
-<p>The default endpoint methods return through <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response" title="fastapi_restly.views.BaseRestView.to_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">self.to_response(obj_or_list,</span> <span class="pre">shape)</span></code></a>, where <code class="docutils literal notranslate"><span class="pre">shape</span></code> is <a class="reference internal" href="api/views.html#fastapi_restly.views.ResponseShape.SINGLE" title="fastapi_restly.views.ResponseShape.SINGLE"><code class="xref py py-attr docutils literal notranslate"><span class="pre">SINGLE</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.ResponseShape.LISTING" title="fastapi_restly.views.ResponseShape.LISTING"><code class="xref py py-attr docutils literal notranslate"><span class="pre">LISTING</span></code></a>, or <a class="reference internal" href="api/views.html#fastapi_restly.views.ResponseShape.EMPTY" title="fastapi_restly.views.ResponseShape.EMPTY"><code class="xref py py-attr docutils literal notranslate"><span class="pre">EMPTY</span></code></a>. Override it for envelopes or shape-wide response behavior:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">def</span><span class="w"> </span><span class="nf">to_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj_or_list</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">ResponseShape</span><span class="o">.</span><span class="n">SINGLE</span><span class="p">):</span>
+<p>The default endpoint methods return through <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response" title="fastapi_restly.views.BaseRestView.to_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">self.to_response(result,</span> <span class="pre">shape)</span></code></a>, where <code class="docutils literal notranslate"><span class="pre">shape</span></code> is <a class="reference internal" href="api/views.html#fastapi_restly.views.ResponseShape.SINGLE" title="fastapi_restly.views.ResponseShape.SINGLE"><code class="xref py py-attr docutils literal notranslate"><span class="pre">SINGLE</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.ResponseShape.LIST" title="fastapi_restly.views.ResponseShape.LIST"><code class="xref py py-attr docutils literal notranslate"><span class="pre">LIST</span></code></a>, or <a class="reference internal" href="api/views.html#fastapi_restly.views.ResponseShape.EMPTY" title="fastapi_restly.views.ResponseShape.EMPTY"><code class="xref py py-attr docutils literal notranslate"><span class="pre">EMPTY</span></code></a>. The shape tells what <code class="docutils literal notranslate"><span class="pre">result</span></code> is: one object for <code class="docutils literal notranslate"><span class="pre">SINGLE</span></code>, a <a class="reference internal" href="api/views.html#fastapi_restly.views.ListResult" title="fastapi_restly.views.ListResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">ListResult</span></code></a> for <code class="docutils literal notranslate"><span class="pre">LIST</span></code>, and <code class="docutils literal notranslate"><span class="pre">None</span></code> for <code class="docutils literal notranslate"><span class="pre">EMPTY</span></code>. <code class="docutils literal notranslate"><span class="pre">to_response</span></code> passes them on to <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_single_response" title="fastapi_restly.views.BaseRestView.to_single_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_single_response</span></code></a> and <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_list_response" title="fastapi_restly.views.BaseRestView.to_list_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_list_response</span></code></a>. Override it for envelopes or shape-wide response behavior:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">def</span><span class="w"> </span><span class="nf">to_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">result</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">ResponseShape</span><span class="o">.</span><span class="n">SINGLE</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">shape</span> <span class="ow">is</span> <span class="n">fr</span><span class="o">.</span><span class="n">ResponseShape</span><span class="o">.</span><span class="n">SINGLE</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response_schema</span><span class="p">(</span><span class="n">obj_or_list</span><span class="p">)}</span>
-        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">obj_or_list</span><span class="p">,</span> <span class="n">shape</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_single_response</span><span class="p">(</span><span class="n">result</span><span class="p">)}</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">shape</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>If this changes a default CRUD route’s HTTP contract, also replace that endpoint
@@ -1001,15 +1019,15 @@ documents the response with the original response model. See
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_create</span><span class="p">(</span><span class="n">schema_obj</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">fastapi</span><span class="o">.</span><span class="n">Response</span><span class="p">(</span>
-            <span class="n">content</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">to_response_schema</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">(),</span>
+            <span class="n">content</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">to_single_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">(),</span>
             <span class="n">media_type</span><span class="o">=</span><span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
             <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span><span class="p">,</span>
             <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Location&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">obj</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
         <span class="p">)</span>
 </pre></div>
 </div>
-<p>For object serialization, <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response_schema" title="fastapi_restly.views.BaseRestView.to_response_schema"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_response_schema(obj)</span></code></a> builds the configured schema, strips <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields, normalizes relationship ids, and validates through Pydantic. Override it for a different projection or a faster trusted path:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">def</span><span class="w"> </span><span class="nf">to_response_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">:</span> <span class="n">User</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UserRead</span><span class="p">:</span>
+<p>For object serialization, <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_single_response" title="fastapi_restly.views.BaseRestView.to_single_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_single_response(obj)</span></code></a> builds the view’s schema, strips <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields, normalizes relationship ids, and validates through Pydantic. Override it for a different projection or a faster trusted path:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">def</span><span class="w"> </span><span class="nf">to_single_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">:</span> <span class="n">User</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UserSchema</span><span class="p">:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">model_construct</span><span class="p">(</span>
             <span class="nb">id</span><span class="o">=</span><span class="n">obj</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
             <span class="n">name</span><span class="o">=</span><span class="n">obj</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
@@ -1021,7 +1039,7 @@ documents the response with the original response model. See
 </section>
 <section id="replace-the-list-endpoint-method">
 <h3>Replace the list endpoint method<a class="headerlink" href="#replace-the-list-endpoint-method" title="Link to this heading">#</a></h3>
-<p>Replace <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many_endpoint" title="fastapi_restly.views.RestView.get_many_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many_endpoint</span></code></a> when the list response contract changes, for example custom headers. Keep the <code class="docutils literal notranslate"><span class="pre">query_params</span></code> parameter if you want Restly’s generated <a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">filter, sort, and pagination query parameters</span></a>:</p>
+<p>Replace <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many_endpoint" title="fastapi_restly.views.RestView.get_many_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many_endpoint</span></code></a> when the list response contract changes, for example custom headers. Keep the <code class="docutils literal notranslate"><span class="pre">list_params</span></code> parameter if you want Restly’s generated <a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">filter, sort, and pagination query parameters</span></a>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 
@@ -1029,13 +1047,13 @@ documents the response with the original response model. See
 <span class="k">class</span><span class="w"> </span><span class="nc">ProductView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/products&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Product</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">ProductRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ProductSchema</span>
 
     <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_many_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_params</span><span class="p">):</span>
-        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span><span class="n">query_params</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_many_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span><span class="n">list_params</span><span class="p">)</span>
         <span class="n">serialized</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">to_response_schema</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">to_single_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">objects</span>
         <span class="p">]</span>
         <span class="k">return</span> <span class="n">fastapi</span><span class="o">.</span><span class="n">Response</span><span class="p">(</span>
@@ -1053,7 +1071,7 @@ documents the response with the original response model. See
     <span class="nd">@fr</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">):</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
-        <span class="n">serialized</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response_schema</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">)</span>
+        <span class="n">serialized</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_single_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">)</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_delete</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">serialized</span>
 
@@ -1062,7 +1080,7 @@ documents the response with the original response model. See
 <span class="k">class</span><span class="w"> </span><span class="nc">ProductView</span><span class="p">(</span><span class="n">DeleteReturnsObjectMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/products&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Product</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">ProductRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ProductSchema</span>
 </pre></div>
 </div>
 <p><a class="reference internal" href="howto_react_admin.html#share-the-react-admin-contract-across-multiple-views"><span class="std std-ref">React Admin views</span></a> use this same pattern: they replace <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many_endpoint" title="fastapi_restly.views.RestView.get_many_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many_endpoint</span></code></a> for the <code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code> wire contract and keep the standard verbs and handlers.</p>
@@ -1075,7 +1093,7 @@ documents the response with the original response model. See
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
 
     <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/summary&quot;</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">summary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
@@ -1092,7 +1110,7 @@ documents the response with the original response model. See
 <span id="natural-key-route"></span><h3>Look a row up by another key<a class="headerlink" href="#look-a-row-up-by-another-key" title="Link to this heading">#</a></h3>
 <p><code class="docutils literal notranslate"><span class="pre">id</span></code> is the primary key by default, and a SQLAlchemy boolean expression replaces it. Everything else about the load is unchanged: the view’s <a class="reference internal" href="scopes.html"><span class="std std-doc">scope</span></a>, the schema’s loader options, and the same 404.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/by-email/</span><span class="si">{email}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_by_email</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">email</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UserRead</span><span class="p">:</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_by_email</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">email</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UserSchema</span><span class="p">:</span>
         <span class="n">user</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_one</span><span class="p">(</span><span class="n">User</span><span class="o">.</span><span class="n">email</span> <span class="o">==</span> <span class="n">email</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
 </pre></div>
@@ -1110,7 +1128,7 @@ documents the response with the original response model. See
 <span class="k">class</span><span class="w"> </span><span class="nc">OrderView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/orders&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Order</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">OrderRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">OrderSchema</span>
 
     <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/archive&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">202</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">archive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
@@ -1131,7 +1149,7 @@ drives authorization and the hooks.</p>
         <span class="n">original</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
         <span class="n">payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema_create</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">original</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> (copy)&quot;</span><span class="p">)</span>
         <span class="n">new_order</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_create</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response_schema</span><span class="p">(</span><span class="n">new_order</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_single_response</span><span class="p">(</span><span class="n">new_order</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Reusing <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> inherits authorization and the commit bracket.</p>
@@ -1265,7 +1283,7 @@ validation), <a class="reference internal" href="api/schemas.html#fastapi_restly
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">self.schema</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">type[pydantic.BaseModel]</span></code></p></td>
-<td><p>The Pydantic response schema</p></td>
+<td><p>The view’s schema, a Pydantic model</p></td>
 </tr>
 </tbody>
 </table>
@@ -1350,7 +1368,10 @@ classified method list.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#authorize-gate-the-action"><code class="docutils literal notranslate"><span class="pre">authorize</span></code>: gate the action</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#transaction-hooks-before-action-commit-after-action-commit">Transaction hooks: <code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code> / <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#transaction-hooks-before-action-commit-after-action-commit">Transaction hooks: <code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code> / <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#when-after-action-commit-raises">When <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> raises</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#server-stamped-fields-column-defaults-on-the-model">Server-stamped fields: column defaults on the model</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#domain-utilities-call-don-t-override">Domain utilities: call, don’t override</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#replace-an-endpoint-method-to-change-the-http-contract">Replace an endpoint method to change the HTTP contract</a><ul class="visible nav section-nav flex-column">

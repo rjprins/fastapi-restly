@@ -567,7 +567,7 @@ handle_&lt;verb&gt;     the handler: runs authorize and the commit bracket
 <span class="k">class</span><span class="w"> </span><span class="nc">PostView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/posts&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Post</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">PostRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">PostSchema</span>
     <span class="n">current_user</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">User</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_current_user</span><span class="p">)]</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
@@ -576,7 +576,7 @@ handle_&lt;verb&gt;     the handler: runs authorize and the commit bracket
         <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_object</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> builds the ORM instance. <code class="docutils literal notranslate"><span class="pre">save_object</span></code> flushes and refreshes it, then eager-loads the relationships the response schema names, but does not commit. For a field stamped on every write, see <a class="reference internal" href="#stamping-extra-fields">Stamping extra fields</a>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> builds the ORM instance. <code class="docutils literal notranslate"><span class="pre">save_object</span></code> flushes and refreshes it, then eager-loads the relationships the view’s schema names, but does not commit. For a field stamped on every write, see <a class="reference internal" href="#stamping-extra-fields">Stamping extra fields</a>.</p>
 </section>
 <section id="update-validate-before-saving">
 <h3>update: validate before saving<a class="headerlink" href="#update-validate-before-saving" title="Link to this heading">#</a></h3>
@@ -592,7 +592,7 @@ handle_&lt;verb&gt;     the handler: runs authorize and the commit bracket
 </section>
 <section id="the-scope-filter-results-to-the-current-user">
 <h3>The scope: filter results to the current user<a class="headerlink" href="#the-scope-filter-results-to-the-current-user" title="Link to this heading">#</a></h3>
-<p>The common read customization is row visibility. <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.count" title="fastapi_restly.views.RestView.count"><code class="xref py py-meth docutils literal notranslate"><span class="pre">count</span></code></a>, and <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> all apply the view’s declared <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.scope" title="fastapi_restly.views.BaseRestView.scope"><code class="xref py py-attr docutils literal notranslate"><span class="pre">scope</span></code></a>, so one clause keeps listings, totals, single-row reads, updates, and deletes aligned. Here we restrict every read to the requesting user’s own posts:</p>
+<p>The common read customization is row visibility. <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.count" title="fastapi_restly.views.RestView.count"><code class="xref py py-meth docutils literal notranslate"><span class="pre">count</span></code></a>, and <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> all apply the view’s declared <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.scope" title="fastapi_restly.views.BaseRestView.scope"><code class="xref py py-attr docutils literal notranslate"><span class="pre">scope</span></code></a>, so one clause keeps lists, totals, single-row reads, updates, and deletes aligned. Here we restrict every read to the requesting user’s own posts:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Current</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ContextNamespace</span><span class="p">):</span>
     <span class="n">user_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ContextParam</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
 
@@ -603,7 +603,7 @@ handle_&lt;verb&gt;     the handler: runs authorize and the commit bracket
 <span class="k">class</span><span class="w"> </span><span class="nc">PostView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/posts&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Post</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">PostRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">PostSchema</span>
     <span class="n">dependencies</span> <span class="o">=</span> <span class="p">[</span><span class="n">Current</span><span class="o">.</span><span class="n">depends</span><span class="p">(</span><span class="n">user_id</span><span class="o">=</span><span class="n">get_user_id</span><span class="p">)]</span>
     <span class="n">scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span><span class="n">Post</span><span class="o">.</span><span class="n">author_id</span> <span class="o">==</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">)</span>
 </pre></div>
@@ -624,7 +624,7 @@ handle_&lt;verb&gt;     the handler: runs authorize and the commit bracket
 <span class="k">class</span><span class="w"> </span><span class="nc">PostView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/posts&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Post</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">PostRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">PostSchema</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
         <span class="n">obj</span><span class="o">.</span><span class="n">deleted_at</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
@@ -635,7 +635,7 @@ handle_&lt;verb&gt;     the handler: runs authorize and the commit bracket
 <p><code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/posts/{id}</span></code> now marks the row instead of removing it.
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete_endpoint" title="fastapi_restly.views.RestView.delete_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete_endpoint</span></code></a> still
 returns 204, and <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_delete" title="fastapi_restly.views.RestView.handle_delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_delete</span></code></a>
-still runs the commit bracket. Pair this with a scope clause that hides deleted rows. The canonical recipe lives in <a class="reference internal" href="customize.html#delete-soft-delete-instead-of-removing-the-row"><span class="std std-ref">Customizing
+still runs the commit bracket. Pair this with a scope clause that hides deleted rows. The full recipe is in <a class="reference internal" href="customize.html#delete-soft-delete-instead-of-removing-the-row"><span class="std std-ref">Customizing
 RestView</span></a>. The
 reusable mixin version is in <a class="reference internal" href="howto_compose_views_with_mixins.html"><span class="std std-doc">Compose Views with
 Mixins</span></a>.</p>
@@ -662,7 +662,7 @@ handle_delete  →  get_one(id)
 <p>The write handlers call two transaction hooks, which are the override points at this tier:</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.before_action_commit" title="fastapi_restly.views.RestView.before_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_action_commit(action,</span> <span class="pre">new,</span> <span class="pre">old=None)</span></code></a> runs an in-transaction side effect (an outbox row, an audit row) that commits atomically with the write.</p></li>
-<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_action_commit" title="fastapi_restly.views.RestView.after_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_action_commit(action,</span> <span class="pre">new,</span> <span class="pre">old=None)</span></code></a> runs a post-commit side effect (an email, a webhook, a cache invalidation) only after the write is durable.</p></li>
+<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_action_commit" title="fastapi_restly.views.RestView.after_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_action_commit(action,</span> <span class="pre">new,</span> <span class="pre">old=None)</span></code></a> runs a post-commit side effect (an email, a webhook, a cache invalidation) only after the write is durable. An exception there cannot undo the write; <a class="reference internal" href="customize.html#when-after-action-commit-raises"><span class="std std-ref">When <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> raises</span></a> shows how to handle one.</p></li>
 </ul>
 <p>Both receive <code class="docutils literal notranslate"><span class="pre">old</span></code>, the pre-mutation snapshot produced by <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.snapshot" title="fastapi_restly.views.BaseRestView.snapshot"><code class="xref py py-meth docutils literal notranslate"><span class="pre">snapshot(obj)</span></code></a>, so you can fire only on a real change:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">after_action_commit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">new</span><span class="p">,</span> <span class="n">old</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -707,7 +707,7 @@ update  →  update_object(obj, schema_obj)  # apply payload (no flush)
 delete  →  removes the row + flush         # no utility: override delete itself for a soft delete
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> and <code class="docutils literal notranslate"><span class="pre">update_object</span></code> do not flush. <code class="docutils literal notranslate"><span class="pre">save_object</span></code> flushes, refreshes, and eager-loads the relationships the response schema names, but does <em>not</em> commit. The same operations are available as free functions for services and workers; the free <code class="docutils literal notranslate"><span class="pre">save_object</span></code> has no view to read a schema from, so it flushes and refreshes only.</p>
+<p><code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> and <code class="docutils literal notranslate"><span class="pre">update_object</span></code> do not flush. <code class="docutils literal notranslate"><span class="pre">save_object</span></code> flushes, refreshes, and eager-loads the relationships the view’s schema names, but does <em>not</em> commit. The same operations are available as free functions for services and workers; the free <code class="docutils literal notranslate"><span class="pre">save_object</span></code> has no view to read a schema from, so it flushes and refreshes only.</p>
 </section>
 <section id="custom-routes">
 <h2>Custom routes<a class="headerlink" href="#custom-routes" title="Link to this heading">#</a></h2>
@@ -720,7 +720,7 @@ delete  →  removes the row + flush         # no utility: override delete itsel
 <span class="k">class</span><span class="w"> </span><span class="nc">PostView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/posts&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Post</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">PostRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">PostSchema</span>
 
     <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/summary&quot;</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">summary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
@@ -749,7 +749,7 @@ delete  →  removes the row + flush         # no utility: override delete itsel
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">post</span><span class="p">)</span>
 </pre></div>
 </div>
-<p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response" title="fastapi_restly.views.BaseRestView.to_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">self.to_response(post)</span></code></a> serializes through the view’s response schema, the
+<p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response" title="fastapi_restly.views.BaseRestView.to_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">self.to_response(post)</span></code></a> serializes through the view’s schema, the
 same way the inherited CRUD endpoint methods do.</p>
 <p>If a custom action is just a create or update under another URL, call <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_create" title="fastapi_restly.views.RestView.handle_create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_create</span></code></a> / <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update</span></code></a>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/repost&quot;</span><span class="p">)</span>
@@ -763,7 +763,7 @@ same way the inherited CRUD endpoint methods do.</p>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_create</span><span class="p">(</span><span class="n">payload</span><span class="p">))</span>
 </pre></div>
 </div>
-<p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a> is the view’s create schema, generated from <code class="docutils literal notranslate"><span class="pre">PostRead</span></code> when the view declares none, so the derived payload is validated like a <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code> body. <code class="docutils literal notranslate"><span class="pre">handle_create</span></code> runs authorization, your <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a> override, and the commit bracket.</p>
+<p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a> is the view’s create schema, generated from <code class="docutils literal notranslate"><span class="pre">PostSchema</span></code> when the view declares none, so the derived payload is validated like a <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code> body. <code class="docutils literal notranslate"><span class="pre">handle_create</span></code> runs authorization, your <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a> override, and the commit bracket.</p>
 </section>
 </section>
 <section id="database-conflict-responses">
@@ -799,14 +799,14 @@ envelopes and the opt-out are covered in
 <span class="k">class</span><span class="w"> </span><span class="nc">PostView</span><span class="p">(</span><span class="n">AuthoredBase</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/posts&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Post</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">PostRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">PostSchema</span>
 
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">CommentView</span><span class="p">(</span><span class="n">AuthoredBase</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/comments&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Comment</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">CommentRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">CommentSchema</span>
 </pre></div>
 </div>
 <p>FastAPI injects <code class="docutils literal notranslate"><span class="pre">self.current_user</span></code> on every subclass method. Register only concrete subclasses, not the base.</p>
@@ -818,7 +818,7 @@ envelopes and the opt-out are covered in
 <span class="k">class</span><span class="w"> </span><span class="nc">PostView</span><span class="p">(</span><span class="n">AuthoredBase</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/posts&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Post</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">PostRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">PostSchema</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
         <span class="c1"># PostView-specific logic before the base class runs</span>
@@ -839,7 +839,7 @@ envelopes and the opt-out are covered in
 <span class="k">class</span><span class="w"> </span><span class="nc">PostView</span><span class="p">(</span><span class="n">ProtectedBase</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/posts&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Post</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">PostRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">PostSchema</span>
 </pre></div>
 </div>
 <p>Every route on <code class="docutils literal notranslate"><span class="pre">/posts</span></code> now runs <code class="docutils literal notranslate"><span class="pre">require_auth</span></code> before the endpoint function.</p>
@@ -903,13 +903,13 @@ authentication so the file runs as shown:</p>
 
 <span class="c1"># --- Schemas ---</span>
 
-<span class="k">class</span><span class="w"> </span><span class="nc">PostRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PostSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">published</span><span class="p">:</span> <span class="nb">bool</span>
 
 
-<span class="k">class</span><span class="w"> </span><span class="nc">CommentRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CommentSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">post_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">MustExist</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Post</span><span class="p">]</span>
 
@@ -935,7 +935,7 @@ authentication so the file runs as shown:</p>
 <span class="k">class</span><span class="w"> </span><span class="nc">PostView</span><span class="p">(</span><span class="n">AuthoredBase</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/posts&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Post</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">PostRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">PostSchema</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">published</span><span class="p">:</span>
@@ -961,7 +961,7 @@ authentication so the file runs as shown:</p>
 <span class="k">class</span><span class="w"> </span><span class="nc">CommentView</span><span class="p">(</span><span class="n">AuthoredBase</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/comments&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Comment</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">CommentRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">CommentSchema</span>
 </pre></div>
 </div>
 </section>

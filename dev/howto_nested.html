@@ -566,11 +566,11 @@ view when the nested URL is part of your API.</p>
     <span class="n">project_id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">sa</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;project.id&quot;</span><span class="p">),</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
 
-<span class="k">class</span><span class="w"> </span><span class="nc">ProjectRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ProjectSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
 
 
-<span class="k">class</span><span class="w"> </span><span class="nc">TaskRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TaskSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">project_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
 
@@ -587,7 +587,7 @@ view when the nested URL is part of your API.</p>
 <span class="k">class</span><span class="w"> </span><span class="nc">ProjectView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/projects&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Project</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">ProjectRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ProjectSchema</span>
     <span class="n">scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span><span class="n">Project</span><span class="o">.</span><span class="n">archived</span><span class="o">.</span><span class="n">is_</span><span class="p">(</span><span class="kc">False</span><span class="p">))</span>
 
 
@@ -606,7 +606,7 @@ view when the nested URL is part of your API.</p>
 <span class="k">class</span><span class="w"> </span><span class="nc">ProjectTaskView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/projects/</span><span class="si">{project_id}</span><span class="s2">/tasks&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Task</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">TaskRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">TaskSchema</span>
     <span class="n">dependencies</span> <span class="o">=</span> <span class="p">[</span><span class="n">Parent</span><span class="o">.</span><span class="n">depends</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">project_from_path</span><span class="p">)]</span>
     <span class="n">scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">all_of</span><span class="p">(</span>
         <span class="n">fr</span><span class="o">.</span><span class="n">resolve_scope</span><span class="p">(</span><span class="n">Task</span><span class="p">),</span>
@@ -648,7 +648,7 @@ GET    /projects/x/tasks               422, x is not an integer
 </section>
 <section id="create-a-child">
 <span id="nested-create"></span><h2>Create a child<a class="headerlink" href="#create-a-child" title="Link to this heading">#</a></h2>
-<p>The project id comes from the path, not from the request body. <code class="docutils literal notranslate"><span class="pre">TaskRead</span></code>
+<p>The project id comes from the path, not from the request body. <code class="docutils literal notranslate"><span class="pre">TaskSchema</span></code>
 marks <code class="docutils literal notranslate"><span class="pre">project_id</span></code> as <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code></a>,
 so the generated create and update schemas leave it out. The <code class="docutils literal notranslate"><span class="pre">create</span></code>
 override sets it from <code class="docutils literal notranslate"><span class="pre">Parent</span></code> after
@@ -658,7 +658,7 @@ builds the task.</p>
 from the request body, which has no <code class="docutils literal notranslate"><span class="pre">project_id</span></code>. Without <code class="docutils literal notranslate"><span class="pre">init=False</span></code> the
 model requires it there, and the create answers <code class="docutils literal notranslate"><span class="pre">500</span></code>.</p>
 <p>Keep the parent id out of every write schema of the nested view. If
-<code class="docutils literal notranslate"><span class="pre">TaskRead</span></code> declared a writable <code class="docutils literal notranslate"><span class="pre">project_id</span></code>, the generated update schema would
+<code class="docutils literal notranslate"><span class="pre">TaskSchema</span></code> declared a writable <code class="docutils literal notranslate"><span class="pre">project_id</span></code>, the generated update schema would
 include it. An <a class="reference internal" href="howto_custom_schema.html#explicit-write-schemas"><span class="std std-ref">explicit write schema</span></a> writes every
 field it declares. Either way, a <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> could move the task to a project the
 URL never named, past the lookup.</p>
@@ -687,7 +687,7 @@ of its routes.</p>
 its segment to <code class="docutils literal notranslate"><span class="pre">prefix</span></code> and its lookup to <code class="docutils literal notranslate"><span class="pre">dependencies</span></code>. Both add up from
 base to subclass; see <a class="reference internal" href="howto_inheritance.html#prefix-concatenation"><span class="std std-ref">Concatenate URL prefixes</span></a>. This
 example serves tasks at <code class="docutils literal notranslate"><span class="pre">/companies/{company_id}/projects/{project_id}/tasks</span></code>.
-It is a separate app. It uses the imports, <code class="docutils literal notranslate"><span class="pre">app</span></code>, <code class="docutils literal notranslate"><span class="pre">Task</span></code> and <code class="docutils literal notranslate"><span class="pre">TaskRead</span></code> of the
+It is a separate app. It uses the imports, <code class="docutils literal notranslate"><span class="pre">app</span></code>, <code class="docutils literal notranslate"><span class="pre">Task</span></code> and <code class="docutils literal notranslate"><span class="pre">TaskSchema</span></code> of the
 first example, and its own <code class="docutils literal notranslate"><span class="pre">Project</span></code>, <code class="docutils literal notranslate"><span class="pre">Parent</span></code> and lookups:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
 
@@ -750,7 +750,7 @@ first example, and its own <code class="docutils literal notranslate"><span clas
 <span class="k">class</span><span class="w"> </span><span class="nc">ProjectTaskView</span><span class="p">(</span><span class="n">ProjectScoped</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/tasks&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Task</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">TaskRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">TaskSchema</span>
     <span class="n">scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">all_of</span><span class="p">(</span>
         <span class="n">fr</span><span class="o">.</span><span class="n">resolve_scope</span><span class="p">(</span><span class="n">Task</span><span class="p">),</span>
         <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span><span class="n">Task</span><span class="o">.</span><span class="n">project_id</span> <span class="o">==</span> <span class="n">Parent</span><span class="o">.</span><span class="n">project_id</span><span class="p">),</span>
@@ -796,10 +796,10 @@ when you include the view.</p></li>
 such as another user’s tasks, still show under the nested URL. To hide
 them there too, use <code class="docutils literal notranslate"><span class="pre">fr.resolve_scope(TaskView)</span></code> instead of
 <code class="docutils literal notranslate"><span class="pre">fr.resolve_scope(Task)</span></code> in the scope of <code class="docutils literal notranslate"><span class="pre">ProjectTaskView</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">TaskView</span></code> cannot create tasks with <code class="docutils literal notranslate"><span class="pre">TaskRead</span></code>, because <code class="docutils literal notranslate"><span class="pre">project_id</span></code> is
+<li><p><code class="docutils literal notranslate"><span class="pre">TaskView</span></code> cannot create tasks with <code class="docutils literal notranslate"><span class="pre">TaskSchema</span></code>, because <code class="docutils literal notranslate"><span class="pre">project_id</span></code> is
 read-only there. Give <code class="docutils literal notranslate"><span class="pre">TaskView</span></code> its own <code class="docutils literal notranslate"><span class="pre">schema_create</span></code>, a
 <code class="docutils literal notranslate"><span class="pre">fr.BaseSchema</span></code> with <code class="docutils literal notranslate"><span class="pre">project_id:</span> <span class="pre">fr.MustExist[int,</span> <span class="pre">Project]</span></code>. Keep
-<code class="docutils literal notranslate"><span class="pre">project_id</span></code> read-only in <code class="docutils literal notranslate"><span class="pre">TaskRead</span></code>; see <a class="reference internal" href="#nested-create">Create a child</a>.</p></li>
+<code class="docutils literal notranslate"><span class="pre">project_id</span></code> read-only in <code class="docutils literal notranslate"><span class="pre">TaskSchema</span></code>; see <a class="reference internal" href="#nested-create">Create a child</a>.</p></li>
 </ul>
 </li>
 <li><p>OpenAPI marks a field that refers to a task, such as

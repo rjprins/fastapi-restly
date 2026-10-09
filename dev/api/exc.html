@@ -626,6 +626,24 @@ distinctly (e.g. into RFC 7807 problem+json).</p></li>
 </dd></dl>
 
 <dl class="py exception">
+<dt class="sig sig-object py" id="fastapi_restly.exc.RestlyDuplicateSchemaNameWarning">
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.exc.</span></span><span class="sig-name descname"><span class="pre">RestlyDuplicateSchemaNameWarning</span></span><a class="headerlink" href="#fastapi_restly.exc.RestlyDuplicateSchemaNameWarning" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#UserWarning" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">UserWarning</span></code></a></p>
+<p>Emitted when more than one class in the OpenAPI spec has the same name.</p>
+<p>OpenAPI keeps all classes in one list, by name. So pydantic shows the
+classes under long names that can change, such as
+<code class="docutils literal notranslate"><span class="pre">app__tasks__views__TaskCreate</span></code>, and generated clients use these names
+as type names. The warning names the classes and the views that use them.</p>
+<p>Restly checks the spec each time the app builds it. It knows the app when
+you pass it to <a class="reference internal" href="db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">configure()</span></code></a> or
+<a class="reference internal" href="testing.html#fastapi_restly.testing.configure_tests" title="fastapi_restly.testing.configure_tests"><code class="xref py py-func docutils literal notranslate"><span class="pre">configure_tests()</span></code></a>, or when you include a
+view on the app itself. Then the check also covers the views that you
+include on an <code class="docutils literal notranslate"><span class="pre">APIRouter</span></code>. There is no setting that turns the check
+off. A project test can turn the warning into an error with
+<code class="docutils literal notranslate"><span class="pre">warnings.simplefilter(&quot;error&quot;,</span> <span class="pre">RestlyDuplicateSchemaNameWarning)</span></code>.</p>
+</dd></dl>
+
+<dl class="py exception">
 <dt class="sig sig-object py" id="fastapi_restly.exc.RestlyError">
 <em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.exc.</span></span><span class="sig-name descname"><span class="pre">RestlyError</span></span><a class="headerlink" href="#fastapi_restly.exc.RestlyError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#Exception" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></a></p>
@@ -754,6 +772,7 @@ and how to change the error envelope app-wide.</p>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.RestlyConfigurationError"><code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.RestlyDuplicateSchemaNameWarning"><code class="docutils literal notranslate"><span class="pre">RestlyDuplicateSchemaNameWarning</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.RestlyError"><code class="docutils literal notranslate"><span class="pre">RestlyError</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.RestlyHTTPError"><code class="docutils literal notranslate"><span class="pre">RestlyHTTPError</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.RestlyHTTPError.default_detail"><code class="docutils literal notranslate"><span class="pre">RestlyHTTPError.default_detail</span></code></a></li>

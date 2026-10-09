@@ -14,7 +14,7 @@ filter by its foreign key; the filter parameter is generated automatically for
 {class}`MustExist <fastapi_restly.schemas.MustExist>` fields:
 
 ```python
-class TaskRead(fr.IDSchema):
+class TaskSchema(fr.IDSchema):
     title: str
     project_id: fr.MustExist[int, Project]
 
@@ -23,7 +23,7 @@ class TaskRead(fr.IDSchema):
 class TaskView(fr.AsyncRestView):
     prefix = "/tasks"
     model = Task
-    schema = TaskRead
+    schema = TaskSchema
 ```
 
 Clients then scope the list through the query string:
@@ -62,11 +62,11 @@ class UserSummary(fr.IDSchema):
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    schema = UserRead  # detail routes keep the full schema
+    schema = UserSchema  # detail routes keep the full schema
 
     @fr.get("/", response_model=list[UserSummary])
-    async def get_many_endpoint(self, query_params):
-        result = await self.handle_get_many(query_params)
+    async def get_many_endpoint(self, list_params):
+        result = await self.handle_get_many(list_params)
         return [
             UserSummary.model_validate(u, from_attributes=True)
             for u in result.objects
@@ -90,13 +90,13 @@ is_deleted = fr.where_clause(Item.deleted_at.is_not(None))
 class ItemView(fr.AsyncRestView):
     prefix = "/items"
     model = Item
-    schema = ItemRead
+    schema = ItemSchema
     scope = fr.none_of(is_deleted)
 
     async def delete(self, obj):
         obj.deleted_at = datetime.now(timezone.utc)
 
-    @fr.post("/{id}/restore", response_model=ItemRead, status_code=200)
+    @fr.post("/{id}/restore", response_model=ItemSchema, status_code=200)
     async def restore(self, id: int):
         # Reads through the complement of the view scope: only a deleted
         # row can be restored, and the bypass is visible on purpose.
@@ -105,6 +105,14 @@ class ItemView(fr.AsyncRestView):
             obj.deleted_at = None
         return self.to_response(obj)
 ```
+
+OpenAPI shows `ItemSchema` for the restore route, next to the `ItemResponse`
+of the CRUD routes; see [Generated Class Names](#generated-class-names).
+
+`scope=` replaces the view scope for that read; it does not narrow it. Keep
+rules that a restore must never skip, such as tenant isolation, at the
+session level ([Tenant scoping](#tenant-scoping)). [A route names its own
+scope](scopes.md#a-route-names-its-own-scope) owns the details.
 
 Soft delete itself is covered as a one-off override in
 [Customizing RestView](customize.md#delete-soft-delete-instead-of-removing-the-row)
@@ -140,7 +148,8 @@ class PaymentWebhookView(fr.View):
 
 For *outbound* webhooks (calling someone else after a write), use the
 {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>` hook
-instead. See [Customizing RestView](customize.md).
+instead, or an outbox row for a webhook that must arrive. See
+[When `after_action_commit` raises](customize.md#when-after_action_commit-raises).
 
 The decision between `View` and `RestView` is covered in
 [When to use `View` directly](class_based_views.md#when-to-use-view-directly).

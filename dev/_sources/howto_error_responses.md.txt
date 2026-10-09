@@ -41,9 +41,10 @@ The remaining names in `fr.exc` are not HTTP errors:
 {class}`fr.exc.RestlyError <fastapi_restly.exc.RestlyError>` and
 {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
 are setup-time framework errors, and the warnings
-{class}`RestlyUncommittedChangesWarning <fastapi_restly.exc.RestlyUncommittedChangesWarning>` and
-{class}`RestlyMisuseWarning <fastapi_restly.exc.RestlyMisuseWarning>` also
-live there.
+{class}`RestlyUncommittedChangesWarning <fastapi_restly.exc.RestlyUncommittedChangesWarning>`,
+{class}`RestlyMisuseWarning <fastapi_restly.exc.RestlyMisuseWarning>` and
+{class}`RestlyDuplicateSchemaNameWarning <fastapi_restly.exc.RestlyDuplicateSchemaNameWarning>`
+also live there.
 
 ## 422 vs 400 on list endpoints
 

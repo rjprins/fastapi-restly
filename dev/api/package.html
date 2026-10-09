@@ -603,14 +603,20 @@ through <code class="docutils literal notranslate"><span class="pre">fr</span></
 <tr class="row-even"><td><p><a class="reference internal" href="views.html#fastapi_restly.views.include_view" title="fastapi_restly.views.include_view"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.include_view</span></code></a></p></td>
 <td><p>Register a view’s endpoint methods on an app or router.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="views.html#fastapi_restly.views.ListingResult" title="fastapi_restly.views.ListingResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ListingResult</span></code></a></p></td>
-<td><p>Listing objects, total count, and query parameters before response serialization.</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="views.html#fastapi_restly.views.ListResult" title="fastapi_restly.views.ListResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ListResult</span></code></a></p></td>
+<td><p>The objects, total count, and list params of a list, before response serialization.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist</span></code></a></p></td>
 <td><p>Scalar foreign-key annotation that checks the referenced row exists.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="clauses.html#fastapi_restly.clauses.none_of" title="fastapi_restly.clauses.none_of"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.none_of</span></code></a></p></td>
 <td><p>Negate a group of query clauses.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="views.html#fastapi_restly.views.NoPagination" title="fastapi_restly.views.NoPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.NoPagination</span></code></a></p></td>
+<td><p>Settings for a view’s <code class="docutils literal notranslate"><span class="pre">pagination</span></code> that returns every row, with a custom envelope.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="views.html#fastapi_restly.views.NumberedPagination" title="fastapi_restly.views.NumberedPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.NumberedPagination</span></code></a></p></td>
+<td><p>Page-number pagination settings for a view’s <code class="docutils literal notranslate"><span class="pre">pagination</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="db.html#fastapi_restly.db.open_async_session" title="fastapi_restly.db.open_async_session"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.open_async_session</span></code></a></p></td>
 <td><p>Open an async session outside request handling.</p></td>
@@ -640,7 +646,7 @@ through <code class="docutils literal notranslate"><span class="pre">fr</span></
 <td><p>Resolve the read scope for a view or model.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="views.html#fastapi_restly.views.ResponseShape" title="fastapi_restly.views.ResponseShape"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ResponseShape</span></code></a></p></td>
-<td><p>Response forms for one object, a listing, or an empty body.</p></td>
+<td><p>Response forms for one object, a list, or an empty body.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.RestView</span></code></a></p></td>
 <td><p>CRUD view using a synchronous SQLAlchemy session.</p></td>

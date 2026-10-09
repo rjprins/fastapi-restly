@@ -26,7 +26,7 @@ for what embedding supports.
 | {class}`author_id: fr.MustExist[int, User] <fastapi_restly.schemas.MustExist>` | `1` | scalar foreign key |
 | {class}`author: fr.IDRef[User] <fastapi_restly.schemas.IDRef>` | `1` | resolves to `User` |
 | {class}`author: fr.IDSchema[User] <fastapi_restly.schemas.IDSchema>` | `{"id": 1}` | resolves to `User` |
-| `author: fr.ReadOnly[UserRead]` | the full object | read-only relationship embed |
+| `author: fr.ReadOnly[UserSchema]` | the full object | read-only relationship embed |
 | `author_id: int` | `1` | scalar foreign key |
 
 The three checked forms (`MustExist`, `IDRef`, `IDSchema`) return `404` when
@@ -81,11 +81,11 @@ With the models in place, declare the foreign-key column on the schema as a
 checked reference:
 
 ```python
-class UserRead(fr.IDSchema):
+class UserSchema(fr.IDSchema):
     name: str
 
 
-class ArticleRead(fr.IDSchema):
+class ArticleSchema(fr.IDSchema):
     title: str
     author_id: fr.MustExist[int, User]
 ```
@@ -121,7 +121,7 @@ the schema:
 class ArticleView(fr.AsyncRestView):
     prefix = "/articles"
     model = Article
-    schema = ArticleRead
+    schema = ArticleSchema
 ```
 
 On create and update, Restly looks up the `User` with `id=1`. If it does not
@@ -183,7 +183,7 @@ Restly sets the FK column and leaves the relationship to you.
 A to-many reference serializes as a plain id array with {class}`list[fr.IDRef[Model]] <fastapi_restly.schemas.IDRef>`:
 
 ```python
-class OrderRead(fr.IDSchema):
+class OrderSchema(fr.IDSchema):
     customer_name: str
     products: list[fr.IDRef[Product]]  # serializes as [1, 2, 3]
 ```
@@ -236,7 +236,7 @@ Some clients model relationships as objects. For that shape, annotate the
 relationship field with {class}`fr.IDSchema[Model] <fastapi_restly.schemas.IDSchema>`:
 
 ```python
-class ArticleRead(fr.IDSchema):
+class ArticleSchema(fr.IDSchema):
     title: str
     author: fr.IDSchema[User]
 ```
@@ -345,7 +345,7 @@ skips validation. For a
 from fastapi_restly.objects import async_make_new_object
 
 
-link_schema = TaskLabelRead.model_construct(
+link_schema = TaskLabelSchema.model_construct(
     task_id=request.task_id,
     label_id=label.id,
 )
@@ -366,24 +366,24 @@ If those fields were {class}`IDRef <fastapi_restly.schemas.IDRef>` /
 instead, wrap them explicitly before calling the object helper:
 
 ```python
-link_schema = TaskLabelRead.model_construct(
+link_schema = TaskLabelSchema.model_construct(
     task=fr.IDRef[Task](id=request.task_id),
     label=fr.IDRef[Label](id=label.id),
 )
 ```
 
-If you instead use {class}`IDSchema[Model] <fastapi_restly.schemas.IDSchema>` as a nested relationship-object field in a custom response schema, serialize the ORM object through {meth}`self.to_response_schema(obj) <fastapi_restly.views.BaseRestView.to_response_schema>` before returning it:
+If you instead use {class}`IDSchema[Model] <fastapi_restly.schemas.IDSchema>` as a nested relationship-object field in a custom response schema, serialize the ORM object through {meth}`self.to_single_response(obj) <fastapi_restly.views.BaseRestView.to_single_response>` before returning it:
 
 ```python
-class TaskLabelNestedRead(fr.IDSchema):
+class TaskLabelNestedSchema(fr.IDSchema):
     task: fr.IDSchema[Task]
     label: fr.IDSchema[Label]
 
 
-@fr.post("/attach", response_model=TaskLabelNestedRead, status_code=201)
+@fr.post("/attach", response_model=TaskLabelNestedSchema, status_code=201)
 async def attach(self, request: AttachRequest):
     obj = await create_task_label(...)
-    return self.to_response_schema(obj)
+    return self.to_single_response(obj)
 ```
 
 The raw ORM object usually has scalar FK columns, while a nested schema expects
@@ -423,7 +423,7 @@ requested id (and a list field is a list of references):
 class ArticleView(fr.AsyncRestView):
     prefix = "/articles"
     model = Article
-    schema = ArticleRead
+    schema = ArticleSchema
 
     async def authorize(self, action, obj=None, data=None):
         if data is not None and data.author_id is not None:

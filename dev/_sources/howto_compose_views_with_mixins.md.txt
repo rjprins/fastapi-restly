@@ -57,7 +57,7 @@ def hash_and_set_password(user: User, raw_password: str) -> None:
 
 class UserView(fr.AsyncRestView):
     model = User
-    schema = UserRead
+    schema = UserSchema
 
     async def create(self, schema_obj):
         user = await self.make_new_object(schema_obj)
@@ -298,7 +298,7 @@ class ProjectClauses(fr.ClauseNamespace):
 class ProjectView(SoftDeleteMixin, fr.AsyncRestView):
     prefix = "/projects"
     model = Project
-    schema = ProjectRead
+    schema = ProjectSchema
     # no scope declared: reads apply ProjectClauses.default_scope
 ```
 
@@ -306,7 +306,7 @@ class ProjectView(SoftDeleteMixin, fr.AsyncRestView):
 {meth}`count <fastapi_restly.views.RestView.count>`, and
 {meth}`get_one <fastapi_restly.views.RestView.get_one>` all apply the
 default scope. The session listener also applies the tenant predicate to those
-reads and to every reference check. Together they cover listings, totals,
+reads and to every reference check. Together they cover lists, totals,
 single-row reads, updates, and deletes. The columns stamp themselves on every
 write.
 

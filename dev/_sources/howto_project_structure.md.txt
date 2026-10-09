@@ -37,9 +37,7 @@ A single module is the right shape for a first resource.
 file, and nothing is gained by splitting it while it stays that size.
 
 Split when the second or third resource arrives, or when one resource grows
-explicit schemas and a handful of overrides. The signal is scrolling: when you
-navigate the file by searching rather than by reading, it holds more than one
-subject.
+explicit schemas and a handful of overrides.
 
 ## Organize by subject, then by type
 
@@ -176,13 +174,13 @@ view wants the same behavior, which is why a generated project does not have one
 from ..views import AuthenticatedView, SoftDeleteMixin
 
 from .models import User
-from .schemas import UserRead
+from .schemas import UserSchema
 
 
 class UserView(SoftDeleteMixin, AuthenticatedView):
     prefix = "/users"
     model = User
-    schema = UserRead
+    schema = UserSchema
 ```
 
 [Share Behaviour with Base Views](howto_inheritance.md) covers the base class,

@@ -672,7 +672,9 @@ application from explicit test settings, or, for an application that
 configures at module import time, select the test database before importing
 it. Database configuration performed afterwards is rejected so schema setup,
 cleanup and requests cannot disagree.</p>
-<p><code class="docutils literal notranslate"><span class="pre">app</span></code> becomes what the <code class="docutils literal notranslate"><span class="pre">restly_app</span></code> fixture returns. The schema is
+<p><code class="docutils literal notranslate"><span class="pre">app</span></code> becomes what the <code class="docutils literal notranslate"><span class="pre">restly_app</span></code> fixture returns, and Restly checks
+its OpenAPI spec for two classes with the same name (see
+<a class="reference internal" href="exc.html#fastapi_restly.exc.RestlyDuplicateSchemaNameWarning" title="fastapi_restly.exc.RestlyDuplicateSchemaNameWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyDuplicateSchemaNameWarning</span></code></a>). The schema is
 optionally built once before tests start, and every test gets a clean
 database by the strategy <code class="docutils literal notranslate"><span class="pre">db_cleanup</span></code> names. Client-only tests are covered
 too.</p>

@@ -37,11 +37,11 @@ class Task(fr.IDBase):
     project_id: Mapped[int] = mapped_column(sa.ForeignKey("project.id"), init=False)
 
 
-class ProjectRead(fr.IDSchema):
+class ProjectSchema(fr.IDSchema):
     name: str
 
 
-class TaskRead(fr.IDSchema):
+class TaskSchema(fr.IDSchema):
     title: str
     project_id: fr.ReadOnly[int]
 
@@ -58,7 +58,7 @@ fr.configure(app, async_database_url="sqlite+aiosqlite:///app.db")
 class ProjectView(fr.AsyncRestView):
     prefix = "/projects"
     model = Project
-    schema = ProjectRead
+    schema = ProjectSchema
     scope = fr.where_clause(Project.archived.is_(False))
 
 
@@ -77,7 +77,7 @@ async def project_from_path(project_id: int, session: fr.AsyncSessionDep) -> int
 class ProjectTaskView(fr.AsyncRestView):
     prefix = "/projects/{project_id}/tasks"
     model = Task
-    schema = TaskRead
+    schema = TaskSchema
     dependencies = [Parent.depends(project_id=project_from_path)]
     scope = fr.all_of(
         fr.resolve_scope(Task),
@@ -121,7 +121,7 @@ GET    /projects/x/tasks               422, x is not an integer
 (nested-create)=
 ## Create a child
 
-The project id comes from the path, not from the request body. `TaskRead`
+The project id comes from the path, not from the request body. `TaskSchema`
 marks `project_id` as {data}`fr.ReadOnly <fastapi_restly.schemas.ReadOnly>`,
 so the generated create and update schemas leave it out. The `create`
 override sets it from `Parent` after
@@ -133,7 +133,7 @@ from the request body, which has no `project_id`. Without `init=False` the
 model requires it there, and the create answers `500`.
 
 Keep the parent id out of every write schema of the nested view. If
-`TaskRead` declared a writable `project_id`, the generated update schema would
+`TaskSchema` declared a writable `project_id`, the generated update schema would
 include it. An [explicit write schema](#explicit-write-schemas) writes every
 field it declares. Either way, a `PATCH` could move the task to a project the
 URL never named, past the lookup.
@@ -167,7 +167,7 @@ For more levels, build a chain of base views, one per level. Each base adds
 its segment to `prefix` and its lookup to `dependencies`. Both add up from
 base to subclass; see [Concatenate URL prefixes](#prefix-concatenation). This
 example serves tasks at `/companies/{company_id}/projects/{project_id}/tasks`.
-It is a separate app. It uses the imports, `app`, `Task` and `TaskRead` of the
+It is a separate app. It uses the imports, `app`, `Task` and `TaskSchema` of the
 first example, and its own `Project`, `Parent` and lookups:
 
 ```python
@@ -232,7 +232,7 @@ class ProjectScoped(CompanyScoped):
 class ProjectTaskView(ProjectScoped):
     prefix = "/tasks"
     model = Task
-    schema = TaskRead
+    schema = TaskSchema
     scope = fr.all_of(
         fr.resolve_scope(Task),
         fr.where_clause(Task.project_id == Parent.project_id),
@@ -279,10 +279,10 @@ segments in reverse order: `/projects/{project_id}/companies/{company_id}/tasks`
     such as another user's tasks, still show under the nested URL. To hide
     them there too, use `fr.resolve_scope(TaskView)` instead of
     `fr.resolve_scope(Task)` in the scope of `ProjectTaskView`.
-  - `TaskView` cannot create tasks with `TaskRead`, because `project_id` is
+  - `TaskView` cannot create tasks with `TaskSchema`, because `project_id` is
     read-only there. Give `TaskView` its own `schema_create`, a
     `fr.BaseSchema` with `project_id: fr.MustExist[int, Project]`. Keep
-    `project_id` read-only in `TaskRead`; see [Create a child](#nested-create).
+    `project_id` read-only in `TaskSchema`; see [Create a child](#nested-create).
 - OpenAPI marks a field that refers to a task, such as
   `fr.MustExist[int, Task]`, with `x-resource-ref`. Its value comes from the
   prefix of the last view of `Task` that you include. Include the flat view

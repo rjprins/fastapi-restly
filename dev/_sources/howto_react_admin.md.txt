@@ -89,7 +89,8 @@ The list endpoint reads react-admin's three JSON-encoded query parameters:
 
 Those three are the whole contract. Any other query key is rejected with a
 422, so a typo cannot widen the result set unnoticed; the standard dialect's
-`page`, `page_size` and per-field filters are unknown keys here too. Declare
+`page`, `page_size` and per-field filters are unknown keys here too. A key
+that a dependency declares, or an `APIKeyQuery` key, is accepted. Declare
 `extra_query_params` on the view for a key it reads itself.
 
 The response body is a plain JSON array, and the `Content-Range` header
@@ -106,10 +107,10 @@ are served directly, with no redirect involved.
 
 The `id` array form of `filter` (`{"id": [1, 2, 3]}`) is used by react-admin
 for `getMany` calls. It translates to `WHERE id IN (1, 2, 3)`. Other filter
-values match by exact equality, and only fields exposed on the response
+values match by exact equality, and only fields exposed on the view's
 schema are accepted: unknown fields, including react-admin's full-text `q`
 search parameter, are rejected with a 400. Substring or full-text search
-requires overriding the view's `apply_query_params`.
+requires overriding the view's `apply_list_params`.
 
 ### Other operations
 
@@ -227,20 +228,25 @@ class can share them across views.
 
 When the frontend does not send a `range` query parameter, the react-admin
 views return the first 25 rows, overriding the framework-wide
-{attr}`default_page_size <fastapi_restly.views.BaseRestView.default_page_size>` default of 50. Set the
-attribute on the view to choose a different value:
+{attr}`default_page_size <fastapi_restly.views.NumberedPagination.default_page_size>`
+of 50. Set it in the view's
+{attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` to choose a
+different value:
 
 ```python
 @fr.include_view(app)
 class ProductView(fr.AsyncReactAdminView):
     prefix = "/products"
     model = Product
-    default_page_size = 50
+    pagination = fr.NumberedPagination(default_page_size=50)
 ```
 
-React-admin views cannot disable pagination with `paginated = False`. Their
-`Content-Range` response header requires the total count; Restly therefore
-rejects that setting at registration.
+A react-admin view uses two pagination settings: `default_page_size`, and
+`max_page_size`, the most rows one `range` may ask for. A wider `range`, or
+one with a negative start or an end before its start, answers `400`. The view
+pages with `range` and reports the total in the `Content-Range` header, so
+other settings, such as parameter names or an envelope, fail at registration.
+So does `pagination = None`: the header requires the total count.
 
 ### Change the Content-Range unit
 
@@ -264,7 +270,7 @@ it, following the pattern in
 
 ```python
 class ReactAdminBase(fr.AsyncReactAdminView):
-    default_page_size = 100
+    pagination = fr.NumberedPagination(default_page_size=100)
 
     def get_react_admin_range_unit(self) -> str:
         return "items"
@@ -286,8 +292,9 @@ class CustomerView(ReactAdminBase):
 [route replacement](customize.md#replace-an-endpoint-method-to-change-the-http-contract)
 pattern. It replaces {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` to parse the
 react-admin query string, then delegates to the standard {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>` /
-{meth}`get_many <fastapi_restly.views.RestView.get_many>` flow. The react-admin dialect itself lives in {meth}`apply_query_params <fastapi_restly.views.RestView.apply_query_params>`
-(JSON `sort` / `range` / `filter`) and `to_response(..., ResponseShape.LISTING)`
+{meth}`get_many <fastapi_restly.views.RestView.get_many>` flow. The react-admin dialect itself lives in {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
+(JSON `sort` / `range` / `filter`) and
+{meth}`to_list_response <fastapi_restly.views.BaseRestView.to_list_response>`
 (plain array body plus `Content-Range`).
 
 It also adds a `PUT /{id}` route that delegates to the standard {meth}`handle_update <fastapi_restly.views.RestView.handle_update>`

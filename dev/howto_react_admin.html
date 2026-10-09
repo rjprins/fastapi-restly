@@ -634,7 +634,8 @@ and returns responses the provider expects.</p>
 </div>
 <p>Those three are the whole contract. Any other query key is rejected with a
 422, so a typo cannot widen the result set unnoticed; the standard dialect’s
-<code class="docutils literal notranslate"><span class="pre">page</span></code>, <code class="docutils literal notranslate"><span class="pre">page_size</span></code> and per-field filters are unknown keys here too. Declare
+<code class="docutils literal notranslate"><span class="pre">page</span></code>, <code class="docutils literal notranslate"><span class="pre">page_size</span></code> and per-field filters are unknown keys here too. A key
+that a dependency declares, or an <code class="docutils literal notranslate"><span class="pre">APIKeyQuery</span></code> key, is accepted. Declare
 <code class="docutils literal notranslate"><span class="pre">extra_query_params</span></code> on the view for a key it reads itself.</p>
 <p>The response body is a plain JSON array, and the <code class="docutils literal notranslate"><span class="pre">Content-Range</span></code> header
 carries the total:</p>
@@ -647,10 +648,10 @@ collection routes both with and without the trailing slash, so these requests
 are served directly, with no redirect involved.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">id</span></code> array form of <code class="docutils literal notranslate"><span class="pre">filter</span></code> (<code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">[1,</span> <span class="pre">2,</span> <span class="pre">3]}</span></code>) is used by react-admin
 for <code class="docutils literal notranslate"><span class="pre">getMany</span></code> calls. It translates to <code class="docutils literal notranslate"><span class="pre">WHERE</span> <span class="pre">id</span> <span class="pre">IN</span> <span class="pre">(1,</span> <span class="pre">2,</span> <span class="pre">3)</span></code>. Other filter
-values match by exact equality, and only fields exposed on the response
+values match by exact equality, and only fields exposed on the view’s
 schema are accepted: unknown fields, including react-admin’s full-text <code class="docutils literal notranslate"><span class="pre">q</span></code>
 search parameter, are rejected with a 400. Substring or full-text search
-requires overriding the view’s <code class="docutils literal notranslate"><span class="pre">apply_query_params</span></code>.</p>
+requires overriding the view’s <code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code>.</p>
 </section>
 <section id="other-operations">
 <h3>Other operations<a class="headerlink" href="#other-operations" title="Link to this heading">#</a></h3>
@@ -788,18 +789,23 @@ class can share them across views.</p>
 <h3>Set the default page size<a class="headerlink" href="#set-the-default-page-size" title="Link to this heading">#</a></h3>
 <p>When the frontend does not send a <code class="docutils literal notranslate"><span class="pre">range</span></code> query parameter, the react-admin
 views return the first 25 rows, overriding the framework-wide
-<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.default_page_size" title="fastapi_restly.views.BaseRestView.default_page_size"><code class="xref py py-attr docutils literal notranslate"><span class="pre">default_page_size</span></code></a> default of 50. Set the
-attribute on the view to choose a different value:</p>
+<a class="reference internal" href="api/views.html#fastapi_restly.views.NumberedPagination.default_page_size" title="fastapi_restly.views.NumberedPagination.default_page_size"><code class="xref py py-attr docutils literal notranslate"><span class="pre">default_page_size</span></code></a>
+of 50. Set it in the view’s
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.pagination" title="fastapi_restly.views.BaseRestView.pagination"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pagination</span></code></a> to choose a
+different value:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ProductView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncReactAdminView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/products&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Product</span>
-    <span class="n">default_page_size</span> <span class="o">=</span> <span class="mi">50</span>
+    <span class="n">pagination</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">NumberedPagination</span><span class="p">(</span><span class="n">default_page_size</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>React-admin views cannot disable pagination with <code class="docutils literal notranslate"><span class="pre">paginated</span> <span class="pre">=</span> <span class="pre">False</span></code>. Their
-<code class="docutils literal notranslate"><span class="pre">Content-Range</span></code> response header requires the total count; Restly therefore
-rejects that setting at registration.</p>
+<p>A react-admin view uses two pagination settings: <code class="docutils literal notranslate"><span class="pre">default_page_size</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">max_page_size</span></code>, the most rows one <code class="docutils literal notranslate"><span class="pre">range</span></code> may ask for. A wider <code class="docutils literal notranslate"><span class="pre">range</span></code>, or
+one with a negative start or an end before its start, answers <code class="docutils literal notranslate"><span class="pre">400</span></code>. The view
+pages with <code class="docutils literal notranslate"><span class="pre">range</span></code> and reports the total in the <code class="docutils literal notranslate"><span class="pre">Content-Range</span></code> header, so
+other settings, such as parameter names or an envelope, fail at registration.
+So does <code class="docutils literal notranslate"><span class="pre">pagination</span> <span class="pre">=</span> <span class="pre">None</span></code>: the header requires the total count.</p>
 </section>
 <section id="change-the-content-range-unit">
 <h3>Change the Content-Range unit<a class="headerlink" href="#change-the-content-range-unit" title="Link to this heading">#</a></h3>
@@ -820,7 +826,7 @@ numbers), but if another consumer cares, override <code class="docutils literal 
 it, following the pattern in
 <a class="reference internal" href="howto_inheritance.html"><span class="std std-doc">Share Behaviour with Base Views</span></a>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ReactAdminBase</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncReactAdminView</span><span class="p">):</span>
-    <span class="n">default_page_size</span> <span class="o">=</span> <span class="mi">100</span>
+    <span class="n">pagination</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">NumberedPagination</span><span class="p">(</span><span class="n">default_page_size</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">get_react_admin_range_unit</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="k">return</span> <span class="s2">&quot;items&quot;</span>
@@ -844,8 +850,9 @@ it, following the pattern in
 <a class="reference internal" href="customize.html#replace-an-endpoint-method-to-change-the-http-contract"><span class="std std-ref">route replacement</span></a>
 pattern. It replaces <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many_endpoint" title="fastapi_restly.views.RestView.get_many_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many_endpoint</span></code></a> to parse the
 react-admin query string, then delegates to the standard <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_many" title="fastapi_restly.views.RestView.handle_get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_many</span></code></a> /
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a> flow. The react-admin dialect itself lives in <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_query_params" title="fastapi_restly.views.RestView.apply_query_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_query_params</span></code></a>
-(JSON <code class="docutils literal notranslate"><span class="pre">sort</span></code> / <code class="docutils literal notranslate"><span class="pre">range</span></code> / <code class="docutils literal notranslate"><span class="pre">filter</span></code>) and <code class="docutils literal notranslate"><span class="pre">to_response(...,</span> <span class="pre">ResponseShape.LISTING)</span></code>
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a> flow. The react-admin dialect itself lives in <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_list_params" title="fastapi_restly.views.RestView.apply_list_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_list_params</span></code></a>
+(JSON <code class="docutils literal notranslate"><span class="pre">sort</span></code> / <code class="docutils literal notranslate"><span class="pre">range</span></code> / <code class="docutils literal notranslate"><span class="pre">filter</span></code>) and
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_list_response" title="fastapi_restly.views.BaseRestView.to_list_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_list_response</span></code></a>
 (plain array body plus <code class="docutils literal notranslate"><span class="pre">Content-Range</span></code>).</p>
 <p>It also adds a <code class="docutils literal notranslate"><span class="pre">PUT</span> <span class="pre">/{id}</span></code> route that delegates to the standard <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update</span></code></a>
 handler. The endpoint methods for the other CRUD routes (<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code>, <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code>, <code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/{id}</span></code>, <code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/{id}</span></code>) and the write business-method tiers are

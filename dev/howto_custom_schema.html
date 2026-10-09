@@ -538,13 +538,13 @@
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>FastAPI-Restly uses <strong>schema</strong> for Pydantic request/response models and
-<strong>model</strong> for SQLAlchemy ORM models. A <code class="docutils literal notranslate"><span class="pre">User</span></code> model is the database object; a
-<code class="docutils literal notranslate"><span class="pre">UserRead</span></code> schema is the public API shape.</p>
+<strong>model</strong> for SQLAlchemy ORM models. A <code class="docutils literal notranslate"><span class="pre">User</span></code> model is the database object;
+<code class="docutils literal notranslate"><span class="pre">UserSchema</span></code>, the view’s schema, defines the public API.</p>
 </div>
 <p>Use explicit schemas when you need a stable public contract: aliases, hidden
 fields, computed read-only fields, or relationship IDs. If you omit <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a> on
 a view, Restly can
-<a class="reference internal" href="technical_details.html#id1"><span class="std std-ref">auto-generate one</span></a> from the
+<a class="reference internal" href="technical_details.html#id2"><span class="std std-ref">auto-generate one</span></a> from the
 SQLAlchemy model instead.</p>
 <p>To choose a schema tool, match your goal in the table below; each entry links
 to the section that covers it.</p>
@@ -576,13 +576,16 @@ to the section that covers it.</p>
 <tr class="row-even"><td><p>Relationship as a nested object</p></td>
 <td><p><a class="reference internal" href="#nested-relationship-objects"><code class="docutils literal notranslate"><span class="pre">IDSchema[Model]</span></code></a></p></td>
 </tr>
+<tr class="row-odd"><td><p>Clear type names in OpenAPI and generated clients</p></td>
+<td><p><a class="reference internal" href="#name-your-schemas">Name your schemas</a></p></td>
+</tr>
 </tbody>
 </table>
 </div>
 <section id="baseschema">
 <h2>BaseSchema<a class="headerlink" href="#baseschema" title="Link to this heading">#</a></h2>
 <p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.BaseSchema" title="fastapi_restly.schemas.BaseSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.BaseSchema</span></code></a> is Restly’s Pydantic base class. It enables Pydantic’s
-<code class="docutils literal notranslate"><span class="pre">from_attributes=True</span></code>, which lets response schemas validate SQLAlchemy ORM
+<code class="docutils literal notranslate"><span class="pre">from_attributes=True</span></code>, which lets a schema validate SQLAlchemy ORM
 objects directly.</p>
 <p>Behaviorally, it is equivalent to:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">BaseSchema</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
@@ -593,10 +596,10 @@ objects directly.</p>
 <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>/<code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> markers, described in
 <a class="reference internal" href="#readonly-and-writeonly">ReadOnly and WriteOnly</a>.)</p>
 <p>The inherited CRUD endpoint methods still serialize ORM objects through
-<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response_schema" title="fastapi_restly.views.BaseRestView.to_response_schema"><code class="xref py py-meth docutils literal notranslate"><span class="pre">self.to_response_schema(obj)</span></code></a>. That is where Restly applies response-specific
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_single_response" title="fastapi_restly.views.BaseRestView.to_single_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">self.to_single_response(obj)</span></code></a>. That is where Restly applies response-specific
 behavior such as <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> filtering and relationship-id normalization.</p>
 <p>Use <code class="docutils literal notranslate"><span class="pre">BaseSchema</span></code> when you want to declare every field yourself, including <code class="docutils literal notranslate"><span class="pre">id</span></code>:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">BaseSchema</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">BaseSchema</span><span class="p">):</span>
     <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
@@ -608,14 +611,14 @@ create/update payloads.</p>
 </section>
 <section id="idschema">
 <h2>IDSchema<a class="headerlink" href="#idschema" title="Link to this heading">#</a></h2>
-<p>Most response schemas inherit from <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDSchema</span></code></a>. It is essentially
+<p>The view’s schema usually inherits from <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDSchema</span></code></a>. It is essentially
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.BaseSchema" title="fastapi_restly.schemas.BaseSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseSchema</span></code></a> with a read-only <code class="docutils literal notranslate"><span class="pre">id</span></code> field added:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">IDSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">BaseSchema</span><span class="p">):</span>
     <span class="nb">id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span>
 </pre></div>
 </div>
 <p>That is why examples usually look like this:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
 </pre></div>
@@ -628,7 +631,7 @@ or different field metadata.</p>
 <h2>Timestamps<a class="headerlink" href="#timestamps" title="Link to this heading">#</a></h2>
 <p>Use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.TimestampsSchemaMixin" title="fastapi_restly.schemas.TimestampsSchemaMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.TimestampsSchemaMixin</span></code></a> when a schema should include read-only
 <code class="docutils literal notranslate"><span class="pre">created_at</span></code> and <code class="docutils literal notranslate"><span class="pre">updated_at</span></code> fields:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">TimestampsSchemaMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">TimestampsSchemaMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
 </pre></div>
 </div>
@@ -637,14 +640,14 @@ or different field metadata.</p>
 <h2>ReadOnly and WriteOnly<a class="headerlink" href="#readonly-and-writeonly" title="Link to this heading">#</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">fr.ReadOnly[T]</span></code> marks a field as response-only. It is removed from the
 generated create and update inputs:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">created_by_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">fr.WriteOnly[T]</span></code> marks a field as request-only. It is accepted in create and
 update payloads but excluded from every serialized response:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">password</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">WriteOnly</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
 </pre></div>
@@ -664,11 +667,11 @@ only its OpenAPI schema is marked <code class="docutils literal notranslate"><sp
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a> or
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a> is the
 whole contract for its request. Restly writes every field it declares, except
-those it marks <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> itself. The response schema’s markers only shape the
-write schemas Restly generates. So a field that the response schema marks
+those it marks <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> itself. The markers on the view’s schema only shape
+the write schemas Restly generates. So a field that the view’s schema marks
 <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> and an explicit <code class="docutils literal notranslate"><span class="pre">schema_create</span></code> declares is set on create and frozen
 afterwards:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">CommentRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">CommentSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">body</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">story_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
 
@@ -681,7 +684,7 @@ afterwards:</p>
 <span class="k">class</span><span class="w"> </span><span class="nc">CommentView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/comments&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Comment</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">CommentRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">CommentSchema</span>
     <span class="n">schema_create</span> <span class="o">=</span> <span class="n">CommentCreate</span>
 </pre></div>
 </div>
@@ -703,7 +706,7 @@ database attribute:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span>
 
 
-<span class="k">class</span><span class="w"> </span><span class="nc">UserRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">first_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">&quot;firstName&quot;</span><span class="p">)</span>
     <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
 </pre></div>
@@ -714,7 +717,7 @@ Restly routes.</p>
 <section id="mustexist">
 <h2>MustExist<a class="headerlink" href="#mustexist" title="Link to this heading">#</a></h2>
 <p>Use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code></a> for foreign-key columns (primary-key type first, then the target model):</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ArticleRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ArticleSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">author_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">MustExist</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Author</span><span class="p">]</span>
 </pre></div>
@@ -734,7 +737,7 @@ Relationships</span></a> for the full model and view setup.</p>
 <h2>Nested relationship objects<a class="headerlink" href="#nested-relationship-objects" title="Link to this heading">#</a></h2>
 <p>If a client expects a nested relationship object, use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDSchema[Model]</span></code></a> as a
 field type:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ArticleRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ArticleSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">author</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">[</span><span class="n">Author</span><span class="p">]</span>
 </pre></div>
@@ -770,14 +773,63 @@ the SQLAlchemy model:</p>
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
 </pre></div>
 </div>
+</section>
+<section id="name-your-schemas">
+<span id="id1"></span><h2>Name your schemas<a class="headerlink" href="#name-your-schemas" title="Link to this heading">#</a></h2>
+<p>OpenAPI keeps all classes in one list, by name. It has no modules. A
+generated client uses these names as type names. So each class in your API
+needs its own name, also when Python keeps two classes apart in different
+modules.</p>
+<p>Restly names the classes it generates after the view’s schema. For
+<code class="docutils literal notranslate"><span class="pre">UserSchema</span></code>, OpenAPI shows <code class="docutils literal notranslate"><span class="pre">UserResponse</span></code>, <code class="docutils literal notranslate"><span class="pre">UserCreate</span></code>, <code class="docutils literal notranslate"><span class="pre">UserUpdate</span></code> and
+<code class="docutils literal notranslate"><span class="pre">UserListResponse</span></code>; see <a class="reference internal" href="technical_details.html#generated-class-names"><span class="std std-ref">Generated Class Names</span></a>.
+Follow these rules for the classes you write:</p>
+<ul>
+<li><p>Name the view’s schema after the resource that the client sees: <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code>,
+or <code class="docutils literal notranslate"><span class="pre">AdminUserSchema</span></code> for an admin view of users. Two schemas named
+<code class="docutils literal notranslate"><span class="pre">UserSchema</span></code> in different modules clash.</p></li>
+<li><p>Use the names <code class="docutils literal notranslate"><span class="pre">UserCreate</span></code> and <code class="docutils literal notranslate"><span class="pre">UserUpdate</span></code> only for a view’s create and
+update body, and set the class on the view:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">TaskCreate</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">BaseSchema</span><span class="p">):</span>
+    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">TaskView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/tasks&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Task</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">TaskSchema</span>
+    <span class="n">schema_create</span> <span class="o">=</span> <span class="n">TaskCreate</span>
+</pre></div>
+</div>
+<p>A class for another purpose, such as the body of a bulk route, gets a name
+that says what it is: <code class="docutils literal notranslate"><span class="pre">TaskBulkItem</span></code>, <code class="docutils literal notranslate"><span class="pre">UserSummary</span></code>.</p>
+</li>
+<li><p>Two views that share a schema also get the same names for the classes that
+Restly generates. When the classes differ, for example because only one view is paginated,
+give one view a schema of its own:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">AllTasksSchema</span><span class="p">(</span><span class="n">TaskSchema</span><span class="p">):</span>
+    <span class="k">pass</span>
+</pre></div>
+</div>
+</li>
+</ul>
+<p>When two different classes still have the same name, OpenAPI shows both under
+long names that can change, such as <code class="docutils literal notranslate"><span class="pre">app__tasks__views__TaskCreate</span></code>. Restly
+then warns with a
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyDuplicateSchemaNameWarning" title="fastapi_restly.exc.RestlyDuplicateSchemaNameWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyDuplicateSchemaNameWarning</span></code></a> that
+names the classes and the views that use them. It checks an app that you
+pass to <code class="docutils literal notranslate"><span class="pre">fr.configure(app,</span> <span class="pre">...)</span></code> or <code class="docutils literal notranslate"><span class="pre">fr.testing.configure_tests(app=...)</span></code>, or
+that you include a view on. Two classes with the same name are not a problem
+when their JSON schemas are the same, also their docstrings and defaults:
+OpenAPI then shows them as one.</p>
 </section>
 <section id="see-also">
 <h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><a class="reference internal" href="technical_details.html#id1"><span class="std std-ref">Auto-generated schemas</span></a>: how
+<li><p><a class="reference internal" href="technical_details.html#id2"><span class="std std-ref">Auto-generated schemas</span></a>: how
 the derived schemas are built when you do not declare one.</p></li>
 <li><p><a class="reference internal" href="patterns.html#a-different-schema-for-the-list-endpoint"><span class="std std-ref">Patterns: a different schema for the list
 endpoint</span></a>: when the
@@ -841,6 +893,7 @@ list and detail routes need different shapes.</p></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mustexist">MustExist</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nested-relationship-objects">Nested relationship objects</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#auto-generated-vs-explicit-schemas">Auto-Generated vs Explicit Schemas</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#name-your-schemas">Name your schemas</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>
 </ul>
   </nav></div>

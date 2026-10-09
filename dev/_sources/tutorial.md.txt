@@ -73,13 +73,13 @@ API's requests and responses, one per model, each extending
 {class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>`:
 
 ```python
-class PostRead(fr.IDSchema):
+class PostSchema(fr.IDSchema):
     title: str
     content: str
     published: bool
 
 
-class CommentRead(fr.IDSchema):
+class CommentSchema(fr.IDSchema):
     content: str
     post_id: fr.MustExist[int, Post]
 ```
@@ -150,14 +150,14 @@ app = FastAPI(lifespan=lifespan)
 class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
-    schema = PostRead
+    schema = PostSchema
 
 
 @fr.include_view(app)
 class CommentView(fr.AsyncRestView):
     prefix = "/comments"
     model = Comment
-    schema = CommentRead
+    schema = CommentSchema
 ```
 
 Tables are created inside a FastAPI `lifespan` context manager so they are initialised
@@ -196,7 +196,7 @@ To disable specific endpoints, set {attr}`exclude_routes <fastapi_restly.views.B
 class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
-    schema = PostRead
+    schema = PostSchema
     exclude_routes = (fr.ViewRoute.DELETE,)  # disables DELETE /posts/{id}
 ```
 
@@ -219,7 +219,7 @@ class Post(fr.IDBase):
 and mark them in the schema:
 
 ```python
-class PostRead(fr.IDSchema):
+class PostSchema(fr.IDSchema):
     title: str
     content: str
     published: bool
@@ -311,7 +311,7 @@ See [Testing](howto_testing.md) for the full setup and savepoint details.
 
 ## Nested schemas
 
-Response schemas may nest related objects, and Restly eager-loads and
+The view's schema may nest related objects, and Restly eager-loads and
 serializes them for you. Create and update payloads may not nest: inputs map
 to model attributes or use `*_id: MustExist[int, Model]`. See
 [Work with Foreign Keys and Relationships](howto_relationship_idschema.md)
@@ -351,7 +351,7 @@ class Comment(fr.IDBase):
     post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
 
 
-class PostRead(fr.IDSchema):
+class PostSchema(fr.IDSchema):
     title: str
     content: str
     published: bool
@@ -359,7 +359,7 @@ class PostRead(fr.IDSchema):
     view_count: fr.ReadOnly[int] = 0
 
 
-class CommentRead(fr.IDSchema):
+class CommentSchema(fr.IDSchema):
     content: str
     post_id: fr.MustExist[int, Post]
 
@@ -377,14 +377,14 @@ app = FastAPI(lifespan=lifespan)
 class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
-    schema = PostRead
+    schema = PostSchema
 
 
 @fr.include_view(app)
 class CommentView(fr.AsyncRestView):
     prefix = "/comments"
     model = Comment
-    schema = CommentRead
+    schema = CommentSchema
 ```
 
 ## Next steps

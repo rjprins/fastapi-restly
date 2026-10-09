@@ -582,9 +582,7 @@ the same line in every Restly project.</p>
 <a class="reference internal" href="getting_started.html"><span class="std std-doc">Getting Started</span></a> builds a complete application in one
 file, and nothing is gained by splitting it while it stays that size.</p>
 <p>Split when the second or third resource arrives, or when one resource grows
-explicit schemas and a handful of overrides. The signal is scrolling: when you
-navigate the file by searching rather than by reading, it holds more than one
-subject.</p>
+explicit schemas and a handful of overrides.</p>
 </section>
 <section id="organize-by-subject-then-by-type">
 <h2>Organize by subject, then by type<a class="headerlink" href="#organize-by-subject-then-by-type" title="Link to this heading">#</a></h2>
@@ -703,13 +701,13 @@ view wants the same behavior, which is why a generated project does not have one
 <span class="kn">from</span><span class="w"> </span><span class="nn">..views</span><span class="w"> </span><span class="kn">import</span> <span class="n">AuthenticatedView</span><span class="p">,</span> <span class="n">SoftDeleteMixin</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">User</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.schemas</span><span class="w"> </span><span class="kn">import</span> <span class="n">UserRead</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.schemas</span><span class="w"> </span><span class="kn">import</span> <span class="n">UserSchema</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">SoftDeleteMixin</span><span class="p">,</span> <span class="n">AuthenticatedView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
 </pre></div>
 </div>
 <p><a class="reference internal" href="howto_inheritance.html"><span class="std std-doc">Share Behaviour with Base Views</span></a> covers the base class,

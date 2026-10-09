@@ -556,13 +556,13 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">AuditBase</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">OrderView</span><span class="p">(</span><span class="n">AuditBase</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/orders&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Order</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">OrderRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">OrderSchema</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">audit_log.record</span></code> now runs for both <code class="docutils literal notranslate"><span class="pre">/users</span></code> and <code class="docutils literal notranslate"><span class="pre">/orders</span></code>. Register only concrete subclasses, not the base. Because <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a> is commit-free, the handler persists the same object the base method recorded.</p>
@@ -580,7 +580,7 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">OrderView</span><span class="p">(</span><span class="n">AuditBase</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/orders&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Order</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">OrderRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">OrderSchema</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
         <span class="n">schema_obj</span><span class="o">.</span><span class="n">created_by</span> <span class="o">=</span> <span class="n">current_user</span><span class="p">()</span>
@@ -622,7 +622,7 @@ queues the hook until the outermost block commits.</p>
 <span class="k">class</span><span class="w"> </span><span class="nc">NoteView</span><span class="p">(</span><span class="n">AuthBase</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/notes&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Note</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">NoteRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">NoteSchema</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">self.current_user</span></code> is available in every subclass method, and because <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a> runs before commit, stamping <code class="docutils literal notranslate"><span class="pre">owner_id</span></code> persists. The injection mechanism itself is described in <a class="reference internal" href="class_based_views.html#id2"><span class="std std-ref">Dependency injection on class attributes</span></a>.</p>
@@ -637,13 +637,13 @@ queues the hook until the outermost block commits.</p>
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">ProtectedBase</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">OrderView</span><span class="p">(</span><span class="n">ProtectedBase</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/orders&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Order</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">OrderRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">OrderSchema</span>
 </pre></div>
 </div>
 <p>Every route on <code class="docutils literal notranslate"><span class="pre">/users</span></code> and <code class="docutils literal notranslate"><span class="pre">/orders</span></code> now requires authentication.</p>
@@ -665,13 +665,13 @@ such as <code class="docutils literal notranslate"><span class="pre">tags</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">ApiV1</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>     <span class="c1"># becomes /api/v1/users</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">OrderView</span><span class="p">(</span><span class="n">ApiV1</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/orders&quot;</span>    <span class="c1"># becomes /api/v1/orders</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Order</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">OrderRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">OrderSchema</span>
 </pre></div>
 </div>
 <p>Prefixes concatenate across as many levels as you have:</p>
@@ -685,7 +685,7 @@ such as <code class="docutils literal notranslate"><span class="pre">tags</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ReportView</span><span class="p">(</span><span class="n">V2Base</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/reports&quot;</span>   <span class="c1"># becomes /admin/v2/reports</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Report</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">ReportRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ReportSchema</span>
 </pre></div>
 </div>
 <p>A prefix can also contain a path parameter, such as <code class="docutils literal notranslate"><span class="pre">/projects/{project_id}</span></code>.
@@ -703,7 +703,7 @@ such as <code class="docutils literal notranslate"><span class="pre">tags</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">HealthBase</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users/health</span></code> is registered alongside the standard CRUD endpoints.</p>
@@ -718,7 +718,7 @@ such as <code class="docutils literal notranslate"><span class="pre">tags</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ProductView</span><span class="p">(</span><span class="n">ReadOnlyBase</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/products&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Product</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">ProductRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ProductSchema</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">ProductView</span></code> only exposes <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/products</span></code> and <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/products/{id}</span></code>.</p>
@@ -727,7 +727,7 @@ such as <code class="docutils literal notranslate"><span class="pre">tags</span>
 <h2>Implement soft-delete once<a class="headerlink" href="#implement-soft-delete-once" title="Link to this heading">#</a></h2>
 <p>A base class can override the <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete" title="fastapi_restly.views.RestView.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a>
 business method once for every subclass, exactly like the audit example above
-but with the soft-delete body. The canonical <code class="docutils literal notranslate"><span class="pre">deleted_at</span></code> recipe is in
+but with the soft-delete body. The full <code class="docutils literal notranslate"><span class="pre">deleted_at</span></code> recipe is in
 <a class="reference internal" href="customize.html#soft-delete-recipe"><span class="std std-ref">Customizing RestView</span></a>. The reusable mixin that also
 hides flagged rows on read is in <a class="reference internal" href="howto_compose_views_with_mixins.html"><span class="std std-doc">Compose Views with
 Mixins</span></a>.</p>

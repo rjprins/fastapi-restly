@@ -597,7 +597,9 @@ enabling managed testing; changing them afterwards raises.</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>app</strong> – Application to install the default exception handlers and the
-health route on.</p></li>
+health route on. Restly also checks its OpenAPI spec for two classes
+with the same name (see
+<a class="reference internal" href="exc.html#fastapi_restly.exc.RestlyDuplicateSchemaNameWarning" title="fastapi_restly.exc.RestlyDuplicateSchemaNameWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyDuplicateSchemaNameWarning</span></code></a>).</p></li>
 <li><p><strong>async_database_url</strong> – Async URL to build an
 <a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#sqlalchemy.ext.asyncio.AsyncEngine" title="(in SQLAlchemy v2.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncEngine</span></code></a> from.</p></li>
 <li><p><strong>async_engine</strong> – Async engine to use as given.</p></li>

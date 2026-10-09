@@ -2,9 +2,9 @@ Query API
 =========
 
 ``fastapi_restly.query`` implements list-endpoint filtering, sorting, and
-pagination: ``create_list_params_schema()`` derives the URL parameter schema
-from a response schema and its model, and ``apply_list_params()`` applies
-validated parameters to a SQLAlchemy select.
+pagination: ``derive_schema_list_params()`` derives the list params, a model
+of the URL parameters, from the view's schema and its model, and
+``apply_list_params()`` applies validated list params to a SQLAlchemy select.
 
 .. automodule:: fastapi_restly.query
    :members:

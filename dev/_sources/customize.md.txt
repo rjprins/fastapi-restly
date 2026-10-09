@@ -80,7 +80,7 @@ class User(fr.IDBase):
     password: Mapped[str]  # stores the hash. UserView.create writes it
 
 
-class UserRead(fr.IDSchema):
+class UserSchema(fr.IDSchema):
     email: str
     password: fr.WriteOnly[str]  # accepted on input, never serialized
 
@@ -89,7 +89,7 @@ class UserRead(fr.IDSchema):
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    schema = UserRead
+    schema = UserSchema
 
     async def create(self, schema_obj):
         obj = await self.make_new_object(schema_obj)
@@ -153,7 +153,7 @@ place across list, count, and single-row reads: a hidden row returns 404 from
 `GET /{id}`. `get_one` itself stays auth-free; {meth}`authorize <fastapi_restly.views.RestView.authorize>` handles policy.
 
 {meth}`get_many <fastapi_restly.views.RestView.get_many>` works the same way: the scope establishes visibility,
-{meth}`apply_query_params <fastapi_restly.views.RestView.apply_query_params>` applies filtering, sorting, and pagination, and
+{meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>` applies filtering, sorting, and pagination, and
 {meth}`count <fastapi_restly.views.RestView.count>` produces the total, with `authorize("get_many")` added by
 {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>`.
 
@@ -166,10 +166,10 @@ The table below maps the change you want to make to the method that owns it:
 | Domain logic (hash, derive, compute)    | {meth}`create <fastapi_restly.views.RestView.create>` / {meth}`update <fastapi_restly.views.RestView.update>` / {meth}`delete <fastapi_restly.views.RestView.delete>`    | business method        |
 | One commit over several writes          | {meth}`shared_write_action_commit <fastapi_restly.views.RestView.shared_write_action_commit>` in a custom route | commit bracket         |
 | A lookup by another key (slug, email)   | {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>` with a predicate, in a custom route ([below](#natural-key-route)) | handler                |
-| A listing of a subset (one project's tasks) | {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>` with `where=`, in a custom route ([Scopes](#per-read-where)) | handler                |
+| A list of a subset (one project's tasks) | {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>` with `where=`, in a custom route ([Scopes](#per-read-where)) | handler                |
 | The HTTP contract (status, signature)   | `<verb>_endpoint`                 | endpoint method        |
 | Read scope / row visibility             | {attr}`scope <fastapi_restly.views.BaseRestView.scope>` ([Scopes](scopes.md))  | read extension point   |
-| Filter / sort / pagination grammar      | {meth}`apply_query_params <fastapi_restly.views.RestView.apply_query_params>`              | read extension point   |
+| Filter / sort / pagination grammar      | {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`              | read extension point   |
 | The list total                          | {meth}`count <fastapi_restly.views.RestView.count>`                           | read extension point   |
 | Authorization / policy                  | {meth}`authorize <fastapi_restly.views.RestView.authorize>` (override to gate)    | handler hook           |
 | Server-stamped fields (audit/tenant)    | a column default on the model ([below](#server-stamped-fields-column-defaults-on-the-model)) | model layer            |
@@ -258,14 +258,14 @@ instead; see [Relationship Loading and Async](howto_relationship_loading.md).
 
 For post-query decoration, override {meth}`get_many <fastapi_restly.views.RestView.get_many>` and delegate to `super()`.
 Use a [scope](scopes.md) for row visibility.
-Put listing joins and ordering in
-{meth}`apply_query_params <fastapi_restly.views.RestView.apply_query_params>`.
+Put joins and ordering for the list in
+{meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`.
 Put eager loading in
 {meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`.
 
 ```python
-    async def get_many(self, query_params, *, scope=None):
-        result = await super().get_many(query_params, scope=scope)
+    async def get_many(self, list_params, *, scope=None):
+        result = await super().get_many(list_params, scope=scope)
         for obj in result.objects:
             obj._display_name = derive_display_name(obj)
         return result
@@ -296,7 +296,7 @@ class Current(fr.ContextNamespace):
 class DocumentView(fr.AsyncRestView):
     prefix = "/documents"
     model = Document
-    schema = DocumentRead
+    schema = DocumentSchema
     scope = fr.where_clause(Document.owner_id == Current.user_id)
 ```
 
@@ -329,7 +329,7 @@ from fastapi import Depends
 class InvoiceView(fr.AsyncRestView):
     prefix = "/invoices"
     model = Invoice
-    schema = InvoiceRead
+    schema = InvoiceSchema
     current_user: Annotated[User, Depends(get_current_user)]
 
     async def authorize(self, action, obj=None, data=None):
@@ -373,6 +373,26 @@ once the mark is durable:
             await enqueue_async_delete(old["id"])  # the real delete runs off-request
 ```
 
+### When `after_action_commit` raises
+
+The write is already committed, so an exception from the hook cannot undo it.
+The request still fails, and a client that retries repeats the write. For a
+best-effort effect, catch and log the error in the hook:
+
+```python
+    async def after_action_commit(self, action, new, old=None):
+        if action == "create":
+            try:
+                await send_confirmation_email(new.id)
+            except Exception:  # the order is saved; don't fail the request
+                logger.exception("Confirmation email failed for order %s", new.id)
+```
+
+An effect that must happen belongs in an outbox row written in
+`before_action_commit`, which a worker delivers and retries. Make delivery
+idempotent, since a retry can repeat it. FastAPI's `BackgroundTasks` is no
+substitute: a crash loses the task, and nothing retries it.
+
 ## Server-stamped fields: column defaults on the model
 
 A field the server owns (an audit id, a tenant id) is a column default that reads a bound {class}`fr.ContextNamespace <fastapi_restly.clauses.ContextNamespace>` member. It fires on every write path, whichever view or helper built the row, so nothing on the view has to run:
@@ -415,7 +435,7 @@ The business methods are built from three utilities. Call them from your {meth}`
 |---|---|
 | `self.make_new_object(schema_obj)` | Constructs a new ORM object from the schema, resolving references and skipping the fields the schema marks read-only, and adds it to the session. Does not flush. |
 | `self.update_object(obj, schema_obj)` | Applies writable fields onto an existing object, resolving references. Does not flush. |
-| `self.save_object(obj)` | Flushes and refreshes `obj`, then eager-loads the relationships the response schema names. Does not commit. |
+| `self.save_object(obj)` | Flushes and refreshes `obj`, then eager-loads the relationships the view's schema names. Does not commit. |
 
 The same operations are available as free functions for use outside a view (scripts, workers, services): {func}`fr.objects.async_make_new_object <fastapi_restly.objects.async_make_new_object>`, {func}`async_update_object <fastapi_restly.objects.async_update_object>`, {func}`async_save_object <fastapi_restly.objects.async_save_object>`, {func}`async_delete_object <fastapi_restly.objects.async_delete_object>`, plus their sync counterparts. See [Advanced Object Helpers](#advanced-object-helpers).
 
@@ -446,31 +466,31 @@ To replace a route, define the same endpoint-method name and add a route decorat
 class ProductView(fr.AsyncRestView):
     prefix = "/products"
     model = Product
-    schema = ProductRead
+    schema = ProductSchema
 
     @fr.delete("/{id}", status_code=200)
     async def delete_endpoint(self, id: int):
         obj = await self.get_one(id)               # load (scoped, 404)
-        serialized = self.to_response_schema(obj).model_dump(mode="json")
+        serialized = self.to_single_response(obj).model_dump(mode="json")
         await self.handle_delete(id)               # authorize + delete + commit
         return serialized
 ```
 
 At view registration, a directly defined endpoint method replaces the inherited method with the same name. The other inherited endpoint methods remain unchanged.
 
-Registration fills in the view's types for annotations that are missing or `Any`. `id` gets {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>`, `schema_obj` gets {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` or {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>`, and the return annotation gets the route's default response model. An annotation you write is kept, so `schema_obj: ProductReplace` validates the request body against `ProductReplace`. `query_params` is the exception: it always gets the view's {attr}`listing_param_schema <fastapi_restly.views.BaseRestView.listing_param_schema>`.
+Registration fills in the view's types for annotations that are missing or `Any`. `id` gets {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>`, `schema_obj` gets {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` or {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>`, and the return annotation gets the route's default response model. An annotation you write is kept, so `schema_obj: ProductReplace` validates the request body against `ProductReplace`. `list_params` is the exception: it always gets the view's {attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`.
 
 The default `DELETE /{id}` returns `204 No Content`; this version returns the deleted record, as `ra-data-simple-rest` expects (see [React Admin Integration](howto_react_admin.md)).
 
 ### `to_response`: the one response method
 
-The default endpoint methods return through {meth}`self.to_response(obj_or_list, shape) <fastapi_restly.views.BaseRestView.to_response>`, where `shape` is {attr}`SINGLE <fastapi_restly.views.ResponseShape.SINGLE>`, {attr}`LISTING <fastapi_restly.views.ResponseShape.LISTING>`, or {attr}`EMPTY <fastapi_restly.views.ResponseShape.EMPTY>`. Override it for envelopes or shape-wide response behavior:
+The default endpoint methods return through {meth}`self.to_response(result, shape) <fastapi_restly.views.BaseRestView.to_response>`, where `shape` is {attr}`SINGLE <fastapi_restly.views.ResponseShape.SINGLE>`, {attr}`LIST <fastapi_restly.views.ResponseShape.LIST>`, or {attr}`EMPTY <fastapi_restly.views.ResponseShape.EMPTY>`. The shape tells what `result` is: one object for `SINGLE`, a {class}`ListResult <fastapi_restly.views.ListResult>` for `LIST`, and `None` for `EMPTY`. `to_response` passes them on to {meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>` and {meth}`to_list_response <fastapi_restly.views.BaseRestView.to_list_response>`. Override it for envelopes or shape-wide response behavior:
 
 ```python
-    def to_response(self, obj_or_list, shape=fr.ResponseShape.SINGLE):
+    def to_response(self, result, shape=fr.ResponseShape.SINGLE):
         if shape is fr.ResponseShape.SINGLE:
-            return {"data": self.to_response_schema(obj_or_list)}
-        return super().to_response(obj_or_list, shape)
+            return {"data": self.to_single_response(result)}
+        return super().to_response(result, shape)
 ```
 
 If this changes a default CRUD route's HTTP contract, also replace that endpoint
@@ -485,17 +505,17 @@ documents the response with the original response model. See
     async def create_endpoint(self, schema_obj):
         obj = await self.handle_create(schema_obj)
         return fastapi.Response(
-            content=self.to_response_schema(obj).model_dump_json(),
+            content=self.to_single_response(obj).model_dump_json(),
             media_type="application/json",
             status_code=201,
             headers={"Location": f"{self.prefix}/{obj.id}"},
         )
 ```
 
-For object serialization, {meth}`to_response_schema(obj) <fastapi_restly.views.BaseRestView.to_response_schema>` builds the configured schema, strips `WriteOnly` fields, normalizes relationship ids, and validates through Pydantic. Override it for a different projection or a faster trusted path:
+For object serialization, {meth}`to_single_response(obj) <fastapi_restly.views.BaseRestView.to_single_response>` builds the view's schema, strips `WriteOnly` fields, normalizes relationship ids, and validates through Pydantic. Override it for a different projection or a faster trusted path:
 
 ```python
-    def to_response_schema(self, obj: User) -> UserRead:
+    def to_single_response(self, obj: User) -> UserSchema:
         return self.schema.model_construct(
             id=obj.id,
             name=obj.name,
@@ -507,7 +527,7 @@ For object serialization, {meth}`to_response_schema(obj) <fastapi_restly.views.B
 
 ### Replace the list endpoint method
 
-Replace {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` when the list response contract changes, for example custom headers. Keep the `query_params` parameter if you want Restly's generated [filter, sort, and pagination query parameters](howto_query_modifiers.md):
+Replace {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` when the list response contract changes, for example custom headers. Keep the `list_params` parameter if you want Restly's generated [filter, sort, and pagination query parameters](howto_query_modifiers.md):
 
 ```python
 import fastapi
@@ -517,13 +537,13 @@ import json
 class ProductView(fr.AsyncRestView):
     prefix = "/products"
     model = Product
-    schema = ProductRead
+    schema = ProductSchema
 
     @fr.get("/")
-    async def get_many_endpoint(self, query_params):
-        result = await self.handle_get_many(query_params)
+    async def get_many_endpoint(self, list_params):
+        result = await self.handle_get_many(list_params)
         serialized = [
-            self.to_response_schema(obj).model_dump(mode="json")
+            self.to_single_response(obj).model_dump(mode="json")
             for obj in result.objects
         ]
         return fastapi.Response(
@@ -542,7 +562,7 @@ class DeleteReturnsObjectMixin:
     @fr.delete("/{id}", status_code=200)
     async def delete_endpoint(self, id):
         obj = await self.get_one(id)
-        serialized = self.to_response_schema(obj).model_dump(mode="json")
+        serialized = self.to_single_response(obj).model_dump(mode="json")
         await self.handle_delete(id)
         return serialized
 
@@ -551,7 +571,7 @@ class DeleteReturnsObjectMixin:
 class ProductView(DeleteReturnsObjectMixin, fr.AsyncRestView):
     prefix = "/products"
     model = Product
-    schema = ProductRead
+    schema = ProductSchema
 ```
 
 [React Admin views](howto_react_admin.md#share-the-react-admin-contract-across-multiple-views) use this same pattern: they replace {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` for the `ra-data-simple-rest` wire contract and keep the standard verbs and handlers.
@@ -565,7 +585,7 @@ A CRUD view can add routes alongside its inherited CRUD routes. Use {func}`@fr.g
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    schema = UserRead
+    schema = UserSchema
 
     @fr.get("/{id}/summary")
     async def summary(self, id: int):
@@ -586,7 +606,7 @@ class UserView(fr.AsyncRestView):
 
 ```python
     @fr.get("/by-email/{email}")
-    async def get_by_email(self, email: str) -> UserRead:
+    async def get_by_email(self, email: str) -> UserSchema:
         user = await self.handle_get_one(User.email == email)
         return self.to_response(user)
 ```
@@ -608,7 +628,7 @@ The first shape brackets the mutation with {meth}`write_action <fastapi_restly.v
 class OrderView(fr.AsyncRestView):
     prefix = "/orders"
     model = Order
-    schema = OrderRead
+    schema = OrderSchema
 
     @fr.post("/{id}/archive", status_code=202)
     async def archive(self, id: int):
@@ -632,7 +652,7 @@ The second shape runs a full create or update through a handler. If an action is
         original = await self.get_one(id)
         payload = self.schema_create(name=f"{original.name} (copy)")
         new_order = await self.handle_create(payload)
-        return self.to_response_schema(new_order)
+        return self.to_single_response(new_order)
 ```
 
 Reusing `handle_<verb>` inherits authorization and the commit bracket.
@@ -770,7 +790,7 @@ Inside any method or custom route, the following attributes are always available
 | {attr}`self.session <fastapi_restly.views.RestView.session>` | `AsyncSession` | The current database session |
 | {attr}`self.request <fastapi_restly.views.BaseRestView.request>` | `fastapi.Request` | The live HTTP request |
 | {attr}`self.model <fastapi_restly.views.BaseRestView.model>` | `type[DeclarativeBase]` | The SQLAlchemy model class |
-| {attr}`self.schema <fastapi_restly.views.BaseRestView.schema>` | `type[pydantic.BaseModel]` | The Pydantic response schema |
+| {attr}`self.schema <fastapi_restly.views.BaseRestView.schema>` | `type[pydantic.BaseModel]` | The view's schema, a Pydantic model |
 
 Any class-level `Annotated` dependency you declare on the view (for example a current user) is also injected and available as an instance attribute; see [Dependency injection on class attributes](class_based_views.md#dependency-injection-on-class-attributes).
 

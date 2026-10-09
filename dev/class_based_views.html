@@ -574,16 +574,16 @@ function:</p>
     <span class="n">session</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncSessionDep</span>
 
     <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">UserRead</span><span class="p">]:</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">UserSchema</span><span class="p">]:</span>
         <span class="n">users</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">scalars</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">User</span><span class="p">))</span>
-        <span class="k">return</span> <span class="p">[</span><span class="n">UserRead</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">user</span><span class="p">)</span> <span class="k">for</span> <span class="n">user</span> <span class="ow">in</span> <span class="n">users</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">UserSchema</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">user</span><span class="p">)</span> <span class="k">for</span> <span class="n">user</span> <span class="ow">in</span> <span class="n">users</span><span class="p">]</span>
 
     <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_user</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">payload</span><span class="p">:</span> <span class="n">UserCreate</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UserRead</span><span class="p">:</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_user</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">payload</span><span class="p">:</span> <span class="n">UserCreate</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UserSchema</span><span class="p">:</span>
         <span class="n">user</span> <span class="o">=</span> <span class="n">User</span><span class="p">(</span><span class="o">**</span><span class="n">payload</span><span class="o">.</span><span class="n">model_dump</span><span class="p">())</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
-        <span class="k">return</span> <span class="n">UserRead</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">UserSchema</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Dependencies, prefix, tags, and metadata are declared once on the class. The
@@ -737,14 +737,14 @@ A base view declares the view-level pieces once:</p>
 <span class="k">class</span><span class="w"> </span><span class="nc">InvoiceView</span><span class="p">(</span><span class="n">AuthenticatedView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/invoices&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Invoice</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">InvoiceRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">InvoiceSchema</span>
 
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">CustomerView</span><span class="p">(</span><span class="n">AuthenticatedView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/customers&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Customer</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">CustomerRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">CustomerSchema</span>
 </pre></div>
 </div>
 <p>The dependency binds the current tenant for both views. A session-level
@@ -769,15 +769,17 @@ live in <a class="reference internal" href="customize.html"><span class="std std
 <p>A class attribute on a view is wired as a FastAPI dependency only when its
 annotation either:</p>
 <ul class="simple">
-<li><p>carries an <code class="docutils literal notranslate"><span class="pre">Annotated[...,</span> <span class="pre">Depends(...)]</span></code> marker, or</p></li>
+<li><p>carries an <code class="docutils literal notranslate"><span class="pre">Annotated[...,</span> <span class="pre">Depends(...)]</span></code> marker (<code class="docutils literal notranslate"><span class="pre">Security(...)</span></code> counts,
+since it is a kind of <code class="docutils literal notranslate"><span class="pre">Depends</span></code>), or</p></li>
 <li><p>names one of FastAPI’s bare-injectable special types (<code class="docutils literal notranslate"><span class="pre">Request</span></code>,
 <code class="docutils literal notranslate"><span class="pre">Response</span></code>, <code class="docutils literal notranslate"><span class="pre">BackgroundTasks</span></code>, <code class="docutils literal notranslate"><span class="pre">WebSocket</span></code>).</p></li>
 </ul>
-<p>This matches FastAPI function parameters; a plain annotation like
-<code class="docutils literal notranslate"><span class="pre">model:</span> <span class="pre">type[Foo]</span></code> is only a type hint. The following view demonstrates each
-case:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">Request</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
+<p>Every other annotation is only a type hint. This differs from a function
+parameter, where FastAPI reads a plain annotation as a query or body
+parameter. The following view demonstrates each case:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">Depends</span><span class="p">,</span> <span class="n">Request</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="c1"># Wired: AsyncSessionDep is Annotated[AsyncSession, Depends(...)].</span>
@@ -789,17 +791,29 @@ case:</p>
     <span class="c1"># Wired: explicit Depends marker.</span>
     <span class="n">current_user</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">User</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_current_user</span><span class="p">)]</span>
 
-    <span class="c1"># NOT wired: plain annotation, just a type hint.</span>
-    <span class="n">model</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="n">User</span><span class="p">]</span>
+    <span class="c1"># NOT wired: a bare type is only a hint.</span>
+    <span class="n">reviewer</span><span class="p">:</span> <span class="n">User</span>
 </pre></div>
 </div>
-<p>The shipped <code class="docutils literal notranslate"><span class="pre">AsyncSessionDep</span></code> / <code class="docutils literal notranslate"><span class="pre">SessionDep</span></code> aliases carry <code class="docutils literal notranslate"><span class="pre">Depends</span></code>, so
-they keep working unchanged. The <code class="docutils literal notranslate"><span class="pre">request</span></code> attribute on <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView" title="fastapi_restly.views.BaseRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseRestView</span></code></a>
-relies on the special-type rule. Any custom dependency declared on a view
-class must use the <code class="docutils literal notranslate"><span class="pre">Annotated[X,</span> <span class="pre">Depends(...)]</span></code> form unless it is one of
-the bare-injectable types.</p>
-<p>This rule makes mixins safe: a mixin can declare what it expects from its
-host without shadowing the host’s wiring. See
+<p>A wired attribute is set on the view instance before any method runs, so
+endpoint methods, business methods, <code class="docutils literal notranslate"><span class="pre">authorize</span></code>, and the commit hooks all
+read it as <code class="docutils literal notranslate"><span class="pre">self.current_user</span></code>. An attribute that is not wired is never set
+from the request: reading <code class="docutils literal notranslate"><span class="pre">self.reviewer</span></code> raises <code class="docutils literal notranslate"><span class="pre">AttributeError</span></code>.</p>
+<p>The shipped <code class="docutils literal notranslate"><span class="pre">AsyncSessionDep</span></code> / <code class="docutils literal notranslate"><span class="pre">SessionDep</span></code> aliases carry <code class="docutils literal notranslate"><span class="pre">Depends</span></code>. The
+<code class="docutils literal notranslate"><span class="pre">request</span></code> attribute on <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView" title="fastapi_restly.views.BaseRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseRestView</span></code></a>
+relies on the special-type rule.</p>
+<p>A request parameter belongs on the endpoint method that reads it. A class
+attribute with a <code class="docutils literal notranslate"><span class="pre">Path()</span></code>, <code class="docutils literal notranslate"><span class="pre">Query()</span></code>, <code class="docutils literal notranslate"><span class="pre">Header()</span></code>, <code class="docutils literal notranslate"><span class="pre">Cookie()</span></code>, <code class="docutils literal notranslate"><span class="pre">Body()</span></code>,
+<code class="docutils literal notranslate"><span class="pre">Form()</span></code> or <code class="docutils literal notranslate"><span class="pre">File()</span></code> marker raises
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>
+when the view is registered, because FastAPI would never set it. A path
+segment or header that every route of the view needs comes through a
+dependency instead; <a class="reference internal" href="howto_nested.html"><span class="std std-doc">Nested Resources</span></a> shows the pattern for
+a path segment.</p>
+<p>A plain annotation never replaces a wired one. A mixin or subclass that
+declares <code class="docutils literal notranslate"><span class="pre">current_user:</span> <span class="pre">User</span></code> so type checkers know the attribute keeps the
+base’s <code class="docutils literal notranslate"><span class="pre">Depends</span></code> wiring. This rule makes mixins safe: a mixin can declare
+what it expects from its host without shadowing the host’s wiring. See
 <a class="reference internal" href="howto_compose_views_with_mixins.html"><span class="std std-doc">Composing views with mixins</span></a> for the
 mixin pattern.</p>
 </section>

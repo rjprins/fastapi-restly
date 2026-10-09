@@ -550,7 +550,7 @@ and views can share the same parent app or router:</p>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.orders</span><span class="w"> </span><span class="kn">import</span> <span class="n">router</span> <span class="k">as</span> <span class="n">orders_router</span>
 
 <span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">()</span>
-<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">async_engine</span><span class="o">=</span><span class="n">async_engine</span><span class="p">)</span>
+<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">async_engine</span><span class="o">=</span><span class="n">async_engine</span><span class="p">)</span>
 
 <span class="n">api</span> <span class="o">=</span> <span class="n">APIRouter</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/api&quot;</span><span class="p">)</span>
 
@@ -560,7 +560,7 @@ and views can share the same parent app or router:</p>
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
 
 
 <span class="n">fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">UserView</span><span class="p">)</span>  <span class="c1"># registers /api/users CRUD routes</span>
@@ -570,7 +570,10 @@ and views can share the same parent app or router:</p>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">fr.include_view</span></code> works as a direct call (<code class="docutils literal notranslate"><span class="pre">fr.include_view(api,</span> <span class="pre">UserView)</span></code>,
 above) or as a class decorator (<code class="docutils literal notranslate"><span class="pre">&#64;fr.include_view(app)</span></code>, used later in this
-guide); both register the same routes.</p>
+guide); both register the same routes. Pass <code class="docutils literal notranslate"><span class="pre">app</span></code> to <code class="docutils literal notranslate"><span class="pre">fr.configure</span></code>, also
+when the views are on a router: then Restly can check the app’s OpenAPI spec
+for two classes with the same name
+(<a class="reference internal" href="howto_custom_schema.html#name-your-schemas"><span class="std std-ref">Name your schemas</span></a>).</p>
 <p>Adoption is per resource. In the example above, orders stay hand-written while
 users use <code class="docutils literal notranslate"><span class="pre">UserView</span></code>. Adding a <code class="docutils literal notranslate"><span class="pre">ProductView</span></code> later does not require changing the
 orders router.</p>
@@ -589,7 +592,7 @@ add the FastAPI route yourself:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
     <span class="n">exclude_routes</span> <span class="o">=</span> <span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">DELETE</span><span class="p">,)</span>
 
 
@@ -640,7 +643,7 @@ status drift shows up immediately.</p></li>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ProductView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/products&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Product</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">ProductRead</span>          <span class="c1"># match your old response shape exactly</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ProductSchema</span>          <span class="c1"># match your old response shape exactly</span>
     <span class="n">exclude_routes</span> <span class="o">=</span> <span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">DELETE</span><span class="p">,)</span>  <span class="c1"># old DELETE returns the object</span>
 
 
@@ -781,7 +784,7 @@ the view’s <code class="docutils literal notranslate"><span class="pre">sessio
 <span class="k">class</span><span class="w"> </span><span class="nc">ReportView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/reports&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Report</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">ReportRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ReportSchema</span>
     <span class="n">session</span><span class="p">:</span> <span class="n">ReportingSessionDep</span>
 </pre></div>
 </div>
@@ -834,7 +837,7 @@ you can use those models directly in a
 </div>
 <p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> supports these models for
 default CRUD routes and
-<a class="reference internal" href="technical_details.html#id1"><span class="std std-ref">auto-generated schemas</span></a>. When
+<a class="reference internal" href="technical_details.html#id2"><span class="std std-ref">auto-generated schemas</span></a>. When
 creating tables, use your own base metadata (for example
 <code class="docutils literal notranslate"><span class="pre">AppBase.metadata.create_all(...)</span></code>).</p>
 </section>

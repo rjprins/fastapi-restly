@@ -582,9 +582,11 @@ stores a timezone-free wall-clock value.</p></li>
 <li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> and <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> expect a single primary-key column; for
 composite-key tables, see
 <a class="reference internal" href="class_based_views.html#id1"><span class="std std-ref">the view hierarchy</span></a>.</p></li>
-<li><p>With no manual schema, FastAPI-Restly auto-generates <code class="docutils literal notranslate"><span class="pre">UserRead</span></code>, <code class="docutils literal notranslate"><span class="pre">UserCreate</span></code>,
-and <code class="docutils literal notranslate"><span class="pre">UserUpdate</span></code> from your model; see
-<a class="reference internal" href="technical_details.html#id1"><span class="std std-ref">Auto-Generated Schemas</span></a>.</p></li>
+<li><p>With no manual schema, FastAPI-Restly generates the view’s schema
+<code class="docutils literal notranslate"><span class="pre">UserSchema</span></code> from your model; see
+<a class="reference internal" href="technical_details.html#auto-generated-schemas"><span class="std std-ref">Auto-Generated Schemas</span></a>. OpenAPI shows the classes
+derived from it: <code class="docutils literal notranslate"><span class="pre">UserResponse</span></code>, <code class="docutils literal notranslate"><span class="pre">UserCreate</span></code>, <code class="docutils literal notranslate"><span class="pre">UserUpdate</span></code> and
+<code class="docutils literal notranslate"><span class="pre">UserListResponse</span></code>; see <a class="reference internal" href="technical_details.html#generated-class-names"><span class="std std-ref">Generated Class Names</span></a>.</p></li>
 <li><p>The lifespan hook creates tables with the async engine configured by
 <a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure()</span></code></a>. Use
 <a class="reference internal" href="deploying.html#migrations-with-alembic"><span class="std std-ref">Alembic migrations</span></a> in production.</p></li>
@@ -651,7 +653,7 @@ contract. Filter lists with query parameters, for example
 <h2>Add an explicit schema (optional)<a class="headerlink" href="#add-an-explicit-schema-optional" title="Link to this heading">#</a></h2>
 <p>Auto-generated schemas can be replaced at any point. Replace the <code class="docutils literal notranslate"><span class="pre">UserView</span></code>
 definition above with:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
 
@@ -660,11 +662,11 @@ definition above with:</p>
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
 </pre></div>
 </div>
-<p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a> is the read/response contract. Restly derives <code class="docutils literal notranslate"><span class="pre">UserCreate</span></code> and
-<code class="docutils literal notranslate"><span class="pre">UserUpdate</span></code> from it unless you override <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a> or <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a>.
+<p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a> is the view’s schema. Responses follow it, without its <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields.
+Restly derives the create and update schemas from it unless you override <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a> or <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a>.
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDSchema</span></code></a> includes <code class="docutils literal notranslate"><span class="pre">id</span></code> as <code class="docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code>: present in responses, excluded from create/update. Use <code class="docutils literal notranslate"><span class="pre">fr.ReadOnly[T]</span></code> for other response-only fields and <code class="docutils literal notranslate"><span class="pre">fr.WriteOnly[T]</span></code> for input-only fields such as passwords (see <a class="reference internal" href="howto_custom_schema.html#readonly-and-writeonly"><span class="std std-ref">ReadOnly and WriteOnly</span></a>).</p>
 <p>Choose explicit schemas for public API contracts you want to keep stable,
 custom validation logic, field aliases and strict response shaping, or extra

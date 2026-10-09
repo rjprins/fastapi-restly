@@ -25,13 +25,13 @@ class AuditBase(fr.RestView):
 class UserView(AuditBase):
     prefix = "/users"
     model = User
-    schema = UserRead
+    schema = UserSchema
 
 @fr.include_view(app)
 class OrderView(AuditBase):
     prefix = "/orders"
     model = Order
-    schema = OrderRead
+    schema = OrderSchema
 ```
 
 `audit_log.record` now runs for both `/users` and `/orders`. Register only concrete subclasses, not the base. Because {meth}`create <fastapi_restly.views.RestView.create>` is commit-free, the handler persists the same object the base method recorded.
@@ -51,7 +51,7 @@ class AuditBase(fr.RestView):
 class OrderView(AuditBase):
     prefix = "/orders"
     model = Order
-    schema = OrderRead
+    schema = OrderSchema
 
     def create(self, schema_obj):
         schema_obj.created_by = current_user()
@@ -97,7 +97,7 @@ class AuthBase(fr.RestView):
 class NoteView(AuthBase):
     prefix = "/notes"
     model = Note
-    schema = NoteRead
+    schema = NoteSchema
 ```
 
 `self.current_user` is available in every subclass method, and because {meth}`create <fastapi_restly.views.RestView.create>` runs before commit, stamping `owner_id` persists. The injection mechanism itself is described in [Dependency injection on class attributes](class_based_views.md#dependency-injection-on-class-attributes).
@@ -114,13 +114,13 @@ class ProtectedBase(fr.RestView):
 class UserView(ProtectedBase):
     prefix = "/users"
     model = User
-    schema = UserRead
+    schema = UserSchema
 
 @fr.include_view(app)
 class OrderView(ProtectedBase):
     prefix = "/orders"
     model = Order
-    schema = OrderRead
+    schema = OrderSchema
 ```
 
 Every route on `/users` and `/orders` now requires authentication.
@@ -147,13 +147,13 @@ class ApiV1(fr.RestView):
 class UserView(ApiV1):
     prefix = "/users"     # becomes /api/v1/users
     model = User
-    schema = UserRead
+    schema = UserSchema
 
 @fr.include_view(app)
 class OrderView(ApiV1):
     prefix = "/orders"    # becomes /api/v1/orders
     model = Order
-    schema = OrderRead
+    schema = OrderSchema
 ```
 
 Prefixes concatenate across as many levels as you have:
@@ -169,7 +169,7 @@ class V2Base(AdminBase):
 class ReportView(V2Base):
     prefix = "/reports"   # becomes /admin/v2/reports
     model = Report
-    schema = ReportRead
+    schema = ReportSchema
 ```
 
 A prefix can also contain a path parameter, such as `/projects/{project_id}`.
@@ -189,7 +189,7 @@ class HealthBase(fr.RestView):
 class UserView(HealthBase):
     prefix = "/users"
     model = User
-    schema = UserRead
+    schema = UserSchema
 ```
 
 `GET /users/health` is registered alongside the standard CRUD endpoints.
@@ -206,7 +206,7 @@ class ReadOnlyBase(fr.RestView):
 class ProductView(ReadOnlyBase):
     prefix = "/products"
     model = Product
-    schema = ProductRead
+    schema = ProductSchema
 ```
 
 `ProductView` only exposes `GET /products` and `GET /products/{id}`.
@@ -215,7 +215,7 @@ class ProductView(ReadOnlyBase):
 
 A base class can override the {meth}`delete <fastapi_restly.views.RestView.delete>`
 business method once for every subclass, exactly like the audit example above
-but with the soft-delete body. The canonical `deleted_at` recipe is in
+but with the soft-delete body. The full `deleted_at` recipe is in
 {ref}`Customizing RestView <soft-delete-recipe>`. The reusable mixin that also
 hides flagged rows on read is in [Compose Views with
 Mixins](howto_compose_views_with_mixins.md).

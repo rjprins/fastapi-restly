@@ -546,7 +546,7 @@ Restly models are declared against.</p>
 <p><code class="docutils literal notranslate"><span class="pre">AsyncAttrs</span></code> adds <code class="docutils literal notranslate"><span class="pre">awaitable_attrs</span></code>, so an unloaded attribute can be
 reached from plain async code – <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">obj.awaitable_attrs.items</span></code> –
 where a bare <code class="docutils literal notranslate"><span class="pre">obj.items</span></code> would raise <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. Views eager-load
-what the response schema names, so this is for the code that runs outside
+what the view’s schema names, so this is for the code that runs outside
 that: an <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> hook, a custom business method.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.models.DataclassBase.registry">

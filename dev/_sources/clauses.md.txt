@@ -28,7 +28,7 @@ class TaskClauses(fr.ClauseNamespace):
 
 
 with Current.bind(user_id=42):
-    listing = fr.apply_clauses(select(Task), TaskClauses.visible)
+    tasks = fr.apply_clauses(select(Task), TaskClauses.visible)
     count = fr.apply_clauses(select(func.count(Task.id)), TaskClauses.visible)
 ```
 
@@ -463,8 +463,8 @@ Wrap the expression where a clause is required, such as a per-read
 scope = fr.all_of(ItemClauses.visible, fr.where_clause(name_matches(term)))
 ```
 
-A view listing takes the expression directly:
-[`handle_get_many(query_params, where=...)`](#per-read-where) narrows
+A list route on a view takes the expression directly:
+[`handle_get_many(list_params, where=...)`](#per-read-where) narrows
 inside the scope.
 
 ```{seealso}

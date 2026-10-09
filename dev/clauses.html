@@ -560,7 +560,7 @@ non-deleted tasks:</p>
 
 
 <span class="k">with</span> <span class="n">Current</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">user_id</span><span class="o">=</span><span class="mi">42</span><span class="p">):</span>
-    <span class="n">listing</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">apply_clauses</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">Task</span><span class="p">),</span> <span class="n">TaskClauses</span><span class="o">.</span><span class="n">visible</span><span class="p">)</span>
+    <span class="n">tasks</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">apply_clauses</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">Task</span><span class="p">),</span> <span class="n">TaskClauses</span><span class="o">.</span><span class="n">visible</span><span class="p">)</span>
     <span class="n">count</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">apply_clauses</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">func</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">Task</span><span class="o">.</span><span class="n">id</span><span class="p">)),</span> <span class="n">TaskClauses</span><span class="o">.</span><span class="n">visible</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -951,8 +951,8 @@ clause. Write a plain function that returns the expression:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">all_of</span><span class="p">(</span><span class="n">ItemClauses</span><span class="o">.</span><span class="n">visible</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span><span class="n">name_matches</span><span class="p">(</span><span class="n">term</span><span class="p">)))</span>
 </pre></div>
 </div>
-<p>A view listing takes the expression directly:
-<a class="reference internal" href="scopes.html#per-read-where"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">handle_get_many(query_params,</span> <span class="pre">where=...)</span></code></span></a> narrows
+<p>A list route on a view takes the expression directly:
+<a class="reference internal" href="scopes.html#per-read-where"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">handle_get_many(list_params,</span> <span class="pre">where=...)</span></code></span></a> narrows
 inside the scope.</p>
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>

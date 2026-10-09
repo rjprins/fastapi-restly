@@ -520,7 +520,7 @@ Started</span></a> and installed <code class="docutils literal notranslate"><spa
 <code class="docutils literal notranslate"><span class="pre">aiosqlite</span></code> driver.</p>
 <p>This tutorial uses explicit schemas for clarity. For faster scaffolding, you can omit
 <code class="docutils literal notranslate"><span class="pre">schema</span> <span class="pre">=</span> <span class="pre">...</span></code> on a view and let FastAPI-Restly auto-generate it from the model.
-See <a class="reference internal" href="technical_details.html#id1"><span class="std std-ref">Auto-Generated Schemas</span></a>.</p>
+See <a class="reference internal" href="technical_details.html#id2"><span class="std std-ref">Auto-Generated Schemas</span></a>.</p>
 <section id="models">
 <h2>Models<a class="headerlink" href="#models" title="Link to this heading">#</a></h2>
 <p>We begin with the data layer: the database connection and two SQLAlchemy
@@ -578,13 +578,13 @@ with <code class="docutils literal notranslate"><span class="pre">mapped_column(
 <p>With the models in place, we can define the Pydantic schemas that shape the
 API’s requests and responses, one per model, each extending
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDSchema</span></code></a>:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">PostRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">PostSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">published</span><span class="p">:</span> <span class="nb">bool</span>
 
 
-<span class="k">class</span><span class="w"> </span><span class="nc">CommentRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CommentSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">post_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">MustExist</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Post</span><span class="p">]</span>
 </pre></div>
@@ -646,14 +646,14 @@ and schema:</p>
 <span class="k">class</span><span class="w"> </span><span class="nc">PostView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/posts&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Post</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">PostRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">PostSchema</span>
 
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">CommentView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/comments&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Comment</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">CommentRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">CommentSchema</span>
 </pre></div>
 </div>
 <p>Tables are created inside a FastAPI <code class="docutils literal notranslate"><span class="pre">lifespan</span></code> context manager so they are initialised
@@ -709,7 +709,7 @@ request and response schemas, ready to try from the browser.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">PostView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/posts&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Post</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">PostRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">PostSchema</span>
     <span class="n">exclude_routes</span> <span class="o">=</span> <span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">DELETE</span><span class="p">,)</span>  <span class="c1"># disables DELETE /posts/{id}</span>
 </pre></div>
 </div>
@@ -729,7 +729,7 @@ must not be writable. First we add the columns to the model:</p>
 </pre></div>
 </div>
 <p>and mark them in the schema:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">PostRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">PostSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">published</span><span class="p">:</span> <span class="nb">bool</span>
@@ -813,7 +813,7 @@ when they finish:</p>
 </section>
 <section id="nested-schemas">
 <h2>Nested schemas<a class="headerlink" href="#nested-schemas" title="Link to this heading">#</a></h2>
-<p>Response schemas may nest related objects, and Restly eager-loads and
+<p>The view’s schema may nest related objects, and Restly eager-loads and
 serializes them for you. Create and update payloads may not nest: inputs map
 to model attributes or use <code class="docutils literal notranslate"><span class="pre">*_id:</span> <span class="pre">MustExist[int,</span> <span class="pre">Model]</span></code>. See
 <a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys and Relationships</span></a>
@@ -851,7 +851,7 @@ read-only and write-only columns added along the way:</p>
     <span class="n">post_id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;post.id&quot;</span><span class="p">))</span>
 
 
-<span class="k">class</span><span class="w"> </span><span class="nc">PostRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PostSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">published</span><span class="p">:</span> <span class="nb">bool</span>
@@ -859,7 +859,7 @@ read-only and write-only columns added along the way:</p>
     <span class="n">view_count</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
 
 
-<span class="k">class</span><span class="w"> </span><span class="nc">CommentRead</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CommentSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">post_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">MustExist</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Post</span><span class="p">]</span>
 
@@ -877,14 +877,14 @@ read-only and write-only columns added along the way:</p>
 <span class="k">class</span><span class="w"> </span><span class="nc">PostView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/posts&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Post</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">PostRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">PostSchema</span>
 
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">CommentView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/comments&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Comment</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">CommentRead</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">CommentSchema</span>
 </pre></div>
 </div>
 </section>
@@ -897,7 +897,7 @@ These pages cover the topics from this tutorial in more detail:</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="rest_views.html"><span class="std std-doc">Using RestView</span></a>: the default CRUD contract and
 resource configuration</p></li>
-<li><p><a class="reference internal" href="technical_details.html#id1"><span class="std std-ref">Auto-Generated Schemas</span></a>: skip writing schemas for simple models</p></li>
+<li><p><a class="reference internal" href="technical_details.html#id2"><span class="std std-ref">Auto-Generated Schemas</span></a>: skip writing schemas for simple models</p></li>
 <li><p><a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">Filter, Sort, and Paginate Lists</span></a>: the full filter and sort reference</p></li>
 <li><p><a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys and Relationships</span></a>: reference related rows by id</p></li>
 <li><p><a class="reference internal" href="howto_testing.html"><span class="std std-doc">Testing</span></a>: savepoint isolation and test fixtures</p></li>
