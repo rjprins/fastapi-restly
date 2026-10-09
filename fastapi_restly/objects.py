@@ -2,6 +2,7 @@ from typing import Any as _Any
 from typing import TypeVar as _TypeVar
 
 import pydantic as _pydantic
+from sqlalchemy import inspect as _sa_inspect
 from sqlalchemy.ext.asyncio import AsyncSession as _AsyncSession
 from sqlalchemy.orm import Session as _Session
 from sqlalchemy.orm import object_mapper as _object_mapper
@@ -12,6 +13,7 @@ from .schemas._base import (
     _check_ref_exists,
     _resolve_ids_to_sqlalchemy_objects,
 )
+from .schemas._base import get_writable_inputs as _get_writable_inputs
 
 _T = _TypeVar("_T")
 
@@ -119,8 +121,6 @@ def snapshot(obj: _Any) -> dict[str, _Any]:
     SELECT (which on an async session would raise ``MissingGreenlet``). No
     session argument: it reads state already on the instance.
     """
-    from sqlalchemy import inspect as _sa_inspect
-
     state = _sa_inspect(obj)
     loaded = state.dict
     return {
@@ -162,8 +162,34 @@ async def async_update_object(
     resolved = await _async_resolve_ids_to_sqlalchemy_objects(session, schema_obj)
     await _async_check_ref_exists(session, type(obj), schema_obj)
     validate_resolved_reference_consistency(type(obj), schema_obj, resolved)
+    unloaded = _unloaded_written_relationships(obj, schema_obj)
+    if unloaded:
+        await session.refresh(obj, unloaded)
     apply_update_to_object(obj, schema_obj, resolved)
     return obj
+
+
+def _unloaded_written_relationships(
+    obj: object, schema_obj: _pydantic.BaseModel
+) -> list[str]:
+    """The relationships that ``schema_obj`` writes and that are not loaded
+    on ``obj``.
+
+    To replace a collection, SQLAlchemy first reads the old one. On an async
+    session it cannot read inside the assignment, so the update fails with
+    ``MissingGreenlet``. The view loads only the relationships of its
+    response class, and an update can write others: a ``WriteOnly`` field,
+    or a field of a ``schema_update`` that the response class does not have.
+    """
+    state = _sa_inspect(obj)
+    if not state.persistent:
+        return []
+    relationships = state.mapper.relationships
+    return [
+        name
+        for name in _get_writable_inputs(schema_obj)
+        if name in relationships and name in state.unloaded
+    ]
 
 
 async def async_save_object(session: _AsyncSession, obj: _T) -> _T:

@@ -189,6 +189,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- An async update can write a to-many relationship that the view does not
+  load, such as one that only `schema_update` declares. It used to answer
+  `500` with `MissingGreenlet`, because SQLAlchemy reads the old collection
+  before it replaces it. The update now loads such a relationship first.
 - React-admin views answer `400` for a `range` with a negative start or an end
   before its start. It used to become a negative `LIMIT` or `OFFSET`: every
   row on SQLite, a `500` on PostgreSQL.
