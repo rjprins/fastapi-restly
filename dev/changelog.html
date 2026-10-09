@@ -545,214 +545,132 @@ and this project adheres to <a class="reference external" href="https://semver.o
 </section>
 <section id="id1">
 <h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.10.0...v0.11.0">0.11.0</a> - 2026-10-09<a class="headerlink" href="#id1" title="Link to this heading">#</a></h2>
-<p>Many breaking changes this release, a bit more than “deeper extension points”
-this time. If this affects your project: First of all, thank you for being one
+<p>This release has many breaking changes. Before, we said to expect small
+breaking changes in deeper extension points, and this release changes more
+than that. If this affects your project: First of all, thank you for being one
 of the very first users. Secondly, we are working towards the best API we can
 make before freezing it in 1.0. That’s when the promise of stability comes.
 There will be more breaking changes every minor release until that time.</p>
 <section id="added">
 <h3>Added<a class="headerlink" href="#added" title="Link to this heading">#</a></h3>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.NumberedPagination</span></code> holds a view’s pagination settings: the page sizes,
-<code class="docutils literal notranslate"><span class="pre">max_page</span></code>, the query parameter names and the list envelope model. Views
-inherit it, and <code class="docutils literal notranslate"><span class="pre">replace()</span></code> changes one setting.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.NoPagination(envelope=...)</span></code> sets the list envelope of a view that
-returns every row.</p></li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">schema_response</span></code> view attribute sets a view’s own response class.
-Responses, the list params and the relationships that the view loads follow
-it. Request bodies still follow <code class="docutils literal notranslate"><span class="pre">schema_create</span></code> and <code class="docutils literal notranslate"><span class="pre">schema_update</span></code>. For type
-checkers, put it in the second parameter, as in
-<code class="docutils literal notranslate"><span class="pre">fr.AsyncRestView[User,</span> <span class="pre">UserResponse]</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.schemas.derive_schema_response</span></code> and
-<code class="docutils literal notranslate"><span class="pre">fr.schemas.derive_schema_list_response</span></code> return the response classes that a
-view builds, so a custom route can use them as its <code class="docutils literal notranslate"><span class="pre">response_model</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.exc.RestlyDuplicateSchemaNameWarning</span></code>: Restly warns when two classes in
-the OpenAPI spec have the same name, because OpenAPI then shows them under
-long names that can change. Projects that <code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> creates turn the
-warning into an error in a test.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.NumberedPagination</span></code> and <code class="docutils literal notranslate"><span class="pre">fr.NoPagination</span></code> hold a view’s pagination
+settings, including the model of the list response.</p></li>
+<li><p>A view can set its own response class with <code class="docutils literal notranslate"><span class="pre">schema_response</span></code>. A custom
+route can use <code class="docutils literal notranslate"><span class="pre">fr.schemas.derive_schema_response</span></code> and
+<code class="docutils literal notranslate"><span class="pre">fr.schemas.derive_schema_list_response</span></code> as its <code class="docutils literal notranslate"><span class="pre">response_model</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.exc.RestlyDuplicateSchemaNameWarning</span></code> warns when two classes in the
+OpenAPI spec have the same name.</p></li>
 </ul>
 </section>
 <section id="changed">
 <h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">#</a></h3>
-<ul>
-<li><p>Names around lists and schemas follow one set of rules, which are now in
-CONTRIBUTING.md: “list” is what <code class="docutils literal notranslate"><span class="pre">get_many</span></code> returns, “list params” are its
-filter, sort and page parameters, and the word “listing” is gone. Rename
-these in your code:</p>
 <ul class="simple">
+<li><p>Names around lists and schemas follow the rules in CONTRIBUTING.md. A view
+that still uses an old name fails with an error that names the new one.</p>
+<ul>
 <li><p><code class="docutils literal notranslate"><span class="pre">listing_param_schema</span></code> is now <code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.ListingResult</span></code> is now <code class="docutils literal notranslate"><span class="pre">fr.ListResult</span></code>, and its field <code class="docutils literal notranslate"><span class="pre">query_params</span></code> is
-now <code class="docutils literal notranslate"><span class="pre">list_params</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.ResponseShape.LISTING</span></code> (value <code class="docutils literal notranslate"><span class="pre">&quot;listing&quot;</span></code>) is now
-<code class="docutils literal notranslate"><span class="pre">fr.ResponseShape.LIST</span></code> (value <code class="docutils literal notranslate"><span class="pre">&quot;list&quot;</span></code>).</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">to_listing_response(query_params,</span> <span class="pre">listing_result)</span></code> is now
-<code class="docutils literal notranslate"><span class="pre">to_list_response(list_result)</span></code>. The list params are in
-<code class="docutils literal notranslate"><span class="pre">list_result.list_params</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">to_response_schema(obj)</span></code> is now <code class="docutils literal notranslate"><span class="pre">to_single_response(obj)</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">to_response(obj_or_list,</span> <span class="pre">shape)</span></code> is now <code class="docutils literal notranslate"><span class="pre">to_response(result,</span> <span class="pre">shape)</span></code>.</p></li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">query_params</span></code> argument of <code class="docutils literal notranslate"><span class="pre">get_many</span></code>, <code class="docutils literal notranslate"><span class="pre">handle_get_many</span></code>,
-<code class="docutils literal notranslate"><span class="pre">get_many_endpoint</span></code> and a custom list route is now <code class="docutils literal notranslate"><span class="pre">list_params</span></code>.</p></li>
-<li><p>The view method <code class="docutils literal notranslate"><span class="pre">apply_query_params(query,</span> <span class="pre">query_params)</span></code> is now
-<code class="docutils literal notranslate"><span class="pre">apply_list_params(query,</span> <span class="pre">list_params)</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.ListingResult</span></code> is now <code class="docutils literal notranslate"><span class="pre">fr.ListResult</span></code>, and its <code class="docutils literal notranslate"><span class="pre">query_params</span></code> is now
+<code class="docutils literal notranslate"><span class="pre">list_params</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.ResponseShape.LISTING</span></code> is now <code class="docutils literal notranslate"><span class="pre">fr.ResponseShape.LIST</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">to_listing_response(query_params,</span> <span class="pre">listing_result)</span></code> and react-admin’s
+<code class="docutils literal notranslate"><span class="pre">to_react_admin_listing_response</span></code> are now <code class="docutils literal notranslate"><span class="pre">to_list_response(list_result)</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">to_response_schema</span></code> is now <code class="docutils literal notranslate"><span class="pre">to_single_response</span></code>.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">query_params</span></code> argument and route parameter are now <code class="docutils literal notranslate"><span class="pre">list_params</span></code>.</p></li>
+<li><p>The view method <code class="docutils literal notranslate"><span class="pre">apply_query_params</span></code> is now <code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">fr.query.apply_list_params(params,</span> <span class="pre">select_query,</span> <span class="pre">model,</span> <span class="pre">schema_cls)</span></code> is
-now <code class="docutils literal notranslate"><span class="pre">fr.query.apply_list_params(query,</span> <span class="pre">list_params,</span> <span class="pre">model,</span> <span class="pre">schema_response)</span></code>. The first two arguments changed places.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.query.create_list_params_schema(schema_cls,</span> <span class="pre">model)</span></code> is now
-<code class="docutils literal notranslate"><span class="pre">fr.query.derive_schema_list_params(schema_response,</span> <span class="pre">model)</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.schemas.create_schema_from_model</span></code> is now <code class="docutils literal notranslate"><span class="pre">fr.schemas.derive_schema</span></code>,
-and its arguments <code class="docutils literal notranslate"><span class="pre">model_cls</span></code> and <code class="docutils literal notranslate"><span class="pre">schema_name</span></code> are now <code class="docutils literal notranslate"><span class="pre">model</span></code> and
-<code class="docutils literal notranslate"><span class="pre">name</span></code>. Its <code class="docutils literal notranslate"><span class="pre">include_readonly_fields</span></code> and <code class="docutils literal notranslate"><span class="pre">include_relationships</span></code> are
-removed: it always returns the schema that a view without a <code class="docutils literal notranslate"><span class="pre">schema</span></code>
-generates. For a related row, write the schema yourself, for example with
-an <code class="docutils literal notranslate"><span class="pre">IDRef[Model]</span></code> field.</p></li>
-<li><p>React-admin views no longer have <code class="docutils literal notranslate"><span class="pre">to_react_admin_listing_response</span></code> or
-their own <code class="docutils literal notranslate"><span class="pre">to_response</span></code>. Override <code class="docutils literal notranslate"><span class="pre">to_list_response(list_result)</span></code> instead.</p></li>
-<li><p>The OpenAPI summary of <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code> is “Get” instead of “Retrieve”.</p></li>
+now <code class="docutils literal notranslate"><span class="pre">fr.query.apply_list_params(query,</span> <span class="pre">list_params,</span> <span class="pre">model,</span> <span class="pre">schema_response)</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.query.create_list_params_schema</span></code> is now
+<code class="docutils literal notranslate"><span class="pre">fr.query.derive_schema_list_params</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.schemas.create_schema_from_model(model_cls,</span> <span class="pre">schema_name)</span></code> is now
+<code class="docutils literal notranslate"><span class="pre">fr.schemas.derive_schema(model,</span> <span class="pre">name=...)</span></code>, without
+<code class="docutils literal notranslate"><span class="pre">include_readonly_fields</span></code> and <code class="docutils literal notranslate"><span class="pre">include_relationships</span></code>.</p></li>
 </ul>
-<p>A view that still uses an old name fails at class definition, or at
-registration when set later, with an error that names the new name. An old
-import or enum member fails on its own.</p>
 </li>
-<li><p>The classes that Restly generates are named <code class="docutils literal notranslate"><span class="pre">&lt;Resource&gt;&lt;Role&gt;</span></code>. Resource is
-the class name of the view’s schema without a final <code class="docutils literal notranslate"><span class="pre">Schema</span></code> or <code class="docutils literal notranslate"><span class="pre">Response</span></code>.
-Generated clients use these names as type names, so their types change. For
-<code class="docutils literal notranslate"><span class="pre">schema</span> <span class="pre">=</span> <span class="pre">UserSchema</span></code>, OpenAPI shows <code class="docutils literal notranslate"><span class="pre">UserResponse</span></code> instead of <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code>,
-<code class="docutils literal notranslate"><span class="pre">UserCreate</span></code> and <code class="docutils literal notranslate"><span class="pre">UserUpdate</span></code> instead of <code class="docutils literal notranslate"><span class="pre">UserSchemaCreate</span></code> and
-<code class="docutils literal notranslate"><span class="pre">UserSchemaUpdate</span></code>, and <code class="docutils literal notranslate"><span class="pre">UserListResponse</span></code> instead of
-<code class="docutils literal notranslate"><span class="pre">PaginatedEnvelope_UserSchema_</span></code> or <code class="docutils literal notranslate"><span class="pre">Envelope_UserSchema_</span></code>. The list params
-class is <code class="docutils literal notranslate"><span class="pre">UserListParams</span></code>. A view without a schema gets <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code> instead
-of <code class="docutils literal notranslate"><span class="pre">UserRead</span></code>. A final <code class="docutils literal notranslate"><span class="pre">Read</span></code> is no longer removed: <code class="docutils literal notranslate"><span class="pre">UserRead</span></code> gives
-<code class="docutils literal notranslate"><span class="pre">UserReadCreate</span></code>.</p></li>
-<li><p>Restly always builds the response class: the view’s schema without its
-<code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields. Before, it built one only when the schema had
-<code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields. <code class="docutils literal notranslate"><span class="pre">to_single_response</span></code> returns an instance of it, so a
-response is no longer equal (<code class="docutils literal notranslate"><span class="pre">==</span></code>) to an instance of the view’s schema with
-the same values. Compare <code class="docutils literal notranslate"><span class="pre">model_dump()</span></code> instead. A response cannot be
-pickled.</p></li>
+<li><p>Restly names the classes it generates <code class="docutils literal notranslate"><span class="pre">&lt;Resource&gt;&lt;Role&gt;</span></code>, after the view’s
+schema without a final <code class="docutils literal notranslate"><span class="pre">Schema</span></code>. For <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code> they are <code class="docutils literal notranslate"><span class="pre">UserResponse</span></code>,
+<code class="docutils literal notranslate"><span class="pre">UserCreate</span></code>, <code class="docutils literal notranslate"><span class="pre">UserUpdate</span></code>, <code class="docutils literal notranslate"><span class="pre">UserListResponse</span></code> and <code class="docutils literal notranslate"><span class="pre">UserListParams</span></code>, so the
+types of generated clients change. A view without a schema gets
+<code class="docutils literal notranslate"><span class="pre">UserSchema</span></code> instead of <code class="docutils literal notranslate"><span class="pre">UserRead</span></code>.</p></li>
+<li><p>A response is an instance of the response class: the view’s schema without
+its <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields. Compare responses with <code class="docutils literal notranslate"><span class="pre">model_dump()</span></code>, not with <code class="docutils literal notranslate"><span class="pre">==</span></code>.
+A response cannot be pickled.</p></li>
 <li><p>The list params and the relationships that a view loads follow the response
-class, not the view’s schema. A relationship that only a <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> field
-names is no longer loaded for a response. A <code class="docutils literal notranslate"><span class="pre">to_single_response</span></code> override
-that reads it fails on an async view: add it in
-<code class="docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code>.</p></li>
-<li><p>One view setting, <code class="docutils literal notranslate"><span class="pre">pagination</span></code>, replaces <code class="docutils literal notranslate"><span class="pre">paginated</span></code>, <code class="docutils literal notranslate"><span class="pre">default_page_size</span></code>
-and <code class="docutils literal notranslate"><span class="pre">max_page_size</span></code>, also on react-admin views. Write <code class="docutils literal notranslate"><span class="pre">pagination</span> <span class="pre">=</span> <span class="pre">None</span></code> for
+class. A <code class="docutils literal notranslate"><span class="pre">to_single_response</span></code> override that reads a relationship that only a
+<code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> field names must load it in <code class="docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pagination</span></code> replaces <code class="docutils literal notranslate"><span class="pre">paginated</span></code>, <code class="docutils literal notranslate"><span class="pre">default_page_size</span></code> and <code class="docutils literal notranslate"><span class="pre">max_page_size</span></code>,
+also in <code class="docutils literal notranslate"><span class="pre">fr.query.derive_schema_list_params</span></code>. Write <code class="docutils literal notranslate"><span class="pre">pagination</span> <span class="pre">=</span> <span class="pre">None</span></code> for
 <code class="docutils literal notranslate"><span class="pre">paginated</span> <span class="pre">=</span> <span class="pre">False</span></code>, and
 <code class="docutils literal notranslate"><span class="pre">pagination</span> <span class="pre">=</span> <span class="pre">fr.NumberedPagination(default_page_size=25,</span> <span class="pre">max_page_size=200)</span></code>
-for the two sizes. A view or mixin that still sets an old name fails at class
-definition, or at registration when set later.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">to_list_response</span></code> and <code class="docutils literal notranslate"><span class="pre">get_many_endpoint</span></code> return an instance of the
-envelope model instead of a dict, so a direct caller reads attributes such as
-<code class="docutils literal notranslate"><span class="pre">page.data</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.query.derive_schema_list_params</span></code> takes <code class="docutils literal notranslate"><span class="pre">pagination=</span></code> instead of
-<code class="docutils literal notranslate"><span class="pre">default_page_size</span></code>, <code class="docutils literal notranslate"><span class="pre">max_page_size</span></code> and <code class="docutils literal notranslate"><span class="pre">paginated</span></code>.
-<code class="docutils literal notranslate"><span class="pre">fr.query.apply_list_params</span></code> gains <code class="docutils literal notranslate"><span class="pre">pagination=</span></code>.</p></li>
-<li><p>React-admin views answer <code class="docutils literal notranslate"><span class="pre">400</span></code> for a <code class="docutils literal notranslate"><span class="pre">range</span></code> that asks for more rows than
+for the sizes.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">to_list_response</span></code> and <code class="docutils literal notranslate"><span class="pre">get_many_endpoint</span></code> return the list response model,
+not a dict.</p></li>
+<li><p>React-admin views answer <code class="docutils literal notranslate"><span class="pre">400</span></code> for a <code class="docutils literal notranslate"><span class="pre">range</span></code> with more rows than
 <code class="docutils literal notranslate"><span class="pre">max_page_size</span></code>, which is 1000 by default.</p></li>
-<li><p>Dotted filters and sorts join relationships through SQL aliases. Set
-<code class="docutils literal notranslate"><span class="pre">include_aliases=True</span></code> on SQLAlchemy <code class="docutils literal notranslate"><span class="pre">with_loader_criteria</span></code> rules so they
-apply to these joins.</p></li>
-<li><p>Built-in item routes use <code class="docutils literal notranslate"><span class="pre">/{id:int}</span></code> for integer keys and <code class="docutils literal notranslate"><span class="pre">/{id:uuid}</span></code> for
-UUID keys. A value that does not match answers <code class="docutils literal notranslate"><span class="pre">404</span></code> instead of <code class="docutils literal notranslate"><span class="pre">422</span></code>, unless
-another route handles it. A negative integer id needs a custom item route.</p></li>
-<li><p>Default CRUD route names are <code class="docutils literal notranslate"><span class="pre">get_many</span></code>, <code class="docutils literal notranslate"><span class="pre">get_one</span></code>, <code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code> and
-<code class="docutils literal notranslate"><span class="pre">delete</span></code>, and React Admin’s PUT route is <code class="docutils literal notranslate"><span class="pre">put</span></code>. Default operation IDs are
-<code class="docutils literal notranslate"><span class="pre">items_list</span></code>, <code class="docutils literal notranslate"><span class="pre">items_get</span></code>, <code class="docutils literal notranslate"><span class="pre">items_create</span></code>, <code class="docutils literal notranslate"><span class="pre">items_update</span></code> and
-<code class="docutils literal notranslate"><span class="pre">items_delete</span></code> for <code class="docutils literal notranslate"><span class="pre">/items</span></code>. Regenerate clients, or set explicit operation
-IDs to keep the old names. A view’s <code class="docutils literal notranslate"><span class="pre">route_options</span></code> sets a route’s name,
-summary, operation ID or other FastAPI route arguments.</p></li>
+<li><p>Dotted filters and sorts join through SQL aliases. Set
+<code class="docutils literal notranslate"><span class="pre">include_aliases=True</span></code> on <code class="docutils literal notranslate"><span class="pre">with_loader_criteria</span></code> rules so they apply to
+these joins.</p></li>
+<li><p>Item routes use <code class="docutils literal notranslate"><span class="pre">/{id:int}</span></code> for integer keys and <code class="docutils literal notranslate"><span class="pre">/{id:uuid}</span></code> for UUID keys.
+An id that does not match answers <code class="docutils literal notranslate"><span class="pre">404</span></code> instead of <code class="docutils literal notranslate"><span class="pre">422</span></code>.</p></li>
+<li><p>Default route names are <code class="docutils literal notranslate"><span class="pre">get_many</span></code>, <code class="docutils literal notranslate"><span class="pre">get_one</span></code>, <code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code>, <code class="docutils literal notranslate"><span class="pre">delete</span></code>
+and react-admin’s <code class="docutils literal notranslate"><span class="pre">put</span></code>. Operation IDs are <code class="docutils literal notranslate"><span class="pre">items_list</span></code>, <code class="docutils literal notranslate"><span class="pre">items_get</span></code> and so
+on, and the summary of <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code> is “Get”. A view’s <code class="docutils literal notranslate"><span class="pre">route_options</span></code> can
+set the old ones.</p></li>
 <li><p>Set custom session generators before you register routes that use
-<code class="docutils literal notranslate"><span class="pre">SessionDep</span></code> or <code class="docutils literal notranslate"><span class="pre">AsyncSessionDep</span></code>. Setting one later raises a configuration
-error.</p></li>
-<li><p>The minimum SQLAlchemy version is 2.0.45, up from 2.0.22.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.ContextParam</span></code> no longer inherits SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">ColumnOperators</span></code>, so it
-has no <code class="docutils literal notranslate"><span class="pre">in_()</span></code>, <code class="docutils literal notranslate"><span class="pre">like()</span></code> or other operator methods.</p></li>
-<li><p>A create or update schema derived from <code class="docutils literal notranslate"><span class="pre">schema</span></code> leaves out a primary key
-that the server generates, even when <code class="docutils literal notranslate"><span class="pre">schema</span></code> does not mark it <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>.
-To let clients send such a key, declare <code class="docutils literal notranslate"><span class="pre">schema_create</span></code>.</p></li>
-<li><p>A view’s <code class="docutils literal notranslate"><span class="pre">dependencies</span></code> and <code class="docutils literal notranslate"><span class="pre">responses</span></code> add up down the class hierarchy,
-base first, as <code class="docutils literal notranslate"><span class="pre">prefix</span></code> does. A subclass can no longer remove a base
-dependency or response, not even with <code class="docutils literal notranslate"><span class="pre">dependencies</span> <span class="pre">=</span> <span class="pre">[]</span></code>: move it out of
-the base instead. A mixin listed after the view base, as in
-<code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">V(fr.View,</span> <span class="pre">AuthMixin)</span></code>, now adds its <code class="docutils literal notranslate"><span class="pre">dependencies</span></code> and <code class="docutils literal notranslate"><span class="pre">responses</span></code>
-too. A base <code class="docutils literal notranslate"><span class="pre">Security(...,</span> <span class="pre">scopes=[...])</span></code> and a subclass one with other
-scopes now both run.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.objects.make_new_object</span></code>, <code class="docutils literal notranslate"><span class="pre">update_object</span></code> and their async versions no
-longer take a <code class="docutils literal notranslate"><span class="pre">schema_cls</span></code> argument: the payload’s own schema decides what is
-written. A field that an explicit <code class="docutils literal notranslate"><span class="pre">schema_create</span></code> or <code class="docutils literal notranslate"><span class="pre">schema_update</span></code> declares
-is now written even when the response schema marks it <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>, so keep a
-server-stamped field such as a tenant id out of explicit write schemas.</p></li>
-<li><p>A view class attribute with a <code class="docutils literal notranslate"><span class="pre">Path()</span></code>, <code class="docutils literal notranslate"><span class="pre">Query()</span></code>, <code class="docutils literal notranslate"><span class="pre">Header()</span></code>, <code class="docutils literal notranslate"><span class="pre">Cookie()</span></code>,
-<code class="docutils literal notranslate"><span class="pre">Body()</span></code>, <code class="docutils literal notranslate"><span class="pre">Form()</span></code> or <code class="docutils literal notranslate"><span class="pre">File()</span></code> marker raises <code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code> when
-the view is registered. FastAPI never set such an attribute. Declare the
-parameter on the endpoint method, or use <code class="docutils literal notranslate"><span class="pre">Annotated[...,</span> <span class="pre">Depends(...)]</span></code>.</p></li>
+<code class="docutils literal notranslate"><span class="pre">SessionDep</span></code> or <code class="docutils literal notranslate"><span class="pre">AsyncSessionDep</span></code>.</p></li>
+<li><p>SQLAlchemy 2.0.45 or newer is required.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.ContextParam</span></code> no longer has SQLAlchemy operator methods such as <code class="docutils literal notranslate"><span class="pre">in_()</span></code>.</p></li>
+<li><p>Generated create and update schemas leave out a primary key that the
+server generates. Declare <code class="docutils literal notranslate"><span class="pre">schema_create</span></code> to let clients send it.</p></li>
+<li><p>A view’s <code class="docutils literal notranslate"><span class="pre">dependencies</span></code> and <code class="docutils literal notranslate"><span class="pre">responses</span></code> add up from the base class down, as
+<code class="docutils literal notranslate"><span class="pre">prefix</span></code> does, also from a mixin listed after the view base. A subclass can
+no longer remove a base dependency or response.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">fr.objects</span></code> write helpers no longer take <code class="docutils literal notranslate"><span class="pre">schema_cls</span></code>. A field that an
+explicit <code class="docutils literal notranslate"><span class="pre">schema_create</span></code> or <code class="docutils literal notranslate"><span class="pre">schema_update</span></code> declares is written even when the
+response schema marks it <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>, so keep server-set fields, such as a
+tenant id, out of those schemas.</p></li>
+<li><p>A view class attribute with a <code class="docutils literal notranslate"><span class="pre">Query()</span></code> or other request parameter marker
+raises <code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code>. Declare the parameter on the endpoint
+method instead.</p></li>
 </ul>
 </section>
 <section id="fixed">
 <h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
 <ul class="simple">
-<li><p>Restly works with FastAPI 0.137 and later, which keep the routes of an
-included router out of <code class="docutils literal notranslate"><span class="pre">app.routes</span></code>.</p></li>
-<li><p>A schema field with a <code class="docutils literal notranslate"><span class="pre">default_factory</span></code>, such as
-<code class="docutils literal notranslate"><span class="pre">Field(default_factory=list)</span></code>, no longer makes <code class="docutils literal notranslate"><span class="pre">/openapi.json</span></code> and <code class="docutils literal notranslate"><span class="pre">/docs</span></code>
-answer <code class="docutils literal notranslate"><span class="pre">500</span></code>.</p></li>
-<li><p>React-admin views answer <code class="docutils literal notranslate"><span class="pre">400</span></code> for a <code class="docutils literal notranslate"><span class="pre">range</span></code> with a negative start or an end
-before its start, instead of every row or a <code class="docutils literal notranslate"><span class="pre">500</span></code>.</p></li>
-<li><p>An explicit <code class="docutils literal notranslate"><span class="pre">schema_create</span></code> or <code class="docutils literal notranslate"><span class="pre">schema_update</span></code> writes every field it
-declares, also a field that the response schema marks <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>.</p></li>
-<li><p>Dotted filters and sorts work over a self-referential relationship and over
-two paths to the same model.</p></li>
-<li><p>A create saves the foreign key that the request sends, such as <code class="docutils literal notranslate"><span class="pre">post_id</span></code>,
-also when the schema has an optional relationship field for it.</p></li>
-<li><p>A create works when a dataclass relationship has no default and the schema
-has no field for it.</p></li>
-<li><p>An update can write a to-many relationship that the view does not load. It
-used to answer <code class="docutils literal notranslate"><span class="pre">500</span></code> on an async view, and with <code class="docutils literal notranslate"><span class="pre">lazy=&quot;raise&quot;</span></code> on both.</p></li>
-<li><p>On Python 3.10, a view registers when a class attribute has a parameterized
-generic type, such as <code class="docutils literal notranslate"><span class="pre">list[str]</span></code>.</p></li>
-<li><p>A list endpoint accepts the query parameters that its dependencies read, and
-a custom list route can take its own query parameters beside <code class="docutils literal notranslate"><span class="pre">list_params</span></code>.
-OpenAPI lists each filter as its own parameter.</p></li>
-<li><p>A hand-written <code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code> takes a field by its alias.</p></li>
+<li><p>Restly works with FastAPI 0.137 and later.</p></li>
+<li><p>A field with a <code class="docutils literal notranslate"><span class="pre">default_factory</span></code> no longer makes <code class="docutils literal notranslate"><span class="pre">/openapi.json</span></code> answer
+<code class="docutils literal notranslate"><span class="pre">500</span></code>.</p></li>
+<li><p>A list endpoint accepts the query keys that its dependencies read, and a
+custom list route can take its own query parameters. A hand-written
+<code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code> takes a field by its alias.</p></li>
+<li><p>A create saves the foreign key that the request sends, and works when a
+dataclass relationship has no default. An update can write a to-many
+relationship that the view does not load.</p></li>
 <li><p>A view subclass keeps the schemas that its base declares.</p></li>
-<li><p>The list of a react-admin view sends only the fields of the response class.</p></li>
-<li><p>With <code class="docutils literal notranslate"><span class="pre">extra=&quot;allow&quot;</span></code>, a response no longer sends a key that has the name of a
-<code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> field.</p></li>
-<li><p>OpenAPI gives each class the <code class="docutils literal notranslate"><span class="pre">x-resource-ref</span></code> of its own fields.</p></li>
-<li><p>mypy and pyright accept a view built by hand, keyword-only fields on
-<code class="docutils literal notranslate"><span class="pre">fr.DataclassBase</span></code> and <code class="docutils literal notranslate"><span class="pre">fr.IDBase</span></code>, any mapped class as a view’s <code class="docutils literal notranslate"><span class="pre">model</span></code>,
-and a subclass of <code class="docutils literal notranslate"><span class="pre">fr.ContextNamespace</span></code> or <code class="docutils literal notranslate"><span class="pre">fr.ClauseNamespace</span></code> under
-<code class="docutils literal notranslate"><span class="pre">--strict</span></code>.</p></li>
-<li><p>Mapped classes that do not subclass <code class="docutils literal notranslate"><span class="pre">DeclarativeBase</span></code>, such as SQLModel
-tables, work with reference types and <code class="docutils literal notranslate"><span class="pre">fr.resolve_scope</span></code>. A SQLModel data
-class works as a view’s <code class="docutils literal notranslate"><span class="pre">schema</span></code>. A view whose <code class="docutils literal notranslate"><span class="pre">model</span></code> has no mapper raises
-<code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code> at class definition.</p></li>
-<li><p>Configured session generators share one request session with the app’s own
-dependencies, also in the rollback test fixtures.</p></li>
-<li><p>Query clauses, <code class="docutils literal notranslate"><span class="pre">apply_clauses</span></code> types and schema generation work with
-SQLAlchemy 2.1.</p></li>
-<li><p>A context member that SQLAlchemy would bind as a plain value raises
-<code class="docutils literal notranslate"><span class="pre">TypeError</span></code> when the clause is applied, instead of a database error later.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">{id}</span></code> path parameter takes the model’s primary key type, so UUID and
+string keys work without <code class="docutils literal notranslate"><span class="pre">id_type</span></code>.</p></li>
+<li><p>Generated schemas take their fields from the SQLAlchemy mapper, so models
+with <code class="docutils literal notranslate"><span class="pre">from</span> <span class="pre">__future__</span> <span class="pre">import</span> <span class="pre">annotations</span></code>, SQLModel tables and plain
+<code class="docutils literal notranslate"><span class="pre">Column</span></code> attributes get all their columns.</p></li>
+<li><p>A mapped class that does not subclass <code class="docutils literal notranslate"><span class="pre">DeclarativeBase</span></code>, such as a SQLModel
+table, works as a view’s <code class="docutils literal notranslate"><span class="pre">model</span></code> and with reference types. A SQLModel class
+works as a view’s <code class="docutils literal notranslate"><span class="pre">schema</span></code>.</p></li>
+<li><p>Configured session generators share one session per request with the app’s
+own dependencies.</p></li>
+<li><p>Dotted filters and sorts work over a self-referential relationship.</p></li>
 <li><p>Context members work as <code class="docutils literal notranslate"><span class="pre">mapped_column(default=Current.user_id)</span></code> on models
 that are not dataclasses.</p></li>
-<li><p>A replaced endpoint method keeps its own <code class="docutils literal notranslate"><span class="pre">id</span></code>, <code class="docutils literal notranslate"><span class="pre">schema_obj</span></code> and return
-annotations.</p></li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">{id}</span></code> path parameter takes the model’s primary key type, so a UUID or
-string key works without <code class="docutils literal notranslate"><span class="pre">id_type</span></code>. <code class="docutils literal notranslate"><span class="pre">id_type</span></code> now defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
-<li><p>Generated schemas take their fields from the SQLAlchemy mapper. A model with
-<code class="docutils literal notranslate"><span class="pre">from</span> <span class="pre">__future__</span> <span class="pre">import</span> <span class="pre">annotations</span></code>, a SQLModel table and plain <code class="docutils literal notranslate"><span class="pre">Column</span></code>
-attributes get all their columns. A column whose type cannot be found raises
-<code class="docutils literal notranslate"><span class="pre">TypeError</span></code> instead of being left out. A subclass that redefines a column
-gets its own type, and a <code class="docutils literal notranslate"><span class="pre">column_property</span></code> is <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>.</p></li>
-<li><p>On Python 3.14, a relationship to a class imported under <code class="docutils literal notranslate"><span class="pre">TYPE_CHECKING</span></code> no
-longer raises <code class="docutils literal notranslate"><span class="pre">NameError</span></code>.</p></li>
+<li><p>React-admin views answer <code class="docutils literal notranslate"><span class="pre">400</span></code> for a negative or reversed <code class="docutils literal notranslate"><span class="pre">range</span></code>.</p></li>
+<li><p>Fixes for SQLAlchemy 2.1, Python 3.10, Python 3.14, mypy and pyright.</p></li>
 </ul>
 </section>
 <section id="security">
 <h3>Security<a class="headerlink" href="#security" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>List endpoints no longer filter or sort on <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields or on fields
-with <code class="docutils literal notranslate"><span class="pre">Field(exclude=True)</span></code>. A client could read a hidden value back, as with
-<code class="docutils literal notranslate"><span class="pre">?pin=1234</span></code>. Such a filter now answers <code class="docutils literal notranslate"><span class="pre">422</span></code>, and such a sort key <code class="docutils literal notranslate"><span class="pre">400</span></code>, as
-for a field that does not exist.</p></li>
+with <code class="docutils literal notranslate"><span class="pre">Field(exclude=True)</span></code>, which let a client read a hidden value back. A
+response with <code class="docutils literal notranslate"><span class="pre">extra=&quot;allow&quot;</span></code> no longer sends a key with the name of a
+<code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> field.</p></li>
 </ul>
 </section>
 </section>
