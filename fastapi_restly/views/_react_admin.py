@@ -22,13 +22,13 @@ from sqlalchemy.orm import RelationshipProperty
 from .._pagination import _DEFAULT_PAGINATION, NoPagination, NumberedPagination
 from ..exc import BadQueryParam, RestlyConfigurationError
 from ..query._shared import _append_pk_tiebreak
-from ..schemas import derive_schema_response
 from ._async import AsyncRestView
 from ._base import (
     ListResult,
     ResponseShape,
     _annotate,
     _as_response,
+    _schema_response,
     _typed_id_route,
     _view_id_type,
     get,
@@ -253,6 +253,7 @@ class _ReactAdminViewProtocol(Protocol):
     request: fastapi.Request
     model: ClassVar[type[Any]]
     schema: ClassVar[type[pydantic.BaseModel]]
+    schema_response: ClassVar[type[pydantic.BaseModel]]
     schema_update: ClassVar[type[pydantic.BaseModel]]
     schema_list_params: ClassVar[type[pydantic.BaseModel]]
     pagination: ClassVar[NumberedPagination | NoPagination | None]
@@ -399,7 +400,7 @@ class _ReactAdminMixin:
         return apply_react_admin_query(
             query,
             view.model,
-            view.schema,
+            _schema_response(type(self)),
             params.sort,
             params.start,
             params.end,
@@ -412,8 +413,9 @@ class _ReactAdminMixin:
         schema from a ``to_single_response`` override goes out without its
         WriteOnly fields."""
         view = cast(_ReactAdminViewProtocol, self)
+        schema_response = _schema_response(type(self))
         return [
-            _as_response(view.schema, view.to_single_response(obj)).model_dump(
+            _as_response(schema_response, view.to_single_response(obj)).model_dump(
                 mode="json", by_alias=True
             )
             for obj in items
@@ -490,7 +492,7 @@ class _ReactAdminMixin:
         if hasattr(view_cls, "put"):
             _annotate(
                 view_cls.put,
-                return_annotation=derive_schema_response(view_cls.schema),
+                return_annotation=view_cls.schema_response,
                 schema_obj=view_cls.schema_update,
                 id=_view_id_type(view_cls),
             )

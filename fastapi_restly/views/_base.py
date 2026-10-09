@@ -817,9 +817,9 @@ def _generated_primary_key_fields(model_cls: type[Any]) -> frozenset[str]:
 
 @functools.cache
 def _response_validation_adapter(
-    schema_cls: type[pydantic.BaseModel],
+    schema_response: type[pydantic.BaseModel],
 ) -> pydantic.TypeAdapter[pydantic.BaseModel]:
-    return pydantic.TypeAdapter(derive_schema_response(schema_cls))
+    return pydantic.TypeAdapter(schema_response)
 
 
 def _build_relationship_loader_options(
@@ -1292,6 +1292,14 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     }
 
     schema: ClassVar[type[pydantic.BaseModel]]
+    #: The class of everything that goes out: the single responses, the
+    #: items of the list response, and the fields the list params filter and
+    #: sort on. The relationships it names are the ones the view loads. When
+    #: a view sets none, Restly builds it with
+    #: :func:`~fastapi_restly.schemas.derive_schema_response`: the view's
+    #: schema without its ``WriteOnly`` fields, named ``<Resource>Response``.
+    #: A class that a view sets is used as it is.
+    schema_response: ClassVar[type[pydantic.BaseModel]]
     # If 'schema_create' is not defined it will be created from 'schema'
     # using `create_model_without_read_only_fields()`.
     schema_create: ClassVar[type[pydantic.BaseModel]]
@@ -1335,7 +1343,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     #: :class:`AsyncReactAdminView`).
     pagination: ClassVar[NumberedPagination | NoPagination | None] = _DEFAULT_PAGINATION
     #: The list params (filter, sort, page) as a pydantic model, generated
-    #: from ``schema`` and ``model`` by
+    #: from ``schema_response`` and ``model`` by
     #: :func:`~fastapi_restly.query.derive_schema_list_params`. Any route
     #: method on the view that declares a ``list_params`` parameter takes it:
     #: typed for FastAPI and OpenAPI, and guarded against unknown keys like
@@ -1446,16 +1454,19 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         return all_of(scope, _checked_where(where, label))
 
     def get_relationship_loader_options(self) -> list[Any]:
-        """Loader options for the relationships the view's schema names.
+        """Loader options for the relationships the response class names.
 
         Returns recursive ``selectinload(...)`` options derived from
-        ``self.schema``, applied on reads (``get_one`` / ``get_many``) and on
-        the post-write reload in ``save_object``. Override to eager-load
-        relationships the schema does not name on both paths; append to
-        ``super().get_relationship_loader_options()`` to keep the schema-derived
+        :attr:`schema_response`, applied on reads (``get_one`` /
+        ``get_many``) and on the post-write reload in ``save_object``.
+        Override to eager-load relationships the response class does not
+        name on both paths; append to
+        ``super().get_relationship_loader_options()`` to keep the derived
         loads. See the "Relationship Loading and Async" how-to.
         """
-        return _build_relationship_loader_options(self.model, self.schema)
+        return _build_relationship_loader_options(
+            self.model, _schema_response(type(self))
+        )
 
     def _get_response_reload_statement(self, obj: Any) -> Any:
         """The SELECT that makes ``obj`` serializable, or ``None`` if it already is.
@@ -1464,7 +1475,9 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         refresh is itself what leaves relationships unloaded; asking earlier
         would see a value the refresh is about to discard.
         """
-        if _schema_relationships_are_loaded(obj, self.model, self.schema):
+        if _schema_relationships_are_loaded(
+            obj, self.model, _schema_response(type(self))
+        ):
             return None
         options = self.get_relationship_loader_options()
         if not options:
@@ -1504,21 +1517,25 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         reject_unknown_query_keys(request, list_keys | set(self.extra_query_params))
 
     def to_single_response(self, obj: ModelT | SchemaT) -> SchemaT:
-        """Serialize one ORM object to the view's response class.
+        """Serialize one ORM object to the view's :attr:`schema_response`.
 
-        The response class is the view's schema without its WriteOnly fields,
-        named like ``UserResponse``. It is a subclass of :attr:`schema`. An
-        override may return an instance of :attr:`schema` instead. The
-        response class copies its values without validating them again, and
-        its WriteOnly fields do not go out.
+        By default the response class is the view's schema without its
+        WriteOnly fields, named like ``UserResponse``. It is a subclass of
+        :attr:`schema`, so an override may return an instance of
+        :attr:`schema` instead. The response class copies its values without
+        validating them again, and its WriteOnly fields do not go out. A view
+        that sets its own ``schema_response`` returns an instance of that
+        class.
 
         The ORM path below validates through the response class, so a view's
         schema that declares a WriteOnly field the ORM object doesn't carry
         (e.g. ``password`` backed by a ``password_hash`` column) doesn't fail
         response validation.
         """
-        if isinstance(obj, self.schema):
-            return cast(SchemaT, _as_response(self.schema, obj))
+        schema_response = _schema_response(type(self))
+        response = _as_response(schema_response, obj)
+        if isinstance(response, schema_response):
+            return cast(SchemaT, response)
 
         # Build a payload of raw attribute values keyed by schema field name;
         # re-validating it below serializes each field through its own type. The
@@ -1527,7 +1544,6 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         # view-layer special-casing. Alias rendering happens when FastAPI
         # serializes the response model.
         payload: dict[str, Any] = {}
-        schema_response = derive_schema_response(self.schema)
         for field_name, field_info in schema_response.model_fields.items():
             if hasattr(obj, field_name):
                 payload[field_name] = getattr(obj, field_name)
@@ -1536,7 +1552,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
 
         # through the adapter, not model_validate: a schema may narrow that
         # classmethod's signature (SQLModel drops by_alias and by_name)
-        adapter = _response_validation_adapter(self.schema)
+        adapter = _response_validation_adapter(schema_response)
         return cast(
             SchemaT, adapter.validate_python(payload, by_alias=False, by_name=True)
         )
@@ -1570,14 +1586,13 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         The page and page size come from ``list_result.list_params``.
         """
         # An override may return instances of the view's schema.
+        schema_response = _schema_response(type(self))
         data = [
-            _as_response(self.schema, self.to_single_response(obj))
+            _as_response(schema_response, self.to_single_response(obj))
             for obj in list_result.objects
         ]
         pagination = self.pagination
-        envelope = derive_schema_list_response(
-            derive_schema_response(self.schema), pagination=pagination
-        )
+        envelope = derive_schema_list_response(schema_response, pagination=pagination)
         if not isinstance(pagination, NumberedPagination):
             return _build_envelope(envelope, _unpaginated_page_info(data))
         params = self._to_query_params(list_result.list_params)
@@ -1609,7 +1624,9 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         if shape is ResponseShape.LIST:
             return self.to_list_response(result)
         # An override may return an instance of the view's schema.
-        return _as_response(self.schema, self.to_single_response(result))
+        return _as_response(
+            _schema_response(type(self)), self.to_single_response(result)
+        )
 
     def snapshot(self, obj: Any) -> dict[str, Any]:
         """Frozen capture of an object's already-loaded column values, passed as
@@ -1660,14 +1677,18 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             cls.schema = cast(type[SchemaT], derive_schema(cls.model))
             _mark_generated(cls, "schema")
 
-        if _needs_generating(cls, "schema_list_params", derived_from="schema"):
+        if _needs_generating(cls, "schema_response", derived_from="schema"):
+            cls.schema_response = derive_schema_response(cls.schema)
+            _mark_generated(cls, "schema_response")
+
+        if _needs_generating(cls, "schema_list_params", derived_from="schema_response"):
             if not hasattr(cls, "model"):
                 raise ValueError(
                     f"'{cls.__name__}.model' must be specified: it is needed to "
                     "generate the list params."
                 )
             cls.schema_list_params = derive_schema_list_params(
-                cls.schema, cls.model, pagination=cls.pagination
+                cls.schema_response, cls.model, pagination=cls.pagination
             )
             _mark_generated(cls, "schema_list_params")
         else:
@@ -1689,7 +1710,7 @@ class BaseRestView(View, Generic[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
             )
             _mark_generated(cls, "schema_update")
 
-        response_schema = derive_schema_response(cls.schema)
+        response_schema = cls.schema_response
         id_type = _view_id_type(cls)
         if id_type is int:
             item_path = "/{id:int}"
@@ -1782,6 +1803,18 @@ def _needs_generating(cls: type, name: str, *, derived_from: str | None = None) 
         source_index = _owner_index(cls, derived_from)
         return source_index is not None and source_index < index
     return False
+
+
+def _schema_response(view_cls: type) -> type[pydantic.BaseModel]:
+    """The response class of a view.
+
+    Registration sets ``schema_response``. A view that is not registered
+    yet, or a subclass that changes ``schema``, gets the class that
+    registration would set.
+    """
+    if _needs_generating(view_cls, "schema_response", derived_from="schema"):
+        return derive_schema_response(view_cls.schema)
+    return view_cls.schema_response
 
 
 #: A ``BaseRestView`` at any parameterization, for the signature below.
@@ -2411,7 +2444,7 @@ def _reject_buried_markers_in_view_schemas(view_cls: type[View]) -> None:
     covered too.
     """
     checked: set[type] = set()
-    for attr in ("schema", "schema_create", "schema_update"):
+    for attr in ("schema", "schema_response", "schema_create", "schema_update"):
         schema = getattr(view_cls, attr, None)
         if schema is None or schema in checked:
             continue

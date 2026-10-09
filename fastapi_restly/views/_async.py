@@ -26,6 +26,7 @@ from ._base import (
     _identity_criterion,
     _not_found_message,
     _ReadWhere,
+    _schema_response,
     _typed_id_route,
     delete,
     get,
@@ -275,7 +276,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         plus :meth:`apply_list_params`. A paginated view also runs
         :meth:`count` for ``total_count``; a view without pagination
         returns every matching row with ``total_count=None``. Relationships
-        the view's schema names are eager-loaded.
+        the response class names are eager-loaded.
 
         The handlers always forward ``scope=``, so an override must declare
         the parameter and pass it on to ``super()``. A route's ``where=``
@@ -315,7 +316,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         calls this directly and gates its own action. Visibility is the
         resolved scope (``fr.resolve_scope(self)``, or ``scope`` when
         given), so a row outside it is a 404 for every caller.
-        Relationships the view's schema names are eager-loaded.
+        Relationships the response class names are eager-loaded.
 
         The handlers always forward ``scope=``, so an override must declare
         the parameter and pass it on to ``super()``.
@@ -390,10 +391,14 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
         """Apply the list params (filter, sort, page) to ``query``. Override
         for a non-default URL grammar; the common case is driven by
         configuration. The default is :func:`fastapi_restly.query.apply_list_params`
-        with the view's model, schema and pagination.
+        with the view's model, response class and pagination.
         """
         return apply_list_params(
-            query, list_params, self.model, self.schema, pagination=self.pagination
+            query,
+            list_params,
+            self.model,
+            _schema_response(type(self)),
+            pagination=self.pagination,
         )
 
     async def count(self, query: sqlalchemy.Select[Any]) -> int:
@@ -441,7 +446,7 @@ class AsyncRestView(BaseRestView[ModelT, SchemaT, CreateSchemaT, UpdateSchemaT, 
     @final
     async def save_object(self, obj: ModelT) -> ModelT:
         """Flush the session and refresh ``obj`` from the database, eager-loading
-        the relationships the view's schema names. Does not commit;
+        the relationships the response class names. Does not commit;
         ``handle_<verb>`` owns the commit.
 
         Final: a side effect per write belongs in ``before_action_commit`` /

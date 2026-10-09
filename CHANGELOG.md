@@ -33,8 +33,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `fr.testing.configure_tests(app=...)`, or that you include a view on.
   Projects that `restly new` creates have a test that turns the warning into
   an error.
+- A view can set its own response class with the new `schema_response`
+  attribute, on sync and async views. Everything that goes out follows it:
+  the single responses, the items of the list response, the fields that the
+  list params filter and sort on, and the relationships that the view loads.
+  Everything that comes in still follows `schema_create` and `schema_update`,
+  which Restly derives from `schema`. A view that sets no `schema_response`
+  gets the class that Restly built before: the view's schema without its
+  `WriteOnly` fields. For type checkers, put your own response class in the
+  second parameter, as in `fr.AsyncRestView[User, UserResponse]`.
+- `fr.schemas.derive_schema_response(schema)` returns the response class
+  that a view builds from its schema, and
+  `fr.schemas.derive_schema_list_response(schema_response, pagination=...)`
+  returns the list response class of a view. Each returns the same class as
+  the view, so a custom route can name it as its `response_model`. OpenAPI
+  then shows `UserResponse` and `UserListResponse` for the custom route too,
+  not `UserSchema` or `PaginatedEnvelope_UserSchema_`.
 
 ### Changed
+
+- The list params and the relationships that a view loads now follow the
+  response class, not the view's schema. For a view without its own
+  `schema_response` the filters stay the same, because the response class is
+  the view's schema without its `WriteOnly` fields. A relationship that only
+  a `WriteOnly` field names is no longer loaded for a response.
 
 - Names around lists and schemas follow one set of rules, which are now in
   CONTRIBUTING.md. "List" is what `get_many` returns, "list params" are the

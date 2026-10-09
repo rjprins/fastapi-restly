@@ -6,15 +6,23 @@ uses, so a custom route can name them and OpenAPI shows one type for each
 resource.
 """
 
+import asyncio
 import warnings
+from collections.abc import Iterator
 from typing import Any, Generic, TypeVar
 
 import fastapi
 import pydantic
-from sqlalchemy.orm import Mapped
+import pytest
+from sqlalchemy import ForeignKey
+from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
 from fastapi_restly.exc import RestlyDuplicateSchemaNameWarning
+from fastapi_restly.testing import RestlyTestClient
+
+from .conftest import create_tables
 
 T = TypeVar("T")
 
@@ -210,3 +218,241 @@ def test_the_wrong_pagination_gives_a_second_class_and_a_warning():
         and "ShelfListResponse" in str(warning.message)
         for warning in caught
     )
+
+
+# A view whose own schema_response differs from its schema. The schema is
+# what comes in; the response class is what goes out. The response class
+# leaves out email, score and team_id, names the team relationship, and has
+# a computed field, so each test can see which class a response went through.
+
+
+class _Base(DeclarativeBase):
+    pass
+
+
+class _Team(_Base):
+    __tablename__ = "sr_team"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str]
+
+
+class _Member(_Base):
+    __tablename__ = "sr_member"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str]
+    email: Mapped[str]
+    score: Mapped[int] = mapped_column(default=0)
+    team_id: Mapped[int | None] = mapped_column(ForeignKey(_Team.id))
+    team: Mapped[_Team | None] = relationship()
+
+
+class TeamSchema(fr.IDSchema):
+    name: str
+
+
+class MemberSchema(fr.IDSchema):
+    name: str
+    email: str
+    score: int = 0
+    team_id: int | None = None
+
+
+class MemberResponse(fr.IDSchema):
+    name: str
+    team: TeamSchema | None = None
+
+    @pydantic.computed_field
+    def label(self) -> str:
+        return f"{self.name} ({self.team.name if self.team else '-'})"
+
+
+def _member_view(base: type) -> type:
+    class MemberView(base):  # type: ignore[valid-type,misc]
+        prefix = "/members"
+        model = _Member
+        schema = MemberSchema
+        schema_response = MemberResponse
+
+    return MemberView
+
+
+@pytest.fixture(params=[fr.RestView, fr.AsyncRestView], ids=["sync", "async"])
+def members(request: pytest.FixtureRequest) -> Iterator[tuple[type, RestlyTestClient]]:
+    app = fastapi.FastAPI()
+    view = fr.include_view(app, _member_view(request.param))
+    rows = [
+        _Team(id=1, name="red"),
+        _Team(id=2, name="blue"),
+        _Member(id=1, name="ann", email="ann@example.com", score=3, team_id=1),
+        _Member(id=2, name="bob", email="bob@example.com", score=1, team_id=2),
+    ]
+    if request.param is fr.RestView:
+        engine, make_session = request.getfixturevalue("sync_db")
+        _Base.metadata.create_all(engine)
+        with make_session() as session:
+            session.add_all(rows)
+            session.commit()
+    else:
+
+        async def prepare() -> None:
+            engine = fr.db.get_async_engine()
+            async with engine.begin() as connection:
+                await connection.run_sync(_Base.metadata.create_all)
+            async with async_sessionmaker(engine)() as session:
+                session.add_all(rows)
+                await session.commit()
+
+        asyncio.run(prepare())
+
+    with RestlyTestClient(app) as client:
+        yield view, client
+
+
+ANN = {"id": 1, "name": "ann", "team": {"id": 1, "name": "red"}, "label": "ann (red)"}
+
+
+def test_everything_that_goes_out_follows_the_view_s_response_class(members):
+    view, client = members
+
+    assert view.schema_response is MemberResponse
+    assert client.get("/members/1").json() == ANN
+    assert client.get("/members/").json()["data"][0] == ANN
+
+    created = client.post(
+        "/members/", json={"name": "cy", "email": "cy@example.com", "team_id": 2}
+    ).json()
+    assert created == {
+        "id": 3,
+        "name": "cy",
+        "team": {"id": 2, "name": "blue"},
+        "label": "cy (blue)",
+    }
+    updated = client.patch("/members/3", json={"team_id": 1}).json()
+    assert updated["team"] == {"id": 1, "name": "red"}
+
+
+def test_the_view_s_schema_stays_what_comes_in(members):
+    view, _ = members
+
+    assert set(view.schema_create.model_fields) == {"name", "email", "score", "team_id"}
+    assert view.schema_create.__name__ == "MemberCreate"
+    assert view.schema_update.__name__ == "MemberUpdate"
+
+
+def test_the_list_params_follow_the_response_class(members):
+    view, client = members
+
+    assert view.schema_list_params.__name__ == "MemberListParams"
+    names = set(view.schema_list_params.model_fields)
+    assert "name" in names
+    assert "team.name" in {
+        field.alias or name
+        for name, field in view.schema_list_params.model_fields.items()
+    }
+    assert not names & {"email", "score", "team_id"}
+
+    page = client.get("/members/", params={"team.name": "blue"}).json()
+    assert [member["name"] for member in page["data"]] == ["bob"]
+    client.get("/members/", params={"email": "ann@example.com"}, assert_status_code=422)
+    client.get("/members/", params={"sort": "score"}, assert_status_code=400)
+
+
+def test_the_view_loads_the_relationships_the_response_class_names(members):
+    view, _ = members
+
+    # The view's schema names no relationship. Without this load, the async
+    # view could not send the team: it would fail with MissingGreenlet.
+    instance = object.__new__(view)
+    assert len(instance.get_relationship_loader_options()) == 1
+
+
+def test_openapi_shows_the_view_s_response_class(members):
+    _, client = members
+    app = client.app
+
+    assert _ref(app, "/members/{id}", "get") == "MemberResponse"
+    assert _ref(app, "/members", "get") == "MemberListResponse"
+    assert _components(app) == {
+        "MemberResponse",
+        "MemberCreate",
+        "MemberUpdate",
+        "MemberListResponse",
+        "TeamSchema",
+    }
+    assert _response_model(app, "/members", "get") is (
+        fr.schemas.derive_schema_list_response(MemberResponse)
+    )
+
+
+def test_a_subclass_keeps_or_rebuilds_the_response_class():
+    class Plant(fr.IDBase):
+        name: Mapped[str]
+        secret: Mapped[str] = ""
+
+    class PlantSchema(fr.IDSchema):
+        name: str
+
+    class SecretPlantSchema(fr.IDSchema):
+        name: str
+        secret: str
+
+    class PlantResponse(fr.IDSchema):
+        name: str
+
+    class PlantView(fr.AsyncRestView):
+        prefix = "/plants"
+        model = Plant
+        schema = PlantSchema
+
+    class OwnResponseView(PlantView):
+        schema_response = PlantResponse
+
+    class InheritsOwnResponseView(OwnResponseView):
+        prefix = "/inherits"
+
+    class NewSchemaView(OwnResponseView):
+        prefix = "/new-schema"
+        schema = SecretPlantSchema
+
+    app = fastapi.FastAPI()
+    for view in (PlantView, OwnResponseView, InheritsOwnResponseView, NewSchemaView):
+        fr.include_view(app, view)
+
+    assert PlantView.schema_response is fr.schemas.derive_schema_response(PlantSchema)
+    assert OwnResponseView.schema_response is PlantResponse
+    assert InheritsOwnResponseView.schema_response is PlantResponse
+    # A schema set nearer than the response class rebuilds it, as it rebuilds
+    # schema_create and schema_update.
+    assert NewSchemaView.schema_response is fr.schemas.derive_schema_response(
+        SecretPlantSchema
+    )
+
+
+def test_a_react_admin_view_follows_the_response_class(client):
+    class Herb(fr.IDBase):
+        name: Mapped[str]
+        notes: Mapped[str] = ""
+
+    class HerbSchema(fr.IDSchema):
+        name: str
+        notes: str = ""
+
+    class HerbResponse(fr.IDSchema):
+        name: str
+
+    @fr.include_view(client.app)
+    class HerbView(fr.AsyncReactAdminView):
+        prefix = "/herbs"
+        model = Herb
+        schema = HerbSchema
+        schema_response = HerbResponse
+
+    create_tables()
+    client.post("/herbs/", json={"name": "mint", "notes": "fresh"})
+
+    assert client.get("/herbs/").json() == [{"id": 1, "name": "mint"}]
+    assert client.put("/herbs/1", json={"notes": "dry"}).json() == {
+        "id": 1,
+        "name": "mint",
+    }
+    client.get("/herbs/", params={"filter": '{"notes": "dry"}'}, assert_status_code=400)

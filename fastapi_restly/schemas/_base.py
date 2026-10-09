@@ -1073,16 +1073,18 @@ def _skip_field_checks(cls: type[pydantic.BaseModel], removed: set[str]) -> None
                 group[name] = dataclasses.replace(decorator, info=info)  # type: ignore[assignment]
 
 
-def _as_response(schema: type[pydantic.BaseModel], value: Any) -> Any:
-    """An instance of the view's schema as an instance of its response class.
+def _as_response(cls: type[pydantic.BaseModel], value: Any) -> Any:
+    """An instance of the view's schema as an instance of the response class
+    ``cls`` that :func:`derive_schema_response` built from it.
 
     Restly copies the values and does not validate them again: they are
     already valid, and a validator that changes a value would change it
     twice. Fields that the response class does not have, such as WriteOnly
-    fields, stay behind. Any other value comes back as it is.
+    fields, stay behind. Any other value comes back as it is, and so does
+    every value for a response class that a view sets itself.
     """
-    cls = derive_schema_response(schema)
-    if not isinstance(value, schema) or isinstance(value, cls):
+    schema = cls.__dict__.get("__restly_response_of__")
+    if schema is None or not isinstance(value, schema) or isinstance(value, cls):
         return value
     fields = cls.model_fields
     values = {name: item for name, item in value.__dict__.items() if name in fields}
@@ -1139,7 +1141,11 @@ def _derive_schema_response(
     cls = type(
         _schema_role_name(schema, "Response"),
         (_OmitWriteOnlyMixin, schema),
-        {"__module__": schema.__module__, "__doc__": schema.__doc__},
+        {
+            "__module__": schema.__module__,
+            "__doc__": schema.__doc__,
+            "__restly_response_of__": schema,
+        },
     )
     # A recursive schema refers to itself by name, like list["NodeSchema"].
     # Pydantic finds a class's own name, but not the name of a parent class

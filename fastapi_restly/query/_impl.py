@@ -254,8 +254,9 @@ def derive_schema_list_params(
     or ``None``, no pagination parameters are emitted at all -- the endpoint
     returns every matching row -- while sorting and filtering stay available.
 
-    :param schema: The view's schema. Its fields decide the available
-        filter parameters.
+    :param schema: The schema whose fields decide the available filter
+        parameters. A view passes its ``schema_response``, so a client can
+        filter on what it can see.
     :param model: The SQLAlchemy model the list endpoint queries. Used to verify
         each field resolves to a filterable column; non-column fields are
         omitted from the generated params.
@@ -440,12 +441,12 @@ def apply_list_params(
     ``list_params`` is normally an instance of the model returned by
     :func:`derive_schema_list_params`. The default list endpoints always pass a
     validated instance, so pagination/filter bounds have already been checked.
-    ``schema`` is the view's schema, which decides the fields a client can
-    filter and sort on.
+    ``schema`` decides the fields a client can filter and sort on. A view
+    passes its ``schema_response``.
 
     The arguments match the view method
     :meth:`~fastapi_restly.views.RestView.apply_list_params`, which calls this
-    function with the view's model, schema and pagination.
+    function with the view's model, response class and pagination.
 
     A raw :class:`~starlette.datastructures.QueryParams` is also accepted
     for callers that build the query parameters programmatically.

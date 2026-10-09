@@ -22,7 +22,7 @@ import pydantic
 from sqlalchemy import inspect as sa_inspect
 
 from .._mapping import is_mapped_class
-from ..schemas import IDSchema, derive_schema_response
+from ..schemas import IDSchema
 from ._openapi_names import _warn_on_name_clashes
 
 _PATCHED_ATTR = "_fr_resource_refs_patched"
@@ -101,7 +101,7 @@ def _register_for_resource_ref(
         model=model,
         resource_name=resource_name,
         schema=view_cls.schema,
-        schema_response=derive_schema_response(view_cls.schema),
+        schema_response=view_cls.schema_response,
         schema_create=view_cls.schema_create,
         schema_update=view_cls.schema_update,
     )
@@ -236,7 +236,11 @@ def _annotate_spec(
         return
 
     for entry in entries:
-        refs = _compute_refs(entry.schema, entry.model, model_to_resource)
+        # A response class that the view sets can have fields of its own.
+        refs = {
+            **_compute_refs(entry.schema, entry.model, model_to_resource),
+            **_compute_refs(entry.schema_response, entry.model, model_to_resource),
+        }
         if not refs:
             continue
 
