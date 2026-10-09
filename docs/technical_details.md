@@ -134,7 +134,10 @@ class UserView(AppView):
 ```
 
 OpenAPI then shows `UserListResponse` and `UserResponse` for these routes,
-as for the CRUD routes. A view with its own `schema_response` passes that
+as for the CRUD routes. A function builds these classes, so mypy does not
+accept them inside a type, as in `response_model=list[UserResponse]` or
+`data: UserResponse`. At runtime they are normal classes, so add
+`# type: ignore[valid-type]` on such a line. A view with its own `schema_response` passes that
 class to `derive_schema_list_response` instead. A custom route that names
 `UserSchema` or `PaginatedEnvelope[UserSchema]` sends the same JSON, but
 shows a type of its own in OpenAPI. If a route passes another pagination
