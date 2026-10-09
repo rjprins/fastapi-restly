@@ -52,13 +52,24 @@ def test_openapi_class_names_are_unique(restly_app: FastAPI) -> None:
         restly_app.openapi()
 
 
+def _api_routes(app: FastAPI) -> list[APIRoute]:
+    """The routes of the app. FastAPI 0.137 and later keep an included router
+    as one entry in ``app.routes``, and ``effective_route_contexts()`` gives
+    its routes."""
+    routes: list[object] = []
+    for route in app.routes:
+        expand = getattr(route, "effective_route_contexts", None)
+        for leaf in expand() if expand is not None else [route]:
+            routes.append(getattr(leaf, "original_route", leaf))
+    return [route for route in routes if isinstance(route, APIRoute)]
+
+
 def _view_resources(app: FastAPI) -> set[str]:
     """The resources that have a view: the views are the classes that FastAPI
     builds as the ``self`` of their routes."""
     views = {
         dependency.call
-        for route in app.routes
-        if isinstance(route, APIRoute)
+        for route in _api_routes(app)
         for dependency in route.dependant.dependencies
         if inspect.isclass(dependency.call)
         and issubclass(dependency.call, fr.views.BaseRestView)

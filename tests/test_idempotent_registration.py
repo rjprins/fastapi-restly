@@ -28,6 +28,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
+from fastapi_restly._routes import iter_routes
 
 
 def test_view_registered_on_two_apps_both_work(sync_db):
@@ -265,23 +266,15 @@ def test_subclass_of_registered_base_still_registers_independently(sync_db):
 
 
 def _effective_route_pairs(app):
-    """Yield ``(path, frozenset(methods))`` for every effective leaf route.
-
-    FastAPI >=0.138 no longer flattens ``include_router`` into the parent: an
-    included router appears in ``app.routes`` as an ``_IncludedRouter`` branch
-    that resolves its concrete routes lazily. Expand those branches so route
-    introspection sees view routes again; on older FastAPI the routes are
-    already flat and pass straight through. The path-existence assertions below
-    double as a guard that this expansion stays non-vacuous.
+    """Yield ``(path, frozenset(methods))`` for every route of the app,
+    including the routes of the routers it includes. The path-existence
+    assertions below guard that this finds the view routes.
     """
-    for route in app.routes:
-        expand = getattr(route, "effective_route_contexts", None)
-        leaves = expand() if expand is not None else (route,)
-        for leaf in leaves:
-            methods = getattr(leaf, "methods", None)
-            path = getattr(leaf, "path", None)
-            if methods and path is not None:
-                yield path, frozenset(methods)
+    for route in iter_routes(app.routes):
+        methods = getattr(route, "methods", None)
+        path = getattr(route, "path", None)
+        if methods and path is not None:
+            yield path, frozenset(methods)
 
 
 def _duplicate_routes(app):

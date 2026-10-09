@@ -21,6 +21,7 @@ from fastapi.routing import APIRoute
 from pydantic.json_schema import GenerateJsonSchema
 from starlette.routing import BaseRoute
 
+from .._routes import iter_routes, original_route
 from ..exc import RestlyDuplicateSchemaNameWarning
 from ..schemas import derive_schema_list_response
 
@@ -116,7 +117,7 @@ def _view_roles(routes: Sequence[BaseRoute]) -> _Roles:
     views. Only the routes that are in the app count, so a route that a view
     excludes, or a list route that returns a plain response, adds no role."""
     roles: _Roles = defaultdict(lambda: defaultdict(list))
-    for route in routes:
+    for route in map(original_route, iter_routes(routes)):
         if not isinstance(route, APIRoute):
             continue
         view = _route_view(route)

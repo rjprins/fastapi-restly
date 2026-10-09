@@ -16,6 +16,7 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from sqlalchemy.orm import Session as SA_Session
 
 from .._exception_handlers import register_default_exception_handlers
+from .._routes import iter_routes
 from ..exc import RestlyConfigurationError, RestlyUncommittedChangesWarning
 from ._engine_defaults import apply_connect_hooks, engine_options
 from ._globals import _fr_globals
@@ -94,7 +95,7 @@ def _register_health_route(app: FastAPI, path: str) -> None:
     repeated :func:`configure` call does not mount a second one, and an
     application's own endpoint there is left in place.
     """
-    if any(getattr(route, "path", None) == path for route in app.routes):
+    if any(getattr(route, "path", None) == path for route in iter_routes(app.routes)):
         return
     # name= keeps the private handler out of the generated operationId.
     app.add_api_route(path, _health, methods=["GET"], name="health")

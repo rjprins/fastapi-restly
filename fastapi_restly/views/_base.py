@@ -94,6 +94,7 @@ from .._pagination import (
     _numbered_page_info,
     _unpaginated_page_info,
 )
+from .._routes import matched_route
 from ..db._globals import _fr_globals
 from ..exc import RestlyConfigurationError, RestlyMisuseWarning
 from ..objects import snapshot as _object_snapshot
@@ -2016,7 +2017,7 @@ def _route_query_keys(request: fastapi.Request) -> set[str]:
     parameter. The guard walks the tree only for a key that its dialect
     does not allow.
     """
-    dependant = getattr(request.scope.get("route"), "dependant", None)
+    dependant = getattr(matched_route(request.scope), "dependant", None)
     pending = [dependant] if dependant is not None else []
     keys: set[str] = set()
     while pending:

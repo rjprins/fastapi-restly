@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
+from fastapi_restly._routes import iter_routes, original_route
 from fastapi_restly.exc import RestlyDuplicateSchemaNameWarning
 from fastapi_restly.testing import RestlyTestClient
 
@@ -36,9 +37,9 @@ class DataCount(pydantic.BaseModel, Generic[T]):
 
 
 def _response_model(app: fastapi.FastAPI, path: str, method: str) -> Any:
-    for route in app.routes:
+    for route in iter_routes(app.routes):
         if (
-            isinstance(route, fastapi.routing.APIRoute)
+            isinstance(original_route(route), fastapi.routing.APIRoute)
             and route.path_format == path
             and method.upper() in route.methods
         ):

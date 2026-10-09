@@ -15,6 +15,7 @@ from fastapi.routing import APIRoute
 from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
+from fastapi_restly._routes import iter_routes, original_route
 from fastapi_restly.testing import RestlyTestClient
 
 from .conftest import create_tables
@@ -108,8 +109,8 @@ def test_dependencies_from_sibling_mixins_follow_the_mro(make_client):
 def _list_route_dependencies(client: RestlyTestClient) -> list[Any]:
     route = next(
         route
-        for route in client.app.routes
-        if isinstance(route, APIRoute)
+        for route in iter_routes(client.app.routes)
+        if isinstance(original_route(route), APIRoute)
         and route.path.rstrip("/") == "/gadgets"
         and "GET" in route.methods
     )

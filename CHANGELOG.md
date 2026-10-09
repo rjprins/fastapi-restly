@@ -146,6 +146,8 @@ There will be more breaking changes every minor release until that time.
 
 ### Fixed
 
+- Restly works with FastAPI 0.137 and later, which keep the routes of an
+  included router out of `app.routes`.
 - A schema field with a `default_factory`, such as
   `Field(default_factory=list)`, no longer makes `/openapi.json` and `/docs`
   answer `500`.

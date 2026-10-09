@@ -5,12 +5,13 @@ from __future__ import annotations
 import warnings
 
 import pytest
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Mapped, mapped_column
 
 import fastapi_restly as fr
+from fastapi_restly._routes import iter_routes
 from fastapi_restly.exc import RestlyConfigurationError
 
 from .conftest import create_tables
@@ -21,13 +22,17 @@ ASYNC_URL = "sqlite+aiosqlite:///:memory:"
 def _paths(app: FastAPI) -> set[str]:
     return {
         path
-        for path in (getattr(route, "path", None) for route in app.routes)
+        for path in (getattr(route, "path", None) for route in iter_routes(app.routes))
         if path is not None
     }
 
 
 def _routes_at(app: FastAPI, path: str) -> list[object]:
-    return [route for route in app.routes if getattr(route, "path", None) == path]
+    return [
+        route
+        for route in iter_routes(app.routes)
+        if getattr(route, "path", None) == path
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -191,6 +196,23 @@ def test_an_existing_route_at_that_path_is_left_in_place():
 
     assert len(_routes_at(app, "/health")) == 1
     assert TestClient(app).get("/health").json() == {"status": "the application's own"}
+
+
+def test_an_existing_route_on_a_router_is_left_in_place():
+    """FastAPI 0.137 and later keep an included router as one entry in
+    ``app.routes``. The check finds the route in it."""
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/health")
+    def app_health():
+        return {"status": "the router's own"}
+
+    app.include_router(router)
+    fr.configure(app, async_database_url=ASYNC_URL, health="/health")
+
+    assert len(_routes_at(app, "/health")) == 1
+    assert TestClient(app).get("/health").json() == {"status": "the router's own"}
 
 
 def test_an_existing_route_defers_whatever_its_method():
