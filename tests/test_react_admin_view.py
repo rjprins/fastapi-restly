@@ -14,6 +14,7 @@ HTTP-level assertions as the async ones to guarantee parity.
 import json
 from collections.abc import Iterator
 
+import pydantic
 import pytest
 from fastapi import FastAPI, HTTPException
 from sqlalchemy import ForeignKey
@@ -420,8 +421,10 @@ def test_resolve_column_rejects_relationship_field():
     assert "relationship" in str(exc_info.value.detail)
 
 
-def test_resolve_column_rejects_writeonly_field():
-    """A write-only schema field is not exposed for filtering or sorting."""
+@pytest.mark.parametrize("hidden", ["writeonly", "exclude"])
+def test_resolve_column_rejects_a_field_that_never_goes_out(hidden):
+    """A WriteOnly field, or one with exclude=True, is not exposed for
+    filtering or sorting."""
 
     class RaThing(fr.IDBase):
         name: Mapped[str] = mapped_column()
@@ -429,7 +432,10 @@ def test_resolve_column_rejects_writeonly_field():
 
     class RaThingSchema(fr.IDSchema):
         name: str
-        secret: fr.WriteOnly[str]
+        if hidden == "writeonly":
+            secret: fr.WriteOnly[str]
+        else:
+            secret: str = pydantic.Field(exclude=True)
 
     with pytest.raises(HTTPException) as exc_info:
         _resolve_column(RaThing, RaThingSchema, "secret")

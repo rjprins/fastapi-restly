@@ -40,7 +40,6 @@ from ..schemas._base import (
     IDSchema,
     _schema_role_name,
     _unwrap_optional_annotation,
-    is_writeonly_field,
 )
 from ._shared import _append_pk_tiebreak, _escape_like_value
 
@@ -569,8 +568,9 @@ def _iter_fields_including_nested(
     schema_cls: SchemaType, prefix: str = ""
 ) -> Iterator[tuple[str, FieldInfo]]:
     for name, field in schema_cls.model_fields.items():
-        # Never in a response, so never a filter or sort key.
-        if is_writeonly_field(schema_cls, name):
+        # A WriteOnly field, or one with ``exclude=True``, never goes out,
+        # so it is never a filter or sort key.
+        if field.exclude is True:
             continue
         public_name = field.alias or name
         # Each segment of the public dotted path becomes part of the URL
@@ -608,8 +608,9 @@ def _resolve_field_name(schema_cls: SchemaType, public_name: str) -> str | None:
     the schema has ``populate_by_name=True`` (which only affects how Pydantic
     parses input bodies, not the generated list params).
 
-    A WriteOnly field never resolves: filtering or sorting on it would let a
-    client read back a value that responses leave out.
+    A field that never goes out, WriteOnly or with ``exclude=True``, never
+    resolves: filtering or sorting on it would let a client read back a value
+    that responses leave out.
     """
     resolved: str | None = None
     for field_name, field in schema_cls.model_fields.items():
@@ -620,7 +621,7 @@ def _resolve_field_name(schema_cls: SchemaType, public_name: str) -> str | None:
         field = schema_cls.model_fields.get(public_name)
         if field is not None and field.alias is None:
             resolved = public_name
-    if resolved is not None and is_writeonly_field(schema_cls, resolved):
+    if resolved is not None and schema_cls.model_fields[resolved].exclude is True:
         return None
     return resolved
 

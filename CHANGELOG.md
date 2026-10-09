@@ -223,6 +223,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   When a `to_single_response` override returned an instance of another model,
   the list sent all fields of that model. The other routes were not affected,
   because FastAPI validates their responses.
+- A field with `Field(exclude=True)` is no longer a filter or sort key, like a
+  `WriteOnly` field. Responses leave it out, so a filter on it let a client
+  read its value back.
 - OpenAPI gives each class the `x-resource-ref` of its own fields. A field
   that a `schema_create` or `schema_update` of the view declares as a nested
   object used to get the mark when the view's schema declared it as an id.

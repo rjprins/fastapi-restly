@@ -58,8 +58,9 @@ types; they are omitted for booleans and UUIDs. `__contains` and
 (`dict`/`list`, typically `JSON` or `ARRAY` columns) generate only
 `__isnull`: a query-string value cannot coerce into a collection, so the
 other operators would fail on every request. A
-{data}`WriteOnly <fastapi_restly.schemas.WriteOnly>` field gets no filters
-and is not a sort key, since either would let a client read its value back.
+{data}`WriteOnly <fastapi_restly.schemas.WriteOnly>` field, or a field with
+`Field(exclude=True)`, gets no filters and is not a sort key, since either
+would let a client read its value back.
 
 A datetime value without a UTC offset is read as UTC when the column is
 timezone-aware, which is the default for `Mapped[datetime]`; a column

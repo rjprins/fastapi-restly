@@ -1,4 +1,4 @@
-"""A WriteOnly field is never a filter or sort key.
+"""A WriteOnly field, or one with ``exclude=True``, is never a filter or sort key.
 
 Responses leave a WriteOnly field out, but list views used to generate the
 standard filters for it: ``?pin=1234`` returned the matching row, and
@@ -119,6 +119,28 @@ def test_apply_list_params_rejects_writeonly_keys(query):
     # must refuse the field.
     with pytest.raises(BadQueryParam):
         apply_list_params(select(Account), QueryParams(query), Account, AccountSchema)
+
+
+class Token(Base):
+    __tablename__ = "writeonly_token"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str]
+    token: Mapped[str]
+
+
+class TokenSchema(fr.IDSchema):
+    name: str
+    token: str = Field("", exclude=True)
+
+
+@pytest.mark.parametrize("query", ["token=a", "token__contains=a", "sort=-token"])
+def test_a_field_with_exclude_is_not_a_filter_or_sort_key(query):
+    fields = derive_schema_list_params(TokenSchema, Token).model_fields
+
+    assert "name" in fields
+    assert not [name for name in fields if name.startswith("token")]
+    with pytest.raises(BadQueryParam):
+        apply_list_params(select(Token), QueryParams(query), Token, TokenSchema)
 
 
 @pytest.fixture(params=[fr.RestView, fr.AsyncRestView], ids=["sync", "async"])

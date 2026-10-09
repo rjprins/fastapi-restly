@@ -148,20 +148,19 @@ def _resolve_column(model: type[Any], schema_cls: Any, field_name: str) -> Any:
     """
     Resolve a PUBLIC schema field name (or alias) to its SQLAlchemy column.
 
-    Strict: only fields exposed on the view's schema may be filtered or
-    sorted. A column that exists on the model but is omitted from the schema
-    (or marked write-only) is rejected, so the list endpoint cannot be used as
-    an oracle to filter/sort on -- and thereby probe -- hidden data. Mirrors the
-    standard REST dialect's schema-driven resolution.
+    Strict: only fields that the response class sends may be filtered or
+    sorted. A column that exists on the model but is omitted from the response
+    class (or never sent: WriteOnly or ``exclude=True``) is rejected, so the
+    list endpoint cannot be used as an oracle to filter/sort on -- and thereby
+    probe -- hidden data. Mirrors the standard REST dialect's schema-driven
+    resolution.
 
     Raises HTTPException 400 if the field is not a public, filterable schema field.
     """
-    from ..schemas._base import is_writeonly_field
-
     resolved_name: str | None = None
     if schema_cls is not None:
         for name, field in schema_cls.model_fields.items():
-            if is_writeonly_field(schema_cls, name):
+            if field.exclude is True:
                 continue
             if name == field_name or field.alias == field_name:
                 resolved_name = name
