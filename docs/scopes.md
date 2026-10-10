@@ -72,6 +72,21 @@ related table without its scope. Shape the view's schema, or override
 {meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`,
 where embedded rows must be filtered.
 
+For the same reason, a model does not take over the scope of a related
+model. To make its rows follow that scope, give the model its own
+`default_scope` that names the other scope. A comment is visible when its
+post is visible:
+
+```python
+class CommentClauses(fr.ClauseNamespace):
+    model = Comment
+
+    default_scope = fr.where_clause(Comment.post.has(PostClauses.default_scope))
+```
+
+[A clause inside an expression](#clause-in-expression) explains how the
+inner clause gets its values.
+
 `default_scope` is a
 {class}`WhereClause <fastapi_restly.clauses.WhereClause>`: a predicate,
 with EXISTS (`.any()`/`.has()`) for a rule that depends on a related

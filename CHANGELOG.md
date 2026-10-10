@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A clause can go into the condition of another clause, written without a
+  call. A model's scope can then follow a relationship, such as
+  `fr.where_clause(Comment.post.has(PostClauses.default_scope))`: a comment
+  is visible when its post is visible. The outer clause reads the context
+  members of the inner clause each time it is applied. A clause function
+  cannot be placed inside an expression this way, and raises `TypeError`
+  with the alternative.
+
 ### Changed
 
 - The test clients now accept any success status (2xx) by default. Before,

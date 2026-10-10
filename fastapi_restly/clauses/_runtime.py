@@ -27,11 +27,16 @@ class WhereClause:
     member, embedded in the condition or read in the clause function. It
     applies to SELECT, UPDATE and DELETE statements through
     apply_clauses(), and calling it returns the raw ColumnElement for use
-    inside plain SQLAlchemy expressions.
+    inside plain SQLAlchemy expressions. A clause without a clause function
+    also goes uncalled into the condition of another clause, such as
+    ``Comment.post.has(PostClauses.visible)``.
     """
 
     _build: Callable[[], ColumnElement[bool]]
     _label: str
+    # True when every build returns the same condition: no clause function
+    # runs, so the condition can be placed inside another expression
+    _fixed: bool
 
     def __init__(self) -> None:
         raise TypeError(
@@ -39,11 +44,14 @@ class WhereClause:
         )
 
     @classmethod
-    def _of(cls, build: Callable[[], ColumnElement[bool]], label: str) -> WhereClause:
+    def _of(
+        cls, build: Callable[[], ColumnElement[bool]], label: str, *, fixed: bool
+    ) -> WhereClause:
         # the construction path around the teaching __init__
         self = cls.__new__(cls)
         self._build = build
         self._label = label
+        self._fixed = fixed
         return self
 
     def __call__(self) -> ColumnElement[bool]:
@@ -54,6 +62,29 @@ class WhereClause:
         condition, a CASE. This path skips apply_clauses' table validation.
         """
         return _fill_members(self._build())
+
+    def __clause_element__(self) -> ColumnElement[bool]:
+        """The condition, for SQLAlchemy to place inside a larger expression.
+
+        SQLAlchemy calls this when the clause appears uncalled where it
+        takes an expression, as in ``Comment.post.has(PostClauses.visible)``.
+        Context members stay placeholders: the clause around the expression
+        reads them when it is applied. Plain SQLAlchemy has no such clause,
+        so there a clause that embeds a member is called instead.
+
+        The condition is placed when the expression is built, usually at
+        import. A clause function runs each time the clause is applied, so
+        it has no condition yet, and TypeError explains the alternative.
+        """
+        if not self._fixed:
+            raise TypeError(
+                f"the clause {self._label} runs a clause function each time it "
+                f"is applied, so it has no condition to place inside this "
+                f"expression yet. Build the outer condition in a clause "
+                f"function too, and call this clause there: "
+                f"return Model.relationship.has(<this clause>())"
+            )
+        return self._build()
 
     def __bool__(self) -> NoReturn:
         # `if item.is_deleted:` would otherwise always be True: a clause

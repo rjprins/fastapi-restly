@@ -19,6 +19,12 @@ def _operands(
     return _without_unscoped(name, clauses)
 
 
+def _fixed(clauses: tuple[WhereClause, ...]) -> bool:
+    # a composite has a fixed condition when none of its operands runs a
+    # clause function
+    return all(clause._fixed for clause in clauses)
+
+
 @overload
 def all_of(*clauses: WhereClause) -> WhereClause: ...
 
@@ -57,7 +63,9 @@ def all_of(*clauses: WhereClause | Unscoped) -> WhereClause | Unscoped:
         return given[0]
 
     # operands resolve unfilled: the composite fills every placeholder once
-    return WhereClause._of(lambda: and_(*(c._build() for c in given)), "all_of")
+    return WhereClause._of(
+        lambda: and_(*(c._build() for c in given)), "all_of", fixed=_fixed(given)
+    )
 
 
 @overload
@@ -82,7 +90,9 @@ def any_of(*clauses: WhereClause | Unscoped) -> WhereClause | Unscoped:
     given = _operands("any_of", clauses)
     if len(given) != len(clauses):
         return UNSCOPED
-    return WhereClause._of(lambda: or_(*(c._build() for c in given)), "any_of")
+    return WhereClause._of(
+        lambda: or_(*(c._build() for c in given)), "any_of", fixed=_fixed(given)
+    )
 
 
 def none_of(*clauses: WhereClause | Unscoped) -> WhereClause:
@@ -94,5 +104,7 @@ def none_of(*clauses: WhereClause | Unscoped) -> WhereClause:
     """
     given = _operands("none_of", clauses)
     if len(given) != len(clauses):
-        return WhereClause._of(false, "none_of")
-    return WhereClause._of(lambda: not_(or_(*(c._build() for c in given))), "none_of")
+        return WhereClause._of(false, "none_of", fixed=True)
+    return WhereClause._of(
+        lambda: not_(or_(*(c._build() for c in given))), "none_of", fixed=_fixed(given)
+    )

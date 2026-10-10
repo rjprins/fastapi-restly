@@ -4,6 +4,7 @@ import pytest
 from sqlalchemy import (
     ColumnElement,
     ForeignKey,
+    and_,
     bindparam,
     delete,
     exists,
@@ -12,7 +13,7 @@ from sqlalchemy import (
     update,
 )
 from sqlalchemy import false as sql_false
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from fastapi_restly.clauses import (
     UNSCOPED,
@@ -679,6 +680,102 @@ def test_composite_of_a_composite_resolves():
     with Ctx.bind(tenant_id=2):
         stmt = apply_clauses(select(Item), outer)
     assert values_of(stmt) == [2]
+
+
+# --- a clause inside an expression ------------------------------------------
+
+
+class Folder(Base):
+    __tablename__ = "folder"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int]
+    archived: Mapped[bool]
+    parent_id: Mapped[int | None] = mapped_column(ForeignKey("folder.id"))
+    parent: Mapped["Folder | None"] = relationship(remote_side="Folder.id")
+
+
+class Note(Base):
+    __tablename__ = "note"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    folder_id: Mapped[int] = mapped_column(ForeignKey("folder.id"))
+    folder: Mapped[Folder] = relationship()
+
+
+folder_owned = where_clause(Folder.tenant_id == Ctx.tenant_id)
+folder_live = where_clause(Folder.archived.is_(False))
+
+
+@where_clause
+def folder_owned_in_body() -> ColumnElement[bool]:
+    return Folder.tenant_id == Ctx.tenant_id()
+
+
+def test_a_clause_goes_uncalled_into_a_relationship_condition():
+    note_visible = where_clause(Note.folder.has(folder_owned))
+    with Ctx.bind(tenant_id=7):
+        stmt = apply_clauses(select(Note), note_visible)
+    assert "EXISTS (SELECT 1" in str(stmt)
+    assert "folder.tenant_id = :tenant_id_1" in str(stmt)
+    assert values_of(stmt) == [7]
+
+
+def test_the_outer_clause_reads_the_embedded_member_when_it_applies():
+    note_visible = where_clause(Note.folder.has(folder_owned))
+    with pytest.raises(LookupError, match="tenant_id"):
+        apply_clauses(select(Note), note_visible)
+    with Ctx.bind(tenant_id=1):
+        first = apply_clauses(select(Note), note_visible)
+    with Ctx.bind(tenant_id=2):
+        second = apply_clauses(select(Note), note_visible)
+        inner = apply_clauses(select(Folder), folder_owned)
+    assert values_of(first) == [1]
+    assert values_of(second) == [2]
+    assert values_of(inner) == [2]
+
+
+def test_a_composite_goes_into_an_expression():
+    note_visible = where_clause(Note.folder.has(all_of(folder_owned, folder_live)))
+    with Ctx.bind(tenant_id=3):
+        stmt = apply_clauses(select(Note), note_visible)
+    assert "folder.archived IS false" in str(stmt)
+    assert values_of(stmt) == [3]
+
+
+def test_a_clause_in_a_self_referential_condition_reads_the_related_row():
+    # SQLAlchemy aliases the parent row and adapts the condition to the alias
+    child_of_live = where_clause(Folder.parent.has(folder_live))
+    stmt = apply_clauses(select(Folder), child_of_live)
+    assert "folder_1.archived IS false" in str(stmt)
+
+
+def test_a_clause_function_cannot_go_into_an_expression():
+    with pytest.raises(TypeError, match="folder_owned_in_body runs a clause function"):
+        Note.folder.has(folder_owned_in_body)
+    with pytest.raises(TypeError, match="all_of runs a clause function"):
+        Note.folder.has(all_of(folder_live, folder_owned_in_body))
+
+
+def test_a_clause_function_calls_another_clause_function_instead():
+    @where_clause
+    def note_visible() -> ColumnElement[bool]:
+        return Note.folder.has(folder_owned_in_body())
+
+    with Ctx.bind(tenant_id=4):
+        stmt = apply_clauses(select(Note), note_visible)
+    assert values_of(stmt) == [4]
+
+
+def test_an_embedded_clause_outside_exists_must_match_the_statement():
+    note_in_live_folder = where_clause(and_(Note.id > 0, folder_live))
+    with pytest.raises(TypeError, match="not in the statement: folder"):
+        apply_clauses(select(Note), note_in_live_folder)
+
+
+def test_a_clause_without_members_works_in_plain_sqlalchemy():
+    stmt = select(Note).where(Note.folder.has(folder_live))
+    assert "folder.archived IS false" in str(stmt)
 
 
 # --- UNSCOPED composition -------------------------------------------------

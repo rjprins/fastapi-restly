@@ -84,6 +84,7 @@ class Item(Base):
     created_at: Mapped[datetime]
     deleted_at: Mapped[datetime | None]
 
+    collection: Mapped[Collection] = relationship()
     subscriptions: Mapped[list["Subscription"]] = relationship()
 
 
@@ -218,6 +219,58 @@ active_or_new = fr.any_of(has_active_subscription, recently_created)
 
 `none_of(a, b)` is NOT over the OR of its operands: true when none
 hold.
+
+(clause-in-expression)=
+### A clause inside an expression
+
+A clause can also go into the condition of another clause. Write it
+there without a call. This is how a rule follows a relationship: an item
+is live when its collection is not archived.
+
+```python
+class CollectionClauses(fr.ClauseNamespace):
+    model = Collection
+
+    is_archived = fr.where_clause(Collection.archived_at.is_not(None))
+    owned_by_user = fr.where_clause(Collection.user_id == Current.user_id)
+
+
+in_live_collection = fr.where_clause(
+    Item.collection.has(fr.none_of(CollectionClauses.is_archived))
+)
+in_own_collection = fr.where_clause(
+    Item.collection.has(CollectionClauses.owned_by_user)
+)
+```
+
+SQLAlchemy builds the outer condition once, when the module runs. A
+context member inside it, such as `Current.user_id`, stays a placeholder.
+The outer clause reads the member each time it is applied, in the same way
+as a member written directly in its own condition.
+
+A clause function runs each time its clause is applied, so it has no
+condition yet when the outer expression is built. Placing one inside an
+expression raises `TypeError`, and so does a composite that contains one.
+Write the outer condition as a clause function too, and call the inner
+clause in its body:
+
+```python
+from sqlalchemy import ColumnElement
+
+
+@fr.where_clause
+def in_owned_collection() -> ColumnElement[bool]:
+    return Item.collection.has(collection_owned_unless_admin())
+```
+
+Here `collection_owned_unless_admin` stands for any clause function on
+`Collection`.
+
+In plain SQLAlchemy, there is no outer clause to read the members. Call a
+clause that contains members there, as
+[Using a clause in plain SQLAlchemy](#clauses-in-plain-sqlalchemy) shows.
+Without the call, SQLAlchemy rejects the statement when it runs, because
+the members have no value.
 
 (unscoped-composition)=
 ### Composing with `UNSCOPED`

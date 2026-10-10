@@ -3,8 +3,9 @@
 Covers the constructor-to-type symmetry (where_clause -> WhereClause,
 ContextNamespace declaration -> ContextParam[T]), the all_of overloads
 (a definite predicate absorbs a possible UNSCOPED), the apply_clauses
-overloads per statement kind, namespace access by class name, and the
-WhereClause call form.
+overloads per statement kind, namespace access by class name, the
+WhereClause call form, and a clause placed uncalled inside a relationship
+condition.
 
 A clause function takes no parameters, which the ``where_clause``
 signature states: a checker rejects one that does. Inside a class body it
@@ -15,8 +16,8 @@ level no marker is needed.
 
 from datetime import datetime
 
-from sqlalchemy import ColumnElement, Delete, Update, delete, select, update
-from sqlalchemy.orm import Mapped
+from sqlalchemy import ColumnElement, Delete, ForeignKey, Update, delete, select, update
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing_extensions import assert_type
 
 import fastapi_restly as fr
@@ -121,3 +122,19 @@ _stmt = select(Ticket).where(expr, TicketClauses.is_deleted())
 # apply_clauses keeps the exact statement type select() produced
 _typed = fr.apply_clauses(select(Ticket.id, Ticket.created_at), TicketClauses.visible)
 _typed = _typed.where(Ticket.tenant_id == 1).limit(1)
+
+
+# a clause without a clause function goes uncalled into a relationship
+# condition, so a child model's scope can name its parent's clause
+class TicketNote(fr.IDBase):
+    ticket_id: Mapped[int] = mapped_column(ForeignKey("ticket.id"))
+    ticket: Mapped[Ticket] = relationship(init=False)
+
+
+class TicketNoteClauses(fr.ClauseNamespace):
+    model = TicketNote
+
+    default_scope = fr.where_clause(TicketNote.ticket.has(TicketClauses.visible))
+
+
+_notes = select(TicketNote).where(TicketNote.ticket.has(TicketClauses.is_deleted))

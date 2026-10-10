@@ -34,8 +34,8 @@ def where_clause(
         condition = condition.__func__
     if callable(condition):
         _validate_clause_fn(condition)
-        return WhereClause._of(condition, _function_label(condition))
-    return WhereClause._of(lambda: condition, _condition_label(condition))
+        return WhereClause._of(condition, _function_label(condition), fixed=False)
+    return WhereClause._of(lambda: condition, _condition_label(condition), fixed=True)
 
 
 def _validate_clause_fn(fn: Callable) -> None:

@@ -21,6 +21,7 @@ from sqlalchemy.orm import (
     ORMExecuteState,
     Session,
     mapped_column,
+    relationship,
     with_loader_criteria,
 )
 
@@ -167,6 +168,84 @@ def test_unscoped_view_reads_past_the_default_scope(client):
 
     unscoped = client.get("/all-docs/").json()  # no tenant bind needed
     assert {row["name"] for row in unscoped["data"]} == {"mine", "theirs"}
+
+
+def test_a_child_scope_reads_through_the_parent_scope(client):
+    class ScopeShelf(fr.IDBase):
+        tenant_id: Mapped[int]
+
+    class ScopeBook(fr.IDBase):
+        title: Mapped[str]
+        shelf_id: Mapped[int] = mapped_column(ForeignKey("scope_shelf.id"))
+        shelf: Mapped[ScopeShelf] = relationship(init=False)
+
+    class Current(fr.ContextNamespace):
+        tenant_id: fr.ContextParam[int]
+
+    class ScopeShelfClauses(fr.ClauseNamespace):
+        model = ScopeShelf
+
+        default_scope = fr.where_clause(ScopeShelf.tenant_id == Current.tenant_id)
+
+    class ScopeBookClauses(fr.ClauseNamespace):
+        model = ScopeBook
+
+        # a book is visible when its shelf is
+        default_scope = fr.where_clause(
+            ScopeBook.shelf.has(ScopeShelfClauses.default_scope)
+        )
+
+    class ScopeShelfSchema(fr.IDSchema):
+        tenant_id: int
+
+    class ScopeBookSchema(fr.IDSchema):
+        title: str
+        shelf_id: int
+
+    async def bind_tenant(tenant: Annotated[int, Header(alias="x-tenant-id")]):
+        with Current.bind(tenant_id=tenant):
+            yield
+
+    @fr.include_view(client.app)
+    class ScopeShelfView(fr.AsyncRestView):
+        prefix = "/scope-shelves"
+        model = ScopeShelf
+        schema = ScopeShelfSchema
+        dependencies = [Depends(bind_tenant)]
+
+    @fr.include_view(client.app)
+    class ScopeBookView(fr.AsyncRestView):
+        prefix = "/scope-books"
+        model = ScopeBook
+        schema = ScopeBookSchema
+        dependencies = [Depends(bind_tenant)]
+
+    create_tables()
+
+    t1 = {"x-tenant-id": "1"}
+    t2 = {"x-tenant-id": "2"}
+
+    def post(path, payload, headers):
+        return client.post(path, json=payload, headers=headers).json()
+
+    mine = post("/scope-shelves/", {"tenant_id": 1}, t1)
+    theirs = post("/scope-shelves/", {"tenant_id": 2}, t2)
+    post("/scope-books/", {"title": "mine", "shelf_id": mine["id"]}, t1)
+    other = post("/scope-books/", {"title": "theirs", "shelf_id": theirs["id"]}, t2)
+
+    # each request reads its own tenant through the shelf's scope
+    for headers, title in ((t1, "mine"), (t2, "theirs")):
+        payload = client.get("/scope-books/", headers=headers).json()
+        assert [row["title"] for row in payload["data"]] == [title]
+        assert payload["total_count"] == 1
+
+    client.get(f"/scope-books/{other['id']}", headers=t1, assert_status_code=404)
+    client.patch(
+        f"/scope-books/{other['id']}",
+        json={"title": "stolen"},
+        headers=t1,
+        assert_status_code=404,
+    )
 
 
 # ---------------------------------------------------------------------------
