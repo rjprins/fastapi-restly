@@ -166,7 +166,7 @@ class ViewRoute(str, Enum):
 
 
 class ResponseShape(str, Enum):
-    """The wire shape an endpoint method asks :meth:`BaseRestView.to_response` to
+    """The response shape an endpoint method asks :meth:`BaseRestView.to_response` to
     produce.
 
     This is separate from write-action names such as ``"publish"``. Endpoint
@@ -666,7 +666,7 @@ def build_create_plan(
     Shared by sync and async ``make_new_object``. ``resolved`` is the
     ``{field: object_or_list}`` mapping returned by the IDSchema resolver (sync
     vs async); a resolved reference field uses that ORM value instead of the
-    wire-shaped ``IDRef`` still on ``schema_obj``.
+    request's ``IDRef`` that is still on ``schema_obj``.
     """
     schema_cls = type(schema_obj)
     resolved = resolved or {}
@@ -757,7 +757,7 @@ def apply_update_to_object(
     Shared by sync and async ``update_object``. ``resolved`` is the
     ``{field: object_or_list}`` mapping returned by the IDSchema resolver (sync
     vs async); a resolved reference field uses that ORM value instead of the
-    wire-shaped ``IDRef`` still on ``schema_obj``.
+    request's ``IDRef`` that is still on ``schema_obj``.
     """
     schema_cls = type(schema_obj)
     resolved = resolved or {}
@@ -1619,7 +1619,7 @@ class BaseRestView(
     ) -> Any:
         """Endpoint-method response boundary.
 
-        ``shape`` selects the wire form, and with it what ``result`` is: one
+        ``shape`` selects the response form, and with it what ``result`` is: one
         object for ``SINGLE`` (:meth:`to_single_response`), a
         :class:`ListResult` for ``LIST`` (:meth:`to_list_response`), and
         nothing for ``EMPTY``. A plain Python list is not a valid ``result``.
@@ -2821,7 +2821,7 @@ def _annotate_self(view_cls: type[View], endpoint: Callable) -> None:
 
 # Bare-typed annotations FastAPI special-cases for parameter injection
 # (no ``Depends(...)`` marker required). Treated alongside ``Depends``-
-# marked annotations as DI-wired class attributes; everything else is
+# marked annotations as dependency class attributes; everything else is
 # left as plain typing.
 _FASTAPI_SPECIAL_INJECTABLE: tuple[type, ...] = (
     Request,
@@ -2863,7 +2863,7 @@ def _init_class_based_view(view_cls: type[View]) -> None:
     # A *plain* annotation on a more-derived class (e.g. a mixin
     # declaring ``session: AsyncSession`` for static-typing purposes)
     # does NOT shadow a marker-bearing annotation from a base — the
-    # framework prefers wiring fidelity over the most-derived hint.
+    # framework keeps the dependency over the most-derived hint.
     # Without this rule, any plain annotation a mixin adds would
     # silently break dependency injection.
     di_annotations: dict[str, Any] = {}
@@ -2901,7 +2901,7 @@ def _init_class_based_view(view_cls: type[View]) -> None:
 
     # FastAPI never fills an attribute with a request-parameter marker: it
     # would keep its class default, with no error and no OpenAPI entry. A
-    # Depends marker on the same name wires it, as above.
+    # Depends marker on the same name makes it a dependency, as above.
     for name, marker in request_markers.items():
         if name not in di_annotations:
             raise RestlyConfigurationError(

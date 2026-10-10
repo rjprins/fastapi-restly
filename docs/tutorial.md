@@ -97,8 +97,8 @@ records. You do not need to declare `id` yourself.
 
 ### Foreign keys with MustExist
 
-`post_id: fr.MustExist[int, Post]` declares a checked foreign-key column. The
-wire format is the raw id:
+`post_id: fr.MustExist[int, Post]` declares a checked foreign-key column. In
+JSON, it is the raw id:
 
 ```json
 1

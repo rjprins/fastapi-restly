@@ -9,7 +9,7 @@ not duplicated here.
 ## Database configuration
 
 In production, drive the engine from environment variables. A small
-`pydantic-settings` shim keeps the wiring obvious and 12-factor friendly:
+`pydantic-settings` shim keeps the setup easy to read and 12-factor friendly:
 
 ```python
 import fastapi_restly as fr
@@ -256,8 +256,8 @@ Write that as an ordinary route so its checks and timeouts stay yours.
 
 ## See also
 
-- [Use Restly in an Existing Project](howto_existing_project.md): wiring
-  Restly into an app that already has an engine, sessions, and models.
+- [Use Restly in an Existing Project](howto_existing_project.md): connecting
+  Restly to an app that already has an engine, sessions, and models.
 - [Examples](examples.md): the production-shaped SaaS example to compare
   against. It includes PostgreSQL Compose services, validated settings, an
   application-owned async engine, migrations, and migration-backed tests.

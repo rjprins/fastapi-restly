@@ -47,7 +47,7 @@ If the view does not declare {attr}`schema
 <fastapi_restly.views.BaseRestView.schema>`, Restly generates the view's schema
 from `model` when the view is registered. It then derives the create and update
 schemas from it. Write the view's schema yourself when the
-wire contract needs stable field names, validation, aliases, or fields that do
+HTTP contract needs stable field names, validation, aliases, or fields that do
 not match the table directly:
 
 ```python
@@ -239,8 +239,8 @@ The default CRUD contract has these boundaries:
 
 - [Getting Started](getting_started.md) builds and runs a first resource.
 - [Customizing RestView](customize.md) changes behavior at the correct layer.
-- [Custom Schemas and Field Types](howto_custom_schema.md) defines stable wire
-  contracts.
+- [Custom Schemas and Field Types](howto_custom_schema.md) defines stable request
+  and response fields.
 - [Views](class_based_views.md) explains registration, shared
   dependencies, and the inheritance model.
 - [How-To Guides](user_guide.md) covers individual tasks.

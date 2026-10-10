@@ -27,7 +27,7 @@ empty app to a working REST resource.
 ([README](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/shop/README.md))
 shows relationships, multiple primary-key styles, async sessions, and
 React-Admin-compatible endpoints through {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>`. It also includes
-a small React Admin frontend wired against the API. These patterns are
+a small React Admin frontend that uses the API. These patterns are
 covered in [React Admin Integration](howto_react_admin.md) and
 [Work with Foreign Keys and Relationships](howto_relationship_idschema.md).
 

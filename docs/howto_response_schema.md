@@ -9,8 +9,8 @@ changing the *container* around the data, not the fields inside it.
 
 ## What Restly returns by default
 
-Before changing the container, it helps to know what the default routes put
-on the wire:
+Before changing the container, it helps to know what the default routes
+return:
 
 | Route | Response body |
 |---|---|
@@ -76,7 +76,7 @@ generic model with one type parameter for the items, and set it as the
 and OpenAPI follow the model.
 
 - Leave a field out to drop it from the response.
-- Rename a field on the wire with `alias`, or rename them all
+- Rename a field in the JSON with `alias`, or rename them all
   with an `alias_generator`.
 - Give an extra field a default, and it is sent as is.
 - Reshape the values in a `model_validator(mode="before")`, which receives
@@ -259,7 +259,7 @@ as `page.data` and `page.total_count` with the default envelope.
 When the same wrapper applies to more than one route, centralize it in
 {meth}`to_response() <fastapi_restly.views.BaseRestView.to_response>` and have
 each replacement endpoint method delegate to it. `to_response` is the shared runtime
-boundary keyed on the wire shape:
+boundary keyed on the response shape:
 {attr}`SINGLE <fastapi_restly.views.ResponseShape.SINGLE>`,
 {attr}`LIST <fastapi_restly.views.ResponseShape.LIST>`, or
 {attr}`EMPTY <fastapi_restly.views.ResponseShape.EMPTY>`. Its place among the

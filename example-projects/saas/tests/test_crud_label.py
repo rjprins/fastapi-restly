@@ -139,7 +139,7 @@ class TestLabelCRUD:
         response = client.post("/labels", json={"name": "bug", "color": "#ff0000"})
         label_id = response.json()["id"]
 
-        # Add label to task using IDRef[T] scalar wire format. The framework
+        # Add label to task using the scalar IDRef[T] JSON format. The framework
         # still validates the referenced rows exist and resolves them to FK
         # values automatically. ``added_by_id`` is the column's stamp.
         response = client.post(

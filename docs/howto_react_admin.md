@@ -72,7 +72,7 @@ own list component as the UI takes shape. The [shop example](examples.md#shop)
 is a complete runnable version of this setup, with three resources,
 relationships, and a react-admin frontend under `ui/test-admin/`.
 
-## Wire contract
+## HTTP contract
 
 {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` translates the `ra-data-simple-rest` query format to SQL
 and returns responses the provider expects.

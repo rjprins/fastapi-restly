@@ -339,7 +339,7 @@ class SoftDeleteMixin:
 The same applies to typed *attribute* annotations. Marker-based DI (see
 [Views](class_based_views.md#dependency-injection-on-class-attributes))
 means a plain `model: type[DeclarativeBase]` annotation no longer
-shadows DI wiring, but it can still shadow inherited attribute lookups
+shadows a dependency, but it can still shadow inherited attribute lookups
 in some setups. `if TYPE_CHECKING:` is the safe wrapper for both.
 
 ### 2. Multiple FK columns to the same table need explicit `foreign_keys=`

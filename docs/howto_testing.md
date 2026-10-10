@@ -218,7 +218,7 @@ grows. See [savepoints and rollback](#savepoints-and-rollback) for how that
 works, and [cleaning up between tests](#cleaning-up-between-tests) for the two
 cases it cannot serve.
 
-**Clients wired to your app.** `restly_client` sends requests from ordinary
+**Clients connected to your app.** `restly_client` sends requests from ordinary
 `def` tests. `restly_async_client` sends them from `async def` tests on the same
 event loop as `restly_async_session`. Both run the app's lifespan and roll their
 requests back with everything else under the default cleanup.

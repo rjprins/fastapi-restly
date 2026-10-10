@@ -371,7 +371,7 @@ GET /articles?author.name=Alice          # rejected, use public aliases
 
 A scalar foreign key declared with
 {class}`fr.MustExist[int, Post] <fastapi_restly.schemas.MustExist>` is
-filterable by its own public name, the same name the wire format uses:
+filterable by its own public name, the same name it has in JSON:
 
 ```text
 GET /comments?post_id=1

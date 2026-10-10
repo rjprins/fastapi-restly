@@ -19,7 +19,7 @@ schemas it works from.
 :link: howto_existing_project
 :link-type: doc
 
-Adopt Restly beside existing FastAPI routes, then wire it into your sessions and models.
+Adopt Restly beside existing FastAPI routes, then connect it to your sessions and models.
 :::
 
 :::{grid-item-card} Project structure

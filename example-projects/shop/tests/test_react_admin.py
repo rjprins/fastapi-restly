@@ -1,7 +1,7 @@
 """
 React Admin acceptance tests for the shop example.
 
-These tests prove the ra-data-simple-rest wire contract works on real models:
+These tests prove the ra-data-simple-rest HTTP contract works on real models:
 - Customer  — integer primary key
 - Product   — UUID primary key
 - Order     — relationships + timestamps

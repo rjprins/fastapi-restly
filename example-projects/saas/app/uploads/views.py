@@ -29,7 +29,7 @@ from .schemas import UploadLineSchema, UploadResponse, UploadSchema
 class UploadView(AuthenticatedView[Upload]):
     """Read endpoints for uploads + a custom multipart POST.
 
-    Generic create is excluded because the wire format is multipart, not
+    Generic create is excluded because the request format is multipart, not
     JSON. The CRUD scaffolding still covers GET / list / PATCH / DELETE,
     which are all JSON.
     """

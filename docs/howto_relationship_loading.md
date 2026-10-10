@@ -153,7 +153,7 @@ covers the full set of techniques.
 
 :::{note}
 A relationship response field must keep the relationship's own Python name;
-only its *wire* name may be aliased. Eager loading matches on the Python field
+only its *JSON* name may be aliased. Eager loading matches on the Python field
 name, so an outgoing alias is safe (`Field(serialization_alias="ownerInfo")`,
 or a camelCase `alias_generator`). But renaming the field itself and bridging
 back with `alias` / `validation_alias` (`owner_info: OwnerSchema =

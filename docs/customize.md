@@ -98,7 +98,7 @@ class UserView(fr.AsyncRestView):
 ```
 
 {meth}`handle_create <fastapi_restly.views.RestView.handle_create>` still authorizes and runs the commit bracket. The override only
-changes the domain step. The wire field and the column share a name because
+changes the domain step. The schema field and the column share a name because
 {meth}`make_new_object <fastapi_restly.views.RestView.make_new_object>` passes every writable schema field to the model constructor:
 the plaintext lands in `password` first, and the override replaces it with
 the hash before the flush. `fr.WriteOnly` keeps the field out of every
@@ -339,7 +339,7 @@ class InvoiceView(fr.AsyncRestView):
             raise fr.exc.Forbidden("Posted invoices are immutable")
 ```
 
-`action` is the verb, `obj` is the loaded row, and `data` is the validated request payload. Authentication itself is yours to wire; Restly calls `authorize` and maps {class}`fr.exc.Forbidden <fastapi_restly.exc.Forbidden>` / {class}`fr.exc.NotFound <fastapi_restly.exc.NotFound>` to HTTP responses.
+`action` is the verb, `obj` is the loaded row, and `data` is the validated request payload. You add authentication yourself; Restly calls `authorize` and maps {class}`fr.exc.Forbidden <fastapi_restly.exc.Forbidden>` / {class}`fr.exc.NotFound <fastapi_restly.exc.NotFound>` to HTTP responses.
 
 Visibility belongs in the [scope](scopes.md), not here: raising from `authorize` produces a 403, whereas a row outside the scope produces a 404.
 
@@ -498,7 +498,7 @@ method and set a matching `response_model`. Otherwise, FastAPI validates and
 documents the response with the original response model. See
 [Response Envelopes and List Metadata](howto_response_schema.md) for the full pattern.
 
-`to_response` is keyed on wire shape, not action. It cannot distinguish {meth}`create <fastapi_restly.views.RestView.create>` from {meth}`get_one <fastapi_restly.views.RestView.get_one>`; both are `SINGLE`. For one verb's HTTP contract, override that endpoint method:
+`to_response` is keyed on response shape, not action. It cannot distinguish {meth}`create <fastapi_restly.views.RestView.create>` from {meth}`get_one <fastapi_restly.views.RestView.get_one>`; both are `SINGLE`. For one verb's HTTP contract, override that endpoint method:
 
 ```python
     @fr.post("/")
@@ -574,7 +574,7 @@ class ProductView(DeleteReturnsObjectMixin, fr.AsyncRestView):
     schema = ProductSchema
 ```
 
-[React Admin views](howto_react_admin.md#share-the-react-admin-contract-across-multiple-views) use this same pattern: they replace {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` for the `ra-data-simple-rest` wire contract and keep the standard verbs and handlers.
+[React Admin views](howto_react_admin.md#share-the-react-admin-contract-across-multiple-views) use this same pattern: they replace {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` for the `ra-data-simple-rest` HTTP contract and keep the standard verbs and handlers.
 
 ## Add a custom read route
 

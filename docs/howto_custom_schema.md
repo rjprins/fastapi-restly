@@ -243,7 +243,7 @@ class ArticleSchema(fr.IDSchema):
     author_id: fr.MustExist[int, Author]
 ```
 
-The wire format is a scalar id:
+In JSON, the field is a scalar id:
 
 ```json
 {
@@ -267,7 +267,7 @@ class ArticleSchema(fr.IDSchema):
     author: fr.IDSchema[Author]
 ```
 
-The wire format is:
+In JSON, it looks like this:
 
 ```json
 {

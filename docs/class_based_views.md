@@ -119,7 +119,7 @@ class UserView(fr.View): ...
 ```
 
 {func}`include_view <fastapi_restly.views.include_view>` walks the class's MRO, collects every method tagged with route
-metadata, wires each method's `self` up as a dependency on the view class (so
+metadata, makes each method's `self` a dependency on the view class (so
 FastAPI instantiates a fresh view per request), and registers each route on
 the parent router or app.
 
@@ -261,7 +261,7 @@ live in [Customizing RestView](customize.md).
 (dependency-injection-on-class-attributes)=
 ## Dependency injection on class attributes
 
-A class attribute on a view is wired as a FastAPI dependency only when its
+A class attribute on a view becomes a FastAPI dependency only when its
 annotation either:
 
 - carries an `Annotated[..., Depends(...)]` marker (`Security(...)` counts,
@@ -279,22 +279,22 @@ from typing import Annotated
 from fastapi import Depends, Request
 
 class UserView(fr.AsyncRestView):
-    # Wired: AsyncSessionDep is Annotated[AsyncSession, Depends(...)].
+    # Dependency: AsyncSessionDep is Annotated[AsyncSession, Depends(...)].
     session: fr.AsyncSessionDep
 
-    # Wired: Request is one of FastAPI's bare-injectable specials.
+    # Dependency: Request is one of FastAPI's bare-injectable specials.
     request: Request
 
-    # Wired: explicit Depends marker.
+    # Dependency: explicit Depends marker.
     current_user: Annotated[User, Depends(get_current_user)]
 
-    # NOT wired: a bare type is only a hint.
+    # Not a dependency: a bare type is only a hint.
     reviewer: User
 ```
 
-A wired attribute is set on the view instance before any method runs, so
+A dependency attribute is set on the view instance before any method runs, so
 endpoint methods, business methods, `authorize`, and the commit hooks all
-read it as `self.current_user`. An attribute that is not wired is never set
+read it as `self.current_user`. An attribute that is not a dependency is never set
 from the request: reading `self.reviewer` raises `AttributeError`.
 
 The shipped `AsyncSessionDep` / `SessionDep` aliases carry `Depends`. The
@@ -310,10 +310,11 @@ segment or header that every route of the view needs comes through a
 dependency instead; [Nested Resources](howto_nested.md) shows the pattern for
 a path segment.
 
-A plain annotation never replaces a wired one. A mixin or subclass that
-declares `current_user: User` so type checkers know the attribute keeps the
-base's `Depends` wiring. This rule makes mixins safe: a mixin can declare
-what it expects from its host without shadowing the host's wiring. See
+A plain annotation never replaces a dependency annotation. A mixin or
+subclass can declare `current_user: User` so that type checkers know the
+attribute, and it still keeps the base's `Depends` marker. This rule makes
+mixins safe: a mixin can declare what it expects from its host without
+shadowing the host's dependencies. See
 [Composing views with mixins](howto_compose_views_with_mixins.md) for the
 mixin pattern.
 

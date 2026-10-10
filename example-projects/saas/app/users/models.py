@@ -28,7 +28,7 @@ class User(TenantOwned, AuditStamped, SoftDeletable, fr.TimestampsMixin, fr.IDBa
     email: orm.Mapped[str] = orm.mapped_column(unique=True)
     name: orm.Mapped[str]
 
-    # Stores the hashed password (see UserView.create). The wire-format field
+    # Stores the hashed password (see UserView.create). The schema field
     # shares the name; create swaps plaintext for digest before flush.
     password: orm.Mapped[str] = orm.mapped_column(default="")
     role: orm.Mapped[UserRole] = orm.mapped_column(default=UserRole.MEMBER)

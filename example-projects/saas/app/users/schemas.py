@@ -12,7 +12,7 @@ from .roles import UserRole
 class UserSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     """Schema for User model.
 
-    ``password`` is plaintext on the wire (write-only) and is never echoed
+    ``password`` is plaintext in the request (write-only) and is never echoed
     back. The view's ``create`` (the bare business verb) hashes it into
     ``User.password_hash`` before the row is persisted. ``password_hash`` is
     intentionally not on the schema — clients should never see it.

@@ -557,7 +557,7 @@ class TestSiblingCreation:
         )
         assert response.status_code == 201
         tl = response.json()
-        # IDRef serializes as a scalar id on the wire.
+        # IDRef serializes as a scalar id in the JSON.
         assert tl["task_id"] == task["id"]
         assert isinstance(tl["label_id"], int)
         assert tl["added_by_id"] == actor.user_id

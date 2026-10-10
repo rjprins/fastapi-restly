@@ -61,7 +61,7 @@ saas/
 │   └── versions/            # Initial schema and lookup seed data
 ├── app/
 │   ├── settings.py          # Validated Pydantic settings
-│   ├── main.py              # create_app() factory: VIEWS, Restly wiring, lifespan
+│   ├── main.py              # create_app() factory: VIEWS, Restly setup, lifespan
 │   ├── asgi.py              # app = create_app(), the deployment entrypoint
 │   ├── current.py           # Current namespace and SetCurrentContextDep
 │   ├── views.py             # Application-wide view foundation: base view and mixins
@@ -116,7 +116,7 @@ after starting a fresh database and whenever a deployment includes new
 migrations.
 
 The auth check in `app/views.py` is a placeholder: nothing sets the identity
-on `request.state`, so the tenant routes answer 401 until you wire real
+on `request.state`, so the tenant routes answer 401 until you add real
 authentication. Deleting an organization requires a platform admin
 (`Current.is_admin`). Other organization routes and the country routes take
 no identity.

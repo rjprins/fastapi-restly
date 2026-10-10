@@ -1,7 +1,7 @@
 """
 React Admin compatible views for fastapi-restly.
 
-Implements the ra-data-simple-rest wire contract for list:
+Implements the ra-data-simple-rest HTTP contract for list:
 - response body: plain JSON array
 - sort:   sort=["field","ASC|DESC"]
 - range:  range=[start, end]  (both inclusive, e.g. [0,24] = 25 items)
@@ -499,7 +499,7 @@ class _ReactAdminMixin:
 
 class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
     """
-    AsyncRestView that speaks the ra-data-simple-rest wire contract.
+    AsyncRestView that follows the ra-data-simple-rest HTTP contract.
 
     Use this instead of AsyncRestView when your frontend is react-admin
     with ra-data-simple-rest.
@@ -519,7 +519,7 @@ class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
 
 class ReactAdminView(_ReactAdminMixin, RestView):
     """
-    RestView that speaks the ra-data-simple-rest wire contract.
+    RestView that follows the ra-data-simple-rest HTTP contract.
 
     Use this instead of RestView when your frontend is react-admin
     with ra-data-simple-rest.

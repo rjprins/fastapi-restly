@@ -178,7 +178,7 @@ PostgreSQL). Details, including the `[testing]` extra, are in
 ## Start a project
 
 `restly new` writes a complete project: subject-first packages, an application
-factory, a `users` resource, a test suite, and the settings and Alembic wiring.
+factory, a `users` resource, a test suite, and the settings and Alembic setup.
 
 ```bash
 restly new myapp
@@ -332,7 +332,7 @@ class ProductView(fr.AsyncReactAdminView):
     schema = ProductSchema
 ```
 
-The view speaks the `ra-data-simple-rest` wire contract.
+The view follows the `ra-data-simple-rest` HTTP contract.
 
 See [React Admin Integration](https://www.fastapi-restly.org/howto_react_admin.html) in the docs for CORS setup and customization.
 
@@ -421,7 +421,7 @@ Restly has one public process-wide configuration. For per-view databases, read
 replicas, or custom sessions, use a normal FastAPI dependency on that view.
 One rule to know up front: **Restly owns the commit on its views** — custom
 session generators construct and clean up, but never commit.
-For wiring Restly into an existing app's engine, sessions, and models, see
+To connect Restly to an existing app's engine, sessions, and models, see
 [Existing Project Integration](https://www.fastapi-restly.org/howto_existing_project.html).
 
 ## Documentation

@@ -276,8 +276,8 @@ share the same CRUD structure via an internal abstract base class (not exposed
 as `fr.*`). The choice between them is determined by which class you subclass:
 `AsyncRestView` declares `session: AsyncSessionDep` and `RestView` declares
 `session: SessionDep`. A subclass can override that `session` annotation with
-its own `Annotated[..., Depends(...)]` dependency for
-[per-view session wiring](howto_existing_project.md#use-a-custom-session-dependency-on-one-view).
+its own `Annotated[..., Depends(...)]` dependency to
+[use another session on one view](howto_existing_project.md#use-a-custom-session-dependency-on-one-view).
 The async and sync variants have identical endpoint signatures; the only
 difference is that the async variant uses `await` in its process methods.
 
@@ -437,7 +437,7 @@ duplicate the contract.
 
 Internally, Restly keeps a private context object so its own tests and fixtures
 can isolate runtime state. That context is not a public multi-engine feature.
-If an application needs multiple databases, wire a custom FastAPI dependency or
+If an application needs multiple databases, use a custom FastAPI dependency or
 session generator for that view. Restly does not currently bind different views
 to different named contexts.
 

@@ -365,9 +365,9 @@ class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
     - As a BASE CLASS (``class UserSchema(IDSchema): ...``) it adds the resource's
       own read-only ``id`` -- the common use.
     - As a FIELD TYPE on a RELATIONSHIP-named field (``author: IDSchema[User]``)
-      the wire format is ``{"id": N}`` (JSON-API / React-Admin); Restly resolves
+      the JSON value is ``{"id": N}`` (JSON-API / React-Admin); Restly resolves
       the id to the related ORM object, so ``data.author`` is a wrapper (read
-      ``.id``). Use ``IDRef[User]`` for flat-id wire (``5``) instead.
+      ``.id``). Use ``IDRef[User]`` for a flat id (``5``) instead.
 
     For a scalar foreign-key COLUMN (``author_id``), use ``fr.MustExist[int, T]``
     rather than ``IDSchema``/``IDRef``: it keeps the field a plain checked id
@@ -440,14 +440,14 @@ class IDRef(IDSchema[SQLAlchemyModel], Generic[SQLAlchemyModel]):
 
     Use ``IDRef[T]`` when the field is named after a relationship
     (``author: IDRef[User]``, ``products: list[IDRef[Product]]``), not after a
-    ``*_id`` column. The wire format is the raw id (``5``); input also accepts
+    ``*_id`` column. The JSON value is the raw id (``5``); input also accepts
     ``{"id": N}``. Restly resolves the id to the related ORM object, so
     ``data.author`` is an ``IDRef`` wrapper (read ``.id``), not a plain scalar.
 
     For a scalar foreign-key COLUMN (``author_id``, ``task_id``) use
     ``fr.MustExist[int, T]`` instead -- it keeps the field a plain checked id
     (``data.author_id == 1``), rather than making a ``*_id`` field an object
-    wrapper. For nested ``{"id": N}`` wire on a relationship, use ``IDSchema[T]``.
+    wrapper. For a nested ``{"id": N}`` value on a relationship, use ``IDSchema[T]``.
 
         author: IDRef[User]             # to-one relationship, flat id
         products: list[IDRef[Product]]  # serializes as [1, 2, 3]
@@ -510,7 +510,7 @@ else:
         use the first for a non-int primary key (``MustExist[UUID, Account]``).
 
         Unlike ``IDRef``/``IDSchema`` this is **not** a wrapper: the field stays
-        the pk scalar everywhere (wire, column, ``data.<field>``), plus a batched
+        the pk scalar everywhere (JSON, column, ``data.<field>``), plus a batched
         existence check on write (404 on a miss). The check applies the target
         model's ``default_scope``; check against another clause, or none, by
         writing the marker form ``Annotated[<pk>, RefExists(Model, scope=...)]``
@@ -601,7 +601,7 @@ async def _async_resolve_ids_to_sqlalchemy_objects(
 
     Returns a ``{field_name: resolved_object_or_list}`` mapping for the fields
     that referenced a model; ``schema_obj`` itself is left unmodified, so it
-    keeps its validated wire shape (``IDRef[T]`` values, not ORM rows). The
+    keeps the validated request values (``IDRef[T]``, not ORM rows). The
     write path consumes the returned mapping.
 
     The lookup applies the referenced model's ``default_scope``, so a
@@ -674,7 +674,7 @@ def _resolve_ids_to_sqlalchemy_objects(
 
     Returns a ``{field_name: resolved_object_or_list}`` mapping for the fields
     that referenced a model; ``schema_obj`` itself is left unmodified, so it
-    keeps its validated wire shape (``IDRef[T]`` values, not ORM rows). The
+    keeps the validated request values (``IDRef[T]``, not ORM rows). The
     write path consumes the returned mapping.
 
     The lookup applies the referenced model's ``default_scope``, so a

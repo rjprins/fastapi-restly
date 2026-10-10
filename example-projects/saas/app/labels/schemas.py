@@ -20,8 +20,8 @@ class LabelSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
 class TaskLabelSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     """Schema for TaskLabel association with metadata.
 
-    ``task_id`` and ``label_id`` are existence-checked foreign keys: the wire
-    format is a plain integer (``"task_id": 5``) on both request and
+    ``task_id`` and ``label_id`` are existence-checked foreign keys: the JSON
+    value is a plain integer (``"task_id": 5``) on both request and
     response, and the framework validates the referenced row exists.
     ``label_id`` is checked in Label's default scope. ``task_id`` names its
     own scope, ``TaskClauses.visible``, so a member attaches labels only to

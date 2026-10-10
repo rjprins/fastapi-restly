@@ -91,7 +91,7 @@ you call {func}`fr.include_view(...) <fastapi_restly.views.include_view>`. To mo
 remove that include call and register an `APIRouter` with the same prefix and
 path operations.
 
-Your models, schemas, dependencies, and session wiring can stay in ordinary app
+Your models, schemas, dependencies, and session setup can stay in ordinary app
 modules.
 
 ## Replace an Existing Hand-Written Router
@@ -108,7 +108,7 @@ contract first:
 2. Keep custom semantics out of the swap. A route whose contract differs
    (e.g. `PUT` updates, a non-204 delete) can be excluded via
    {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` and kept hand-written until you adapt it.
-3. Pin the wire contract with tests first. Write
+3. Pin the HTTP contract with tests first. Write
    [`RestlyTestClient`](howto_testing.md) tests against the *old* router's
    responses, then swap in the view and run them unchanged; payload or
    status drift shows up immediately.
@@ -280,7 +280,7 @@ class ReportView(fr.AsyncRestView):
 
 The custom dependency owns session construction and cleanup.
 {class}`RestView <fastapi_restly.views.RestView>` still owns the commit.
-Use this for read replicas, reporting databases, or other per-view session wiring.
+Use this for read replicas, reporting databases, or any other view that needs its own session.
 
 ## Use the Configured Session Off-Request
 
@@ -338,7 +338,7 @@ creating tables, use your own base metadata (for example
 ## See also
 
 - [Test APIs with RestlyTestClient and Fixtures](howto_testing.md): pin the
-  wire contract while migrating; savepoint-isolated tests against your DB.
+  HTTP contract while migrating; savepoint-isolated tests against your DB.
 - [Deploying](deploying.md): engine configuration from environment values,
   Alembic, and a production `main.py`.
 - [Patterns](patterns.md): the idiomatic answers for nested resources,

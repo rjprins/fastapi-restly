@@ -179,7 +179,7 @@ hand-written group.
 
 ### Schema Classes and Utilities
 
-These classes and markers define how model data crosses the wire; the reference-field types (`MustExist`, `IDRef`, `IDSchema`) are treated in depth in [Work with Foreign Keys and Relationships](howto_relationship_idschema.md):
+These classes and markers define how model data appears in requests and responses; the reference-field types (`MustExist`, `IDRef`, `IDSchema`) are treated in depth in [Work with Foreign Keys and Relationships](howto_relationship_idschema.md):
 
 | Symbol | Description |
 |---|---|
@@ -187,8 +187,8 @@ These classes and markers define how model data crosses the wire; the reference-
 | {class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>` | Response-schema base class that adds the resource's own read-only `id` field. |
 | {class}`fr.MustExist[int, Model] <fastapi_restly.schemas.MustExist>` | Existence-checked scalar FK type for a `*_id` column. Primary-key type first, target model second (`fr.MustExist[UUID, Account]` for a UUID key; drop the model to infer it from a single `ForeignKey`). The value stays a plain id on request and response, and Restly validates the referenced row exists. |
 | {class}`fr.RefExists(Model, scope=...) <fastapi_restly.schemas.RefExists>` | Existence check with the target named explicitly and a per-field scope: `Annotated[int, fr.RefExists(Item, scope=ItemClauses.trashed)]` checks against that predicate instead of the model's `default_scope`, and `scope=fr.clauses.UNSCOPED` checks unscoped. See [References: overriding per field](#reference-scopes). |
-| {class}`fr.IDRef[Model] <fastapi_restly.schemas.IDRef>` | Relationship reference with a flat-id wire; resolves the id to the related object. Wire format is the raw id (`5`) on request and response; dict input (`{"id": 5}`) is also accepted. Use this for a relationship field and React Admin scalar id arrays. |
-| {class}`fr.IDSchema[Model] <fastapi_restly.schemas.IDSchema>` | Nested relationship-object field type. Wire format is `{"id": 5}` on request and response. Use this when a client expects relationship objects instead of flat scalar ids. |
+| {class}`fr.IDRef[Model] <fastapi_restly.schemas.IDRef>` | Relationship reference sent as a flat id; resolves the id to the related object. The JSON value is the raw id (`5`) in requests and responses; dict input (`{"id": 5}`) is also accepted. Use this for a relationship field and React Admin scalar id arrays. |
+| {class}`fr.IDSchema[Model] <fastapi_restly.schemas.IDSchema>` | Nested relationship-object field type. The JSON value is `{"id": 5}` in requests and responses. Use this when a client expects relationship objects instead of flat scalar ids. |
 | {class}`fr.TimestampsSchemaMixin <fastapi_restly.schemas.TimestampsSchemaMixin>` | Pydantic mixin adding read-only `created_at` / `updated_at` fields to a schema. |
 | `fr.ReadOnly[T]` | Type annotation marker. Fields annotated `ReadOnly[T]` are left out of the generated create/update input schemas, and never written from a payload whose own schema marks them. An [explicit write schema](#explicit-write-schemas) decides for itself. |
 | {data}`fr.WriteOnly[T] <fastapi_restly.schemas.WriteOnly>` | Type annotation marker. Fields are accepted on input and excluded from Pydantic serialization, including CRUD responses and direct `model_dump()` calls. |
@@ -207,7 +207,7 @@ Views are the routing layer; each class below is a registration entry point:
 | {class}`fr.AsyncRestView <fastapi_restly.views.AsyncRestView>` | Async CRUD view. Use with async SQLAlchemy sessions. |
 | {class}`fr.RestView <fastapi_restly.views.RestView>` | Sync CRUD view. Use with sync SQLAlchemy sessions. |
 | {class}`fr.ListResult <fastapi_restly.views.ListResult>` | Value object returned by `get_many` (and `handle_get_many`), with `.objects`, `.total_count`, and `.list_params`, before `to_list_response` formats the HTTP response. |
-| {class}`fr.AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` | Async CRUD view that speaks the `ra-data-simple-rest` wire contract used by [react-admin](https://marmelab.com/react-admin/). See [React Admin Integration](howto_react_admin.md). |
+| {class}`fr.AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` | Async CRUD view that follows the `ra-data-simple-rest` HTTP contract used by [react-admin](https://marmelab.com/react-admin/). See [React Admin Integration](howto_react_admin.md). |
 | {class}`fr.ReactAdminView <fastapi_restly.views.ReactAdminView>` | Sync variant of `AsyncReactAdminView`. |
 
 (view-method-surface)=
@@ -260,7 +260,7 @@ names are identical between variants.
 | Override point | {meth}`authorize <fastapi_restly.views.RestView.authorize>` | `(action, obj=None, data=None)` | `None` | Gate a verb. A no-op by default; override to enforce policy and raise `fr.exc.Forbidden` / `fr.exc.NotFound` to reject. Row *visibility* belongs in the scope. |
 | Override point | {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>` | `(action, new, old=None)` | `None` | In-transaction side effect (outbox/audit rows), atomic with the write. `old` is the pre-mutation snapshot dict. |
 | Override point | {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>` | `(action, new, old=None)` | `None` | Post-commit side effect (email, webhook, cache invalidation). `old` enables dirty detection. An exception here fails the request but cannot undo the write; see [When `after_action_commit` raises](customize.md#when-after_action_commit-raises). |
-| Override point | {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>` | `(result, shape=ResponseShape.SINGLE)` | response payload | The single wire-level response method, called by the endpoint methods with the wire `ResponseShape` (`SINGLE` / `LIST` / `EMPTY`), not the write action. Override for envelopes or custom status codes; for a per-verb HTTP contract change, override that verb's endpoint method. |
+| Override point | {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>` | `(result, shape=ResponseShape.SINGLE)` | response payload | The single response method, called by the endpoint methods with the `ResponseShape` (`SINGLE` / `LIST` / `EMPTY`), not the write action. Override for envelopes or custom status codes; for a per-verb HTTP contract change, override that verb's endpoint method. |
 | Override point | {meth}`snapshot <fastapi_restly.views.BaseRestView.snapshot>` | `(obj)` | `dict[str, Any]` | Frozen capture of an object's already-loaded column values, taken after `authorize` and before the mutation, passed as `old` to the commit hooks. |
 | Override point | {meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>` | `()` | `list[Any]` | Loader options (`selectinload(...)`) for the relationships the response class names, applied on reads (`get_one` / `get_many`) and on the write-response reload in `save_object`. Override to eager-load relationships the response class does not name on both paths; see [Relationship Loading and Async](howto_relationship_loading.md). |
 | Helper | {meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>` | `(obj)` | instance of `schema_response` | Validate and serialize one ORM object with Restly's alias/reference/write-only handling. Override for custom projections or an intentional `model_construct()` fast path. |

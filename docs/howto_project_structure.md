@@ -11,7 +11,7 @@ and explains what each part of it buys you.
 ## Generate it
 
 `restly new` creates a project with a `users` resource, a test suite,
-and the settings and schema wiring:
+and the settings and schema setup:
 
 ```bash
 pip install fastapi-restly

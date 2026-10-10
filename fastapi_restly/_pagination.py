@@ -194,7 +194,7 @@ def _build_envelope(
     envelope: type[pydantic.BaseModel], page_info: dict[str, Any]
 ) -> pydantic.BaseModel:
     """Fill ``envelope`` from ``page_info`` by field name, never by alias, so
-    an alias only renames a field on the wire."""
+    an alias only renames a field in the JSON."""
     return envelope.model_validate(page_info, by_alias=False, by_name=True)
 
 
@@ -269,7 +269,7 @@ def _check_envelope(owner: str, envelope: Any, page_info: dict[str, Any]) -> Non
         raise RestlyConfigurationError(
             f"{owner}.envelope {envelope.__name__} cannot be filled "
             f"from the page info ({', '.join(page_info)}): {problems}. Name each "
-            "field after one of these values, rename it on the wire with an "
+            "field after one of these values, rename it in the JSON with an "
             "alias, or give it a default."
         ) from None
 

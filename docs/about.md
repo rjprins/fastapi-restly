@@ -16,7 +16,7 @@ default CRUD routes, query parameters, error translation, and test fixtures.
 - **DRY, but standard.** Reuse should come from conventions on top of the
   stack you already know, not from a parallel abstraction that hides it. You
   can always drop one level down to plain FastAPI or SQLAlchemy.
-- **Out of the box.** The common path should not need wiring: engine and
+- **Out of the box.** The common path should need no extra code: engine and
   session setup, commit handling, schema generation,
   [list filtering](howto_query_modifiers.md) with strict validation,
   [error translation](howto_error_responses.md), and

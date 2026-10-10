@@ -1,7 +1,7 @@
 # Shop Example
 
 A minimal FastAPI-Restly example showcasing the default CRUD routes
-that are wire-compatible with [React Admin](https://marmelab.com/react-admin/)
+that are compatible with [React Admin](https://marmelab.com/react-admin/)
 via `AsyncReactAdminView`.
 
 ## What it demonstrates
@@ -13,7 +13,7 @@ via `AsyncReactAdminView`.
 - A one-to-many relationship (`Customer` -> `Order`)
 - React-Admin-compatible list endpoints (range/sort/filter query params and
   `Content-Range` response header) with no custom data provider needed
-- A small React Admin frontend wired against the API (under `ui/test-admin/`)
+- A small React Admin frontend that uses the API (under `ui/test-admin/`)
 
 The framework auto-derives the request/response Pydantic schemas from the
 `fr.IDSchema` definitions; no manual schema duplication is required.

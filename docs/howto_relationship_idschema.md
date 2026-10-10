@@ -44,7 +44,7 @@ two relationship references must receive matching ids; conflicting ids return
 - Use {class}`IDRef <fastapi_restly.schemas.IDRef>` /
   {class}`IDSchema <fastapi_restly.schemas.IDSchema>` when the field names a
   relationship. Restly resolves the id to the related object; the difference is
-  whether the wire format is flat (`IDRef`) or nested (`IDSchema`).
+  whether the JSON value is flat (`IDRef`) or nested (`IDSchema`).
 - In hooks, `data.<field>` is the plain id for
   {class}`MustExist <fastapi_restly.schemas.MustExist>` and `int`; for
   {class}`IDRef <fastapi_restly.schemas.IDRef>` /
@@ -91,7 +91,7 @@ class ArticleSchema(fr.IDSchema):
 ```
 
 {class}`fr.MustExist[int, User] <fastapi_restly.schemas.MustExist>` marks an
-integer foreign key to `User` that must exist. The wire format is a plain
+integer foreign key to `User` that must exist. In JSON, it is a plain
 scalar:
 
 ```json
@@ -156,13 +156,13 @@ author: fr.IDRef[User]              # the Article.author relationship
 
 The Python field name is what Restly matches against the mapped attribute: it
 builds the model with that name as a keyword argument, so the two must match. To
-expose a different name only *on the wire* (a camelCase API, say), keep the field
+use a different name only *in the JSON* (for a camelCase API), keep the field
 named after the attribute and add a Pydantic alias:
 
 ```python
 from pydantic import Field
 
-author_id: fr.MustExist[int, User] = Field(alias="authorId")  # wire: "authorId"
+author_id: fr.MustExist[int, User] = Field(alias="authorId")  # JSON: "authorId"
 ```
 
 When the field names a relationship, Restly resolves the id to an ORM object and
@@ -191,7 +191,7 @@ class OrderSchema(fr.IDSchema):
 On input, each element accepts both raw scalars and `{"id": ...}` shapes, so
 the same field doubles as a permissive write-side type when paired with a
 custom {meth}`create <fastapi_restly.views.RestView.create>` / {meth}`update <fastapi_restly.views.RestView.update>` business method that resolves the list. For
-relationship objects that must stay nested on the wire, use
+relationship objects that must stay nested in the JSON, use
 {class}`fr.IDSchema[Model] <fastapi_restly.schemas.IDSchema>` (see
 [Nested relationship objects](#nested-relationship-objects)).
 {class}`MustExist <fastapi_restly.schemas.MustExist>` is for a single scalar FK
@@ -241,7 +241,7 @@ class ArticleSchema(fr.IDSchema):
     author: fr.IDSchema[User]
 ```
 
-The wire format is:
+In JSON, it looks like this:
 
 ```json
 {
@@ -390,7 +390,7 @@ The raw ORM object usually has scalar FK columns, while a nested schema expects
 relationship-shaped data. Scalar fields
 ({class}`MustExist <fastapi_restly.schemas.MustExist>`,
 {class}`IDRef <fastapi_restly.schemas.IDRef>`) do not need this step because
-their wire format is already scalar.
+their JSON value is already scalar.
 
 ## Visibility and multi-tenancy
 

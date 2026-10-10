@@ -1,7 +1,7 @@
 # test-admin
 
 A React Admin frontend for the FastAPI-Restly `shop` example. Demonstrates
-that `AsyncReactAdminView` is wire-compatible with
+that `AsyncReactAdminView` is compatible with
 [`ra-data-simple-rest`](https://github.com/marmelab/react-admin/tree/master/packages/ra-data-simple-rest)
 out of the box -- no custom data provider needed.
 
@@ -68,4 +68,4 @@ point the UI at a different backend.
 - Query params `?range=[0,9]&sort=["name","ASC"]&filter={...}`
 
 `AsyncReactAdminView` (and its sync counterpart) matches that contract. See
-`tests/test_react_admin.py` in the shop project for a compact wire spec.
+`tests/test_react_admin.py` in the shop project for a compact spec of the HTTP contract.
