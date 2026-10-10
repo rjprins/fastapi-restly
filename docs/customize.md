@@ -63,6 +63,7 @@ The method names are regular across all five verbs, so `update_endpoint`
 calls `handle_update`, which calls `update`, and so on. The worked example
 below leans on the commit split in particular.
 
+(password-hash-example)=
 ## Worked example: hash a password on create
 
 Hashing a password is domain logic, so it belongs in {meth}`create <fastapi_restly.views.RestView.create>`. The surrounding commit bracket
@@ -317,6 +318,7 @@ Because {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` and 
 definition with a pointer to
 [Migrating from build_query](#migrating-build-query).
 
+(authorize-gate)=
 ### `authorize`: gate the action
 
 {meth}`authorize(action, obj=None, data=None) <fastapi_restly.views.RestView.authorize>` runs inside `handle_<verb>`: before {meth}`create <fastapi_restly.views.RestView.create>` and {meth}`get_many <fastapi_restly.views.RestView.get_many>`, and after the object is loaded for {meth}`get_one <fastapi_restly.views.RestView.get_one>` / {meth}`update <fastapi_restly.views.RestView.update>` / {meth}`delete <fastapi_restly.views.RestView.delete>`. Override it to enforce policy:
@@ -343,6 +345,7 @@ class InvoiceView(fr.AsyncRestView):
 
 Visibility belongs in the [scope](scopes.md), not here: raising from `authorize` produces a 403, whereas a row outside the scope produces a 404.
 
+(transaction-hooks)=
 ## Transaction hooks: `before_action_commit` / `after_action_commit`
 
 The write handlers call two hooks around the commit:
@@ -373,6 +376,7 @@ once the mark is durable:
             await enqueue_async_delete(old["id"])  # the real delete runs off-request
 ```
 
+(after-action-commit-raises)=
 ### When `after_action_commit` raises
 
 The write is already committed, so an exception from the hook cannot undo it.

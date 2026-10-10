@@ -1,486 +1,407 @@
-# Tutorial: Customize the Blog API
+# Tutorial: Add Authors and Drafts
 
-This tutorial extends [Build a Blog API](tutorial.md) from single-method
-overrides through shared base classes. Its `author_token` and `view_count` demo
-fields are set aside. A shared base class stamps authorship server-side
-instead.
+This tutorial continues [Build a Blog API](tutorial.md). It turns the blog
+into a blog with several writers:
+
+- Anyone can read published posts.
+- A new post is a draft. Only its author can see it.
+- Only the author can change a post or publish it.
+- Comments follow the same rules.
+
+Each rule is one declaration or one short method that Restly calls. The
+finished blog does not override any CRUD method. Start from the complete
+file at the end of Part 1. This tutorial does not use the `author_token` and
+`view_count` demo fields from Part 1.
 
 The examples use {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>`.
-The same methods and patterns apply to {class}`RestView <fastapi_restly.views.RestView>`,
+The same code works with {class}`RestView <fastapi_restly.views.RestView>`,
 the sync variant. Drop the `async` and `await` keywords.
 
-## The three tiers of a CRUD verb
+## Know who is calling
 
-Before overriding anything, it helps to know where each behavior lives. Every
-CRUD verb has three tiers, and the rule is to override the lowest tier that
-owns the behavior you need. The full model, including lifecycles and a
-decision table, is covered in
-[Customizing RestView](customize.md). From the HTTP request
-inward, the tiers are:
-
-```
-<verb>_endpoint   the endpoint method: the @route, the FastAPI
-                  signature/response_model, and to_response. Override it to
-                  change the HTTP contract.
-handle_<verb>     the handler: runs authorize and the commit bracket
-                  (before_action_commit → commit → after_action_commit), returns the domain
-                  object. Final: custom routes call it.
-<verb>            the business method: the domain operation (build/apply/save).
-                  Auth-free and commit-free. The usual override point.
-```
-
-The five verbs are {meth}`get_many <fastapi_restly.views.RestView.get_many>`, {meth}`get_one <fastapi_restly.views.RestView.get_one>`, {meth}`create <fastapi_restly.views.RestView.create>`, {meth}`update <fastapi_restly.views.RestView.update>`, and {meth}`delete <fastapi_restly.views.RestView.delete>`. So the full call chain for a create is:
-
-```
-POST /     → create_endpoint(schema_obj)     # endpoint method
-           → handle_create(schema_obj)       # authorize + commit bracket
-           → create(schema_obj)              # build + save, no commit
-```
-
-Three facts make this layout safe to override:
-
-- **The handler normally owns the commit.** `handle_<verb>` runs {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`, then `commit`, then {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>` around the business method.
-- **The business method never commits.** `create` / `update` / `delete` build, apply, and flush. The surrounding commit bracket commits later.
-- **Several handlers can share one commit.** Inside {ref}`shared_write_action_commit() <shared-write-action-commit>`, a handler returns after its flush. The outermost block commits and runs the queued after-hooks.
-
-Inside every method, `self.session` is the live database session and `self.request` is the FastAPI `Request` object.
-
-## Tier 3: the business method (the usual override point)
-
-Most customization lives here. The business method is the domain operation: build an object, apply a payload, save it. It is auth-free and commit-free; the handler adds authorization and commit handling.
-
-### create: inject server-side fields
-
-Real APIs rarely accept every field from the client. This example stamps the author from the current user, injected by your own auth dependency `get_current_user`:
+Restly does not log users in. Your own authentication decides who is
+calling. Restly makes the answer available to the rest of your code through
+a `Current` class, a
+{class}`fr.ContextNamespace <fastapi_restly.clauses.ContextNamespace>`:
 
 ```python
 from typing import Annotated
-from fastapi import Depends
 
-@fr.include_view(app)
-class PostView(fr.AsyncRestView):
-    prefix = "/posts"
-    model = Post
-    schema = PostSchema
-    current_user: Annotated[User, Depends(get_current_user)]
-
-    async def create(self, schema_obj):
-        obj = await self.make_new_object(schema_obj)
-        obj.author_id = self.current_user.id   # set server-side
-        return await self.save_object(obj)
-```
-
-`make_new_object` builds the ORM instance. `save_object` flushes and refreshes it, then eager-loads the relationships the response names, but does not commit. For a field stamped on every write, see [Stamping extra fields](#stamping-extra-fields).
-
-### update: validate before saving
-
-To reject an update based on current state, override {meth}`update <fastapi_restly.views.RestView.update>`. It receives the loaded object:
-
-```python
-    async def update(self, obj, schema_obj):
-        if obj.published:
-            raise fastapi.HTTPException(409, "Cannot edit a published post")
-        obj = await self.update_object(obj, schema_obj)
-        return await self.save_object(obj)
-```
-
-{meth}`handle_update <fastapi_restly.views.RestView.handle_update>` has already loaded `obj` through {meth}`get_one <fastapi_restly.views.RestView.get_one>` and run {meth}`authorize <fastapi_restly.views.RestView.authorize>`, so `update` only describes the domain change.
-
-### The scope: filter results to the current user
-
-The common read customization is row visibility. {meth}`get_many <fastapi_restly.views.RestView.get_many>`, {meth}`count <fastapi_restly.views.RestView.count>`, and {meth}`get_one <fastapi_restly.views.RestView.get_one>` all apply the view's declared {attr}`scope <fastapi_restly.views.BaseRestView.scope>`, so one clause keeps lists, totals, single-row reads, updates, and deletes aligned. Here we restrict every read to the requesting user's own posts:
-
-```python
-class Current(fr.ContextNamespace):
-    user_id: fr.ContextParam[int]
-
-def get_user_id(request: fastapi.Request) -> int:
-    return request.state.user_id
-
-@fr.include_view(app)
-class PostView(fr.AsyncRestView):
-    prefix = "/posts"
-    model = Post
-    schema = PostSchema
-    dependencies = [Current.depends(user_id=get_user_id)]
-    scope = fr.where_clause(Post.author_id == Current.user_id)
-```
-
-The clause and the context are declared once at module level; the generated dependency binds the per-request value. [Scopes](scopes.md) covers composing clauses and the model-wide `default_scope` form.
-
-Read access has two halves, and they live in two different places:
-
-- **Visibility** belongs to the scope: a hidden row is not part of this view, so `get_one` returns 404.
-- **Policy** belongs to {meth}`authorize <fastapi_restly.views.RestView.authorize>`, which is called in the handler. Use it for "may this caller read at all", not for "which rows exist".
-
-### delete: implement soft-delete
-
-The {meth}`delete <fastapi_restly.views.RestView.delete>` business method removes the object. Override it to flip a flag instead:
-
-```python
-from datetime import datetime, timezone
+from fastapi import Header
 
 
-class PostView(fr.AsyncRestView):
-    prefix = "/posts"
-    model = Post
-    schema = PostSchema
-
-    async def delete(self, obj):
-        obj.deleted_at = datetime.now(timezone.utc)
-        await self.session.flush()
-        # Do NOT call super(); that would remove the row.
-```
-
-`DELETE /posts/{id}` now marks the row instead of removing it.
-{meth}`delete_endpoint <fastapi_restly.views.RestView.delete_endpoint>` still
-returns 204, and {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>`
-still runs the commit bracket. Pair this with a scope clause that hides deleted rows. The full recipe is in [Customizing
-RestView](customize.md#delete-soft-delete-instead-of-removing-the-row). The
-reusable mixin version is in [Compose Views with
-Mixins](howto_compose_views_with_mixins.md).
-
-## Tier 2: the handler (authorize and the commit bracket)
-
-One tier up from the business method sits the handler. `handle_<verb>` owns {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the commit bracket. The handler is final. Call it from a custom route to reuse that behavior. Put side-effect timing in `before_action_commit` or `after_action_commit`, and use `shared_write_action_commit()` when several writes need one commit. Outside a shared commit block, the defaults look like this:
-
-```
-handle_create  →  authorize("create", data=schema_obj)
-               →  create(schema_obj)
-               →  before_action_commit → commit → after_action_commit
-
-handle_update  →  get_one(id)                     # loads through the scope
-               →  authorize("update", obj, data=schema_obj)
-               →  update(obj, schema_obj)
-               →  before_action_commit → commit → after_action_commit
-
-handle_delete  →  get_one(id)
-               →  authorize("delete", obj)
-               →  delete(obj)
-               →  before_action_commit → commit → after_action_commit
-```
-
-The write handlers call two transaction hooks, which are the override points at this tier:
-
-- {meth}`before_action_commit(action, new, old=None) <fastapi_restly.views.RestView.before_action_commit>` runs an in-transaction side effect (an outbox row, an audit row) that commits atomically with the write.
-- {meth}`after_action_commit(action, new, old=None) <fastapi_restly.views.RestView.after_action_commit>` runs a post-commit side effect (an email, a webhook, a cache invalidation) only after the write is durable. An exception there cannot undo the write; [When `after_action_commit` raises](customize.md#when-after_action_commit-raises) shows how to handle one.
-
-Both receive `old`, the pre-mutation snapshot produced by {meth}`snapshot(obj) <fastapi_restly.views.BaseRestView.snapshot>`, so you can fire only on a real change:
-
-```python
-    async def after_action_commit(self, action, new, old=None):
-        if action == "update" and old["published"] != new.published:
-            await notify_subscribers(new.id)
-```
-
-## Stamping extra fields
-
-The `create` override earlier stamped a field in the verb, which covers that verb only. A field the server owns on every write, created or updated by any view, helper, or script, is a column default on the model, reading a per-request context member:
-
-```python
 class Current(fr.ContextNamespace):
     user_id: fr.ContextParam[int | None]
 
 
-class Post(fr.TimestampsMixin, fr.IDBase):
-    title: Mapped[str]
-    created_by_id: Mapped[int | None] = mapped_column(
-        ForeignKey("user.id"),
-        default_factory=lambda: None,
-        insert_default=lambda: Current.user_id(),
-    )
-    updated_by_id: Mapped[int | None] = mapped_column(
-        ForeignKey("user.id"),
-        default_factory=lambda: None,
-        insert_default=lambda: Current.user_id(),
-        onupdate=lambda: Current.user_id(),
-    )
+def get_user_id(
+    user_id: Annotated[int | None, Header(alias="X-User-ID")] = None,
+) -> int | None:
+    # Demo stand-in for real authentication. None means an anonymous reader.
+    return user_id
 ```
 
-A `Current.depends(user_id=...)` entry in the view's `dependencies` binds the member per request. Mark the fields `fr.ReadOnly` on the schema, so no payload value competes with the default. [Compose Views with Mixins](howto_compose_views_with_mixins.md) has the tenant and soft-delete pieces.
-
-## Object utilities
-
-The business methods are built from a small set of object utilities that you call, never override:
-
-```
-create  →  make_new_object(schema_obj)   # build ORM object (no flush)
-        →  save_object(obj)              # flush + refresh + eager-load (no commit)
-
-update  →  update_object(obj, schema_obj)  # apply payload (no flush)
-        →  save_object(obj)
-
-delete  →  removes the row + flush         # no utility: override delete itself for a soft delete
-```
-
-`make_new_object` and `update_object` do not flush. `save_object` flushes, refreshes, and eager-loads the relationships the response names, but does *not* commit. The same operations are available as free functions for services and workers; the free `save_object` has no view to read a schema from, so it flushes and refreshes only.
-
-## Custom routes
-
-Views are not limited to the default CRUD methods. Use {func}`@fr.get <fastapi_restly.views.get>`, {func}`@fr.post <fastapi_restly.views.post>`, {func}`@fr.patch <fastapi_restly.views.patch>`, {func}`@fr.put <fastapi_restly.views.put>`, or {func}`@fr.delete <fastapi_restly.views.delete>` to add endpoints. Reuse {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>` for a scoped load with read authorization on a read route, {meth}`get_one <fastapi_restly.views.RestView.get_one>` for a scoped load only, and `save_object` to persist.
-
-All route decorator keyword arguments are passed through to FastAPI, so you configure class-based routes the same way you configure regular FastAPI routes: use `response_model=`, `status_code=`, `dependencies=`, `responses=`, and the other FastAPI route options as usual.
-
-### A computed read endpoint
-
-First we expose a summary of a post without returning the full record:
+Put this code above the models, because the models will read `Current`.
+Then replace the `app = FastAPI(...)` line from Part 1:
 
 ```python
+app = FastAPI(lifespan=lifespan, dependencies=[Current.depends(user_id=get_user_id)])
+```
+
+`get_user_id` takes the user id from an `X-User-ID` header, so you can try
+the API with `curl`. Any client can send this header, so use it only for
+trying things out. In a real app, this function checks a session cookie or
+a token. [Bind from a FastAPI dependency](#current-request-binding) shows
+where your own authentication goes.
+
+{meth}`Current.depends(...) <fastapi_restly.clauses.ContextNamespace.depends>`
+turns `get_user_id` into a FastAPI dependency. For
+each request, it calls `get_user_id` and stores the result in `Current`. All
+code that runs during the request can then read it with `Current.user_id()`.
+The dependency is on the app, so every route gets it. A reader without the
+header gets `None`, because reading the blog does not need a login.
+
+## Record the author
+
+The server decides who wrote a post, not the client. A column default on the
+model reads `Current`:
+
+```python
+class Post(fr.TimestampsMixin, fr.IDBase):
+    title: Mapped[str]
+    content: Mapped[str]
+    published: Mapped[bool] = mapped_column(default=False)
+    author_id: Mapped[int] = mapped_column(init=False, insert_default=Current.user_id)
+```
+
+- `insert_default=Current.user_id` sets the column when SQLAlchemy inserts
+  the row. Write `Current.user_id` without parentheses. With them, Python
+  would read the value once, when it defines the class.
+  [Read the current user in a column default](#current-column-defaults)
+  explains this.
+- `init=False` leaves `author_id` out of the `Post(...)` constructor.
+- The default runs on every insert, from any view or script.
+- {class}`fr.TimestampsMixin <fastapi_restly.models.TimestampsMixin>` adds
+  `created_at` and `updated_at` columns.
+
+The schema returns these fields but does not accept them as input:
+
+```python
+class PostSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
+    title: str
+    content: str
+    published: fr.ReadOnly[bool]
+    author_id: fr.ReadOnly[int]
+```
+
+A {data}`fr.ReadOnly <fastapi_restly.schemas.ReadOnly>` field appears in responses, and Restly ignores it in a
+request body. A client that sends `"author_id": 7` does not change the
+author. `published` is read-only too. The publish route below is the only way
+to change it.
+{class}`fr.TimestampsSchemaMixin <fastapi_restly.schemas.TimestampsSchemaMixin>`
+adds the two timestamps as read-only fields.
+
+The `post` table has new columns now. `async_create_all` creates missing
+tables, but it does not change a table that exists. Delete the `blog.db`
+file from Part 1 before you start the app again.
+
+## Hide drafts from other readers
+
+A scope is the rule for which rows a reader can see. Declare it once, on the
+model:
+
+```python
+from sqlalchemy import or_
+
+
+class PostClauses(fr.ClauseNamespace):
+    model = Post
+
+    default_scope = fr.where_clause(
+        or_(Post.published, Post.author_id == Current.user_id)
+    )
+```
+
+{class}`fr.ClauseNamespace <fastapi_restly.clauses.ClauseNamespace>` holds
+the query rules of one model, and
+{func}`fr.where_clause <fastapi_restly.clauses.where_clause>` turns a
+SQLAlchemy condition into such a rule. The rule named `default_scope` applies
+to every read of posts:
+
+- `GET /posts` lists only the posts in the scope, and the total count agrees.
+- `GET /posts/{id}` returns 404 for a post outside the scope.
+- `PATCH` and `DELETE` load the post the same way, so they also return 404.
+
+Here, `Current.user_id` again has no parentheses. Restly reads the value
+each time it runs the query. For an anonymous reader the value is `None`.
+`author_id = NULL` is never true in SQL, so an anonymous reader sees only
+published posts.
+
+The scope also checks references. Part 1 declared
+`post_id: fr.MustExist[int, Post]` on comments. That check looks for the post
+inside the scope. So a comment on a draft that you cannot see fails with
+404, and this needs no extra code.
+
+Every read of posts now needs a value for `Current.user_id`. A script that
+reads posts binds one first, as
+[Bind in a script or job](#current-manual-binding) shows. Without a value,
+the read fails with an error. It does not return all posts. A view that must
+see every post, such as an admin view, declares
+`scope =` {data}`fr.clauses.UNSCOPED <fastapi_restly.clauses.UNSCOPED>`. [Scopes](scopes.md) covers this and other
+scopes.
+
+## Only the author may change a post
+
+Seeing a post does not mean that you may change it. Another writer can read
+a published post, but must not edit it. Restly calls
+{meth}`authorize <fastapi_restly.views.RestView.authorize>` before each
+action, so the view overrides it:
+
+```python
+import fastapi
+
+
 @fr.include_view(app)
 class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
     schema = PostSchema
 
-    @fr.get("/{id}/summary")
-    async def summary(self, id: int):
-        post = await self.handle_get_one(id)   # scope + 404 + read-auth
-        return {
-            "id": post.id,
-            "title": post.title,
-            "word_count": len(post.content.split()),
-        }
+    async def authorize(self, action, obj=None, data=None):
+        if action in ("get_many", "get_one"):
+            return
+        if Current.user_id() is None:
+            raise fastapi.HTTPException(401, "Log in to write")
+        if obj is not None and obj.author_id != Current.user_id():
+            raise fr.exc.Forbidden("Only the author can change this")
 ```
 
-{meth}`handle_get_one(id) <fastapi_restly.views.RestView.handle_get_one>` gives the same scope, 404 behavior, and read authorization as `GET /{id}`. Use {meth}`get_one(id) <fastapi_restly.views.RestView.get_one>` when you want scope and 404 without read authorization.
+- `action` names the action. The CRUD actions are `get_many`, `get_one`,
+  `create`, `update` and `delete`.
+- Everyone may read. The scope already decides which posts they see.
+- Every write needs a user. Without this check, an anonymous `POST` would
+  reach the database without an author and fail there.
+- For `update` and `delete`, `obj` is the loaded post. Only its author
+  passes.
 
-### A state-change action
+The two rules give two different answers. A post outside the scope returns
+404: for this reader, it does not exist. A refusal in `authorize` returns
+403: the post exists, but the reader may not do this.
+[`authorize`: gate the action](#authorize-gate) has more examples.
 
-Next we add a `publish` action. Load with {meth}`get_one <fastapi_restly.views.RestView.get_one>`, then use {meth}`write_action <fastapi_restly.views.RestView.write_action>` so authorization, snapshot, commit hooks, and commit stay in the framework bracket. The bracket authorizes `"publish"` itself, so the load carries no read gate; the built-in write handlers load the same way:
+## Publish a draft
+
+Publishing is an action, not a field edit. Add a route for it to `PostView`:
 
 ```python
-import fastapi
-
     @fr.post("/{id}/publish", status_code=200)
     async def publish(self, id: int):
         post = await self.get_one(id)
-        if post.published:
-            raise fastapi.HTTPException(409, "Already published")
         async with self.write_action("publish", obj=post):
+            if post.published:
+                raise fr.exc.Conflict("Already published")
             post.published = True
         return self.to_response(post)
 ```
 
-{meth}`self.to_response(post) <fastapi_restly.views.BaseRestView.to_response>` serializes through the view's schema, the
-same way the inherited CRUD endpoint methods do.
+- {func}`@fr.post <fastapi_restly.views.post>` adds a route to the view,
+  beside the CRUD routes.
+- {meth}`get_one <fastapi_restly.views.RestView.get_one>` loads the post
+  through the scope. Another writer's draft returns 404.
+- {meth}`write_action <fastapi_restly.views.RestView.write_action>` first
+  calls `authorize("publish", post)`. The `authorize` method above lets only
+  the author pass. When the block ends, Restly commits the change. If the
+  block raises an exception, Restly does not commit.
+- {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>`
+  returns the post in the same shape as the CRUD routes.
 
-If a custom action is just a create or update under another URL, call {meth}`handle_create <fastapi_restly.views.RestView.handle_create>` / {meth}`handle_update <fastapi_restly.views.RestView.handle_update>`:
+## Tell subscribers about a new post
+
+Readers want to hear about a new post. Send the message after the commit, so
+that subscribers never hear about a post that was not saved:
 
 ```python
-    @fr.post("/{id}/repost")
-    async def repost(self, id: int):
-        original = await self.get_one(id)
-        payload = self.schema_create(
-            title=f"Repost: {original.title}",
-            content=original.content,
-            published=False,
-        )
-        return self.to_response(await self.handle_create(payload))
+async def notify_subscribers(post):
+    print(f"New post: {post.title}")  # stand-in for an email or a webhook
 ```
 
-{attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` is the view's create schema, generated from `PostSchema` when the view declares none, so the derived payload is validated like a `POST /` body. `handle_create` runs authorization, your {meth}`create <fastapi_restly.views.RestView.create>` override, and the commit bracket.
-
-## Database conflict responses
-
-Writes can also violate database constraints. Restly turns SQLAlchemy
-`IntegrityError` exceptions into `409 Conflict` responses by default; custom
-envelopes and the opt-out are covered in
-[Default Exception Handling](#default-exception-handling).
-
-## Sharing behaviour with base classes
-
-Any override above can move into a shared base class. Views are plain Python classes, so normal inheritance works.
-
-### Extract authentication into a base class
-
-If several views need the current user, put the dependency and create-time stamp on a shared base:
+Add this method to `PostView`:
 
 ```python
-from typing import Annotated
-from fastapi import Depends
+    async def after_action_commit(self, action, new, old=None):
+        if action == "publish":
+            await notify_subscribers(new)
+```
 
-def get_current_user(request: fastapi.Request) -> User:
-    return request.state.user   # your auth logic here
+Restly calls
+{meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>`
+after it commits a write. `action` is the name of the action, and `new` is
+the saved post. The hook runs after the commit, so an error in it cannot
+undo the publish. [When `after_action_commit` raises](#after-action-commit-raises)
+shows how to handle such an error. A side effect that must be saved together
+with the post, such as an audit row, goes in
+{meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`
+instead. See [Transaction hooks](#transaction-hooks).
+
+## Share the rules with comments
+
+Comments need the same rules. A comment has an author, and only its author
+may edit or delete it. The model and the schema get the same author field as
+posts:
+
+```python
+class Comment(fr.TimestampsMixin, fr.IDBase):
+    content: Mapped[str]
+    post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
+    author_id: Mapped[int] = mapped_column(init=False, insert_default=Current.user_id)
 
 
-class AuthoredBase(fr.AsyncRestView):
-    current_user: Annotated[User, Depends(get_current_user)]
+class CommentSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
+    content: str
+    post_id: fr.MustExist[int, Post]
+    author_id: fr.ReadOnly[int]
+```
 
-    async def create(self, schema_obj):
-        obj = await self.make_new_object(schema_obj)
-        obj.author_id = self.current_user.id
-        return await self.save_object(obj)
+Views are normal Python classes. Move `authorize` from `PostView` into a
+base class, and let both views inherit it:
+
+```python
+class AuthoredView(fr.AsyncRestView):
+    async def authorize(self, action, obj=None, data=None):
+        ...  # the same method as above
 
 
 @fr.include_view(app)
-class PostView(AuthoredBase):
+class PostView(AuthoredView):
     prefix = "/posts"
     model = Post
     schema = PostSchema
+    # publish and after_action_commit as above
 
 
 @fr.include_view(app)
-class CommentView(AuthoredBase):
+class CommentView(AuthoredView):
     prefix = "/comments"
     model = Comment
     schema = CommentSchema
 ```
 
-FastAPI injects `self.current_user` on every subclass method. Register only concrete subclasses, not the base.
+Register only the views that have a model, not the base class.
+[Share Behaviour with Base Views](howto_inheritance.md) covers inheritance in
+more detail.
 
-### Extend a base-class verb with super()
+## The complete file
 
-A subclass can extend a base-class business method:
-
-```python
-@fr.include_view(app)
-class PostView(AuthoredBase):
-    prefix = "/posts"
-    model = Post
-    schema = PostSchema
-
-    async def create(self, schema_obj):
-        # PostView-specific logic before the base class runs
-        schema_obj.title = schema_obj.title.strip()
-        return await super().create(schema_obj)
-```
-
-The call passes from `PostView.create` through `AuthoredBase.create` to {meth}`AsyncRestView.create <fastapi_restly.views.AsyncRestView.create>`, and {meth}`handle_create <fastapi_restly.views.RestView.handle_create>` still wraps the whole chain in authorization and the commit bracket.
-
-### Apply router-level dependencies
-
-{attr}`dependencies = [Depends(fn)] <fastapi_restly.views.View.dependencies>` applies `fn` to every route without injecting its result. Use it for auth guards or rate limits:
+Here is the blog from Part 1 with every change from this tutorial:
 
 ```python
-class ProtectedBase(fr.AsyncRestView):
-    dependencies = [Depends(require_auth)]
+import os
+from contextlib import asynccontextmanager
+from typing import Annotated
 
-
-@fr.include_view(app)
-class PostView(ProtectedBase):
-    prefix = "/posts"
-    model = Post
-    schema = PostSchema
-```
-
-Every route on `/posts` now runs `require_auth` before the endpoint function.
-
-### Share a URL namespace with prefix concatenation
-
-When a base class defines {attr}`prefix <fastapi_restly.views.View.prefix>`, subclass prefixes are appended: an
-`ApiV1` base with `prefix = "/api/v1"` puts every subclass under
-`/api/v1/...`. The full recipe is in
-[Share Behaviour with Base Views](howto_inheritance.md#concatenate-url-prefixes).
-
-## Putting it together
-
-Here is the blog API from [Build a Blog API](tutorial.md), extended with the
-customizations from this tutorial. A three-line middleware stands in for real
-authentication so the file runs as shown:
-
-```python
 import fastapi
 import fastapi_restly as fr
-from contextlib import asynccontextmanager
-from datetime import datetime, timezone
-from typing import Annotated
-from fastapi import Depends
-from sqlalchemy import ForeignKey
+from fastapi import FastAPI, Header
+from sqlalchemy import ForeignKey, or_
 from sqlalchemy.orm import Mapped, mapped_column
 
-fr.configure(async_database_url="sqlite+aiosqlite:///blog.db")
+fr.configure(
+    async_database_url=os.environ.get(
+        "DATABASE_URL", "sqlite+aiosqlite:///blog.db"
+    )
+)
 
 
-# --- Models ---
+class Current(fr.ContextNamespace):
+    user_id: fr.ContextParam[int | None]
 
-class Post(fr.IDBase):
+
+def get_user_id(
+    user_id: Annotated[int | None, Header(alias="X-User-ID")] = None,
+) -> int | None:
+    # Demo stand-in for real authentication. None means an anonymous reader.
+    return user_id
+
+
+class Post(fr.TimestampsMixin, fr.IDBase):
     title: Mapped[str]
     content: Mapped[str]
     published: Mapped[bool] = mapped_column(default=False)
-    author_id: Mapped[int | None] = mapped_column(default=None)
-    deleted_at: Mapped[datetime | None] = mapped_column(default=None)
+    author_id: Mapped[int] = mapped_column(init=False, insert_default=Current.user_id)
 
 
-class Comment(fr.IDBase):
+class PostClauses(fr.ClauseNamespace):
+    model = Post
+
+    default_scope = fr.where_clause(
+        or_(Post.published, Post.author_id == Current.user_id)
+    )
+
+
+class Comment(fr.TimestampsMixin, fr.IDBase):
     content: Mapped[str]
     post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
-    author_id: Mapped[int | None] = mapped_column(default=None)
+    author_id: Mapped[int] = mapped_column(init=False, insert_default=Current.user_id)
+
+
+class PostSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
+    title: str
+    content: str
+    published: fr.ReadOnly[bool]
+    author_id: fr.ReadOnly[int]
+
+
+class CommentSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
+    content: str
+    post_id: fr.MustExist[int, Post]
+    author_id: fr.ReadOnly[int]
 
 
 @asynccontextmanager
-async def lifespan(app: fastapi.FastAPI):
-    # Create tables after model classes are declared so they're registered on the metadata.
+async def lifespan(_app: FastAPI):
     await fr.db.async_create_all(fr.IDBase)
     yield
 
 
-app = fastapi.FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, dependencies=[Current.depends(user_id=get_user_id)])
 
 
-@app.middleware("http")
-async def fake_auth(request, call_next):
-    request.state.user_id = 1   # demo stand-in for your real auth
-    return await call_next(request)
+async def notify_subscribers(post):
+    print(f"New post: {post.title}")  # stand-in for an email or a webhook
 
 
-# --- Schemas ---
+class AuthoredView(fr.AsyncRestView):
+    async def authorize(self, action, obj=None, data=None):
+        if action in ("get_many", "get_one"):
+            return
+        if Current.user_id() is None:
+            raise fastapi.HTTPException(401, "Log in to write")
+        if obj is not None and obj.author_id != Current.user_id():
+            raise fr.exc.Forbidden("Only the author can change this")
 
-class PostSchema(fr.IDSchema):
-    title: str
-    content: str
-    published: bool
-
-
-class CommentSchema(fr.IDSchema):
-    content: str
-    post_id: fr.MustExist[int, Post]
-
-
-# --- Shared base ---
-
-def get_current_user_id(request: fastapi.Request) -> int:
-    return request.state.user_id   # set by your auth middleware
-
-
-class AuthoredBase(fr.AsyncRestView):
-    user_id: Annotated[int, Depends(get_current_user_id)]
-
-    async def create(self, schema_obj):
-        obj = await self.make_new_object(schema_obj)
-        obj.author_id = self.user_id
-        return await self.save_object(obj)
-
-
-# --- Views ---
 
 @fr.include_view(app)
-class PostView(AuthoredBase):
+class PostView(AuthoredView):
     prefix = "/posts"
     model = Post
     schema = PostSchema
 
-    async def update(self, obj, schema_obj):
-        if obj.published:
-            raise fastapi.HTTPException(409, "Cannot edit a published post")
-        obj = await self.update_object(obj, schema_obj)
-        return await self.save_object(obj)
-
-    async def delete(self, obj):
-        obj.deleted_at = datetime.now(timezone.utc)
-        await self.session.flush()
-
     @fr.post("/{id}/publish", status_code=200)
     async def publish(self, id: int):
         post = await self.get_one(id)
-        if post.published:
-            raise fastapi.HTTPException(409, "Already published")
         async with self.write_action("publish", obj=post):
+            if post.published:
+                raise fr.exc.Conflict("Already published")
             post.published = True
         return self.to_response(post)
 
+    async def after_action_commit(self, action, new, old=None):
+        if action == "publish":
+            await notify_subscribers(new)
+
 
 @fr.include_view(app)
-class CommentView(AuthoredBase):
+class CommentView(AuthoredView):
     prefix = "/comments"
     model = Comment
     schema = CommentSchema
@@ -488,35 +409,66 @@ class CommentView(AuthoredBase):
 
 ## Try it
 
-Run the file with `fastapi dev main.py`, then exercise the customized
-behaviour:
+Run the file with `fastapi dev main.py`. The requests below play two
+writers: Anna sends `X-User-ID: 1`, and Ben sends `X-User-ID: 2`.
 
 ```bash
+# Anna writes a post. It starts as a draft.
 curl -X POST http://127.0.0.1:8000/posts \
-  -H 'Content-Type: application/json' \
-  -d '{"title": "Hello", "content": "World", "published": false}'
-# 201; the server stamps author_id on the new row
+  -H 'X-User-ID: 1' -H 'Content-Type: application/json' \
+  -d '{"title": "Hello", "content": "World"}'
+# 201, with "author_id": 1 and "published": false
 
-curl -X POST http://127.0.0.1:8000/posts/1/publish
-# 200 with "published": true; a second call returns 409 "Already published"
+# Ben cannot see the draft, and cannot comment on it.
+curl -H 'X-User-ID: 2' http://127.0.0.1:8000/posts/1
+# 404
+curl -X POST http://127.0.0.1:8000/comments \
+  -H 'X-User-ID: 2' -H 'Content-Type: application/json' \
+  -d '{"content": "Nice post", "post_id": 1}'
+# 404
 
+# Anna publishes the post. The server terminal prints "New post: Hello".
+curl -X POST -H 'X-User-ID: 1' http://127.0.0.1:8000/posts/1/publish
+# 200, with "published": true
+
+# Now everyone can read it, also without a header.
+curl http://127.0.0.1:8000/posts/1
+# 200
+
+# Ben can read the post, but he cannot change it.
 curl -X PATCH http://127.0.0.1:8000/posts/1 \
-  -H 'Content-Type: application/json' -d '{"title": "Edited"}'
-# 409 "Cannot edit a published post"; the update override rejects it
+  -H 'X-User-ID: 2' -H 'Content-Type: application/json' \
+  -d '{"title": "Edited"}'
+# 403, "Only the author can change this"
 
-curl -X DELETE http://127.0.0.1:8000/posts/1
-# 204; the delete override sets deleted_at instead of removing the row
+# The same comment from Ben works now.
+curl -X POST http://127.0.0.1:8000/comments \
+  -H 'X-User-ID: 2' -H 'Content-Type: application/json' \
+  -d '{"content": "Nice post", "post_id": 1}'
+# 201, with "author_id": 2
 ```
 
-A follow-up `GET /posts/1` still returns the post, because nothing filters
-soft-deleted rows yet; hiding them is the scope pairing described in the
-soft-delete section above.
+## When to override a CRUD method
+
+This blog overrides no CRUD method. Each rule is a declaration, such as a
+column default or a scope, or a hook that Restly calls, such as `authorize`.
+Try these first.
+
+Override a CRUD method such as `create` when an action needs logic that is
+not a rule about a field or a row. For example, `create` on a user view
+hashes the password before the user is saved.
+[Customizing RestView](#password-hash-example) shows that example. It also
+shows which method to override for each kind of change.
 
 ## Next steps
 
-These pages cover the patterns from this tutorial in more detail:
+These pages cover the topics of this tutorial in more detail:
 
-- [Customizing RestView](customize.md): the complete override reference with all recipes
-- [Share Behaviour with Base Views](howto_inheritance.md): the full inheritance guide
-- [Testing](howto_testing.md): test the overrides you write
+- [Current context](howto_current.md): bind values in scripts, jobs, and
+  tests
+- [Scopes](scopes.md): the model scope, view scopes, and a scope for one route
+- [Customizing RestView](customize.md): every method you can override
+- [Share Behaviour with Base Views](howto_inheritance.md): the full
+  inheritance guide
+- [Testing](howto_testing.md): test the rules you write
 - [API Reference](api_reference.md)

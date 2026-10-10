@@ -163,10 +163,12 @@ class ItemView(fr.AsyncRestView):
     scope = role_visibility  # a dependency binds RoleContext.include_deleted
 ```
 
-A policy clause like this names a request-boundary value, so it lives
-beside the view that applies it, not in the model's namespace; the
-namespace holds model facts such as `is_deleted`, and views compose policy
-from them. The framework applies the declared clause
+A policy clause like this one belongs to the view that applies it, so
+declare it beside that view. The model's namespace holds the rules for every
+read of the model: facts such as `is_deleted`, and rules such as "a draft is
+visible only to its author". A rule in the namespace may read a request
+value, such as `Current.user_id`. A read without a bound value then fails
+with an error that names the missing value. The framework applies the declared clause
 itself, on every read; there is no apply-side override point, and a
 `scope` that is not a clause is rejected as the view class is defined.
 [Reading the resolved scope](#reading-the-scope) hands a route the

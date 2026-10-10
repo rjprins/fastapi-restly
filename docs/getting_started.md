@@ -219,9 +219,9 @@ For test isolation (rolling back test data between tests), see the
 ## Next steps
 
 [Build a Blog API](tutorial.md) adds a related model, explicit schemas,
-filtering, and broader tests. [Customize the Blog
-API](tutorial_customizing.md) then adds overrides, custom routes,
-authorization, and shared base classes.
+filtering, and broader tests. [Add Authors and
+Drafts](tutorial_customizing.md) then adds the current user, row visibility,
+authorization, and a custom route.
 
 Use these pages for individual topics:
 
