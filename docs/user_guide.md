@@ -166,8 +166,8 @@ where they belong: structural fields on the model, verbs on view mixins.
 :link: howto_typing
 :link-type: doc
 
-Use {class}`IDSchema <fastapi_restly.schemas.IDSchema>`, optional view generics, and typed CRUD methods without
-fighting the framework.
+Use {class}`IDRef <fastapi_restly.schemas.IDRef>`, optional view generics, and
+typed CRUD methods that your type checker understands.
 :::
 
 ::::

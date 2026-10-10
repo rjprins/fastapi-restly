@@ -103,8 +103,9 @@ fastapi dev main.py
 ```
 
 The `fastapi dev` command comes from the `standard` extra; the dev server is
-not for production. Then open `http://127.0.0.1:8000/docs` or
-`http://127.0.0.1:8000/openapi.json`.
+not for production. Then open <http://127.0.0.1:8000/docs> in your browser.
+This page lists every route, and its **Try it out** button sends a request.
+The OpenAPI schema behind it is at <http://127.0.0.1:8000/openapi.json>.
 
 ## Use the CRUD routes
 
@@ -117,11 +118,13 @@ with `prefix = "/users"` exposes these routes:
 - `PATCH /users/{id}`
 - `DELETE /users/{id}`
 
-These endpoints work as soon as the server starts. A `POST` creates a row:
+These endpoints work as soon as the server starts. A `POST` creates a row.
+From a second terminal, send one with `curl`:
 
-```text
-POST /users
-{"name": "Jane", "email": "jane@example.com"}
+```bash
+curl -X POST http://127.0.0.1:8000/users \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Jane", "email": "jane@example.com"}'
 ```
 
 The response is `201 Created` with the stored record:
@@ -134,8 +137,8 @@ The response is `201 Created` with the stored record:
 }
 ```
 
-The database assigned the `id`, and `GET /users` now returns that row in the
-default `data` envelope:
+The database assigned the `id`, and `curl http://127.0.0.1:8000/users` now
+returns that row in the default `data` envelope:
 
 ```json
 {
@@ -151,6 +154,8 @@ Update semantics are `PATCH` (partial update). See
 [Default CRUD Routes](#default-crud-routes) for the full
 contract. Filter lists with query parameters, for example
 `GET /users?name=Jane`. See [Filter, Sort, and Paginate Lists](howto_query_modifiers.md).
+To change the fields of the `data` envelope, see
+[Change the list envelope](#change-list-envelope).
 
 ## Add an explicit schema (optional)
 
@@ -170,8 +175,13 @@ class UserView(fr.AsyncRestView):
     schema = UserSchema
 ```
 
-{attr}`schema <fastapi_restly.views.BaseRestView.schema>` is the view's schema. Responses follow it, without its `WriteOnly` fields.
-Restly derives the create and update schemas from it unless you override {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` or {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>`.
+{attr}`schema <fastapi_restly.views.BaseRestView.schema>` is the view's schema.
+Restly derives the response, create, and update schemas from it. The response
+schema has the same fields, except the `WriteOnly` ones. To use your own class
+for one of the three, set
+{attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>`,
+{attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>`, or
+{attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>`.
 {class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>` includes `id` as `fr.ReadOnly`: present in responses, excluded from create/update. Use `fr.ReadOnly[T]` for other response-only fields and `fr.WriteOnly[T]` for input-only fields such as passwords (see [ReadOnly and WriteOnly](howto_custom_schema.md#readonly-and-writeonly)).
 
 Choose explicit schemas for public API contracts you want to keep stable,

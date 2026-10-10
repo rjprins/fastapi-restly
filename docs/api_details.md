@@ -473,15 +473,24 @@ fr.configure(app=app, async_database_url="sqlite+aiosqlite:///app.db")
 ```
 
 (crud-limitations)=
-## Important Limitations and Capabilities
+## What the default CRUD routes support
 
-The default CRUD contract has these boundaries:
+The default `RestView` and `AsyncRestView` routes support:
 
-- Nested schemas are supported for **responses** and relation filtering, including nested aliases.
-- Full nested schemas are **not** supported for create/update payloads by the default CRUD flow; write payloads must map directly to model fields, or use model-aware reference fields such as `*_id: fr.MustExist[int, Model]` for FK columns and relationship fields typed as `IDRef[Model]` or `IDSchema[Model]`.
-- Ordinary SQLAlchemy `DeclarativeBase` models work with CRUD views.
-- UUID and other non-`int` scalar primary keys are supported by the default routes, `fr.MustExist[UUID, Model]`, `IDRef[Model]`, and `IDSchema[Model]`.
-- Composite primary keys are not supported by the default `RestView` /
-  `AsyncRestView` CRUD routes; a custom route on the view addresses one with
-  a predicate (`handle_get_one(sa.and_(...))`), or use `fr.View` for a
-  hand-written route shape.
+- Models on a plain SQLAlchemy `DeclarativeBase`. The Restly model bases are
+  optional.
+- Any scalar primary key, such as `int` or `UUID`. Reference fields support
+  them too: `fr.MustExist[UUID, Model]`, `IDRef[Model]`, and `IDSchema[Model]`.
+- Nested schemas in responses, including nested aliases.
+  [Relation filtering](#relation-filtering) uses the
+  same nested schemas.
+
+They do not support:
+
+- Nested objects in create and update payloads. Each payload field maps to a
+  model field. To point to a related row, send its id: use
+  `fr.MustExist[int, Model]` for a foreign key column, or `IDRef[Model]` or
+  `IDSchema[Model]` for a relationship field.
+- Composite primary keys. A custom route on the view can load such a row with
+  a predicate: `handle_get_one(sa.and_(...))`. Or use `fr.View` to write the
+  routes yourself.

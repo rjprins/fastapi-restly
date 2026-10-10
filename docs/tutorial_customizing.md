@@ -15,12 +15,13 @@ Before overriding anything, it helps to know where each behavior lives. Every
 CRUD verb has three tiers, and the rule is to override the lowest tier that
 owns the behavior you need. The full model, including lifecycles and a
 decision table, is covered in
-[Customizing RestView](customize.md). From the wire
+[Customizing RestView](customize.md). From the HTTP request
 inward, the tiers are:
 
 ```
 <verb>_endpoint   the endpoint method: the @route, the FastAPI
-                  signature/response_model, and to_response. Rarely overridden.
+                  signature/response_model, and to_response. Override it to
+                  change the HTTP contract.
 handle_<verb>     the handler: runs authorize and the commit bracket
                   (before_action_commit → commit → after_action_commit), returns the domain
                   object. Final: custom routes call it.

@@ -311,6 +311,7 @@ GET /users?user_name=Alice       # rejected, the Python name is not exposed
 
 If you want a different URL key, change the alias.
 
+(relation-filtering)=
 ## Relation filtering
 
 Filtering on a related model's field uses dot notation:

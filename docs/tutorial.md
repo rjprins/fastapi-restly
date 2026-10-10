@@ -1,4 +1,4 @@
-# Build a Blog API
+# Tutorial: Build a Blog API
 
 This tutorial builds a small blog API with two related models. It uses
 FastAPI-Restly models, schemas, and view classes that inherit full CRUD
@@ -60,11 +60,16 @@ Post(title="Hello", content="World", published=False)  # correct
 
 The `id` column is excluded from `__init__` automatically, so you do not pass it.
 
-`IDBase` also maps a plain `Mapped[datetime]` column to
-`DateTime(timezone=True)`. Treat these values as UTC instants. PostgreSQL
-enforces the timezone-aware column type, while SQLite returns naive datetime
-values. For an intentional timezone-free wall-clock field, opt out per column
-with `mapped_column(DateTime())`.
+`IDBase` builds on {class}`DataclassBase <fastapi_restly.models.DataclassBase>`,
+which maps a plain `Mapped[datetime]` column to `DateTime(timezone=True)`.
+Treat these values as UTC instants. PostgreSQL enforces the timezone-aware
+column type, while SQLite returns naive datetime values. For an intentional
+timezone-free wall-clock field, opt out per column with
+`mapped_column(DateTime())`.
+
+These bases are a convenience, not a requirement. Restly views also work with
+models on your own `DeclarativeBase`, as in [Getting Started](getting_started.md).
+Use your own base when these defaults do not fit your project.
 
 ## Schemas
 
