@@ -384,23 +384,22 @@ pip install "fastapi-restly[testing]"
 
 Configure Restly for your test database in `conftest.py`.
 
-`RestlyTestClient` asserts the expected status (`200` for GET, `201` for POST,
-`204` for DELETE, ...) and includes the response body on failure:
+`RestlyTestClient` checks that every response has a success status (2xx), and
+includes the response body on failure:
 
 ```python
 # test_users.py
 def test_create_and_fetch_user(restly_client):
-    # Raises AssertionError if status != 201
+    # Raises AssertionError unless the status is 2xx
     response = restly_client.post("/users", json={"name": "John", "email": "john@example.com"})
     user_id = response.json()["id"]
 
-    # Raises AssertionError if status != 200
     data = restly_client.get(f"/users/{user_id}").json()
     assert data["name"] == "John"
 ```
 
-Pass `assert_status_code=None` to relax the check to any success status (2xx/3xx).
-To inspect an error response, assert its exact code instead (e.g. `assert_status_code=422`).
+Pass an exact code to require it, such as `assert_status_code=422` for an error
+response. Pass `assert_status_code=None` to skip the check.
 
 ## Configuration
 

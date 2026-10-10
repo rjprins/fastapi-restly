@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 try:
     from fastapi.testclient import TestClient
@@ -32,21 +32,28 @@ else:
 # class' `URLTypes` alias is private, so we replicate the public union here.
 URLTypes = httpx.URL | str
 
+# What a request method checks: "2xx" for any success status, an int for that
+# exact status, or None for no check.
+ExpectedStatus = int | Literal["2xx"] | None
+
 
 class _StatusAssertions:
     def assert_status(
-        self, response: httpx.Response, expected_code: int | None = None
+        self, response: httpx.Response, expected_code: ExpectedStatus = "2xx"
     ) -> None:
-        """Check if the response status code matches the expected code."""
+        """Check the status code of a response.
+
+        ``"2xx"``, the default, accepts any success status. An int accepts only
+        that status. ``None`` accepts every status.
+        """
         __tracebackhide__ = True
 
         status_code = response.status_code
 
-        if expected_code is not None and status_code == expected_code:
-            return  # All good
-
-        if expected_code is None and status_code < 400:
-            return  # Also fine
+        if expected_code is None or status_code == expected_code:
+            return
+        if expected_code == "2xx" and 200 <= status_code < 300:
+            return
 
         # Raise AssertionError with detailed error message
         try:
@@ -105,55 +112,85 @@ class RestlyTestClient(_StatusAssertions, TestClient):
         return self
 
     def get(
-        self, url: URLTypes, *, assert_status_code: int | None = 200, **kwargs: Any
+        self,
+        url: URLTypes,
+        *,
+        assert_status_code: ExpectedStatus = "2xx",
+        **kwargs: Any,
     ) -> httpx.Response:
-        """Make a GET request. Asserts the response status code matches `assert_status_code` (default: 200).
-        Pass `assert_status_code=None` to accept any status below 400 instead;
-        it does not skip the check."""
+        """Make a GET request and check its status.
+
+        By default the status must be a success (2xx). Pass an int to require
+        that exact status, or ``None`` to skip the check.
+        """
         __tracebackhide__ = True
         response = super().get(url, **kwargs)
         self.assert_status(response, assert_status_code)
         return response
 
     def post(
-        self, url: URLTypes, *, assert_status_code: int | None = 201, **kwargs: Any
+        self,
+        url: URLTypes,
+        *,
+        assert_status_code: ExpectedStatus = "2xx",
+        **kwargs: Any,
     ) -> httpx.Response:
-        """Make a POST request. Asserts the response status code matches `assert_status_code` (default: 201).
-        Pass `assert_status_code=None` to accept any status below 400 instead;
-        it does not skip the check."""
+        """Make a POST request and check its status.
+
+        By default the status must be a success (2xx). Pass an int to require
+        that exact status, or ``None`` to skip the check.
+        """
         __tracebackhide__ = True
         response = super().post(url, **kwargs)
         self.assert_status(response, assert_status_code)
         return response
 
     def put(
-        self, url: URLTypes, *, assert_status_code: int | None = 200, **kwargs: Any
+        self,
+        url: URLTypes,
+        *,
+        assert_status_code: ExpectedStatus = "2xx",
+        **kwargs: Any,
     ) -> httpx.Response:
-        """Make a PUT request. Asserts the response status code matches `assert_status_code` (default: 200).
-        Pass `assert_status_code=None` to accept any status below 400 instead;
-        it does not skip the check."""
+        """Make a PUT request and check its status.
+
+        By default the status must be a success (2xx). Pass an int to require
+        that exact status, or ``None`` to skip the check.
+        """
         __tracebackhide__ = True
         response = super().put(url, **kwargs)
         self.assert_status(response, assert_status_code)
         return response
 
     def patch(
-        self, url: URLTypes, *, assert_status_code: int | None = 200, **kwargs: Any
+        self,
+        url: URLTypes,
+        *,
+        assert_status_code: ExpectedStatus = "2xx",
+        **kwargs: Any,
     ) -> httpx.Response:
-        """Make a PATCH request. Asserts the response status code matches `assert_status_code` (default: 200).
-        Pass `assert_status_code=None` to accept any status below 400 instead;
-        it does not skip the check."""
+        """Make a PATCH request and check its status.
+
+        By default the status must be a success (2xx). Pass an int to require
+        that exact status, or ``None`` to skip the check.
+        """
         __tracebackhide__ = True
         response = super().patch(url, **kwargs)
         self.assert_status(response, assert_status_code)
         return response
 
     def delete(
-        self, url: URLTypes, *, assert_status_code: int | None = 204, **kwargs: Any
+        self,
+        url: URLTypes,
+        *,
+        assert_status_code: ExpectedStatus = "2xx",
+        **kwargs: Any,
     ) -> httpx.Response:
-        """Make a DELETE request. Asserts the response status code matches `assert_status_code` (default: 204).
-        Pass `assert_status_code=None` to accept any status below 400 instead;
-        it does not skip the check."""
+        """Make a DELETE request and check its status.
+
+        By default the status must be a success (2xx). Pass an int to require
+        that exact status, or ``None`` to skip the check.
+        """
         __tracebackhide__ = True
         response = super().delete(url, **kwargs)
         self.assert_status(response, assert_status_code)
@@ -174,12 +211,16 @@ class AsyncRestlyTestClient(_StatusAssertions, httpx.AsyncClient):
         super().__init__(*args, **kwargs)
 
     async def get(
-        self, url: URLTypes, *, assert_status_code: int | None = 200, **kwargs: Any
+        self,
+        url: URLTypes,
+        *,
+        assert_status_code: ExpectedStatus = "2xx",
+        **kwargs: Any,
     ) -> httpx.Response:
-        """Make a GET request and assert status 200 by default.
+        """Make a GET request and check its status.
 
-        Pass ``assert_status_code=None`` to accept any status below 400; it does
-        not skip the check.
+        By default the status must be a success (2xx). Pass an int to require
+        that exact status, or ``None`` to skip the check.
         """
         __tracebackhide__ = True
         response = await super().get(url, **kwargs)
@@ -187,12 +228,16 @@ class AsyncRestlyTestClient(_StatusAssertions, httpx.AsyncClient):
         return response
 
     async def post(
-        self, url: URLTypes, *, assert_status_code: int | None = 201, **kwargs: Any
+        self,
+        url: URLTypes,
+        *,
+        assert_status_code: ExpectedStatus = "2xx",
+        **kwargs: Any,
     ) -> httpx.Response:
-        """Make a POST request and assert status 201 by default.
+        """Make a POST request and check its status.
 
-        Pass ``assert_status_code=None`` to accept any status below 400; it does
-        not skip the check.
+        By default the status must be a success (2xx). Pass an int to require
+        that exact status, or ``None`` to skip the check.
         """
         __tracebackhide__ = True
         response = await super().post(url, **kwargs)
@@ -200,12 +245,16 @@ class AsyncRestlyTestClient(_StatusAssertions, httpx.AsyncClient):
         return response
 
     async def put(
-        self, url: URLTypes, *, assert_status_code: int | None = 200, **kwargs: Any
+        self,
+        url: URLTypes,
+        *,
+        assert_status_code: ExpectedStatus = "2xx",
+        **kwargs: Any,
     ) -> httpx.Response:
-        """Make a PUT request and assert status 200 by default.
+        """Make a PUT request and check its status.
 
-        Pass ``assert_status_code=None`` to accept any status below 400; it does
-        not skip the check.
+        By default the status must be a success (2xx). Pass an int to require
+        that exact status, or ``None`` to skip the check.
         """
         __tracebackhide__ = True
         response = await super().put(url, **kwargs)
@@ -213,12 +262,16 @@ class AsyncRestlyTestClient(_StatusAssertions, httpx.AsyncClient):
         return response
 
     async def patch(
-        self, url: URLTypes, *, assert_status_code: int | None = 200, **kwargs: Any
+        self,
+        url: URLTypes,
+        *,
+        assert_status_code: ExpectedStatus = "2xx",
+        **kwargs: Any,
     ) -> httpx.Response:
-        """Make a PATCH request and assert status 200 by default.
+        """Make a PATCH request and check its status.
 
-        Pass ``assert_status_code=None`` to accept any status below 400; it does
-        not skip the check.
+        By default the status must be a success (2xx). Pass an int to require
+        that exact status, or ``None`` to skip the check.
         """
         __tracebackhide__ = True
         response = await super().patch(url, **kwargs)
@@ -226,12 +279,16 @@ class AsyncRestlyTestClient(_StatusAssertions, httpx.AsyncClient):
         return response
 
     async def delete(
-        self, url: URLTypes, *, assert_status_code: int | None = 204, **kwargs: Any
+        self,
+        url: URLTypes,
+        *,
+        assert_status_code: ExpectedStatus = "2xx",
+        **kwargs: Any,
     ) -> httpx.Response:
-        """Make a DELETE request and assert status 204 by default.
+        """Make a DELETE request and check its status.
 
-        Pass ``assert_status_code=None`` to accept any status below 400; it does
-        not skip the check.
+        By default the status must be a success (2xx). Pass an int to require
+        that exact status, or ``None`` to skip the check.
         """
         __tracebackhide__ = True
         response = await super().delete(url, **kwargs)

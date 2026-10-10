@@ -76,21 +76,6 @@ def test_restly_test_client_custom_assert_status_codes():
     assert response.status_code == 201
 
 
-def test_restly_test_client_skip_check():
-    """Test that RestlyTestClient skips status code check when assert_status_code is None."""
-    app = FastAPI()
-
-    @app.get("/test")
-    def test_get():
-        return {"message": "success"}
-
-    client = RestlyTestClient(app)
-
-    # Test with assert_status_code=None - should not raise an error
-    response = client.get("/test", assert_status_code=None)
-    assert response.status_code == 200
-
-
 def test_restly_test_client_error_handling():
     """Test that RestlyTestClient provides clear error messages."""
     app = FastAPI()
@@ -131,32 +116,70 @@ def test_restly_test_client_backward_compatibility():
     assert regular_response.json() == restly_response.json()
 
 
-def test_assert_status_code_none_still_rejects_an_error_status():
-    """None relaxes the check to "any status below 400"; it does not skip it.
-
-    The five method docstrings said "skip the assertion", and the only test for
-    None used a 200, which passes either way.
-    """
-    from fastapi import FastAPI
-    from fastapi.responses import JSONResponse
-
-    from fastapi_restly.testing import RestlyTestClient
+def _status_app() -> FastAPI:
+    """An app whose routes answer with a fixed status code."""
+    from fastapi.responses import JSONResponse, RedirectResponse
 
     app = FastAPI()
+
+    @app.post("/publish")
+    def publish():
+        return {"published": True}  # an action: 200, not 201
 
     @app.get("/gone")
     def gone():
         return JSONResponse({"detail": "nope"}, status_code=404)
 
-    @app.get("/fine")
-    def fine():
-        return {"ok": True}
+    @app.get("/broken")
+    def broken():
+        return JSONResponse({"detail": "boom"}, status_code=500)
 
-    client = RestlyTestClient(app)
-    with client:
-        assert client.get("/fine", assert_status_code=None).status_code == 200
-        with pytest.raises(AssertionError):
-            client.get("/gone", assert_status_code=None)
+    @app.get("/moved")
+    def moved():
+        return RedirectResponse("/publish", status_code=302)
+
+    return app
+
+
+def test_default_accepts_any_success_status():
+    """A POST action that answers 200 passes without assert_status_code."""
+    client = RestlyTestClient(_status_app())
+
+    assert client.post("/publish").status_code == 200
+
+
+def test_default_rejects_an_error_and_a_redirect():
+    """The default is a success status (2xx), not merely "below 400"."""
+    client = RestlyTestClient(_status_app(), follow_redirects=False)
+
+    with pytest.raises(AssertionError, match="to return 2xx, got 404"):
+        client.get("/gone")
+    with pytest.raises(AssertionError, match="to return 2xx, got 302"):
+        client.get("/moved")
+
+
+def test_an_int_requires_that_exact_status():
+    client = RestlyTestClient(_status_app())
+
+    with pytest.raises(AssertionError, match="to return 201, got 200"):
+        client.post("/publish", assert_status_code=201)
+
+
+def test_assert_status_code_none_skips_the_check():
+    client = RestlyTestClient(_status_app())
+
+    assert client.get("/gone", assert_status_code=None).status_code == 404
+    assert client.get("/broken", assert_status_code=None).status_code == 500
+
+
+@pytest.mark.asyncio
+async def test_async_client_checks_status_like_the_sync_client():
+    async with AsyncRestlyTestClient(_status_app()) as client:
+        assert (await client.post("/publish")).status_code == 200
+        with pytest.raises(AssertionError, match="to return 2xx, got 404"):
+            await client.get("/gone")
+        response = await client.get("/gone", assert_status_code=None)
+        assert response.status_code == 404
 
 
 @pytest.mark.asyncio

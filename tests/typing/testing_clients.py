@@ -6,6 +6,11 @@ from fastapi_restly.testing import AsyncRestlyTestClient, RestlyTestClient
 app = FastAPI()
 sync_client = RestlyTestClient(app)
 sync_response: Response = sync_client.get("/", assert_status_code=404)
+sync_client.post("/", assert_status_code="2xx")
+sync_client.post("/", assert_status_code=None)
+# "2xx" is the only status class. mypy's warn_unused_ignores fails here if the
+# annotation starts to accept any string.
+sync_client.get("/", assert_status_code="4xx")  # type: ignore[arg-type]
 
 
 async def use_async_client() -> None:

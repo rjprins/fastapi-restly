@@ -346,7 +346,7 @@ from conftest import Widget
 
 
 def test_request_write_lands_in_the_fixture_session(restly_session, restly_client):
-    response = restly_client.post("/widgets")  # asserts 201
+    response = restly_client.post("/widgets")  # asserts a 2xx status
 
     widget_id = response.json()["id"]
     found = restly_session.scalars(select(Widget).where(Widget.id == widget_id))

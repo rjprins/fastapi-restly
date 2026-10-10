@@ -230,12 +230,12 @@ A test needs nothing but the client:
 ```python
 # test_users.py
 def test_create_and_fetch_user(restly_client):
-    response = restly_client.post(  # asserts 201 automatically
+    response = restly_client.post(  # fails the test unless the status is 2xx
         "/users", json={"name": "Jane", "email": "jane@example.com"}
     )
     user_id = response.json()["id"]
 
-    data = restly_client.get(f"/users/{user_id}").json()  # asserts 200
+    data = restly_client.get(f"/users/{user_id}").json()
     assert data["name"] == "Jane"
 ```
 
@@ -391,39 +391,26 @@ and {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` endpoints.
 provides the same request methods and assertions for async tests; the
 `restly_async_client` fixture constructs it and runs the app lifespan for you.
 
-Both clients assert a default status code for each request and, on mismatch,
-raise an `AssertionError` that includes the response body:
+Both clients check the status code of every response. On a mismatch, they
+raise an `AssertionError` that includes the response body. The
+`assert_status_code` argument of each request method sets the check:
 
-| Method   | Default expected status |
-|----------|-------------------------|
-| `get`    | `200`                   |
-| `post`   | `201`                   |
-| `put`    | `200`                   |
-| `patch`  | `200`                   |
-| `delete` | `204`                   |
+| `assert_status_code` | Accepted status |
+|---|---|
+| `"2xx"`, the default | any success status, such as `200`, `201`, or `204` |
+| an int, such as `404` | only that status |
+| `None` | any status: the client does not check |
 
-`AsyncRestView` and {class}`RestView <fastapi_restly.views.RestView>` do not
-define `PUT` routes. The client's `put` exists for [React Admin
-views](howto_react_admin.md) and custom routes.
-
-Override the expectation when testing error paths:
+Pass the exact code when the status is what the test is about, such as an
+error path:
 
 ```python
 def test_not_found(restly_client):
     restly_client.get("/users/999", assert_status_code=404)
 ```
 
-Passing `assert_status_code=None` relaxes the check to "any status below
-400"; it does **not** skip the assertion. Pass the error code you expect when
-you know it. To make a request with no Restly status assertion at all, use the
-generic `request()` method:
-
-```python
-response = restly_client.request("GET", "/users/999")
-```
-
-The async client offers the same escape hatch with `await
-restly_async_client.request(...)`.
+The default does not check which success status a route returns. To test
+that a create returns `201`, pass `assert_status_code=201`.
 
 ## Writing async tests
 

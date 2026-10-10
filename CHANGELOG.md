@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The test clients now accept any success status (2xx) by default. Before,
+  each method expected one status, such as `201` for POST. So a POST action
+  that returns `200` now passes without `assert_status_code`. No test starts
+  to fail, but some checks are looser: to test for an exact status, such as
+  `201` on create, pass it.
+- `assert_status_code=None` now skips the status check. Before, it accepted
+  any status below 400.
+
 ## [0.11.0] - 2026-10-09
 
 This release has many breaking changes. Before, we said to expect small

@@ -10,7 +10,7 @@ either property regresses, which is what makes the dog-fooding meaningful.
 # Two tests create an organization with the SAME unique slug. Both succeed only
 # because each test's writes roll back at teardown (savepoint isolation). If
 # isolation regressed, the second POST would hit the unique-slug constraint and
-# the client's default 201 assertion would fail with a 409.
+# the client's default status check would fail with a 409.
 _SHARED_SLUG = "dogfood-isolation-org"
 
 
