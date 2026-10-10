@@ -145,6 +145,24 @@ def test_comments_follow_the_same_rules(restly_client: RestlyTestClient) -> None
     restly_client.delete(f"/comments/{comment['id']}", headers=BEN)
 
 
+def test_comments_on_a_hidden_draft_stay_hidden(
+    restly_client: RestlyTestClient,
+) -> None:
+    post_id = write_draft(restly_client)
+    comment = restly_client.post(
+        "/comments", json={"content": "Note to self", "post_id": post_id}, headers=ANNA
+    ).json()
+
+    assert restly_client.get("/comments", headers=ANNA).json()["total_count"] == 1
+    assert restly_client.get("/comments", headers=BEN).json()["total_count"] == 0
+    assert restly_client.get("/comments").json()["total_count"] == 0
+    restly_client.get(f"/comments/{comment['id']}", headers=BEN, assert_status_code=404)
+
+    # the comment becomes visible together with its post
+    restly_client.post(f"/posts/{post_id}/publish", headers=ANNA)
+    assert restly_client.get("/comments", headers=BEN).json()["total_count"] == 1
+
+
 def test_openapi_class_names_are_unique() -> None:
     """Restly warns when two classes in the API have the same name: OpenAPI
     then shows them under long names that can change, and generated clients

@@ -245,15 +245,30 @@ instead. See [Transaction hooks](#transaction-hooks).
 
 ## Share the rules with comments
 
-Comments need the same rules. A comment has an author, and only its author
-may edit or delete it. The model and the schema get the same author field as
-posts:
+Comments need the same rules:
+
+- A comment has an author.
+- A comment on a hidden draft stays hidden.
+- Only its author may edit or delete a comment.
+
+The model and the schema get the same author field as posts. The model also
+gets a scope:
 
 ```python
+from sqlalchemy.orm import relationship
+
+
 class Comment(fr.TimestampsMixin, fr.IDBase):
     content: Mapped[str]
     post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
     author_id: Mapped[int] = mapped_column(init=False, insert_default=Current.user_id)
+    post: Mapped[Post] = relationship(init=False)
+
+
+class CommentClauses(fr.ClauseNamespace):
+    model = Comment
+
+    default_scope = fr.where_clause(Comment.post.has(PostClauses.default_scope))
 
 
 class CommentSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
@@ -261,6 +276,19 @@ class CommentSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     post_id: fr.MustExist[int, Post]
     author_id: fr.ReadOnly[int]
 ```
+
+A scope covers only its own model. The post scope hides a draft, but not the
+comments on it. So comments get their own scope:
+
+- `post` is a relationship from a comment to its post.
+- `Comment.post.has(...)` is true when the comment's post matches the
+  condition in the brackets.
+- The condition is the post scope, written without a call. Restly reads its
+  `Current.user_id` each time it applies the comment scope.
+
+Together: a comment is visible when its post is visible.
+[A clause inside an expression](#clause-in-expression) explains this in more
+detail.
 
 Views are normal Python classes. Move `authorize` from `PostView` into a
 base class, and let both views inherit it:

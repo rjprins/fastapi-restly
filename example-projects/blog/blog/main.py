@@ -5,7 +5,7 @@ from typing import Annotated
 import fastapi
 from fastapi import FastAPI, Header
 from sqlalchemy import ForeignKey, or_
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
 
@@ -44,6 +44,13 @@ class Comment(fr.TimestampsMixin, fr.IDBase):
     content: Mapped[str]
     post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
     author_id: Mapped[int] = mapped_column(init=False, insert_default=Current.user_id)
+    post: Mapped[Post] = relationship(init=False)
+
+
+class CommentClauses(fr.ClauseNamespace):
+    model = Comment
+
+    default_scope = fr.where_clause(Comment.post.has(PostClauses.default_scope))
 
 
 class PostSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
