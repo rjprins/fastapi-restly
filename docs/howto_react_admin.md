@@ -299,7 +299,7 @@ react-admin query string, then delegates to the standard {meth}`handle_get_many 
 
 It also adds a `PUT /{id}` route that delegates to the standard {meth}`handle_update <fastapi_restly.views.RestView.handle_update>`
 handler. The endpoint methods for the other CRUD routes (`GET /{id}`, `POST
-/`, `PATCH /{id}`, `DELETE /{id}`) and the write business-method tiers are
+/`, `PATCH /{id}`, `DELETE /{id}`) and the write business methods are
 inherited unchanged.
 
 The shared parsing and response helpers are internal.

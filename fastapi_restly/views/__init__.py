@@ -1,14 +1,15 @@
-"""Class-based views with default CRUD methods and explicit override tiers.
+"""Class-based views with default CRUD methods.
 
-Every CRUD verb on ``RestView`` / ``AsyncRestView`` exists at three tiers.
-Name the tier that owns your change and override one method:
+Every CRUD route on ``RestView`` / ``AsyncRestView`` runs through three
+methods. The handler handles the steps, and you override a step:
 
 1. ``<verb>_endpoint``, the endpoint method: the ``@route``, FastAPI
    signature, ``response_model``, and ``to_response``. Replace only to change
    the HTTP contract.
-2. ``handle_<verb>``, the handler: runs ``authorize`` and the commit
-   bracket (``before_action_commit`` -> commit -> ``after_action_commit``).
-   Final: call it from a custom route, never override it.
+2. ``handle_<verb>``, the handler: handles the steps, ``authorize``, the
+   business method, and the commit bracket (``before_action_commit`` ->
+   commit -> ``after_action_commit``). Final: call it from a custom route,
+   never override it.
 3. ``<verb>`` (``get_many``, ``get_one``, ``create``, ``update``, ``delete``),
    the business method: the domain operation, auth-free and commit-free. The
    usual override point.

@@ -21,52 +21,137 @@ are in [Add a custom read route](#add-a-custom-read-route) and
 [Add a custom action route](#add-a-custom-action-route) below.
 :::
 
-## The three tiers
+(view-request-steps)=
+## How a view handles a request
 
 Take `POST /`, the create route, and follow the request inward. FastAPI calls
-{meth}`create_endpoint <fastapi_restly.views.RestView.create_endpoint>`, which calls {meth}`handle_create <fastapi_restly.views.RestView.handle_create>`, which calls
-{meth}`create <fastapi_restly.views.RestView.create>`. Every CRUD verb is built this way: three nested methods, each
-owning one kind of concern.
+{meth}`create_endpoint <fastapi_restly.views.RestView.create_endpoint>`, the
+endpoint method. It calls
+{meth}`handle_create <fastapi_restly.views.RestView.handle_create>`, the
+handler. The handler handles the steps of the request, in this order:
 
 ```
 POST /
-  └─ create_endpoint(...)    1. the endpoint method: the HTTP contract
-       └─ handle_create(...) 2. the handler: authorization and commit bracket
-            └─ create(...)   3. the business method: the domain change
+  └─ create_endpoint(schema_obj)                 # endpoint method: the HTTP contract
+       ├─ handle_create(schema_obj)              # handler: handles the steps (final)
+       │    ├─ authorize("create", data=schema_obj)
+       │    ├─ create(schema_obj)                 # business method: the domain change
+       │    │    ├─ make_new_object(schema_obj)   # build the ORM object (final)
+       │    │    └─ save_object(obj)              # flush and refresh, no commit (final)
+       │    ├─ before_action_commit("create", new=obj)
+       │    ├─ commit
+       │    └─ after_action_commit("create", new=obj)
+       └─ to_response(obj)
 ```
 
-The rest of this page, and the how-to guides, lean on these three terms.
+To change what a route does, you replace a step, such as `create` or
+`authorize`. The handler itself is final, so every CRUD route runs all of its
+steps.
 
 The **endpoint method**, `<verb>_endpoint`, is the method FastAPI routes to.
-It owns the HTTP contract: the {func}`@route <fastapi_restly.views.route>` decorator, the FastAPI
-signature, `response_model`, and the final {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>` call. Override
-it only when the contract itself must change.
+It owns the HTTP contract: the {func}`@route <fastapi_restly.views.route>`
+decorator, the FastAPI signature, `response_model`, and the final
+{meth}`to_response <fastapi_restly.views.BaseRestView.to_response>` call.
+Override it to change the contract, such as the status code. See
+[Replace an endpoint method](#replace-an-endpoint-method-to-change-the-http-contract).
 
-The **handler**, `handle_<verb>`, owns the request logic in between. It runs
-{meth}`authorize <fastapi_restly.views.RestView.authorize>`, calls the business method, and, on writes, closes with the
-**commit bracket**: {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`, then the commit itself, then
-{meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>`. It returns the domain object, so custom routes can
-reuse it; only the delete handler returns nothing. The handler is final:
-custom routes call it, and a view class that defines one fails at class
-definition. Every CRUD route therefore runs `authorize` and the commit
-bracket. The handler normally owns the commit. To move it to an outer block, see
-[Commit several writes together](#shared-write-action-commit).
+The **handler**, `handle_<verb>`, handles the steps between. It runs
+{meth}`authorize <fastapi_restly.views.RestView.authorize>` and calls the
+business method. On a write, it ends with the **commit bracket**:
+{meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`,
+the commit, then
+{meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>`.
+It returns the domain object, and only the delete handler returns nothing.
+A view class that defines a handler fails at class definition. A custom route
+calls the handler to run the same steps. To move the commit to an outer block,
+see [Commit several writes together](#shared-write-action-commit).
 
-The **business method** is the bare verb: {meth}`create <fastapi_restly.views.RestView.create>`, {meth}`update <fastapi_restly.views.RestView.update>`,
-{meth}`delete <fastapi_restly.views.RestView.delete>`, {meth}`get_one <fastapi_restly.views.RestView.get_one>`, or {meth}`get_many <fastapi_restly.views.RestView.get_many>`. It makes the domain change:
-build, apply, save. It is deliberately auth-free and commit-free, which is
-what makes it the usual override point: your code runs with authorization
-already checked and with the commit still owned by the surrounding commit
-bracket.
+The **business method** is the bare verb:
+{meth}`create <fastapi_restly.views.RestView.create>`,
+{meth}`update <fastapi_restly.views.RestView.update>`,
+{meth}`delete <fastapi_restly.views.RestView.delete>`,
+{meth}`get_one <fastapi_restly.views.RestView.get_one>`, or
+{meth}`get_many <fastapi_restly.views.RestView.get_many>`. It makes the domain
+change: build, apply, save. It does not check authorization and does not
+commit. So when your override runs, `authorize` has already passed, and the
+commit comes after it.
 
-The method names are regular across all five verbs, so `update_endpoint`
-calls `handle_update`, which calls `update`, and so on. The worked example
-below leans on the commit split in particular.
+The names are the same for all five verbs: `update_endpoint` calls
+`handle_update`, which calls `update`, and so on.
+
+{meth}`update <fastapi_restly.views.RestView.update>` and
+{meth}`delete <fastapi_restly.views.RestView.delete>` have the same steps,
+with a load first. Their handlers load the row through
+{meth}`get_one <fastapi_restly.views.RestView.get_one>`, so a hidden row is a
+404. Then they authorize against the loaded row and take a
+{meth}`snapshot(obj) <fastapi_restly.views.BaseRestView.snapshot>` as `old`.
+The business method runs next, then the same commit bracket. The hooks get
+both `new` and `old`, so they can see what changed.
+[Transaction hooks](#transaction-hooks) has recipes for them.
+
+(read-request-steps)=
+### A read: `get_one`
+
+Reads have no commit bracket. Read access has two separate concerns,
+**visibility** and **policy**, and a different step handles each:
+
+```
+GET /{id}
+  └─ get_one_endpoint(id)            # endpoint method
+       ├─ handle_get_one(id)         # handler
+       │    ├─ get_one(id)           # business method
+       │    │    └─ the view scope   # VISIBILITY: soft-delete, role, row-level
+       │    │                        #   a hidden row is a clean 404 for every caller
+       │    └─ authorize("get_one", obj=obj)   # POLICY: read-auth on the loaded row
+       └─ to_response(obj)
+```
+
+Because {meth}`get_one <fastapi_restly.views.RestView.get_one>` applies the view scope ([Scopes](scopes.md)), replaceable visibility lives in one
+place across list, count, and single-row reads: a hidden row returns 404 from
+`GET /{id}`. `get_one` itself stays auth-free; {meth}`authorize <fastapi_restly.views.RestView.authorize>` handles policy.
+
+{meth}`get_many <fastapi_restly.views.RestView.get_many>` works the same way: the scope establishes visibility,
+{meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>` applies filtering, sorting, and pagination, and
+{meth}`count <fastapi_restly.views.RestView.count>` produces the total, with `authorize("get_many")` added by
+{meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>`.
+
+## Which method do I override for X?
+
+The table below maps the change you want to make to the method that owns it:
+
+| I want to change…                       | Use                               |
+|-----------------------------------------|-----------------------------------|
+| Domain logic (hash, derive, compute)    | {meth}`create <fastapi_restly.views.RestView.create>` / {meth}`update <fastapi_restly.views.RestView.update>` / {meth}`delete <fastapi_restly.views.RestView.delete>` |
+| One commit over several writes          | {meth}`shared_write_action_commit <fastapi_restly.views.RestView.shared_write_action_commit>` in a custom route |
+| A lookup by another key (slug, email)   | {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>` with a predicate, in a custom route ([below](#natural-key-route)) |
+| A list of a subset (one project's tasks) | {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>` with `where=`, in a custom route ([Scopes](#per-read-where)) |
+| The HTTP contract (status, signature)   | `<verb>_endpoint`                 |
+| Read scope / row visibility             | {attr}`scope <fastapi_restly.views.BaseRestView.scope>` ([Scopes](scopes.md)) |
+| Filter / sort / pagination grammar      | {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>` |
+| The list total                          | {meth}`count <fastapi_restly.views.RestView.count>` |
+| Authorization / policy                  | {meth}`authorize <fastapi_restly.views.RestView.authorize>` (override to gate) |
+| Server-stamped fields (audit/tenant)    | a column default on the model ([below](#server-stamped-fields-column-defaults-on-the-model)) |
+| A side effect inside the commit (outbox/audit) | {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>` |
+| A side effect after the commit (email/webhook) | {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>` |
+| The response shape                      | {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>` |
+
+Start at the business method. Move a side effect that depends on the commit
+to a transaction hook, and touch the endpoint method only when the HTTP
+contract itself changes.
+
+The sections below give recipes for each of these override points.
+
+## Override the business methods
+
+Each business method maps to one domain operation, so override only the one
+you need. These methods are auth-free and commit-free; the handler adds
+authorization and commit handling around them.
 
 (password-hash-example)=
-## Worked example: hash a password on create
+### `create`: hash a password
 
-Hashing a password is domain logic, so it belongs in {meth}`create <fastapi_restly.views.RestView.create>`. The surrounding commit bracket
+Hashing a password is domain logic, so it belongs in
+{meth}`create <fastapi_restly.views.RestView.create>`. The commit bracket
 commits after this method returns:
 
 ```python
@@ -105,110 +190,9 @@ the plaintext lands in `password` first, and the override replaces it with
 the hash before the flush. `fr.WriteOnly` keeps the field out of every
 response.
 
-## Request lifecycle: a write (`create`)
-
-A `POST /` request flows down through the tiers, and the commit happens at the
-bottom of the handler, after your domain logic has run:
-
-```
-POST /
-  └─ create_endpoint(schema_obj)              # endpoint method
-       └─ handle_create(schema_obj)           # handler
-            ├─ authorize("create", data=schema_obj)
-            ├─ create(schema_obj)              # business method (your override point)
-            │    ├─ make_new_object(schema_obj)   # build the ORM object (final)
-            │    └─ save_object(obj)              # flush + refresh (no commit)
-            ├─ before_action_commit("create", new=obj)
-            ├─ commit                             # the framework owns this
-            └─ after_action_commit("create", new=obj)    # runs after durability
-       └─ to_response(obj)                     # back in the endpoint method
-```
-
-{meth}`update <fastapi_restly.views.RestView.update>` and {meth}`delete <fastapi_restly.views.RestView.delete>` follow the same shape. Their handlers first load the row
-through {meth}`get_one <fastapi_restly.views.RestView.get_one>` (so they 404 on a hidden row), authorize against the loaded
-row, and take a {meth}`snapshot(obj) <fastapi_restly.views.BaseRestView.snapshot>` as `old`; then the business method runs,
-followed by the same bracket of {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`, commit, and
-{meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>`, with both `new` and `old` available for dirty detection.
-Recipes for these hooks are collected in
-[Transaction hooks](#transaction-hooks-before_action_commit--after_action_commit).
-
-## Request lifecycle: a read (`get_one`)
-
-Reads have no commit bracket. Read access instead involves two separate
-concerns, **visibility** and **policy**, and each is handled at a different
-tier:
-
-```
-GET /{id}
-  └─ get_one_endpoint(id)            # endpoint method
-       └─ handle_get_one(id)         # handler
-            ├─ get_one(id)           # business method
-            │    └─ the view scope   # VISIBILITY: soft-delete, role, row-level
-            │                        #   a hidden row is a clean 404 for every caller
-            └─ authorize("get_one", obj=obj)   # POLICY: read-auth on the loaded row
-       └─ to_response(obj)
-```
-
-Because {meth}`get_one <fastapi_restly.views.RestView.get_one>` applies the view scope ([Scopes](scopes.md)), replaceable visibility lives in one
-place across list, count, and single-row reads: a hidden row returns 404 from
-`GET /{id}`. `get_one` itself stays auth-free; {meth}`authorize <fastapi_restly.views.RestView.authorize>` handles policy.
-
-{meth}`get_many <fastapi_restly.views.RestView.get_many>` works the same way: the scope establishes visibility,
-{meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>` applies filtering, sorting, and pagination, and
-{meth}`count <fastapi_restly.views.RestView.count>` produces the total, with `authorize("get_many")` added by
-{meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>`.
-
-## Which method do I override for X?
-
-The table below maps the change you want to make to the method that owns it:
-
-| I want to change…                       | Override / configure              | Tier / kind            |
-|-----------------------------------------|-----------------------------------|------------------------|
-| Domain logic (hash, derive, compute)    | {meth}`create <fastapi_restly.views.RestView.create>` / {meth}`update <fastapi_restly.views.RestView.update>` / {meth}`delete <fastapi_restly.views.RestView.delete>`    | business method        |
-| One commit over several writes          | {meth}`shared_write_action_commit <fastapi_restly.views.RestView.shared_write_action_commit>` in a custom route | commit bracket         |
-| A lookup by another key (slug, email)   | {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>` with a predicate, in a custom route ([below](#natural-key-route)) | handler                |
-| A list of a subset (one project's tasks) | {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>` with `where=`, in a custom route ([Scopes](#per-read-where)) | handler                |
-| The HTTP contract (status, signature)   | `<verb>_endpoint`                 | endpoint method        |
-| Read scope / row visibility             | {attr}`scope <fastapi_restly.views.BaseRestView.scope>` ([Scopes](scopes.md))  | read extension point   |
-| Filter / sort / pagination grammar      | {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`              | read extension point   |
-| The list total                          | {meth}`count <fastapi_restly.views.RestView.count>`                           | read extension point   |
-| Authorization / policy                  | {meth}`authorize <fastapi_restly.views.RestView.authorize>` (override to gate)    | handler hook           |
-| Server-stamped fields (audit/tenant)    | a column default on the model ([below](#server-stamped-fields-column-defaults-on-the-model)) | model layer            |
-| A side effect inside the commit (outbox/audit) | {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`                   | transaction hook       |
-| A side effect after the commit (email/webhook) | {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>`                    | transaction hook       |
-| The response shape                      | {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>`                     | response boundary      |
-
-Start at the business method. Move a side effect that depends on the commit
-to a transaction hook, and touch the endpoint method only when the HTTP
-contract itself changes.
-
-The sections below give recipes for each of these override points.
-
-## Override the business methods
-
-Each business method maps to one domain operation, so override only the one
-you need. These methods are auth-free and commit-free; the handler adds
-authorization and commit handling around them.
-
-### `create`: inject server-side fields at creation
-
-The [worked example](#worked-example-hash-a-password-on-create) above hashed
-a `password`. Any server-owned field follows the same shape, reading
-request context through `self`:
-
-```python
-from typing import Annotated
-from fastapi import Depends
-
-    current_user: Annotated[User, Depends(get_current_user)]
-
-    async def create(self, schema_obj):
-        obj = await self.make_new_object(schema_obj)
-        obj.created_by = self.current_user.id
-        return await self.save_object(obj)
-```
-
-`current_user` is a class-level dependency, injected per request like any other ([Dependency injection on class attributes](class_based_views.md#dependency-injection-on-class-attributes)). {attr}`self.request <fastapi_restly.views.BaseRestView.request>` is the live FastAPI `Request`. {attr}`self.session <fastapi_restly.views.RestView.session>` is the injected async SQLAlchemy session. Both are available in every method.
+To set a field that the server owns, such as the author, use a
+[column default](#server-stamped-fields-column-defaults-on-the-model) instead
+of `create`. It also covers rows that other code creates.
 
 ### `update`: run validation before saving
 
@@ -274,7 +258,7 @@ Put eager loading in
 
 ## Read scope: the view scope + `authorize`
 
-The [read lifecycle](#request-lifecycle-a-read-get_one) above split read
+[A read](#read-request-steps) above split read
 access into two independent concerns; each has its own override point:
 
 - Visibility, meaning which rows exist at all for this caller, lives in the
@@ -342,6 +326,8 @@ class InvoiceView(fr.AsyncRestView):
 ```
 
 `action` is the verb, `obj` is the loaded row, and `data` is the validated request payload. You add authentication yourself; Restly calls `authorize` and maps {class}`fr.exc.Forbidden <fastapi_restly.exc.Forbidden>` / {class}`fr.exc.NotFound <fastapi_restly.exc.NotFound>` to HTTP responses.
+
+`current_user` is a class-level dependency, injected per request like any other ([Dependency injection on class attributes](class_based_views.md#dependency-injection-on-class-attributes)). {attr}`self.request <fastapi_restly.views.BaseRestView.request>` is the live FastAPI `Request`. {attr}`self.session <fastapi_restly.views.RestView.session>` is the injected async SQLAlchemy session. Both are available in every method.
 
 Visibility belongs in the [scope](scopes.md), not here: raising from `authorize` produces a 403, whereas a row outside the scope produces a 404.
 

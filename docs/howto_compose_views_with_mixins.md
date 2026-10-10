@@ -381,7 +381,7 @@ allow/deny decisions such as "only managers may create" belong in
 
 ## Cross-references
 
-- [Customizing RestView](customize.md): the three tiers,
+- [Customizing RestView](customize.md): how a view handles a request,
   single-base overrides, and the call chain.
 - [Views](class_based_views.md#dependency-injection-on-class-attributes):
   the marker-based DI rule that makes mixin type stubs safe.

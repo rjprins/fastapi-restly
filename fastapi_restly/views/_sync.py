@@ -53,17 +53,19 @@ class RestView(
             schema = FooSchema
             model = Foo
 
-    Each verb is three tiers (see "Customizing RestView" in the docs):
+    Each CRUD route runs through three methods (see "Customizing RestView"
+    in the docs):
 
     * ``<verb>_endpoint``: the endpoint method. Owns the HTTP signature,
-      ``response_model``, and ``to_response``. Rarely overridden.
-    * ``handle_<verb>``: the handler. Owns ``authorize`` and the commit
-      bracket (``before_action_commit`` -> commit -> ``after_action_commit``);
-      returns the domain object. Final: call it from a custom route to get
-      the bracket, never override it.
+      ``response_model``, and ``to_response``. Override it to change the
+      HTTP contract.
+    * ``handle_<verb>``: the handler. Handles the steps: ``authorize``, the
+      business method, and the commit bracket (``before_action_commit`` ->
+      commit -> ``after_action_commit``); returns the domain object. Final:
+      call it from a custom route to run the same steps, never override it.
     * ``<verb>`` (``get_many`` / ``get_one`` / ``create`` / ``update`` /
       ``delete``): the business method. Auth-free, commit-free; the common
-      override point (hash a password, derive a slug, ...).
+      override point (hash a password, ...).
     """
 
     session: SessionDep

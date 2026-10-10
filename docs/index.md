@@ -144,8 +144,7 @@ Define a model-backed CRUD resource and understand its default contract.
 :link: customize
 :link-type: doc
 
-The three tiers behind every CRUD verb, with recipes for every override
-point.
+How a view handles each request, with recipes for every override point.
 :::
 
 :::{grid-item-card} How-To Guides

@@ -2,10 +2,10 @@
 
 FastAPI-Restly views are plain Python classes. Use base classes for shared CRUD overrides, dependencies, access control, and URL namespaces.
 
-Each CRUD verb is implemented in three tiers (see [Customizing RestView](customize.md) for the full model):
+Each CRUD route runs through three methods (see [How a view handles a request](#view-request-steps) for the full picture):
 
-- The **endpoint method** ({meth}`create_endpoint <fastapi_restly.views.RestView.create_endpoint>`, {meth}`get_one_endpoint <fastapi_restly.views.RestView.get_one_endpoint>`, and so on) owns the HTTP contract. It is rarely overridden on a base class.
-- The **handler** ({meth}`handle_create <fastapi_restly.views.RestView.handle_create>`, {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>`, and so on) runs {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the commit bracket. It is final: custom routes call it, and a base class cannot override it.
+- The **endpoint method** ({meth}`create_endpoint <fastapi_restly.views.RestView.create_endpoint>`, {meth}`get_one_endpoint <fastapi_restly.views.RestView.get_one_endpoint>`, and so on) owns the HTTP contract. Override it only to change that contract.
+- The **handler** ({meth}`handle_create <fastapi_restly.views.RestView.handle_create>`, {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>`, and so on) handles the steps, such as {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the commit bracket. It is final: custom routes call it, and a base class cannot override it.
 - The **business method** ({meth}`create <fastapi_restly.views.RestView.create>`, {meth}`get_one <fastapi_restly.views.RestView.get_one>`, {meth}`update <fastapi_restly.views.RestView.update>`, {meth}`delete <fastapi_restly.views.RestView.delete>`, {meth}`get_many <fastapi_restly.views.RestView.get_many>`) is the auth-free, commit-free domain operation.
 
 The business method is the natural home for shared behaviour, so most of the examples below override it.
@@ -224,5 +224,5 @@ Mixins](howto_compose_views_with_mixins.md).
 
 The patterns above build on two neighbouring pages:
 
-- [Customizing RestView](customize.md) covers the three-tier model and the call chain.
+- [Customizing RestView](customize.md) covers how a view handles a request and the call chain.
 - [Compose Views with Mixins](howto_compose_views_with_mixins.md) covers structural concerns on the model and verb mixins on the view; it is the richer cousin to single-base inheritance.

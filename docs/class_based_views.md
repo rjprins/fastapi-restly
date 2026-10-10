@@ -207,8 +207,8 @@ View                   ← class-based view primitive (no CRUD)
   default contract, configuration, and limits.
 
 The [API reference](#view-method-surface) classifies the public
-method surface. [Customizing RestView](customize.md) explains the three override
-tiers and cross-cutting override points.
+method surface. [Customizing RestView](customize.md) explains how a view handles a
+request and where to override it.
 
 ## A shared base view for tenant routes
 
@@ -248,15 +248,15 @@ for replaceable surfaces such as soft deletion and role visibility. The
 [tenant row scoping](#tenant-row-scoping) recipe contains the session rule,
 column stamp, and shared view base.
 
-## Override a single tier
+## Override a single step
 
-{class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` and {class}`RestView <fastapi_restly.views.RestView>` split every CRUD verb into three tiers: the
-endpoint method (HTTP contract), the handler (authorization + commit
-bracket), and the business method (domain logic, auth-free and commit-free).
-One behavior change therefore means one method override, while routing,
-authorization, and the commit stay framework-owned. The tier model, both
-request lifecycles, the override decision table, and task-shaped recipes
-live in [Customizing RestView](customize.md).
+{class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` and {class}`RestView <fastapi_restly.views.RestView>` run every CRUD route through three methods: the
+endpoint method (HTTP contract), the handler, and the business method (domain
+logic, auth-free and commit-free). The handler handles the steps, such as
+authorization and the commit, and it is final. One behavior change therefore
+means one override of a step, while routing, authorization, and the commit
+stay framework-owned. The steps of a request, the override decision table,
+and task-shaped recipes live in [Customizing RestView](#view-request-steps).
 
 (dependency-injection-on-class-attributes)=
 ## Dependency injection on class attributes
@@ -356,9 +356,8 @@ co-located. Do not reach for them just for the sake of structure.
 
 - [Using RestView](rest_views.md): the default CRUD contract, schemas, and view
   configuration.
-- [Customizing RestView](customize.md): the tier model behind every CRUD verb,
-  both request lifecycles, the override decision table, and every override
-  recipe.
+- [Customizing RestView](customize.md): how a view handles a request, the
+  override decision table, and every override recipe.
 - [Share Behaviour with Base Views](howto_inheritance.md): patterns for
   tenant isolation, role-based filtering, and shared mixins.
 - [API Reference](api_reference.md): full {class}`View <fastapi_restly.views.View>`, {class}`BaseRestView <fastapi_restly.views.BaseRestView>`,

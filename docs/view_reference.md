@@ -94,13 +94,14 @@ uses `PATCH`.
 (view-method-surface)=
 ## Methods
 
-Each CRUD verb on `RestView` / `AsyncRestView` is split into three tiers: the
-endpoint method (`<verb>_endpoint`), the handler (`handle_<verb>`), and
-the business method (`<verb>`). You override the endpoint method or the
-business method, whichever owns your change; the handler is final. The model
-and the decision table live in [Customizing RestView](customize.md).
+Each CRUD route on `RestView` / `AsyncRestView` runs through three methods:
+the endpoint method (`<verb>_endpoint`), the handler (`handle_<verb>`), and
+the business method (`<verb>`). The handler handles the steps and is final.
+You override the endpoint method or the business method, whichever owns your
+change. The steps and the decision table live in
+[Customizing RestView](#view-request-steps).
 
-Alongside the tiers are the declared read [scope](scopes.md) (the
+Alongside these three are the declared read [scope](scopes.md) (the
 `scope` class attribute) and cross-cutting **override points**
 (`apply_list_params`, `count`, `authorize`,
 `before_action_commit` / `after_action_commit`, `to_response`,
@@ -115,7 +116,7 @@ methods, `apply_list_params`, `snapshot` and `get_relationship_loader_options`
 are plain `def`, and the two brackets are entered with `async with`. Argument
 names are identical between variants.
 
-| Tier / kind | Method | Signature | Return | Purpose |
+| Kind | Method | Signature | Return | Purpose |
 |---|---|---|---|---|
 | Endpoint method | {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` | `(list_params)` | the list response, such as `UserListResponse`: the pagination's envelope (`PaginatedEnvelope` by default, or `Envelope`) filled with the response class | `GET /`; validates query parameters and serializes the list result via `to_response`. |
 | Endpoint method | {meth}`get_one_endpoint <fastapi_restly.views.RestView.get_one_endpoint>` | `(id)` | response schema | `GET /{id}`; serializes one retrieved object. |
@@ -156,7 +157,7 @@ and `fr.clauses.UNSCOPED` reads unscoped.
 
 Internal methods prefixed with `_`, such as `_reject_unknown_query_params`, are implementation details even though they are visible on instances.
 
-See [Views](class_based_views.md#the-view-hierarchy) for the class hierarchy, [Customizing RestView](customize.md) for examples of choosing which tier to override, and [Use Type Annotations](howto_typing.md) for the typed signatures of these methods.
+See [Views](class_based_views.md#the-view-hierarchy) for the class hierarchy, [Customizing RestView](customize.md) for examples of choosing which method to override, and [Use Type Annotations](howto_typing.md) for the typed signatures of these methods.
 
 (advanced-object-helpers)=
 ### The same operations outside a view

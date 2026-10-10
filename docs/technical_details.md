@@ -338,12 +338,12 @@ Both forms call {meth}`before_include_view() <fastapi_restly.views.BaseRestView.
 annotates endpoint signatures, and registers the {attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`), then
 attach an `APIRouter` to the parent app/router.
 
-### The Three Tiers of a CRUD Verb
+### The Methods of a CRUD Route
 
-Every CRUD verb is split into an endpoint method (`<verb>_endpoint`), a
-handler (`handle_<verb>`), and a business method (`<verb>`); the model and the
-override decision table live in
-[Customizing RestView](customize.md).
+Every CRUD route runs through an endpoint method (`<verb>_endpoint`), a
+handler (`handle_<verb>`), and a business method (`<verb>`). How the handler
+handles the steps, and the override decision table, live in
+[Customizing RestView](#view-request-steps).
 
 The implementation detail worth knowing here is that the endpoint method calls
 {meth}`to_response(obj, shape) <fastapi_restly.views.BaseRestView.to_response>`, the single response method, which delegates to

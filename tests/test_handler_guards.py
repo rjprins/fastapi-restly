@@ -1,8 +1,8 @@
 """The handlers are not seams: a view class that defines one, itself or
 through a mixin, fails at class definition.
 
-``handle_<verb>`` stays the tier a custom route calls, which is what keeps
-``authorize`` and the commit bracket on every generated CRUD route. An
+``handle_<verb>`` handles the steps. Because it is final, every generated
+CRUD route runs ``authorize`` and the commit bracket. An
 override re-implements the load, authorize and commit order to reach
 something another seam gives directly, so the guard names that seam.
 """
@@ -73,7 +73,7 @@ def test_the_message_names_the_business_method_the_gate_and_the_contract(base, n
         _define(base, name, lambda self, *args, **kwargs: None)
 
     message = str(info.value)
-    assert "it is the tier a custom route calls" in message
+    assert "it handles the steps of the request" in message
     assert f"{verb} business method" in message
     assert "authorize" in message
     assert f"{verb}_endpoint" in message
