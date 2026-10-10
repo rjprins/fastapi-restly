@@ -1,8 +1,8 @@
 # ![](_static/fr-monogram.svg) FastAPI-Restly
 
 FastAPI-Restly (`fr`) is a REST framework for FastAPI, using SQLAlchemy 2.0 and
-Pydantic v2. Views are real Python classes that support inheritance and mixins.
-Designed for customization.
+Pydantic v2, with class-based views that support full customization through
+inheritance and mixins.
 
 > **Status:** {{ release }}, a public beta after
 > [four years of internal use](about.md). Until `1.0.0`, each minor release
@@ -70,7 +70,9 @@ class UserView(fr.AsyncRestView):
     model = User
 ```
 
-That view exposes these routes, with schemas generated from the model:
+That view exposes the routes below. Their Pydantic schemas are
+[generated from the model](#auto-generated-schemas), and you can
+[customize them](howto_custom_schema.md).
 
 ```text
 GET    /users       # list users: filter, sort, paginate via URL params
@@ -81,12 +83,12 @@ DELETE /users/{id}   # delete one user
 ```
 
 Because the view is a class, changing one behavior means overriding one
-method; routing, validation, and the commit stay framework-owned. Add this
+method; routing, validation, and the commit can stay framework-owned. Add this
 method to `UserView`:
 
 ```python
-    async def delete(self, obj):
-        obj.active = False  # deactivate instead of removing the row
+    async def delete(self, user):
+        user.active = False  # deactivate instead of removing the row
 ```
 
 `DELETE /users/{id}` now soft-disables (the row stays readable, with
@@ -100,14 +102,14 @@ first test.
 
 - **[Default CRUD routes](#default-crud-routes)**: GET, POST, PATCH, DELETE with minimal boilerplate
 - **[True class-based views](class_based_views.md)**: inheritance, mixins, and method overrides
-- **[Explicit override points](customize.md)**: every CRUD verb split into an endpoint method and a business method you override, with a final handler between them that custom routes call
+- **[Explicit override points](customize.md)**: every CRUD verb split into an endpoint method and a business method you override
 - **[React Admin ready](howto_react_admin.md)**: `AsyncReactAdminView` speaks `ra-data-simple-rest`
 - **[SQLAlchemy 2.0 support](getting_started.md)**: async-first with modern patterns
 - **[Pydantic v2 integration](howto_custom_schema.md)**: validation and serialization for public contracts
 - **[Automatic schema generation](technical_details.md#auto-generated-schemas)**: response, create, and update schemas generated automatically
-- **[List parameters](howto_query_modifiers.md)**: filter, sort, and paginate from a stable URL dialect generated from the view's schema
-- **[Current context](howto_current.md)**: bind the current user once and read it in application code and column defaults
-- **[Scopes](scopes.md)**: row visibility declared once as a clause and applied to every read and reference check
+- **[Filtering](howto_query_modifiers.md)**: filter, sort, and paginate from a stable URL dialect generated from the view's schema
+- **[Current context](howto_current.md)**: bind values, such as the current user, to a request-local context and read them anywhere in the request
+- **[Scopes](scopes.md)**: control what a view can return with one SQLAlchemy where clause, applied to every read and reference check
 - **[Relationship support](howto_relationship_idschema.md)**: handle foreign keys and nested objects
 - **[Testing utilities](howto_testing.md)**: built-in test helpers with savepoint isolation
 
