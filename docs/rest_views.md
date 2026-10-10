@@ -96,6 +96,7 @@ Both registration forms produce the same routes.
 [Project structure](howto_project_structure.md) shows where the direct call belongs in a
 multi-package application.
 
+(default-crud-routes)=
 (default-crud-behavior)=
 ## Default CRUD behavior
 
@@ -189,8 +190,8 @@ Configure the class according to the contract the resource needs:
 | Set a route name, summary, or operation ID | Set {attr}`route_options <fastapi_restly.views.View.route_options>` as shown in [OpenAPI customization](#default-route-metadata) |
 | Use another session dependency | Override the `session` annotation with `Annotated[..., Depends(...)]` |
 
-[Behavior and Configuration Reference](api_details.md) lists the exact
-attribute types and method signatures.
+[View Reference](view_reference.md) lists the exact attribute types and
+method signatures.
 [Use Restly in an Existing Project](howto_existing_project.md)
 covers custom engines, session generators, and a per-view session dependency.
 
@@ -220,7 +221,8 @@ The default CRUD contract has these boundaries:
 
 - Resource identity is one scalar primary key on the generated routes. The
   `{id}` path parameter takes the key's Python type, so a UUID or string key
-  needs no configuration. A composite key is reached from
+  needs no configuration. Reference fields such as `fr.MustExist[UUID, Model]`
+  accept these keys too. A composite key is reached from
   a custom route that loads with a predicate
   ([Look a row up by another key](#natural-key-route)), or from
   {class}`View <fastapi_restly.views.View>` with explicit route paths.
@@ -244,5 +246,5 @@ The default CRUD contract has these boundaries:
 - [Views](class_based_views.md) explains registration, shared
   dependencies, and the inheritance model.
 - [How-To Guides](user_guide.md) covers individual tasks.
-- [Behavior and Configuration Reference](api_details.md) lists exact signatures
+- [View Reference](view_reference.md) lists exact signatures
   and defaults.

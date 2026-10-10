@@ -83,6 +83,7 @@ redirects = {
     "the_handle_design": "customize.html",
     "howto_override_endpoints": "customize.html",
     "tutorial_overview": "getting_started.html",
+    "api_details": "view_reference.html",
 }
 myst_heading_anchors = 3
 myst_enable_extensions = ["colon_fence", "substitution"]

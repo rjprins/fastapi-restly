@@ -430,10 +430,8 @@ configure it once during startup:
 fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
 ```
 
-{func}`fr.configure(...) <fastapi_restly.db.configure>` rejects no-op calls; pass at least one setup option. The
-authoritative list of accepted options is the
-[Database reference](#api-database). This page does not
-duplicate the contract.
+{func}`fr.configure(...) <fastapi_restly.db.configure>` rejects no-op calls; pass at least one setup option. Its
+reference entry lists every accepted option. This page does not repeat them.
 
 Internally, Restly keeps a private context object so its own tests and fixtures
 can isolate runtime state. That context is not a public multi-engine feature.
