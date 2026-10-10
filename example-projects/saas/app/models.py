@@ -36,9 +36,7 @@ class TenantOwned(orm.MappedAsDataclass, kw_only=True):
     """
 
     organization_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("organization.id"),
-        init=False,
-        insert_default=lambda: Current.org_id(),
+        ForeignKey("organization.id"), init=False, insert_default=Current.org_id
     )
 
 

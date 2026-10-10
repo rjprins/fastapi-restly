@@ -110,13 +110,13 @@ class TenantOwned(orm.MappedAsDataclass, kw_only=True):
     """The tenant column: the organization the request acts in."""
 
     organization_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("organization.id"),
-        init=False,
-        insert_default=lambda: Current.org_id(),
+        ForeignKey("organization.id"), init=False, insert_default=Current.org_id
     )
 
 
 # Read identity when the SQL executes, not when the option is attached.
+# bindparam tests its callable's truth value, which a Current member rejects,
+# so these two wrap the member in a lambda.
 tenant_org_id = sa.bindparam(
     "tenant_org_id", callable_=lambda: Current.org_id(), type_=sa.Integer
 )
@@ -248,13 +248,13 @@ bring a flipped row back, see
 ```python
 class AuditStamped(orm.MappedAsDataclass, kw_only=True):
     created_by_id: orm.Mapped[int | None] = orm.mapped_column(
-        ForeignKey("user.id"), init=False, insert_default=lambda: Current.user_id()
+        ForeignKey("user.id"), init=False, insert_default=Current.user_id
     )
     updated_by_id: orm.Mapped[int | None] = orm.mapped_column(
         ForeignKey("user.id"),
         init=False,
-        insert_default=lambda: Current.user_id(),
-        onupdate=lambda: Current.user_id(),
+        insert_default=Current.user_id,
+        onupdate=Current.user_id,
     )
 ```
 
@@ -264,8 +264,8 @@ changes the row. Keep these fields `fr.ReadOnly` on the schema: with
 `init=False` a body value would otherwise reach the constructor and fail
 loudly there.
 
-The lambdas call the member: a `ContextParam` resolves when called, and an
-unbound context raises rather than stamping `None`. The columns stay
+SQLAlchemy calls the member when it writes the row, and an unbound member
+raises an error rather than stamping `None`. The columns stay
 nullable for one row: the first user has no creator and comes from a
 migration, which writes through its own table objects and fires no ORM
 default. A worker or a seed script binds context around its writes:
