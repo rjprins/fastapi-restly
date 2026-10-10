@@ -1,4 +1,4 @@
-# Customize the Blog API
+# Tutorial: Customize the Blog API
 
 This tutorial extends [Build a Blog API](tutorial.md) from single-method
 overrides through shared base classes. Its `author_token` and `view_count` demo
