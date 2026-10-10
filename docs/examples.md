@@ -1,8 +1,8 @@
 # Examples
 
 The repository includes complete applications under `example-projects/`. They
-show different levels of Restly adoption, from a tiny resource to a
-production-shaped service with shared view foundations and custom behavior.
+show different levels of Restly adoption, from a generated starter project to
+a production-shaped service with shared view foundations and custom behavior.
 
 ## Starter
 
@@ -13,13 +13,15 @@ layout at its smallest; a check in CI keeps it identical to the generator's
 output. It depends on the released framework rather than this checkout, so
 local changes to Restly do not appear in it.
 
+(example-blog)=
 ## Blog
 
 [example-projects/blog](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/blog)
 ([README](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/blog/README.md))
-is the smallest example: one model, one view, sync SQLAlchemy sessions, and
-auto-generated schemas. Use it as a smoke test or as the shortest path from an
-empty app to a working REST resource.
+is the app that the tutorials build: posts and comments with authors, drafts
+that only their author can see, and a publish action. Its `blog/main.py` is
+the complete file of [Add Authors and Drafts](tutorial_customizing.md), and
+its tests check each rule of that tutorial. It uses async views and SQLite.
 
 ## Shop
 

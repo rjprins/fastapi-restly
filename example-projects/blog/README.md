@@ -1,31 +1,34 @@
 # Blog Example
 
-The smallest possible FastAPI-Restly example: a single `Blog` model with one
-field, exposed as a full CRUD REST resource via sync `RestView`. Use this as a
-starting point or smoke test.
+The blog API that the FastAPI-Restly tutorials build. `blog/main.py` is the
+complete file of
+[Tutorial: Add Authors and Drafts](https://www.fastapi-restly.org/tutorial_customizing.html),
+and the documentation shows this file directly.
 
 ## What it demonstrates
 
-- Default CRUD routes (`GET`, `POST`, `PATCH`, `DELETE`) for a
-  SQLAlchemy 2.0 dataclass-style model
-- Connecting to a sync SQLite database via `fr.configure(...)`
-- Creating tables on startup via the FastAPI `lifespan` hook
-- Auto-derived request/response Pydantic schemas when the view omits
-  `schema = ...`
-- Sync request sessions through `SessionDep` and standalone sessions through
-  `fr.open_session()`
+- The current user, read from a demo `X-User-ID` header and bound with
+  `Current.depends(...)`
+- An author column that a column default fills from `Current`
+- Drafts that only their author can see, through the model's `default_scope`
+- `authorize`: anyone may read, and only the author may change a post or a
+  comment
+- A `POST /posts/{id}/publish` action through `write_action`
+- `after_action_commit`, which tells subscribers about a new post
+- A base view that posts and comments share
 
 ## Run the API server
 
 ```sh
 cd example-projects/blog
 uv sync
-uv run uvicorn blog.main:app --reload --port 8000
+uv run fastapi dev blog/main.py
 ```
 
-The server creates the SQLite database (`blog.db`) and tables on startup via
-the FastAPI `lifespan` hook. Visit <http://127.0.0.1:8000/docs> for the
-interactive OpenAPI UI.
+The server creates the SQLite database (`blog.db`) and its tables on startup,
+in the FastAPI `lifespan` hook. Visit <http://127.0.0.1:8000/docs> for the
+interactive OpenAPI UI. Send an `X-User-ID` header to act as a writer. The
+tutorial's "Try it" section has `curl` commands to start with.
 
 ## Run the tests
 
@@ -34,13 +37,13 @@ cd example-projects/blog
 uv run pytest -v
 ```
 
-Tests run against an in-memory SQLite database (see `tests/conftest.py`); they
-do not touch `blog.db`.
+The tests use a separate `test.db` database, and Restly's test fixtures roll
+back each test's changes. Each test checks one rule from the tutorial.
 
 ## Further reading
 
 - Main framework documentation: [`/docs/`](../../docs/)
 - Top-level [README](../../README.md)
-- For a richer example with relationships and React Admin compatibility, see
-  [`../shop/`](../shop/)
-- For a customization-heavy showcase, see [`../saas/`](../saas/)
+- For relationships and React Admin compatibility, see [`../shop/`](../shop/)
+- For a production-shaped service with tenants and mixins, see
+  [`../saas/`](../saas/)

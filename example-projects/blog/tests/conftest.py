@@ -1,12 +1,13 @@
+import os
 from pathlib import Path
 
-# Import blog.main to set up database connection before fixtures run
-import blog.main  # noqa: F401
-import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.pool import StaticPool
+# blog.main configures Restly when it is imported, so choose the test
+# database first, as the tutorial's Testing section does.
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
 
-import fastapi_restly as fr
+from blog.main import app  # noqa: E402
+
+import fastapi_restly as fr  # noqa: E402
 
 # The framework under test must live in this checkout, else a leaked VIRTUAL_ENV
 # (e.g. the main framework .venv) silently validates the wrong source in a worktree.
@@ -18,14 +19,4 @@ if _checkout not in _frl.parents:
         f"This example's venv isn't synced to this tree — run `uv sync` here."
     )
 
-
-@pytest.fixture(autouse=True)
-def use_in_memory_database():
-    """Switch to a fresh in-memory SQLite database for each test."""
-    engine = create_engine(
-        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
-    )
-    fr.configure(engine=engine)
-    fr.DataclassBase.metadata.create_all(engine)
-    yield
-    engine.dispose()
+fr.testing.configure_tests(app=app, base=fr.IDBase, create_all=True)

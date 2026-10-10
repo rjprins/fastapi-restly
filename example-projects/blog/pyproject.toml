@@ -1,15 +1,12 @@
 [project]
 name = "blog"
 version = "0.1.0"
-description = "A minimal FastAPI-Restly example"
+description = "The blog API that the FastAPI-Restly tutorials build"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "fastapi>=0.115.12",
-    "fastapi-restly",
-    "uvicorn[standard]>=0.32.1",
-    "sqlalchemy>=2.0.45",
-    "alembic>=1.15.2",
+    "fastapi-restly[standard]",
+    "aiosqlite",
 ]
 
 
@@ -35,6 +32,7 @@ dev = [
 [tool.uv]
 config-settings = { editable_mode = "compat" }
 
+# blog/main.py is the tutorial code, which leaves view methods unannotated like
+# the rest of the docs. mypy checks the annotated parts; shop and saas run strict.
 [tool.mypy]
-strict = true
 files = ["blog"]

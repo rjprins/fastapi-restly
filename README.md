@@ -438,7 +438,7 @@ To connect Restly to an existing app's engine, sessions, and models, see
 Complete applications under [`example-projects/`](https://github.com/rjprins/fastapi-restly/tree/main/example-projects):
 
 - **[Shop](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/shop)** — e-commerce API with products, orders, customers
-- **[Blog](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/blog)** — minimal blog with a single `Blog` model
+- **[Blog](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/blog)** — the blog that the tutorials build, with authors, drafts, and a publish action
 - **[SaaS](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/saas)** — multi-tenant project management API
 
 ## Contributing
