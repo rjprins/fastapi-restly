@@ -6,6 +6,8 @@ from sqlalchemy import orm
 
 import fastapi_restly as fr
 
+from ..models import Base
+
 if TYPE_CHECKING:
     from ..labels.models import Label
     from ..projects.models import Project
@@ -13,7 +15,7 @@ if TYPE_CHECKING:
     from ..users.models import User
 
 
-class Organization(fr.TimestampsMixin, fr.IDBase):
+class Organization(fr.TimestampsMixin, fr.IDMixin, Base):
     """
     Organization represents a tenant in the multi-tenant system.
     All users, projects, and tasks belong to an organization.

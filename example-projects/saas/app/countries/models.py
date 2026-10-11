@@ -9,8 +9,10 @@ from sqlalchemy import orm
 
 import fastapi_restly as fr
 
+from ..models import Base
 
-class Country(fr.TimestampsMixin, fr.IDBase):
+
+class Country(fr.TimestampsMixin, fr.IDMixin, Base):
     """ISO country lookup. Seeded; never mutated via the API."""
 
     code: orm.Mapped[str] = orm.mapped_column(unique=True)  # ISO 3166-1 alpha-2

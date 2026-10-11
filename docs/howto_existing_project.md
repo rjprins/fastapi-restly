@@ -302,9 +302,11 @@ with fr.open_session() as session:
 
 Off-request code owns its commit; these helpers do not commit for you.
 
-## Use Your Own DeclarativeBase Models
+(existing-models)=
 
-If your project already has SQLAlchemy models on a custom `DeclarativeBase`,
+## Use Your Existing Models
+
+If your project already has SQLAlchemy models on its own `DeclarativeBase`,
 you can use those models directly in a
 {class}`RestView <fastapi_restly.views.RestView>`:
 
@@ -331,9 +333,14 @@ class WorldView(fr.AsyncRestView):
 
 {class}`RestView <fastapi_restly.views.RestView>` supports these models for
 default CRUD routes and
-[auto-generated schemas](technical_details.md#auto-generated-schemas). When
-creating tables, use your own base metadata (for example
-`AppBase.metadata.create_all(...)`).
+[auto-generated schemas](technical_details.md#auto-generated-schemas). Pass
+the same base wherever Restly asks for your models' tables, as in
+`fr.db.async_create_all(AppBase)` and
+`fr.testing.configure_tests(base=AppBase)`.
+
+Restly's model defaults, such as dataclass constructors and datetimes with a
+time zone, are optional. [Declare Your Models](howto_models.md) explains them,
+and what changes when you add them to a base that already has models.
 
 ## See also
 

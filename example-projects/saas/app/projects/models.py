@@ -7,7 +7,7 @@ from sqlalchemy import orm
 
 import fastapi_restly as fr
 
-from ..models import AuditStamped, SoftDeletable, TenantOwned
+from ..models import AuditStamped, Base, SoftDeletable, TenantOwned
 
 if TYPE_CHECKING:
     from ..organizations.models import Organization
@@ -21,7 +21,9 @@ class ProjectStatus(str, Enum):
     ARCHIVED = "archived"
 
 
-class Project(TenantOwned, AuditStamped, SoftDeletable, fr.TimestampsMixin, fr.IDBase):
+class Project(
+    TenantOwned, AuditStamped, SoftDeletable, fr.TimestampsMixin, fr.IDMixin, Base
+):
     """
     Project belongs to an organization and contains tasks.
 

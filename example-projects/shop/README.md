@@ -7,8 +7,8 @@ via `AsyncReactAdminView`.
 ## What it demonstrates
 
 - Default CRUD routes for SQLAlchemy 2.0 dataclass-style models
-- Three primary key strategies: integer (`IDBase`), UUID, and integer with
-  timestamps (`IDBase + TimestampsMixin`)
+- Three primary key strategies: integer (`IDMixin`), UUID, and integer with
+  timestamps (`IDMixin + TimestampsMixin`)
 - A many-to-many relationship (`Product` <-> `Order`) via an association table
 - A one-to-many relationship (`Customer` -> `Order`)
 - React-Admin-compatible list endpoints (range/sort/filter query params and

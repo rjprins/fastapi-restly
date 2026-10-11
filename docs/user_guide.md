@@ -28,6 +28,13 @@ Lay out a growing application by subject, keep imports pointing one way, and
 compose views and models from one place each.
 :::
 
+:::{grid-item-card} Declare Your Models
+:link: howto_models
+:link-type: doc
+
+Give your own declarative base Restly's defaults, change one default, and add `id` and timestamp columns.
+:::
+
 :::{grid-item-card} Custom Schemas and Field Types
 :link: howto_custom_schema
 :link-type: doc
@@ -217,6 +224,7 @@ checklist.
 
 howto_existing_project
 howto_project_structure
+howto_models
 howto_custom_schema
 howto_relationship_idschema
 howto_response_schema

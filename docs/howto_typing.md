@@ -16,12 +16,16 @@ is the recommended starting point:
 ```python
 import fastapi_restly as fr
 from fastapi import FastAPI
-from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import DeclarativeBase, Mapped
 
 app = FastAPI()
 
 
-class User(fr.IDBase):
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+
+
+class User(fr.IDMixin, Base):
     name: Mapped[str]
     email: Mapped[str]
 

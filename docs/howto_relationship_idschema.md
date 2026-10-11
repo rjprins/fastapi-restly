@@ -59,21 +59,25 @@ The examples on this page use two models joined by one foreign key: each
 ```python
 import fastapi_restly as fr
 from sqlalchemy import ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
-class User(fr.IDBase):
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+
+
+class User(fr.IDMixin, Base):
     name: Mapped[str]
 
 
-class Article(fr.IDBase):
+class Article(fr.IDMixin, Base):
     title: Mapped[str]
     author_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
 ```
 
-{class}`fr.IDBase <fastapi_restly.models.IDBase>` auto-generates the table name
-from the class name (`User` becomes `user`, `Article` becomes `article`). That
-is why `ForeignKey("user.id")` is correct here.
+{class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>` derives the
+table name from the class name (`User` becomes `user`, `Article` becomes
+`article`). That is why `ForeignKey("user.id")` is correct here.
 
 ## Schema setup
 
@@ -256,8 +260,9 @@ difference is the API shape: flat id versus nested object.
 
 ## Dataclass relationship setup
 
-{class}`fr.IDBase <fastapi_restly.models.IDBase>` uses SQLAlchemy's
-`MappedAsDataclass`, which generates an `__init__` from the model fields.
+On a base with {class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>`,
+the models are dataclasses: SQLAlchemy's `MappedAsDataclass` generates an
+`__init__` from the model fields.
 Restly passes that constructor the values it requires, whether the schema
 writes the foreign key, the relationship, or both. You can declare the foreign
 key and the relationship with any `init` and `default` options:
@@ -299,8 +304,8 @@ request sends it together with a different relationship value, including
 
 ### Standard SQLAlchemy declarative models
 
-If you use a normal SQLAlchemy `DeclarativeBase`, the dataclass constructor
-rules do not apply:
+If your base is a plain `DeclarativeBase`, without `fr.ModelDefaults`, the
+dataclass constructor rules do not apply:
 
 ```python
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -322,8 +327,7 @@ class Article(Base):
 There is no generated `__init__` contract to satisfy: Restly constructs the
 object and applies the resolved reference to the FK column (and the matching
 relationship attribute, when one is declared) directly. Registering such models
-with Restly is covered in
-[Use Your Own DeclarativeBase Models](howto_existing_project.md#use-your-own-declarativebase-models).
+with Restly is covered in [Use Your Existing Models](#existing-models).
 
 (idref-custom-routes)=
 

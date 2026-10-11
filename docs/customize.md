@@ -159,9 +159,10 @@ import fastapi_restly as fr
 from sqlalchemy.orm import Mapped
 
 from .auth import hash_password
+from .models import Base
 
 
-class User(fr.IDBase):
+class User(fr.IDMixin, Base):
     email: Mapped[str]
     password: Mapped[str]  # stores the hash. UserView.create writes it
 
@@ -388,7 +389,7 @@ substitute: a crash loses the task, and nothing retries it.
 A field the server owns (an audit id, a tenant id) is a column default that reads a bound {class}`fr.ContextNamespace <fastapi_restly.clauses.ContextNamespace>` member. It fires on every write path, whichever view or helper built the row, so nothing on the view has to run:
 
 ```python
-class Article(fr.TimestampsMixin, fr.IDBase):
+class Article(fr.TimestampsMixin, fr.IDMixin, Base):
     title: Mapped[str]
     created_by_id: Mapped[int | None] = mapped_column(
         ForeignKey("user.id"), init=False, insert_default=Current.user_id

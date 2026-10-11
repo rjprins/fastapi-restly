@@ -6,7 +6,7 @@ from sqlalchemy import orm
 
 import fastapi_restly as fr
 
-from ..models import AuditStamped, SoftDeletable, TenantOwned
+from ..models import AuditStamped, Base, SoftDeletable, TenantOwned
 from .roles import UserRole
 
 if TYPE_CHECKING:
@@ -14,7 +14,9 @@ if TYPE_CHECKING:
     from ..tasks.models import Task
 
 
-class User(TenantOwned, AuditStamped, SoftDeletable, fr.TimestampsMixin, fr.IDBase):
+class User(
+    TenantOwned, AuditStamped, SoftDeletable, fr.TimestampsMixin, fr.IDMixin, Base
+):
     """
     User belongs to an organization and has a role.
     Users can be assigned to tasks.

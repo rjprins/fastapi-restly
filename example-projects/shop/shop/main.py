@@ -26,9 +26,13 @@ ASYNC_DATABASE_URL = "sqlite+aiosqlite:///shop.db"
 fr.configure(async_database_url=ASYNC_DATABASE_URL)
 
 
+class Base(fr.ModelDefaults, orm.DeclarativeBase):
+    pass
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    await fr.db.async_create_all(fr.DataclassBase)
+    await fr.db.async_create_all(Base)
     yield
 
 
@@ -44,9 +48,9 @@ app.add_middleware(
 )
 
 
-# Example of class using IDBase
+# Example of class using IDMixin
 # This includes an id primary key
-class Customer(fr.IDBase):
+class Customer(fr.IDMixin, Base):
     email: orm.Mapped[str]
     orders: orm.Mapped[list["Order"]] = orm.relationship(
         default_factory=list, lazy="selectin"
@@ -56,14 +60,14 @@ class Customer(fr.IDBase):
 # Example of many-to-many
 product_order_table = sa.Table(
     "product_order",
-    fr.DataclassBase.metadata,
+    Base.metadata,
     sa.Column("product_id", sa.ForeignKey("product.id")),
     sa.Column("order_id", sa.ForeignKey("order.id")),
 )
 
 
 # Example with using UUID as primary key
-class Product(fr.DataclassBase):
+class Product(Base):
     id: orm.Mapped[UUID] = orm.mapped_column(primary_key=True, default_factory=uuid4)
     name: orm.Mapped[str]
     price: orm.Mapped[float]
@@ -76,7 +80,7 @@ class Product(fr.DataclassBase):
 
 
 # Example with TimestampsMixin
-class Order(fr.IDBase, fr.TimestampsMixin):
+class Order(fr.TimestampsMixin, fr.IDMixin, Base):
     customer_id: orm.Mapped[int] = orm.mapped_column(sa.ForeignKey(Customer.id))
     products: orm.Mapped[list[Product]] = orm.relationship(
         secondary=product_order_table, back_populates="orders", lazy="selectin"

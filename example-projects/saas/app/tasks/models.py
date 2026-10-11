@@ -12,6 +12,7 @@ import fastapi_restly as fr
 from ..current import Current
 from ..models import (
     AuditStamped,
+    Base,
     SoftDeletable,
     restrict_to_tenant,
     tenant_is_admin,
@@ -79,7 +80,7 @@ class TaskType(str, Enum):
     FEATURE = "feature"
 
 
-class Task(AuditStamped, SoftDeletable, fr.TimestampsMixin, fr.IDBase):
+class Task(AuditStamped, SoftDeletable, fr.TimestampsMixin, fr.IDMixin, Base):
     """
     Task belongs to a project and can be assigned to a user.
     """

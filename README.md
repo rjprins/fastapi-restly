@@ -115,12 +115,11 @@ DELETE /users/{id}   # delete one user
 
 Restly generates the Pydantic schemas automatically.
 
-The Quickstart uses plain SQLAlchemy on purpose — Restly doesn't hide it. In
-real projects you'll usually inherit `fr.IDBase` for models and `fr.IDSchema`
-for schemas, which supply the `id` for you; both appear in the examples below.
-On Restly's model bases, a plain `Mapped[datetime]` represents a UTC instant
-and maps to `DateTime(timezone=True)`. PostgreSQL enforces that through its
-column type, while SQLite returns naive datetime values.
+The Quickstart uses plain SQLAlchemy on purpose — Restly doesn't hide it, and
+the `Base` stays yours. In real projects you'll usually add `fr.ModelDefaults`
+to that base, for dataclass models, table names from the class name, and
+datetimes with a time zone. Then `fr.IDMixin` gives a model its `id`, and
+`fr.IDSchema` gives a schema its `id`; both appear in the examples below.
 
 ### Not just CRUD
 
@@ -281,7 +280,7 @@ Validate a foreign-key column on create and update with `fr.MustExist[int, Model
 It keeps the plain id (`customer_id`) and checks the referenced row exists; declare the relationship (`customer`) separately when you also want the nested object.
 
 ```python
-class Order(fr.IDBase):
+class Order(fr.IDMixin, Base):
     customer_id: Mapped[int] = mapped_column(ForeignKey("customer.id"))
     customer: Mapped[Customer] = relationship(init=False)
 

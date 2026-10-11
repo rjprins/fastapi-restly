@@ -40,8 +40,8 @@ Every CRUD view needs two class attributes:
   mapped class that the routes read and write.
 
 Ordinary models based on SQLAlchemy's `DeclarativeBase` work. Restly's
-{class}`IDBase <fastapi_restly.models.IDBase>` is an optional convenience base,
-not a requirement.
+model defaults, {class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>`,
+are optional; see [Declare Your Models](howto_models.md).
 
 If the view does not declare {attr}`schema
 <fastapi_restly.views.BaseRestView.schema>`, Restly generates the view's schema

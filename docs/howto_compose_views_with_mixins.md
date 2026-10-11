@@ -106,6 +106,10 @@ class Current(fr.ContextNamespace):
     is_admin: fr.ContextParam[bool]
 
 
+class Base(fr.ModelDefaults, orm.DeclarativeBase):
+    pass
+
+
 class TenantOwned(orm.MappedAsDataclass, kw_only=True):
     """The tenant column: the organization the request acts in."""
 
@@ -147,7 +151,7 @@ def _restrict_tenant_rows(state: orm.ORMExecuteState) -> None:
     )
 
 
-class Project(TenantOwned, fr.TimestampsMixin, fr.IDBase):
+class Project(TenantOwned, fr.TimestampsMixin, fr.IDMixin, Base):
     name: orm.Mapped[str]
 ```
 
@@ -282,7 +286,7 @@ The model declares what it is, the namespace declares the read half
 against it, and a view stacks only the verb mixin:
 
 ```python
-class Project(TenantOwned, AuditStamped, SoftDeletable, fr.TimestampsMixin, fr.IDBase):
+class Project(TenantOwned, AuditStamped, SoftDeletable, fr.TimestampsMixin, fr.IDMixin, Base):
     name: orm.Mapped[str]
 
 
@@ -351,7 +355,7 @@ existing relationship and raises `AmbiguousForeignKeysError`. Pin the
 relationship explicitly:
 
 ```python
-class Task(AuditStamped, fr.TimestampsMixin, fr.IDBase):
+class Task(AuditStamped, fr.TimestampsMixin, fr.IDMixin, Base):
     assignee_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
     assignee: Mapped[User] = relationship(foreign_keys="Task.assignee_id")
 

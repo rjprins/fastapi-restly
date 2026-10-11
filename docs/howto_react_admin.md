@@ -24,17 +24,20 @@ from contextlib import asynccontextmanager
 import fastapi_restly as fr
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import DeclarativeBase, Mapped
 
 fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
 
-class Product(fr.IDBase):
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+
+class Product(fr.IDMixin, Base):
     name: Mapped[str]
     price: Mapped[float]
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    await fr.db.async_create_all(fr.IDBase)  # dev tables; use Alembic in production
+    await fr.db.async_create_all(Base)  # dev tables; use Alembic in production
     yield
 
 app = FastAPI(lifespan=lifespan)

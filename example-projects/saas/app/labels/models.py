@@ -8,7 +8,13 @@ from sqlalchemy import ForeignKey, orm
 import fastapi_restly as fr
 
 from ..current import Current
-from ..models import TenantOwned, restrict_to_tenant, tenant_is_admin, tenant_org_id
+from ..models import (
+    Base,
+    TenantOwned,
+    restrict_to_tenant,
+    tenant_is_admin,
+    tenant_org_id,
+)
 from ..projects.models import Project
 from ..tasks.models import Task
 
@@ -17,7 +23,7 @@ if TYPE_CHECKING:
     from ..users.models import User
 
 
-class Label(TenantOwned, fr.TimestampsMixin, fr.IDBase):
+class Label(TenantOwned, fr.TimestampsMixin, fr.IDMixin, Base):
     """
     Labels that can be applied to tasks.
     Organization-scoped.
@@ -40,7 +46,7 @@ class Label(TenantOwned, fr.TimestampsMixin, fr.IDBase):
     )
 
 
-class TaskLabel(fr.TimestampsMixin, fr.IDBase):
+class TaskLabel(fr.TimestampsMixin, fr.IDMixin, Base):
     """
     Association table between Task and Label with extra metadata.
     Tracks who added the label and when.

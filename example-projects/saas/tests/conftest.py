@@ -32,6 +32,7 @@ from app.current import (
     get_is_admin,
 )
 from app.main import create_app
+from app.models import Base
 from app.settings import Settings
 from app.users.roles import UserRole
 from sqlalchemy import make_url
@@ -77,10 +78,7 @@ app = create_app()
 
 # Dog-food the migration-backed setup against the database the suite installed.
 fr.testing.configure_tests(
-    app=app,
-    base=fr.DataclassBase,
-    alembic_upgrade=True,
-    db_cleanup_exclude=("country",),
+    app=app, base=Base, alembic_upgrade=True, db_cleanup_exclude=("country",)
 )
 
 # Seeded by alembic/versions/a8d5d13dea9a_seed_system_admin.py.

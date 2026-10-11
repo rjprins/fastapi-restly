@@ -50,6 +50,7 @@ app/
 ├── asgi.py                 # app = create_app(), the deployment entrypoint
 ├── settings.py             # Pydantic settings
 ├── current.py              # Current namespace (optional)
+├── models.py               # Declarative base and shared model mixins
 ├── views.py                # Shared base view and mixins
 ├── users/
 │   ├── __init__.py
@@ -78,6 +79,40 @@ Nothing in a subject package should register itself as a side effect of being
 imported. Keep `__init__.py` empty or limited to a docstring, and import
 concrete modules rather than building re-export modules that pull in a whole
 subject to reach one class.
+
+(project-base)=
+## Declare the base once
+
+Declare your declarative base in `app/models.py`, and import it in the
+`models.py` of each subject:
+
+```python
+# app/models.py
+from sqlalchemy.orm import DeclarativeBase
+
+import fastapi_restly as fr
+
+
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+```
+
+```python
+# app/users/models.py
+from sqlalchemy.orm import Mapped
+
+import fastapi_restly as fr
+
+from ..models import Base
+
+
+class User(fr.IDMixin, Base):
+    email: Mapped[str]
+```
+
+Model mixins that several subjects share, such as a tenant column, belong in
+`app/models.py` too. [Declare Your Models](howto_models.md) explains what goes
+in the base.
 
 (project-current)=
 ## Share Current from the package root
@@ -132,19 +167,17 @@ the lifespan that disposes it.
 
 That tuple also decides which module has seen every model, since each view
 imports its own. A declarative base holds the models that have been imported
-and nothing else, and `IDBase` subclasses `DataclassBase`, so
-`fr.DataclassBase.metadata` is the whole schema once `main.py` has been
-imported. On your own base, see
-[Use Your Own DeclarativeBase Models](howto_existing_project.md#use-your-own-declarativebase-models).
+and nothing else, so `Base.metadata` is the whole schema once `main.py` has
+been imported.
 
 `alembic/env.py` relies on exactly that:
 
 ```python
 # alembic/env.py
-import fastapi_restly as fr
 import app.main  # noqa: F401  (imports every view, and each view its model)
+from app.models import Base
 
-target_metadata = fr.DataclassBase.metadata
+target_metadata = Base.metadata
 ```
 
 This works only because importing `main.py` builds nothing. Never put

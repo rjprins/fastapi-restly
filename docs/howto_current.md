@@ -98,7 +98,7 @@ created a row:
 from sqlalchemy.orm import Mapped, mapped_column
 
 
-class Note(fr.IDBase):
+class Note(fr.IDMixin, Base):
     title: Mapped[str]
     created_by_id: Mapped[int] = mapped_column(
         init=False,

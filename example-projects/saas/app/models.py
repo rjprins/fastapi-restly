@@ -1,4 +1,5 @@
-"""Model mixins: the structural columns and the context they stamp from.
+"""The declarative base, and the model mixins: the structural columns and the
+context they stamp from.
 
 A structural field is declared once, here, and both halves hang off that
 declaration: the write stamp through the column's insert default, and the
@@ -23,7 +24,13 @@ from typing import Any
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey, orm
 
+import fastapi_restly as fr
+
 from .current import Current
+
+
+class Base(fr.ModelDefaults, orm.DeclarativeBase):
+    """The base of every model in the app."""
 
 
 class TenantOwned(orm.MappedAsDataclass, kw_only=True):

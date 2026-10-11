@@ -1,21 +1,19 @@
 import asyncio
 from logging.config import fileConfig
 
-# Import to register all models in DataclassBase.metadata
+# Import to register all models in Base.metadata
 import shop.main
 from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from fastapi_restly import DataclassBase
-
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-target_metadata = DataclassBase.metadata
+target_metadata = shop.main.Base.metadata
 
 
 def run_migrations_offline() -> None:

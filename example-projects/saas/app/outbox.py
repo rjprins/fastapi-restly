@@ -21,8 +21,10 @@ from sqlalchemy import JSON, orm
 
 import fastapi_restly as fr
 
+from .models import Base
 
-class OutboxEvent(fr.TimestampsMixin, fr.IDBase):
+
+class OutboxEvent(fr.TimestampsMixin, fr.IDMixin, Base):
     """A pending side-effect, written transactionally with the source change."""
 
     event_type: orm.Mapped[str]

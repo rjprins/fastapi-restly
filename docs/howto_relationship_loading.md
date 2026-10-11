@@ -21,7 +21,7 @@ A response-schema field whose name matches a model relationship is loaded
 eagerly. Take an article with an author and comments:
 
 ```python
-class Article(fr.IDBase):
+class Article(fr.IDMixin, Base):
     title: Mapped[str]
     author_id: Mapped[int] = mapped_column(ForeignKey("user.id"), init=False)
     author: Mapped[User] = relationship(init=False)
@@ -97,10 +97,10 @@ This does not affect `get_one` or create and update responses.
 Loader options follow the relationships a schema *names*. Code that reaches
 past that set runs in plain async context and hits the same wall: an
 `after_action_commit` hook, a custom business method, or a `@property` that walks a
-relationship nothing else loads. Restly's declarative base
-({class}`fr.DataclassBase <fastapi_restly.models.DataclassBase>`) mixes in
-SQLAlchemy's [`AsyncAttrs`](https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#sqlalchemy.ext.asyncio.AsyncAttrs),
-so any such attribute can be awaited explicitly:
+relationship nothing else loads.
+{class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>` mixes
+SQLAlchemy's [`AsyncAttrs`](https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#sqlalchemy.ext.asyncio.AsyncAttrs)
+into your base, so any such attribute can be awaited explicitly:
 
 ```python
 async def after_action_commit(self, action, new, old=None):

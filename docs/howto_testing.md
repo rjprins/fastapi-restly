@@ -70,12 +70,13 @@ naming the test database explicitly, and hands the result to
 # conftest.py
 import fastapi_restly as fr
 from app.main import create_app
+from app.models import Base
 
 app = create_app("sqlite+aiosqlite:///./test.db")
 
 fr.testing.configure_tests(
     app=app,
-    base=fr.DataclassBase,
+    base=Base,
     create_all=True,
 )
 ```
@@ -119,8 +120,9 @@ os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
 import fastapi_restly as fr
 
 from app.main import app  # noqa: E402
+from app.models import Base  # noqa: E402
 
-fr.testing.configure_tests(app=app, base=fr.DataclassBase, create_all=True)
+fr.testing.configure_tests(app=app, base=Base, create_all=True)
 ```
 
 A `.env` file is convenient in development, when the settings class enables
@@ -177,6 +179,7 @@ the test database and the local `.env` disabled:
 # conftest.py
 import fastapi_restly as fr
 from app.main import create_app
+from app.models import Base
 from app.settings import Settings
 
 Settings.use(Settings(database_url="postgresql+asyncpg://...", _env_file=None))
@@ -185,7 +188,7 @@ app = create_app()
 
 fr.testing.configure_tests(
     app=app,
-    base=fr.DataclassBase,
+    base=Base,
     create_all=True,
 )
 ```
@@ -289,7 +292,7 @@ Pass a path if the config lives somewhere else:
 ```python
 fr.testing.configure_tests(
     app=app,
-    base=fr.DataclassBase,
+    base=Base,
     alembic_upgrade="backend/alembic.ini",
 )
 ```
@@ -356,7 +359,7 @@ them and they are left alone:
 ```python
 fr.testing.configure_tests(
     app=app,
-    base=fr.DataclassBase,
+    base=Base,
     alembic_upgrade=True,
     db_cleanup="delete",
     db_cleanup_exclude=["country", "role"],

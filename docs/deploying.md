@@ -57,8 +57,8 @@ separate synchronous database URL. Alembic's
 [asyncio recipe](https://alembic.sqlalchemy.org/en/latest/cookbook.html#using-asyncio-with-alembic)
 shows the same template and how to adapt an existing environment.
 
-Point `alembic/env.py` at the metadata of whichever declarative base your
-models inherit from (typically {class}`fr.DataclassBase <fastapi_restly.models.DataclassBase>`).
+Point `alembic/env.py` at the metadata of your declarative base, the `Base`
+that your models inherit from.
 Metadata covers the models that have been imported, so `env.py` needs a module
 that has seen all of them. That is `main.py`: it reaches view registration,
 which reaches every view, and each view imports its model. Because the factory
@@ -66,10 +66,10 @@ builds nothing at import time, this costs the imports and nothing else:
 
 ```python
 # alembic/env.py
-import fastapi_restly as fr
 import app.main  # noqa: F401  (imports every view, and each view its model)
+from app.models import Base
 
-target_metadata = fr.DataclassBase.metadata
+target_metadata = Base.metadata
 ```
 
 Models that no view reaches, such as an outbox or audit table, need importing

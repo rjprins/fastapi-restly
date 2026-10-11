@@ -22,13 +22,19 @@ from sqlalchemy import ForeignKey, orm
 import fastapi_restly as fr
 
 from ..current import Current
-from ..models import TenantOwned, restrict_to_tenant, tenant_is_admin, tenant_org_id
+from ..models import (
+    Base,
+    TenantOwned,
+    restrict_to_tenant,
+    tenant_is_admin,
+    tenant_org_id,
+)
 
 if TYPE_CHECKING:
     from ..organizations.models import Organization
 
 
-class Upload(TenantOwned, fr.TimestampsMixin, fr.IDBase):
+class Upload(TenantOwned, fr.TimestampsMixin, fr.IDMixin, Base):
     """Parent row for a batch of imported lines."""
 
     filename: orm.Mapped[str]
@@ -49,7 +55,7 @@ class Upload(TenantOwned, fr.TimestampsMixin, fr.IDBase):
     )
 
 
-class UploadLine(fr.TimestampsMixin, fr.IDBase):
+class UploadLine(fr.TimestampsMixin, fr.IDMixin, Base):
     """One parsed row from the uploaded file."""
 
     upload_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("upload.id"))
