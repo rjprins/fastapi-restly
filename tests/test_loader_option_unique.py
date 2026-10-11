@@ -19,6 +19,7 @@ from sqlalchemy.orm import Mapped, joinedload, mapped_column, relationship
 import fastapi_restly as fr
 from fastapi_restly.testing import RestlyTestClient
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
@@ -26,11 +27,11 @@ def _register_library(app, view_base):
     """Register /loader-authors (joinedload-to-many on the loader seam) and
     /loader-books (used to seed the fan-out)."""
 
-    class LoaderAuthor(fr.IDBase):
+    class LoaderAuthor(fr.IDMixin, SharedBase):
         name: Mapped[str]
         books: Mapped[list["LoaderBook"]] = relationship(default_factory=list)
 
-    class LoaderBook(fr.IDBase):
+    class LoaderBook(fr.IDMixin, SharedBase):
         title: Mapped[str]
         author_id: Mapped[int] = mapped_column(ForeignKey("loader_author.id"))
 
@@ -89,5 +90,5 @@ def test_get_one_survives_joinedload_to_many_loader_sync(sync_db):
     engine, _ = sync_db
     app = FastAPI()
     _register_library(app, fr.RestView)
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
     _assert_detail_and_list_survive(RestlyTestClient(app))

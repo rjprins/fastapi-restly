@@ -22,10 +22,8 @@ through `fr`.
 | {func}`fr.configure <fastapi_restly.db.configure>` | Configure database access and application integration. |
 | {class}`fr.ContextNamespace <fastapi_restly.clauses.ContextNamespace>` | Declare and bind application context values. |
 | {class}`fr.ContextParam <fastapi_restly.clauses.ContextParam>` | Declare one typed context value. |
-| {class}`fr.DataclassBase <fastapi_restly.models.DataclassBase>` | SQLAlchemy declarative base with dataclass constructors. |
 | {func}`fr.delete <fastapi_restly.views.delete>` | Decorate a DELETE endpoint method. |
 | {func}`fr.get <fastapi_restly.views.get>` | Decorate a GET endpoint method. |
-| {class}`fr.IDBase <fastapi_restly.models.IDBase>` | Dataclass model base with an integer primary key. |
 | {class}`fr.IDMixin <fastapi_restly.models.IDMixin>` | Model field for an integer primary key named `id`. |
 | {class}`fr.IDRef <fastapi_restly.schemas.IDRef>` | Relationship reference serialized as a scalar ID. |
 | {class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>` | Schema base with a read-only ID, or a nested relationship reference when parameterized. |

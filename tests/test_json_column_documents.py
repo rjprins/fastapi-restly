@@ -28,6 +28,7 @@ import fastapi_restly as fr
 from fastapi_restly.db._globals import _fr_globals
 from fastapi_restly.testing._client import RestlyTestClient
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
@@ -45,7 +46,7 @@ class Address(pydantic.BaseModel):
 def _define_model(name: str, table: str):
     return type(
         name,
-        (fr.IDBase,),
+        (fr.IDMixin, SharedBase),
         {
             "__tablename__": table,
             "__annotations__": {
@@ -154,12 +155,12 @@ class _DocumentEnumTree(pydantic.BaseModel):
 def test_unsupported_documents_are_rejected_before_writing(
     sync_db, operation, document_type, document
 ):
-    class Document(fr.IDBase):
+    class Document(fr.IDMixin, SharedBase):
         payload: Mapped[dict] = mapped_column(sqlalchemy.JSON)
 
     schema = pydantic.create_model("DocumentInput", payload=(document_type, ...))
     engine, make_session = sync_db
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
     original = {"label": "original", "secret": "stored-secret"}
     with make_session() as session:
         if operation == "update":
@@ -184,7 +185,7 @@ def test_unsupported_documents_are_rejected_before_writing(
 def test_http_create_rejects_writeonly_json_without_committing(request, asynchronous):
     client = request.getfixturevalue("client" if asynchronous else "sync_client")
 
-    class Document(fr.IDBase):
+    class Document(fr.IDMixin, SharedBase):
         payload: Mapped[dict] = mapped_column(sqlalchemy.JSON)
 
     class DocumentSchema(fr.IDSchema):
@@ -199,7 +200,7 @@ def test_http_create_rejects_writeonly_json_without_committing(request, asynchro
     if asynchronous:
         create_tables()
     else:
-        fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+        SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
     with pytest.raises(fr.exc.RestlyConfigurationError, match="Document.payload"):
         client.post("/private-documents", json={"payload": {"secret": "input-secret"}})
     assert client.get("/private-documents").json()["total_count"] == 0
@@ -257,7 +258,7 @@ def test_sync_create_stores_a_nested_model_as_plain_json(sync_client):
         model = Doc
         schema = DocSchema
 
-    fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
 
     body = sync_client.post(
         "/docs", json={"title": "t", "address": {"street": "Main", "number": 4}}
@@ -278,7 +279,7 @@ def test_the_stored_value_is_a_dict_not_a_model(sync_client):
         model = Doc
         schema = DocSchema
 
-    fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
     sync_client.post(
         "/docs",
         json={
@@ -351,7 +352,7 @@ class _OpaqueSchema(fr.IDSchema):
 def _define_opaque_model(name: str, table: str):
     return type(
         name,
-        (fr.IDBase,),
+        (fr.IDMixin, SharedBase),
         {
             "__tablename__": table,
             "__annotations__": {"payload": Mapped[_OpaquePayload]},
@@ -361,7 +362,7 @@ def _define_opaque_model(name: str, table: str):
 
 
 def test_a_type_decorator_still_receives_the_model(sync_client):
-    class Decorated(fr.IDBase):
+    class Decorated(fr.IDMixin, SharedBase):
         __tablename__ = "jcd_decorated"
         address: Mapped[Address] = mapped_column(_PydanticAddress)
 
@@ -374,7 +375,7 @@ def test_a_type_decorator_still_receives_the_model(sync_client):
         model = Decorated
         schema = DecoratedSchema
 
-    fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
 
     body = sync_client.post(
         "/decorated", json={"address": {"street": "Main", "number": 2}}
@@ -392,7 +393,7 @@ def test_create_leaves_pydantic_serialization_to_a_type_decorator(sync_client):
         model = Decorated
         schema = _OpaqueSchema
 
-    fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
 
     response = sync_client.post("/decorated", json={"payload": {"token": "created"}})
 
@@ -410,7 +411,7 @@ def test_update_leaves_pydantic_serialization_to_a_type_decorator(sync_client):
         model = Decorated
         schema = _OpaqueSchema
 
-    fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
     with fr.open_session() as session:
         session.add(Decorated(payload=_OpaquePayload(token=_OpaqueToken("old"))))
         session.commit()
@@ -426,7 +427,7 @@ def test_the_free_object_helpers_dump_too(sync_client):
     """``fr.objects.make_new_object`` shares the translation, so a script
     writing outside a view gets the same value."""
     Doc = _define_model("HelperDoc", "jcd_helper_docs")
-    fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
 
     with fr.open_session() as session:
         obj = fr.objects.make_new_object(
@@ -445,7 +446,7 @@ class _PrivateDocumentType(sqlalchemy.types.TypeDecorator):
 
 
 def test_type_decorator_owns_storage_of_excluded_document_fields(sync_client):
-    class Decorated(fr.IDBase):
+    class Decorated(fr.IDMixin, SharedBase):
         payload: Mapped[dict] = mapped_column(_PrivateDocumentType)
 
     class DocumentSchema(fr.IDSchema):
@@ -457,7 +458,7 @@ def test_type_decorator_owns_storage_of_excluded_document_fields(sync_client):
         model = Decorated
         schema = DocumentSchema
 
-    fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
     for method, url, secret in (
         (sync_client.post, "/private-documents", "created-secret"),
         (sync_client.patch, "/private-documents/1", "updated-secret"),
@@ -472,7 +473,7 @@ def test_type_decorator_owns_storage_of_excluded_document_fields(sync_client):
 
 
 def test_writeonly_marker_on_whole_json_column_is_supported(sync_client):
-    class Document(fr.IDBase):
+    class Document(fr.IDMixin, SharedBase):
         payload: Mapped[dict] = mapped_column(sqlalchemy.JSON)
 
     class DocumentSchema(fr.IDSchema):
@@ -484,7 +485,7 @@ def test_writeonly_marker_on_whole_json_column_is_supported(sync_client):
         model = Document
         schema = DocumentSchema
 
-    fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
     body = sync_client.post(
         "/private-documents", json={"payload": {"street": "Main", "number": 4}}
     ).json()
@@ -497,12 +498,12 @@ def test_writeonly_marker_on_whole_json_column_is_supported(sync_client):
 
 
 def test_constructed_document_keeps_pydantic_serialization(sync_db):
-    class Document(fr.IDBase):
+    class Document(fr.IDMixin, SharedBase):
         payload: Mapped[dict] = mapped_column(sqlalchemy.JSON)
 
     schema = pydantic.create_model("DocumentInput", payload=(Address, ...))
     engine, make_session = sync_db
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
     address = Address.model_construct(number=4)
     with make_session() as session:
         obj = fr.objects.make_new_object(session, Document, schema(payload=address))
@@ -527,12 +528,12 @@ def test_scalar_enums_in_documents_keep_pydantic_serialization(sync_db):
         label: Label = Label.PUBLIC
         priority: Priority = Priority.HIGH
 
-    class Document(fr.IDBase):
+    class Document(fr.IDMixin, SharedBase):
         payload: Mapped[dict] = mapped_column(sqlalchemy.JSON)
 
     schema = pydantic.create_model("DocumentInput", payload=(Payload, ...))
     engine, make_session = sync_db
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
     with make_session() as session:
         row = fr.objects.make_new_object(
             session, Document, schema(payload=Payload(status=Status.OPEN))

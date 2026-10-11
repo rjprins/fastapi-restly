@@ -10,11 +10,12 @@ from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
 def _setup_view(client):
-    class Widget(fr.IDBase):
+    class Widget(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class WidgetSchema(fr.IDSchema):
@@ -201,7 +202,7 @@ def test_very_large_page_size_is_capped_at_max(client):
 def test_per_view_max_page_size_override_propagates_to_schema(client):
     """A subclass that bumps ``max_page_size`` should accept higher values."""
 
-    class BigItem(fr.IDBase):
+    class BigItem(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     @fr.include_view(client.app)

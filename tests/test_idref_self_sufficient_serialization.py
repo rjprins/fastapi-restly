@@ -27,6 +27,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 # ---------------------------------------------------------------------------
@@ -40,10 +41,10 @@ def test_idref_self_sufficient_under_plain_from_attributes(sync_db):
     ``IDRef`` field instead of crashing with an ``int_type`` error."""
     engine, make_session = sync_db
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int] = mapped_column(ForeignKey("post.id"), init=False)
         post: Mapped[Post] = relationship(default=None)
@@ -52,7 +53,7 @@ def test_idref_self_sufficient_under_plain_from_attributes(sync_db):
         content: str
         post: fr.IDRef[Post]
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         post = Post(title="p1")
@@ -68,11 +69,11 @@ def test_idref_list_self_sufficient_under_plain_from_attributes(sync_db):
     """Same for ``list[IDRef[T]]`` -- each related row resolves to its id."""
     engine, make_session = sync_db
 
-    class Tag(fr.IDBase):
+    class Tag(fr.IDMixin, SharedBase):
         name: Mapped[str]
         article_id: Mapped[int] = mapped_column(ForeignKey("article.id"), init=False)
 
-    class Article(fr.IDBase):
+    class Article(fr.IDMixin, SharedBase):
         title: Mapped[str]
         tags: Mapped[list[Tag]] = relationship(default_factory=list)
 
@@ -80,7 +81,7 @@ def test_idref_list_self_sufficient_under_plain_from_attributes(sync_db):
         title: str
         tags: list[fr.IDRef[Tag]]
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         t1, t2 = Tag(name="a"), Tag(name="b")
@@ -97,10 +98,10 @@ def test_idschema_self_sufficient_under_plain_from_attributes(sync_db):
     """``IDSchema`` keeps the nested ``{"id": ...}`` shape from a related row."""
     engine, make_session = sync_db
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int] = mapped_column(ForeignKey("post.id"), init=False)
         post: Mapped[Post] = relationship(default=None)
@@ -109,7 +110,7 @@ def test_idschema_self_sufficient_under_plain_from_attributes(sync_db):
         content: str
         post: fr.IDSchema[Post]
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         post = Post(title="p1")
@@ -131,10 +132,10 @@ def test_idschema_self_sufficient_under_plain_from_attributes(sync_db):
 def test_to_single_response_idref_relationship_serializes_flat(sync_db):
     engine, make_session = sync_db
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int] = mapped_column(ForeignKey("post.id"), init=False)
         post: Mapped[Post] = relationship(default=None)
@@ -147,7 +148,7 @@ def test_to_single_response_idref_relationship_serializes_flat(sync_db):
         model = Comment
         schema = CommentSchema
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         post = Post(title="p1")
@@ -162,10 +163,10 @@ def test_to_single_response_idref_relationship_serializes_flat(sync_db):
 def test_to_single_response_idschema_relationship_serializes_nested(sync_db):
     engine, make_session = sync_db
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int] = mapped_column(ForeignKey("post.id"), init=False)
         post: Mapped[Post] = relationship(default=None)
@@ -178,7 +179,7 @@ def test_to_single_response_idschema_relationship_serializes_nested(sync_db):
         model = Comment
         schema = CommentSchema
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         post = Post(title="p1")
@@ -195,10 +196,10 @@ def test_to_single_response_nested_idschema_subclass_keeps_all_fields(sync_db):
     a bare reference, so its row is serialized in full -- never collapsed to id."""
     engine, make_session = sync_db
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int] = mapped_column(ForeignKey("post.id"), init=False)
         post: Mapped[Post] = relationship(default=None)
@@ -214,7 +215,7 @@ def test_to_single_response_nested_idschema_subclass_keeps_all_fields(sync_db):
         model = Comment
         schema = CommentSchema
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         post = Post(title="p1")
@@ -241,10 +242,10 @@ def test_idref_relationship_field_serializes_flat_e2e(client):
     """Read path: a relationship-named ``IDRef[Post]`` field is eager-loaded and
     serialized to the flat id over real HTTP (list + detail)."""
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int] = mapped_column(ForeignKey("post.id"), init=False)
         post: Mapped[Post] = relationship(default=None)
@@ -291,10 +292,10 @@ def test_react_admin_serializes_idref_flat_e2e(client):
     """The react-admin serializer (``to_single_response(...).model_dump``) renders
     an ``IDRef`` field as the flat id, same as the plain REST path."""
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_fk: Mapped[int] = mapped_column(ForeignKey("post.id"))
 

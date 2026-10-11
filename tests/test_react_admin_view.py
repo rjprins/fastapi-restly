@@ -31,6 +31,7 @@ from fastapi_restly.views._react_admin import (
     parse_react_admin_range,
 )
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 # ---------------------------------------------------------------------------
@@ -41,7 +42,7 @@ from .conftest import create_tables
 def _setup_async_item_view(client):
     """Register a minimal ItemView backed by AsyncReactAdminView."""
 
-    class Item(fr.IDBase):
+    class Item(fr.IDMixin, SharedBase):
         name: Mapped[str]
         price: Mapped[float]
 
@@ -73,7 +74,7 @@ def sync_client(sync_db) -> Iterator[RestlyTestClient]:
 def _setup_sync_item_view(client):
     """Register a minimal ItemView backed by ReactAdminView."""
 
-    class SyncItem(fr.IDBase):
+    class SyncItem(fr.IDMixin, SharedBase):
         name: Mapped[str]
         price: Mapped[float]
 
@@ -87,7 +88,7 @@ def _setup_sync_item_view(client):
         model = SyncItem
         schema = SyncItemSchema
 
-    fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
 
 
 @pytest.fixture(params=["sync", "async"])
@@ -95,7 +96,7 @@ def custom_list_client(request):
     asynchronous = request.param == "async"
     client = request.getfixturevalue("client" if asynchronous else "sync_client")
 
-    class CustomItem(fr.IDBase):
+    class CustomItem(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     base = fr.AsyncReactAdminView if asynchronous else fr.ReactAdminView
@@ -123,7 +124,7 @@ def custom_list_client(request):
     if asynchronous:
         create_tables()
     else:
-        fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+        SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
     for name in ("a", "b", "c"):
         client.post("/custom-items", json={"name": name})
     return client
@@ -334,7 +335,7 @@ def test_react_admin_contract_keys_are_accepted(client):
 def test_react_admin_extra_query_params_widens_the_guard(client):
     """The same escape hatch as the default dialect."""
 
-    class Verbose(fr.IDBase):
+    class Verbose(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class VerboseSchema(fr.IDSchema):
@@ -399,13 +400,13 @@ def test_react_admin_uncoercible_filter_value_returns_400(client):
 def test_resolve_column_rejects_relationship_field():
     """A relationship field cannot be used to filter or sort (it is not a column)."""
 
-    class RaMaker(fr.IDBase):
+    class RaMaker(fr.IDMixin, SharedBase):
         name: Mapped[str] = mapped_column()
 
     class RaMakerSchema(fr.IDSchema):
         name: str
 
-    class RaGadget(fr.IDBase):
+    class RaGadget(fr.IDMixin, SharedBase):
         name: Mapped[str] = mapped_column()
         maker_id: Mapped[int | None] = mapped_column(ForeignKey("ra_maker.id"))
         maker: Mapped[RaMaker | None] = relationship()
@@ -426,7 +427,7 @@ def test_resolve_column_rejects_a_field_that_never_goes_out(hidden):
     """A WriteOnly field, or one with exclude=True, is not exposed for
     filtering or sorting."""
 
-    class RaThing(fr.IDBase):
+    class RaThing(fr.IDMixin, SharedBase):
         name: Mapped[str] = mapped_column()
         secret: Mapped[str] = mapped_column()
 
@@ -673,7 +674,7 @@ def test_default_page_size_setting_overrides_default(client):
     """A view subclass can set pagination's default_page_size to change the
     implicit page size."""
 
-    class Widget(fr.IDBase):
+    class Widget(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class WidgetSchema(fr.IDSchema):
@@ -704,7 +705,7 @@ def test_react_admin_list_respects_build_query_scope(client):
     """The React Admin list must route through build_query, so a row hidden by
     the read scope is not leaked, and Content-Range total reflects the scope."""
 
-    class ScopedItem(fr.IDBase):
+    class ScopedItem(fr.IDMixin, SharedBase):
         name: Mapped[str]
         hidden: Mapped[bool]
 
@@ -739,7 +740,7 @@ def test_react_admin_list_runs_the_handler_domain_and_response_seams(client):
 
     events: list[tuple[str, object | None]] = []
 
-    class SeamItem(fr.IDBase):
+    class SeamItem(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class SeamItemSchema(fr.IDSchema):
@@ -789,7 +790,7 @@ def test_react_admin_list_runs_the_handler_domain_and_response_seams(client):
 def test_sync_react_admin_list_runs_the_handler_domain_and_response_seams(sync_client):
     events: list[tuple[str, object | None]] = []
 
-    class SyncSeamItem(fr.IDBase):
+    class SyncSeamItem(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class SyncSeamItemSchema(fr.IDSchema):
@@ -817,7 +818,7 @@ def test_sync_react_admin_list_runs_the_handler_domain_and_response_seams(sync_c
             events.append(("to_response", shape))
             return super().to_response(result, shape)
 
-    fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
     sync_client.post("/sync-seam-items/", json={"name": "a"})
     events.clear()
 
@@ -842,7 +843,7 @@ def test_react_admin_list_response_is_changed_in_to_list_response(flavor, reques
     asynchronous = flavor == "async"
     client = request.getfixturevalue("client" if asynchronous else "sync_client")
 
-    class CountedItem(fr.IDBase):
+    class CountedItem(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class CountedItemSchema(fr.IDSchema):
@@ -864,7 +865,7 @@ def test_react_admin_list_response_is_changed_in_to_list_response(flavor, reques
     if asynchronous:
         create_tables()
     else:
-        fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+        SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
     for name in ("a", "b"):
         client.post("/counted-items/", json={"name": name})
 
@@ -881,7 +882,7 @@ def test_react_admin_view_cannot_disable_pagination(client, unpaginated):
     count query, so ``pagination = None`` or a ``NoPagination`` is rejected at
     registration."""
 
-    class Gadget(fr.IDBase):
+    class Gadget(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class GadgetSchema(fr.IDSchema):

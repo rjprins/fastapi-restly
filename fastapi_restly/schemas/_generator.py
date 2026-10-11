@@ -252,7 +252,7 @@ def derive_schema(model: type[Any], *, name: str | None = None) -> type[BaseSche
     if has_timestamps:
         bases.append(TimestampsSchemaMixin)
 
-    # Check if model has an id field (inherits from IDBase)
+    # Check if model has an id field (as from IDMixin)
     has_id = "id" in model_fields
     if has_id:
         bases.append(IDSchema)

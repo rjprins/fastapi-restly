@@ -20,12 +20,14 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 import fastapi_restly as fr
 from fastapi_restly.objects import async_save_object, save_object
 
+from ._models import SharedBase
+
 
 def _models():
-    class Author(fr.IDBase):
+    class Author(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
         author_id: Mapped[int] = mapped_column(ForeignKey("author.id"))
         author: Mapped[Author] = relationship(init=False)
@@ -36,12 +38,12 @@ def _models():
             default_factory=list, cascade="all, delete-orphan", lazy="selectin"
         )
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         post_id: Mapped[int] = mapped_column(ForeignKey("post.id"), init=False)
         body: Mapped[str]
         post: Mapped[Post] = relationship(back_populates="comments", init=False)
 
-    class Tag(fr.IDBase):
+    class Tag(fr.IDMixin, SharedBase):
         post_id: Mapped[int] = mapped_column(ForeignKey("post.id"), init=False)
         label: Mapped[str]
 
@@ -51,7 +53,7 @@ def _models():
 def test_sync_save_leaves_cascaded_children_loaded(sync_db):
     engine, make_session = sync_db
     Author, Post, Comment, Tag = _models()
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         alice = Author(name="alice")
@@ -83,7 +85,7 @@ def test_sync_save_leaves_cascaded_children_loaded(sync_db):
 def test_sync_save_does_not_serve_a_stale_lazy_relationship(sync_db):
     engine, make_session = sync_db
     Author, Post, Comment, Tag = _models()
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         alice, bob = Author(name="alice"), Author(name="bob")
@@ -107,7 +109,7 @@ def test_async_save_leaves_cascaded_children_loaded():
         make_session = async_sessionmaker(bind=engine, expire_on_commit=False)
         Author, Post, Comment, Tag = _models()
         async with engine.begin() as conn:
-            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+            await conn.run_sync(SharedBase.metadata.create_all)
 
         async with make_session() as session:
             alice = Author(name="alice")

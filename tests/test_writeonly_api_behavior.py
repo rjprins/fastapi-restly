@@ -7,6 +7,7 @@ from sqlalchemy.orm import Mapped
 import fastapi_restly as fr
 from fastapi_restly.schemas import ReadOnly, WriteOnly
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
@@ -25,7 +26,7 @@ class TestWriteOnlyAPIBasicBehavior:
             secret_token: WriteOnly[str]  # Another WriteOnly field
 
         # Create a simple model
-        class WriteOnlyUserGet(fr.IDBase):
+        class WriteOnlyUserGet(fr.IDMixin, SharedBase):
             name: Mapped[str]
             email: Mapped[str]
             password: Mapped[str]
@@ -75,7 +76,7 @@ class TestWriteOnlyAPIBasicBehavior:
             email: str
             password: WriteOnly[str]
 
-        class WriteOnlyUserPost(fr.IDBase):
+        class WriteOnlyUserPost(fr.IDMixin, SharedBase):
             name: Mapped[str]
             email: Mapped[str]
             password: Mapped[str]
@@ -117,7 +118,7 @@ class TestWriteOnlyAPIBasicBehavior:
             email: str
             password: WriteOnly[str]
 
-        class WriteOnlyUserPatch(fr.IDBase):
+        class WriteOnlyUserPatch(fr.IDMixin, SharedBase):
             name: Mapped[str]
             email: Mapped[str]
             password: Mapped[str]
@@ -171,7 +172,7 @@ class TestWriteOnlyAPIBasicBehavior:
             email: str
             password: WriteOnly[str]
 
-        class WriteOnlyUserList(fr.IDBase):
+        class WriteOnlyUserList(fr.IDMixin, SharedBase):
             name: Mapped[str]
             email: Mapped[str]
             password: Mapped[str]
@@ -226,7 +227,7 @@ class TestWriteOnlyWithMixedFields:
             created_at: ReadOnly[datetime]  # ReadOnly field
             secret_token: WriteOnly[str]  # WriteOnly field
 
-        class WriteOnlyUserMixed(fr.TimestampsMixin, fr.IDBase):
+        class WriteOnlyUserMixed(fr.TimestampsMixin, fr.IDMixin, SharedBase):
             name: Mapped[str]
             email: Mapped[str]
             password: Mapped[str]
@@ -299,7 +300,7 @@ class TestWriteOnlyWithAliases:
             password: WriteOnly[str] = Field(alias="userPassword")
             secret_token: WriteOnly[str] = Field(alias="secretKey")
 
-        class WriteOnlyUserAlias(fr.IDBase):
+        class WriteOnlyUserAlias(fr.IDMixin, SharedBase):
             name: Mapped[str]
             email: Mapped[str]
             password: Mapped[str]

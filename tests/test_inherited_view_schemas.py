@@ -14,12 +14,13 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
 @pytest.mark.parametrize("view_base", [fr.AsyncRestView, fr.RestView])
 def test_subclass_serves_the_schema_its_base_view_declares(view_base):
-    class Rec(fr.IDBase):
+    class Rec(fr.IDMixin, SharedBase):
         name: Mapped[str]
         secret: Mapped[str]
 
@@ -42,7 +43,7 @@ def test_subclass_serves_the_schema_its_base_view_declares(view_base):
 
 
 def test_undeclared_column_does_not_leak_through_a_subclass(client):
-    class Account(fr.IDBase):
+    class Account(fr.IDMixin, SharedBase):
         name: Mapped[str]
         secret: Mapped[str] = mapped_column(default="hidden")
 
@@ -64,7 +65,7 @@ def test_undeclared_column_does_not_leak_through_a_subclass(client):
 
 
 def test_declared_write_schemas_are_inherited():
-    class Rec(fr.IDBase):
+    class Rec(fr.IDMixin, SharedBase):
         name: Mapped[str]
         note: Mapped[str]
 
@@ -94,7 +95,7 @@ def test_declared_write_schemas_are_inherited():
 
 
 def test_redeclaring_schema_rebuilds_the_write_schemas_a_parent_declared():
-    class Rec(fr.IDBase):
+    class Rec(fr.IDMixin, SharedBase):
         name: Mapped[str]
         note: Mapped[str]
 
@@ -125,10 +126,10 @@ def test_redeclaring_schema_rebuilds_the_write_schemas_a_parent_declared():
 
 
 def test_generated_schema_of_a_registered_parent_is_rebuilt_for_the_subclass():
-    class Pet(fr.IDBase):
+    class Pet(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class Owner(fr.IDBase):
+    class Owner(fr.IDMixin, SharedBase):
         email: Mapped[str]
 
     class PetView(fr.AsyncRestView):
@@ -150,7 +151,7 @@ def test_generated_schema_of_a_registered_parent_is_rebuilt_for_the_subclass():
 
 
 def test_subclass_page_size_rebuilds_the_generated_list_params():
-    class Rec(fr.IDBase):
+    class Rec(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class RecSchema(fr.IDSchema):
@@ -175,7 +176,7 @@ def test_subclass_page_size_rebuilds_the_generated_list_params():
 
 
 def test_declared_list_params_are_inherited(client):
-    class Rec(fr.IDBase):
+    class Rec(fr.IDMixin, SharedBase):
         name: Mapped[str]
         note: Mapped[str]
 
@@ -201,7 +202,7 @@ def test_declared_list_params_are_inherited(client):
 
 
 def test_declared_response_class_of_a_base_without_schema_is_inherited(client):
-    class Vault(fr.IDBase):
+    class Vault(fr.IDMixin, SharedBase):
         name: Mapped[str]
         secret: Mapped[str] = mapped_column(default="hidden")
 
@@ -224,7 +225,7 @@ def test_declared_response_class_of_a_base_without_schema_is_inherited(client):
 
 
 def test_declared_create_of_a_base_without_schema_is_inherited():
-    class Rec(fr.IDBase):
+    class Rec(fr.IDMixin, SharedBase):
         name: Mapped[str]
         is_admin: Mapped[bool] = mapped_column(default=False)
 
@@ -244,7 +245,7 @@ def test_declared_create_of_a_base_without_schema_is_inherited():
 
 
 def test_redeclaring_schema_rebuilds_the_list_params_a_parent_declared():
-    class Rec(fr.IDBase):
+    class Rec(fr.IDMixin, SharedBase):
         name: Mapped[str]
         note: Mapped[str]
 
@@ -274,7 +275,7 @@ def test_redeclaring_schema_rebuilds_the_list_params_a_parent_declared():
 
 
 def test_list_params_declared_next_to_a_new_schema_stay():
-    class Rec(fr.IDBase):
+    class Rec(fr.IDMixin, SharedBase):
         name: Mapped[str]
         note: Mapped[str]
 

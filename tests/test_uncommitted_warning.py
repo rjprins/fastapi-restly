@@ -15,6 +15,7 @@ from sqlalchemy.orm import Mapped
 import fastapi_restly as fr
 from fastapi_restly.db._globals import _fr_globals
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
@@ -30,7 +31,7 @@ def _restore_config():
 
 
 def _build(client):
-    class Thing(fr.IDBase):
+    class Thing(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class ThingSchema(fr.IDSchema):

@@ -5,13 +5,14 @@ from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
 def test_get_requests_return_aliases(client):
     """Test that GET requests return data with aliases."""
 
-    class User(fr.IDBase):
+    class User(fr.IDMixin, SharedBase):
         user_name: Mapped[str]
         user_email: Mapped[str]
         phone_number: Mapped[str]
@@ -63,7 +64,7 @@ def test_get_requests_return_aliases(client):
 def test_post_requests_accept_aliases(client):
     """Test that POST requests accept aliases."""
 
-    class Product(fr.IDBase):
+    class Product(fr.IDMixin, SharedBase):
         product_name: Mapped[str]
         product_price: Mapped[float]
         is_active: Mapped[bool]
@@ -103,7 +104,7 @@ def test_post_requests_accept_aliases(client):
 def test_put_requests_accept_aliases(client):
     """Test that PUT requests accept aliases."""
 
-    class Article(fr.IDBase):
+    class Article(fr.IDMixin, SharedBase):
         article_title: Mapped[str]
         article_content: Mapped[str]
         author_name: Mapped[str]
@@ -159,7 +160,7 @@ def test_put_requests_accept_aliases(client):
 def test_query_modifiers_with_aliases(client):
     """Test that query modifiers work with aliases."""
 
-    class Customer(fr.IDBase):
+    class Customer(fr.IDMixin, SharedBase):
         customer_name: Mapped[str]
         customer_email: Mapped[str]
         registration_date: Mapped[str]
@@ -212,7 +213,7 @@ def test_query_modifiers_with_aliases(client):
 def test_validation_with_aliases(client):
     """Test that field validation works with aliases."""
 
-    class User(fr.IDBase):
+    class User(fr.IDMixin, SharedBase):
         user_name: Mapped[str]
         user_age: Mapped[int]
         user_email: Mapped[str]
@@ -272,7 +273,7 @@ def test_validation_with_aliases(client):
 def test_optional_fields_with_aliases(client):
     """Test that optional fields work with aliases."""
 
-    class Profile(fr.IDBase):
+    class Profile(fr.IDMixin, SharedBase):
         profile_name: Mapped[str]
         profile_bio: Mapped[str]
         profile_website: Mapped[str | None]
@@ -311,7 +312,7 @@ def test_optional_fields_with_aliases(client):
 def test_auto_generated_schema_works_without_aliases(client):
     """Test that auto-generated schemas work without aliases."""
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         comment_text: Mapped[str]
         author_name: Mapped[str]
 
@@ -343,7 +344,7 @@ def test_auto_generated_schema_works_without_aliases(client):
 def test_complex_alias_scenarios(client):
     """Test complex scenarios with multiple aliases."""
 
-    class Order(fr.IDBase):
+    class Order(fr.IDMixin, SharedBase):
         order_number: Mapped[str]
         total_amount: Mapped[float]
         shipping_address: Mapped[str]
@@ -395,7 +396,7 @@ def test_complex_alias_scenarios(client):
 def test_documentation_example(client):
     """Test the example from the documentation."""
 
-    class User(fr.IDBase):
+    class User(fr.IDMixin, SharedBase):
         name: Mapped[str]
         email: Mapped[str]
         phone_number: Mapped[str]

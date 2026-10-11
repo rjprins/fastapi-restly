@@ -24,6 +24,7 @@ from fastapi_restly._routes import iter_routes, original_route
 from fastapi_restly.exc import RestlyDuplicateSchemaNameWarning
 from fastapi_restly.testing import RestlyTestClient
 
+from ._models import SharedBase
 from ._openapi_spec import components as _components
 from ._openapi_spec import response_ref as _ref
 from .conftest import create_tables
@@ -48,7 +49,7 @@ def _response_model(app: fastapi.FastAPI, path: str, method: str) -> Any:
 
 
 def test_derive_schema_response_returns_the_class_the_view_uses():
-    class Account(fr.IDBase):
+    class Account(fr.IDMixin, SharedBase):
         name: Mapped[str]
         password_hash: Mapped[str] = mapped_column(default="")
 
@@ -74,7 +75,7 @@ def test_derive_schema_response_returns_the_class_the_view_uses():
 
 
 def test_derive_schema_list_response_returns_the_class_the_view_uses():
-    class Book(fr.IDBase):
+    class Book(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
     class BookSchema(fr.IDSchema):
@@ -124,7 +125,7 @@ def test_only_the_envelope_of_the_pagination_matters():
 
 
 def test_a_custom_route_that_names_the_classes_shows_one_type_per_resource():
-    class Task(fr.IDBase):
+    class Task(fr.IDMixin, SharedBase):
         title: Mapped[str]
         archived: Mapped[bool] = False
 
@@ -170,7 +171,7 @@ def test_a_custom_route_that_names_the_classes_shows_one_type_per_resource():
 
 
 def test_the_wrong_pagination_gives_a_second_class_and_a_warning():
-    class Shelf(fr.IDBase):
+    class Shelf(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class ShelfSchema(fr.IDSchema):
@@ -375,7 +376,7 @@ def test_openapi_shows_the_view_s_response_class(members):
 
 
 def test_a_subclass_keeps_or_rebuilds_the_response_class():
-    class Plant(fr.IDBase):
+    class Plant(fr.IDMixin, SharedBase):
         name: Mapped[str]
         secret: Mapped[str] = mapped_column(default="")
 
@@ -419,7 +420,7 @@ def test_a_subclass_keeps_or_rebuilds_the_response_class():
 
 
 def test_a_react_admin_view_follows_the_response_class(client):
-    class Herb(fr.IDBase):
+    class Herb(fr.IDMixin, SharedBase):
         name: Mapped[str]
         notes: Mapped[str] = mapped_column(default="")
 
@@ -459,7 +460,7 @@ def test_an_instance_of_the_schema_goes_out_through_the_view_s_response_class(
     of a react-admin view, which has no response model to do it."""
     runs: collections.Counter[str] = collections.Counter()
 
-    class Bird(fr.IDBase):
+    class Bird(fr.IDMixin, SharedBase):
         name: Mapped[str]
         secret: Mapped[str] = mapped_column(default="")
 
@@ -514,7 +515,7 @@ def test_an_instance_of_a_subclass_goes_out_without_its_other_fields(client, bas
     returns an instance of the schema: only the fields of the response class
     go out, also where no response model removes the others."""
 
-    class Eel(fr.IDBase):
+    class Eel(fr.IDMixin, SharedBase):
         name: Mapped[str]
         secret: Mapped[str] = mapped_column(default="")
 
@@ -590,7 +591,7 @@ def test_an_instance_of_another_model_goes_out_through_the_response_class(client
     model that is neither the schema nor the response class is validated
     into the response class, so its other fields stay behind."""
 
-    class Fish(fr.IDBase):
+    class Fish(fr.IDMixin, SharedBase):
         name: Mapped[str]
         secret: Mapped[str] = mapped_column(default="")
 

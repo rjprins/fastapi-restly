@@ -21,6 +21,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 import fastapi_restly as fr
 from fastapi_restly.testing._client import RestlyTestClient
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 PositiveId = Annotated[int, fastapi.Path(ge=1)]
@@ -41,9 +42,9 @@ def env(request):
         client = RestlyTestClient(FastAPI())
 
         def make_tables():
-            fr.DataclassBase.metadata.create_all(engine)
+            SharedBase.metadata.create_all(engine)
 
-    class Product(fr.IDBase):
+    class Product(fr.IDMixin, SharedBase):
         name: Mapped[str]
         price: Mapped[float]
 
@@ -354,7 +355,7 @@ def test_subclass_of_registered_view_fills_its_own_types(env):
 
     fr.include_view(FastAPI(), ProductView)
 
-    class Gadget(fr.DataclassBase):
+    class Gadget(SharedBase):
         id: Mapped[UUID] = mapped_column(
             Uuid, primary_key=True, default_factory=uuid4, init=False
         )

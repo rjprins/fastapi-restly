@@ -19,6 +19,7 @@ import fastapi_restly as fr
 from fastapi_restly.exc import BadQueryParam
 from fastapi_restly.query._impl import _parse_value
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
@@ -106,7 +107,7 @@ def test_filter_validator_receives_field_name_and_empty_data(mode, recursive):
 
 
 def test_list_filter_with_field_name_dependent_validator(client):
-    class Item(fr.IDBase):
+    class Item(fr.IDMixin, SharedBase):
         name: Mapped[str]
         code: Mapped[str]
 
@@ -176,7 +177,7 @@ def test_definition_ref_field_validates():
     """A class the schema uses twice becomes a definition-ref in the core
     schema; the field validator carries the definitions along."""
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
     class Schema(fr.IDSchema):
@@ -249,7 +250,7 @@ def test_mutually_recursive_schema_scalar_filters():
 
 
 def test_list_scalar_filter_with_recursive_schema(client):
-    class Node(fr.IDBase):
+    class Node(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class NodeSchema(fr.IDSchema):
@@ -271,7 +272,7 @@ def test_list_scalar_filter_with_recursive_schema(client):
 
 
 def test_list_filter_with_cross_field_validator_is_200(client):
-    class Ticket(fr.IDBase):
+    class Ticket(fr.IDMixin, SharedBase):
         title: Mapped[str]
         kind: Mapped[str]
         severity: Mapped[int | None]

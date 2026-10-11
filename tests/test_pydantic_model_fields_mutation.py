@@ -31,6 +31,8 @@ from fastapi_restly.schemas._base import (
     create_model_without_read_only_fields,
 )
 
+from ._models import SharedBase
+
 # Pinned at the lower bound from pyproject.toml. If you bump the dependency
 # floor, re-run the suite first; if it still passes, bump this string too.
 SUPPORTED_PYDANTIC_MAJOR_MINOR = (2, 11)
@@ -138,7 +140,7 @@ def test_patch_mixin_drops_a_default_factory() -> None:
     builds the field again for OpenAPI, so with both, ``/openapi.json``
     answered 500 for the whole app."""
 
-    class Item(fr.IDBase):
+    class Item(fr.IDMixin, SharedBase):
         tags: Mapped[list[str]] = mapped_column(JSON, default_factory=list)
 
     class ItemSchema(fr.IDSchema):

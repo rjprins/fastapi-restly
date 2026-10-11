@@ -21,20 +21,21 @@ from fastapi_restly.db._globals import _fr_globals
 from fastapi_restly.objects import _unloaded_written_collections
 from fastapi_restly.testing import RestlyTestClient
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
 def _models(lazy: str = "select"):
-    class Team(fr.IDBase):
+    class Team(fr.IDMixin, SharedBase):
         name: Mapped[str] = mapped_column()
 
-    class Member(fr.IDBase):
+    class Member(fr.IDMixin, SharedBase):
         name: Mapped[str] = mapped_column()
         teams: Mapped[list[Team]] = relationship(
             secondary="member_team", default_factory=list, lazy=lazy
         )
 
-    class MemberTeam(fr.DataclassBase):
+    class MemberTeam(SharedBase):
         __tablename__ = "member_team"
         member_id: Mapped[int] = mapped_column(
             ForeignKey("member.id"), primary_key=True, init=False
@@ -131,7 +132,7 @@ def test_a_sync_update_writes_a_collection_with_lazy_raise(sync_client):
         schema = MemberSchema
 
     make_session = _fr_globals.make_session
-    fr.DataclassBase.metadata.create_all(make_session.kw["bind"])
+    SharedBase.metadata.create_all(make_session.kw["bind"])
     with make_session() as session:
         red, blue = Team(name="red"), Team(name="blue")
         member = Member(name="ann")
@@ -149,10 +150,10 @@ def test_a_sync_update_writes_a_collection_with_lazy_raise(sync_client):
 
 
 def test_an_update_loads_only_the_collections_it_writes(sync_db):
-    class Club(fr.IDBase):
+    class Club(fr.IDMixin, SharedBase):
         name: Mapped[str] = mapped_column()
 
-    class Player(fr.IDBase):
+    class Player(fr.IDMixin, SharedBase):
         name: Mapped[str] = mapped_column()
         club_id: Mapped[int | None] = mapped_column(ForeignKey("club.id"), default=None)
         club: Mapped[Club | None] = relationship(default=None)
@@ -160,7 +161,7 @@ def test_an_update_loads_only_the_collections_it_writes(sync_db):
             secondary="player_rival", default_factory=list
         )
 
-    class PlayerRival(fr.DataclassBase):
+    class PlayerRival(SharedBase):
         __tablename__ = "player_rival"
         player_id: Mapped[int] = mapped_column(
             ForeignKey("player.id"), primary_key=True, init=False
@@ -174,7 +175,7 @@ def test_an_update_loads_only_the_collections_it_writes(sync_db):
         rivals: list[fr.IDRef[Club]] | None = None
 
     _, make_session = sync_db
-    fr.DataclassBase.metadata.create_all(make_session.kw["bind"])
+    SharedBase.metadata.create_all(make_session.kw["bind"])
     with make_session() as session:
         session.add(Player(name="ann"))
         session.commit()

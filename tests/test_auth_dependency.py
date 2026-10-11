@@ -15,6 +15,7 @@ from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 # ---------------------------------------------------------------------------
@@ -29,7 +30,7 @@ def test_async_view_dependency_raising_401_returns_401(client):
     def require_auth():
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    class Item(fr.IDBase):
+    class Item(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class ItemSchema(fr.IDSchema):
@@ -55,7 +56,7 @@ def test_async_view_dependency_raising_403_returns_403(client):
     def require_admin():
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    class Doc(fr.IDBase):
+    class Doc(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
     class DocSchema(fr.IDSchema):
@@ -81,7 +82,7 @@ def test_async_view_dependency_401_blocks_post_too(client):
     def require_auth():
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    class Note(fr.IDBase):
+    class Note(fr.IDMixin, SharedBase):
         text: Mapped[str]
 
     class NoteSchema(fr.IDSchema):
@@ -106,7 +107,7 @@ def test_async_view_dependency_with_authenticated_user_passes(client):
     def fake_user():
         return {"username": "alice"}
 
-    class Bookmark(fr.IDBase):
+    class Bookmark(fr.IDMixin, SharedBase):
         url: Mapped[str]
 
     class BookmarkSchema(fr.IDSchema):
@@ -138,7 +139,7 @@ def test_sync_view_dependency_raising_401_returns_401(sync_db):
     def require_auth():
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    class SyncItem(fr.IDBase):
+    class SyncItem(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class SyncItemSchema(fr.IDSchema):
@@ -153,7 +154,7 @@ def test_sync_view_dependency_raising_401_returns_401(sync_db):
         schema = SyncItemSchema
         dependencies = [Depends(require_auth)]
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     test_client = TestClient(app)
     response = test_client.get("/sync-items/")
@@ -167,7 +168,7 @@ def test_sync_view_dependency_raising_403_returns_403(sync_db):
     def require_admin():
         raise HTTPException(status_code=403, detail="Admins only")
 
-    class SyncDoc(fr.IDBase):
+    class SyncDoc(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
     class SyncDocSchema(fr.IDSchema):
@@ -182,7 +183,7 @@ def test_sync_view_dependency_raising_403_returns_403(sync_db):
         schema = SyncDocSchema
         dependencies = [Depends(require_admin)]
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     test_client = TestClient(app)
     response = test_client.get("/sync-docs/")
@@ -195,7 +196,7 @@ def test_sync_view_dependency_with_authenticated_user_passes(sync_db):
     def fake_user():
         return {"username": "alice"}
 
-    class SyncMemo(fr.IDBase):
+    class SyncMemo(fr.IDMixin, SharedBase):
         body: Mapped[str]
 
     class SyncMemoSchema(fr.IDSchema):
@@ -210,7 +211,7 @@ def test_sync_view_dependency_with_authenticated_user_passes(sync_db):
         schema = SyncMemoSchema
         dependencies = [Depends(fake_user)]
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     test_client = TestClient(app)
     response = test_client.post("/memos/", json={"body": "first"})
@@ -232,7 +233,7 @@ def test_async_excluded_route_does_not_trigger_dependency(client):
         call_log.append("auth")
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    class Tag(fr.IDBase):
+    class Tag(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class TagSchema(fr.IDSchema):

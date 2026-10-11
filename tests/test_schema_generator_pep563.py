@@ -13,11 +13,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 import fastapi_restly as fr
 import fastapi_restly.schemas as fr_schemas
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
 def test_view_schema_keeps_every_column(client):
-    class Item(fr.IDBase):
+    class Item(fr.IDMixin, SharedBase):
         name: Mapped[str]
         price: Mapped[float]
         note: Mapped[str | None]
@@ -42,13 +43,13 @@ def test_view_schema_keeps_every_column(client):
 
 
 def test_relationships_are_left_out():
-    class Author(fr.IDBase):
+    class Author(fr.IDMixin, SharedBase):
         name: Mapped[str]
         books: Mapped[list[Book]] = relationship(
             back_populates="author", default_factory=list
         )
 
-    class Book(fr.IDBase):
+    class Book(fr.IDMixin, SharedBase):
         title: Mapped[str]
         author_id: Mapped[int] = mapped_column(ForeignKey("author.id"))
         author: Mapped[Author] = relationship(back_populates="books", default=None)

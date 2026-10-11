@@ -8,8 +8,10 @@ from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
 
-class EndpointDocModel(fr.IDBase):
+
+class EndpointDocModel(fr.IDMixin, SharedBase):
     name: Mapped[str]
 
 

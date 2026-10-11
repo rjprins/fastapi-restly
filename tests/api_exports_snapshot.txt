@@ -7,8 +7,6 @@ fastapi_restly:
   - ClauseNamespace
   - ContextNamespace
   - ContextParam
-  - DataclassBase
-  - IDBase
   - IDMixin
   - IDRef
   - IDSchema
@@ -93,8 +91,6 @@ fastapi_restly.exc:
 fastapi_restly.models:
   - CASCADE_ALL_ASYNC
   - CASCADE_ALL_DELETE_ORPHAN_ASYNC
-  - DataclassBase
-  - IDBase
   - IDMixin
   - ModelDefaults
   - TimestampsMixin

@@ -21,6 +21,8 @@ from sqlalchemy.orm import Mapped
 import fastapi_restly as fr
 from fastapi_restly.testing import RestlyTestClient
 
+from ._models import SharedBase
+
 
 def api_key(api_key: str = "") -> str:
     return api_key
@@ -52,16 +54,16 @@ def key(level: str) -> str:
 def _create_tables(request: pytest.FixtureRequest, sync: bool) -> None:
     if sync:
         engine, _ = request.getfixturevalue("sync_db")
-        fr.DataclassBase.metadata.create_all(engine)
+        SharedBase.metadata.create_all(engine)
     else:
-        asyncio.run(fr.db.async_create_all(fr.DataclassBase))
+        asyncio.run(fr.db.async_create_all(SharedBase))
 
 
 @pytest.fixture
 def client(flavor: str, level: str, request: pytest.FixtureRequest) -> RestlyTestClient:
     sync = flavor == "sync"
 
-    class Item(fr.IDBase):
+    class Item(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class ItemSchema(fr.IDSchema):
@@ -111,7 +113,7 @@ def test_an_unknown_key_is_still_rejected(client, key):
 def test_a_react_admin_list_accepts_a_key_that_a_dependency_reads(flavor, request):
     sync = flavor == "sync"
 
-    class Item(fr.IDBase):
+    class Item(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     app = FastAPI()
@@ -136,7 +138,7 @@ def test_a_react_admin_list_accepts_a_key_that_a_dependency_reads(flavor, reques
 def search_client(flavor: str, request: pytest.FixtureRequest) -> RestlyTestClient:
     sync = flavor == "sync"
 
-    class Item(fr.IDBase):
+    class Item(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class ItemSchema(fr.IDSchema):
@@ -223,7 +225,7 @@ class HandWrittenParams(pydantic.BaseModel):
 
 @pytest.fixture
 def hand_written_client(sync_db) -> RestlyTestClient:
-    class Item(fr.IDBase):
+    class Item(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     app = FastAPI()
@@ -264,7 +266,7 @@ def test_a_hand_written_grammar_rejects_the_python_name_of_an_alias(
 
 
 def test_an_empty_grammar_declares_no_parameter(sync_db):
-    class Item(fr.IDBase):
+    class Item(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class NoParams(pydantic.BaseModel):

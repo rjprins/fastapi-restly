@@ -13,9 +13,11 @@ from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
+
 
 def _model_and_schema():
-    class Record(fr.IDBase):
+    class Record(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class RecordSchema(fr.IDSchema):

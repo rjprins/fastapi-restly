@@ -16,27 +16,29 @@ from fastapi_restly.query._impl import (
     derive_schema_list_params,
 )
 
+from ._models import SharedBase
 
-class User(fr.IDBase):
+
+class User(fr.IDMixin, SharedBase):
     name: Mapped[str] = mapped_column()
     email: Mapped[str] = mapped_column()
     description: Mapped[str] = mapped_column()
     age: Mapped[int] = mapped_column()
 
 
-class PhoneUser(fr.IDBase):
+class PhoneUser(fr.IDMixin, SharedBase):
     name: Mapped[str] = mapped_column()
     email: Mapped[str | None] = mapped_column()
     phone: Mapped[str | None] = mapped_column()
     age: Mapped[int] = mapped_column()
 
 
-class DotAddress(fr.IDBase):
+class DotAddress(fr.IDMixin, SharedBase):
     street: Mapped[str] = mapped_column()
     city: Mapped[str] = mapped_column()
 
 
-class DotUser(fr.IDBase):
+class DotUser(fr.IDMixin, SharedBase):
     name: Mapped[str] = mapped_column()
     email: Mapped[str] = mapped_column()
     address_id: Mapped[int] = mapped_column(ForeignKey("dot_address.id"))

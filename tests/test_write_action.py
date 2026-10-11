@@ -11,11 +11,12 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
 def _publish_view(client, **attrs):
-    class Doc(fr.IDBase):
+    class Doc(fr.IDMixin, SharedBase):
         title: Mapped[str]
         published: Mapped[bool] = mapped_column(default=False)
 
@@ -100,7 +101,7 @@ def test_failure_in_block_rolls_back_and_skips_hooks(client):
 
 
 def test_create_shaped_action_returns_via_handle(client):
-    class Item(fr.IDBase):
+    class Item(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class ItemSchema(fr.IDSchema):
@@ -134,7 +135,7 @@ def test_create_shaped_action_without_deposit_raises_and_rolls_back(client):
     forgets to set ``w.obj`` raises ``RuntimeError`` on exit (instead of silently
     committing the row with the hooks blind to it), and the write rolls back."""
 
-    class Thing(fr.IDBase):
+    class Thing(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class ThingSchema(fr.IDSchema):
@@ -168,7 +169,7 @@ def test_explicit_no_object_write_is_allowed(client):
     the commit hooks see ``new=None``."""
     seen: dict = {}
 
-    class Widget(fr.IDBase):
+    class Widget(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class WidgetSchema(fr.IDSchema):

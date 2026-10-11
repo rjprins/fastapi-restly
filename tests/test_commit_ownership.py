@@ -11,6 +11,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 # These tests deliberately leave writes uncommitted to prove they are discarded,
@@ -22,7 +23,7 @@ pytestmark = pytest.mark.filterwarnings(
 
 
 def test_after_commit_orm_mutation_is_not_persisted(client):
-    class Note(fr.IDBase):
+    class Note(fr.IDMixin, SharedBase):
         title: Mapped[str]
         body: Mapped[str] = mapped_column(default="")
 
@@ -57,7 +58,7 @@ def test_custom_route_must_commit_explicitly(client):
     """A custom write route that does not use a handler owns its own commit:
     without ``self.session.commit()`` the write is discarded; with it, it persists."""
 
-    class Counter(fr.IDBase):
+    class Counter(fr.IDMixin, SharedBase):
         label: Mapped[str]
         value: Mapped[int] = mapped_column(default=0)
 

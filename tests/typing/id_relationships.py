@@ -1,17 +1,21 @@
 from fastapi import FastAPI
 from sqlalchemy import ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 import fastapi_restly as fr
 
 app = FastAPI()
 
 
-class Author(fr.IDBase):
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+
+
+class Author(fr.IDMixin, Base):
     name: Mapped[str]
 
 
-class Article(fr.IDBase):
+class Article(fr.IDMixin, Base):
     title: Mapped[str]
     author_id: Mapped[int] = mapped_column(ForeignKey("author.id"))
     author: Mapped[Author]

@@ -5,8 +5,10 @@ from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
 
-class Widget(fr.IDBase):
+
+class Widget(fr.IDMixin, SharedBase):
     name: Mapped[str]
 
 

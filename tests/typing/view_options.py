@@ -2,14 +2,18 @@ from typing import Any, ClassVar
 
 import pydantic
 from fastapi import Depends, FastAPI
-from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import DeclarativeBase, Mapped
 
 import fastapi_restly as fr
 
 app = FastAPI()
 
 
-class Ticket(fr.IDBase):
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+
+
+class Ticket(fr.IDMixin, Base):
     full_name: Mapped[str]
 
 

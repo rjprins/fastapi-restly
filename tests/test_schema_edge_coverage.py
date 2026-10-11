@@ -34,9 +34,11 @@ from fastapi_restly.schemas._generator import (
     is_relationship_field,
 )
 
+from ._models import SharedBase
+
 
 def test_idschema_coerces_primary_key_types_and_preserves_untyped_ids():
-    class User(fr.IDBase):
+    class User(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     assert fr.IDSchema[User](id="123").id == 123
@@ -51,7 +53,7 @@ def test_idschema_reuses_cached_type_adapter_per_id_type():
 
     schemas_base._id_type_adapter.cache_clear()
 
-    class CachedAdapterUser(fr.IDBase):
+    class CachedAdapterUser(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     with patch.object(
@@ -64,7 +66,7 @@ def test_idschema_reuses_cached_type_adapter_per_id_type():
 
 
 def test_idref_accepts_both_wire_forms_and_serializes_as_scalar():
-    class IDRefInputUser(fr.IDBase):
+    class IDRefInputUser(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     scalar = fr.IDRef[IDRefInputUser](5)
@@ -79,7 +81,7 @@ def test_idref_accepts_both_wire_forms_and_serializes_as_scalar():
 
 
 def test_idref_fields_generate_scalar_json_schema_in_both_modes():
-    class IDRefSchemaUser(fr.IDBase):
+    class IDRefSchemaUser(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class SchemaWithIDRef(BaseSchema):
@@ -95,7 +97,7 @@ def test_idref_fields_generate_scalar_json_schema_in_both_modes():
 
 
 def test_idschema_reference_still_serializes_as_nested_dict():
-    class IDSchemaNestedUser(fr.IDBase):
+    class IDSchemaNestedUser(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     value = fr.IDSchema[IDSchemaNestedUser](id="5")
@@ -106,10 +108,10 @@ def test_idschema_reference_still_serializes_as_nested_dict():
 
 
 def test_idref_fields_serialize_as_scalars_through_to_single_response():
-    class ToResponseUser(fr.IDBase):
+    class ToResponseUser(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class ToResponseTask(fr.IDBase):
+    class ToResponseTask(fr.IDMixin, SharedBase):
         title: Mapped[str]
         owner_id: Mapped[int]
 
@@ -131,10 +133,10 @@ def test_idref_fields_serialize_as_scalars_through_to_single_response():
 
 
 def test_idref_fields_serialize_cleanly_through_fastapi_response_model(client):
-    class ResponseModelUser(fr.IDBase):
+    class ResponseModelUser(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class ResponseModelTask(fr.IDBase):
+    class ResponseModelTask(fr.IDMixin, SharedBase):
         title: Mapped[str]
         owner_id: Mapped[int]
 
@@ -167,7 +169,7 @@ def test_resolve_ids_to_sqlalchemy_objects_handles_missing_single_and_list_entri
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
 
-    class Author(fr.IDBase):
+    class Author(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class SingleRefSchema(BaseSchema):
@@ -176,7 +178,7 @@ def test_resolve_ids_to_sqlalchemy_objects_handles_missing_single_and_list_entri
     class ListRefSchema(BaseSchema):
         authors: list[fr.IDSchema[Author]]
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with Session(engine) as session:
         author = Author(name="Alice")
@@ -213,7 +215,7 @@ def test_resolve_ids_to_sqlalchemy_objects_handles_missing_single_and_list_entri
 async def test_async_resolve_ids_to_sqlalchemy_objects_handles_missing_entries():
     async_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
 
-    class Team(fr.IDBase):
+    class Team(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class TeamRefSchema(BaseSchema):
@@ -222,7 +224,7 @@ async def test_async_resolve_ids_to_sqlalchemy_objects_handles_missing_entries()
 
     try:
         async with async_engine.begin() as conn:
-            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+            await conn.run_sync(SharedBase.metadata.create_all)
 
         async with AsyncSession(bind=async_engine, expire_on_commit=False) as session:
             team = Team(name="Core")
@@ -259,7 +261,7 @@ async def test_async_resolve_ids_to_sqlalchemy_objects_handles_missing_entries()
 async def test_async_resolve_ids_to_sqlalchemy_objects_handles_idref_missing_entries():
     async_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
 
-    class IDRefResolverTeam(fr.IDBase):
+    class IDRefResolverTeam(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class TeamRefSchema(BaseSchema):
@@ -267,7 +269,7 @@ async def test_async_resolve_ids_to_sqlalchemy_objects_handles_idref_missing_ent
 
     try:
         async with async_engine.begin() as conn:
-            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+            await conn.run_sync(SharedBase.metadata.create_all)
 
         async with AsyncSession(bind=async_engine, expire_on_commit=False) as session:
             team = IDRefResolverTeam(name="Core")
@@ -330,20 +332,20 @@ def test_schema_helper_utilities_cover_readonly_optional_and_config_rebasing():
 
 
 def test_schema_generator_helpers_cover_relationships_defaults_and_type_conversion():
-    class Customer(fr.IDBase):
+    class Customer(fr.IDMixin, SharedBase):
         name: Mapped[str]
         orders: Mapped[list["Order"]] = relationship(
             back_populates="customer", default_factory=list
         )
 
-    class Order(fr.IDBase):
+    class Order(fr.IDMixin, SharedBase):
         item_name: Mapped[str]
         quantity: Mapped[int | None]
         notes: Mapped[str] = mapped_column(default="none")
         customer_id: Mapped[int] = mapped_column(ForeignKey("customer.id"))
         customer: Mapped[Customer] = relationship(back_populates="orders", default=None)
 
-    class Node(fr.IDBase):
+    class Node(fr.IDMixin, SharedBase):
         name: Mapped[str]
         parent_id: Mapped[int | None] = mapped_column(
             ForeignKey("node.id"), nullable=True
@@ -428,10 +430,10 @@ def test_schema_generator_helpers_cover_relationships_defaults_and_type_conversi
 
 
 def test_schema_generator_fallback_paths_for_relationship_detection_and_annotation_skips():
-    class Child(fr.IDBase):
+    class Child(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class Parent(fr.IDBase):
+    class Parent(fr.IDMixin, SharedBase):
         child_id: Mapped[int | None] = mapped_column(
             ForeignKey("child.id"), nullable=True
         )

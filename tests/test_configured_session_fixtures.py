@@ -75,7 +75,7 @@ ViewBase = fr.RestView
     await_http = "await " if async_client else ""
     await_database = "await " if asynchronous else ""
     setup = (
-        "fr.testing.configure_tests(app=app, base=fr.DataclassBase)"
+        "fr.testing.configure_tests(app=app, base=Base)"
         if managed
         else "@pytest.fixture\ndef restly_app():\n    return app"
     )
@@ -100,7 +100,7 @@ import pytest
 from fastapi import Depends, FastAPI
 from sqlalchemy import create_engine, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import Mapped, Session, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 import fastapi_restly as fr
 
@@ -108,7 +108,10 @@ WITH_FACTORY = {with_factory!r}
 calls = []
 {database_setup}
 
-class Note(fr.IDBase):
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+
+class Note(fr.IDMixin, Base):
     text: Mapped[str]
 
 class NoteSchema(fr.IDSchema):
@@ -125,7 +128,7 @@ class NoteView(ViewBase):
 {create_method}
 
 schema_engine = create_engine("sqlite:///test.db") if {asynchronous!r} else engine
-fr.DataclassBase.metadata.create_all(schema_engine)
+Base.metadata.create_all(schema_engine)
 if {asynchronous!r}:
     schema_engine.dispose()
 

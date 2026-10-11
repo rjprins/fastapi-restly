@@ -13,11 +13,12 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
 def _make_item_view(app, **attrs):
-    class Item(fr.IDBase):
+    class Item(fr.IDMixin, SharedBase):
         name: Mapped[str]
         hidden: Mapped[bool] = mapped_column(default=False)
 

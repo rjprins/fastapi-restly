@@ -8,7 +8,7 @@ show deletion leaves identity alone. SQLite enforces none of that, so these
 pins live on the PostgreSQL leg.
 
 The tables live on a ``MetaData`` of this module's own rather than on
-``fr.DataclassBase``. The declarative registry is shared with the sibling test
+``SharedBase``. The declarative registry is shared with the sibling test
 module, and creating or dropping through it would take that module's tables with
 it. Cleanup is called directly instead of through the autouse fixtures, so
 nothing here depends on the configuration installed at import there.

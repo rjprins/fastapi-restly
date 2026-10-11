@@ -12,10 +12,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 import fastapi_restly as fr
 from fastapi_restly.testing._client import RestlyTestClient
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
-class UUIDModel(fr.DataclassBase):
+class UUIDModel(SharedBase):
     __tablename__ = "uuid_model"
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default_factory=uuid4)
@@ -55,13 +56,13 @@ def test_view_id_type_controls_openapi_path_parameter():
 
 
 def test_idschema_accepts_uuid_relation_ids(client):
-    class Author(fr.DataclassBase):
+    class Author(SharedBase):
         __tablename__ = "uuid_author"
 
         id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default_factory=uuid4)
         name: Mapped[str]
 
-    class Article(fr.IDBase):
+    class Article(fr.IDMixin, SharedBase):
         title: Mapped[str]
         author_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("uuid_author.id"))
         author: Mapped[Author] = relationship()
@@ -121,7 +122,7 @@ def flavor(request):
         client = RestlyTestClient(FastAPI())
 
         def make_tables():
-            fr.DataclassBase.metadata.create_all(engine)
+            SharedBase.metadata.create_all(engine)
 
     return SimpleNamespace(
         client=client,
@@ -135,7 +136,7 @@ def flavor(request):
 
 
 def _uuid_thing():
-    class UuidThing(fr.DataclassBase):
+    class UuidThing(SharedBase):
         id: Mapped[UUID] = mapped_column(
             Uuid, primary_key=True, default_factory=uuid4, init=False
         )
@@ -152,7 +153,7 @@ def _pk_case(kind):
     """(model, schema, create body, an id that fails validation, id schema)."""
     if kind == "int":
 
-        class IntThing(fr.IDBase):
+        class IntThing(fr.IDMixin, SharedBase):
             name: Mapped[str]
 
         class IntThingSchema(fr.IDSchema):
@@ -169,7 +170,7 @@ def _pk_case(kind):
             {"type": "string", "format": "uuid"},
         )
 
-    class StrThing(fr.DataclassBase):
+    class StrThing(SharedBase):
         id: Mapped[str] = mapped_column(primary_key=True)
         name: Mapped[str]
 
@@ -225,7 +226,7 @@ def test_id_parameter_takes_the_primary_key_type(flavor, kind):
 
 
 def test_id_parameter_follows_a_primary_key_with_another_name(flavor):
-    class Sku(fr.DataclassBase):
+    class Sku(SharedBase):
         code: Mapped[str] = mapped_column(primary_key=True)
         name: Mapped[str]
 
@@ -345,7 +346,7 @@ def test_subclass_of_registered_view_derives_its_own_id_type(flavor):
 
 @pytest.mark.parametrize("base", [fr.RestView, fr.AsyncRestView])
 def test_composite_primary_key_keeps_the_int_id(base):
-    class Pair(fr.DataclassBase):
+    class Pair(SharedBase):
         code: Mapped[str] = mapped_column(primary_key=True)
         n: Mapped[int] = mapped_column(primary_key=True)
         name: Mapped[str]
@@ -397,7 +398,7 @@ def test_typed_item_routes_allow_later_static_routes(flavor, kind, react_admin):
 
 
 def test_integer_item_routes_accept_zero_but_not_negative_ids(flavor):
-    class Thing(fr.DataclassBase):
+    class Thing(SharedBase):
         id: Mapped[int] = mapped_column(primary_key=True, autoincrement=False)
         name: Mapped[str]
 

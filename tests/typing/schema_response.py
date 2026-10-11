@@ -1,7 +1,7 @@
 from typing import Any
 
 from fastapi import FastAPI
-from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import DeclarativeBase, Mapped
 from typing_extensions import assert_type
 
 import fastapi_restly as fr
@@ -9,7 +9,11 @@ import fastapi_restly as fr
 app = FastAPI()
 
 
-class Account(fr.IDBase):
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+
+
+class Account(fr.IDMixin, Base):
     name: Mapped[str]
     password_hash: Mapped[str]
 
@@ -48,7 +52,7 @@ class AccountView(fr.AsyncRestView[Account, AccountResponse]):
         return self.to_response(result, fr.ResponseShape.LIST)
 
 
-class Note(fr.IDBase):
+class Note(fr.IDMixin, Base):
     text: Mapped[str]
 
 

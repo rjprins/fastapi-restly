@@ -27,6 +27,8 @@ from fastapi_restly.schemas._base import (
     _own_annotations,
 )
 
+from ._models import SharedBase
+
 
 def test_unannotated_columns_get_fields(client):
     class Base(DeclarativeBase):
@@ -64,7 +66,7 @@ def test_unannotated_columns_get_fields(client):
 
 
 def test_expression_column_property_is_read_only():
-    class Person(fr.IDBase):
+    class Person(fr.IDMixin, SharedBase):
         name = Column(String, nullable=False)
         shout = column_property(func.upper(name, type_=String))
 
@@ -80,7 +82,7 @@ def test_untypeable_column_raises_naming_the_attribute(client):
         def get_col_spec(self, **kw):
             return "OPAQUE"
 
-    class Blob(fr.IDBase):
+    class Blob(fr.IDMixin, SharedBase):
         data = Column(Opaque())
 
     with pytest.raises(TypeError, match=r"Blob\.data .*schema="):
@@ -92,7 +94,7 @@ def test_untypeable_column_raises_naming_the_attribute(client):
 
 
 def test_annotation_nearest_the_model_wins():
-    class Code(fr.IDBase):
+    class Code(fr.IDMixin, SharedBase):
         id: Mapped[str] = mapped_column(primary_key=True)
         name: Mapped[str]
 
@@ -101,10 +103,10 @@ def test_annotation_nearest_the_model_wins():
 
 
 def test_relationship_without_annotation_is_left_out():
-    class Owner(fr.IDBase):
+    class Owner(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class Pet(fr.IDBase):
+    class Pet(fr.IDMixin, SharedBase):
         owner_id = Column(ForeignKey("owner.id"))
         owner = relationship(Owner)
 
@@ -181,13 +183,14 @@ def test_deferred_annotation_naming_an_undefined_class_on_a_dataclass_base(clien
     # Declared in a function so the registry cleanup treats it as test-local.
     writer_namespace = {
         "fr": fr,
+        "Base": SharedBase,
         "Mapped": Mapped,
         "relationship": relationship,
         "__name__": __name__,
     }
     exec(
         "def declare():\n"
-        "    class Writer(fr.IDBase):\n"
+        "    class Writer(fr.IDMixin, Base):\n"
         "        name: Mapped[str]\n"
         "        novels: Mapped[list[Novel]] = relationship(\n"
         "            back_populates='writer', default_factory=list\n"
@@ -197,7 +200,7 @@ def test_deferred_annotation_naming_an_undefined_class_on_a_dataclass_base(clien
     )
     Writer = writer_namespace["declare"]()
 
-    class Novel(fr.IDBase):
+    class Novel(fr.IDMixin, SharedBase):
         title: Mapped[str]
         writer_id: Mapped[int] = mapped_column(ForeignKey("writer.id"))
         writer: Mapped[Writer] = relationship(back_populates="novels", default=None)

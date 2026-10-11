@@ -30,6 +30,8 @@ from sqlalchemy.orm import Mapped
 import fastapi_restly as fr
 from fastapi_restly._routes import iter_routes
 
+from ._models import SharedBase
+
 
 def test_view_registered_on_two_apps_both_work(sync_db):
     """Register the same View on two separate FastAPI apps (e.g. an admin
@@ -39,7 +41,7 @@ def test_view_registered_on_two_apps_both_work(sync_db):
     """
     engine, _ = sync_db
 
-    class Gadget(fr.IDBase):
+    class Gadget(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class GadgetSchema(fr.IDSchema):
@@ -56,7 +58,7 @@ def test_view_registered_on_two_apps_both_work(sync_db):
     fr.include_view(app_a, GadgetView)
     fr.include_view(app_b, GadgetView)
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     client_a = TestClient(app_a)
     client_b = TestClient(app_b)
@@ -85,7 +87,7 @@ def test_view_mounted_under_two_prefixes_via_subapp(sync_db):
     """
     engine, _ = sync_db
 
-    class Gizmo(fr.IDBase):
+    class Gizmo(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class GizmoSchema(fr.IDSchema):
@@ -105,7 +107,7 @@ def test_view_mounted_under_two_prefixes_via_subapp(sync_db):
     root.mount("/v1", sub_v1)
     root.mount("/v2", sub_v2)
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     client = TestClient(root)
     resp = client.post("/v1/gizmos/", json={"name": "one"})
@@ -128,7 +130,7 @@ def test_class_attributes_are_not_corrupted_by_second_registration():
     registration's routing.
     """
 
-    class Widget(fr.IDBase):
+    class Widget(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
     class WidgetSchema(fr.IDSchema):
@@ -191,7 +193,7 @@ def test_exclude_routes_does_not_crash_on_second_registration(sync_db):
     """
     engine, _ = sync_db
 
-    class Token(fr.IDBase):
+    class Token(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class TokenSchema(fr.IDSchema):
@@ -210,7 +212,7 @@ def test_exclude_routes_does_not_crash_on_second_registration(sync_db):
     # This is the call that previously raised AttributeError.
     fr.include_view(app_b, TokenView)
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     # GET works on both, DELETE is excluded on both (404/405).
     client_a = TestClient(app_a)
@@ -231,7 +233,7 @@ def test_subclass_of_registered_base_still_registers_independently(sync_db):
     """
     engine, _ = sync_db
 
-    class Knob(fr.IDBase):
+    class Knob(fr.IDMixin, SharedBase):
         label: Mapped[str]
 
     class KnobSchema(fr.IDSchema):
@@ -253,7 +255,7 @@ def test_subclass_of_registered_base_still_registers_independently(sync_db):
     app_b = FastAPI()
     fr.include_view(app_b, FancyKnobView)
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     client_a = TestClient(app_a)
     client_b = TestClient(app_b)
@@ -295,7 +297,7 @@ def test_subclass_and_parent_on_same_app_have_no_duplicate_routes(sync_db):
     """
     engine, _ = sync_db
 
-    class Dial(fr.IDBase):
+    class Dial(fr.IDMixin, SharedBase):
         label: Mapped[str]
 
     class DialSchema(fr.IDSchema):
@@ -320,7 +322,7 @@ def test_subclass_and_parent_on_same_app_have_no_duplicate_routes(sync_db):
     assert "/dials/fancy/" in paths
     assert "/dials/fancy/{id:int}" in paths
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
     client = TestClient(app)
     resp = client.post("/dials/fancy/", json={"label": "f"})
     assert resp.status_code == 201, resp.text
@@ -331,7 +333,7 @@ def test_inherited_custom_route_registered_once_on_same_app(sync_db):
     subclass exactly once (not duplicated)."""
     engine, _ = sync_db
 
-    class Meter(fr.IDBase):
+    class Meter(fr.IDMixin, SharedBase):
         label: Mapped[str]
 
     class MeterSchema(fr.IDSchema):
@@ -358,7 +360,7 @@ def test_inherited_custom_route_registered_once_on_same_app(sync_db):
     assert "/meters/health" in paths
     assert "/meters/sub/health" in paths
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
     client = TestClient(app)
     assert client.get("/meters/health").json() == {"src": "base"}
     assert client.get("/meters/sub/health").json() == {"src": "base"}
@@ -369,7 +371,7 @@ def test_subclass_route_override_wins_on_same_app(sync_db):
     version; the base keeps its own. No duplication, correct resolution."""
     engine, _ = sync_db
 
-    class Lever(fr.IDBase):
+    class Lever(fr.IDMixin, SharedBase):
         label: Mapped[str]
 
     class LeverSchema(fr.IDSchema):
@@ -397,7 +399,7 @@ def test_subclass_route_override_wins_on_same_app(sync_db):
 
     assert _duplicate_routes(app) == {}
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
     client = TestClient(app)
     assert client.get("/levers/health").json() == {"src": "base"}
     assert client.get("/levers/sub/health").json() == {"src": "sub"}
@@ -416,7 +418,7 @@ def test_parent_exclude_routes_with_coregistered_subclass_does_not_crash(sync_db
     """
     engine, _ = sync_db
 
-    class Relay(fr.IDBase):
+    class Relay(fr.IDMixin, SharedBase):
         label: Mapped[str]
 
     class RelaySchema(fr.IDSchema):
@@ -437,7 +439,7 @@ def test_parent_exclude_routes_with_coregistered_subclass_does_not_crash(sync_db
 
     assert _duplicate_routes(app) == {}
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
     client = TestClient(app)
     assert client.get("/relays/").status_code == 200
     assert client.get("/relays/sub/").status_code == 200
@@ -455,7 +457,7 @@ def test_same_view_registered_twice_on_same_app_mounts_once(sync_db):
     """
     engine, _ = sync_db
 
-    class Pulley(fr.IDBase):
+    class Pulley(fr.IDMixin, SharedBase):
         label: Mapped[str]
 
     class PulleySchema(fr.IDSchema):
@@ -476,7 +478,7 @@ def test_same_view_registered_twice_on_same_app_mounts_once(sync_db):
     assert "/pulleys/{id:int}" in paths
 
     # Still answers end-to-end.
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
     client = TestClient(app)
     resp = client.post("/pulleys/", json={"label": "p"})
     assert resp.status_code == 201, resp.text
@@ -489,7 +491,7 @@ def test_same_view_registered_twice_on_same_router_mounts_once(sync_db):
 
     engine, _ = sync_db
 
-    class Crank(fr.IDBase):
+    class Crank(fr.IDMixin, SharedBase):
         label: Mapped[str]
 
     class CrankSchema(fr.IDSchema):
@@ -509,7 +511,7 @@ def test_same_view_registered_twice_on_same_router_mounts_once(sync_db):
 
     assert _duplicate_routes(app) == {}
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
     client = TestClient(app)
     resp = client.post("/cranks/", json={"label": "c"})
     assert resp.status_code == 201, resp.text
@@ -520,7 +522,7 @@ def test_same_app_noop_does_not_block_other_parents(sync_db):
     registration on app A, registering on app B still mounts normally."""
     engine, _ = sync_db
 
-    class Spring(fr.IDBase):
+    class Spring(fr.IDMixin, SharedBase):
         label: Mapped[str]
 
     class SpringSchema(fr.IDSchema):
@@ -541,7 +543,7 @@ def test_same_app_noop_does_not_block_other_parents(sync_db):
     assert _duplicate_routes(app_a) == {}
     assert _duplicate_routes(app_b) == {}
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
     client_b = TestClient(app_b)
     resp = client_b.post("/springs/", json={"label": "s"})
     assert resp.status_code == 201, resp.text
@@ -554,7 +556,7 @@ def test_base_and_subclass_both_mount_on_same_app_despite_guard(sync_db):
     still a no-op."""
     engine, _ = sync_db
 
-    class Cog(fr.IDBase):
+    class Cog(fr.IDMixin, SharedBase):
         label: Mapped[str]
 
     class CogSchema(fr.IDSchema):
@@ -579,7 +581,7 @@ def test_base_and_subclass_both_mount_on_same_app_despite_guard(sync_db):
     assert "/cogs/" in paths
     assert "/cogs/fancy/" in paths
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
     client = TestClient(app)
     assert client.post("/cogs/", json={"label": "a"}).status_code == 201
     assert client.post("/cogs/fancy/", json={"label": "b"}).status_code == 201
@@ -592,7 +594,7 @@ def test_decorator_form_plus_explicit_call_is_noop(sync_db):
     call path."""
     engine, _ = sync_db
 
-    class Belt(fr.IDBase):
+    class Belt(fr.IDMixin, SharedBase):
         label: Mapped[str]
 
     class BeltSchema(fr.IDSchema):
@@ -610,7 +612,7 @@ def test_decorator_form_plus_explicit_call_is_noop(sync_db):
 
     assert _duplicate_routes(app) == {}
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
     client = TestClient(app)
     assert client.post("/belts/", json={"label": "b"}).status_code == 201
 
@@ -622,7 +624,7 @@ def test_app_and_its_router_count_as_one_parent(sync_db):
     ``include_view(app.router, V)`` mounts once, in either order."""
     engine, _ = sync_db
 
-    class Gear(fr.IDBase):
+    class Gear(fr.IDMixin, SharedBase):
         label: Mapped[str]
 
     class GearSchema(fr.IDSchema):
@@ -642,7 +644,7 @@ def test_app_and_its_router_count_as_one_parent(sync_db):
     paths = {path for path, _ in _effective_route_pairs(app)}
     assert "/gears/" in paths
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
     client = TestClient(app)
     assert client.post("/gears/", json={"label": "g"}).status_code == 201
 
@@ -660,7 +662,7 @@ def test_failed_registration_is_not_recorded_as_mounted(sync_db):
     """
     engine, _ = sync_db
 
-    class Winch(fr.IDBase):
+    class Winch(fr.IDMixin, SharedBase):
         label: Mapped[str]
 
     class WinchSchema(fr.IDSchema):
@@ -685,7 +687,7 @@ def test_failed_registration_is_not_recorded_as_mounted(sync_db):
     paths = {path for path, _ in _effective_route_pairs(app)}
     assert "/winches/" in paths
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
     client = TestClient(app)
     assert client.post("/winches/", json={"label": "w"}).status_code == 201
     assert client.delete("/winches/1").status_code in (404, 405)
@@ -696,7 +698,7 @@ def test_exclude_routes_unknown_name_still_raises():
     lineage (e.g. the business-verb name ``get_one`` instead of the route name
     ``get_one_endpoint``) is a genuine mistake and still raises."""
 
-    class Sprocket(fr.IDBase):
+    class Sprocket(fr.IDMixin, SharedBase):
         label: Mapped[str]
 
     class SprocketSchema(fr.IDSchema):

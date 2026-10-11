@@ -27,19 +27,20 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 import fastapi_restly as fr
 from fastapi_restly.query import derive_schema_list_params
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
-class DeadParamPublisher(fr.IDBase):
+class DeadParamPublisher(fr.IDMixin, SharedBase):
     name: Mapped[str] = mapped_column()
 
 
-class DeadParamBook(fr.IDBase):
+class DeadParamBook(fr.IDMixin, SharedBase):
     title: Mapped[str] = mapped_column()
     author_id: Mapped[int] = mapped_column(ForeignKey("dead_param_author.id"))
 
 
-class DeadParamAuthor(fr.IDBase):
+class DeadParamAuthor(fr.IDMixin, SharedBase):
     name: Mapped[str] = mapped_column()
     publisher_id: Mapped[int | None] = mapped_column(
         ForeignKey("dead_param_publisher.id")
@@ -86,7 +87,7 @@ def test_view_without_model_raises_clear_error():
             schema = ModellessSchema
 
 
-class JsonColumnRow(fr.IDBase):
+class JsonColumnRow(fr.IDMixin, SharedBase):
     name: Mapped[str] = mapped_column()
     meta: Mapped[dict | None] = mapped_column(JSON, default=None)
     tags: Mapped[list | None] = mapped_column(JSON, default=None)
@@ -175,7 +176,7 @@ def test_collection_typed_fields_isnull_works_end_to_end(client):
 
     # Defined locally so the autouse ``reset_metadata`` fixture tears the
     # table down with the test.
-    class JsonRow(fr.IDBase):
+    class JsonRow(fr.IDMixin, SharedBase):
         name: Mapped[str] = mapped_column()
         # none_as_null: a Python None means SQL NULL (not JSON 'null'), so
         # ``__isnull`` has real NULLs to match.

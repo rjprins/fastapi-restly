@@ -41,7 +41,6 @@ def test_each_base_has_its_own_registry_and_metadata():
     assert BaseA.registry is not BaseB.registry
     assert list(BaseA.metadata.tables) == ["user"]
     assert list(BaseB.metadata.tables) == ["user"]
-    assert "user" not in fr.DataclassBase.metadata.tables
 
 
 def test_models_get_restly_defaults():

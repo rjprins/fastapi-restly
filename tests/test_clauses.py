@@ -29,6 +29,8 @@ from fastapi_restly.clauses import (
 )
 from fastapi_restly.clauses._scopes import _NAMESPACES
 
+from ._models import SharedBase
+
 
 class Base(DeclarativeBase):
     pass
@@ -440,7 +442,7 @@ def test_namespace_registers_on_restly_idbase():
     import fastapi_restly as fr
     from fastapi_restly.clauses._scopes import _default_scope
 
-    class Gizmo(fr.IDBase):
+    class Gizmo(fr.IDMixin, SharedBase):
         __tablename__ = "gizmo_ns_test"
         tenant_id: M[int] = mc()
 

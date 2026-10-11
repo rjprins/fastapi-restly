@@ -15,13 +15,15 @@ from sqlalchemy.orm import Mapped, mapped_column
 import fastapi_restly as fr
 from fastapi_restly.testing import RestlyTestClient
 
+from ._models import SharedBase
+
 
 @pytest.fixture(params=["sync", "async"])
 def client(request: pytest.FixtureRequest) -> Iterator[RestlyTestClient]:
     sync = request.param == "sync"
     base = fr.RestView if sync else fr.AsyncRestView
 
-    class Item(fr.IDBase):
+    class Item(fr.IDMixin, SharedBase):
         name: Mapped[str]
         deleted_at: Mapped[datetime | None] = mapped_column(default=None)
 
@@ -79,9 +81,9 @@ def client(request: pytest.FixtureRequest) -> Iterator[RestlyTestClient]:
 
     if sync:
         engine, _ = request.getfixturevalue("sync_db")
-        fr.DataclassBase.metadata.create_all(engine)
+        SharedBase.metadata.create_all(engine)
     else:
-        asyncio.run(fr.db.async_create_all(fr.DataclassBase))
+        asyncio.run(fr.db.async_create_all(SharedBase))
 
     test_client = RestlyTestClient(app)
     test_client.post("/items/", json={"name": "kept"})

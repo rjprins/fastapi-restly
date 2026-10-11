@@ -14,6 +14,8 @@ import fastapi_restly as fr
 from fastapi_restly.db._globals import _fr_globals
 from fastapi_restly.pytest_fixtures import restly_client as restly_client
 
+from ._models import SharedBase
+
 # _cleanup_registry below scrubs SQLAlchemy's private declarative registry
 # between tests (see fznb.7 for why the suite depends on these internals).
 # Importing the marker types here is the first tripwire: if SA renames either,
@@ -95,15 +97,12 @@ def _cleanup_registry(base_cls: type) -> None:
 
 @pytest.fixture(autouse=True)
 def reset_metadata():
-    """Reset global framework state between tests to avoid cross-test leakage."""
-    framework_bases = (fr.DataclassBase,)
-    for base_cls in framework_bases:
-        _cleanup_registry(base_cls)
-        base_cls.metadata.clear()
+    """Reset the shared test base between tests to avoid cross-test leakage."""
+    _cleanup_registry(SharedBase)
+    SharedBase.metadata.clear()
     yield
-    for base_cls in framework_bases:
-        _cleanup_registry(base_cls)
-        base_cls.metadata.clear()
+    _cleanup_registry(SharedBase)
+    SharedBase.metadata.clear()
 
 
 @pytest.fixture(autouse=True)
@@ -151,6 +150,6 @@ def sync_db() -> Iterator[tuple[Engine, sessionmaker[Session]]]:
 
 def create_tables():
     async def create_tables():
-        await fr.db.async_create_all(fr.DataclassBase)
+        await fr.db.async_create_all(SharedBase)
 
     asyncio.run(create_tables())

@@ -1,14 +1,18 @@
 import pydantic
-from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import DeclarativeBase, Mapped
 
 import fastapi_restly as fr
 
 
-class Customer(fr.IDBase):
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+
+
+class Customer(fr.IDMixin, Base):
     name: Mapped[str]
 
 
-class Order(fr.IDBase):
+class Order(fr.IDMixin, Base):
     item_name: Mapped[str]
     quantity: Mapped[int]
     customer_id: Mapped[int]

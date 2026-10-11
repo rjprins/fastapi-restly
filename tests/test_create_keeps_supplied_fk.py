@@ -24,86 +24,87 @@ from fastapi_restly.objects import async_make_new_object, make_new_object
 from fastapi_restly.testing import RestlyTestClient
 from fastapi_restly.views._base import build_create_plan
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
 def _fk_default_relationship_default_none():
     # Both sides of the pair are optional in __init__.
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int | None] = mapped_column(ForeignKey("post.id"), default=None)
         post: Mapped[Post | None] = relationship(default=None)
 
-    return Post, Comment, fr.DataclassBase.metadata
+    return Post, Comment, SharedBase.metadata
 
 
 def _required_fk_relationship_default_none():
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
         post: Mapped[Post] = relationship(default=None)
 
-    return Post, Comment, fr.DataclassBase.metadata
+    return Post, Comment, SharedBase.metadata
 
 
 def _required_fk_relationship_init_false():
     # Nothing assigns the relationship at construction, so only the None
     # for an omitted reference field can override the FK.
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
         post: Mapped[Post] = relationship(init=False)
 
-    return Post, Comment, fr.DataclassBase.metadata
+    return Post, Comment, SharedBase.metadata
 
 
 def _required_fk_relationship_init_false_default_none():
     # __init__ assigns an init=False field's default too.
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
         post: Mapped[Post] = relationship(init=False, default=None)
 
-    return Post, Comment, fr.DataclassBase.metadata
+    return Post, Comment, SharedBase.metadata
 
 
 def _fk_init_false_relationship_default_none():
     # The id is set after construction, on top of the None __init__
     # already assigned.
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int | None] = mapped_column(ForeignKey("post.id"), init=False)
         post: Mapped[Post | None] = relationship(default=None)
 
-    return Post, Comment, fr.DataclassBase.metadata
+    return Post, Comment, SharedBase.metadata
 
 
 def _fk_default_relationship_required_init():
     # A required relationship argument: the plan passes None for it.
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int | None] = mapped_column(ForeignKey("post.id"), default=None)
         post: Mapped[Post | None] = relationship()
 
-    return Post, Comment, fr.DataclassBase.metadata
+    return Post, Comment, SharedBase.metadata
 
 
 def _declarative_base():
@@ -374,7 +375,7 @@ def test_sync_view_create_keeps_supplied_fk(sync_db, shape):
         model = Comment
         schema = CommentSchema
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
     client = RestlyTestClient(app)
 
     post = client.post("/posts/", json={"title": "p1"}).json()
@@ -434,7 +435,7 @@ def test_sync_view_with_generated_schema_keeps_supplied_fk(sync_db):
         prefix = "/comments"
         model = Comment
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
     client = RestlyTestClient(app)
 
     post = client.post("/posts/", json={"title": "p1"}).json()

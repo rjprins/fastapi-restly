@@ -22,6 +22,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
@@ -34,7 +35,7 @@ class _PersonSchema(fr.IDSchema):
 
 @pytest.fixture
 def people_client(client):
-    class Person(fr.IDBase):
+    class Person(fr.IDMixin, SharedBase):
         name: Mapped[str]
         age: Mapped[int]
         created_at: Mapped[datetime] = mapped_column(default=datetime(2024, 1, 1))
@@ -154,7 +155,7 @@ def test_range_operators_not_emitted_for_bool(client):
     (which would widen the result set — bad for filters).
     """
 
-    class FlaggedThing(fr.IDBase):
+    class FlaggedThing(fr.IDMixin, SharedBase):
         name: Mapped[str]
         active: Mapped[bool] = mapped_column(default=True)
 
@@ -242,7 +243,7 @@ def test_python_field_name_rejected_for_aliased_field(client):
     """
     import pydantic
 
-    class Item(fr.IDBase):
+    class Item(fr.IDMixin, SharedBase):
         display_name: Mapped[str]
 
     class ItemSchema(fr.IDSchema):

@@ -198,16 +198,3 @@ class ModelDefaults(
                     if annotation not in own
                 }
             )
-
-
-class DataclassBase(ModelDefaults, DeclarativeBase):
-    """SQLAlchemy declarative base with dataclass semantics.
-
-    It is :class:`ModelDefaults` on a ``DeclarativeBase`` that Restly owns.
-    """
-
-
-class IDBase(IDMixin, DataclassBase):
-    """Convenience base: DataclassBase + integer `id` primary key."""
-
-    __abstract__ = True

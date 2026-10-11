@@ -10,6 +10,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
@@ -29,7 +30,7 @@ def base(request):
 
 
 def test_autoincrement_id_is_left_out_of_derived_write_schemas(base):
-    class Gadget(fr.IDBase):
+    class Gadget(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class GadgetSchema(pydantic.BaseModel):
@@ -44,7 +45,7 @@ def test_autoincrement_id_is_left_out_of_derived_write_schemas(base):
 
 
 def test_primary_key_with_a_column_default_is_left_out(base):
-    class Token(fr.DataclassBase):
+    class Token(SharedBase):
         id: Mapped[UUID] = mapped_column(
             Uuid, primary_key=True, insert_default=uuid4, init=False
         )
@@ -61,7 +62,7 @@ def test_primary_key_with_a_column_default_is_left_out(base):
 
 
 def test_dataclass_primary_key_outside_init_is_left_out(base):
-    class Ticket(fr.DataclassBase):
+    class Ticket(SharedBase):
         id: Mapped[UUID] = mapped_column(
             Uuid, primary_key=True, default_factory=uuid4, init=False
         )
@@ -96,7 +97,7 @@ def test_generated_primary_key_with_another_name_is_left_out(base):
 
 
 def test_natural_key_stays_in_the_derived_create_schema(base):
-    class Country(fr.DataclassBase):
+    class Country(SharedBase):
         code: Mapped[str] = mapped_column(primary_key=True)
         name: Mapped[str]
 
@@ -111,7 +112,7 @@ def test_natural_key_stays_in_the_derived_create_schema(base):
 
 
 def test_composite_key_stays_in_the_derived_create_schema(base):
-    class Membership(fr.DataclassBase):
+    class Membership(SharedBase):
         user_id: Mapped[int] = mapped_column(primary_key=True)
         group_id: Mapped[int] = mapped_column(primary_key=True)
         role: Mapped[str]
@@ -127,7 +128,7 @@ def test_composite_key_stays_in_the_derived_create_schema(base):
 
 
 def test_explicit_write_schemas_are_left_alone(base):
-    class Device(fr.IDBase):
+    class Device(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class DeviceSchema(pydantic.BaseModel):
@@ -147,7 +148,7 @@ def test_explicit_write_schemas_are_left_alone(base):
 
 
 def test_client_cannot_choose_or_change_a_generated_id(client):
-    class Sprocket(fr.IDBase):
+    class Sprocket(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class SprocketSchema(pydantic.BaseModel):

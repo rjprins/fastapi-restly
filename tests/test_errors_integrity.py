@@ -12,6 +12,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 # ---------------------------------------------------------------------------
@@ -24,7 +25,7 @@ def test_post_duplicate_unique_column_returns_409(client):
     a SQLAlchemy ``IntegrityError`` which the framework's default handler
     translates to HTTP 409 with a clean JSON body."""
 
-    class UserUnique(fr.IDBase):
+    class UserUnique(fr.IDMixin, SharedBase):
         username: Mapped[str] = mapped_column(unique=True)
         email: Mapped[str]
 
@@ -61,7 +62,7 @@ def test_post_duplicate_unique_column_returns_409(client):
 def test_post_duplicate_explicit_unique_constraint_returns_409(client):
     """Same as above but using an explicit table-level UniqueConstraint."""
 
-    class Coupon(fr.IDBase):
+    class Coupon(fr.IDMixin, SharedBase):
         code: Mapped[str]
         campaign: Mapped[str]
         __table_args__ = (
@@ -101,7 +102,7 @@ def test_patch_to_duplicate_unique_value_returns_409(client):
     """Updating a record to use a username that already exists violates the
     unique constraint and is translated to 409."""
 
-    class Account(fr.IDBase):
+    class Account(fr.IDMixin, SharedBase):
         username: Mapped[str] = mapped_column(unique=True)
 
     class AccountSchema(fr.IDSchema):
@@ -139,10 +140,10 @@ def test_post_with_invalid_fk_via_plain_int_raises_integrity_error(client):
     Restly sets on every SQLite engine it builds from a URL.
     """
 
-    class Owner(fr.IDBase):
+    class Owner(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class Pet(fr.IDBase):
+    class Pet(fr.IDMixin, SharedBase):
         name: Mapped[str]
         owner_id: Mapped[int] = mapped_column(ForeignKey("owner.id"))
 
@@ -185,10 +186,10 @@ def test_post_with_invalid_fk_via_idschema_returns_404(client):
     looks up the parent and raises HTTPException(404) before flush. This
     is the well-defined contract — pin it."""
 
-    class Department(fr.IDBase):
+    class Department(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class Employee(fr.IDBase):
+    class Employee(fr.IDMixin, SharedBase):
         name: Mapped[str]
         department_id: Mapped[int] = mapped_column(ForeignKey("department.id"))
         department: Mapped[Department] = relationship(default=None)
@@ -214,10 +215,10 @@ def test_post_with_invalid_fk_via_idschema_returns_404(client):
 
 
 def test_post_with_conflicting_explicit_reference_fields_returns_422(client):
-    class Author(fr.IDBase):
+    class Author(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class Article(fr.IDBase):
+    class Article(fr.IDMixin, SharedBase):
         title: Mapped[str]
         author_id: Mapped[int] = mapped_column(ForeignKey("author.id"))
         author: Mapped[Author] = relationship(default=None)
@@ -270,7 +271,7 @@ def test_post_missing_required_field_returns_422(client):
     (422), not at the DB layer. Pin this so the framework keeps short-
     circuiting before hitting the database."""
 
-    class StrictItem(fr.IDBase):
+    class StrictItem(fr.IDMixin, SharedBase):
         name: Mapped[str]
         sku: Mapped[str]
 

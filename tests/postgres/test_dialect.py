@@ -34,6 +34,7 @@ from sqlalchemy.orm import Mapped, mapped_column, sessionmaker
 import fastapi_restly as fr
 from fastapi_restly._exception_handlers import _build_integrity_detail
 
+from .._models import SharedBase
 from .conftest import PG_URL
 
 # This module is only imported when the subtree is collected, which conftest
@@ -53,7 +54,7 @@ fr.configure(make_session=_make_session, async_make_session=_async_make_session)
 _app = FastAPI()
 
 
-class PgWord(fr.IDBase):
+class PgWord(fr.IDMixin, SharedBase):
     name: Mapped[str]
 
 
@@ -61,7 +62,7 @@ class PgWordSchema(fr.IDSchema):
     name: str
 
 
-class PgRanked(fr.IDBase):
+class PgRanked(fr.IDMixin, SharedBase):
     label: Mapped[str]
     score: Mapped[int | None] = mapped_column(default=None)
 
@@ -71,7 +72,7 @@ class PgRankedSchema(fr.IDSchema):
     score: int | None = None
 
 
-class PgPaged(fr.IDBase):
+class PgPaged(fr.IDMixin, SharedBase):
     label: Mapped[str]
     bucket: Mapped[int]
 
@@ -81,7 +82,7 @@ class PgPagedSchema(fr.IDSchema):
     bucket: int
 
 
-class PgShared(fr.IDBase):
+class PgShared(fr.IDMixin, SharedBase):
     name: Mapped[str]
 
 
@@ -93,7 +94,7 @@ class PgSharedSchema(fr.IDSchema):
 # raises a psycopg error (with a real SQLSTATE + diag) on PostgreSQL; SQLite
 # either enforces it through a different, string-only error path or -- for
 # foreign keys -- does not enforce it at all by default.
-class PgUnique(fr.IDBase):
+class PgUnique(fr.IDMixin, SharedBase):
     code: Mapped[str] = mapped_column(unique=True)
 
 
@@ -101,11 +102,11 @@ class PgUniqueSchema(fr.IDSchema):
     code: str
 
 
-class PgParent(fr.IDBase):
+class PgParent(fr.IDMixin, SharedBase):
     name: Mapped[str]  # NOT NULL, reused for the not-null violation
 
 
-class PgChild(fr.IDBase):
+class PgChild(fr.IDMixin, SharedBase):
     # A plain scalar FK (no fr.MustExist), so existence is not pre-validated in
     # the app and the insert reaches the database constraint.
     parent_id: Mapped[int] = mapped_column(ForeignKey(PgParent.id))
@@ -115,7 +116,7 @@ class PgChildSchema(fr.IDSchema):
     parent_id: int
 
 
-class PgChecked(fr.IDBase):
+class PgChecked(fr.IDMixin, SharedBase):
     amount: Mapped[int]
     __table_args__ = (CheckConstraint("amount >= 0", name="pg_checked_amount_nonneg"),)
 
@@ -198,7 +199,7 @@ def _pg_schema():
     clears any table left behind on the persistent server.
     """
     tables = [model.__table__ for model in _MODELS]
-    metadata = fr.DataclassBase.metadata
+    metadata = SharedBase.metadata
     metadata.drop_all(_sync_engine, tables=tables)
     metadata.create_all(_sync_engine, tables=tables)
     _seed()

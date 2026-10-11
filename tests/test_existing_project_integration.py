@@ -6,11 +6,12 @@ from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
 def test_restly_view_coexists_with_existing_fastapi_router():
-    class User(fr.IDBase):
+    class User(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class UserSchema(fr.IDSchema):
@@ -63,7 +64,7 @@ def test_restly_view_coexists_with_existing_fastapi_router():
 def test_excluded_restly_route_can_be_replaced_by_plain_fastapi_route():
     deleted_ids: list[int] = []
 
-    class User(fr.IDBase):
+    class User(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class UserSchema(fr.IDSchema):

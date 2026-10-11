@@ -28,6 +28,7 @@ import fastapi_restly as fr
 from fastapi_restly.query import derive_schema_list_params
 from fastapi_restly.testing import RestlyTestClient
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 OPAQUE_SET = {"post_id", "post_id__in", "post_id__ne", "post_id__isnull"}
@@ -48,10 +49,10 @@ NEVER = {
 
 
 def test_idref_fk_generates_opaque_filter_params():
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str] = mapped_column()
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str] = mapped_column()
         post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
 
@@ -68,12 +69,12 @@ def test_idref_fk_generates_opaque_filter_params():
 def test_idref_fk_uuid_pk_yields_the_same_opaque_set():
     # Uniformity: the operator set does not depend on the PK type. A uuid PK
     # gets exactly the same four operators as an int PK -- no range either way.
-    class UPost(fr.DataclassBase):
+    class UPost(SharedBase):
         __tablename__ = "idref_filter_upost"
         id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default_factory=uuid4)
         title: Mapped[str] = mapped_column(default="t")
 
-    class UComment(fr.IDBase):
+    class UComment(fr.IDMixin, SharedBase):
         content: Mapped[str] = mapped_column()
         post_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("idref_filter_upost.id"))
 
@@ -91,10 +92,10 @@ def test_idref_targeting_leaves_nested_resource_dotted_traversal_intact():
     # The fix targets IDRef specifically, not IDSchema. A nested *resource*
     # schema that embeds its own id also subclasses IDSchema; it must keep its
     # dotted relation traversal rather than collapse to a scalar leaf.
-    class Pub(fr.IDBase):
+    class Pub(fr.IDMixin, SharedBase):
         name: Mapped[str] = mapped_column()
 
-    class Author(fr.IDBase):
+    class Author(fr.IDMixin, SharedBase):
         name: Mapped[str] = mapped_column()
         pub_id: Mapped[int | None] = mapped_column(ForeignKey("pub.id"))
         pub: Mapped[Pub | None] = relationship()
@@ -125,10 +126,10 @@ def test_idref_targeting_leaves_nested_resource_dotted_traversal_intact():
 def _register_blog(app, view_base):
     """Register a /posts + /comments blog where Comment.post_id is an IDRef."""
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str] = mapped_column()
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str] = mapped_column()
         post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
 
@@ -194,6 +195,6 @@ def test_sync_list_filters_by_idref_fk(sync_db):
     engine, _ = sync_db
     app = FastAPI()
     _register_blog(app, fr.RestView)
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
     client = RestlyTestClient(app)
     _assert_fk_filtering(client, *_seed(client))

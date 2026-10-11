@@ -33,6 +33,7 @@ from fastapi_restly.schemas._base import (
     _resolve_ids_to_sqlalchemy_objects,
 )
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 # ---------------------------------------------------------------------------
@@ -41,7 +42,7 @@ from .conftest import create_tables
 
 
 def test_default_scope_and_view_scope_over_http(client):
-    class ScopeItem(fr.IDBase):
+    class ScopeItem(fr.IDMixin, SharedBase):
         tenant_id: Mapped[int]
         name: Mapped[str]
         deleted: Mapped[bool] = mapped_column(default=False)
@@ -122,7 +123,7 @@ def test_default_scope_and_view_scope_over_http(client):
 
 
 def test_unscoped_view_reads_past_the_default_scope(client):
-    class ScopeDoc(fr.IDBase):
+    class ScopeDoc(fr.IDMixin, SharedBase):
         tenant_id: Mapped[int]
         name: Mapped[str]
 
@@ -171,10 +172,10 @@ def test_unscoped_view_reads_past_the_default_scope(client):
 
 
 def test_a_child_scope_reads_through_the_parent_scope(client):
-    class ScopeShelf(fr.IDBase):
+    class ScopeShelf(fr.IDMixin, SharedBase):
         tenant_id: Mapped[int]
 
-    class ScopeBook(fr.IDBase):
+    class ScopeBook(fr.IDMixin, SharedBase):
         title: Mapped[str]
         shelf_id: Mapped[int] = mapped_column(ForeignKey("scope_shelf.id"))
         shelf: Mapped[ScopeShelf] = relationship(init=False)
@@ -258,7 +259,7 @@ def test_a_route_reads_through_its_own_scope(client):
     naming a scope on the read call; the view scope stays the default
     for every other read, and the route's literal path wins over /{id}."""
 
-    class ScopeNote(fr.IDBase):
+    class ScopeNote(fr.IDMixin, SharedBase):
         tenant_id: Mapped[int]
         name: Mapped[str]
         deleted: Mapped[bool] = mapped_column(default=False)
@@ -380,7 +381,7 @@ def test_a_route_narrows_inside_the_scope_with_where(client):
     replacing it: a nested list keeps the visibility rules, and the page
     total counts the narrowed rows."""
 
-    class WhereTask(fr.IDBase):
+    class WhereTask(fr.IDMixin, SharedBase):
         tenant_id: Mapped[int]
         project_id: Mapped[int]
         name: Mapped[str]
@@ -501,7 +502,7 @@ def test_the_resolved_scope_and_the_reads_agree_on_the_rows_async(client):
     scope), and the clause it names instead (a per-read scope or
     UNSCOPED). One route reports all four answers for one surface."""
 
-    class AgreeRow(fr.IDBase):
+    class AgreeRow(fr.IDMixin, SharedBase):
         tenant_id: Mapped[int]
         name: Mapped[str]
         deleted: Mapped[bool] = mapped_column(default=False)
@@ -606,7 +607,7 @@ def test_a_count_route_counts_the_scoped_select_under_the_list_params(client):
     """A count route applies the client's filters to the view's scoped
     select, so it totals the rows the list pages without fetching them."""
 
-    class CountRow(fr.IDBase):
+    class CountRow(fr.IDMixin, SharedBase):
         tenant_id: Mapped[int]
         name: Mapped[str]
 
@@ -670,12 +671,12 @@ def test_a_session_rule_holds_under_every_scope_and_reference_check(client):
     statements, so the rule reaches a view that opted out, a route that
     named its own scope, and a ``MustExist`` check alike."""
 
-    class FloorNote(fr.IDBase):
+    class FloorNote(fr.IDMixin, SharedBase):
         tenant_id: Mapped[int]
         name: Mapped[str]
         deleted: Mapped[bool] = mapped_column(default=False)
 
-    class FloorRef(fr.IDBase):
+    class FloorRef(fr.IDMixin, SharedBase):
         note_id: Mapped[int] = mapped_column(ForeignKey(FloorNote.id))
 
     class Current(fr.ContextNamespace):
@@ -799,7 +800,7 @@ def test_a_sync_route_takes_the_list_params(sync_db):
 
     from fastapi_restly.testing import RestlyTestClient
 
-    class SyncListedNote(fr.IDBase):
+    class SyncListedNote(fr.IDMixin, SharedBase):
         name: Mapped[str]
         deleted: Mapped[bool] = mapped_column(default=False)
 
@@ -837,7 +838,7 @@ def test_a_sync_route_takes_the_list_params(sync_db):
     class SyncListedNoteSubView(SyncListedNoteView):
         pass
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     client.post("/sync-listed/", json={"name": "live"})
     client.post("/sync-listed/", json={"name": "gone", "deleted": True})
@@ -857,7 +858,7 @@ def test_a_sync_route_takes_the_list_params(sync_db):
 
 
 def test_reference_checks_apply_scopes_over_http(client):
-    class ScopeOwner(fr.IDBase):
+    class ScopeOwner(fr.IDMixin, SharedBase):
         tenant_id: Mapped[int]
         active: Mapped[bool]
 
@@ -871,7 +872,7 @@ def test_reference_checks_apply_scopes_over_http(client):
         is_active = fr.where_clause(ScopeOwner.active.is_(True))
         default_scope = fr.all_of(owned_by_tenant, is_active)
 
-    class ScopeTask(fr.IDBase):
+    class ScopeTask(fr.IDMixin, SharedBase):
         title: Mapped[str]
         owner_id: Mapped[int] = mapped_column(ForeignKey(ScopeOwner.id))
         tenant_owner_id: Mapped[int | None] = mapped_column(default=None)
@@ -948,7 +949,7 @@ def test_reference_checks_apply_scopes_over_http(client):
 
 
 def test_idref_resolution_applies_default_scope_over_http(client):
-    class ScopeAuthor(fr.IDBase):
+    class ScopeAuthor(fr.IDMixin, SharedBase):
         tenant_id: Mapped[int]
         name: Mapped[str]
 
@@ -960,7 +961,7 @@ def test_idref_resolution_applies_default_scope_over_http(client):
 
         default_scope = fr.where_clause(ScopeAuthor.tenant_id == Current.tenant_id)
 
-    class ScopeBook(fr.IDBase):
+    class ScopeBook(fr.IDMixin, SharedBase):
         title: Mapped[str]
         author_id: Mapped[int] = mapped_column(ForeignKey(ScopeAuthor.id))
 
@@ -1019,7 +1020,7 @@ def test_async_bind_dependency_reaches_sync_endpoints(sync_db):
 
     from fastapi_restly.testing import RestlyTestClient
 
-    class SyncScopedNote(fr.IDBase):
+    class SyncScopedNote(fr.IDMixin, SharedBase):
         tenant_id: Mapped[int]
         name: Mapped[str]
 
@@ -1048,7 +1049,7 @@ def test_async_bind_dependency_reaches_sync_endpoints(sync_db):
         schema = SyncScopedNoteSchema
         dependencies = [Depends(bind_tenant)]
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     t1 = {"x-tenant-id": "1"}
     t2 = {"x-tenant-id": "2"}
@@ -1369,7 +1370,7 @@ def test_composed_unscoped_controls_sync_reads_and_references(sync_session, op):
 
 
 def test_negated_unscoped_default_hides_async_reads_and_references(client):
-    class HiddenRow(fr.IDBase):
+    class HiddenRow(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class HiddenRowClauses(fr.ClauseNamespace):
@@ -1379,7 +1380,7 @@ def test_negated_unscoped_default_hides_async_reads_and_references(client):
     class HiddenRowSchema(fr.IDSchema):
         name: str
 
-    class RefRow(fr.IDBase):
+    class RefRow(fr.IDMixin, SharedBase):
         target_id: Mapped[int] = mapped_column(ForeignKey(HiddenRow.id))
 
     class RefRowSchema(fr.IDSchema):

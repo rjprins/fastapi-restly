@@ -27,12 +27,14 @@ from fastapi_restly.schemas._base import (
     _resolve_ids_to_sqlalchemy_objects,
 )
 
+from ._models import SharedBase
+
 
 @pytest.mark.asyncio
 async def test_async_idref_list_resolution_order_dedup_and_missing():
     async_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
 
-    class ListResTagAsync(fr.IDBase):
+    class ListResTagAsync(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class TagRefSchema(fr.BaseSchema):
@@ -40,7 +42,7 @@ async def test_async_idref_list_resolution_order_dedup_and_missing():
 
     try:
         async with async_engine.begin() as conn:
-            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+            await conn.run_sync(SharedBase.metadata.create_all)
 
         async with AsyncSession(bind=async_engine, expire_on_commit=False) as session:
             t1, t2 = ListResTagAsync(name="a"), ListResTagAsync(name="b")
@@ -74,14 +76,14 @@ def test_sync_idref_list_resolution_order_dedup_and_missing():
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
 
-    class ListResTagSync(fr.IDBase):
+    class ListResTagSync(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class TagRefSchema(fr.BaseSchema):
         tags: list[fr.IDRef[ListResTagSync]]
 
     try:
-        fr.DataclassBase.metadata.create_all(engine)
+        SharedBase.metadata.create_all(engine)
 
         with Session(bind=engine, expire_on_commit=False) as session:
             t1, t2 = ListResTagSync(name="a"), ListResTagSync(name="b")

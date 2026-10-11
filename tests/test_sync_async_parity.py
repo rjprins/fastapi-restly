@@ -17,6 +17,8 @@ from sqlalchemy.orm import Mapped
 import fastapi_restly as fr
 from fastapi_restly.db._globals import _fr_globals
 
+from ._models import SharedBase
+
 # ---------------------------------------------------------------------------
 # A pair of fixtures that each yield a TestClient with one view registered.
 # The view models the same Pydantic schema; only the View base class
@@ -42,7 +44,7 @@ def _restore_globals(saved):
 def sync_client(sync_db) -> Iterator[TestClient]:
     engine, _ = sync_db
 
-    class Gadget(fr.IDBase):
+    class Gadget(fr.IDMixin, SharedBase):
         name: Mapped[str]
         price: Mapped[float]
 
@@ -50,7 +52,7 @@ def sync_client(sync_db) -> Iterator[TestClient]:
         name: str
         price: float
 
-    class CustomCollection(fr.IDBase):
+    class CustomCollection(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class CustomCollectionSchema(fr.IDSchema):
@@ -80,7 +82,7 @@ def sync_client(sync_db) -> Iterator[TestClient]:
         ) -> CustomCollection:
             return self.handle_create(schema_obj)
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
     yield TestClient(app)
 
 
@@ -90,7 +92,7 @@ def async_client() -> Iterator[TestClient]:
 
     fr.configure(async_database_url="sqlite+aiosqlite:///:memory:")
 
-    class GadgetA(fr.IDBase):
+    class GadgetA(fr.IDMixin, SharedBase):
         name: Mapped[str]
         price: Mapped[float]
 
@@ -98,7 +100,7 @@ def async_client() -> Iterator[TestClient]:
         name: str
         price: float
 
-    class CustomCollectionA(fr.IDBase):
+    class CustomCollectionA(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class CustomCollectionASchema(fr.IDSchema):
@@ -134,7 +136,7 @@ def async_client() -> Iterator[TestClient]:
     async def _create():
         engine = fr.db.get_async_engine()
         async with engine.begin() as conn:
-            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+            await conn.run_sync(SharedBase.metadata.create_all)
 
     asyncio.run(_create())
 

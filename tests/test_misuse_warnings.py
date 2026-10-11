@@ -22,12 +22,14 @@ import fastapi_restly as fr
 from fastapi_restly.db._globals import RestlyContext
 from fastapi_restly.exc import RestlyMisuseWarning
 
+from ._models import SharedBase
 
-class GuardPost(fr.IDBase):
+
+class GuardPost(fr.IDMixin, SharedBase):
     title: orm.Mapped[str]
 
 
-class GuardComment(fr.IDBase):
+class GuardComment(fr.IDMixin, SharedBase):
     body: orm.Mapped[str]
     post_id: orm.Mapped[int] = orm.mapped_column(ForeignKey(GuardPost.id))
     post: orm.Mapped[GuardPost] = orm.relationship(default=None, init=False)
@@ -49,7 +51,7 @@ def _register(view_cls: type, *, warn_on_misuse: bool | None = True) -> list[str
 
 
 def test_shell_override_warns():
-    class ShellArticle(fr.IDBase):
+    class ShellArticle(fr.IDMixin, SharedBase):
         title: orm.Mapped[str]
 
     class ShellArticleView(fr.AsyncRestView):
@@ -70,7 +72,7 @@ def test_shell_override_warns():
 
 
 def test_manual_commit_warns():
-    class CommitArticle(fr.IDBase):
+    class CommitArticle(fr.IDMixin, SharedBase):
         title: orm.Mapped[str]
 
     class CommitArticleView(fr.AsyncRestView):
@@ -91,7 +93,7 @@ def test_manual_commit_warns():
 
 
 def test_write_action_method_does_not_warn():
-    class PublishArticle(fr.IDBase):
+    class PublishArticle(fr.IDMixin, SharedBase):
         title: orm.Mapped[str]
 
     class PublishArticleView(fr.AsyncRestView):
@@ -151,7 +153,7 @@ def test_clean_restview_does_not_warn():
     also pins that the lint runs *before* that copy (otherwise every clean view
     would appear to override all five shells)."""
 
-    class CleanArticle(fr.IDBase):
+    class CleanArticle(fr.IDMixin, SharedBase):
         title: orm.Mapped[str]
 
     class CleanArticleView(fr.AsyncRestView):
@@ -167,7 +169,7 @@ def test_clean_restview_does_not_warn():
 
 
 def test_disabled_by_default():
-    class QuietArticle(fr.IDBase):
+    class QuietArticle(fr.IDMixin, SharedBase):
         title: orm.Mapped[str]
 
     class QuietArticleView(fr.AsyncRestView):
@@ -251,7 +253,7 @@ def test_mustexist_on_scalar_fk_does_not_warn():
 
 
 def test_duplicate_registration_warns():
-    class DupPost(fr.IDBase):
+    class DupPost(fr.IDMixin, SharedBase):
         title: orm.Mapped[str]
 
     class DupPostView(fr.AsyncRestView):
@@ -274,7 +276,7 @@ def test_duplicate_registration_warns():
 
 
 def test_duplicate_registration_silent_by_default():
-    class QuietDupPost(fr.IDBase):
+    class QuietDupPost(fr.IDMixin, SharedBase):
         title: orm.Mapped[str]
 
     class QuietDupPostView(fr.AsyncRestView):

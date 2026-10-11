@@ -101,12 +101,13 @@ def configure_tests(
 
         import fastapi_restly as fr
         from myapp.main import create_app
+        from myapp.models import Base
 
         app = create_app("sqlite+aiosqlite:///./test.db")
 
         fr.testing.configure_tests(
             app=app,
-            base=fr.DataclassBase,
+            base=Base,
             create_all=True,
         )
 

@@ -12,6 +12,8 @@ from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
+
 HANDLERS = [
     "handle_get_many",
     "handle_get_one",
@@ -23,7 +25,7 @@ WRITE_HANDLERS = ["handle_create", "handle_update", "handle_delete"]
 
 
 def _model_and_schema():
-    class Record(fr.IDBase):
+    class Record(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class RecordSchema(fr.IDSchema):

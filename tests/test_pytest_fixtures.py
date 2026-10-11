@@ -29,17 +29,21 @@ def setup_async_db():
         """
 import pytest
 import fastapi_restly as fr
-from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import DeclarativeBase, Mapped
 
 
-class Widget(fr.IDBase):
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+
+
+class Widget(fr.IDMixin, Base):
     name: Mapped[str]
 
 
 @pytest.mark.asyncio
 async def test_async_session_without_sync_sessionmaker(restly_async_session):
     conn = await restly_async_session.connection()
-    await conn.run_sync(fr.DataclassBase.metadata.create_all)
+    await conn.run_sync(Base.metadata.create_all)
 
     widget = Widget(name="alpha")
     restly_async_session.add(widget)

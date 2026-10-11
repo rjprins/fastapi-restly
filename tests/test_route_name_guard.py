@@ -14,9 +14,11 @@ from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
+
 
 def test_route_named_like_write_verb_is_rejected():
-    class Item(fr.IDBase):
+    class Item(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class ItemSchema(fr.IDSchema):
@@ -37,7 +39,7 @@ def test_route_named_like_write_verb_is_rejected():
 
 
 def test_route_named_like_read_verb_is_rejected():
-    class Item(fr.IDBase):
+    class Item(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class ItemSchema(fr.IDSchema):
@@ -62,7 +64,7 @@ def test_bare_verb_override_without_route_is_allowed(sync_db):
     domain logic. This must still register and work."""
     engine, _ = sync_db
 
-    class Item(fr.IDBase):
+    class Item(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class ItemSchema(fr.IDSchema):
@@ -81,7 +83,7 @@ def test_bare_verb_override_without_route_is_allowed(sync_db):
     app = FastAPI()
     fr.include_view(app, ItemView)  # no raise
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
     client = TestClient(app)
     created = client.post("/items/", json={"name": "abc"})
     assert created.status_code == 201, created.text

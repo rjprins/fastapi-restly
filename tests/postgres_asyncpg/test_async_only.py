@@ -30,6 +30,7 @@ from sqlalchemy.pool import NullPool
 import fastapi_restly as fr
 from fastapi_restly.exc import RestlyConfigurationError
 
+from .._models import SharedBase
 from .conftest import ASYNCPG_URL
 
 assert ASYNCPG_URL is not None
@@ -40,7 +41,7 @@ fr.configure(async_engine=engine)
 CLEANUP = os.environ.get("RESTLY_ASYNCPG_CLEANUP", "rollback")
 
 
-class AsyncpgNote(fr.TimestampsMixin, fr.IDBase):
+class AsyncpgNote(fr.TimestampsMixin, fr.IDMixin, SharedBase):
     __tablename__ = "restly_asyncpg_note"
 
     text: Mapped[str]
@@ -91,7 +92,7 @@ class AsyncpgNoteView(fr.AsyncRestView):
 
 
 fr.testing.configure_tests(
-    app=app, base=fr.DataclassBase, create_all=True, db_cleanup=CLEANUP
+    app=app, base=SharedBase, create_all=True, db_cleanup=CLEANUP
 )
 
 

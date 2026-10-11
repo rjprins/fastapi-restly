@@ -15,6 +15,8 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 import fastapi_restly as fr
 from fastapi_restly.db._session import _arm_uncommitted_warning, _warn_if_uncommitted
 
+from ._models import SharedBase
+
 pytestmark = pytest.mark.anyio
 
 
@@ -39,10 +41,10 @@ async def _enter(manager):
 
 @pytest.fixture(params=["sync", "async"])
 async def writes(request, tmp_path):
-    class Entry(fr.IDBase):
+    class Entry(fr.IDMixin, SharedBase):
         name: Mapped[str] = mapped_column(unique=True)
 
-    class Audit(fr.IDBase):
+    class Audit(fr.IDMixin, SharedBase):
         name: Mapped[str] = mapped_column(unique=True)
 
     class EntrySchema(fr.IDSchema):
@@ -108,9 +110,9 @@ async def writes(request, tmp_path):
     try:
         if asynchronous:
             async with engine.begin() as connection:
-                await connection.run_sync(fr.DataclassBase.metadata.create_all)
+                await connection.run_sync(SharedBase.metadata.create_all)
         else:
-            fr.DataclassBase.metadata.create_all(engine)
+            SharedBase.metadata.create_all(engine)
 
         async with _enter(make_session()) as session:
             target = getattr(session, "sync_session", session)

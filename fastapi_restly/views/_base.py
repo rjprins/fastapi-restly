@@ -230,7 +230,7 @@ class _CreatePlan:
 
 class _HasID(Protocol):
     """Anything with an ``id`` attribute. By framework convention, primary
-    keys are named ``id``; ``IDBase`` formalizes this but isn't required."""
+    keys are named ``id``; ``IDMixin`` declares one but isn't required."""
 
     id: Any
 

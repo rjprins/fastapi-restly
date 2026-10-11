@@ -29,6 +29,8 @@ from sqlalchemy.pool import StaticPool
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
+
 # ---------------------------------------------------------------------------
 # 1. Class-variable inheritance: model, schema
 # ---------------------------------------------------------------------------
@@ -38,7 +40,7 @@ def test_inherit_model_and_schema(sync_db):
     """A subclass that only defines prefix uses the base's model and schema."""
     engine, _ = sync_db
 
-    class Widget(fr.IDBase):
+    class Widget(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class WidgetSchema(fr.IDSchema):
@@ -51,7 +53,7 @@ def test_inherit_model_and_schema(sync_db):
     class WidgetView(WidgetBase):
         prefix = "/widgets"
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with fr.open_session() as session:
         view = WidgetView()
@@ -82,7 +84,7 @@ def test_handler_override_shared_across_subclasses(sync_db):
 
     call_log: list[str] = []
 
-    class Tag(fr.IDBase):
+    class Tag(fr.IDMixin, SharedBase):
         label: Mapped[str]
 
     class TagSchema(fr.IDSchema):
@@ -102,7 +104,7 @@ def test_handler_override_shared_across_subclasses(sync_db):
     class ViewB(AuditBase):
         prefix = "/tags-b"
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with fr.open_session() as session:
         view_a = ViewA()
@@ -127,7 +129,7 @@ def test_super_chain_in_handler_override(sync_db):
 
     call_log: list[str] = []
 
-    class Note(fr.IDBase):
+    class Note(fr.IDMixin, SharedBase):
         text: Mapped[str]
 
     class NoteSchema(fr.IDSchema):
@@ -152,7 +154,7 @@ def test_super_chain_in_handler_override(sync_db):
             call_log.append("sub_post")
             return result
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with fr.open_session() as session:
         view = NoteView()
@@ -171,7 +173,7 @@ def test_inherit_exclude_routes(sync_db):
     """exclude_routes set on a base view is inherited; excluded endpoints are absent."""
     engine, _ = sync_db
 
-    class Entry(fr.IDBase):
+    class Entry(fr.IDMixin, SharedBase):
         value: Mapped[str]
 
     class EntrySchema(fr.IDSchema):
@@ -188,7 +190,7 @@ def test_inherit_exclude_routes(sync_db):
     class EntryView(ReadOnlyBase):
         prefix = "/entries"
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     client = TestClient(app)
 
@@ -206,7 +208,7 @@ def test_inherit_exclude_routes(sync_db):
 def test_exclude_routes_accepts_view_route_enum(sync_db):
     engine, _ = sync_db
 
-    class Event(fr.IDBase):
+    class Event(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
     class EventSchema(fr.IDSchema):
@@ -221,7 +223,7 @@ def test_exclude_routes_accepts_view_route_enum(sync_db):
     app = FastAPI()
     fr.include_view(app, EventView)
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     client = TestClient(app)
     assert client.get("/events/").status_code == 200
@@ -237,7 +239,7 @@ def test_inherit_pagination_none(sync_db):
     """pagination = None on a base view is inherited by subclasses."""
     engine, _ = sync_db
 
-    class Ticket(fr.IDBase):
+    class Ticket(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
     class TicketSchema(fr.IDSchema):
@@ -251,7 +253,7 @@ def test_inherit_pagination_none(sync_db):
     class TicketView(UnpaginatedBase):
         prefix = "/tickets"
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with fr.open_session() as session:
         view = TicketView()
@@ -280,7 +282,7 @@ def test_inherit_soft_delete_via_delete(sync_db):
     """
     engine, _ = sync_db
 
-    class Record(fr.IDBase):
+    class Record(fr.IDMixin, SharedBase):
         name: Mapped[str]
         deleted: Mapped[bool] = mapped_column(default=False)
 
@@ -299,7 +301,7 @@ def test_inherit_soft_delete_via_delete(sync_db):
     class RecordView(SoftDeleteBase):
         prefix = "/records"
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with fr.open_session() as session:
         view = RecordView()
@@ -324,7 +326,7 @@ def test_custom_route_on_base_inherited_by_subclass(sync_db):
     """A @fr.get endpoint defined on a base class is available on subclasses."""
     engine, _ = sync_db
 
-    class Item(fr.IDBase):
+    class Item(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class ItemSchema(fr.IDSchema):
@@ -344,7 +346,7 @@ def test_custom_route_on_base_inherited_by_subclass(sync_db):
     class ItemView(ItemBase):
         prefix = "/items"
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     client = TestClient(app)
     resp = client.get("/items/ping")
@@ -369,7 +371,7 @@ def test_instance_level_dependency_inherited(sync_db):
     def get_request_id() -> str:
         return "req-42"
 
-    class Box(fr.IDBase):
+    class Box(fr.IDMixin, SharedBase):
         label: Mapped[str]
 
     class BoxSchema(fr.IDSchema):
@@ -390,7 +392,7 @@ def test_instance_level_dependency_inherited(sync_db):
     class BoxView(TrackedBase):
         prefix = "/boxes"
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     client = TestClient(app)
     resp = client.post("/boxes/", json={"label": "small"})
@@ -408,7 +410,7 @@ def test_subclass_can_override_the_restly_session_dependency():
         with make_session() as session:
             yield session
 
-    class Report(fr.IDBase):
+    class Report(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
     class ReportSchema(fr.IDSchema):
@@ -424,7 +426,7 @@ def test_subclass_can_override_the_restly_session_dependency():
         session: Annotated[Session, Depends(get_reporting_db)]
 
     try:
-        fr.DataclassBase.metadata.create_all(engine)
+        SharedBase.metadata.create_all(engine)
         with make_session() as session:
             session.add(Report(title="Revenue"))
             session.commit()
@@ -453,7 +455,7 @@ def test_class_level_dependencies_applied_to_routes(sync_db):
     def auth_guard():
         call_log.append("auth")
 
-    class Peg(fr.IDBase):
+    class Peg(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class PegSchema(fr.IDSchema):
@@ -468,7 +470,7 @@ def test_class_level_dependencies_applied_to_routes(sync_db):
         schema = PegSchema
         dependencies = [Depends(auth_guard)]
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     client = TestClient(app)
     client.get("/pegs/")
@@ -494,7 +496,7 @@ def test_class_level_dependencies_inherited_by_subclass(sync_db):
     def require_auth():
         call_log.append("auth")
 
-    class Pin(fr.IDBase):
+    class Pin(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class PinSchema(fr.IDSchema):
@@ -511,7 +513,7 @@ def test_class_level_dependencies_inherited_by_subclass(sync_db):
     class PinView(AuthBase):
         prefix = "/pins"
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     client = TestClient(app)
     client.get("/pins/")
@@ -530,7 +532,7 @@ def test_prefix_concatenation_two_levels(sync_db):
     """
     engine, _ = sync_db
 
-    class Bolt(fr.IDBase):
+    class Bolt(fr.IDMixin, SharedBase):
         size: Mapped[str]
 
     class BoltSchema(fr.IDSchema):
@@ -547,7 +549,7 @@ def test_prefix_concatenation_two_levels(sync_db):
         model = Bolt
         schema = BoltSchema
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     client = TestClient(app)
     resp = client.post("/api/v1/bolts/", json={"size": "M6"})
@@ -574,7 +576,7 @@ def test_prefix_concatenation_three_levels(sync_db):
     """
     engine, _ = sync_db
 
-    class Nut(fr.IDBase):
+    class Nut(fr.IDMixin, SharedBase):
         grade: Mapped[str]
 
     class NutSchema(fr.IDSchema):
@@ -594,7 +596,7 @@ def test_prefix_concatenation_three_levels(sync_db):
         model = Nut
         schema = NutSchema
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     client = TestClient(app)
     resp = client.post("/admin/v2/nuts/", json={"grade": "8.8"})
@@ -617,7 +619,7 @@ def test_base_only_prefix(sync_db):
     """
     engine, _ = sync_db
 
-    class Screw(fr.IDBase):
+    class Screw(fr.IDMixin, SharedBase):
         length: Mapped[int]
 
     class ScrewSchema(fr.IDSchema):
@@ -634,7 +636,7 @@ def test_base_only_prefix(sync_db):
     class ScrewView(ScrewBase):
         pass  # no prefix override — inherits "/screws" from base
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     client = TestClient(app)
     resp = client.post("/screws/", json={"length": 10})

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 import fastapi_restly as fr
 from fastapi_restly.schemas import ReadOnly
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
@@ -21,14 +22,14 @@ class TestOneToManyRelationships:
         """Test basic one-to-many relationship without aliases."""
 
         # Define SQLAlchemy models with relationship
-        class User1(fr.IDBase):
+        class User1(fr.IDMixin, SharedBase):
             name: Mapped[str] = mapped_column(String(100))
             email: Mapped[str] = mapped_column(String(100))
             addresses: Mapped[List["Address1"]] = relationship(
                 "Address1", back_populates="user", default_factory=list
             )
 
-        class Address1(fr.IDBase):
+        class Address1(fr.IDMixin, SharedBase):
             street: Mapped[str] = mapped_column(String(200))
             city: Mapped[str] = mapped_column(String(100))
             user_id: Mapped[int] = mapped_column(
@@ -85,14 +86,14 @@ class TestOneToManyRelationships:
         """Test one-to-many relationship with aliases in nested schemas."""
 
         # Define SQLAlchemy models with relationship
-        class User2(fr.IDBase):
+        class User2(fr.IDMixin, SharedBase):
             name: Mapped[str] = mapped_column(String(100))
             email: Mapped[str] = mapped_column(String(100))
             addresses: Mapped[List["Address2"]] = relationship(
                 "Address2", back_populates="user", default_factory=list
             )
 
-        class Address2(fr.IDBase):
+        class Address2(fr.IDMixin, SharedBase):
             street: Mapped[str] = mapped_column(String(200))
             city: Mapped[str] = mapped_column(String(100))
             user_id: Mapped[int] = mapped_column(
@@ -162,14 +163,14 @@ class TestOneToOneRelationships:
         """Test basic one-to-one relationship without aliases."""
 
         # Define SQLAlchemy models with relationship
-        class User3(fr.IDBase):
+        class User3(fr.IDMixin, SharedBase):
             name: Mapped[str] = mapped_column(String(100))
             email: Mapped[str] = mapped_column(String(100))
             profile: Mapped["Profile3"] = relationship(
                 "Profile3", back_populates="user", uselist=False, default=None
             )
 
-        class Profile3(fr.IDBase):
+        class Profile3(fr.IDMixin, SharedBase):
             bio: Mapped[str] = mapped_column(Text)
             website: Mapped[str] = mapped_column(String(200))
             user_id: Mapped[int] = mapped_column(
@@ -221,14 +222,14 @@ class TestOneToOneRelationships:
         """Test one-to-one relationship with aliases in nested schemas."""
 
         # Define SQLAlchemy models with relationship
-        class User4(fr.IDBase):
+        class User4(fr.IDMixin, SharedBase):
             name: Mapped[str] = mapped_column(String(100))
             email: Mapped[str] = mapped_column(String(100))
             profile: Mapped["Profile4"] = relationship(
                 "Profile4", back_populates="user", uselist=False, default=None
             )
 
-        class Profile4(fr.IDBase):
+        class Profile4(fr.IDMixin, SharedBase):
             bio: Mapped[str] = mapped_column(Text)
             website: Mapped[str] = mapped_column(String(200))
             user_id: Mapped[int] = mapped_column(
@@ -285,7 +286,7 @@ class TestManyToManyRelationships:
         """Test basic many-to-many relationship without aliases."""
 
         # Define SQLAlchemy models with many-to-many relationship
-        class User5(fr.IDBase):
+        class User5(fr.IDMixin, SharedBase):
             name: Mapped[str] = mapped_column(String(100))
             email: Mapped[str] = mapped_column(String(100))
             groups: Mapped[List["Group5"]] = relationship(
@@ -295,7 +296,7 @@ class TestManyToManyRelationships:
                 default_factory=list,
             )
 
-        class Group5(fr.IDBase):
+        class Group5(fr.IDMixin, SharedBase):
             name: Mapped[str] = mapped_column(String(100))
             description: Mapped[str] = mapped_column(Text)
             users: Mapped[List["User5"]] = relationship(
@@ -306,7 +307,7 @@ class TestManyToManyRelationships:
             )
 
         # Association table
-        class UserGroup5(fr.DataclassBase):
+        class UserGroup5(SharedBase):
             __tablename__ = "user5_group5"
             user_id: Mapped[int] = mapped_column(
                 Integer, ForeignKey("user5.id"), primary_key=True, init=False
@@ -366,13 +367,13 @@ class TestDeeplyNestedRelationships:
         """Test deeply nested relationships with aliases."""
 
         # Define SQLAlchemy models with deep nesting
-        class Company6(fr.IDBase):
+        class Company6(fr.IDMixin, SharedBase):
             name: Mapped[str] = mapped_column(String(100))
             departments: Mapped[List["Department6"]] = relationship(
                 "Department6", back_populates="company", default_factory=list
             )
 
-        class Department6(fr.IDBase):
+        class Department6(fr.IDMixin, SharedBase):
             name: Mapped[str] = mapped_column(String(100))
             company_id: Mapped[int] = mapped_column(
                 Integer, ForeignKey("company6.id"), init=False
@@ -384,7 +385,7 @@ class TestDeeplyNestedRelationships:
                 "Employee6", back_populates="department", default_factory=list
             )
 
-        class Employee6(fr.IDBase):
+        class Employee6(fr.IDMixin, SharedBase):
             name: Mapped[str] = mapped_column(String(100))
             department_id: Mapped[int] = mapped_column(
                 Integer, ForeignKey("department6.id"), init=False
@@ -399,7 +400,7 @@ class TestDeeplyNestedRelationships:
                 default_factory=list,
             )
 
-        class Project6(fr.IDBase):
+        class Project6(fr.IDMixin, SharedBase):
             name: Mapped[str] = mapped_column(String(100))
             employees: Mapped[List["Employee6"]] = relationship(
                 "Employee6",
@@ -409,7 +410,7 @@ class TestDeeplyNestedRelationships:
             )
 
         # Association table
-        class EmployeeProject6(fr.DataclassBase):
+        class EmployeeProject6(SharedBase):
             __tablename__ = "employee6_project6"
             employee_id: Mapped[int] = mapped_column(
                 Integer, ForeignKey("employee6.id"), primary_key=True, init=False
@@ -485,14 +486,14 @@ class TestRelationshipWithReadOnlyFields:
         """Test relationships where some fields are ReadOnly."""
 
         # Define SQLAlchemy models with relationship
-        class User7(fr.TimestampsMixin, fr.IDBase):
+        class User7(fr.TimestampsMixin, fr.IDMixin, SharedBase):
             name: Mapped[str] = mapped_column(String(100))
             email: Mapped[str] = mapped_column(String(100))
             addresses: Mapped[List["Address7"]] = relationship(
                 "Address7", back_populates="user", default_factory=list
             )
 
-        class Address7(fr.TimestampsMixin, fr.IDBase):
+        class Address7(fr.TimestampsMixin, fr.IDMixin, SharedBase):
             street: Mapped[str] = mapped_column(String(200))
             city: Mapped[str] = mapped_column(String(100))
             user_id: Mapped[int] = mapped_column(

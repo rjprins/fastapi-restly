@@ -15,6 +15,7 @@ from sqlalchemy.orm import Mapped
 import fastapi_restly as fr
 from fastapi_restly.exc import RestlyConfigurationError
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 VIEW_BASES = [fr.AsyncRestView, fr.RestView, fr.AsyncReactAdminView, fr.ReactAdminView]
@@ -136,7 +137,7 @@ def test_a_plain_view_route_may_take_a_query_params_parameter():
 
 
 def test_an_old_name_set_after_the_class_fails_at_registration(client):
-    class Thing(fr.IDBase):
+    class Thing(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class LateView(fr.AsyncRestView):
@@ -158,7 +159,7 @@ def test_the_check_does_not_evaluate_route_annotations(client):
     The check reads the route's parameters when the view class is defined,
     before that name exists, so it must not evaluate the annotations."""
 
-    class Thing(fr.IDBase):
+    class Thing(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     namespace = {"fr": fr, "Thing": Thing, "__name__": __name__}

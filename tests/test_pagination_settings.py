@@ -18,6 +18,7 @@ from fastapi_restly.exc import RestlyConfigurationError
 from fastapi_restly.query import apply_list_params, derive_schema_list_params
 from fastapi_restly.testing import RestlyTestClient
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 T = TypeVar("T")
@@ -86,7 +87,7 @@ def _list_app(client, settings, *, rows=5):
     """Register ``/things`` with ``settings`` as its pagination, and add
     ``rows`` rows named ``Thing 0`` and up."""
 
-    class Thing(fr.IDBase):
+    class Thing(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class ThingSchema(fr.IDSchema):
@@ -297,7 +298,7 @@ def test_old_pagination_settings_get_one_suggestion():
 
 
 def test_settings_assigned_after_the_class_fail_at_registration(client):
-    class Thing(fr.IDBase):
+    class Thing(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class ThingSchema(fr.IDSchema):
@@ -357,7 +358,7 @@ def test_pagination_must_be_settings_or_none():
 
 
 def test_a_base_view_sets_pagination_once(client):
-    class Note(fr.IDBase):
+    class Note(fr.IDMixin, SharedBase):
         text: Mapped[str]
 
     class NoteSchema(fr.IDSchema):
@@ -411,7 +412,7 @@ def test_a_base_view_sets_pagination_once(client):
 
 
 def test_declared_grammar_must_match_the_pagination(client):
-    class Thing(fr.IDBase):
+    class Thing(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class ThingSchema(fr.IDSchema):
@@ -484,7 +485,7 @@ def test_bracketed_query_param_names(client):
 
 
 def test_renaming_a_param_frees_its_name_for_a_filter(client):
-    class Chapter(fr.IDBase):
+    class Chapter(fr.IDMixin, SharedBase):
         page: Mapped[int]
 
     class ChapterSchema(fr.IDSchema):
@@ -510,7 +511,7 @@ def test_a_filter_named_like_a_pagination_param_fails_at_registration(client):
     """fastapi-pagination's ``size`` parameter hides a ``size`` column's filter;
     Restly refuses the clash when the view registers."""
 
-    class Shirt(fr.IDBase):
+    class Shirt(fr.IDMixin, SharedBase):
         size: Mapped[str]
 
     class ShirtSchema(fr.IDSchema):
@@ -617,7 +618,7 @@ def test_nested_meta_envelope(client):
 def test_sync_view_takes_the_same_settings(sync_db):
     engine, _ = sync_db
 
-    class Thing(fr.IDBase):
+    class Thing(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class ThingSchema(fr.IDSchema):
@@ -644,7 +645,7 @@ def test_sync_view_takes_the_same_settings(sync_db):
         def count(self, query):
             raise AssertionError("a view without pagination runs no count query")
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
     client = RestlyTestClient(app)
     for i in range(5):
         client.post("/things/", json={"name": f"Thing {i}"})
@@ -733,7 +734,7 @@ def test_no_pagination_replace():
 
 
 def test_query_helpers_take_the_pagination():
-    class Widget(fr.IDBase):
+    class Widget(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class WidgetSchema(fr.IDSchema):
@@ -766,7 +767,7 @@ def test_query_helpers_take_the_pagination():
 
 
 def test_apply_list_params_reads_the_pagination_of_its_params_model():
-    class Bookmark(fr.IDBase):
+    class Bookmark(fr.IDMixin, SharedBase):
         page: Mapped[int]
 
     class BookmarkSchema(fr.IDSchema):
@@ -801,7 +802,7 @@ def test_apply_list_params_reads_the_pagination_of_its_params_model():
     ],
 )
 def test_react_admin_view_rejects_settings_it_would_ignore(client, settings, ignored):
-    class Gadget(fr.IDBase):
+    class Gadget(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class GadgetSchema(fr.IDSchema):
@@ -821,7 +822,7 @@ def test_react_admin_view_rejects_settings_it_would_ignore(client, settings, ign
 
 
 def test_react_admin_range_is_checked(client):
-    class Gadget(fr.IDBase):
+    class Gadget(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class GadgetSchema(fr.IDSchema):

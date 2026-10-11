@@ -12,7 +12,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from starlette.datastructures import QueryParams
 
 import fastapi_restly as fr
-from fastapi_restly.models import DataclassBase
 from fastapi_restly.query import apply_list_params, derive_schema_list_params
 from fastapi_restly.query._impl import (
     _apply_filtering,
@@ -22,8 +21,10 @@ from fastapi_restly.query._impl import (
     _parse_value,
 )
 
+from ._models import SharedBase
 
-class WidgetModel(DataclassBase):
+
+class WidgetModel(SharedBase):
     __tablename__ = "test_model"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -47,7 +48,7 @@ class NestedWidgetSchema(pydantic.BaseModel):
     user: WidgetSchema
 
 
-class NestedWidgetModel(DataclassBase):
+class NestedWidgetModel(SharedBase):
     __tablename__ = "test_nested_model"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -55,7 +56,7 @@ class NestedWidgetModel(DataclassBase):
     user: Mapped[WidgetModel] = relationship()
 
 
-class UserModel(DataclassBase):
+class UserModel(SharedBase):
     __tablename__ = "relation_users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -67,7 +68,7 @@ class UserModel(DataclassBase):
     )
 
 
-class PostModel(DataclassBase):
+class PostModel(SharedBase):
     __tablename__ = "relation_posts"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -91,14 +92,14 @@ class PostSchema(pydantic.BaseModel):
     author: UserSchema
 
 
-class AuditUserModel(DataclassBase):
+class AuditUserModel(SharedBase):
     __tablename__ = "audit_relation_users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50))
 
 
-class AuditLogModel(DataclassBase):
+class AuditLogModel(SharedBase):
     __tablename__ = "audit_logs"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -614,7 +615,7 @@ class TestMakeWhereClause:
         )
 
     def test_datetime_value_matches_column_timezone_semantics(self):
-        class AwareRecord(fr.IDBase):
+        class AwareRecord(fr.IDMixin, SharedBase):
             occurred_at: Mapped[datetime]
 
         parser = lambda value: _parse_value(WidgetSchema, "created_at", value)
@@ -655,17 +656,17 @@ def test_three_level_dotted_filter_executes_with_correct_joins(sync_db):
     so deep paths execute and return exactly the matching rows."""
     engine, make_session = sync_db
 
-    class Country(fr.IDBase):
+    class Country(fr.IDMixin, SharedBase):
         code: Mapped[str]
 
-    class City(fr.IDBase):
+    class City(fr.IDMixin, SharedBase):
         name: Mapped[str]
         country_id: Mapped[int] = mapped_column(ForeignKey("country.id"))
         # init=False: constructing with the FK id must not have the
         # relationship default of None null it back out at flush.
         country: Mapped[Country] = relationship(init=False)
 
-    class Resident(fr.IDBase):
+    class Resident(fr.IDMixin, SharedBase):
         name: Mapped[str]
         city_id: Mapped[int] = mapped_column(ForeignKey("city.id"))
         city: Mapped[City] = relationship(init=False)
@@ -685,7 +686,7 @@ def test_three_level_dotted_filter_executes_with_correct_joins(sync_db):
     params_schema = derive_schema_list_params(ResidentSchema, Resident)
     assert "city.country.code" in params_schema.model_fields
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         nl = Country(code="NL")

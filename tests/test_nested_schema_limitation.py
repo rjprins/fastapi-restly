@@ -7,6 +7,7 @@ from sqlalchemy.orm import Mapped
 import fastapi_restly as fr
 from fastapi_restly.schemas import BaseSchema
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
@@ -27,7 +28,7 @@ def test_nested_schema_limitation_demonstration(client):
         address: AddressSchema  # ← This nested schema causes the problem
 
     # Create a simple model with flattened fields
-    class User(fr.IDBase):
+    class User(fr.IDMixin, SharedBase):
         name: Mapped[str]
         email: Mapped[str]
         street: Mapped[str]
@@ -71,7 +72,7 @@ def test_working_flattened_approach(client):
         postal_code: str = Field(alias="postalCode")  # ← Flattened
 
     # Create a simple model
-    class User(fr.IDBase):
+    class User(fr.IDMixin, SharedBase):
         name: Mapped[str]
         email: Mapped[str]
         street: Mapped[str]
@@ -130,7 +131,7 @@ def test_deeply_nested_schema_limitation(client):
         address: AddressSchema
         company: CompanySchema
 
-    class Employee(fr.IDBase):
+    class Employee(fr.IDMixin, SharedBase):
         name: Mapped[str]
         phone: Mapped[str]
         email: Mapped[str]

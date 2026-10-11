@@ -25,13 +25,17 @@ _CONFTEST = """
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import DeclarativeBase, Mapped
 from sqlalchemy.pool import StaticPool
 
 import fastapi_restly as fr
 
 
-class Gadget(fr.IDBase):
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+
+
+class Gadget(fr.IDMixin, Base):
     name: Mapped[str]
 
 
@@ -41,7 +45,7 @@ sync_engine = create_engine(
 async_engine = create_async_engine("sqlite+aiosqlite://", poolclass=StaticPool)
 
 fr.configure(engine=sync_engine, async_engine=async_engine)
-fr.DataclassBase.metadata.create_all(sync_engine)
+Base.metadata.create_all(sync_engine)
 
 
 @pytest.fixture(scope="session", autouse=True)

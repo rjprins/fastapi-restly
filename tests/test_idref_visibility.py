@@ -12,14 +12,15 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
 def test_idref_reference_is_unresolved_and_gatable_in_authorize(client):
-    class Author(fr.IDBase):
+    class Author(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class Article(fr.IDBase):
+    class Article(fr.IDMixin, SharedBase):
         title: Mapped[str]
         author_id: Mapped[int] = mapped_column(ForeignKey(Author.id))
 

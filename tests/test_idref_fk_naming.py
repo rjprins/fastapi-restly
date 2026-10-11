@@ -30,6 +30,7 @@ from fastapi_restly.views._base import (
     validate_resolved_reference_consistency,
 )
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
@@ -45,10 +46,10 @@ def test_async_non_id_fk_field_create_update_get_e2e(client):
     """The headline bug: a ``post_fk: IDRef[Post]`` field (FK column not ending
     in ``_id``) must create, update, and serialize like the ``_id`` form does."""
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         # FK column whose name does NOT end in "_id".
         post_fk: Mapped[int] = mapped_column(ForeignKey("post.id"))
@@ -100,10 +101,10 @@ def test_async_non_id_fk_object_helpers_populate_column_and_relationship():
     """Async write path: the resolved row's id lands on the FK column and the
     partner relationship (derived from the mapper, not the name) is populated."""
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_fk: Mapped[int] = mapped_column(ForeignKey("post.id"))
         # Partner relationship whose name has no textual relation to "post_fk".
@@ -116,7 +117,7 @@ def test_async_non_id_fk_object_helpers_populate_column_and_relationship():
     async def run():
         engine, make_session = _make_async_engine_and_session()
         async with engine.begin() as conn:
-            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+            await conn.run_sync(SharedBase.metadata.create_all)
         async with make_session() as session:
             p1 = Post(title="p1")
             p2 = Post(title="p2")
@@ -144,10 +145,10 @@ def test_sync_non_id_fk_object_helpers_populate_column_and_relationship(sync_db)
     """Sync parity with the async write path above."""
     engine, make_session = sync_db
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_fk: Mapped[int] = mapped_column(ForeignKey("post.id"))
         post: Mapped[Post] = relationship(default=None)
@@ -156,7 +157,7 @@ def test_sync_non_id_fk_object_helpers_populate_column_and_relationship(sync_db)
         content: str
         post_fk: fr.IDRef[Post]
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         p1 = Post(title="p1")
@@ -181,10 +182,10 @@ def test_arbitrary_fk_column_name_routes_by_mapper(sync_db):
     (``linked_post``) and no partner relationship still gets the raw id."""
     engine, make_session = sync_db
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         linked_post: Mapped[int] = mapped_column(ForeignKey("post.id"))
 
@@ -192,7 +193,7 @@ def test_arbitrary_fk_column_name_routes_by_mapper(sync_db):
         content: str
         linked_post: fr.IDRef[Post]
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         post = Post(title="p1")
@@ -219,10 +220,10 @@ def test_non_id_fk_conflict_detection_is_name_independent(sync_db):
     relationship via the mapper, so it fires for non-``_id`` FK names too."""
     engine, make_session = sync_db
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_fk: Mapped[int] = mapped_column(ForeignKey("post.id"))
         post: Mapped[Post] = relationship(default=None)
@@ -232,7 +233,7 @@ def test_non_id_fk_conflict_detection_is_name_independent(sync_db):
         post_fk: fr.IDRef[Post]
         post: fr.IDSchema[Post]
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         p1 = Post(title="p1")
@@ -265,10 +266,10 @@ def test_renamed_db_column_fk_field_sync(sync_db):
     NULL the FK at flush."""
     engine, make_session = sync_db
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         # Python attribute is `post_id`; the DB column is named `post_fk`.
         post_id: Mapped[int] = mapped_column("post_fk", ForeignKey("post.id"))
@@ -278,7 +279,7 @@ def test_renamed_db_column_fk_field_sync(sync_db):
         content: str
         post_id: fr.IDRef[Post]
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         p1 = Post(title="p1")
@@ -302,10 +303,10 @@ def test_renamed_db_column_fk_field_sync(sync_db):
 def test_renamed_db_column_fk_field_async():
     """Async parity for the renamed-DB-column FK field above."""
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int] = mapped_column("post_fk", ForeignKey("post.id"))
         post: Mapped[Post] = relationship(default=None)
@@ -317,7 +318,7 @@ def test_renamed_db_column_fk_field_async():
     async def run():
         engine, make_session = _make_async_engine_and_session()
         async with engine.begin() as conn:
-            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+            await conn.run_sync(SharedBase.metadata.create_all)
         async with make_session() as session:
             p1 = Post(title="p1")
             p2 = Post(title="p2")
@@ -347,10 +348,10 @@ def test_renamed_db_column_relationship_field_sync(sync_db):
     the mirrored FK must target the mapped attribute, not the DB column key."""
     engine, make_session = sync_db
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int] = mapped_column(
             "post_fk", ForeignKey("post.id"), init=False
@@ -361,7 +362,7 @@ def test_renamed_db_column_relationship_field_sync(sync_db):
         content: str
         post: fr.IDRef[Post]
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         p1 = Post(title="p1")
@@ -384,10 +385,10 @@ def test_relationship_field_with_required_init_fk_sync(sync_db):
     accepts receiving both the relationship object and its FK id (consistent)."""
     engine, make_session = sync_db
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         # Required init kwarg: no init=False, no default.
         post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
@@ -397,7 +398,7 @@ def test_relationship_field_with_required_init_fk_sync(sync_db):
         content: str
         post: fr.IDRef[Post]
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         p1 = Post(title="p1")
@@ -428,10 +429,10 @@ def test_relationship_field_with_required_init_fk_sync(sync_db):
 def test_relationship_field_with_required_init_fk_async():
     """Async parity for the required-init FK relationship field above."""
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
         post: Mapped[Post] = relationship(default=None)
@@ -443,7 +444,7 @@ def test_relationship_field_with_required_init_fk_async():
     async def run():
         engine, make_session = _make_async_engine_and_session()
         async with engine.begin() as conn:
-            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+            await conn.run_sync(SharedBase.metadata.create_all)
         async with make_session() as session:
             p1 = Post(title="p1")
             p2 = Post(title="p2")
@@ -483,10 +484,10 @@ def test_relationship_field_required_fk_with_init_false_relationship_sync(sync_d
     correctly via the FK-accepts-init path; the test pins that it stays put."""
     engine, make_session = sync_db
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         # Required init kwarg paired with an init=False relationship.
         post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
@@ -496,7 +497,7 @@ def test_relationship_field_required_fk_with_init_false_relationship_sync(sync_d
         content: str
         post: fr.IDRef[Post]
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         p1 = Post(title="p1")
@@ -534,10 +535,10 @@ def test_explicit_null_reference_nullable_required_init_fk_sync(sync_db):
     null must clear an existing reference."""
     engine, make_session = sync_db
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         # Nullable, but still a *required* init kwarg: no init=False, no default.
         post_id: Mapped[int | None] = mapped_column(ForeignKey("post.id"))
@@ -547,7 +548,7 @@ def test_explicit_null_reference_nullable_required_init_fk_sync(sync_db):
         content: str
         post: fr.IDRef[Post] | None = None
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         p1 = Post(title="p1")
@@ -587,10 +588,10 @@ def test_explicit_null_reference_nullable_required_init_fk_sync(sync_db):
 def test_explicit_null_reference_nullable_required_init_fk_async():
     """Async parity for the explicit-null nullable required-init FK above."""
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int | None] = mapped_column(ForeignKey("post.id"))
         post: Mapped[Post | None] = relationship(default=None)
@@ -602,7 +603,7 @@ def test_explicit_null_reference_nullable_required_init_fk_async():
     async def run():
         engine, make_session = _make_async_engine_and_session()
         async with engine.begin() as conn:
-            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+            await conn.run_sync(SharedBase.metadata.create_all)
         async with make_session() as session:
             p1 = Post(title="p1")
             session.add(p1)
@@ -649,10 +650,10 @@ def test_explicit_null_reference_non_nullable_fk_fails_at_flush_sync(sync_db):
     database stays the authority."""
     engine, make_session = sync_db
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         # NOT NULL and a required init kwarg.
         post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
@@ -662,7 +663,7 @@ def test_explicit_null_reference_non_nullable_fk_fails_at_flush_sync(sync_db):
         content: str
         post: fr.IDRef[Post] | None = None
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         # Construction succeeds (used to TypeError)...
@@ -675,10 +676,10 @@ def test_explicit_null_reference_non_nullable_fk_fails_at_flush_sync(sync_db):
 def test_explicit_null_reference_non_nullable_fk_fails_at_flush_async():
     """Async parity for the non-nullable explicit-null case above."""
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
         post: Mapped[Post] = relationship(default=None)
@@ -690,7 +691,7 @@ def test_explicit_null_reference_non_nullable_fk_fails_at_flush_async():
     async def run():
         engine, make_session = _make_async_engine_and_session()
         async with engine.begin() as conn:
-            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+            await conn.run_sync(SharedBase.metadata.create_all)
         async with make_session() as session:
             await async_make_new_object(
                 session, Comment, CommentSchema(content="hi", post=None)
@@ -710,10 +711,10 @@ def test_unset_sibling_reference_does_not_clobber_supplied_side_sync(sync_db):
     either declaration order, whichever side is sent."""
     engine, make_session = sync_db
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int | None] = mapped_column(ForeignKey("post.id"))
         post: Mapped[Post | None] = relationship(default=None)
@@ -728,7 +729,7 @@ def test_unset_sibling_reference_does_not_clobber_supplied_side_sync(sync_db):
         post_id: fr.IDRef[Post] | None = None
         post: fr.IDRef[Post] | None = None
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         p1 = Post(title="p1")
@@ -748,10 +749,10 @@ def test_unset_sibling_reference_does_not_clobber_supplied_side_sync(sync_db):
 def test_unset_sibling_reference_does_not_clobber_supplied_side_async():
     """Async parity for the unset-sibling no-clobber contract above."""
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int | None] = mapped_column(ForeignKey("post.id"))
         post: Mapped[Post | None] = relationship(default=None)
@@ -764,7 +765,7 @@ def test_unset_sibling_reference_does_not_clobber_supplied_side_async():
     async def run():
         engine, make_session = _make_async_engine_and_session()
         async with engine.begin() as conn:
-            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+            await conn.run_sync(SharedBase.metadata.create_all)
         async with make_session() as session:
             p1 = Post(title="p1")
             session.add(p1)
@@ -791,12 +792,12 @@ def test_null_reference_on_composite_fk_relationship_creates_row(sync_db):
     and still raises the descriptive inference error.)"""
     engine, make_session = sync_db
 
-    class CompositeTenant(fr.DataclassBase):
+    class CompositeTenant(SharedBase):
         __tablename__ = "null_ref_composite_tenant"
         id1: Mapped[int] = mapped_column(primary_key=True)
         id2: Mapped[int] = mapped_column(primary_key=True)
 
-    class TenantItem(fr.DataclassBase):
+    class TenantItem(SharedBase):
         __tablename__ = "null_ref_tenant_item"
         __table_args__ = (
             ForeignKeyConstraint(
@@ -816,7 +817,7 @@ def test_null_reference_on_composite_fk_relationship_creates_row(sync_db):
         name: str
         tenant: fr.IDRef[CompositeTenant] | None = None
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         explicit = make_new_object(
@@ -834,10 +835,10 @@ def test_scalar_named_null_reference_writes_only_its_own_column(sync_db):
     mirror (a null has nothing to pair), no TypeError, a row with a NULL FK."""
     engine, make_session = sync_db
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int | None] = mapped_column(ForeignKey("post.id"))
         post: Mapped[Post | None] = relationship(default=None)
@@ -846,7 +847,7 @@ def test_scalar_named_null_reference_writes_only_its_own_column(sync_db):
         content: str
         post_id: fr.IDRef[Post] | None = None
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     plan = build_create_plan(Comment, CommentSchema(content="hi", post_id=None))
     assert plan.kwargs["post_id"] is None
@@ -866,10 +867,10 @@ def test_idschema_null_reference_creates_row_with_null_fk(sync_db):
     ``IDRef`` ones."""
     engine, make_session = sync_db
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int | None] = mapped_column(ForeignKey("post.id"))
         post: Mapped[Post | None] = relationship(default=None)
@@ -878,7 +879,7 @@ def test_idschema_null_reference_creates_row_with_null_fk(sync_db):
         content: str
         post: fr.IDSchema[Post] | None = None
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         comment = make_new_object(
@@ -894,15 +895,15 @@ def test_async_null_reference_e2e(client):
     field) creates a row with a NULL FK on a nullable column, and turns into
     the framework's 409 — not a 500 — when the column is NOT NULL."""
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int | None] = mapped_column(ForeignKey("post.id"))
         post: Mapped[Post | None] = relationship(default=None)
 
-    class StrictComment(fr.IDBase):
+    class StrictComment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
         post: Mapped[Post] = relationship(default=None)
@@ -963,10 +964,10 @@ def test_null_fk_named_reference_with_required_init_relationship(sync_db):
     constructed as None too, instead of ``__init__`` rejecting it missing."""
     engine, make_session = sync_db
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int | None] = mapped_column(ForeignKey("post.id"))
         # No default at all: a required init kwarg on the relationship side.
@@ -976,7 +977,7 @@ def test_null_fk_named_reference_with_required_init_relationship(sync_db):
         content: str
         post_id: fr.IDRef[Post] | None = None
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     plan = build_create_plan(Comment, CommentSchema(content="hi", post_id=None))
     assert plan.kwargs["post_id"] is None

@@ -14,6 +14,7 @@ import fastapi_restly as fr
 from fastapi_restly._routes import iter_routes
 from fastapi_restly.exc import RestlyConfigurationError
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 ASYNC_URL = "sqlite+aiosqlite:///:memory:"
@@ -284,7 +285,7 @@ def test_health_is_not_deferred_to_include_view():
 
     fr.configure(async_database_url=ASYNC_URL)
 
-    class Widget(fr.IDBase):
+    class Widget(fr.IDMixin, SharedBase):
         name: Mapped[str] = mapped_column()
 
     class WidgetSchema(fr.IDSchema):
@@ -338,7 +339,7 @@ def test_health_composes_with_a_full_database_configuration(sync_db):
     app = FastAPI()
     fr.configure(app, async_database_url=ASYNC_URL, health="/health")
 
-    class Gadget(fr.IDBase):
+    class Gadget(fr.IDMixin, SharedBase):
         name: Mapped[str] = mapped_column(unique=True)
 
     class GadgetSchema(fr.IDSchema):

@@ -12,6 +12,8 @@ from sqlalchemy.orm import Mapped, Session, mapped_column, relationship
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
+
 pytestmark = pytest.mark.anyio
 
 
@@ -36,19 +38,19 @@ async def _enter(manager):
 
 @pytest.fixture(params=["sync", "async"])
 async def related_writes(request, tmp_path):
-    class Company(fr.IDBase):
+    class Company(fr.IDMixin, SharedBase):
         name: Mapped[str]
         internal_note: Mapped[str] = mapped_column(default="private", deferred=True)
         owners: Mapped[list["Owner"]] = relationship(
             back_populates="company", default_factory=list
         )
 
-    class Owner(fr.IDBase):
+    class Owner(fr.IDMixin, SharedBase):
         name: Mapped[str]
         company_id: Mapped[int] = mapped_column(ForeignKey("company.id"))
         company: Mapped[Company] = relationship(init=False, back_populates="owners")
 
-    class Document(fr.IDBase):
+    class Document(fr.IDMixin, SharedBase):
         title: Mapped[str]
         owner_id: Mapped[int] = mapped_column(ForeignKey("owner.id"))
         owner: Mapped[Owner] = relationship(init=False)
@@ -106,9 +108,9 @@ async def related_writes(request, tmp_path):
     try:
         if asynchronous:
             async with engine.begin() as connection:
-                await connection.run_sync(fr.DataclassBase.metadata.create_all)
+                await connection.run_sync(SharedBase.metadata.create_all)
         else:
-            fr.DataclassBase.metadata.create_all(engine)
+            SharedBase.metadata.create_all(engine)
 
         async with _enter(make_session()) as session:
             company = Company(name="Initech")

@@ -44,6 +44,8 @@ from fastapi_restly._test_setup import (
 from fastapi_restly.db._globals import RestlyContext
 from fastapi_restly.exc import RestlyConfigurationError
 
+from ._models import SharedBase
+
 
 @pytest.fixture(autouse=True)
 def _forget_setup():
@@ -81,7 +83,7 @@ def _isolated_config():
 
 def test_the_two_schema_options_are_mutually_exclusive():
     with pytest.raises(RestlyConfigurationError, match="not both"):
-        configure_tests(base=fr.DataclassBase, create_all=True, alembic_upgrade=True)
+        configure_tests(base=SharedBase, create_all=True, alembic_upgrade=True)
 
 
 def test_configure_tests_records_the_database_the_application_already_configured():
@@ -159,11 +161,11 @@ def test_create_all_builds_the_schema(tmp_path: Path):
     database = tmp_path / "schema.db"
     with _isolated_config():
 
-        class Sprocket(fr.IDBase):
+        class Sprocket(fr.IDMixin, SharedBase):
             name: Mapped[str]
 
         fr.configure(database_url=f"sqlite:///{database}")
-        configure_tests(base=fr.DataclassBase, create_all=True)
+        configure_tests(base=SharedBase, create_all=True)
         _create_schema(_current_setup())  # type: ignore[arg-type]
 
     engine = create_engine(f"sqlite:///{database}")
@@ -177,7 +179,7 @@ def test_create_all_without_a_database_raises():
     with _isolated_config():
         setup = _TestSetup(
             app=None,
-            base=fr.DataclassBase,
+            base=SharedBase,
             create_all=True,
             alembic_upgrade=False,
             db_cleanup=ROLLBACK,
@@ -243,11 +245,11 @@ def test_an_in_memory_async_suite_works_end_to_end(tmp_path: Path):
     """Schema setup must not dispose an in-memory application's database."""
     _write_project(
         tmp_path,
-        "import fastapi_restly as fr\nfrom myapp import app\n\n"
+        "import fastapi_restly as fr\nfrom myapp import Base, app\n\n"
         'fr.configure(async_database_url="sqlite+aiosqlite://")\n'
         "fr.testing.configure_tests(\n"
         "    app=app,\n"
-        "    base=fr.DataclassBase,\n"
+        "    base=Base,\n"
         "    create_all=True,\n"
         ")\n",
         _TESTS,
@@ -267,11 +269,11 @@ def test_create_all_disposes_the_connection_it_pooled(tmp_path: Path):
     engine = create_async_engine(f"sqlite+aiosqlite:///{tmp_path / 'made.db'}")
     with _isolated_config():
 
-        class Doohickey(fr.IDBase):
+        class Doohickey(fr.IDMixin, SharedBase):
             name: Mapped[str]
 
         fr.configure(async_engine=engine)
-        configure_tests(base=fr.DataclassBase, create_all=True)
+        configure_tests(base=SharedBase, create_all=True)
         _create_schema(_current_setup())  # type: ignore[arg-type]
         assert engine.pool.checkedin() == 0
 
@@ -348,15 +350,15 @@ def test_excluded_tables_keep_their_rows(tmp_path: Path):
     database = tmp_path / "seeded.db"
     with _isolated_config():
 
-        class Region(fr.IDBase):
+        class Region(fr.IDMixin, SharedBase):
             name: Mapped[str]
 
-        class Widget(fr.IDBase):
+        class Widget(fr.IDMixin, SharedBase):
             name: Mapped[str]
 
         fr.configure(database_url=f"sqlite:///{database}")
         configure_tests(
-            base=fr.DataclassBase,
+            base=SharedBase,
             create_all=True,
             db_cleanup=DELETE,
             db_cleanup_exclude=["region"],
@@ -383,12 +385,12 @@ def test_excluding_a_table_that_does_not_exist_raises(tmp_path: Path):
     database = tmp_path / "typo.db"
     with _isolated_config():
 
-        class Gizmo(fr.IDBase):
+        class Gizmo(fr.IDMixin, SharedBase):
             name: Mapped[str]
 
         fr.configure(database_url=f"sqlite:///{database}")
         configure_tests(
-            base=fr.DataclassBase,
+            base=SharedBase,
             create_all=True,
             db_cleanup=DELETE,
             db_cleanup_exclude=["gizmoo"],
@@ -419,11 +421,11 @@ def test_cleaning_leaves_tables_the_base_does_not_declare(tmp_path: Path):
 
     with _isolated_config():
 
-        class Cog(fr.IDBase):
+        class Cog(fr.IDMixin, SharedBase):
             name: Mapped[str]
 
         fr.configure(database_url=f"sqlite:///{database}")
-        configure_tests(base=fr.DataclassBase, create_all=True, db_cleanup=DELETE)
+        configure_tests(base=SharedBase, create_all=True, db_cleanup=DELETE)
         setup = _current_setup()
         _create_schema(setup)  # type: ignore[arg-type]
 
@@ -624,7 +626,7 @@ def test_cleaning_needs_to_be_told_which_tables():
 _APP_MODULE = """
 import os
 
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from fastapi import FastAPI
 import fastapi_restly as fr
 
@@ -638,7 +640,11 @@ fr.configure(
 app = FastAPI()
 
 
-class Note(fr.IDBase):
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+
+
+class Note(fr.IDMixin, Base):
     text: Mapped[str] = mapped_column(unique=True)
 
 
@@ -659,11 +665,11 @@ import os
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
 
 import fastapi_restly as fr
-from myapp import app
+from myapp import Base, app
 
 fr.testing.configure_tests(
     app=app,
-    base=fr.DataclassBase,
+    base=Base,
     create_all=True,
 )
 """
@@ -746,11 +752,11 @@ import os
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
 
 import fastapi_restly as fr
-from myapp import app
+from myapp import Base, app
 
 fr.testing.configure_tests(
     app=app,
-    base=fr.DataclassBase,
+    base=Base,
     create_all=True,
     db_cleanup="delete",
 )
@@ -854,7 +860,7 @@ def test_the_flag_switches_a_rollback_suite_to_delete(tmp_path: Path):
 
 
 _TWO_MEMORY_APP = """
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from fastapi import FastAPI
 import fastapi_restly as fr
 
@@ -867,7 +873,11 @@ fr.configure(
 app = FastAPI()
 
 
-class Note(fr.IDBase):
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+
+
+class Note(fr.IDMixin, Base):
     text: Mapped[str] = mapped_column(unique=True)
 
 
@@ -884,11 +894,11 @@ class NoteView(fr.AsyncRestView):
 
 _TWO_MEMORY_DELETE_CONFTEST = """
 import fastapi_restly as fr
-from myapp import app
+from myapp import Base, app
 
 fr.testing.configure_tests(
     app=app,
-    base=fr.DataclassBase,
+    base=Base,
     create_all=True,
     db_cleanup="delete",
 )
@@ -896,11 +906,11 @@ fr.testing.configure_tests(
 
 _TWO_MEMORY_ROLLBACK_CONFTEST = """
 import fastapi_restly as fr
-from myapp import app
+from myapp import Base, app
 
 fr.testing.configure_tests(
     app=app,
-    base=fr.DataclassBase,
+    base=Base,
     create_all=True,
 )
 """
@@ -971,11 +981,11 @@ import os
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
 
 import fastapi_restly as fr
-from myapp import app
+from myapp import Base, app
 
 fr.testing.configure_tests(
     app=app,
-    base=fr.DataclassBase,
+    base=Base,
     create_all=True,
     db_cleanup="none",
 )
@@ -1037,12 +1047,16 @@ def test_a_configured_suite_is_isolated_end_to_end(tmp_path: Path):
 _FACTORY_APP_MODULE = """
 import os
 
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from fastapi import FastAPI
 import fastapi_restly as fr
 
 
-class Note(fr.IDBase):
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+
+
+class Note(fr.IDMixin, Base):
     text: Mapped[str] = mapped_column(unique=True)
 
 
@@ -1073,7 +1087,7 @@ app = create_app()
 
 _FACTORY_CONFTEST = """
 import fastapi_restly as fr
-from myapp import create_app
+from myapp import Base, create_app
 
 app = create_app("sqlite+aiosqlite:///./test.db")
 
@@ -1087,7 +1101,7 @@ def _conftest_app_marker():
 
 fr.testing.configure_tests(
     app=app,
-    base=fr.DataclassBase,
+    base=Base,
     create_all=True,
 )
 """
@@ -1170,8 +1184,8 @@ def test_async_client_does_not_isolate_an_unmanaged_suite(tmp_path: Path):
         "import asyncio\n"
         "import pytest\n"
         "import fastapi_restly as fr\n"
-        "from myapp import app\n\n"
-        "asyncio.run(fr.db.async_create_all(fr.DataclassBase))\n\n\n"
+        "from myapp import Base, app\n\n"
+        "asyncio.run(fr.db.async_create_all(Base))\n\n\n"
         "@pytest.fixture\n"
         "def restly_app():\n"
         "    return app\n",
@@ -1201,7 +1215,7 @@ def test_async_client_does_not_isolate_an_unmanaged_suite(tmp_path: Path):
 _UNMANAGED_SYNC_APP = """
 from fastapi import FastAPI
 from sqlalchemy import create_engine
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.pool import StaticPool
 import fastapi_restly as fr
 
@@ -1220,7 +1234,11 @@ fr.configure(
 app = FastAPI()
 
 
-class Note(fr.IDBase):
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+
+
+class Note(fr.IDMixin, Base):
     text: Mapped[str] = mapped_column(unique=True)
 
 
@@ -1239,9 +1257,9 @@ _UNMANAGED_SYNC_CONFTEST = """
 import pytest
 
 import fastapi_restly as fr
-from myapp import app
+from myapp import Base, app
 
-fr.DataclassBase.metadata.create_all(fr.db.get_engine())
+Base.metadata.create_all(fr.db.get_engine())
 
 
 @pytest.fixture
@@ -1410,8 +1428,8 @@ def test_the_application_database_is_the_test_database(tmp_path: Path):
     """The suite uses the database its application configured."""
     _write_project(
         tmp_path,
-        "import fastapi_restly as fr\nfrom myapp import app\n\n"
-        "fr.testing.configure_tests(app=app, base=fr.DataclassBase)\n",
+        "import fastapi_restly as fr\nfrom myapp import Base, app\n\n"
+        "fr.testing.configure_tests(app=app, base=Base)\n",
         "def test_never_runs():\n    assert True\n",
     )
     result = _run_pytest(tmp_path)
@@ -1431,7 +1449,7 @@ from collections.abc import Iterator
 
 from fastapi import FastAPI
 from sqlalchemy import create_engine
-from sqlalchemy.orm import Mapped, Session, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, sessionmaker
 
 import fastapi_restly as fr
 
@@ -1454,7 +1472,11 @@ fr.configure(**CONFIGURE_KWARGS)
 app = FastAPI()
 
 
-class Note(fr.IDBase):
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+
+
+class Note(fr.IDMixin, Base):
     text: Mapped[str]
 
 
@@ -1472,7 +1494,7 @@ class NoteView(fr.RestView):
 if __import__("os").environ.get("APP_USES_GENERATOR"):
     # Only for the generator case: give that database the schema, so a row which
     # leaks there is counted rather than swallowed as a missing table.
-    fr.DataclassBase.metadata.create_all(_dev_engine)
+    Base.metadata.create_all(_dev_engine)
 """
 
 _LEAK_TESTS = """
@@ -1505,11 +1527,11 @@ def test_a_hybrid_suite_isolates_its_sync_routes_too(tmp_path: Path):
         tmp_path,
         "import os\n\n"
         'os.environ["DATABASE_URL"] = "sqlite:///./test.db"\n\n'
-        "import fastapi_restly as fr\nfrom myapp import app\n\n"
+        "import fastapi_restly as fr\nfrom myapp import Base, app\n\n"
         'fr.configure(async_database_url="sqlite+aiosqlite:///./test.db")\n'
         "fr.testing.configure_tests(\n"
         "    app=app,\n"
-        "    base=fr.DataclassBase,\n"
+        "    base=Base,\n"
         "    create_all=True,\n"
         ")\n",
         _LEAK_TESTS,
@@ -1528,10 +1550,10 @@ def test_delete_mode_rejects_a_custom_session_generator(tmp_path: Path):
         tmp_path,
         "import os\n\n"
         'os.environ["DATABASE_URL"] = "sqlite:///./test.db"\n\n'
-        "import fastapi_restly as fr\nfrom myapp import app\n\n"
+        "import fastapi_restly as fr\nfrom myapp import Base, app\n\n"
         "fr.testing.configure_tests(\n"
         "    app=app,\n"
-        "    base=fr.DataclassBase,\n"
+        "    base=Base,\n"
         "    create_all=True,\n"
         '    db_cleanup="delete",\n'
         ")\n",
@@ -1613,13 +1635,11 @@ def test_a_sessionmaker_bound_to_a_connection_is_unwrapped(tmp_path: Path):
         with engine.connect() as connection:
             with _isolated_config():
 
-                class Bolt(fr.IDBase):
+                class Bolt(fr.IDMixin, SharedBase):
                     name: Mapped[str]
 
                 fr.configure(make_session=sessionmaker(bind=connection))
-                configure_tests(
-                    base=fr.DataclassBase, create_all=True, db_cleanup=DELETE
-                )
+                configure_tests(base=SharedBase, create_all=True, db_cleanup=DELETE)
                 setup = _current_setup()
                 _create_schema(setup)  # type: ignore[arg-type]
                 # Would raise AttributeError on RootTransaction without the unwrap.
@@ -1717,7 +1737,7 @@ def test_delete_mode_rejects_async_per_mapper_binds_too():
     try:
         with _isolated_config():
 
-            class RoutedAsync(fr.IDBase):
+            class RoutedAsync(fr.IDMixin, SharedBase):
                 name: Mapped[str]
 
             engine = create_async_engine("sqlite+aiosqlite://")
@@ -1725,7 +1745,7 @@ def test_delete_mode_rejects_async_per_mapper_binds_too():
                 bind=engine, binds={RoutedAsync: other}, expire_on_commit=False
             )
             fr.configure(async_make_session=factory)
-            configure_tests(base=fr.DataclassBase, db_cleanup=DELETE)
+            configure_tests(base=SharedBase, db_cleanup=DELETE)
             with pytest.raises(RestlyConfigurationError, match="binds="):
                 _clean_database_sync(_current_setup())  # type: ignore[arg-type]
     finally:
@@ -1743,7 +1763,7 @@ def test_delete_mode_rejects_binds_on_the_leg_that_does_not_clean(tmp_path: Path
     try:
         with _isolated_config():
 
-            class RoutedHybrid(fr.IDBase):
+            class RoutedHybrid(fr.IDMixin, SharedBase):
                 name: Mapped[str]
 
             engine = create_async_engine(f"sqlite+aiosqlite:///{database}")
@@ -1753,7 +1773,7 @@ def test_delete_mode_rejects_binds_on_the_leg_that_does_not_clean(tmp_path: Path
                     bind=engine, binds={RoutedHybrid: other}, expire_on_commit=False
                 ),
             )
-            configure_tests(base=fr.DataclassBase, db_cleanup=DELETE)
+            configure_tests(base=SharedBase, db_cleanup=DELETE)
             with pytest.raises(RestlyConfigurationError, match="binds="):
                 _clean_database_sync(_current_setup())  # type: ignore[arg-type]
     finally:
@@ -1765,12 +1785,12 @@ def test_the_exclusion_error_does_not_claim_to_have_checked_the_database(tmp_pat
     database = tmp_path / "wording.db"
     with _isolated_config():
 
-        class Cam(fr.IDBase):
+        class Cam(fr.IDMixin, SharedBase):
             name: Mapped[str]
 
         fr.configure(database_url=f"sqlite:///{database}")
         configure_tests(
-            base=fr.DataclassBase,
+            base=SharedBase,
             create_all=True,
             db_cleanup=DELETE,
             db_cleanup_exclude=["nope"],
@@ -1846,9 +1866,9 @@ def test_a_view_registered_after_the_client_still_gets_the_409_handler(tmp_path:
         "from fastapi import FastAPI\n"
         "import fastapi_restly as fr\n\n"
         'os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"\n'
-        "from myapp import Note, NoteSchema  # noqa: F401, E402\n\n"
+        "from myapp import Base, Note, NoteSchema  # noqa: F401, E402\n\n"
         "fr.testing.configure_tests(\n"
-        "    base=fr.DataclassBase,\n"
+        "    base=Base,\n"
         "    create_all=True,\n"
         ")\n\n\n"
         "@pytest.fixture\n"
@@ -1934,7 +1954,7 @@ def test_a_per_mapper_binds_factory_is_rejected():
     try:
         with _isolated_config():
 
-            class Routed(fr.IDBase):
+            class Routed(fr.IDMixin, SharedBase):
                 name: Mapped[str]
 
             factory = sessionmaker(bind=engine, binds={Routed: other})
@@ -1961,12 +1981,12 @@ def test_delete_mode_rejects_a_per_mapper_binds_factory():
     try:
         with _isolated_config():
 
-            class RoutedElsewhere(fr.IDBase):
+            class RoutedElsewhere(fr.IDMixin, SharedBase):
                 name: Mapped[str]
 
             factory = sessionmaker(bind=engine, binds={RoutedElsewhere: other})
             fr.configure(make_session=factory)
-            configure_tests(base=fr.DataclassBase, db_cleanup=DELETE)
+            configure_tests(base=SharedBase, db_cleanup=DELETE)
             with pytest.raises(RestlyConfigurationError, match="binds="):
                 _clean_database_sync(_current_setup())  # type: ignore[arg-type]
     finally:
@@ -1998,12 +2018,16 @@ _RECONFIGURING_APP = """
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import DeclarativeBase, Mapped
 
 import fastapi_restly as fr
 
 
-class Note(fr.IDBase):
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+
+
+class Note(fr.IDMixin, Base):
     text: Mapped[str]
 
 
@@ -2039,11 +2063,11 @@ def test_a_lifespan_cannot_reconfigure_restlys_database(
     mode_line = f'    db_cleanup="{db_cleanup}",\n' if db_cleanup else ""
     _write_project(
         tmp_path,
-        "import fastapi_restly as fr\nfrom myapp import app\n\n"
+        "import fastapi_restly as fr\nfrom myapp import Base, app\n\n"
         'fr.configure(async_database_url="sqlite+aiosqlite:///./test.db")\n'
         "fr.testing.configure_tests(\n"
         "    app=app,\n"
-        "    base=fr.DataclassBase,\n"
+        "    base=Base,\n"
         "    create_all=True,\n"
         f"{mode_line}"
         ")\n",
@@ -2066,18 +2090,22 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import DeclarativeBase, Mapped
 
 import fastapi_restly as fr
 
 
-class Note(fr.IDBase):
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+
+
+class Note(fr.IDMixin, Base):
     text: Mapped[str]
 
 
 # The development database already exists, with data worth keeping.
 _dev = create_engine("sqlite:///./dev.db")
-fr.DataclassBase.metadata.create_all(_dev)
+Base.metadata.create_all(_dev)
 with _dev.begin() as connection:
     connection.execute(text("INSERT INTO note (text) VALUES ('precious')"))
 _dev.dispose()
@@ -2104,10 +2132,10 @@ def test_delete_mode_rejects_a_database_configured_after_setup(tmp_path: Path):
     """A late source is rejected before delete mode can clean the wrong database."""
     _write_project(
         tmp_path,
-        "import fastapi_restly as fr\nfrom myapp import app\n\n"
+        "import fastapi_restly as fr\nfrom myapp import Base, app\n\n"
         "fr.testing.configure_tests(\n"
         "    app=app,\n"
-        "    base=fr.DataclassBase,\n"
+        "    base=Base,\n"
         '    db_cleanup="delete",\n'
         ")\n",
         "def test_a(restly_client):\n"
@@ -2132,12 +2160,16 @@ def test_delete_mode_rejects_a_database_configured_after_setup(tmp_path: Path):
 
 _UNCONFIGURED_ASYNC_APP = """
 from fastapi import FastAPI
-from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import DeclarativeBase, Mapped
 
 import fastapi_restly as fr
 
 
-class Note(fr.IDBase):
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+
+
+class Note(fr.IDMixin, Base):
     text: Mapped[str]
 
 
@@ -2160,11 +2192,11 @@ def test_a_source_arriving_during_collection_is_rejected(tmp_path: Path):
     """Every database source must exist before configure_tests() records it."""
     _write_project(
         tmp_path,
-        "import fastapi_restly as fr\nfrom myapp import app\n\n"
+        "import fastapi_restly as fr\nfrom myapp import Base, app\n\n"
         'fr.configure(database_url="sqlite:///./test.db")\n'
         "fr.testing.configure_tests(\n"
         "    app=app,\n"
-        "    base=fr.DataclassBase,\n"
+        "    base=Base,\n"
         "    create_all=True,\n"
         ")\n",
         "import fastapi_restly as fr\n\n"
@@ -2182,12 +2214,16 @@ def test_a_source_arriving_during_collection_is_rejected(tmp_path: Path):
 
 _UNCONFIGURED_SYNC_APP = """
 from fastapi import FastAPI
-from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import DeclarativeBase, Mapped
 
 import fastapi_restly as fr
 
 
-class Note(fr.IDBase):
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+
+
+class Note(fr.IDMixin, Base):
     text: Mapped[str]
 
 
@@ -2210,11 +2246,11 @@ def test_a_sync_source_arriving_during_collection_is_rejected(tmp_path: Path):
     """The consistency check applies equally to the sync configuration."""
     _write_project(
         tmp_path,
-        "import fastapi_restly as fr\nfrom myapp import app\n\n"
+        "import fastapi_restly as fr\nfrom myapp import Base, app\n\n"
         'fr.configure(async_database_url="sqlite+aiosqlite:///./test.db")\n'
         "fr.testing.configure_tests(\n"
         "    app=app,\n"
-        "    base=fr.DataclassBase,\n"
+        "    base=Base,\n"
         "    create_all=True,\n"
         ")\n",
         "import fastapi_restly as fr\n\n"
@@ -2239,7 +2275,7 @@ def test_async_only_rollback_rejects_sync_client_with_async_session(tmp_path: Pa
         tmp_path,
         "import fastapi_restly as fr\n"
         "from sqlalchemy.ext.asyncio import create_async_engine\n"
-        "from myapp import app\n\n"
+        "from myapp import Base, app\n\n"
         "fr.configure(\n"
         "    async_engine=create_async_engine(\n"
         '        "sqlite+aiosqlite:///./test.db"\n'
@@ -2247,7 +2283,7 @@ def test_async_only_rollback_rejects_sync_client_with_async_session(tmp_path: Pa
         ")\n"
         "fr.testing.configure_tests(\n"
         "    app=app,\n"
-        "    base=fr.DataclassBase,\n"
+        "    base=Base,\n"
         "    create_all=True,\n"
         ")\n",
         "from myapp import Note\n\n\n"
@@ -2277,14 +2313,14 @@ def test_loop_bound_driver_rejects_split_client_in_committing_modes(
         "import os\n"
         'os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"\n\n'
         "import fastapi_restly as fr\n"
-        "from myapp import app\n\n"
+        "from myapp import Base, app\n\n"
         "# Exercise the loop-bound-driver policy without requiring asyncpg in\n"
         "# the framework's SQLite unit-test environment.\n"
         'fr.db.get_async_engine().dialect.name = "postgresql"\n'
         'fr.db.get_async_engine().dialect.driver = "asyncpg"\n'
         "fr.testing.configure_tests(\n"
         "    app=app,\n"
-        "    base=fr.DataclassBase,\n"
+        "    base=Base,\n"
         "    create_all=True,\n"
         f'    db_cleanup="{cleanup_mode}",\n'
         ")\n",
@@ -2307,7 +2343,7 @@ def test_async_only_rollback_rejects_database_setup_before_sync_client(tmp_path:
         tmp_path,
         "import fastapi_restly as fr\n"
         "from sqlalchemy.ext.asyncio import create_async_engine\n"
-        "from myapp import app\n\n"
+        "from myapp import Base, app\n\n"
         "fr.configure(\n"
         "    async_engine=create_async_engine(\n"
         '        "sqlite+aiosqlite:///./test.db"\n'
@@ -2315,7 +2351,7 @@ def test_async_only_rollback_rejects_database_setup_before_sync_client(tmp_path:
         ")\n"
         "fr.testing.configure_tests(\n"
         "    app=app,\n"
-        "    base=fr.DataclassBase,\n"
+        "    base=Base,\n"
         "    create_all=True,\n"
         ")\n",
         "import asyncio\n"
@@ -2381,10 +2417,10 @@ def test_collection_time_reconfiguration_fails_before_session_fixtures(tmp_path:
         "import fastapi_restly as fr\n"
         "import pytest\n\n"
         'os.environ["DATABASE_URL"] = "sqlite:///./test.db"\n\n'
-        "from myapp import app, Note\n\n"
+        "from myapp import Base, app, Note\n\n"
         "fr.testing.configure_tests(\n"
         "    app=app,\n"
-        "    base=fr.DataclassBase,\n"
+        "    base=Base,\n"
         "    create_all=True,\n"
         '    db_cleanup="none",\n'
         ")\n\n\n"
@@ -2459,7 +2495,7 @@ def test_rollback_rejects_a_generator_session_with_per_mapper_binds():
     try:
         with _isolated_config():
 
-            class RoutedByGenerator(fr.IDBase):
+            class RoutedByGenerator(fr.IDMixin, SharedBase):
                 name: Mapped[str]
 
             def dev_sessions():
@@ -2484,7 +2520,7 @@ def test_rollback_rejects_an_async_generator_session_with_per_mapper_binds():
     try:
         with _isolated_config():
 
-            class RoutedByAsyncGenerator(fr.IDBase):
+            class RoutedByAsyncGenerator(fr.IDMixin, SharedBase):
                 name: Mapped[str]
 
             async def dev_sessions():
@@ -2588,10 +2624,10 @@ def test_a_session_scoped_seed_fixture_reaches_the_suite_database(tmp_path: Path
         'os.environ["DATABASE_URL"] = "sqlite:///./test.db"\n\n'
         "import fastapi_restly as fr\n"
         "import pytest\n"
-        "from myapp import app, Note\n\n"
+        "from myapp import Base, app, Note\n\n"
         "fr.testing.configure_tests(\n"
         "    app=app,\n"
-        "    base=fr.DataclassBase,\n"
+        "    base=Base,\n"
         "    create_all=True,\n"
         '    db_cleanup="none",\n'
         ")\n\n\n"

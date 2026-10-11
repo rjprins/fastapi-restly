@@ -10,13 +10,17 @@ scalar.
 from datetime import datetime
 from typing import TYPE_CHECKING, Annotated, cast
 
-from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import DeclarativeBase, Mapped
 from typing_extensions import assert_type
 
 import fastapi_restly as fr
 
 
-class Ticket(fr.IDBase):
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+
+
+class Ticket(fr.IDMixin, Base):
     tenant_id: Mapped[int]
     assignee_id: Mapped[int]
     deleted_at: Mapped[datetime | None]

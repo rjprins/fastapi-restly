@@ -17,13 +17,17 @@ level no marker is needed.
 from datetime import datetime
 
 from sqlalchemy import ColumnElement, Delete, ForeignKey, Update, delete, select, update
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from typing_extensions import assert_type
 
 import fastapi_restly as fr
 
 
-class Ticket(fr.IDBase):
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+
+
+class Ticket(fr.IDMixin, Base):
     tenant_id: Mapped[int]
     created_at: Mapped[datetime]
     deleted_at: Mapped[datetime | None]
@@ -126,7 +130,7 @@ _typed = _typed.where(Ticket.tenant_id == 1).limit(1)
 
 # a clause without a clause function goes uncalled into a relationship
 # condition, so a child model's scope can name its parent's clause
-class TicketNote(fr.IDBase):
+class TicketNote(fr.IDMixin, Base):
     ticket_id: Mapped[int] = mapped_column(ForeignKey("ticket.id"))
     ticket: Mapped[Ticket] = relationship(init=False)
 

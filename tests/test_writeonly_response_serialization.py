@@ -5,6 +5,7 @@ from sqlalchemy.orm import Mapped
 import fastapi_restly as fr
 from fastapi_restly.schemas import WriteOnly
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
@@ -15,7 +16,7 @@ def test_writeonly_fields_are_excluded_from_post_get_and_list(client):
         email: str
         password: WriteOnly[str]
 
-    class User(fr.IDBase):
+    class User(fr.IDMixin, SharedBase):
         name: Mapped[str]
         email: Mapped[str]
         password: Mapped[str]

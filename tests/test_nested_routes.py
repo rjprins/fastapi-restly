@@ -18,6 +18,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 import fastapi_restly as fr
 from fastapi_restly.testing import RestlyTestClient
 
+from ._models import SharedBase
+
 
 @dataclass
 class _Nested:
@@ -28,7 +30,7 @@ class _Nested:
 def _seed(request: pytest.FixtureRequest, sync: bool, rows: list[Any]) -> None:
     if sync:
         engine, make_session = request.getfixturevalue("sync_db")
-        fr.DataclassBase.metadata.create_all(engine)
+        SharedBase.metadata.create_all(engine)
         with make_session() as session:
             for row in rows:
                 session.add(row)
@@ -37,7 +39,7 @@ def _seed(request: pytest.FixtureRequest, sync: bool, rows: list[Any]) -> None:
         return
 
     async def seed() -> None:
-        await fr.db.async_create_all(fr.DataclassBase)
+        await fr.db.async_create_all(SharedBase)
         async with fr.open_async_session() as session:
             for row in rows:
                 session.add(row)
@@ -56,11 +58,11 @@ def projects(request: pytest.FixtureRequest) -> Iterator[_Nested]:
     base = fr.RestView if sync else fr.AsyncRestView
     lookups: list[str] = []
 
-    class Project(fr.IDBase):
+    class Project(fr.IDMixin, SharedBase):
         name: Mapped[str]
         archived: Mapped[bool] = mapped_column(default=False)
 
-    class Task(fr.IDBase):
+    class Task(fr.IDMixin, SharedBase):
         title: Mapped[str]
         project_id: Mapped[int] = mapped_column(sa.ForeignKey("project.id"), init=False)
 
@@ -268,14 +270,14 @@ def companies(request: pytest.FixtureRequest) -> Iterator[_Nested]:
     base = fr.RestView if sync else fr.AsyncRestView
     lookups: list[str] = []
 
-    class Company(fr.IDBase):
+    class Company(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class Project(fr.IDBase):
+    class Project(fr.IDMixin, SharedBase):
         name: Mapped[str]
         company_id: Mapped[int] = mapped_column(sa.ForeignKey("company.id"), init=False)
 
-    class Task(fr.IDBase):
+    class Task(fr.IDMixin, SharedBase):
         title: Mapped[str]
         project_id: Mapped[int] = mapped_column(sa.ForeignKey("project.id"), init=False)
 

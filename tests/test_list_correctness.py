@@ -28,6 +28,7 @@ import fastapi_restly as fr
 from fastapi_restly.query._impl import _apply_sorting
 from fastapi_restly.views._react_admin import apply_react_admin_query
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 # ---------------------------------------------------------------------------
@@ -35,7 +36,7 @@ from .conftest import create_tables
 # ---------------------------------------------------------------------------
 
 
-class _Book(fr.IDBase):
+class _Book(fr.IDMixin, SharedBase):
     title: Mapped[str]
     status: Mapped[str]
 
@@ -83,7 +84,7 @@ def test_react_admin_sort_by_pk_is_not_duplicated():
     assert _order_by_sql(out).count(".id") == 1
 
 
-class _Code(fr.DataclassBase):
+class _Code(SharedBase):
     """A primary key that is not called ``id``."""
 
     __tablename__ = "lc_codes"
@@ -96,7 +97,7 @@ class _CodeSchema(pydantic.BaseModel):
     status: str
 
 
-class _Pair(fr.DataclassBase):
+class _Pair(SharedBase):
     """A composite primary key."""
 
     __tablename__ = "lc_pairs"
@@ -164,10 +165,10 @@ def test_react_admin_sort_appends_every_column_of_a_composite_key():
 
 
 def test_to_many_join_in_list_query_does_not_duplicate_or_inflate(client):
-    class Author(fr.IDBase):
+    class Author(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class Book(fr.IDBase):
+    class Book(fr.IDMixin, SharedBase):
         title: Mapped[str]
         author_id: Mapped[int] = mapped_column(ForeignKey(Author.id))
 
@@ -212,7 +213,7 @@ def test_to_many_join_in_list_query_does_not_duplicate_or_inflate(client):
 def test_default_ordering_belongs_in_apply_list_params(client):
     """A list's default ordering precedes the client's sort order."""
 
-    class RankedNote(fr.IDBase):
+    class RankedNote(fr.IDMixin, SharedBase):
         rank: Mapped[int]
 
     class RankedNoteSchema(fr.IDSchema):

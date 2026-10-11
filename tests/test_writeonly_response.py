@@ -19,11 +19,12 @@ from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
 def _build(client):
-    class User(fr.IDBase):
+    class User(fr.IDMixin, SharedBase):
         name: Mapped[str]
         password: Mapped[str]
 
@@ -94,7 +95,7 @@ def test_schema_instance_path_does_not_rerun_validators(client):
     and is not re-applied on the way out."""
     from pydantic import model_validator
 
-    class Acct(fr.IDBase):
+    class Acct(fr.IDMixin, SharedBase):
         name: Mapped[str]
         token: Mapped[str]
 
@@ -182,7 +183,7 @@ def test_writeonly_keys_in_a_dict_do_not_go_out_as_extra_fields(client):
     ``password`` key in a dict would go out as an extra field, so the response
     class drops it first."""
 
-    class Vault(fr.IDBase):
+    class Vault(fr.IDMixin, SharedBase):
         name: Mapped[str]
         password: Mapped[str]
 
@@ -212,7 +213,7 @@ def test_a_validator_on_a_writeonly_field_stays_on_the_request_side(client):
     validator or serializer for a field that a class does not have. Restly
     keeps them for the request, where the field is."""
 
-    class Login(fr.IDBase):
+    class Login(fr.IDMixin, SharedBase):
         name: Mapped[str]
         password: Mapped[str]
 

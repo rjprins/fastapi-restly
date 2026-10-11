@@ -9,6 +9,7 @@ import fastapi_restly as fr
 import fastapi_restly.schemas as fr_schemas
 from fastapi_restly.schemas._base import is_readonly_field
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
@@ -22,7 +23,7 @@ def test_derive_schema_is_the_only_public_schema_generator():
 
 
 def test_derive_schema_options_are_keyword_only():
-    class User(fr.IDBase):
+    class User(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     with pytest.raises(TypeError):
@@ -33,7 +34,7 @@ def test_auto_generated_schema_in_view(client):
     """Test that schemas are auto-generated when not specified in views."""
 
     # Define a simple model without manually creating a schema
-    class User(fr.IDBase):
+    class User(fr.IDMixin, SharedBase):
         name: Mapped[str]
         email: Mapped[str]
         is_active: Mapped[bool] = mapped_column(default=True)
@@ -76,7 +77,7 @@ def test_auto_generated_schema_with_timestamps(client):
     """Test auto-generated schemas with timestamp fields."""
 
     # Define a model with timestamps
-    class Product(fr.IDBase, fr.TimestampsMixin):
+    class Product(fr.TimestampsMixin, fr.IDMixin, SharedBase):
         name: Mapped[str]
         price: Mapped[float]
         description: Mapped[str] = mapped_column(default="")
@@ -106,7 +107,7 @@ def test_auto_generated_schema_with_defaults(client):
     """Test auto-generated schemas with field defaults."""
 
     # Define a model with defaults
-    class Category(fr.IDBase):
+    class Category(fr.IDMixin, SharedBase):
         name: Mapped[str]
         description: Mapped[str] = mapped_column(default="No description")
         is_active: Mapped[bool] = mapped_column(default=True)
@@ -135,7 +136,7 @@ def test_auto_generated_schema_crud_operations(client):
     """Test that auto-generated schemas work with full CRUD operations."""
 
     # Define a simple model
-    class Item(fr.IDBase):
+    class Item(fr.IDMixin, SharedBase):
         name: Mapped[str]
         quantity: Mapped[int]
 
@@ -183,10 +184,10 @@ def test_auto_generated_schema_crud_operations(client):
 def test_view_auto_schema_excludes_relationship_fields_by_default(client):
     """View auto-schema should stay focused on scalar/FK fields unless opted in explicitly."""
 
-    class User(fr.IDBase):
+    class User(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class Order(fr.IDBase):
+    class Order(fr.IDMixin, SharedBase):
         user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
         user: Mapped[User] = relationship()
 
@@ -205,10 +206,10 @@ def test_derive_schema_returns_the_schema_a_view_generates(client):
     """With its defaults, ``derive_schema`` builds the schema of a view that
     sets none: same name, same fields, no relationships."""
 
-    class Customer(fr.TimestampsMixin, fr.IDBase):
+    class Customer(fr.TimestampsMixin, fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class Invoice(fr.IDBase):
+    class Invoice(fr.IDMixin, SharedBase):
         number: Mapped[str]
         note: Mapped[str | None]
         customer_id: Mapped[int] = mapped_column(ForeignKey("customer.id"))
@@ -230,10 +231,10 @@ def test_derive_schema_marks_read_only_fields_and_leaves_out_relationships():
     """The id and timestamps are ReadOnly. A relationship gets no field: the
     foreign key column is an ordinary field."""
 
-    class Customer(fr.TimestampsMixin, fr.IDBase):
+    class Customer(fr.TimestampsMixin, fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class Invoice(fr.TimestampsMixin, fr.IDBase):
+    class Invoice(fr.TimestampsMixin, fr.IDMixin, SharedBase):
         customer_id: Mapped[int] = mapped_column(ForeignKey("customer.id"))
         customer: Mapped[Customer] = relationship()
 
@@ -246,7 +247,7 @@ def test_derive_schema_marks_read_only_fields_and_leaves_out_relationships():
 
 
 def test_derive_schema_preserves_json_dict_types():
-    class Event(fr.IDBase):
+    class Event(fr.IDMixin, SharedBase):
         payload: Mapped[dict] = mapped_column(JSON)
 
     schema = fr_schemas.derive_schema(Event)
@@ -255,7 +256,7 @@ def test_derive_schema_preserves_json_dict_types():
 
 
 def test_derive_schema_names_the_class_after_the_model():
-    class Report(fr.IDBase):
+    class Report(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
     assert fr_schemas.derive_schema(Report).__name__ == "ReportSchema"

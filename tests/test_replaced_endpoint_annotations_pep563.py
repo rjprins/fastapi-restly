@@ -19,6 +19,7 @@ from sqlalchemy.orm import Mapped
 import fastapi_restly as fr
 from fastapi_restly.testing._client import RestlyTestClient
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
@@ -39,7 +40,7 @@ def _client_and_tables(request, asynchronous):
     engine, _ = request.getfixturevalue("sync_db")
 
     def make_tables():
-        fr.DataclassBase.metadata.create_all(engine)
+        SharedBase.metadata.create_all(engine)
 
     return RestlyTestClient(FastAPI()), make_tables
 
@@ -48,7 +49,7 @@ def _client_and_tables(request, asynchronous):
 def test_string_annotation_on_replaced_endpoint_is_kept(request, asynchronous):
     client, make_tables = _client_and_tables(request, asynchronous)
 
-    class Product(fr.IDBase):
+    class Product(fr.IDMixin, SharedBase):
         name: Mapped[str]
         price: Mapped[float]
 
@@ -89,7 +90,7 @@ def test_string_annotation_on_replaced_endpoint_is_kept(request, asynchronous):
 def test_string_any_on_replaced_endpoint_gets_the_view_types(request, asynchronous):
     client, make_tables = _client_and_tables(request, asynchronous)
 
-    class Product(fr.IDBase):
+    class Product(fr.IDMixin, SharedBase):
         name: Mapped[str]
         price: Mapped[float]
 

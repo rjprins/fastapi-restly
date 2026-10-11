@@ -28,6 +28,8 @@ from fastapi_restly.schemas._base import (
     writeonly_marker,
 )
 
+from ._models import SharedBase
+
 # --- import-time guard on BaseSchema subclasses -------------------------------
 
 
@@ -109,7 +111,7 @@ def test_safe_forms_are_allowed():
 # --- registration backstop for non-BaseSchema schemas -------------------------
 
 
-class _BuriedMarkerWidget(fr.IDBase):
+class _BuriedMarkerWidget(fr.IDMixin, SharedBase):
     name: Mapped[str]
 
 

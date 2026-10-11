@@ -43,6 +43,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the test setup and `create_all` use that `Base` instead of
   `fr.DataclassBase`.
 
+### Removed
+
+- `fr.DataclassBase` and `fr.IDBase`. Restly no longer owns a declarative
+  base. Every app that used them shared one registry and one `MetaData`
+  inside Restly. So the tables of one package ended up in the migrations of
+  another, and to add a naming convention you had to change Restly's object.
+  Declare a base of your own instead. The tables, their names and their
+  column types stay the same, so Alembic finds no difference:
+
+  ```python
+  from sqlalchemy.orm import DeclarativeBase
+
+  class Base(fr.ModelDefaults, DeclarativeBase):
+      pass
+
+  class Post(fr.IDMixin, Base):  # was: class Post(fr.IDBase)
+      title: Mapped[str]
+  ```
+
+  Then pass `Base` where you passed `fr.DataclassBase` or `fr.IDBase`: in
+  `configure_tests(base=...)`, in `create_all()` and `async_create_all()`,
+  and as `target_metadata = Base.metadata` in `alembic/env.py`.
+
 ## [0.11.0] - 2026-10-09
 
 This release has many breaking changes. Before, we said to expect small

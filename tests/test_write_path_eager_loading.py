@@ -39,6 +39,7 @@ from fastapi_restly.views._base import (
     _schema_relationships_are_loaded,
 )
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
@@ -49,7 +50,7 @@ def sync_client(sync_db) -> Iterator[RestlyTestClient]:
 
 
 def _create_sync_tables():
-    fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
 
 
 # ---------------------------------------------------------------------------
@@ -58,15 +59,15 @@ def _create_sync_tables():
 
 
 def _define_models():
-    class Company(fr.IDBase):
+    class Company(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class Owner(fr.IDBase):
+    class Owner(fr.IDMixin, SharedBase):
         name: Mapped[str]
         company_id: Mapped[int] = mapped_column(ForeignKey("company.id"), init=False)
         company: Mapped[Company] = relationship(init=False)
 
-    class Doc(fr.IDBase):
+    class Doc(fr.IDMixin, SharedBase):
         title: Mapped[str]
         owner_id: Mapped[int] = mapped_column(ForeignKey("owner.id"), init=False)
         owner: Mapped[Owner] = relationship(init=False)
@@ -213,10 +214,10 @@ def test_sync_create_serializes_nested_relationship(sync_client):
 def test_async_create_serializes_flat_idref(client):
     """``fr.IDRef`` renders a relationship as a bare id, and still needs it loaded."""
 
-    class Author(fr.IDBase):
+    class Author(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
         author_id: Mapped[int] = mapped_column(ForeignKey("author.id"), init=False)
         author: Mapped[Author] = relationship(init=False)
@@ -255,13 +256,13 @@ def test_async_create_serializes_assigned_collection(client):
     """A to-many assigned during create is loaded at flush and unloaded by the
     refresh that follows it. The reload has to put it back."""
 
-    class Tag(fr.IDBase):
+    class Tag(fr.IDMixin, SharedBase):
         label: Mapped[str]
         doc_id: Mapped[int | None] = mapped_column(
             ForeignKey("tagged_doc.id"), init=False, nullable=True
         )
 
-    class TaggedDoc(fr.IDBase):
+    class TaggedDoc(fr.IDMixin, SharedBase):
         title: Mapped[str]
         tags: Mapped[list[Tag]] = relationship(init=False)
 
@@ -322,7 +323,7 @@ def test_relationship_free_schema_issues_no_reload(sync_client):
     """No relationship in the response schema -> no loader options -> no extra
     statement. The reload must not become a tax on plain writes."""
 
-    class Plain(fr.IDBase):
+    class Plain(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
     class PlainSchema(fr.IDSchema):
@@ -353,13 +354,13 @@ def test_relationship_free_schema_issues_no_reload(sync_client):
 def _seed_doc_with_two_tags(sync_db):
     """A doc with tags ``keep`` and ``drop``, plus the model pair."""
 
-    class Tag(fr.IDBase):
+    class Tag(fr.IDMixin, SharedBase):
         label: Mapped[str]
         doc_id: Mapped[int | None] = mapped_column(
             ForeignKey("scoped_doc.id"), init=False, nullable=True
         )
 
-    class ScopedDoc(fr.IDBase):
+    class ScopedDoc(fr.IDMixin, SharedBase):
         title: Mapped[str]
         tags: Mapped[list[Tag]] = relationship(init=False)
 
@@ -467,10 +468,10 @@ def test_indirection_over_an_unnamed_relationship_fails_alike_on_read_and_write(
     used to fail where reads succeeded; now they agree.
     """
 
-    class Owner(fr.IDBase):
+    class Owner(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class Doc(fr.IDBase):
+    class Doc(fr.IDMixin, SharedBase):
         title: Mapped[str]
         owner_id: Mapped[int] = mapped_column(ForeignKey("owner.id"), init=False)
         owner: Mapped[Owner] = relationship(init=False)
@@ -525,13 +526,13 @@ def test_awaitable_attrs_reaches_a_relationship_the_schema_never_names(client):
     where a bare attribute access raises ``MissingGreenlet``.
     """
 
-    class Note(fr.IDBase):
+    class Note(fr.IDMixin, SharedBase):
         body: Mapped[str]
         doc_id: Mapped[int | None] = mapped_column(
             ForeignKey("noted_doc.id"), init=False, nullable=True
         )
 
-    class NotedDoc(fr.IDBase):
+    class NotedDoc(fr.IDMixin, SharedBase):
         title: Mapped[str]
         notes: Mapped[list[Note]] = relationship(init=False)
 
@@ -604,13 +605,13 @@ def test_divergent_schemas_same_instance_reload(client):
     time inside the reload gate rather than the write path as a whole.
     """
 
-    class Company(fr.IDBase):
+    class Company(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class Department(fr.IDBase):
+    class Department(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class Person(fr.IDBase):
+    class Person(fr.IDMixin, SharedBase):
         name: Mapped[str]
         company_id: Mapped[int] = mapped_column(ForeignKey("company.id"), init=False)
         # eager: survives the write's refresh, so the gate sees it loaded
@@ -621,7 +622,7 @@ def test_divergent_schemas_same_instance_reload(client):
         # default lazy: unloaded after refresh -- the one the gate must not skip
         department: Mapped[Department] = relationship(init=False)
 
-    class Doc(fr.IDBase):
+    class Doc(fr.IDMixin, SharedBase):
         title: Mapped[str]
         author_id: Mapped[int] = mapped_column(ForeignKey("person.id"), init=False)
         author: Mapped[Person] = relationship(
@@ -699,13 +700,13 @@ def test_sync_create_serializes_assigned_collection(sync_client):
 
     load_state: dict[str, Any] = {}
 
-    class Tag(fr.IDBase):
+    class Tag(fr.IDMixin, SharedBase):
         label: Mapped[str]
         doc_id: Mapped[int | None] = mapped_column(
             ForeignKey("sync_tagged_doc.id"), init=False, nullable=True
         )
 
-    class SyncTaggedDoc(fr.IDBase):
+    class SyncTaggedDoc(fr.IDMixin, SharedBase):
         title: Mapped[str]
         tags: Mapped[list[Tag]] = relationship(init=False)
 
@@ -758,13 +759,13 @@ def test_write_reload_unique_guards_a_joinedload_collection(client):
     only an override exercises this -- exactly what the inline comment claims.
     """
 
-    class Tag(fr.IDBase):
+    class Tag(fr.IDMixin, SharedBase):
         label: Mapped[str]
         doc_id: Mapped[int | None] = mapped_column(
             ForeignKey("joined_doc.id"), init=False, nullable=True
         )
 
-    class JoinedDoc(fr.IDBase):
+    class JoinedDoc(fr.IDMixin, SharedBase):
         title: Mapped[str]
         tags: Mapped[list[Tag]] = relationship(init=False)
 
@@ -819,7 +820,7 @@ def test_transient_object_yields_no_reload_statement():
     """A transient (never-flushed) object has no identity, so there is nothing
     to reload by primary key: the statement builder returns None."""
 
-    class Widget(fr.IDBase):
+    class Widget(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     transient = Widget(name="unsaved")
@@ -832,7 +833,7 @@ def test_composite_pk_reload_statement_targets_all_key_columns(sync_db):
     """The PK-targeted reload zips every primary-key column against the object's
     identity, so a composite key produces one WHERE term per column."""
 
-    class Ledger(fr.DataclassBase):
+    class Ledger(SharedBase):
         tenant: Mapped[str] = mapped_column(primary_key=True)
         sku: Mapped[str] = mapped_column(primary_key=True)
         name: Mapped[str]
@@ -858,10 +859,10 @@ def test_gate_skips_a_nullable_relationship_loaded_as_none(sync_db):
     """A to-one relationship loaded as None needs no reload: it is present (just
     null), so the gate reports it satisfied rather than asking for a reload."""
 
-    class Owner(fr.IDBase):
+    class Owner(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class Doc(fr.IDBase):
+    class Doc(fr.IDMixin, SharedBase):
         title: Mapped[str]
         owner_id: Mapped[int | None] = mapped_column(
             ForeignKey("owner.id"), init=False, nullable=True
@@ -892,7 +893,7 @@ def test_gate_terminates_on_a_self_referential_cycle(sync_db):
     reached again under the *same* schema is not re-descended, so a node that is
     its own parent does not recurse forever."""
 
-    class Node(fr.IDBase):
+    class Node(fr.IDMixin, SharedBase):
         name: Mapped[str]
         parent_id: Mapped[int | None] = mapped_column(
             ForeignKey("node.id"), init=False, nullable=True

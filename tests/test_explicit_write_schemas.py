@@ -22,6 +22,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 import fastapi_restly as fr
 from fastapi_restly.testing import RestlyTestClient
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
@@ -40,10 +41,10 @@ class _Models:
 
 
 def _models() -> _Models:
-    class Story(fr.IDBase):
+    class Story(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         body: Mapped[str]
         story_id: Mapped[int] = mapped_column(ForeignKey("story.id"))
         story: Mapped[Story] = relationship(default=None)
@@ -107,7 +108,7 @@ def api(request: pytest.FixtureRequest) -> Iterator[_Api]:
     models = _models()
     if request.param is fr.RestView:
         engine, _ = request.getfixturevalue("sync_db")
-        fr.DataclassBase.metadata.create_all(engine)
+        SharedBase.metadata.create_all(engine)
     else:
         create_tables()
 
@@ -291,7 +292,7 @@ def run_objects(request: pytest.FixtureRequest) -> Callable[[_Scenario], None]:
         models = _models()
         if request.param == "sync":
             engine, make_session = request.getfixturevalue("sync_db")
-            fr.DataclassBase.metadata.create_all(engine)
+            SharedBase.metadata.create_all(engine)
 
             async def go_sync() -> None:
                 with make_session() as session:
@@ -307,7 +308,7 @@ def run_objects(request: pytest.FixtureRequest) -> Callable[[_Scenario], None]:
         async def go_async() -> None:
             engine = create_async_engine("sqlite+aiosqlite:///:memory:")
             async with engine.begin() as conn:
-                await conn.run_sync(fr.DataclassBase.metadata.create_all)
+                await conn.run_sync(SharedBase.metadata.create_all)
             async with async_sessionmaker(engine, expire_on_commit=False)() as session:
                 session.add_all(
                     [models.Story(title="first"), models.Story(title="second")]

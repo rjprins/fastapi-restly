@@ -18,6 +18,8 @@ from sqlalchemy.sql.operators import ColumnOperators
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
+
 
 class Base(DeclarativeBase):
     pass
@@ -370,7 +372,7 @@ def test_explain_shows_values_origins_and_unbound_members():
 def test_depends_binds_per_request_and_respects_overrides(client):
     from sqlalchemy.orm import Mapped
 
-    class NsNote(fr.IDBase):
+    class NsNote(fr.IDMixin, SharedBase):
         tenant_id: Mapped[int]
         name: Mapped[str]
 

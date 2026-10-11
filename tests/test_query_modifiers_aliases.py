@@ -10,7 +10,6 @@ from sqlalchemy import Boolean, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 from starlette.datastructures import QueryParams
 
-from fastapi_restly.models import DataclassBase
 from fastapi_restly.query._impl import (
     _apply_filtering,
     _apply_sorting,
@@ -20,8 +19,10 @@ from fastapi_restly.query._impl import (
     derive_schema_list_params,
 )
 
+from ._models import SharedBase
 
-class AliasModel(DataclassBase):
+
+class AliasModel(SharedBase):
     __tablename__ = "test_model_aliases"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -356,12 +357,12 @@ class TestRelationAliases:
         from sqlalchemy import ForeignKey
         from sqlalchemy.orm import relationship
 
-        class Author(DataclassBase):
+        class Author(SharedBase):
             __tablename__ = "ra_author"
             id: Mapped[int] = mapped_column(primary_key=True)
             name: Mapped[str] = mapped_column(String(50))
 
-        class Article(DataclassBase):
+        class Article(SharedBase):
             __tablename__ = "ra_article"
             id: Mapped[int] = mapped_column(primary_key=True)
             title: Mapped[str] = mapped_column(String(50))

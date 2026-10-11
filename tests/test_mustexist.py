@@ -40,6 +40,7 @@ from fastapi_restly.schemas._base import (
     is_reference_annotation,
 )
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 # ---------------------------------------------------------------------------
@@ -48,7 +49,7 @@ from .conftest import create_tables
 
 
 def test_mustexist_desugars_to_checked_scalar():
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
     # One arg: pk type in the slot, model left to infer.
@@ -64,7 +65,7 @@ def test_mustexist_desugars_to_checked_scalar():
 
 
 def test_mustexist_non_int_pk_type_is_the_first_arg():
-    class Account(fr.DataclassBase):
+    class Account(SharedBase):
         __tablename__ = "mustexist_desugar_account"
         id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default_factory=uuid4)
 
@@ -74,7 +75,7 @@ def test_mustexist_non_int_pk_type_is_the_first_arg():
 
 
 def test_mustexist_field_stays_scalar_and_is_not_a_reference():
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
     class CommentSchema(fr.BaseSchema):
@@ -100,10 +101,10 @@ def test_mustexist_field_stays_scalar_and_is_not_a_reference():
 
 
 def _post_comment_models():
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
 
@@ -117,7 +118,7 @@ def _post_comment_models():
 def test_sync_existing_id_resolves_and_stays_scalar(sync_db):
     engine, make_session = sync_db
     Post, Comment, CommentSchema = _post_comment_models()
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         post = Post(title="p")
@@ -135,7 +136,7 @@ def test_sync_existing_id_resolves_and_stays_scalar(sync_db):
 def test_sync_missing_id_404s_naming_field_and_id(sync_db):
     engine, make_session = sync_db
     Post, Comment, CommentSchema = _post_comment_models()
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         with pytest.raises(HTTPException) as exc:
@@ -148,7 +149,7 @@ def test_sync_missing_id_404s_naming_field_and_id(sync_db):
 def test_sync_update_also_checks_existence(sync_db):
     engine, make_session = sync_db
     Post, Comment, CommentSchema = _post_comment_models()
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         post = Post(title="p")
@@ -168,10 +169,10 @@ def test_sync_explicit_model_second_arg(sync_db):
     """``MustExist[int, Post]`` spells the model out instead of inferring it."""
     engine, make_session = sync_db
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
 
@@ -179,7 +180,7 @@ def test_sync_explicit_model_second_arg(sync_db):
         content: str
         post_id: fr.MustExist[int, Post]
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         post = Post(title="p")
@@ -201,13 +202,13 @@ def test_sync_infer_fails_clearly_on_non_fk_column(sync_db):
     a configuration error steering to the explicit form."""
     engine, make_session = sync_db
 
-    class Widget(fr.IDBase):
+    class Widget(fr.IDMixin, SharedBase):
         count: Mapped[int]  # a plain int column, no ForeignKey
 
     class WidgetSchema(fr.BaseSchema):
         count: fr.MustExist[int]
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         with pytest.raises(RestlyConfigurationError) as exc:
@@ -221,10 +222,10 @@ def test_sync_check_is_batched_one_query_per_model(sync_db):
     ``SELECT ... WHERE id IN (...)`` -- no N+1."""
     engine, make_session = sync_db
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Pairing(fr.IDBase):
+    class Pairing(fr.IDMixin, SharedBase):
         left_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
         right_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
 
@@ -232,7 +233,7 @@ def test_sync_check_is_batched_one_query_per_model(sync_db):
         left_id: fr.MustExist[int]
         right_id: fr.MustExist[int]
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         p1, p2 = Post(title="a"), Post(title="b")
@@ -277,16 +278,16 @@ def test_sync_check_is_an_orm_statement_so_a_session_rule_applies(sync_db):
     column, so a ``with_loader_criteria`` rule reaches it like any read."""
     engine, make_session = sync_db
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         tenant_id: Mapped[int]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
 
     class CommentSchema(fr.BaseSchema):
         post_id: fr.MustExist[int]
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
     restrict = _restrict_to_tenant(Post, tenant=1)
 
     with make_session() as session:
@@ -309,17 +310,17 @@ def test_async_check_is_an_orm_statement_so_a_session_rule_applies():
         engine = create_async_engine("sqlite+aiosqlite:///:memory:")
         make_session = async_sessionmaker(bind=engine, expire_on_commit=False)
 
-        class Post(fr.IDBase):
+        class Post(fr.IDMixin, SharedBase):
             tenant_id: Mapped[int]
 
-        class Comment(fr.IDBase):
+        class Comment(fr.IDMixin, SharedBase):
             post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
 
         class CommentSchema(fr.BaseSchema):
             post_id: fr.MustExist[int]
 
         async with engine.begin() as conn:
-            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+            await conn.run_sync(SharedBase.metadata.create_all)
         restrict = _restrict_to_tenant(Post, tenant=1)
 
         async with make_session() as session:
@@ -348,11 +349,11 @@ def test_sync_uuid_pk_existence_check(sync_db):
     """A UUID FK: ``MustExist[UUID]`` infers the model, same as the int case."""
     engine, make_session = sync_db
 
-    class Account(fr.DataclassBase):
+    class Account(SharedBase):
         __tablename__ = "mustexist_uuid_account"
         id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default_factory=uuid4)
 
-    class Membership(fr.IDBase):
+    class Membership(fr.IDMixin, SharedBase):
         account_id: Mapped[UUID] = mapped_column(
             Uuid, ForeignKey("mustexist_uuid_account.id")
         )
@@ -360,7 +361,7 @@ def test_sync_uuid_pk_existence_check(sync_db):
     class MembershipSchema(fr.BaseSchema):
         account_id: fr.MustExist[UUID]
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         account = Account()
@@ -383,10 +384,10 @@ def test_explicit_marker_form_behaves_like_mustexist(sync_db):
     """``Annotated[int, RefExists(Model)]`` (no sugar) is equivalent."""
     engine, make_session = sync_db
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
 
@@ -394,7 +395,7 @@ def test_explicit_marker_form_behaves_like_mustexist(sync_db):
         content: str
         post_id: Annotated[int, RefExists(Post)]
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         post = Post(title="p")
@@ -418,10 +419,10 @@ def test_optional_mustexist_checks_when_provided_and_skips_none(sync_db):
     skipped."""
     engine, make_session = sync_db
 
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int | None] = mapped_column(ForeignKey("post.id"), default=None)
 
@@ -429,7 +430,7 @@ def test_optional_mustexist_checks_when_provided_and_skips_none(sync_db):
         content: str
         post_id: fr.MustExist[int] | None = None
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         # None -> no check, no error.
@@ -465,10 +466,10 @@ def test_async_existence_check_parity():
         engine = create_async_engine("sqlite+aiosqlite:///:memory:")
         make_session = async_sessionmaker(bind=engine, expire_on_commit=False)
 
-        class Post(fr.IDBase):
+        class Post(fr.IDMixin, SharedBase):
             title: Mapped[str]
 
-        class Comment(fr.IDBase):
+        class Comment(fr.IDMixin, SharedBase):
             content: Mapped[str]
             post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
 
@@ -477,7 +478,7 @@ def test_async_existence_check_parity():
             post_id: fr.MustExist[int]
 
         async with engine.begin() as conn:
-            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+            await conn.run_sync(SharedBase.metadata.create_all)
         async with make_session() as session:
             post = Post(title="p")
             session.add(post)
@@ -505,10 +506,10 @@ def test_async_existence_check_parity():
 
 
 def test_mustexist_e2e_flat_wire_and_404(client):
-    class Post(fr.IDBase):
+    class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    class Comment(fr.IDBase):
+    class Comment(fr.IDMixin, SharedBase):
         content: Mapped[str]
         post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
 
@@ -555,10 +556,10 @@ def test_mustexist_with_read_only_relationship_keeps_foreign_key(sync_db):
 
     engine, make_session = sync_db
 
-    class Writer(fr.IDBase):
+    class Writer(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class Book(fr.IDBase):
+    class Book(fr.IDMixin, SharedBase):
         title: Mapped[str]
         writer_id: Mapped[int] = mapped_column(ForeignKey("writer.id"))
         writer: Mapped[Writer] = relationship(init=False)
@@ -573,7 +574,7 @@ def test_mustexist_with_read_only_relationship_keeps_foreign_key(sync_db):
 
     BookCreate = create_model_without_read_only_fields(BookSchema)
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         writer = Writer(name="Octavia")

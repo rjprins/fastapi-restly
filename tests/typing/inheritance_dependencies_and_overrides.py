@@ -2,7 +2,7 @@ from collections.abc import AsyncIterator
 from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, Response
-from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import DeclarativeBase, Mapped
 
 import fastapi_restly as fr
 
@@ -13,7 +13,11 @@ def current_tenant_id() -> int:
     return 1
 
 
-class Project(fr.IDBase):
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+
+
+class Project(fr.IDMixin, Base):
     tenant_id: Mapped[int]
     name: Mapped[str]
 

@@ -20,6 +20,8 @@ import fastapi_restly as fr
 from fastapi_restly.db._globals import _fr_globals
 from fastapi_restly.testing._client import RestlyTestClient
 
+from ._models import SharedBase
+
 
 @pytest.mark.parametrize("default_keyword", ["default", "insert_default"])
 def test_plain_model_column_default_reads_each_flush_binding(sync_db, default_keyword):
@@ -82,7 +84,7 @@ def test_dataclass_defaults_read_the_flush_binding(sync_db, wrap_default):
 
 
 def _create_sync_tables():
-    fr.DataclassBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
 
 
 def _define(prefix: str, *, wrap_default: bool):
@@ -91,7 +93,7 @@ def _define(prefix: str, *, wrap_default: bool):
 
     read_user_id = (lambda: Ctx.user_id()) if wrap_default else Ctx.user_id
 
-    class Note(fr.IDBase):
+    class Note(fr.IDMixin, SharedBase):
         title: Mapped[str]
         # The factory supplies the constructor default without also setting a
         # column default, which would conflict with insert_default on 2.1.

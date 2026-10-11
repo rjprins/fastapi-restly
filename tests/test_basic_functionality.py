@@ -5,6 +5,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
@@ -12,7 +13,7 @@ def test_basic_crud_operations(client):
     """Test basic CRUD operations."""
 
     # Define a simple model
-    class Product(fr.IDBase):
+    class Product(fr.IDMixin, SharedBase):
         name: Mapped[str]
         price: Mapped[float]
 
@@ -69,14 +70,14 @@ def test_put_request_with_non_existing_id(client):
     """Test PUT request with non-existing ID returns 404."""
 
     # Define models with relationship
-    class User(fr.IDBase):
+    class User(fr.IDMixin, SharedBase):
         name: Mapped[str]
         email: Mapped[str]
         blogs: Mapped[list["Blog"]] = relationship(
             "Blog", back_populates="author", default_factory=list
         )
 
-    class Blog(fr.IDBase):
+    class Blog(fr.IDMixin, SharedBase):
         title: Mapped[str]
         content: Mapped[str]
         author_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
@@ -159,7 +160,7 @@ def test_put_request_with_non_existing_id(client):
 def test_plain_foreign_key_fields_serialize_as_scalars(client):
     """Plain int foreign key fields should not be coerced into IDSchema payloads."""
 
-    class Task(fr.IDBase):
+    class Task(fr.IDMixin, SharedBase):
         title: Mapped[str]
         assignee_id: Mapped[int | None]
 
@@ -187,7 +188,7 @@ def test_list_endpoint(client):
     """Test the list endpoint functionality."""
 
     # Define a simple model
-    class Category(fr.IDBase):
+    class Category(fr.IDMixin, SharedBase):
         name: Mapped[str]
         description: Mapped[str]
 

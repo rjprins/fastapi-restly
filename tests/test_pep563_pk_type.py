@@ -15,12 +15,13 @@ from uuid import UUID, uuid4
 from sqlalchemy import Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
-import fastapi_restly as fr
 from fastapi_restly.schemas._base import _model_id_type
+
+from ._models import SharedBase
 
 
 def test_model_id_type_resolves_pep563_string_annotation():
-    class UPk(fr.DataclassBase):
+    class UPk(SharedBase):
         __tablename__ = "pep563_pk_type_upk"
         id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default_factory=uuid4)
 

@@ -16,6 +16,7 @@ import fastapi_restly as fr
 from fastapi_restly.schemas import BaseSchema, ReadOnly
 from fastapi_restly.schemas._base import create_model_without_read_only_fields
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
@@ -139,7 +140,7 @@ class TestNestedSchemaSerialization:
             postal_code: str = Field(alias="postalCode")
 
         # Create a simple model
-        class User(fr.IDBase):
+        class User(fr.IDMixin, SharedBase):
             name: Mapped[str]
             email: Mapped[str]
             street: Mapped[str]
@@ -203,7 +204,7 @@ class TestNestedSchemaSerialization:
             industry: str = Field(alias="industryType")
 
         # Create a simple model
-        class Employee(fr.IDBase):
+        class Employee(fr.IDMixin, SharedBase):
             name: Mapped[str]
             phone: Mapped[str]
             email: Mapped[str]
@@ -259,7 +260,7 @@ class TestNestedSchemaSerialization:
             # created_at: ReadOnly[datetime]
 
         # Create a simple model
-        class User(fr.IDBase):
+        class User(fr.IDMixin, SharedBase):
             name: Mapped[str]
             email: Mapped[str]
             street: Mapped[str]

@@ -12,11 +12,13 @@ from fastapi_restly.views._base import (
     validate_resolved_reference_consistency,
 )
 
+from ._models import SharedBase
+
 
 def test_sync_rest_view_404_response_includes_detail(sync_db):
     engine, _make_session = sync_db
 
-    class Widget(fr.IDBase):
+    class Widget(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class WidgetSchema(fr.IDSchema):
@@ -30,7 +32,7 @@ def test_sync_rest_view_404_response_includes_detail(sync_db):
         model = Widget
         schema = WidgetSchema
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     client = RestlyTestClient(app)
     response = client.get("/widgets/123", assert_status_code=404)
@@ -40,15 +42,15 @@ def test_sync_rest_view_404_response_includes_detail(sync_db):
 def test_sync_object_helpers_handle_readonly_and_relationship_inputs(sync_db):
     engine, make_session = sync_db
 
-    class Author(fr.IDBase):
+    class Author(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class Article(fr.IDBase):
+    class Article(fr.IDMixin, SharedBase):
         title: Mapped[str]
         author_id: Mapped[int] = mapped_column(ForeignKey("author.id"))
         author: Mapped[Author] = relationship(default=None)
 
-    class Assignment(fr.IDBase):
+    class Assignment(fr.IDMixin, SharedBase):
         owner_id: Mapped[int]
 
     class ArticleSchema(fr.IDSchema):
@@ -59,7 +61,7 @@ def test_sync_object_helpers_handle_readonly_and_relationship_inputs(sync_db):
     class AssignmentSchema(fr.BaseSchema):
         owner_id: fr.IDSchema
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         original_author = Author(name="Alice")
@@ -108,14 +110,14 @@ def test_sync_save_object_flushes_and_refreshes(sync_db):
     autoincrement PKs are populated on the returned object."""
     engine, make_session = sync_db
 
-    class Widget(fr.IDBase):
+    class Widget(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class WidgetSchema(fr.IDSchema):
         id: fr.ReadOnly[int]
         name: str
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         obj = make_new_object(session, Widget, WidgetSchema(id=0, name="gizmo"))
@@ -133,7 +135,7 @@ def test_sync_apply_schema_only_applies_set_fields(sync_db):
     matching get_writable_inputs semantics — i.e. PATCH partial-update behaviour."""
     engine, make_session = sync_db
 
-    class Item(fr.IDBase):
+    class Item(fr.IDMixin, SharedBase):
         name: Mapped[str]
         notes: Mapped[str]
 
@@ -144,7 +146,7 @@ def test_sync_apply_schema_only_applies_set_fields(sync_db):
 
     UpdateItemSchema = create_model_with_optional_fields(ItemSchema)
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         item = make_new_object(
@@ -166,41 +168,41 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
     class DeclarativeModelBase(DeclarativeBase):
         pass
 
-    class RefRoutingSyncAuthor(fr.IDBase):
+    class RefRoutingSyncAuthor(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class RefRoutingSyncFkFirstArticle(fr.IDBase):
+    class RefRoutingSyncFkFirstArticle(fr.IDMixin, SharedBase):
         title: Mapped[str]
         author_id: Mapped[int] = mapped_column(ForeignKey("ref_routing_sync_author.id"))
         author: Mapped[RefRoutingSyncAuthor] = relationship(default=None, init=False)
 
-    class RefRoutingSyncRelationshipFirstArticle(fr.IDBase):
+    class RefRoutingSyncRelationshipFirstArticle(fr.IDMixin, SharedBase):
         title: Mapped[str]
         author_id: Mapped[int] = mapped_column(
             ForeignKey("ref_routing_sync_author.id"), init=False
         )
         author: Mapped[RefRoutingSyncAuthor] = relationship(default=None)
 
-    class RefRoutingSyncPostAssignArticle(fr.IDBase):
+    class RefRoutingSyncPostAssignArticle(fr.IDMixin, SharedBase):
         title: Mapped[str]
         author_id: Mapped[int] = mapped_column(
             ForeignKey("ref_routing_sync_author.id"), init=False
         )
         author: Mapped[RefRoutingSyncAuthor] = relationship(default=None, init=False)
 
-    class RefRoutingSyncBothInitArticle(fr.IDBase):
+    class RefRoutingSyncBothInitArticle(fr.IDMixin, SharedBase):
         title: Mapped[str]
         author_id: Mapped[int] = mapped_column(ForeignKey("ref_routing_sync_author.id"))
         author: Mapped[RefRoutingSyncAuthor] = relationship(default=None)
 
-    class RefRoutingSyncRelationshipFieldFirstArticle(fr.IDBase):
+    class RefRoutingSyncRelationshipFieldFirstArticle(fr.IDMixin, SharedBase):
         title: Mapped[str]
         author_id: Mapped[int] = mapped_column(
             ForeignKey("ref_routing_sync_author.id"), init=False
         )
         author: Mapped[RefRoutingSyncAuthor] = relationship(default=None)
 
-    class RefRoutingSyncRelationshipFieldFallbackArticle(fr.IDBase):
+    class RefRoutingSyncRelationshipFieldFallbackArticle(fr.IDMixin, SharedBase):
         title: Mapped[str]
         author_id: Mapped[int] = mapped_column(ForeignKey("ref_routing_sync_author.id"))
         author: Mapped[RefRoutingSyncAuthor] = relationship(default=None, init=False)
@@ -221,14 +223,14 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
         )
         author: Mapped[RefRoutingSyncDeclarativeAuthor] = relationship()
 
-    class RefRoutingSyncCompositeParent(fr.DataclassBase):
+    class RefRoutingSyncCompositeParent(SharedBase):
         __tablename__ = "ref_routing_sync_composite_parent"
 
         id1: Mapped[int] = mapped_column(primary_key=True)
         id2: Mapped[int] = mapped_column(primary_key=True)
         name: Mapped[str]
 
-    class RefRoutingSyncCompositeChild(fr.IDBase):
+    class RefRoutingSyncCompositeChild(fr.IDMixin, SharedBase):
         __tablename__ = "ref_routing_sync_composite_child"
         __table_args__ = (
             ForeignKeyConstraint(
@@ -271,7 +273,7 @@ def test_sync_object_helpers_are_dataclass_init_aware_for_resolved_refs(sync_db)
         title: str
         parent: fr.IDSchema[RefRoutingSyncCompositeParent]
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
     DeclarativeModelBase.metadata.create_all(engine)
 
     with make_session() as session:
@@ -509,7 +511,7 @@ def test_sync_rest_view_crud_and_pagination(sync_db):
 def test_sync_rest_view_dispatches_to_handle_overrides(sync_db):
     engine, make_session = sync_db
 
-    class DispatchWidget(fr.IDBase):
+    class DispatchWidget(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class WidgetSchema(fr.IDSchema):
@@ -546,7 +548,7 @@ def test_sync_rest_view_dispatches_to_handle_overrides(sync_db):
             call_log.append("delete")
             return super().delete(obj)
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         view = WidgetView()
@@ -577,7 +579,7 @@ def test_sync_build_query_is_consulted_by_list_and_count(sync_db):
 
     engine, make_session = sync_db
 
-    class Gadget(fr.IDBase):
+    class Gadget(fr.IDMixin, SharedBase):
         name: Mapped[str]
         active: Mapped[bool]
 
@@ -591,7 +593,7 @@ def test_sync_build_query_is_consulted_by_list_and_count(sync_db):
         schema = GadgetSchema
         scope = fr.where_clause(Gadget.active.is_(True))
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         session.add_all(
@@ -624,7 +626,7 @@ def test_a_natural_key_route_is_handle_get_one_with_a_predicate(sync_db):
     key: the same scope, 404 and read-auth as ``GET /{id}``."""
     engine, _make_session = sync_db
 
-    class Page(fr.IDBase):
+    class Page(fr.IDMixin, SharedBase):
         slug: Mapped[str]
         title: Mapped[str]
 
@@ -648,7 +650,7 @@ def test_a_natural_key_route_is_handle_get_one_with_a_predicate(sync_db):
             if obj is not None and obj.slug == "secret":
                 raise fr.exc.Forbidden("not yours")
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     client = RestlyTestClient(app)
     client.post("/pages/", json={"slug": "alpha", "title": "Alpha"})
@@ -669,7 +671,7 @@ def test_get_one_rejects_an_identity_that_is_neither_id_nor_expression(sync_db):
     both are refused rather than quietly matching the wrong row."""
     engine, make_session = sync_db
 
-    class Note(fr.IDBase):
+    class Note(fr.IDMixin, SharedBase):
         slug: Mapped[str]
 
     class NoteSchema(fr.IDSchema):
@@ -685,7 +687,7 @@ def test_get_one_rejects_an_identity_that_is_neither_id_nor_expression(sync_db):
         model = Note
         schema = NoteSchema
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         session.add(Note(slug="alpha"))
@@ -711,7 +713,7 @@ def test_a_composite_primary_key_is_addressable_by_predicate(sync_db):
 
     engine, make_session = sync_db
 
-    class Pair(fr.DataclassBase):
+    class Pair(SharedBase):
         __tablename__ = "pair"
 
         a: Mapped[int] = mapped_column(primary_key=True)
@@ -728,7 +730,7 @@ def test_a_composite_primary_key_is_addressable_by_predicate(sync_db):
         model = Pair
         schema = PairSchema
 
-    fr.DataclassBase.metadata.create_all(engine)
+    SharedBase.metadata.create_all(engine)
 
     with make_session() as session:
         session.add_all([Pair(a=1, b=2, note="first"), Pair(a=1, b=3, note="second")])

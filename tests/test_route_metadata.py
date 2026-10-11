@@ -7,13 +7,15 @@ from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
+
 
 @pytest.fixture(
     params=[fr.RestView, fr.AsyncRestView, fr.ReactAdminView, fr.AsyncReactAdminView],
     ids=["sync", "async", "react-admin-sync", "react-admin-async"],
 )
 def base(request):
-    class Item(fr.IDBase):
+    class Item(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class ItemSchema(fr.IDSchema):

@@ -3,7 +3,7 @@ table-bootstrap helpers that wrap ``metadata.create_all`` on the configured
 engine (replacing the raw ``get_async_engine()`` + ``engine.begin()`` dance).
 
 Uses a private declarative base (the autouse ``reset_metadata`` fixture clears
-``fr.DataclassBase.metadata`` between tests) and ``StaticPool`` engines so the
+``SharedBase.metadata`` between tests) and ``StaticPool`` engines so the
 in-memory SQLite database is shared across connections.
 """
 

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
@@ -18,7 +19,7 @@ def test_snapshot_is_pre_mutation_old_in_after_commit(client):
     """``after_action_commit`` receives ``old`` = the pre-update snapshot while the
     object itself already reflects the new state."""
 
-    class Doc(fr.IDBase):
+    class Doc(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
     class DocSchema(fr.IDSchema):
@@ -51,7 +52,7 @@ def test_before_commit_failure_aborts_the_write(client):
     """``before_action_commit`` runs inside the transaction: raising there discards the
     in-flight write (nothing is committed)."""
 
-    class Doc(fr.IDBase):
+    class Doc(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
     class DocSchema(fr.IDSchema):
@@ -80,7 +81,7 @@ def test_after_commit_failure_fails_the_request_but_keeps_the_write(client):
     """``after_action_commit`` runs after the commit: raising there fails the
     request, but the write stays durable, so a client retry would repeat it."""
 
-    class Doc(fr.IDBase):
+    class Doc(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
     class DocSchema(fr.IDSchema):

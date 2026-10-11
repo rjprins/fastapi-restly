@@ -18,6 +18,7 @@ from sqlalchemy.orm import Mapped
 import fastapi_restly as fr
 from fastapi_restly.exc import RestlyDuplicateSchemaNameWarning
 
+from ._models import SharedBase
 from ._openapi_spec import Spec
 from ._openapi_spec import components as _components
 from ._openapi_spec import response_ref as _ref
@@ -32,7 +33,7 @@ def _body_ref(app_or_spec: fastapi.FastAPI | Spec, path: str, method: str) -> st
 
 
 def test_openapi_shows_only_the_generated_names():
-    class User(fr.IDBase):
+    class User(fr.IDMixin, SharedBase):
         name: Mapped[str]
         password_hash: Mapped[str] = ""
 
@@ -64,7 +65,7 @@ def test_openapi_shows_only_the_generated_names():
 
 
 def test_a_view_without_a_schema_gets_a_generated_schema():
-    class Thing(fr.IDBase):
+    class Thing(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     app = fastapi.FastAPI()
@@ -86,7 +87,7 @@ def test_a_view_without_a_schema_gets_a_generated_schema():
 
 
 def test_a_final_response_is_dropped_from_the_resource_name():
-    class Item(fr.IDBase):
+    class Item(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class ItemResponse(fr.IDSchema):
@@ -112,7 +113,7 @@ def test_the_response_class_is_built_without_write_only_fields_too():
     """The response class is a subclass of the view's schema, so a response
     is also an instance of the schema."""
 
-    class Note(fr.IDBase):
+    class Note(fr.IDMixin, SharedBase):
         text: Mapped[str]
 
     class NoteSchema(fr.IDSchema):
@@ -137,7 +138,7 @@ def test_the_response_class_is_built_without_write_only_fields_too():
 
 
 def test_react_admin_put_returns_the_response_class():
-    class Tag(fr.IDBase):
+    class Tag(fr.IDMixin, SharedBase):
         label: Mapped[str]
 
     class TagSchema(fr.IDSchema):
@@ -169,7 +170,7 @@ class _Member(pydantic.BaseModel):
 
 
 def _member_app(client, view_body):
-    class Member(fr.IDBase):
+    class Member(fr.IDMixin, SharedBase):
         name: Mapped[str]
         password: Mapped[str]
 
@@ -221,7 +222,7 @@ def test_a_schema_instance_goes_out_without_a_second_validation(client):
     not read the instance again by its aliases, and it does not run the
     validators again."""
 
-    class Priced(fr.IDBase):
+    class Priced(fr.IDMixin, SharedBase):
         full_name: Mapped[str]
         price: Mapped[int]
 
@@ -273,7 +274,7 @@ def test_a_forward_reference_can_be_defined_after_the_response_class():
 
 
 def test_two_views_with_one_schema_share_the_generated_classes():
-    class Account(fr.IDBase):
+    class Account(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class AccountSchema(fr.IDSchema):
@@ -302,7 +303,7 @@ def test_two_views_with_one_schema_share_the_generated_classes():
 
 
 def _shop_views(app: fastapi.FastAPI, *, own_schema: bool = False) -> None:
-    class Shop(fr.IDBase):
+    class Shop(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class ShopSchema(fr.IDSchema):
@@ -361,7 +362,7 @@ def test_views_on_a_router_are_checked_through_configure():
     an ``APIRouter``. A view without a schema gets its classes from its
     model, and the warning says so."""
 
-    class Account(fr.IDBase):
+    class Account(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     router = fastapi.APIRouter()
@@ -397,7 +398,7 @@ def test_only_the_routes_in_the_app_name_a_view():
     """A view that excludes its list route, and a react-admin view, whose list
     route returns a plain response, do not use the list response."""
 
-    class Tag(fr.IDBase):
+    class Tag(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class TagSchema(fr.IDSchema):
@@ -446,7 +447,7 @@ def test_a_create_body_that_a_subclass_sets_is_its_own():
     """A subclass sets its own ``schema_create`` and generates nothing else.
     The warning does not call that class generated."""
 
-    class Item(fr.IDBase):
+    class Item(fr.IDMixin, SharedBase):
         name: Mapped[str]
         note: Mapped[str] = ""
 
@@ -493,7 +494,7 @@ def test_a_create_body_that_a_subclass_sets_is_its_own():
 
 
 def test_a_class_that_only_a_webhook_uses_is_checked():
-    class Order(fr.IDBase):
+    class Order(fr.IDMixin, SharedBase):
         number: Mapped[str]
         note: Mapped[str] = ""
 
@@ -534,7 +535,7 @@ def test_a_view_with_its_own_schema_name_does_not_clash():
 
 
 def _order_app(*, set_on_view: bool) -> fastapi.FastAPI:
-    class Order(fr.IDBase):
+    class Order(fr.IDMixin, SharedBase):
         number: Mapped[str]
         note: Mapped[str] = ""
 
@@ -612,7 +613,7 @@ def test_two_modes_of_one_class_are_not_a_clash():
     """FastAPI shows a class as ``Name-Input`` and ``Name-Output`` when the
     two differ. That is one class, so Restly does not warn."""
 
-    class Label(fr.IDBase):
+    class Label(fr.IDMixin, SharedBase):
         text: Mapped[str]
 
     class Draft(pydantic.BaseModel):
@@ -641,7 +642,7 @@ def test_two_generic_classes_with_one_name_warn():
     """``Envelope[ItemSchema]`` for two different ``ItemSchema`` classes:
     both the envelopes and the item classes clash."""
 
-    class Item(fr.IDBase):
+    class Item(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     def item_schema(name_type: type) -> type[pydantic.BaseModel]:

@@ -26,6 +26,7 @@ from fastapi_restly._exception_handlers import (
     register_default_exception_handlers,
 )
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 # ---------------------------------------------------------------------------
@@ -121,7 +122,7 @@ def test_include_view_registers_handler_as_fallback(client):
     handler. (The autouse fixture configures without an ``app``.)"""
     assert IntegrityError not in client.app.exception_handlers
 
-    class Widget(fr.IDBase):
+    class Widget(fr.IDMixin, SharedBase):
         name: Mapped[str] = mapped_column(unique=True)
 
     class WidgetSchema(fr.IDSchema):

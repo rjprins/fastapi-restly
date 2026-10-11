@@ -3,6 +3,7 @@ from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
@@ -22,7 +23,7 @@ class ResponseUserSchema(fr.IDSchema):
 
 
 def test_to_single_response_runs_response_field_validators_and_serializers():
-    class ResponseValidationUser(fr.IDBase):
+    class ResponseValidationUser(fr.IDMixin, SharedBase):
         name: Mapped[str]
         email: Mapped[str]
         password: Mapped[str]
@@ -47,7 +48,7 @@ def test_to_single_response_runs_response_field_validators_and_serializers():
 
 
 def test_response_serialization_runs_through_fastapi_response_model(client):
-    class ResponseApiUser(fr.IDBase):
+    class ResponseApiUser(fr.IDMixin, SharedBase):
         name: Mapped[str]
         email: Mapped[str]
         password: Mapped[str]
@@ -87,7 +88,7 @@ def test_to_single_response_with_a_narrowed_model_validate():
         id: int
         display_name: str = pydantic.Field(alias="displayName")
 
-    class NarrowGadget(fr.IDBase):
+    class NarrowGadget(fr.IDMixin, SharedBase):
         display_name: Mapped[str]
 
     class NarrowGadgetView(fr.AsyncRestView):

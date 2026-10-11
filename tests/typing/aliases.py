@@ -8,14 +8,18 @@ from datetime import datetime
 
 import pydantic
 from fastapi import FastAPI
-from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import DeclarativeBase, Mapped
 
 import fastapi_restly as fr
 
 app = FastAPI()
 
 
-class Invoice(fr.IDBase):
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+
+
+class Invoice(fr.IDMixin, Base):
     customer_name: Mapped[str]
     customer_email: Mapped[str]
     amount_cents: Mapped[int]

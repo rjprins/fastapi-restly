@@ -283,13 +283,17 @@ asyncio_default_fixture_loop_scope = "function"
 import pytest
 from fastapi import FastAPI
 from sqlalchemy import create_engine
-from sqlalchemy.orm import Mapped, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Mapped, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import fastapi_restly as fr
 
 
-class Widget(fr.IDBase):
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+
+
+class Widget(fr.IDMixin, Base):
     name: Mapped[str]
 
 
@@ -321,7 +325,7 @@ def create_widget(session: fr.SessionDep):
     return {"id": widget.id}
 
 
-fr.DataclassBase.metadata.create_all(engine)
+Base.metadata.create_all(engine)
 
 
 @pytest.fixture

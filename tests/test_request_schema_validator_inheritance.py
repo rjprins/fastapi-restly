@@ -3,11 +3,12 @@ from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
 def test_field_validator_inherited_by_create_and_patch_request_schemas(client):
-    class FieldValidatorUser(fr.IDBase):
+    class FieldValidatorUser(fr.IDMixin, SharedBase):
         name: Mapped[str]
         email: Mapped[str]
 
@@ -51,7 +52,7 @@ def test_field_validator_inherited_by_create_and_patch_request_schemas(client):
 
 
 def test_after_field_validator_inherited_by_create_and_patch_request_schemas(client):
-    class AfterFieldValidatorUser(fr.IDBase):
+    class AfterFieldValidatorUser(fr.IDMixin, SharedBase):
         name: Mapped[str]
         email: Mapped[str]
 
@@ -96,7 +97,7 @@ def test_after_field_validator_inherited_by_create_and_patch_request_schemas(cli
 
 
 def test_model_validator_inherited_by_create_and_patch_request_schemas(client):
-    class ModelValidatorUser(fr.IDBase):
+    class ModelValidatorUser(fr.IDMixin, SharedBase):
         name: Mapped[str]
         email: Mapped[str]
 

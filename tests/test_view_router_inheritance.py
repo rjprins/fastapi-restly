@@ -18,6 +18,7 @@ import fastapi_restly as fr
 from fastapi_restly._routes import iter_routes, original_route
 from fastapi_restly.testing import RestlyTestClient
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
@@ -32,7 +33,7 @@ def view_base(request: pytest.FixtureRequest) -> Iterator[type]:
 def make_client(
     request: pytest.FixtureRequest, view_base: type
 ) -> Callable[..., RestlyTestClient]:
-    class Gadget(fr.IDBase):
+    class Gadget(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class GadgetSchema(fr.IDSchema):
@@ -48,7 +49,7 @@ def make_client(
         fr.include_view(app, view)
         if view_base is fr.RestView:
             engine, _ = request.getfixturevalue("sync_db")
-            fr.DataclassBase.metadata.create_all(engine)
+            SharedBase.metadata.create_all(engine)
         else:
             create_tables()
         return RestlyTestClient(app)

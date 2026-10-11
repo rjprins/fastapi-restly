@@ -15,6 +15,8 @@ from fastapi_restly.objects import (
 )
 from fastapi_restly.schemas._base import create_model_with_optional_fields
 
+from ._models import SharedBase
+
 
 def _make_engine_and_session():
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
@@ -28,15 +30,15 @@ def test_async_object_helpers_handle_readonly_and_relationship_inputs():
     """Directly call make_new_object and update_object to cover the IDSchema and
     DeclarativeBase FK resolution branches, mirroring test_sync_views.py."""
 
-    class Author(fr.IDBase):
+    class Author(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class Article(fr.IDBase):
+    class Article(fr.IDMixin, SharedBase):
         title: Mapped[str]
         author_id: Mapped[int] = mapped_column(ForeignKey("author.id"))
         author: Mapped[Author] = relationship(default=None)
 
-    class Assignment(fr.IDBase):
+    class Assignment(fr.IDMixin, SharedBase):
         owner_id: Mapped[int]
 
     class ArticleSchema(fr.IDSchema):
@@ -60,7 +62,7 @@ def test_async_object_helpers_handle_readonly_and_relationship_inputs():
     async def run():
         engine, make_session = _make_engine_and_session()
         async with engine.begin() as conn:
-            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+            await conn.run_sync(SharedBase.metadata.create_all)
 
         async with make_session() as session:
             original_author = Author(name="Alice")
@@ -117,15 +119,15 @@ def test_async_free_functions_handle_readonly_and_relationship_inputs():
     but exercising the module-level async_make_new_object / async_update_object
     / async_save_object helpers instead of the view methods."""
 
-    class Author(fr.IDBase):
+    class Author(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class Article(fr.IDBase):
+    class Article(fr.IDMixin, SharedBase):
         title: Mapped[str]
         author_id: Mapped[int] = mapped_column(ForeignKey("author.id"))
         author: Mapped[Author] = relationship(default=None)
 
-    class Assignment(fr.IDBase):
+    class Assignment(fr.IDMixin, SharedBase):
         owner_id: Mapped[int]
 
     class ArticleSchema(fr.IDSchema):
@@ -139,7 +141,7 @@ def test_async_free_functions_handle_readonly_and_relationship_inputs():
     async def run():
         engine, make_session = _make_engine_and_session()
         async with engine.begin() as conn:
-            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+            await conn.run_sync(SharedBase.metadata.create_all)
 
         async with make_session() as session:
             original_author = Author(name="Alice")
@@ -190,7 +192,7 @@ def test_async_update_object_only_applies_set_fields():
     """async_update_object should ignore fields the caller did not explicitly
     set, matching get_writable_inputs / PATCH partial-update semantics."""
 
-    class Item(fr.IDBase):
+    class Item(fr.IDMixin, SharedBase):
         name: Mapped[str]
         notes: Mapped[str]
 
@@ -204,7 +206,7 @@ def test_async_update_object_only_applies_set_fields():
     async def run():
         engine, make_session = _make_engine_and_session()
         async with engine.begin() as conn:
-            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+            await conn.run_sync(SharedBase.metadata.create_all)
 
         async with make_session() as session:
             item = await async_make_new_object(
@@ -223,17 +225,17 @@ def test_async_update_object_only_applies_set_fields():
 
 
 def test_async_object_helpers_are_dataclass_init_aware_for_resolved_refs():
-    class RefRoutingAsyncAuthor(fr.IDBase):
+    class RefRoutingAsyncAuthor(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class RefRoutingAsyncRelationshipFirstArticle(fr.IDBase):
+    class RefRoutingAsyncRelationshipFirstArticle(fr.IDMixin, SharedBase):
         title: Mapped[str]
         author_id: Mapped[int] = mapped_column(
             ForeignKey("ref_routing_async_author.id"), init=False
         )
         author: Mapped[RefRoutingAsyncAuthor] = relationship(default=None)
 
-    class RefRoutingAsyncRelationshipFieldFallbackArticle(fr.IDBase):
+    class RefRoutingAsyncRelationshipFieldFallbackArticle(fr.IDMixin, SharedBase):
         title: Mapped[str]
         author_id: Mapped[int] = mapped_column(
             ForeignKey("ref_routing_async_author.id")
@@ -256,7 +258,7 @@ def test_async_object_helpers_are_dataclass_init_aware_for_resolved_refs():
     async def run():
         engine, make_session = _make_engine_and_session()
         async with engine.begin() as conn:
-            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+            await conn.run_sync(SharedBase.metadata.create_all)
 
         async with make_session() as session:
             first = RefRoutingAsyncAuthor(name="Alice")
@@ -421,7 +423,7 @@ def test_async_rest_view_crud_and_pagination():
 
 
 def test_async_rest_view_dispatches_to_handle_overrides():
-    class DispatchWidget(fr.IDBase):
+    class DispatchWidget(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class WidgetSchema(fr.IDSchema):
@@ -461,7 +463,7 @@ def test_async_rest_view_dispatches_to_handle_overrides():
     async def run():
         engine, make_session = _make_engine_and_session()
         async with engine.begin() as conn:
-            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+            await conn.run_sync(SharedBase.metadata.create_all)
 
         async with make_session() as session:
             view = WidgetView()
@@ -494,7 +496,7 @@ def test_async_rest_view_dispatches_to_handle_overrides():
 def test_async_get_many_uses_the_scope():
     """get_many applies list params on top of the view's scope."""
 
-    class Widget(fr.IDBase):
+    class Widget(fr.IDMixin, SharedBase):
         name: Mapped[str]
         active: Mapped[bool]
 
@@ -511,7 +513,7 @@ def test_async_get_many_uses_the_scope():
     async def run():
         engine, make_session = _make_engine_and_session()
         async with engine.begin() as conn:
-            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+            await conn.run_sync(SharedBase.metadata.create_all)
 
         async with make_session() as session:
             session.add_all(
@@ -541,7 +543,7 @@ def test_async_scope_is_consulted_by_list_and_count():
     """get_many routes through the scope and count uses that query so a
     single declaration filters the list AND its pagination total."""
 
-    class Gizmo(fr.IDBase):
+    class Gizmo(fr.IDMixin, SharedBase):
         name: Mapped[str]
         active: Mapped[bool]
 
@@ -558,7 +560,7 @@ def test_async_scope_is_consulted_by_list_and_count():
     async def run():
         engine, make_session = _make_engine_and_session()
         async with engine.begin() as conn:
-            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+            await conn.run_sync(SharedBase.metadata.create_all)
 
         async with make_session() as session:
             session.add_all(
@@ -595,7 +597,7 @@ def test_get_one_takes_a_predicate_in_place_of_the_id():
     expression replaces it: a natural key loads through the same scope,
     loader options and 404, and the write handlers reach it too."""
 
-    class Doc(fr.IDBase):
+    class Doc(fr.IDMixin, SharedBase):
         slug: Mapped[str]
         title: Mapped[str]
 
@@ -615,7 +617,7 @@ def test_get_one_takes_a_predicate_in_place_of_the_id():
     async def run():
         engine, make_session = _make_engine_and_session()
         async with engine.begin() as conn:
-            await conn.run_sync(fr.DataclassBase.metadata.create_all)
+            await conn.run_sync(SharedBase.metadata.create_all)
 
         async with make_session() as session:
             session.add_all(

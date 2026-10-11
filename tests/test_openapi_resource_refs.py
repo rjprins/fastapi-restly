@@ -11,19 +11,20 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
 def _build_app():
     """Return a fresh FastAPI app with Author/Book views registered."""
 
-    class Author(fr.IDBase):
+    class Author(fr.IDMixin, SharedBase):
         name: Mapped[str]
         books: Mapped[list["Book"]] = relationship(
             back_populates="author", lazy="selectin", default_factory=list
         )
 
-    class Book(fr.IDBase):
+    class Book(fr.IDMixin, SharedBase):
         title: Mapped[str]
         author_id: Mapped[int] = mapped_column(sa.ForeignKey(Author.id))
         # Full nested object — should NOT get x-resource-ref
@@ -129,10 +130,10 @@ def test_update_schema_fk_gets_x_resource_ref():
 def test_unregistered_fk_target_not_annotated():
     """If a FK target model has no view registered, the field is silently skipped."""
 
-    class Tag(fr.IDBase):
+    class Tag(fr.IDMixin, SharedBase):
         label: Mapped[str]
 
-    class Item(fr.IDBase):
+    class Item(fr.IDMixin, SharedBase):
         name: Mapped[str]
         tag_id: Mapped[int] = mapped_column(sa.ForeignKey(Tag.id))
 
@@ -157,10 +158,10 @@ def test_each_class_gets_the_refs_of_its_own_fields():
     """The view's schema takes a team id, its own response class sends the
     nested team. Only the id gets x-resource-ref."""
 
-    class Team(fr.IDBase):
+    class Team(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class Player(fr.IDBase):
+    class Player(fr.IDMixin, SharedBase):
         name: Mapped[str]
         team_id: Mapped[int] = mapped_column(sa.ForeignKey(Team.id))
         team: Mapped[Team] = relationship(lazy="selectin")

@@ -2,12 +2,16 @@
 
 from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import DeclarativeBase, Mapped
 
 import fastapi_restly as fr
 
 
-class Task(fr.IDBase):
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+
+
+class Task(fr.IDMixin, Base):
     title: Mapped[str]
 
 

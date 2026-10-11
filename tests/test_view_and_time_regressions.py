@@ -13,8 +13,10 @@ from fastapi_restly.models._base import utc_now
 from fastapi_restly.views._async import AsyncRestView
 from fastapi_restly.views._base import delete, get, patch, post, put
 
+from ._models import SharedBase
 
-class QueryUser(fr.IDBase):
+
+class QueryUser(fr.IDMixin, SharedBase):
     name: Mapped[str]
 
 
@@ -92,7 +94,7 @@ def test_utc_now_is_timezone_aware_utc():
 
 
 def test_timestamp_mixin_maps_timezone_aware_columns():
-    class TimestampedRecord(fr.TimestampsMixin, fr.IDBase):
+    class TimestampedRecord(fr.TimestampsMixin, fr.IDMixin, SharedBase):
         pass
 
     assert TimestampedRecord.__table__.c.created_at.type.timezone is True
@@ -100,10 +102,10 @@ def test_timestamp_mixin_maps_timezone_aware_columns():
 
 
 def test_datetime_annotations_are_timezone_aware_by_default_with_naive_opt_out():
-    class DefaultTimestampRecord(fr.IDBase):
+    class DefaultTimestampRecord(fr.IDMixin, SharedBase):
         occurred_at: Mapped[datetime]
 
-    class NaiveTimestampRecord(fr.IDBase):
+    class NaiveTimestampRecord(fr.IDMixin, SharedBase):
         occurred_at: Mapped[datetime] = mapped_column(DateTime())
 
     assert DefaultTimestampRecord.__table__.c.occurred_at.type.timezone is True

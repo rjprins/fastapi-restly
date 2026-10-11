@@ -15,6 +15,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
@@ -24,7 +25,7 @@ def call_log() -> list[str]:
 
 
 def _model_and_schema():
-    class Item(fr.IDBase):
+    class Item(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class ItemSchema(fr.IDSchema):
@@ -136,7 +137,7 @@ def test_async_super_chain_mutates_object_through_chain(client) -> None:
     awaitable hooks are not bypassing or short-circuiting one another.
     """
 
-    class Stamped(fr.IDBase):
+    class Stamped(fr.IDMixin, SharedBase):
         name: Mapped[str]
         suffix: Mapped[str] = mapped_column(default="")
 

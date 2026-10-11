@@ -4,6 +4,7 @@ from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 
+from ._models import SharedBase
 from .conftest import create_tables
 
 
@@ -11,7 +12,7 @@ def test_index_response_defaults_to_paginated_envelope(client):
     """A view paginates by default: the list is wrapped in the ``data``
     envelope with pagination metadata."""
 
-    class Product(fr.IDBase):
+    class Product(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class ProductSchema(fr.IDSchema):
@@ -43,7 +44,7 @@ def test_unpaginated_view_returns_data_envelope_without_metadata(client):
     """``pagination = None`` returns every row in a plain ``{"data": [...]}``
     envelope -- no pagination metadata, and no ``page``/``page_size`` params."""
 
-    class Widget(fr.IDBase):
+    class Widget(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class WidgetSchema(fr.IDSchema):
@@ -77,7 +78,7 @@ def test_default_page_size_caps_a_large_result_set(client):
     """Omitting ``page_size`` caps at ``default_page_size`` rather than
     returning the whole table."""
 
-    class PaginatedItem(fr.IDBase):
+    class PaginatedItem(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class PaginatedItemSchema(fr.IDSchema):
@@ -109,7 +110,7 @@ def test_default_page_size_caps_a_large_result_set(client):
 def test_pagination_metadata_reports_explicit_page_size(client):
     """When the client passes ``page_size`` the metadata reflects it."""
 
-    class PaginatedThing(fr.IDBase):
+    class PaginatedThing(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class PaginatedThingSchema(fr.IDSchema):
@@ -142,7 +143,7 @@ def test_openapi_list_route_refs_the_envelope_component(client):
     ``PaginatedEnvelope`` when paginated and an ``Envelope`` when not. This
     pins the public OpenAPI contract the docs promise Restly keeps in sync."""
 
-    class Crate(fr.IDBase):
+    class Crate(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class CrateSchema(fr.IDSchema):
@@ -154,7 +155,7 @@ def test_openapi_list_route_refs_the_envelope_component(client):
         model = Crate
         schema = CrateSchema
 
-    class Barrel(fr.IDBase):
+    class Barrel(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class BarrelSchema(fr.IDSchema):

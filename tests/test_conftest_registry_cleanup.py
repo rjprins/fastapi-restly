@@ -13,8 +13,7 @@ import pytest
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.orm.clsregistry import _ModuleMarker
 
-import fastapi_restly as fr
-
+from ._models import SharedBase
 from .conftest import _SA_MODULE_REGISTRY_KEY, _cleanup_registry
 
 
@@ -60,17 +59,17 @@ def test_cleanup_removes_local_model_registration():
     registry and the nested module tree, on the real base."""
 
     def _define():
-        class _LeakyLocal(fr.DataclassBase):
+        class _LeakyLocal(SharedBase):
             __tablename__ = "leaky_local"
             id: Mapped[int] = mapped_column(primary_key=True)
 
         return _LeakyLocal
 
     _define()
-    class_registry = fr.DataclassBase.registry._class_registry
+    class_registry = SharedBase.registry._class_registry
     assert "_LeakyLocal" in class_registry
 
-    _cleanup_registry(fr.DataclassBase)
+    _cleanup_registry(SharedBase)
 
     assert "_LeakyLocal" not in class_registry
     module_registry = class_registry.get(_SA_MODULE_REGISTRY_KEY)
