@@ -5,13 +5,23 @@ from typing import Annotated
 import fastapi
 from fastapi import FastAPI, Header
 from sqlalchemy import ForeignKey, or_
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
 
 fr.configure(
     async_database_url=os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///blog.db")
 )
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    await fr.db.async_create_all(Base)  # dev tables; use Alembic in production
+    yield
 
 
 class Current(fr.ContextNamespace):
@@ -25,58 +35,7 @@ def get_user_id(
     return user_id
 
 
-class Post(fr.TimestampsMixin, fr.IDBase):
-    title: Mapped[str]
-    content: Mapped[str]
-    published: Mapped[bool] = mapped_column(default=False)
-    author_id: Mapped[int] = mapped_column(init=False, insert_default=Current.user_id)
-
-
-class PostClauses(fr.ClauseNamespace):
-    model = Post
-
-    default_scope = fr.where_clause(
-        or_(Post.published, Post.author_id == Current.user_id)
-    )
-
-
-class Comment(fr.TimestampsMixin, fr.IDBase):
-    content: Mapped[str]
-    post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
-    author_id: Mapped[int] = mapped_column(init=False, insert_default=Current.user_id)
-    post: Mapped[Post] = relationship(init=False)
-
-
-class CommentClauses(fr.ClauseNamespace):
-    model = Comment
-
-    default_scope = fr.where_clause(Comment.post.has(PostClauses.default_scope))
-
-
-class PostSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
-    title: str
-    content: str
-    published: fr.ReadOnly[bool]
-    author_id: fr.ReadOnly[int]
-
-
-class CommentSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
-    content: str
-    post_id: fr.MustExist[int, Post]
-    author_id: fr.ReadOnly[int]
-
-
-@asynccontextmanager
-async def lifespan(_app: FastAPI):
-    await fr.db.async_create_all(fr.IDBase)
-    yield
-
-
 app = FastAPI(lifespan=lifespan, dependencies=[Current.depends(user_id=get_user_id)])
-
-
-async def notify_subscribers(post):
-    print(f"New post: {post.title}")  # stand-in for an email or a webhook
 
 
 class AuthoredView(fr.AsyncRestView):
@@ -87,6 +46,35 @@ class AuthoredView(fr.AsyncRestView):
             raise fastapi.HTTPException(401, "Log in to write")
         if obj is not None and obj.author_id != Current.user_id():
             raise fr.exc.Forbidden("Only the author can change this")
+
+
+class Post(Base):
+    __tablename__ = "post"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str]
+    content: Mapped[str]
+    published: Mapped[bool] = mapped_column(default=False)
+    author_id: Mapped[int] = mapped_column(insert_default=Current.user_id)
+
+
+class PostClauses(fr.ClauseNamespace):
+    model = Post
+
+    default_scope = fr.where_clause(
+        or_(Post.published, Post.author_id == Current.user_id)
+    )
+
+
+class PostSchema(fr.IDSchema):
+    title: str
+    content: str
+    published: fr.ReadOnly[bool]
+    author_id: fr.ReadOnly[int]
+
+
+async def notify_subscribers(post):
+    print(f"New post: {post.title}")  # stand-in for an email or a webhook
 
 
 @fr.include_view(app)
@@ -107,6 +95,28 @@ class PostView(AuthoredView):
     async def after_action_commit(self, action, new, old=None):
         if action == "publish":
             await notify_subscribers(new)
+
+
+class Comment(Base):
+    __tablename__ = "comment"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    content: Mapped[str]
+    post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
+    author_id: Mapped[int] = mapped_column(insert_default=Current.user_id)
+    post: Mapped[Post] = relationship()
+
+
+class CommentClauses(fr.ClauseNamespace):
+    model = Comment
+
+    default_scope = fr.where_clause(Comment.post.has(PostClauses.default_scope))
+
+
+class CommentSchema(fr.IDSchema):
+    content: str
+    post_id: fr.MustExist[int, Post]
+    author_id: fr.ReadOnly[int]
 
 
 @fr.include_view(app)

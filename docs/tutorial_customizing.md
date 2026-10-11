@@ -8,43 +8,32 @@ into a blog with several writers:
 - Only the author can change a post or publish it.
 - Comments follow the same rules.
 
-Each rule is one declaration or one short method that Restly calls. The
-finished blog does not override any CRUD method. Start from the complete
-file at the end of Part 1.
-
-The examples use {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>`.
-The same code works with {class}`RestView <fastapi_restly.views.RestView>`,
-the sync variant. Drop the `async` and `await` keywords.
+Each rule is one declaration or one short method that Restly calls. At the
+end, you write tests for the rules. The tutorial takes about forty minutes. Start
+from the complete file of [Build a Blog API](tutorial.md).
 
 ## Know who is calling
 
-Restly does not log users in. Your own authentication decides who is
-calling. Restly makes the answer available to the rest of your code through
-a `Current` class, a
-{class}`fr.ContextNamespace <fastapi_restly.clauses.ContextNamespace>`:
+Every rule above depends on who is calling. Restly does not log users in.
+Your own authentication decides who is calling. Restly makes the answer
+available to the rest of your code through a `Current` class, a
+{class}`fr.ContextNamespace <fastapi_restly.clauses.ContextNamespace>`.
 
-```python
-from typing import Annotated
+Add `from typing import Annotated` and `from fastapi import Header` to the
+imports. Then put this code above the `app = FastAPI(...)` line:
 
-from fastapi import Header
-
-
-class Current(fr.ContextNamespace):
-    user_id: fr.ContextParam[int | None]
-
-
-def get_user_id(
-    user_id: Annotated[int | None, Header(alias="X-User-ID")] = None,
-) -> int | None:
-    # Demo stand-in for real authentication. None means an anonymous reader.
-    return user_id
+```{literalinclude} ../example-projects/blog/blog/main.py
+:language: python
+:start-at: class Current(fr.ContextNamespace):
+:end-at: return user_id
 ```
 
-Put this code above the models, because the models will read `Current`.
-Then replace the `app = FastAPI(...)` line from Part 1:
+Replace the `app = FastAPI(...)` line with this one:
 
-```python
-app = FastAPI(lifespan=lifespan, dependencies=[Current.depends(user_id=get_user_id)])
+```{literalinclude} ../example-projects/blog/blog/main.py
+:language: python
+:start-at: app = FastAPI(
+:end-at: app = FastAPI(
 ```
 
 `get_user_id` takes the user id from an `X-User-ID` header, so you can try
@@ -54,105 +43,136 @@ a token. [Bind from a FastAPI dependency](#current-request-binding) shows
 where your own authentication goes.
 
 {meth}`Current.depends(...) <fastapi_restly.clauses.ContextNamespace.depends>`
-turns `get_user_id` into a FastAPI dependency. For
-each request, it calls `get_user_id` and stores the result in `Current`. All
-code that runs during the request can then read it with `Current.user_id()`.
-The dependency is on the app, so every route gets it. A reader without the
-header gets `None`, because reading the blog does not need a login.
+turns `get_user_id` into a FastAPI dependency. For each request, it calls
+`get_user_id` and stores the result in `Current`. All code that runs during
+the request can then read it with `Current.user_id()`. The dependency is on
+the app, so every route gets it. A reader without the header gets `None`,
+because reading the blog does not need a login.
+
+Reload <http://127.0.0.1:8000/docs>. Every route now has an `X-User-ID`
+header field. The requests in this tutorial play two writers: Anna sends
+`X-User-ID: 1`, and Ben sends `X-User-ID: 2`.
 
 ## Record the author
 
 The server decides who wrote a post, not the client. A column default on the
-model reads `Current`:
+model reads `Current`. Add the `author_id` column to `Post`:
 
-```python
-class Post(fr.TimestampsMixin, fr.IDBase):
-    title: Mapped[str]
-    content: Mapped[str]
-    published: Mapped[bool] = mapped_column(default=False)
-    author_id: Mapped[int] = mapped_column(init=False, insert_default=Current.user_id)
+```{literalinclude} ../example-projects/blog/blog/main.py
+:language: python
+:pyobject: Post
 ```
 
-- `insert_default=Current.user_id` sets the column when SQLAlchemy inserts
-  the row. Write `Current.user_id` without parentheses. With them, Python
-  would read the value once, when it defines the class.
-  [Read the current user in a column default](#current-column-defaults)
-  explains this.
-- `init=False` leaves `author_id` out of the `Post(...)` constructor.
-- The default runs on every insert, from any view or script.
-- {class}`fr.TimestampsMixin <fastapi_restly.models.TimestampsMixin>` adds
-  `created_at` and `updated_at` columns.
+`insert_default=Current.user_id` sets the column when SQLAlchemy inserts the
+row. Write `Current.user_id` without parentheses. With them, Python would
+read the value once, when it defines the class.
+[Read the current user in a column default](#current-column-defaults)
+explains this. The default runs on every insert, from any view or script.
 
-The schema returns these fields but does not accept them as input:
-
-```python
-class PostSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
-    title: str
-    content: str
-    published: fr.ReadOnly[bool]
-    author_id: fr.ReadOnly[int]
-```
-
-A {data}`fr.ReadOnly <fastapi_restly.schemas.ReadOnly>` field appears in responses, and Restly ignores it in a
-request body. A client that sends `"author_id": 7` does not change the
-author. `published` is read-only too. The publish route below is the only way
-to change it.
-{class}`fr.TimestampsSchemaMixin <fastapi_restly.schemas.TimestampsSchemaMixin>`
-adds the two timestamps as read-only fields.
-
-The `post` table has new columns now. `async_create_all` creates missing
+The `post` table has a new column now. `async_create_all` creates missing
 tables, but it does not change a table that exists. Delete the `blog.db`
-file from Part 1 before you start the app again.
+file, and the server creates the tables again when it restarts. Then let Anna
+write a post. She also sends `"author_id": 2`:
+
+```bash
+curl -X POST http://127.0.0.1:8000/posts \
+  -H 'X-User-ID: 1' -H 'Content-Type: application/json' \
+  -d '{"title": "Hello", "content": "World", "author_id": 2}'
+# 201, with "author_id": 2
+```
+
+Anna has written a post in Ben's name. Posts still use the schema that Restly
+generated from the model, and that schema accepts every column. So posts need
+a schema of their own, which returns `author_id` but does not accept it.
+Delete the post first:
+
+```bash
+curl -X DELETE http://127.0.0.1:8000/posts/1
+```
+
+Add this schema above `PostView`, and add `schema = PostSchema` to the view,
+as you did for comments:
+
+```{literalinclude} ../example-projects/blog/blog/main.py
+:language: python
+:pyobject: PostSchema
+```
+
+A {data}`fr.ReadOnly <fastapi_restly.schemas.ReadOnly>` field appears in
+responses, and Restly ignores it in a request body. `published` is read-only
+too, because a new post is a draft. A route later in this tutorial publishes
+a post. Send Anna's request again:
+
+```bash
+curl -X POST http://127.0.0.1:8000/posts \
+  -H 'X-User-ID: 1' -H 'Content-Type: application/json' \
+  -d '{"title": "Hello", "content": "World", "author_id": 2}'
+# 201, with "author_id": 1 and "published": false
+```
 
 ## Hide drafts from other readers
 
-A scope is the rule for which rows a reader can see. Declare it once, on the
-model:
+A scope is the rule for which rows a reader can see. Declare it once, for the
+model. Add `or_` to the `sqlalchemy` import, and put this below `Post`:
 
-```python
-from sqlalchemy import or_
-
-
-class PostClauses(fr.ClauseNamespace):
-    model = Post
-
-    default_scope = fr.where_clause(
-        or_(Post.published, Post.author_id == Current.user_id)
-    )
+```{literalinclude} ../example-projects/blog/blog/main.py
+:language: python
+:pyobject: PostClauses
 ```
 
 {class}`fr.ClauseNamespace <fastapi_restly.clauses.ClauseNamespace>` holds
 the query rules of one model, and
 {func}`fr.where_clause <fastapi_restly.clauses.where_clause>` turns a
 SQLAlchemy condition into such a rule. The rule named `default_scope` applies
-to every read of posts:
-
-- `GET /posts` lists only the posts in the scope, and the total count agrees.
-- `GET /posts/{id}` returns 404 for a post outside the scope.
-- `PATCH` and `DELETE` load the post the same way, so they also return 404.
+to every read of posts. The list and its total count show only the posts in
+the scope. A single post outside the scope returns 404, also for `PATCH` and
+`DELETE`.
 
 Here, `Current.user_id` again has no parentheses. Restly reads the value
 each time it runs the query. For an anonymous reader the value is `None`.
 `author_id = NULL` is never true in SQL, so an anonymous reader sees only
-published posts.
+published posts. Try it as Ben, as an anonymous reader, and as Anna:
 
-The scope also checks references. Part 1 declared
-`post_id: fr.MustExist[int, Post]` on comments. That check looks for the post
-inside the scope. So a comment on a draft that you cannot see fails with
-404, and this needs no extra code.
+```bash
+curl -H 'X-User-ID: 2' http://127.0.0.1:8000/posts/1
+# 404
+curl http://127.0.0.1:8000/posts
+# 200, with "total_count": 0
+curl -H 'X-User-ID: 1' http://127.0.0.1:8000/posts/1
+# 200
+```
 
-Every read of posts now needs a value for `Current.user_id`. A script that
-reads posts binds one first, as
-[Bind in a script or job](#current-manual-binding) shows. Without a value,
-the read fails with an error. It does not return all posts. A view that must
-see every post, such as an admin view, declares
-`scope =` {data}`fr.clauses.UNSCOPED <fastapi_restly.clauses.UNSCOPED>`. [Scopes](scopes.md) covers this and other
-scopes.
+The scope also checks references. `post_id: fr.MustExist[int, Post]` on
+comments looks for the post inside the scope. So Ben cannot comment on
+Anna's draft, and this needs no extra code:
+
+```bash
+curl -X POST http://127.0.0.1:8000/comments \
+  -H 'X-User-ID: 2' -H 'Content-Type: application/json' \
+  -d '{"content": "Nice post", "post_id": 1}'
+# 404
+```
+
+Code outside a request, such as a script, must bind `Current.user_id` before
+it reads posts. Without a value, the read fails with an error. It does not
+return all posts. [Scopes](scopes.md) covers this, and views that must see
+every post.
 
 ## Only the author may change a post
 
-Seeing a post does not mean that you may change it. Another writer can read
-a published post, but must not edit it. Restly calls
+Writing needs a user. Try to write a post without the header:
+
+```bash
+curl -X POST http://127.0.0.1:8000/posts \
+  -H 'Content-Type: application/json' \
+  -d '{"title": "Hi", "content": "Anonymous"}'
+# 409, "Not-null constraint violated on post.author_id"
+```
+
+The post has no author, so the database refuses it. The answer should come
+before the database, and say what is wrong. And seeing a post does not mean
+that you may change it: another writer can read a published post, but must
+not edit it. Restly calls
 {meth}`authorize <fastapi_restly.views.RestView.authorize>` before each
 action, so the view overrides it:
 
@@ -178,29 +198,35 @@ class PostView(fr.AsyncRestView):
 - `action` names the action. The CRUD actions are `get_many`, `get_one`,
   `create`, `update` and `delete`.
 - Everyone may read. The scope already decides which posts they see.
-- Every write needs a user. Without this check, an anonymous `POST` would
-  reach the database without an author and fail there.
+- Every write needs a user.
 - For `update` and `delete`, `obj` is the loaded post. Only its author
   passes.
 
-The two rules give two different answers. A post outside the scope returns
-404: for this reader, it does not exist. A refusal in `authorize` returns
-403: the post exists, but the reader may not do this.
+Send the anonymous request again, and let Ben try to edit Anna's draft:
+
+```bash
+curl -X POST http://127.0.0.1:8000/posts \
+  -H 'Content-Type: application/json' \
+  -d '{"title": "Hi", "content": "Anonymous"}'
+# 401, "Log in to write"
+curl -X PATCH http://127.0.0.1:8000/posts/1 \
+  -H 'X-User-ID: 2' -H 'Content-Type: application/json' \
+  -d '{"title": "Edited"}'
+# 404
+```
+
+Ben gets 404, because the scope hides the draft from him: for this reader,
+the post does not exist. When he can see the post but may not change it,
+`authorize` answers 403. The next section shows this.
 [`authorize`: gate the action](#authorize-gate) has more examples.
 
 ## Publish a draft
 
 Publishing is an action, not a field edit. Add a route for it to `PostView`:
 
-```python
-    @fr.post("/{id}/publish", status_code=200)
-    async def publish(self, id: int):
-        post = await self.get_one(id)
-        async with self.write_action("publish", obj=post):
-            if post.published:
-                raise fr.exc.Conflict("Already published")
-            post.published = True
-        return self.to_response(post)
+```{literalinclude} ../example-projects/blog/blog/main.py
+:language: python
+:pyobject: PostView.publish
 ```
 
 - {func}`@fr.post <fastapi_restly.views.post>` adds a route to the view,
@@ -214,22 +240,38 @@ Publishing is an action, not a field edit. Add a route for it to `PostView`:
 - {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>`
   returns the post in the same shape as the CRUD routes.
 
+Anna publishes her post. Then everyone can read it, and Ben gets 403 when he
+tries to edit it:
+
+```bash
+curl -X POST -H 'X-User-ID: 1' http://127.0.0.1:8000/posts/1/publish
+# 200, with "published": true
+curl http://127.0.0.1:8000/posts/1
+# 200
+curl -X PATCH http://127.0.0.1:8000/posts/1 \
+  -H 'X-User-ID: 2' -H 'Content-Type: application/json' \
+  -d '{"title": "Edited"}'
+# 403, "Only the author can change this"
+curl -X POST -H 'X-User-ID: 1' http://127.0.0.1:8000/posts/1/publish
+# 409, "Already published"
+```
+
 ## Tell subscribers about a new post
 
 Readers want to hear about a new post. Send the message after the commit, so
-that subscribers never hear about a post that was not saved:
+that subscribers never hear about a post that was not saved. Put this
+function above `PostView`:
 
-```python
-async def notify_subscribers(post):
-    print(f"New post: {post.title}")  # stand-in for an email or a webhook
+```{literalinclude} ../example-projects/blog/blog/main.py
+:language: python
+:pyobject: notify_subscribers
 ```
 
 Add this method to `PostView`:
 
-```python
-    async def after_action_commit(self, action, new, old=None):
-        if action == "publish":
-            await notify_subscribers(new)
+```{literalinclude} ../example-projects/blog/blog/main.py
+:language: python
+:pyobject: PostView.after_action_commit
 ```
 
 Restly calls
@@ -242,6 +284,16 @@ with the post, such as an audit row, goes in
 {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`
 instead. See [Transaction hooks](#transaction-hooks).
 
+Anna writes a second post and publishes it. The server terminal prints
+`New post: Second`:
+
+```bash
+curl -X POST http://127.0.0.1:8000/posts \
+  -H 'X-User-ID: 1' -H 'Content-Type: application/json' \
+  -d '{"title": "Second", "content": "More"}'
+curl -X POST -H 'X-User-ID: 1' http://127.0.0.1:8000/posts/2/publish
+```
+
 ## Share the rules with comments
 
 Comments need the same rules:
@@ -251,29 +303,13 @@ Comments need the same rules:
 - Only its author may edit or delete a comment.
 
 The model and the schema get the same author field as posts. The model also
-gets a scope:
+gets a scope. Add `relationship` to the `sqlalchemy.orm` import, and replace
+`Comment` and `CommentSchema` with this code:
 
-```python
-from sqlalchemy.orm import relationship
-
-
-class Comment(fr.TimestampsMixin, fr.IDBase):
-    content: Mapped[str]
-    post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
-    author_id: Mapped[int] = mapped_column(init=False, insert_default=Current.user_id)
-    post: Mapped[Post] = relationship(init=False)
-
-
-class CommentClauses(fr.ClauseNamespace):
-    model = Comment
-
-    default_scope = fr.where_clause(Comment.post.has(PostClauses.default_scope))
-
-
-class CommentSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
-    content: str
-    post_id: fr.MustExist[int, Post]
-    author_id: fr.ReadOnly[int]
+```{literalinclude} ../example-projects/blog/blog/main.py
+:language: python
+:start-at: class Comment(Base):
+:end-at: author_id: fr.ReadOnly[int]
 ```
 
 A scope covers only its own model. The post scope hides a draft, but not the
@@ -290,14 +326,16 @@ Together: a comment is visible when its post is visible.
 detail.
 
 Views are normal Python classes. Move `authorize` from `PostView` into a
-base class, and let both views inherit it:
+base class, and put the base class below the `app = FastAPI(...)` line:
+
+```{literalinclude} ../example-projects/blog/blog/main.py
+:language: python
+:pyobject: AuthoredView
+```
+
+Both views inherit it:
 
 ```python
-class AuthoredView(fr.AsyncRestView):
-    async def authorize(self, action, obj=None, data=None):
-        ...  # the same method as above
-
-
 @fr.include_view(app)
 class PostView(AuthoredView):
     prefix = "/posts"
@@ -317,55 +355,123 @@ Register only the views that have a model, not the base class.
 [Share Behaviour with Base Views](howto_inheritance.md) covers inheritance in
 more detail.
 
-## The complete file
-
-Here is the blog from Part 1 with every change from this tutorial. The same
-file is the [blog example](#example-blog), and its tests check each rule
-above:
-
-```{literalinclude} ../example-projects/blog/blog/main.py
-:language: python
-```
-
-## Try it
-
-Run the file with `fastapi dev main.py`. The requests below play two
-writers: Anna sends `X-User-ID: 1`, and Ben sends `X-User-ID: 2`.
+The `comment` table has a new column, so delete `blog.db` again. Then try
+the whole story again, with comments:
 
 ```bash
-# Anna writes a post. It starts as a draft.
+# Anna writes a post, and a note on her draft.
 curl -X POST http://127.0.0.1:8000/posts \
   -H 'X-User-ID: 1' -H 'Content-Type: application/json' \
   -d '{"title": "Hello", "content": "World"}'
-# 201, with "author_id": 1 and "published": false
-
-# Ben cannot see the draft, and cannot comment on it.
-curl -H 'X-User-ID: 2' http://127.0.0.1:8000/posts/1
-# 404
 curl -X POST http://127.0.0.1:8000/comments \
-  -H 'X-User-ID: 2' -H 'Content-Type: application/json' \
-  -d '{"content": "Nice post", "post_id": 1}'
-# 404
+  -H 'X-User-ID: 1' -H 'Content-Type: application/json' \
+  -d '{"content": "Note to self", "post_id": 1}'
+# 201, with "author_id": 1
 
-# Anna publishes the post. The server terminal prints "New post: Hello".
+# Ben does not see the note, because the post is a draft.
+curl -H 'X-User-ID: 2' http://127.0.0.1:8000/comments
+# 200, with "total_count": 0
+
+# Anna publishes the post. Now Ben can comment on it.
 curl -X POST -H 'X-User-ID: 1' http://127.0.0.1:8000/posts/1/publish
-# 200, with "published": true
-
-# Now everyone can read it, also without a header.
-curl http://127.0.0.1:8000/posts/1
-# 200
-
-# Ben can read the post, but he cannot change it.
-curl -X PATCH http://127.0.0.1:8000/posts/1 \
-  -H 'X-User-ID: 2' -H 'Content-Type: application/json' \
-  -d '{"title": "Edited"}'
-# 403, "Only the author can change this"
-
-# The same comment from Ben works now.
 curl -X POST http://127.0.0.1:8000/comments \
   -H 'X-User-ID: 2' -H 'Content-Type: application/json' \
   -d '{"content": "Nice post", "post_id": 1}'
 # 201, with "author_id": 2
+
+# Anna cannot change Ben's comment.
+curl -X PATCH http://127.0.0.1:8000/comments/2 \
+  -H 'X-User-ID: 1' -H 'Content-Type: application/json' \
+  -d '{"content": "Edited"}'
+# 403, "Only the author can change this"
+```
+
+## Test the rules
+
+The requests above check each rule by hand. Tests check them after every
+change. Install Restly's test tools:
+
+```bash
+pip install "fastapi-restly[testing]"
+```
+
+Tests need their own database. Add `import os` to the imports, and let an
+environment variable choose the database:
+
+```python
+fr.configure(
+    async_database_url=os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///blog.db")
+)
+```
+
+Create `conftest.py` next to `main.py`. It sets the variable before it
+imports the app, because `main.py` configures Restly when it is imported:
+
+```python
+import os
+
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
+
+import fastapi_restly as fr  # noqa: E402
+from main import Base, app  # noqa: E402
+
+fr.testing.configure_tests(app=app, base=Base, create_all=True)
+```
+
+{func}`configure_tests <fastapi_restly.testing.configure_tests>` creates the
+tables in the test database, and gives each test a `restly_client` fixture.
+Restly rolls back everything a test writes when the test ends, so each test
+starts from an empty blog. Create `test_main.py`:
+
+```python
+ANNA = {"X-User-ID": "1"}
+BEN = {"X-User-ID": "2"}
+
+
+def test_only_the_author_sees_a_draft(restly_client):
+    post = restly_client.post(
+        "/posts", json={"title": "Hello", "content": "World"}, headers=ANNA
+    ).json()
+
+    restly_client.get(f"/posts/{post['id']}", headers=ANNA)
+    restly_client.get(f"/posts/{post['id']}", headers=BEN, assert_status_code=404)
+
+
+def test_only_the_author_changes_a_published_post(restly_client):
+    post = restly_client.post(
+        "/posts", json={"title": "Hello", "content": "World"}, headers=ANNA
+    ).json()
+    restly_client.post(f"/posts/{post['id']}/publish", headers=ANNA)
+
+    restly_client.patch(
+        f"/posts/{post['id']}", json={"title": "Edited"}, headers=BEN, assert_status_code=403
+    )
+    restly_client.patch(f"/posts/{post['id']}", json={"title": "Edited"}, headers=ANNA)
+```
+
+The client checks the status code of every response. Without
+`assert_status_code`, it expects a status in the 2xx range. Run the tests:
+
+```bash
+pytest
+```
+
+```text
+test_main.py ..                                              [100%]
+2 passed
+```
+
+The [blog example](#example-blog) has a test for every rule in this
+tutorial. [Testing](howto_testing.md) covers the fixtures, and apps that
+build their configuration in a factory.
+
+## The complete file
+
+Here is the blog with every change from this tutorial. The same file is the
+[blog example](#example-blog):
+
+```{literalinclude} ../example-projects/blog/blog/main.py
+:language: python
 ```
 
 ## When to override a CRUD method
@@ -380,6 +486,21 @@ hashes the password before the user is saved.
 [Customizing RestView](#password-hash-example) shows that example. It also
 shows which method to override for each kind of change.
 
+## Exercises
+
+Each exercise uses only what this tutorial showed. Write a test for each.
+
+1. Add `POST /posts/{id}/unpublish`. Only the author may call it, and it
+   fails with 409 on a draft.
+2. Record when a post was published. Add a `published_at` column, set it in
+   the publish route, and return it as a read-only field.
+3. Let the author of a post delete any comment on it. Override `authorize`
+   in `CommentView`, and call `super().authorize(...)` for the other cases.
+   Load the post with `await self.session.get(Post, obj.post_id)`, because
+   `obj.post` does not load by itself in async code.
+   [Relationship Loading and Async](howto_relationship_loading.md) explains
+   why.
+
 ## Next steps
 
 These pages cover the topics of this tutorial in more detail:
@@ -390,5 +511,11 @@ These pages cover the topics of this tutorial in more detail:
 - [Customizing RestView](customize.md): every method you can override
 - [Share Behaviour with Base Views](howto_inheritance.md): the full
   inheritance guide
-- [Testing](howto_testing.md): test the rules you write
+- [Testing](howto_testing.md): the test fixtures, and test databases
+- [Project structure](howto_project_structure.md): split the file into
+  packages as the app grows, or generate a project with `restly new`
+- [Deploying](deploying.md): a production database, and Alembic migrations
+  instead of `async_create_all`
+- [Use Restly in an Existing Project](howto_existing_project.md): add Restly
+  beside the routes you already have
 - [API Reference](api_reference.md)

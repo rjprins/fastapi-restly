@@ -91,8 +91,10 @@ make docs-serve
   heading is reworded. Both mistakes fail the build: `nitpicky = True`
   plus `-W` turns an unresolved link or role into an error.
 - Code examples in docs should be runnable as shown (or clearly marked
-  illustrative); the landing-page teaser, the tutorial code, and Patterns
-  entries are executed during review — keep them that way.
+  illustrative); the landing-page teaser and Patterns entries are executed
+  during review — keep them that way. The tutorials include their complete
+  files from `example-projects/blog`, and `tests/test_tutorial.py` replays
+  the requests they show. Change the file and the test together.
 
 ## Pull Request Conventions
 

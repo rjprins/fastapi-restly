@@ -2,10 +2,10 @@ import os
 from pathlib import Path
 
 # blog.main configures Restly when it is imported, so choose the test
-# database first, as the tutorial's Testing section does.
+# database first, as "Test the rules" in Add Authors and Drafts does.
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
 
-from blog.main import app  # noqa: E402
+from blog.main import Base, app  # noqa: E402
 
 import fastapi_restly as fr  # noqa: E402
 
@@ -19,4 +19,4 @@ if _checkout not in _frl.parents:
         f"This example's venv isn't synced to this tree — run `uv sync` here."
     )
 
-fr.testing.configure_tests(app=app, base=fr.IDBase, create_all=True)
+fr.testing.configure_tests(app=app, base=Base, create_all=True)
