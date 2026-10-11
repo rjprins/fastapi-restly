@@ -1,13 +1,13 @@
 import asyncio
 from logging.config import fileConfig
 
-import fastapi_restly as fr
 from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 import app.main  # noqa: F401  (imports every view, and each view its models)
+from app.models import Base
 from app.settings import Settings
 
 config = context.config
@@ -22,7 +22,7 @@ if not config.get_main_option("sqlalchemy.url"):
     url = Settings.current.database_url.replace("%", "%%")
     config.set_main_option("sqlalchemy.url", url)
 
-target_metadata = fr.DataclassBase.metadata
+target_metadata = Base.metadata
 
 # SQLite has no real ALTER TABLE, so Alembic rebuilds a table to change one.
 # Autogenerate then writes batch_alter_table blocks on every dialect, and only

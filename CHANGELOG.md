@@ -38,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dataclass base now raise `RestlyConfigurationError`. Before, SQLAlchemy
   made that one model a dataclass, so its constructor suddenly required
   fields such as `id`, and a create request failed.
+- `restly new` generates `app/models.py` with the project's own
+  `class Base(fr.ModelDefaults, DeclarativeBase)`. The models, `alembic/env.py`,
+  the test setup and `create_all` use that `Base` instead of
+  `fr.DataclassBase`.
 
 ## [0.11.0] - 2026-10-09
 

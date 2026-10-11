@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 import fastapi_restly as fr
 from fastapi import FastAPI
 
+from .models import Base
 from .settings import Settings
 from .users.views import UserView
 
@@ -26,5 +27,5 @@ def create_app() -> FastAPI:
 # Async even for sync views: the ASGI lifespan protocol is async either way.
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    fr.db.create_all(fr.DataclassBase)
+    fr.db.create_all(Base)
     yield

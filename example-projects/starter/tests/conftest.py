@@ -3,6 +3,7 @@ import os
 import fastapi_restly as fr
 
 from app.main import create_app
+from app.models import Base
 from app.settings import Settings
 
 TEST_DATABASE_URL = os.environ.get(
@@ -16,4 +17,4 @@ TEST_DATABASE_URL = os.environ.get(
 Settings.use(Settings(database_url=TEST_DATABASE_URL, _env_file=None))  # type: ignore[call-arg]
 
 app = create_app()
-fr.testing.configure_tests(app=app, base=fr.DataclassBase, alembic_upgrade=True)
+fr.testing.configure_tests(app=app, base=Base, alembic_upgrade=True)

@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 import fastapi_restly as fr
 from fastapi import FastAPI
 
+from .models import Base
 from .settings import Settings
 from .users.views import UserView
 
@@ -25,7 +26,7 @@ def create_app() -> FastAPI:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    await fr.db.async_create_all(fr.DataclassBase)
+    await fr.db.async_create_all(Base)
     yield
     # An async engine that is never disposed drops its connections rather than
     # closing them, leaving a ResourceWarning for each one.

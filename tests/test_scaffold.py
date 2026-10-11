@@ -1298,7 +1298,7 @@ def test_create_all_projects_build_their_schema_at_startup(options, tmp_path):
     main = (tmp_path / "shop" / "app" / "main.py").read_text()
     call = "async_create_all" if options.is_async else "create_all"
 
-    assert f"fr.db.{call}(fr.DataclassBase)" in main
+    assert f"fr.db.{call}(Base)" in main
     assert "lifespan=lifespan" in main
 
 

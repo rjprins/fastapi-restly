@@ -327,6 +327,7 @@ def build_conftest(options: Options) -> str:
 import fastapi_restly as fr
 
 from {PACKAGE}.main import create_app
+from {PACKAGE}.models import Base
 from {PACKAGE}.settings import Settings
 
 {memory_note}TEST_DATABASE_URL = os.environ.get(
@@ -340,7 +341,7 @@ from {PACKAGE}.settings import Settings
 Settings.use(Settings(database_url=TEST_DATABASE_URL, _env_file=None))  # type: ignore[call-arg]
 
 app = create_app()
-fr.testing.configure_tests(app=app, base=fr.DataclassBase, {schema_setup})
+fr.testing.configure_tests(app=app, base=Base, {schema_setup})
 '''
 
 
