@@ -72,6 +72,21 @@ related table without its scope. Shape the view's schema, or override
 {meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`,
 where embedded rows must be filtered.
 
+For the same reason, a model does not take over the scope of a related
+model. To make its rows follow that scope, give the model its own
+`default_scope` that names the other scope. A comment is visible when its
+post is visible:
+
+```python
+class CommentClauses(fr.ClauseNamespace):
+    model = Comment
+
+    default_scope = fr.where_clause(Comment.post.has(PostClauses.default_scope))
+```
+
+[A clause inside an expression](#clause-in-expression) explains how the
+inner clause gets its values.
+
 `default_scope` is a
 {class}`WhereClause <fastapi_restly.clauses.WhereClause>`: a predicate,
 with EXISTS (`.any()`/`.has()`) for a rule that depends on a related
@@ -163,10 +178,12 @@ class ItemView(fr.AsyncRestView):
     scope = role_visibility  # a dependency binds RoleContext.include_deleted
 ```
 
-A policy clause like this names a request-boundary value, so it lives
-beside the view that applies it, not in the model's namespace; the
-namespace holds model facts such as `is_deleted`, and views compose policy
-from them. The framework applies the declared clause
+A policy clause like this one belongs to the view that applies it, so
+declare it beside that view. The model's namespace holds the rules for every
+read of the model: facts such as `is_deleted`, and rules such as "a draft is
+visible only to its author". A rule in the namespace may read a request
+value, such as `Current.user_id`. A read without a bound value then fails
+with an error that names the missing value. The framework applies the declared clause
 itself, on every read; there is no apply-side override point, and a
 `scope` that is not a clause is rejected as the view class is defined.
 [Reading the resolved scope](#reading-the-scope) hands a route the

@@ -161,15 +161,8 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
-    Tutorial
+    Getting Started
   </a>
 </li>
 
@@ -201,6 +194,13 @@
   </a>
 </li>
 
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
             <li class="nav-item dropdown">
                 <button class="btn dropdown-toggle nav-item" type="button"
                 data-bs-toggle="dropdown" aria-expanded="false"
@@ -209,13 +209,6 @@
                 </button>
                 <ul id="pst-nav-more-links" class="dropdown-menu">
                     
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
 <li class=" ">
   <a class="nav-link dropdown-item nav-internal" href="about.html">
     About
@@ -335,15 +328,8 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
-    Tutorial
+    Getting Started
   </a>
 </li>
 
@@ -455,6 +441,7 @@
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Project structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_models.html">Declare Your Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
@@ -594,12 +581,13 @@ naming the test database explicitly, and hands the result to
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># conftest.py</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">app.main</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_app</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">app.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Base</span>
 
 <span class="n">app</span> <span class="o">=</span> <span class="n">create_app</span><span class="p">(</span><span class="s2">&quot;sqlite+aiosqlite:///./test.db&quot;</span><span class="p">)</span>
 
 <span class="n">fr</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">configure_tests</span><span class="p">(</span>
     <span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">,</span>
-    <span class="n">base</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">DataclassBase</span><span class="p">,</span>
+    <span class="n">base</span><span class="o">=</span><span class="n">Base</span><span class="p">,</span>
     <span class="n">create_all</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
@@ -638,8 +626,9 @@ order that the factory form avoids:</p>
 <span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">app.main</span><span class="w"> </span><span class="kn">import</span> <span class="n">app</span>  <span class="c1"># noqa: E402</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">app.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Base</span>  <span class="c1"># noqa: E402</span>
 
-<span class="n">fr</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">configure_tests</span><span class="p">(</span><span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">DataclassBase</span><span class="p">,</span> <span class="n">create_all</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">fr</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">configure_tests</span><span class="p">(</span><span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="n">Base</span><span class="p">,</span> <span class="n">create_all</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>A <code class="docutils literal notranslate"><span class="pre">.env</span></code> file is convenient in development, when the settings class enables
@@ -688,6 +677,7 @@ the test database and the local <code class="docutils literal notranslate"><span
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># conftest.py</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">app.main</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_app</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">app.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Base</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">app.settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">Settings</span>
 
 <span class="n">Settings</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="n">Settings</span><span class="p">(</span><span class="n">database_url</span><span class="o">=</span><span class="s2">&quot;postgresql+asyncpg://...&quot;</span><span class="p">,</span> <span class="n">_env_file</span><span class="o">=</span><span class="kc">None</span><span class="p">))</span>
@@ -696,7 +686,7 @@ the test database and the local <code class="docutils literal notranslate"><span
 
 <span class="n">fr</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">configure_tests</span><span class="p">(</span>
     <span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">,</span>
-    <span class="n">base</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">DataclassBase</span><span class="p">,</span>
+    <span class="n">base</span><span class="o">=</span><span class="n">Base</span><span class="p">,</span>
     <span class="n">create_all</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
@@ -726,7 +716,7 @@ database to rebuild between tests, which is what keeps a suite fast as it
 grows. See <a class="reference internal" href="#savepoints-and-rollback">savepoints and rollback</a> for how that
 works, and <a class="reference internal" href="#cleaning-up-between-tests">cleaning up between tests</a> for the two
 cases it cannot serve.</p>
-<p><strong>Clients wired to your app.</strong> <code class="docutils literal notranslate"><span class="pre">restly_client</span></code> sends requests from ordinary
+<p><strong>Clients connected to your app.</strong> <code class="docutils literal notranslate"><span class="pre">restly_client</span></code> sends requests from ordinary
 <code class="docutils literal notranslate"><span class="pre">def</span></code> tests. <code class="docutils literal notranslate"><span class="pre">restly_async_client</span></code> sends them from <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">def</span></code> tests on the same
 event loop as <code class="docutils literal notranslate"><span class="pre">restly_async_session</span></code>. Both run the app’s lifespan and roll their
 requests back with everything else under the default cleanup.</p>
@@ -736,12 +726,12 @@ requests back with everything else under the default cleanup.</p>
 <p>A test needs nothing but the client:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># test_users.py</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">test_create_and_fetch_user</span><span class="p">(</span><span class="n">restly_client</span><span class="p">):</span>
-    <span class="n">response</span> <span class="o">=</span> <span class="n">restly_client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>  <span class="c1"># asserts 201 automatically</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">restly_client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>  <span class="c1"># fails the test unless the status is 2xx</span>
         <span class="s2">&quot;/users&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Jane&quot;</span><span class="p">,</span> <span class="s2">&quot;email&quot;</span><span class="p">:</span> <span class="s2">&quot;jane@example.com&quot;</span><span class="p">}</span>
     <span class="p">)</span>
     <span class="n">user_id</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;id&quot;</span><span class="p">]</span>
 
-    <span class="n">data</span> <span class="o">=</span> <span class="n">restly_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;/users/</span><span class="si">{</span><span class="n">user_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>  <span class="c1"># asserts 200</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">restly_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;/users/</span><span class="si">{</span><span class="n">user_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
     <span class="k">assert</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Jane&quot;</span>
 </pre></div>
 </div>
@@ -787,7 +777,7 @@ synchronous URL to Alembic.</p>
 <p>Pass a path if the config lives somewhere else:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fr</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">configure_tests</span><span class="p">(</span>
     <span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">,</span>
-    <span class="n">base</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">DataclassBase</span><span class="p">,</span>
+    <span class="n">base</span><span class="o">=</span><span class="n">Base</span><span class="p">,</span>
     <span class="n">alembic_upgrade</span><span class="o">=</span><span class="s2">&quot;backend/alembic.ini&quot;</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
@@ -843,7 +833,7 @@ migrations seeded with reference data, and nothing puts those rows back. Name
 them and they are left alone:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fr</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">configure_tests</span><span class="p">(</span>
     <span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">,</span>
-    <span class="n">base</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">DataclassBase</span><span class="p">,</span>
+    <span class="n">base</span><span class="o">=</span><span class="n">Base</span><span class="p">,</span>
     <span class="n">alembic_upgrade</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="n">db_cleanup</span><span class="o">=</span><span class="s2">&quot;delete&quot;</span><span class="p">,</span>
     <span class="n">db_cleanup_exclude</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;country&quot;</span><span class="p">,</span> <span class="s2">&quot;role&quot;</span><span class="p">],</span>
@@ -875,49 +865,36 @@ and <a class="reference internal" href="api/views.html#fastapi_restly.views.Asyn
 <a class="reference internal" href="api/testing.html#fastapi_restly.testing.AsyncRestlyTestClient" title="fastapi_restly.testing.AsyncRestlyTestClient"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestlyTestClient</span></code></a>
 provides the same request methods and assertions for async tests; the
 <code class="docutils literal notranslate"><span class="pre">restly_async_client</span></code> fixture constructs it and runs the app lifespan for you.</p>
-<p>Both clients assert a default status code for each request and, on mismatch,
-raise an <code class="docutils literal notranslate"><span class="pre">AssertionError</span></code> that includes the response body:</p>
+<p>Both clients check the status code of every response. On a mismatch, they
+raise an <code class="docutils literal notranslate"><span class="pre">AssertionError</span></code> that includes the response body. The
+<code class="docutils literal notranslate"><span class="pre">assert_status_code</span></code> argument of each request method sets the check:</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>
-<tr class="row-odd"><th class="head"><p>Method</p></th>
-<th class="head"><p>Default expected status</p></th>
+<tr class="row-odd"><th class="head"><p><code class="docutils literal notranslate"><span class="pre">assert_status_code</span></code></p></th>
+<th class="head"><p>Accepted status</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">get</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">200</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">&quot;2xx&quot;</span></code>, the default</p></td>
+<td><p>any success status, such as <code class="docutils literal notranslate"><span class="pre">200</span></code>, <code class="docutils literal notranslate"><span class="pre">201</span></code>, or <code class="docutils literal notranslate"><span class="pre">204</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">post</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">201</span></code></p></td>
+<tr class="row-odd"><td><p>an int, such as <code class="docutils literal notranslate"><span class="pre">404</span></code></p></td>
+<td><p>only that status</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">put</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">200</span></code></p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">patch</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">200</span></code></p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">delete</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">204</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>any status: the client does not check</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code> and <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> do not
-define <code class="docutils literal notranslate"><span class="pre">PUT</span></code> routes. The client’s <code class="docutils literal notranslate"><span class="pre">put</span></code> exists for <a class="reference internal" href="howto_react_admin.html"><span class="std std-doc">React Admin
-views</span></a> and custom routes.</p>
-<p>Override the expectation when testing error paths:</p>
+<p>Pass the exact code when the status is what the test is about, such as an
+error path:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_not_found</span><span class="p">(</span><span class="n">restly_client</span><span class="p">):</span>
     <span class="n">restly_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users/999&quot;</span><span class="p">,</span> <span class="n">assert_status_code</span><span class="o">=</span><span class="mi">404</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Passing <code class="docutils literal notranslate"><span class="pre">assert_status_code=None</span></code> relaxes the check to “any status below
-400”; it does <strong>not</strong> skip the assertion. Pass the error code you expect when
-you know it. To make a request with no Restly status assertion at all, use the
-generic <code class="docutils literal notranslate"><span class="pre">request()</span></code> method:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">response</span> <span class="o">=</span> <span class="n">restly_client</span><span class="o">.</span><span class="n">request</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;/users/999&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>The async client offers the same escape hatch with <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">restly_async_client.request(...)</span></code>.</p>
+<p>The default does not check which success status a route returns. To test
+that a create returns <code class="docutils literal notranslate"><span class="pre">201</span></code>, pass <code class="docutils literal notranslate"><span class="pre">assert_status_code=201</span></code>.</p>
 </section>
 <section id="writing-async-tests">
 <h2>Writing async tests<a class="headerlink" href="#writing-async-tests" title="Link to this heading">#</a></h2>

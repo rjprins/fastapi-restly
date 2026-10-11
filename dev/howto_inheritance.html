@@ -161,15 +161,8 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
-    Tutorial
+    Getting Started
   </a>
 </li>
 
@@ -201,6 +194,13 @@
   </a>
 </li>
 
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
             <li class="nav-item dropdown">
                 <button class="btn dropdown-toggle nav-item" type="button"
                 data-bs-toggle="dropdown" aria-expanded="false"
@@ -209,13 +209,6 @@
                 </button>
                 <ul id="pst-nav-more-links" class="dropdown-menu">
                     
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
 <li class=" ">
   <a class="nav-link dropdown-item nav-internal" href="about.html">
     About
@@ -335,15 +328,8 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
-    Tutorial
+    Getting Started
   </a>
 </li>
 
@@ -455,6 +441,7 @@
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Project structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_models.html">Declare Your Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
@@ -536,10 +523,10 @@
   <section id="share-behaviour-with-base-views">
 <h1>Share Behaviour with Base Views<a class="headerlink" href="#share-behaviour-with-base-views" title="Link to this heading">#</a></h1>
 <p>FastAPI-Restly views are plain Python classes. Use base classes for shared CRUD overrides, dependencies, access control, and URL namespaces.</p>
-<p>Each CRUD verb is implemented in three tiers (see <a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a> for the full model):</p>
+<p>Each CRUD route runs through three methods (see <a class="reference internal" href="customize.html#view-request-steps"><span class="std std-ref">How a view handles a request</span></a> for the full picture):</p>
 <ul class="simple">
-<li><p>The <strong>endpoint method</strong> (<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create_endpoint" title="fastapi_restly.views.RestView.create_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create_endpoint</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one_endpoint" title="fastapi_restly.views.RestView.get_one_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one_endpoint</span></code></a>, and so on) owns the HTTP contract. It is rarely overridden on a base class.</p></li>
-<li><p>The <strong>handler</strong> (<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_create" title="fastapi_restly.views.RestView.handle_create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_create</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_one" title="fastapi_restly.views.RestView.handle_get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_one</span></code></a>, and so on) runs <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a> and the commit bracket. It is final: custom routes call it, and a base class cannot override it.</p></li>
+<li><p>The <strong>endpoint method</strong> (<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create_endpoint" title="fastapi_restly.views.RestView.create_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create_endpoint</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one_endpoint" title="fastapi_restly.views.RestView.get_one_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one_endpoint</span></code></a>, and so on) owns the HTTP contract. Override it only to change that contract.</p></li>
+<li><p>The <strong>handler</strong> (<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_create" title="fastapi_restly.views.RestView.handle_create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_create</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_one" title="fastapi_restly.views.RestView.handle_get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_one</span></code></a>, and so on) handles the steps, such as <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a> and the commit bracket. It is final: custom routes call it, and a base class cannot override it.</p></li>
 <li><p>The <strong>business method</strong> (<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete" title="fastapi_restly.views.RestView.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a>) is the auth-free, commit-free domain operation.</p></li>
 </ul>
 <p>The business method is the natural home for shared behaviour, so most of the examples below override it.</p>
@@ -736,7 +723,7 @@ Mixins</span></a>.</p>
 <h2>Cross-references<a class="headerlink" href="#cross-references" title="Link to this heading">#</a></h2>
 <p>The patterns above build on two neighbouring pages:</p>
 <ul class="simple">
-<li><p><a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a> covers the three-tier model and the call chain.</p></li>
+<li><p><a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a> covers how a view handles a request and the call chain.</p></li>
 <li><p><a class="reference internal" href="howto_compose_views_with_mixins.html"><span class="std std-doc">Compose Views with Mixins</span></a> covers structural concerns on the model and verb mixins on the view; it is the richer cousin to single-base inheritance.</p></li>
 </ul>
 </section>

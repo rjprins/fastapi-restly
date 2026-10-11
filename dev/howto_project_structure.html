@@ -62,7 +62,7 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Custom Schemas and Field Types" href="howto_custom_schema.html" />
+    <link rel="next" title="Declare Your Models" href="howto_models.html" />
     <link rel="prev" title="Use Restly in an Existing Project" href="howto_existing_project.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -161,15 +161,8 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
-    Tutorial
+    Getting Started
   </a>
 </li>
 
@@ -201,6 +194,13 @@
   </a>
 </li>
 
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
             <li class="nav-item dropdown">
                 <button class="btn dropdown-toggle nav-item" type="button"
                 data-bs-toggle="dropdown" aria-expanded="false"
@@ -209,13 +209,6 @@
                 </button>
                 <ul id="pst-nav-more-links" class="dropdown-menu">
                     
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
 <li class=" ">
   <a class="nav-link dropdown-item nav-internal" href="about.html">
     About
@@ -335,15 +328,8 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
-    Tutorial
+    Getting Started
   </a>
 </li>
 
@@ -455,6 +441,7 @@
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Project structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_models.html">Declare Your Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
@@ -543,7 +530,7 @@ and explains what each part of it buys you.</p>
 <section id="generate-it">
 <span id="restly-new"></span><h2>Generate it<a class="headerlink" href="#generate-it" title="Link to this heading">#</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> creates a project with a <code class="docutils literal notranslate"><span class="pre">users</span></code> resource, a test suite,
-and the settings and schema wiring:</p>
+and the settings and schema setup:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>fastapi-restly
 restly<span class="w"> </span>new<span class="w"> </span>myapp
 </pre></div>
@@ -579,7 +566,7 @@ the same line in every Restly project.</p>
 <section id="start-with-one-file">
 <h2>Start with one file<a class="headerlink" href="#start-with-one-file" title="Link to this heading">#</a></h2>
 <p>A single module is the right shape for a first resource.
-<a class="reference internal" href="getting_started.html"><span class="std std-doc">Getting Started</span></a> builds a complete application in one
+<a class="reference internal" href="tutorial.html"><span class="std std-doc">Build a Blog API</span></a> builds a complete application in one
 file, and nothing is gained by splitting it while it stays that size.</p>
 <p>Split when the second or third resource arrives, or when one resource grows
 explicit schemas and a handful of overrides.</p>
@@ -593,6 +580,7 @@ code they hold:</p>
 ├── asgi.py                 # app = create_app(), the deployment entrypoint
 ├── settings.py             # Pydantic settings
 ├── current.py              # Current namespace (optional)
+├── models.py               # Declarative base and shared model mixins
 ├── views.py                # Shared base view and mixins
 ├── users/
 │   ├── __init__.py
@@ -620,6 +608,36 @@ without the rest of the app.</p>
 imported. Keep <code class="docutils literal notranslate"><span class="pre">__init__.py</span></code> empty or limited to a docstring, and import
 concrete modules rather than building re-export modules that pull in a whole
 subject to reach one class.</p>
+</section>
+<section id="declare-the-base-once">
+<span id="project-base"></span><h2>Declare the base once<a class="headerlink" href="#declare-the-base-once" title="Link to this heading">#</a></h2>
+<p>Declare your declarative base in <code class="docutils literal notranslate"><span class="pre">app/models.py</span></code>, and import it in the
+<code class="docutils literal notranslate"><span class="pre">models.py</span></code> of each subject:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># app/models.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">DeclarativeBase</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Base</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ModelDefaults</span><span class="p">,</span> <span class="n">DeclarativeBase</span><span class="p">):</span>
+    <span class="k">pass</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># app/users/models.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mapped</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Base</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">User</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDMixin</span><span class="p">,</span> <span class="n">Base</span><span class="p">):</span>
+    <span class="n">email</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Model mixins that several subjects share, such as a tenant column, belong in
+<code class="docutils literal notranslate"><span class="pre">app/models.py</span></code> too. <a class="reference internal" href="howto_models.html"><span class="std std-doc">Declare Your Models</span></a> explains what goes
+in the base.</p>
 </section>
 <section id="share-current-from-the-package-root">
 <span id="project-current"></span><h2>Share Current from the package root<a class="headerlink" href="#share-current-from-the-package-root" title="Link to this heading">#</a></h2>
@@ -665,16 +683,14 @@ the layout registers them itself. That one place is a <code class="docutils lite
 the lifespan that disposes it.</p>
 <p>That tuple also decides which module has seen every model, since each view
 imports its own. A declarative base holds the models that have been imported
-and nothing else, and <code class="docutils literal notranslate"><span class="pre">IDBase</span></code> subclasses <code class="docutils literal notranslate"><span class="pre">DataclassBase</span></code>, so
-<code class="docutils literal notranslate"><span class="pre">fr.DataclassBase.metadata</span></code> is the whole schema once <code class="docutils literal notranslate"><span class="pre">main.py</span></code> has been
-imported. On your own base, see
-<a class="reference internal" href="howto_existing_project.html#use-your-own-declarativebase-models"><span class="std std-ref">Use Your Own DeclarativeBase Models</span></a>.</p>
+and nothing else, so <code class="docutils literal notranslate"><span class="pre">Base.metadata</span></code> is the whole schema once <code class="docutils literal notranslate"><span class="pre">main.py</span></code> has
+been imported.</p>
 <p><code class="docutils literal notranslate"><span class="pre">alembic/env.py</span></code> relies on exactly that:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># alembic/env.py</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">app.main</span>  <span class="c1"># noqa: F401  (imports every view, and each view its model)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">app.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Base</span>
 
-<span class="n">target_metadata</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">DataclassBase</span><span class="o">.</span><span class="n">metadata</span>
+<span class="n">target_metadata</span> <span class="o">=</span> <span class="n">Base</span><span class="o">.</span><span class="n">metadata</span>
 </pre></div>
 </div>
 <p>This works only because importing <code class="docutils literal notranslate"><span class="pre">main.py</span></code> builds nothing. Never put
@@ -766,11 +782,11 @@ layout is already decided</p></li>
       </div>
     </a>
     <a class="right-next"
-       href="howto_custom_schema.html"
+       href="howto_models.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Custom Schemas and Field Types</p>
+        <p class="prev-next-title">Declare Your Models</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -797,6 +813,7 @@ layout is already decided</p></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#start-with-one-file">Start with one file</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#organize-by-subject-then-by-type">Organize by subject, then by type</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#keep-imports-pointing-one-way">Keep imports pointing one way</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#declare-the-base-once">Declare the base once</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#share-current-from-the-package-root">Share Current from the package root</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#compose-in-one-place">Compose in one place</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#share-view-behavior-from-the-package-root">Share view behavior from the package root</a></li>

@@ -16,12 +16,16 @@ is the recommended starting point:
 ```python
 import fastapi_restly as fr
 from fastapi import FastAPI
-from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import DeclarativeBase, Mapped
 
 app = FastAPI()
 
 
-class User(fr.IDBase):
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+
+
+class User(fr.IDMixin, Base):
     name: Mapped[str]
     email: Mapped[str]
 
@@ -72,8 +76,8 @@ Schemas are one half of the picture;
 {class}`RestView <fastapi_restly.views.RestView>` can be parameterized too,
 but this is optional.
 
-The generic form is useful when you override methods on one of the
-[three tiers](customize.md#the-three-tiers). Most overrides land on
+The generic form is useful when you override
+[view methods](#view-request-steps). Most overrides land on
 the business methods, so those benefit most:
 
 - {meth}`get_one <fastapi_restly.views.RestView.get_one>`
@@ -142,9 +146,9 @@ puts that class there instead, as in
 `fr.AsyncRestView[User, UserResponse]`.
 
 Note the signatures: `create` takes the create schema and returns the model;
-`update` takes the already-loaded `obj` plus the update schema. Id resolution
-and the 404 happen one tier up, in the final
-{meth}`handle_update <fastapi_restly.views.RestView.handle_update>` handler.
+`update` takes the already-loaded `obj` plus the update schema. The final
+{meth}`handle_update <fastapi_restly.views.RestView.handle_update>` handler
+loads the row and raises the 404 before `update` runs.
 The `get_one` id parameter is `int | ColumnElement[bool]` (`ColumnElement`
 from `sqlalchemy`) because a SQLAlchemy predicate may take the primary key's
 place, as in [Look a row up by another key](#natural-key-route). Annotating
@@ -198,7 +202,7 @@ The practical takeaway is:
 - Type checkers are best at the public contract: models, schemas,
   {class}`IDSchema[...] <fastapi_restly.schemas.IDSchema>`,
   {class}`IDRef[...] <fastapi_restly.schemas.IDRef>`, class attributes, and
-  the methods on the three tiers
+  the view methods
   ({meth}`get_one <fastapi_restly.views.RestView.get_one>`,
   {meth}`create <fastapi_restly.views.RestView.create>`,
   {meth}`handle_update <fastapi_restly.views.RestView.handle_update>`, and so
@@ -245,7 +249,7 @@ projects that want it.
 ## See also
 
 - [View Method Surface](#view-method-surface): the typed
-  methods this page parameterizes, with tier classification.
+  methods this page parameterizes, sorted by kind.
 - [Customizing RestView](customize.md): the override recipes
   these signatures apply to.
 - [Work with Foreign Keys and Relationships](howto_relationship_idschema.md):

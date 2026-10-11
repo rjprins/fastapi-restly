@@ -22,17 +22,21 @@ This example serves the tasks of a project at
 ```python
 import sqlalchemy as sa
 from fastapi import FastAPI
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 import fastapi_restly as fr
 
 
-class Project(fr.IDBase):
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+
+
+class Project(fr.IDMixin, Base):
     name: Mapped[str]
     archived: Mapped[bool] = mapped_column(default=False)
 
 
-class Task(fr.IDBase):
+class Task(fr.IDMixin, Base):
     title: Mapped[str]
     project_id: Mapped[int] = mapped_column(sa.ForeignKey("project.id"), init=False)
 
@@ -167,8 +171,8 @@ For more levels, build a chain of base views, one per level. Each base adds
 its segment to `prefix` and its lookup to `dependencies`. Both add up from
 base to subclass; see [Concatenate URL prefixes](#prefix-concatenation). This
 example serves tasks at `/companies/{company_id}/projects/{project_id}/tasks`.
-It is a separate app. It uses the imports, `app`, `Task` and `TaskSchema` of the
-first example, and its own `Project`, `Parent` and lookups:
+It is a separate app. It uses the imports, `app`, `Base`, `Task` and
+`TaskSchema` of the first example, and its own `Project`, `Parent` and lookups:
 
 ```python
 from typing import Annotated
@@ -176,11 +180,11 @@ from typing import Annotated
 from fastapi import Depends
 
 
-class Company(fr.IDBase):
+class Company(fr.IDMixin, Base):
     name: Mapped[str]
 
 
-class Project(fr.IDBase):
+class Project(fr.IDMixin, Base):
     name: Mapped[str]
     company_id: Mapped[int] = mapped_column(sa.ForeignKey("company.id"), init=False)
 

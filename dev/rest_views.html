@@ -161,15 +161,8 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
-    Tutorial
+    Getting Started
   </a>
 </li>
 
@@ -201,6 +194,13 @@
   </a>
 </li>
 
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
             <li class="nav-item dropdown">
                 <button class="btn dropdown-toggle nav-item" type="button"
                 data-bs-toggle="dropdown" aria-expanded="false"
@@ -209,13 +209,6 @@
                 </button>
                 <ul id="pst-nav-more-links" class="dropdown-menu">
                     
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
 <li class=" ">
   <a class="nav-link dropdown-item nav-internal" href="about.html">
     About
@@ -335,15 +328,8 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
-    Tutorial
+    Getting Started
   </a>
 </li>
 
@@ -529,8 +515,8 @@ as FastAPI routes:</p>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">UserView</span></code> now serves list, create, retrieve, update, and delete requests under
-<code class="docutils literal notranslate"><span class="pre">/users</span></code>. <a class="reference internal" href="getting_started.html"><span class="std std-doc">Getting Started</span></a> supplies the surrounding app,
-database configuration, and model in one runnable file.</p>
+<code class="docutils literal notranslate"><span class="pre">/users</span></code>. <a class="reference internal" href="tutorial.html"><span class="std std-doc">Build a Blog API</span></a> shows the surrounding app, database
+configuration, and model in one runnable file.</p>
 <section id="choose-async-or-sync">
 <h2>Choose async or sync<a class="headerlink" href="#choose-async-or-sync" title="Link to this heading">#</a></h2>
 <p>Use <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> for new
@@ -552,12 +538,12 @@ every route in the view.</p></li>
 mapped class that the routes read and write.</p></li>
 </ul>
 <p>Ordinary models based on SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">DeclarativeBase</span></code> work. Restly’s
-<a class="reference internal" href="api/models.html#fastapi_restly.models.IDBase" title="fastapi_restly.models.IDBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDBase</span></code></a> is an optional convenience base,
-not a requirement.</p>
+model defaults, <a class="reference internal" href="api/models.html#fastapi_restly.models.ModelDefaults" title="fastapi_restly.models.ModelDefaults"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code></a>,
+are optional; see <a class="reference internal" href="howto_models.html"><span class="std std-doc">Declare Your Models</span></a>.</p>
 <p>If the view does not declare <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a>, Restly generates the view’s schema
 from <code class="docutils literal notranslate"><span class="pre">model</span></code> when the view is registered. It then derives the create and update
 schemas from it. Write the view’s schema yourself when the
-wire contract needs stable field names, validation, aliases, or fields that do
+HTTP contract needs stable field names, validation, aliases, or fields that do
 not match the table directly:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
@@ -620,7 +606,7 @@ and include it where the app or router is assembled:</p>
 multi-package application.</p>
 </section>
 <section id="default-crud-behavior">
-<span id="id1"></span><h2>Default CRUD behavior<a class="headerlink" href="#default-crud-behavior" title="Link to this heading">#</a></h2>
+<span id="default-crud-routes"></span><span id="id1"></span><h2>Default CRUD behavior<a class="headerlink" href="#default-crud-behavior" title="Link to this heading">#</a></h2>
 <p>For <code class="docutils literal notranslate"><span class="pre">prefix</span> <span class="pre">=</span> <span class="pre">&quot;/users&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">include_view</span></code> registers the inherited endpoint
 methods as this HTTP contract:</p>
 <div class="pst-scrollable-table-container"><table class="table">
@@ -781,8 +767,8 @@ static routes before untyped item routes, including views with string IDs.</p>
 </tbody>
 </table>
 </div>
-<p><a class="reference internal" href="api_details.html"><span class="std std-doc">Behavior and Configuration Reference</span></a> lists the exact
-attribute types and method signatures.
+<p><a class="reference internal" href="view_reference.html"><span class="std std-doc">View Reference</span></a> lists the exact attribute types and
+method signatures.
 <a class="reference internal" href="howto_existing_project.html"><span class="std std-doc">Use Restly in an Existing Project</span></a>
 covers custom engines, session generators, and a per-view session dependency.</p>
 </section>
@@ -836,7 +822,8 @@ override decision table, and worked recipes.</p>
 <ul class="simple">
 <li><p>Resource identity is one scalar primary key on the generated routes. The
 <code class="docutils literal notranslate"><span class="pre">{id}</span></code> path parameter takes the key’s Python type, so a UUID or string key
-needs no configuration. A composite key is reached from
+needs no configuration. Reference fields such as <code class="docutils literal notranslate"><span class="pre">fr.MustExist[UUID,</span> <span class="pre">Model]</span></code>
+accept these keys too. A composite key is reached from
 a custom route that loads with a predicate
 (<a class="reference internal" href="customize.html#natural-key-route"><span class="std std-ref">Look a row up by another key</span></a>), or from
 <a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a> with explicit route paths.</p></li>
@@ -855,14 +842,14 @@ single endpoint that shares no view configuration.</p></li>
 <section id="next-steps">
 <h2>Next steps<a class="headerlink" href="#next-steps" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><a class="reference internal" href="getting_started.html"><span class="std std-doc">Getting Started</span></a> builds and runs a first resource.</p></li>
+<li><p><a class="reference internal" href="tutorial.html"><span class="std std-doc">Build a Blog API</span></a> builds and runs a first resource.</p></li>
 <li><p><a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a> changes behavior at the correct layer.</p></li>
-<li><p><a class="reference internal" href="howto_custom_schema.html"><span class="std std-doc">Custom Schemas and Field Types</span></a> defines stable wire
-contracts.</p></li>
+<li><p><a class="reference internal" href="howto_custom_schema.html"><span class="std std-doc">Custom Schemas and Field Types</span></a> defines stable request
+and response fields.</p></li>
 <li><p><a class="reference internal" href="class_based_views.html"><span class="std std-doc">Views</span></a> explains registration, shared
 dependencies, and the inheritance model.</p></li>
 <li><p><a class="reference internal" href="user_guide.html"><span class="std std-doc">How-To Guides</span></a> covers individual tasks.</p></li>
-<li><p><a class="reference internal" href="api_details.html"><span class="std std-doc">Behavior and Configuration Reference</span></a> lists exact signatures
+<li><p><a class="reference internal" href="view_reference.html"><span class="std std-doc">View Reference</span></a> lists exact signatures
 and defaults.</p></li>
 </ul>
 </section>

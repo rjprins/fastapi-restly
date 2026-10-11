@@ -161,15 +161,8 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
-    Tutorial
+    Getting Started
   </a>
 </li>
 
@@ -201,6 +194,13 @@
   </a>
 </li>
 
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
             <li class="nav-item dropdown">
                 <button class="btn dropdown-toggle nav-item" type="button"
                 data-bs-toggle="dropdown" aria-expanded="false"
@@ -209,13 +209,6 @@
                 </button>
                 <ul id="pst-nav-more-links" class="dropdown-menu">
                     
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
 <li class=" ">
   <a class="nav-link dropdown-item nav-internal" href="about.html">
     About
@@ -335,15 +328,8 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
-    Tutorial
+    Getting Started
   </a>
 </li>
 
@@ -467,7 +453,7 @@
 <li class="toctree-l2"><a class="reference internal" href="api/utils.html">Utils API</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1"><a class="reference internal" href="api_details.html">Behavior and Configuration Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="view_reference.html">View Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="technical_details.html">Technical Details</a></li>
 <li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
 </ul>
@@ -555,7 +541,7 @@ convention:</p>
 <td><p>Pydantic bases, field markers, relationship references, and schema generation.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/models.html#module-fastapi_restly.models" title="fastapi_restly.models"><code class="xref py py-mod docutils literal notranslate"><span class="pre">fr.models</span></code></a></p></td>
-<td><p>SQLAlchemy declarative bases and mixins for IDs and timestamps.</p></td>
+<td><p>Defaults for your declarative base, and mixins for IDs and timestamps.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/db.html#module-fastapi_restly.db" title="fastapi_restly.db"><code class="xref py py-mod docutils literal notranslate"><span class="pre">fr.db</span></code></a></p></td>
 <td><p>Configuration, session dependencies, session context managers, and engine access.</p></td>
@@ -581,6 +567,18 @@ convention:</p>
 </tbody>
 </table>
 </div>
+</section>
+<section id="reference-pages">
+<h2>Reference pages<a class="headerlink" href="#reference-pages" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="api/index.html"><span class="std std-doc">API Modules</span></a> documents every module, with complete
+signatures.</p></li>
+<li><p><a class="reference internal" href="view_reference.html"><span class="std std-doc">View Reference</span></a> lists everything you can set, override,
+or call on a view, on one page.</p></li>
+<li><p><a class="reference internal" href="technical_details.html"><span class="std std-doc">Technical Details</span></a> explains how Restly works inside,
+such as schema generation and engine defaults.</p></li>
+<li><p><a class="reference internal" href="changelog.html"><span class="std std-doc">Changelog</span></a> lists the changes in each release.</p></li>
+</ul>
 <div class="toctree-wrapper compound">
 </div>
 </section>
@@ -634,6 +632,7 @@ convention:</p>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-reference">Module reference</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reference-pages">Reference pages</a></li>
 </ul>
   </nav></div>
 

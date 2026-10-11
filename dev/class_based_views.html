@@ -63,7 +63,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Using RestView" href="rest_views.html" />
-    <link rel="prev" title="Customize the Blog API" href="tutorial_customizing.html" />
+    <link rel="prev" title="Tutorial: Add Authors and Drafts" href="tutorial_customizing.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -161,15 +161,8 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
-    Tutorial
+    Getting Started
   </a>
 </li>
 
@@ -201,6 +194,13 @@
   </a>
 </li>
 
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
             <li class="nav-item dropdown">
                 <button class="btn dropdown-toggle nav-item" type="button"
                 data-bs-toggle="dropdown" aria-expanded="false"
@@ -209,13 +209,6 @@
                 </button>
                 <ul id="pst-nav-more-links" class="dropdown-menu">
                     
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
 <li class=" ">
   <a class="nav-link dropdown-item nav-internal" href="about.html">
     About
@@ -335,15 +328,8 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
-    Tutorial
+    Getting Started
   </a>
 </li>
 
@@ -636,7 +622,7 @@ app/router composition layer. Small apps can use the decorator shortcut:</p>
 </pre></div>
 </div>
 <p><a class="reference internal" href="api/views.html#fastapi_restly.views.include_view" title="fastapi_restly.views.include_view"><code class="xref py py-func docutils literal notranslate"><span class="pre">include_view</span></code></a> walks the class’s MRO, collects every method tagged with route
-metadata, wires each method’s <code class="docutils literal notranslate"><span class="pre">self</span></code> up as a dependency on the view class (so
+metadata, makes each method’s <code class="docutils literal notranslate"><span class="pre">self</span></code> a dependency on the view class (so
 FastAPI instantiates a fresh view per request), and registers each route on
 the parent router or app.</p>
 <p>Routes are bound at <em>include-time</em> against the class you pass in; they are
@@ -714,9 +700,9 @@ an abstract scaffold with no endpoints of its own.</p></li>
 and async CRUD endpoint methods. <a class="reference internal" href="rest_views.html"><span class="std std-doc">Using RestView</span></a> owns their
 default contract, configuration, and limits.</p></li>
 </ul>
-<p>The <a class="reference internal" href="api_details.html#view-method-surface"><span class="std std-ref">API reference</span></a> classifies the public
-method surface. <a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a> explains the three override
-tiers and cross-cutting override points.</p>
+<p>The <a class="reference internal" href="view_reference.html#view-method-surface"><span class="std std-ref">API reference</span></a> classifies the public
+method surface. <a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a> explains how a view handles a
+request and where to override it.</p>
 </section>
 <section id="a-shared-base-view-for-tenant-routes">
 <h2>A shared base view for tenant routes<a class="headerlink" href="#a-shared-base-view-for-tenant-routes" title="Link to this heading">#</a></h2>
@@ -754,19 +740,19 @@ for replaceable surfaces such as soft deletion and role visibility. The
 <a class="reference internal" href="howto_compose_views_with_mixins.html#tenant-row-scoping"><span class="std std-ref">tenant row scoping</span></a> recipe contains the session rule,
 column stamp, and shared view base.</p>
 </section>
-<section id="override-a-single-tier">
-<h2>Override a single tier<a class="headerlink" href="#override-a-single-tier" title="Link to this heading">#</a></h2>
-<p><a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> and <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> split every CRUD verb into three tiers: the
-endpoint method (HTTP contract), the handler (authorization + commit
-bracket), and the business method (domain logic, auth-free and commit-free).
-One behavior change therefore means one method override, while routing,
-authorization, and the commit stay framework-owned. The tier model, both
-request lifecycles, the override decision table, and task-shaped recipes
-live in <a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a>.</p>
+<section id="override-a-single-step">
+<h2>Override a single step<a class="headerlink" href="#override-a-single-step" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> and <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> run every CRUD route through three methods: the
+endpoint method (HTTP contract), the handler, and the business method (domain
+logic, auth-free and commit-free). The handler handles the steps, such as
+authorization and the commit, and it is final. One behavior change therefore
+means one override of a step, while routing, authorization, and the commit
+stay framework-owned. The steps of a request, the override decision table,
+and task-shaped recipes live in <a class="reference internal" href="customize.html#view-request-steps"><span class="std std-ref">Customizing RestView</span></a>.</p>
 </section>
 <section id="dependency-injection-on-class-attributes">
 <span id="id2"></span><h2>Dependency injection on class attributes<a class="headerlink" href="#dependency-injection-on-class-attributes" title="Link to this heading">#</a></h2>
-<p>A class attribute on a view is wired as a FastAPI dependency only when its
+<p>A class attribute on a view becomes a FastAPI dependency only when its
 annotation either:</p>
 <ul class="simple">
 <li><p>carries an <code class="docutils literal notranslate"><span class="pre">Annotated[...,</span> <span class="pre">Depends(...)]</span></code> marker (<code class="docutils literal notranslate"><span class="pre">Security(...)</span></code> counts,
@@ -782,22 +768,22 @@ parameter. The following view demonstrates each case:</p>
 <span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">Depends</span><span class="p">,</span> <span class="n">Request</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
-    <span class="c1"># Wired: AsyncSessionDep is Annotated[AsyncSession, Depends(...)].</span>
+    <span class="c1"># Dependency: AsyncSessionDep is Annotated[AsyncSession, Depends(...)].</span>
     <span class="n">session</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncSessionDep</span>
 
-    <span class="c1"># Wired: Request is one of FastAPI&#39;s bare-injectable specials.</span>
+    <span class="c1"># Dependency: Request is one of FastAPI&#39;s bare-injectable specials.</span>
     <span class="n">request</span><span class="p">:</span> <span class="n">Request</span>
 
-    <span class="c1"># Wired: explicit Depends marker.</span>
+    <span class="c1"># Dependency: explicit Depends marker.</span>
     <span class="n">current_user</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">User</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_current_user</span><span class="p">)]</span>
 
-    <span class="c1"># NOT wired: a bare type is only a hint.</span>
+    <span class="c1"># Not a dependency: a bare type is only a hint.</span>
     <span class="n">reviewer</span><span class="p">:</span> <span class="n">User</span>
 </pre></div>
 </div>
-<p>A wired attribute is set on the view instance before any method runs, so
+<p>A dependency attribute is set on the view instance before any method runs, so
 endpoint methods, business methods, <code class="docutils literal notranslate"><span class="pre">authorize</span></code>, and the commit hooks all
-read it as <code class="docutils literal notranslate"><span class="pre">self.current_user</span></code>. An attribute that is not wired is never set
+read it as <code class="docutils literal notranslate"><span class="pre">self.current_user</span></code>. An attribute that is not a dependency is never set
 from the request: reading <code class="docutils literal notranslate"><span class="pre">self.reviewer</span></code> raises <code class="docutils literal notranslate"><span class="pre">AttributeError</span></code>.</p>
 <p>The shipped <code class="docutils literal notranslate"><span class="pre">AsyncSessionDep</span></code> / <code class="docutils literal notranslate"><span class="pre">SessionDep</span></code> aliases carry <code class="docutils literal notranslate"><span class="pre">Depends</span></code>. The
 <code class="docutils literal notranslate"><span class="pre">request</span></code> attribute on <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView" title="fastapi_restly.views.BaseRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseRestView</span></code></a>
@@ -810,10 +796,11 @@ when the view is registered, because FastAPI would never set it. A path
 segment or header that every route of the view needs comes through a
 dependency instead; <a class="reference internal" href="howto_nested.html"><span class="std std-doc">Nested Resources</span></a> shows the pattern for
 a path segment.</p>
-<p>A plain annotation never replaces a wired one. A mixin or subclass that
-declares <code class="docutils literal notranslate"><span class="pre">current_user:</span> <span class="pre">User</span></code> so type checkers know the attribute keeps the
-base’s <code class="docutils literal notranslate"><span class="pre">Depends</span></code> wiring. This rule makes mixins safe: a mixin can declare
-what it expects from its host without shadowing the host’s wiring. See
+<p>A plain annotation never replaces a dependency annotation. A mixin or
+subclass can declare <code class="docutils literal notranslate"><span class="pre">current_user:</span> <span class="pre">User</span></code> so that type checkers know the
+attribute, and it still keeps the base’s <code class="docutils literal notranslate"><span class="pre">Depends</span></code> marker. This rule makes
+mixins safe: a mixin can declare what it expects from its host without
+shadowing the host’s dependencies. See
 <a class="reference internal" href="howto_compose_views_with_mixins.html"><span class="std std-doc">Composing views with mixins</span></a> for the
 mixin pattern.</p>
 </section>
@@ -853,9 +840,8 @@ co-located. Do not reach for them just for the sake of structure.</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="rest_views.html"><span class="std std-doc">Using RestView</span></a>: the default CRUD contract, schemas, and view
 configuration.</p></li>
-<li><p><a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a>: the tier model behind every CRUD verb,
-both request lifecycles, the override decision table, and every override
-recipe.</p></li>
+<li><p><a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a>: how a view handles a request, the
+override decision table, and every override recipe.</p></li>
 <li><p><a class="reference internal" href="howto_inheritance.html"><span class="std std-doc">Share Behaviour with Base Views</span></a>: patterns for
 tenant isolation, role-based filtering, and shared mixins.</p></li>
 <li><p><a class="reference internal" href="api_reference.html"><span class="std std-doc">API Reference</span></a>: full <a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView" title="fastapi_restly.views.BaseRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseRestView</span></code></a>,
@@ -882,7 +868,7 @@ tenant isolation, role-based filtering, and shared mixins.</p></li>
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Customize the Blog API</p>
+        <p class="prev-next-title">Tutorial: Add Authors and Drafts</p>
       </div>
     </a>
     <a class="right-next"
@@ -920,7 +906,7 @@ tenant isolation, role-based filtering, and shared mixins.</p></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#one-base-view-for-the-whole-app">One base view for the whole app</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-view-hierarchy">The view hierarchy</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#a-shared-base-view-for-tenant-routes">A shared base view for tenant routes</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#override-a-single-tier">Override a single tier</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#override-a-single-step">Override a single step</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dependency-injection-on-class-attributes">Dependency injection on class attributes</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#when-to-use-view-directly">When to use <code class="docutils literal notranslate"><span class="pre">View</span></code> directly</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#when-not-to-use-a-cbv">When <em>not</em> to use a CBV</a></li>

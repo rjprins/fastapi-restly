@@ -161,15 +161,8 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
-    Tutorial
+    Getting Started
   </a>
 </li>
 
@@ -201,6 +194,13 @@
   </a>
 </li>
 
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
             <li class="nav-item dropdown">
                 <button class="btn dropdown-toggle nav-item" type="button"
                 data-bs-toggle="dropdown" aria-expanded="false"
@@ -209,13 +209,6 @@
                 </button>
                 <ul id="pst-nav-more-links" class="dropdown-menu">
                     
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
 <li class=" ">
   <a class="nav-link dropdown-item nav-internal" href="about.html">
     About
@@ -335,15 +328,8 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
-    Tutorial
+    Getting Started
   </a>
 </li>
 
@@ -455,6 +441,7 @@
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Project structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_models.html">Declare Your Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
@@ -641,14 +628,54 @@ register handlers for <code class="docutils literal notranslate"><span class="pr
 standard FastAPI way.</p>
 </section>
 <section id="database-conflicts-integrityerror-to-409">
-<h2>Database conflicts: <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> to 409<a class="headerlink" href="#database-conflicts-integrityerror-to-409" title="Link to this heading">#</a></h2>
-<p>Not every conflict response comes from your own code: Restly installs a
-default handler that translates SQLAlchemy <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code>s into
-<code class="docutils literal notranslate"><span class="pre">409</span> <span class="pre">Conflict</span></code> responses. It respects a handler you registered yourself, and
-it can be disabled with
-<a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure(app=app,</span> <span class="pre">install_default_exception_handlers=False)</span></code></a>;
-the exact registration contract is in
-<a class="reference internal" href="api_details.html#default-exception-handling"><span class="std std-ref">Default Exception Handling</span></a>.</p>
+<span id="default-exception-handling"></span><h2>Database conflicts: <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> to 409<a class="headerlink" href="#database-conflicts-integrityerror-to-409" title="Link to this heading">#</a></h2>
+<p>Not every conflict response comes from your own code. Restly installs a
+default handler that translates a SQLAlchemy <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> into a
+<code class="docutils literal notranslate"><span class="pre">409</span> <span class="pre">Conflict</span></code> response. This covers unique constraint, foreign-key,
+not-null, and check-constraint violations. The body has FastAPI’s normal
+error shape:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;detail&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Unique constraint violated on user.email&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The exact <code class="docutils literal notranslate"><span class="pre">detail</span></code> text is best-effort and depends on the database driver.
+The handler recognizes common PostgreSQL SQLSTATE integrity codes and SQLite
+constraint messages. For other databases, it uses a generic conflict message.</p>
+<p>Restly installs the handler in either of these cases:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.configure(app=app,</span> <span class="pre">...)</span></code> is called with the default
+<code class="docutils literal notranslate"><span class="pre">install_default_exception_handlers=True</span></code>.</p></li>
+<li><p>A view is registered directly on a <code class="docutils literal notranslate"><span class="pre">FastAPI</span></code> app with <code class="docutils literal notranslate"><span class="pre">fr.include_view(app)</span></code>.
+This covers apps that configure database sessions separately.</p></li>
+</ul>
+<p>Restly skips the handler when the app already has a handler for
+<code class="docutils literal notranslate"><span class="pre">sqlalchemy.exc.IntegrityError</span></code>. A generic handler does not count.</p>
+<p>To turn the handler off, pass <code class="docutils literal notranslate"><span class="pre">install_default_exception_handlers=False</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span>
+    <span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">,</span>
+    <span class="n">async_database_url</span><span class="o">=</span><span class="s2">&quot;sqlite+aiosqlite:///app.db&quot;</span><span class="p">,</span>
+    <span class="n">install_default_exception_handlers</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>To use your own response format, register your own <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> handler
+before Restly installs its defaults:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.responses</span><span class="w"> </span><span class="kn">import</span> <span class="n">JSONResponse</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.exc</span><span class="w"> </span><span class="kn">import</span> <span class="n">IntegrityError</span>
+
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">exception_handler</span><span class="p">(</span><span class="n">IntegrityError</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">integrity_error_handler</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">JSONResponse</span><span class="p">(</span>
+        <span class="n">status_code</span><span class="o">=</span><span class="mi">409</span><span class="p">,</span>
+        <span class="n">content</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;code&quot;</span><span class="p">:</span> <span class="s2">&quot;constraint_conflict&quot;</span><span class="p">}},</span>
+    <span class="p">)</span>
+
+
+<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">,</span> <span class="n">async_database_url</span><span class="o">=</span><span class="s2">&quot;sqlite+aiosqlite:///app.db&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
 </section>
 <section id="see-also">
 <h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>

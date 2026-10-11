@@ -1,8 +1,8 @@
 # Examples
 
 The repository includes complete applications under `example-projects/`. They
-show different levels of Restly adoption, from a tiny resource to a
-production-shaped service with shared view foundations and custom behavior.
+show different levels of Restly adoption, from a generated starter project to
+a production-shaped service with shared view foundations and custom behavior.
 
 ## Starter
 
@@ -13,13 +13,16 @@ layout at its smallest; a check in CI keeps it identical to the generator's
 output. It depends on the released framework rather than this checkout, so
 local changes to Restly do not appear in it.
 
+(example-blog)=
 ## Blog
 
 [example-projects/blog](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/blog)
 ([README](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/blog/README.md))
-is the smallest example: one model, one view, sync SQLAlchemy sessions, and
-auto-generated schemas. Use it as a smoke test or as the shortest path from an
-empty app to a working REST resource.
+is the app that the tutorials build: posts and comments with authors, drafts
+that only their author can see, and a publish action. Its `blog/part1.py` is
+the complete file of [Build a Blog API](tutorial.md), and `blog/main.py` is
+the complete file of [Add Authors and Drafts](tutorial_customizing.md). Its
+tests check each rule of that tutorial. It uses async views and SQLite.
 
 ## Shop
 
@@ -27,7 +30,7 @@ empty app to a working REST resource.
 ([README](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/shop/README.md))
 shows relationships, multiple primary-key styles, async sessions, and
 React-Admin-compatible endpoints through {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>`. It also includes
-a small React Admin frontend wired against the API. These patterns are
+a small React Admin frontend that uses the API. These patterns are
 covered in [React Admin Integration](howto_react_admin.md) and
 [Work with Foreign Keys and Relationships](howto_relationship_idschema.md).
 
@@ -70,5 +73,4 @@ commands in its README (linked above).
 The SaaS example also needs PostgreSQL. Its README includes the complete
 Compose, migration, application, and test commands.
 
-To build one of these yourself, start with
-[Getting Started](getting_started.md) and [Build a Blog API](tutorial.md).
+To build one of these yourself, start with [Build a Blog API](tutorial.md).

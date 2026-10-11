@@ -161,15 +161,8 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
-    Tutorial
+    Getting Started
   </a>
 </li>
 
@@ -201,6 +194,13 @@
   </a>
 </li>
 
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
             <li class="nav-item dropdown">
                 <button class="btn dropdown-toggle nav-item" type="button"
                 data-bs-toggle="dropdown" aria-expanded="false"
@@ -209,13 +209,6 @@
                 </button>
                 <ul id="pst-nav-more-links" class="dropdown-menu">
                     
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
 <li class=" ">
   <a class="nav-link dropdown-item nav-internal" href="about.html">
     About
@@ -335,15 +328,8 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
-    Tutorial
+    Getting Started
   </a>
 </li>
 
@@ -455,6 +441,7 @@
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Project structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_models.html">Declare Your Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
@@ -632,17 +619,21 @@ sources (401), and the admin is a conditional, not an absent value.</p>
     <span class="n">is_admin</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ContextParam</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span>
 
 
+<span class="k">class</span><span class="w"> </span><span class="nc">Base</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ModelDefaults</span><span class="p">,</span> <span class="n">orm</span><span class="o">.</span><span class="n">DeclarativeBase</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
 <span class="k">class</span><span class="w"> </span><span class="nc">TenantOwned</span><span class="p">(</span><span class="n">orm</span><span class="o">.</span><span class="n">MappedAsDataclass</span><span class="p">,</span> <span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;The tenant column: the organization the request acts in.&quot;&quot;&quot;</span>
 
     <span class="n">organization_id</span><span class="p">:</span> <span class="n">orm</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">orm</span><span class="o">.</span><span class="n">mapped_column</span><span class="p">(</span>
-        <span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;organization.id&quot;</span><span class="p">),</span>
-        <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-        <span class="n">insert_default</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">Current</span><span class="o">.</span><span class="n">org_id</span><span class="p">(),</span>
+        <span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;organization.id&quot;</span><span class="p">),</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">insert_default</span><span class="o">=</span><span class="n">Current</span><span class="o">.</span><span class="n">org_id</span>
     <span class="p">)</span>
 
 
 <span class="c1"># Read identity when the SQL executes, not when the option is attached.</span>
+<span class="c1"># bindparam tests its callable&#39;s truth value, which a Current member rejects,</span>
+<span class="c1"># so these two wrap the member in a lambda.</span>
 <span class="n">tenant_org_id</span> <span class="o">=</span> <span class="n">sa</span><span class="o">.</span><span class="n">bindparam</span><span class="p">(</span>
     <span class="s2">&quot;tenant_org_id&quot;</span><span class="p">,</span> <span class="n">callable_</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">Current</span><span class="o">.</span><span class="n">org_id</span><span class="p">(),</span> <span class="n">type_</span><span class="o">=</span><span class="n">sa</span><span class="o">.</span><span class="n">Integer</span>
 <span class="p">)</span>
@@ -673,7 +664,7 @@ sources (401), and the admin is a conditional, not an absent value.</p>
     <span class="p">)</span>
 
 
-<span class="k">class</span><span class="w"> </span><span class="nc">Project</span><span class="p">(</span><span class="n">TenantOwned</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">TimestampsMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDBase</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Project</span><span class="p">(</span><span class="n">TenantOwned</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">TimestampsMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDMixin</span><span class="p">,</span> <span class="n">Base</span><span class="p">):</span>
     <span class="n">name</span><span class="p">:</span> <span class="n">orm</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
 </pre></div>
 </div>
@@ -763,13 +754,13 @@ bring a flipped row back, see
 <p><code class="docutils literal notranslate"><span class="pre">created_by_id</span></code> and <code class="docutils literal notranslate"><span class="pre">updated_by_id</span></code> are the plain case, a default per column:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">AuditStamped</span><span class="p">(</span><span class="n">orm</span><span class="o">.</span><span class="n">MappedAsDataclass</span><span class="p">,</span> <span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
     <span class="n">created_by_id</span><span class="p">:</span> <span class="n">orm</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="n">orm</span><span class="o">.</span><span class="n">mapped_column</span><span class="p">(</span>
-        <span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;user.id&quot;</span><span class="p">),</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">insert_default</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">()</span>
+        <span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;user.id&quot;</span><span class="p">),</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">insert_default</span><span class="o">=</span><span class="n">Current</span><span class="o">.</span><span class="n">user_id</span>
     <span class="p">)</span>
     <span class="n">updated_by_id</span><span class="p">:</span> <span class="n">orm</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="n">orm</span><span class="o">.</span><span class="n">mapped_column</span><span class="p">(</span>
         <span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;user.id&quot;</span><span class="p">),</span>
         <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-        <span class="n">insert_default</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">(),</span>
-        <span class="n">onupdate</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">(),</span>
+        <span class="n">insert_default</span><span class="o">=</span><span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">,</span>
+        <span class="n">onupdate</span><span class="o">=</span><span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">,</span>
     <span class="p">)</span>
 </pre></div>
 </div>
@@ -778,8 +769,8 @@ callable goes in <code class="docutils literal notranslate"><span class="pre">in
 changes the row. Keep these fields <code class="docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code> on the schema: with
 <code class="docutils literal notranslate"><span class="pre">init=False</span></code> a body value would otherwise reach the constructor and fail
 loudly there.</p>
-<p>The lambdas call the member: a <code class="docutils literal notranslate"><span class="pre">ContextParam</span></code> resolves when called, and an
-unbound context raises rather than stamping <code class="docutils literal notranslate"><span class="pre">None</span></code>. The columns stay
+<p>SQLAlchemy calls the member when it writes the row, and an unbound member
+raises an error rather than stamping <code class="docutils literal notranslate"><span class="pre">None</span></code>. The columns stay
 nullable for one row: the first user has no creator and comes from a
 migration, which writes through its own table objects and fires no ORM
 default. A worker or a seed script binds context around its writes:</p>
@@ -794,7 +785,7 @@ default. A worker or a seed script binds context around its writes:</p>
 <h2>Composing on a view<a class="headerlink" href="#composing-on-a-view" title="Link to this heading">#</a></h2>
 <p>The model declares what it is, the namespace declares the read half
 against it, and a view stacks only the verb mixin:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Project</span><span class="p">(</span><span class="n">TenantOwned</span><span class="p">,</span> <span class="n">AuditStamped</span><span class="p">,</span> <span class="n">SoftDeletable</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">TimestampsMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDBase</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Project</span><span class="p">(</span><span class="n">TenantOwned</span><span class="p">,</span> <span class="n">AuditStamped</span><span class="p">,</span> <span class="n">SoftDeletable</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">TimestampsMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDMixin</span><span class="p">,</span> <span class="n">Base</span><span class="p">):</span>
     <span class="n">name</span><span class="p">:</span> <span class="n">orm</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
 
 
@@ -846,7 +837,7 @@ does not add them to the runtime class:</p>
 <p>The same applies to typed <em>attribute</em> annotations. Marker-based DI (see
 <a class="reference internal" href="class_based_views.html#id2"><span class="std std-ref">Views</span></a>)
 means a plain <code class="docutils literal notranslate"><span class="pre">model:</span> <span class="pre">type[DeclarativeBase]</span></code> annotation no longer
-shadows DI wiring, but it can still shadow inherited attribute lookups
+shadows a dependency, but it can still shadow inherited attribute lookups
 in some setups. <code class="docutils literal notranslate"><span class="pre">if</span> <span class="pre">TYPE_CHECKING:</span></code> is the safe wrapper for both.</p>
 </section>
 <section id="multiple-fk-columns-to-the-same-table-need-explicit-foreign-keys">
@@ -856,7 +847,7 @@ both pointing at <code class="docutils literal notranslate"><span class="pre">Us
 (say, <code class="docutils literal notranslate"><span class="pre">assignee_id</span></code> on <code class="docutils literal notranslate"><span class="pre">Task</span></code>), SQLAlchemy cannot disambiguate the
 existing relationship and raises <code class="docutils literal notranslate"><span class="pre">AmbiguousForeignKeysError</span></code>. Pin the
 relationship explicitly:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Task</span><span class="p">(</span><span class="n">AuditStamped</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">TimestampsMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDBase</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Task</span><span class="p">(</span><span class="n">AuditStamped</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">TimestampsMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDMixin</span><span class="p">,</span> <span class="n">Base</span><span class="p">):</span>
     <span class="n">assignee_id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;user.id&quot;</span><span class="p">))</span>
     <span class="n">assignee</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="n">User</span><span class="p">]</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="n">foreign_keys</span><span class="o">=</span><span class="s2">&quot;Task.assignee_id&quot;</span><span class="p">)</span>
 
@@ -887,7 +878,7 @@ allow/deny decisions such as “only managers may create” belong in
 <section id="cross-references">
 <h2>Cross-references<a class="headerlink" href="#cross-references" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a>: the three tiers,
+<li><p><a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a>: how a view handles a request,
 single-base overrides, and the call chain.</p></li>
 <li><p><a class="reference internal" href="class_based_views.html#id2"><span class="std std-ref">Views</span></a>:
 the marker-based DI rule that makes mixin type stubs safe.</p></li>

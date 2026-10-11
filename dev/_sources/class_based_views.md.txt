@@ -119,7 +119,7 @@ class UserView(fr.View): ...
 ```
 
 {func}`include_view <fastapi_restly.views.include_view>` walks the class's MRO, collects every method tagged with route
-metadata, wires each method's `self` up as a dependency on the view class (so
+metadata, makes each method's `self` a dependency on the view class (so
 FastAPI instantiates a fresh view per request), and registers each route on
 the parent router or app.
 
@@ -207,8 +207,8 @@ View                   ← class-based view primitive (no CRUD)
   default contract, configuration, and limits.
 
 The [API reference](#view-method-surface) classifies the public
-method surface. [Customizing RestView](customize.md) explains the three override
-tiers and cross-cutting override points.
+method surface. [Customizing RestView](customize.md) explains how a view handles a
+request and where to override it.
 
 ## A shared base view for tenant routes
 
@@ -248,20 +248,20 @@ for replaceable surfaces such as soft deletion and role visibility. The
 [tenant row scoping](#tenant-row-scoping) recipe contains the session rule,
 column stamp, and shared view base.
 
-## Override a single tier
+## Override a single step
 
-{class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` and {class}`RestView <fastapi_restly.views.RestView>` split every CRUD verb into three tiers: the
-endpoint method (HTTP contract), the handler (authorization + commit
-bracket), and the business method (domain logic, auth-free and commit-free).
-One behavior change therefore means one method override, while routing,
-authorization, and the commit stay framework-owned. The tier model, both
-request lifecycles, the override decision table, and task-shaped recipes
-live in [Customizing RestView](customize.md).
+{class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` and {class}`RestView <fastapi_restly.views.RestView>` run every CRUD route through three methods: the
+endpoint method (HTTP contract), the handler, and the business method (domain
+logic, auth-free and commit-free). The handler handles the steps, such as
+authorization and the commit, and it is final. One behavior change therefore
+means one override of a step, while routing, authorization, and the commit
+stay framework-owned. The steps of a request, the override decision table,
+and task-shaped recipes live in [Customizing RestView](#view-request-steps).
 
 (dependency-injection-on-class-attributes)=
 ## Dependency injection on class attributes
 
-A class attribute on a view is wired as a FastAPI dependency only when its
+A class attribute on a view becomes a FastAPI dependency only when its
 annotation either:
 
 - carries an `Annotated[..., Depends(...)]` marker (`Security(...)` counts,
@@ -279,22 +279,22 @@ from typing import Annotated
 from fastapi import Depends, Request
 
 class UserView(fr.AsyncRestView):
-    # Wired: AsyncSessionDep is Annotated[AsyncSession, Depends(...)].
+    # Dependency: AsyncSessionDep is Annotated[AsyncSession, Depends(...)].
     session: fr.AsyncSessionDep
 
-    # Wired: Request is one of FastAPI's bare-injectable specials.
+    # Dependency: Request is one of FastAPI's bare-injectable specials.
     request: Request
 
-    # Wired: explicit Depends marker.
+    # Dependency: explicit Depends marker.
     current_user: Annotated[User, Depends(get_current_user)]
 
-    # NOT wired: a bare type is only a hint.
+    # Not a dependency: a bare type is only a hint.
     reviewer: User
 ```
 
-A wired attribute is set on the view instance before any method runs, so
+A dependency attribute is set on the view instance before any method runs, so
 endpoint methods, business methods, `authorize`, and the commit hooks all
-read it as `self.current_user`. An attribute that is not wired is never set
+read it as `self.current_user`. An attribute that is not a dependency is never set
 from the request: reading `self.reviewer` raises `AttributeError`.
 
 The shipped `AsyncSessionDep` / `SessionDep` aliases carry `Depends`. The
@@ -310,10 +310,11 @@ segment or header that every route of the view needs comes through a
 dependency instead; [Nested Resources](howto_nested.md) shows the pattern for
 a path segment.
 
-A plain annotation never replaces a wired one. A mixin or subclass that
-declares `current_user: User` so type checkers know the attribute keeps the
-base's `Depends` wiring. This rule makes mixins safe: a mixin can declare
-what it expects from its host without shadowing the host's wiring. See
+A plain annotation never replaces a dependency annotation. A mixin or
+subclass can declare `current_user: User` so that type checkers know the
+attribute, and it still keeps the base's `Depends` marker. This rule makes
+mixins safe: a mixin can declare what it expects from its host without
+shadowing the host's dependencies. See
 [Composing views with mixins](howto_compose_views_with_mixins.md) for the
 mixin pattern.
 
@@ -355,9 +356,8 @@ co-located. Do not reach for them just for the sake of structure.
 
 - [Using RestView](rest_views.md): the default CRUD contract, schemas, and view
   configuration.
-- [Customizing RestView](customize.md): the tier model behind every CRUD verb,
-  both request lifecycles, the override decision table, and every override
-  recipe.
+- [Customizing RestView](customize.md): how a view handles a request, the
+  override decision table, and every override recipe.
 - [Share Behaviour with Base Views](howto_inheritance.md): patterns for
   tenant isolation, role-based filtering, and shared mixins.
 - [API Reference](api_reference.md): full {class}`View <fastapi_restly.views.View>`, {class}`BaseRestView <fastapi_restly.views.BaseRestView>`,

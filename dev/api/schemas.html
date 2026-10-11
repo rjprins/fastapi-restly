@@ -161,15 +161,8 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="../tutorial.html">
-    Tutorial
+    Getting Started
   </a>
 </li>
 
@@ -201,6 +194,13 @@
   </a>
 </li>
 
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../examples.html">
+    Examples
+  </a>
+</li>
+
             <li class="nav-item dropdown">
                 <button class="btn dropdown-toggle nav-item" type="button"
                 data-bs-toggle="dropdown" aria-expanded="false"
@@ -209,13 +209,6 @@
                 </button>
                 <ul id="pst-nav-more-links" class="dropdown-menu">
                     
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="../examples.html">
-    Examples
-  </a>
-</li>
-
-
 <li class=" ">
   <a class="nav-link dropdown-item nav-internal" href="../about.html">
     About
@@ -335,15 +328,8 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="../tutorial.html">
-    Tutorial
+    Getting Started
   </a>
 </li>
 
@@ -467,7 +453,7 @@
 <li class="toctree-l2"><a class="reference internal" href="utils.html">Utils API</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1"><a class="reference internal" href="../api_details.html">Behavior and Configuration Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../view_reference.html">View Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../technical_details.html">Technical Details</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
 </ul>
@@ -541,7 +527,7 @@ reference types, and schema generation from SQLAlchemy models.</p>
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
 <p><a class="reference internal" href="../howto_relationship_idschema.html"><span class="doc">Work with Foreign Keys and Relationships</span></a> covers <code class="docutils literal notranslate"><span class="pre">MustExist</span></code> checked foreign
-keys and the <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> / <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> relationship wire contract.
+keys and the JSON format of <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> / <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> relationship fields.
 <a class="reference internal" href="../howto_custom_schema.html"><span class="doc">Custom Schemas and Field Types</span></a> describes schema bases, field markers, and
 aliases in prose.</p>
 </div>
@@ -589,13 +575,13 @@ is applied.</p>
 <p>Flat-id reference to a related row, for a RELATIONSHIP-named field.</p>
 <p>Use <code class="docutils literal notranslate"><span class="pre">IDRef[T]</span></code> when the field is named after a relationship
 (<code class="docutils literal notranslate"><span class="pre">author:</span> <span class="pre">IDRef[User]</span></code>, <code class="docutils literal notranslate"><span class="pre">products:</span> <span class="pre">list[IDRef[Product]]</span></code>), not after a
-<code class="docutils literal notranslate"><span class="pre">*_id</span></code> column. The wire format is the raw id (<code class="docutils literal notranslate"><span class="pre">5</span></code>); input also accepts
+<code class="docutils literal notranslate"><span class="pre">*_id</span></code> column. The JSON value is the raw id (<code class="docutils literal notranslate"><span class="pre">5</span></code>); input also accepts
 <code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">N}</span></code>. Restly resolves the id to the related ORM object, so
 <code class="docutils literal notranslate"><span class="pre">data.author</span></code> is an <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> wrapper (read <code class="docutils literal notranslate"><span class="pre">.id</span></code>), not a plain scalar.</p>
 <p>For a scalar foreign-key COLUMN (<code class="docutils literal notranslate"><span class="pre">author_id</span></code>, <code class="docutils literal notranslate"><span class="pre">task_id</span></code>) use
 <code class="docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">T]</span></code> instead – it keeps the field a plain checked id
 (<code class="docutils literal notranslate"><span class="pre">data.author_id</span> <span class="pre">==</span> <span class="pre">1</span></code>), rather than making a <code class="docutils literal notranslate"><span class="pre">*_id</span></code> field an object
-wrapper. For nested <code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">N}</span></code> wire on a relationship, use <code class="docutils literal notranslate"><span class="pre">IDSchema[T]</span></code>.</p>
+wrapper. For a nested <code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">N}</span></code> value on a relationship, use <code class="docutils literal notranslate"><span class="pre">IDSchema[T]</span></code>.</p>
 <blockquote>
 <div><p>author: IDRef[User]             # to-one relationship, flat id
 products: list[IDRef[Product]]  # serializes as [1, 2, 3]</p>
@@ -626,9 +612,9 @@ field type, a nested-object relationship reference.</p>
 <li><p>As a BASE CLASS (<code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">UserSchema(IDSchema):</span> <span class="pre">...</span></code>) it adds the resource’s
 own read-only <code class="docutils literal notranslate"><span class="pre">id</span></code> – the common use.</p></li>
 <li><p>As a FIELD TYPE on a RELATIONSHIP-named field (<code class="docutils literal notranslate"><span class="pre">author:</span> <span class="pre">IDSchema[User]</span></code>)
-the wire format is <code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">N}</span></code> (JSON-API / React-Admin); Restly resolves
+the JSON value is <code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">N}</span></code> (JSON-API / React-Admin); Restly resolves
 the id to the related ORM object, so <code class="docutils literal notranslate"><span class="pre">data.author</span></code> is a wrapper (read
-<code class="docutils literal notranslate"><span class="pre">.id</span></code>). Use <code class="docutils literal notranslate"><span class="pre">IDRef[User]</span></code> for flat-id wire (<code class="docutils literal notranslate"><span class="pre">5</span></code>) instead.</p></li>
+<code class="docutils literal notranslate"><span class="pre">.id</span></code>). Use <code class="docutils literal notranslate"><span class="pre">IDRef[User]</span></code> for a flat id (<code class="docutils literal notranslate"><span class="pre">5</span></code>) instead.</p></li>
 </ul>
 <p>For a scalar foreign-key COLUMN (<code class="docutils literal notranslate"><span class="pre">author_id</span></code>), use <code class="docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">T]</span></code>
 rather than <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code>/<code class="docutils literal notranslate"><span class="pre">IDRef</span></code>: it keeps the field a plain checked id
@@ -664,7 +650,7 @@ inferred from the column’s <code class="docutils literal notranslate"><span cl
 second argument when you want it explicit (<code class="docutils literal notranslate"><span class="pre">MustExist[int,</span> <span class="pre">Post]</span></code>), and
 use the first for a non-int primary key (<code class="docutils literal notranslate"><span class="pre">MustExist[UUID,</span> <span class="pre">Account]</span></code>).</p>
 <p>Unlike <code class="docutils literal notranslate"><span class="pre">IDRef</span></code>/<code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> this is <strong>not</strong> a wrapper: the field stays
-the pk scalar everywhere (wire, column, <code class="docutils literal notranslate"><span class="pre">data.&lt;field&gt;</span></code>), plus a batched
+the pk scalar everywhere (JSON, column, <code class="docutils literal notranslate"><span class="pre">data.&lt;field&gt;</span></code>), plus a batched
 existence check on write (404 on a miss). The check applies the target
 model’s <code class="docutils literal notranslate"><span class="pre">default_scope</span></code>; check against another clause, or none, by
 writing the marker form <code class="docutils literal notranslate"><span class="pre">Annotated[&lt;pk&gt;,</span> <span class="pre">RefExists(Model,</span> <span class="pre">scope=...)]</span></code>

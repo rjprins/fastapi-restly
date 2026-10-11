@@ -91,7 +91,7 @@ you call {func}`fr.include_view(...) <fastapi_restly.views.include_view>`. To mo
 remove that include call and register an `APIRouter` with the same prefix and
 path operations.
 
-Your models, schemas, dependencies, and session wiring can stay in ordinary app
+Your models, schemas, dependencies, and session setup can stay in ordinary app
 modules.
 
 ## Replace an Existing Hand-Written Router
@@ -108,7 +108,7 @@ contract first:
 2. Keep custom semantics out of the swap. A route whose contract differs
    (e.g. `PUT` updates, a non-204 delete) can be excluded via
    {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` and kept hand-written until you adapt it.
-3. Pin the wire contract with tests first. Write
+3. Pin the HTTP contract with tests first. Write
    [`RestlyTestClient`](howto_testing.md) tests against the *old* router's
    responses, then swap in the view and run them unchanged; payload or
    status drift shows up immediately.
@@ -280,7 +280,7 @@ class ReportView(fr.AsyncRestView):
 
 The custom dependency owns session construction and cleanup.
 {class}`RestView <fastapi_restly.views.RestView>` still owns the commit.
-Use this for read replicas, reporting databases, or other per-view session wiring.
+Use this for read replicas, reporting databases, or any other view that needs its own session.
 
 ## Use the Configured Session Off-Request
 
@@ -302,9 +302,11 @@ with fr.open_session() as session:
 
 Off-request code owns its commit; these helpers do not commit for you.
 
-## Use Your Own DeclarativeBase Models
+(existing-models)=
 
-If your project already has SQLAlchemy models on a custom `DeclarativeBase`,
+## Use Your Existing Models
+
+If your project already has SQLAlchemy models on its own `DeclarativeBase`,
 you can use those models directly in a
 {class}`RestView <fastapi_restly.views.RestView>`:
 
@@ -331,14 +333,19 @@ class WorldView(fr.AsyncRestView):
 
 {class}`RestView <fastapi_restly.views.RestView>` supports these models for
 default CRUD routes and
-[auto-generated schemas](technical_details.md#auto-generated-schemas). When
-creating tables, use your own base metadata (for example
-`AppBase.metadata.create_all(...)`).
+[auto-generated schemas](technical_details.md#auto-generated-schemas). Pass
+the same base wherever Restly asks for your models' tables, as in
+`fr.db.async_create_all(AppBase)` and
+`fr.testing.configure_tests(base=AppBase)`.
+
+Restly's model defaults, such as dataclass constructors and datetimes with a
+time zone, are optional. [Declare Your Models](howto_models.md) explains them,
+and what changes when you add them to a base that already has models.
 
 ## See also
 
 - [Test APIs with RestlyTestClient and Fixtures](howto_testing.md): pin the
-  wire contract while migrating; savepoint-isolated tests against your DB.
+  HTTP contract while migrating; savepoint-isolated tests against your DB.
 - [Deploying](deploying.md): engine configuration from environment values,
   Alembic, and a production `main.py`.
 - [Patterns](patterns.md): the idiomatic answers for nested resources,

@@ -8,7 +8,7 @@ reference types, and schema generation from SQLAlchemy models.
 .. seealso::
 
    :doc:`/howto_relationship_idschema` covers ``MustExist`` checked foreign
-   keys and the ``IDRef`` / ``IDSchema`` relationship wire contract.
+   keys and the JSON format of ``IDRef`` / ``IDSchema`` relationship fields.
    :doc:`/howto_custom_schema` describes schema bases, field markers, and
    aliases in prose.
 

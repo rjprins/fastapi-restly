@@ -161,15 +161,8 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
-    Tutorial
+    Getting Started
   </a>
 </li>
 
@@ -201,6 +194,13 @@
   </a>
 </li>
 
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
             <li class="nav-item dropdown">
                 <button class="btn dropdown-toggle nav-item" type="button"
                 data-bs-toggle="dropdown" aria-expanded="false"
@@ -209,13 +209,6 @@
                 </button>
                 <ul id="pst-nav-more-links" class="dropdown-menu">
                     
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
 <li class=" ">
   <a class="nav-link dropdown-item nav-internal" href="about.html">
     About
@@ -335,15 +328,8 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
-    Tutorial
+    Getting Started
   </a>
 </li>
 
@@ -455,6 +441,7 @@
   <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Project structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_models.html">Declare Your Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
@@ -533,11 +520,9 @@
   <section id="how-to-guides">
 <h1>How-To Guides<a class="headerlink" href="#how-to-guides" title="Link to this heading">#</a></h1>
 <p>These guides are task-focused: each one shows how to accomplish a specific
-goal with FastAPI-Restly. If you are new to the framework, start with
-<a class="reference internal" href="getting_started.html"><span class="std std-doc">Getting Started</span></a>, read <a class="reference internal" href="rest_views.html"><span class="std std-doc">Using RestView</span></a> for
-the default CRUD contract, then use <a class="reference internal" href="tutorial.html"><span class="std std-doc">Build a Blog API</span></a> for a
-complete multi-model example. Come back here
-when you have a concrete task.</p>
+goal with FastAPI-Restly. If you are new to the framework, start with the
+tutorial, <a class="reference internal" href="tutorial.html"><span class="std std-doc">Build a Blog API</span></a>. Come back here when you have a
+concrete task.</p>
 <section id="adopting-and-modeling">
 <h2>Adopting and Modeling<a class="headerlink" href="#adopting-and-modeling" title="Link to this heading">#</a></h2>
 <p>These guides cover bringing Restly into a codebase and defining the models and
@@ -549,7 +534,7 @@ schemas it works from.</p>
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
 Use Restly in an Existing Project</div>
-<p class="sd-card-text">Adopt Restly beside existing FastAPI routes, then wire it into your sessions and models.</p>
+<p class="sd-card-text">Adopt Restly beside existing FastAPI routes, then connect it to your sessions and models.</p>
 </div>
 <a class="sd-stretched-link sd-hide-link-text reference internal" href="howto_existing_project.html"><span class="doc">Use Restly in an Existing Project</span></a></div>
 </div>
@@ -562,6 +547,15 @@ Project structure</div>
 compose views and models from one place each.</p>
 </div>
 <a class="sd-stretched-link sd-hide-link-text reference internal" href="howto_project_structure.html"><span class="doc">Project structure</span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Declare Your Models</div>
+<p class="sd-card-text">Give your own declarative base Restly’s defaults, change one default, and add <code class="docutils literal notranslate"><span class="pre">id</span></code> and timestamp columns.</p>
+</div>
+<a class="sd-stretched-link sd-hide-link-text reference internal" href="howto_models.html"><span class="doc">Declare Your Models</span></a></div>
 </div>
 <div class="sd-col sd-d-flex-row docutils">
 <div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
@@ -726,8 +720,8 @@ where they belong: structural fields on the model, verbs on view mixins.</p>
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
 Use Type Annotations</div>
-<p class="sd-card-text">Use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a>, optional view generics, and typed CRUD methods without
-fighting the framework.</p>
+<p class="sd-card-text">Use <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef</span></code></a>, optional view generics, and
+typed CRUD methods that your type checker understands.</p>
 </div>
 <a class="sd-stretched-link sd-hide-link-text reference internal" href="howto_typing.html"><span class="doc">Use Type Annotations</span></a></div>
 </div>

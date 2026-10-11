@@ -15,8 +15,8 @@ class UserView(fr.AsyncRestView):
 ```
 
 `UserView` now serves list, create, retrieve, update, and delete requests under
-`/users`. [Getting Started](getting_started.md) supplies the surrounding app,
-database configuration, and model in one runnable file.
+`/users`. [Build a Blog API](tutorial.md) shows the surrounding app, database
+configuration, and model in one runnable file.
 
 ## Choose async or sync
 
@@ -40,14 +40,14 @@ Every CRUD view needs two class attributes:
   mapped class that the routes read and write.
 
 Ordinary models based on SQLAlchemy's `DeclarativeBase` work. Restly's
-{class}`IDBase <fastapi_restly.models.IDBase>` is an optional convenience base,
-not a requirement.
+model defaults, {class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>`,
+are optional; see [Declare Your Models](howto_models.md).
 
 If the view does not declare {attr}`schema
 <fastapi_restly.views.BaseRestView.schema>`, Restly generates the view's schema
 from `model` when the view is registered. It then derives the create and update
 schemas from it. Write the view's schema yourself when the
-wire contract needs stable field names, validation, aliases, or fields that do
+HTTP contract needs stable field names, validation, aliases, or fields that do
 not match the table directly:
 
 ```python
@@ -96,6 +96,7 @@ Both registration forms produce the same routes.
 [Project structure](howto_project_structure.md) shows where the direct call belongs in a
 multi-package application.
 
+(default-crud-routes)=
 (default-crud-behavior)=
 ## Default CRUD behavior
 
@@ -189,8 +190,8 @@ Configure the class according to the contract the resource needs:
 | Set a route name, summary, or operation ID | Set {attr}`route_options <fastapi_restly.views.View.route_options>` as shown in [OpenAPI customization](#default-route-metadata) |
 | Use another session dependency | Override the `session` annotation with `Annotated[..., Depends(...)]` |
 
-[Behavior and Configuration Reference](api_details.md) lists the exact
-attribute types and method signatures.
+[View Reference](view_reference.md) lists the exact attribute types and
+method signatures.
 [Use Restly in an Existing Project](howto_existing_project.md)
 covers custom engines, session generators, and a per-view session dependency.
 
@@ -220,7 +221,8 @@ The default CRUD contract has these boundaries:
 
 - Resource identity is one scalar primary key on the generated routes. The
   `{id}` path parameter takes the key's Python type, so a UUID or string key
-  needs no configuration. A composite key is reached from
+  needs no configuration. Reference fields such as `fr.MustExist[UUID, Model]`
+  accept these keys too. A composite key is reached from
   a custom route that loads with a predicate
   ([Look a row up by another key](#natural-key-route)), or from
   {class}`View <fastapi_restly.views.View>` with explicit route paths.
@@ -237,12 +239,12 @@ The default CRUD contract has these boundaries:
 
 ## Next steps
 
-- [Getting Started](getting_started.md) builds and runs a first resource.
+- [Build a Blog API](tutorial.md) builds and runs a first resource.
 - [Customizing RestView](customize.md) changes behavior at the correct layer.
-- [Custom Schemas and Field Types](howto_custom_schema.md) defines stable wire
-  contracts.
+- [Custom Schemas and Field Types](howto_custom_schema.md) defines stable request
+  and response fields.
 - [Views](class_based_views.md) explains registration, shared
   dependencies, and the inheritance model.
 - [How-To Guides](user_guide.md) covers individual tasks.
-- [Behavior and Configuration Reference](api_details.md) lists exact signatures
+- [View Reference](view_reference.md) lists exact signatures
   and defaults.

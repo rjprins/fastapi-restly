@@ -106,17 +106,21 @@ class Current(fr.ContextNamespace):
     is_admin: fr.ContextParam[bool]
 
 
+class Base(fr.ModelDefaults, orm.DeclarativeBase):
+    pass
+
+
 class TenantOwned(orm.MappedAsDataclass, kw_only=True):
     """The tenant column: the organization the request acts in."""
 
     organization_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("organization.id"),
-        init=False,
-        insert_default=lambda: Current.org_id(),
+        ForeignKey("organization.id"), init=False, insert_default=Current.org_id
     )
 
 
 # Read identity when the SQL executes, not when the option is attached.
+# bindparam tests its callable's truth value, which a Current member rejects,
+# so these two wrap the member in a lambda.
 tenant_org_id = sa.bindparam(
     "tenant_org_id", callable_=lambda: Current.org_id(), type_=sa.Integer
 )
@@ -147,7 +151,7 @@ def _restrict_tenant_rows(state: orm.ORMExecuteState) -> None:
     )
 
 
-class Project(TenantOwned, fr.TimestampsMixin, fr.IDBase):
+class Project(TenantOwned, fr.TimestampsMixin, fr.IDMixin, Base):
     name: orm.Mapped[str]
 ```
 
@@ -248,13 +252,13 @@ bring a flipped row back, see
 ```python
 class AuditStamped(orm.MappedAsDataclass, kw_only=True):
     created_by_id: orm.Mapped[int | None] = orm.mapped_column(
-        ForeignKey("user.id"), init=False, insert_default=lambda: Current.user_id()
+        ForeignKey("user.id"), init=False, insert_default=Current.user_id
     )
     updated_by_id: orm.Mapped[int | None] = orm.mapped_column(
         ForeignKey("user.id"),
         init=False,
-        insert_default=lambda: Current.user_id(),
-        onupdate=lambda: Current.user_id(),
+        insert_default=Current.user_id,
+        onupdate=Current.user_id,
     )
 ```
 
@@ -264,8 +268,8 @@ changes the row. Keep these fields `fr.ReadOnly` on the schema: with
 `init=False` a body value would otherwise reach the constructor and fail
 loudly there.
 
-The lambdas call the member: a `ContextParam` resolves when called, and an
-unbound context raises rather than stamping `None`. The columns stay
+SQLAlchemy calls the member when it writes the row, and an unbound member
+raises an error rather than stamping `None`. The columns stay
 nullable for one row: the first user has no creator and comes from a
 migration, which writes through its own table objects and fires no ORM
 default. A worker or a seed script binds context around its writes:
@@ -282,7 +286,7 @@ The model declares what it is, the namespace declares the read half
 against it, and a view stacks only the verb mixin:
 
 ```python
-class Project(TenantOwned, AuditStamped, SoftDeletable, fr.TimestampsMixin, fr.IDBase):
+class Project(TenantOwned, AuditStamped, SoftDeletable, fr.TimestampsMixin, fr.IDMixin, Base):
     name: orm.Mapped[str]
 
 
@@ -339,7 +343,7 @@ class SoftDeleteMixin:
 The same applies to typed *attribute* annotations. Marker-based DI (see
 [Views](class_based_views.md#dependency-injection-on-class-attributes))
 means a plain `model: type[DeclarativeBase]` annotation no longer
-shadows DI wiring, but it can still shadow inherited attribute lookups
+shadows a dependency, but it can still shadow inherited attribute lookups
 in some setups. `if TYPE_CHECKING:` is the safe wrapper for both.
 
 ### 2. Multiple FK columns to the same table need explicit `foreign_keys=`
@@ -351,7 +355,7 @@ existing relationship and raises `AmbiguousForeignKeysError`. Pin the
 relationship explicitly:
 
 ```python
-class Task(AuditStamped, fr.TimestampsMixin, fr.IDBase):
+class Task(AuditStamped, fr.TimestampsMixin, fr.IDMixin, Base):
     assignee_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
     assignee: Mapped[User] = relationship(foreign_keys="Task.assignee_id")
 
@@ -381,7 +385,7 @@ allow/deny decisions such as "only managers may create" belong in
 
 ## Cross-references
 
-- [Customizing RestView](customize.md): the three tiers,
+- [Customizing RestView](customize.md): how a view handles a request,
   single-base overrides, and the call chain.
 - [Views](class_based_views.md#dependency-injection-on-class-attributes):
   the marker-based DI rule that makes mixin type stubs safe.

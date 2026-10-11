@@ -161,15 +161,8 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="../tutorial.html">
-    Tutorial
+    Getting Started
   </a>
 </li>
 
@@ -201,6 +194,13 @@
   </a>
 </li>
 
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../examples.html">
+    Examples
+  </a>
+</li>
+
             <li class="nav-item dropdown">
                 <button class="btn dropdown-toggle nav-item" type="button"
                 data-bs-toggle="dropdown" aria-expanded="false"
@@ -209,13 +209,6 @@
                 </button>
                 <ul id="pst-nav-more-links" class="dropdown-menu">
                     
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="../examples.html">
-    Examples
-  </a>
-</li>
-
-
 <li class=" ">
   <a class="nav-link dropdown-item nav-internal" href="../about.html">
     About
@@ -335,15 +328,8 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="../tutorial.html">
-    Tutorial
+    Getting Started
   </a>
 </li>
 
@@ -467,7 +453,7 @@
 <li class="toctree-l2"><a class="reference internal" href="utils.html">Utils API</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1"><a class="reference internal" href="../api_details.html">Behavior and Configuration Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../view_reference.html">View Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../technical_details.html">Technical Details</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
 </ul>
@@ -539,22 +525,23 @@
 and <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code> define CRUD endpoint methods for a model. <code class="docutils literal notranslate"><span class="pre">View</span></code> is the
 bare primitive for hand-written endpoint groups. <code class="docutils literal notranslate"><span class="pre">include_view()</span></code> registers
 either on a FastAPI app.</p>
-<p id="module-fastapi_restly.views">Class-based views with default CRUD methods and explicit override tiers.</p>
-<p>Every CRUD verb on <code class="docutils literal notranslate"><span class="pre">RestView</span></code> / <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code> exists at three tiers.
-Name the tier that owns your change and override one method:</p>
+<p id="module-fastapi_restly.views">Class-based views with default CRUD methods.</p>
+<p>Every CRUD route on <code class="docutils literal notranslate"><span class="pre">RestView</span></code> / <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code> runs through three
+methods. The handler handles the steps, and you override a step:</p>
 <ol class="arabic simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code>, the endpoint method: the <code class="docutils literal notranslate"><span class="pre">&#64;route</span></code>, FastAPI
 signature, <code class="docutils literal notranslate"><span class="pre">response_model</span></code>, and <code class="docutils literal notranslate"><span class="pre">to_response</span></code>. Replace only to change
 the HTTP contract.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code>, the handler: runs <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and the commit
-bracket (<code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code> -&gt; commit -&gt; <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>).
-Final: call it from a custom route, never override it.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code>, the handler: handles the steps, <code class="docutils literal notranslate"><span class="pre">authorize</span></code>, the
+business method, and the commit bracket (<code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code> -&gt;
+commit -&gt; <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>). Final: call it from a custom route,
+never override it.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;</span></code> (<code class="docutils literal notranslate"><span class="pre">get_many</span></code>, <code class="docutils literal notranslate"><span class="pre">get_one</span></code>, <code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code>, <code class="docutils literal notranslate"><span class="pre">delete</span></code>),
 the business method: the domain operation, auth-free and commit-free. The
 usual override point.</p></li>
 </ol>
 <p>Cross-cutting seams: <code class="docutils literal notranslate"><span class="pre">scope</span></code> (read visibility), <code class="docutils literal notranslate"><span class="pre">authorize</span></code> (policy),
-<code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code> (URL grammar), <code class="docutils literal notranslate"><span class="pre">to_response</span></code> (wire shape),
+<code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code> (URL grammar), <code class="docutils literal notranslate"><span class="pre">to_response</span></code> (response shape),
 <code class="docutils literal notranslate"><span class="pre">write_action</span></code> (custom write actions), <code class="docutils literal notranslate"><span class="pre">shared_write_action_commit</span></code>
 (one commit over several writes). Under the verbs sit the final
 domain utilities (<code class="docutils literal notranslate"><span class="pre">make_new_object</span></code>, <code class="docutils literal notranslate"><span class="pre">update_object</span></code>, <code class="docutils literal notranslate"><span class="pre">save_object</span></code>):
@@ -600,7 +587,7 @@ their own names. Use constants for typo checking at import time.</p>
 <dt class="sig sig-object py" id="fastapi_restly.views.AsyncReactAdminView">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">AsyncReactAdminView</span></span><a class="headerlink" href="#fastapi_restly.views.AsyncReactAdminView" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_ReactAdminMixin</span></code>, <a class="reference internal" href="#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views._async.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a></p>
-<p>AsyncRestView that speaks the ra-data-simple-rest wire contract.</p>
+<p>AsyncRestView that follows the ra-data-simple-rest HTTP contract.</p>
 <p>Use this instead of AsyncRestView when your frontend is react-admin
 with ra-data-simple-rest.</p>
 <dl class="py method">
@@ -630,17 +617,19 @@ Basic usage:</p>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Foo</span>
 </pre></div>
 </div>
-<p>Each verb is three tiers (see “Customizing RestView” in the docs):</p>
+<p>Each CRUD route runs through three methods (see “Customizing RestView”
+in the docs):</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code>: the endpoint method. Owns the HTTP signature,
-<code class="docutils literal notranslate"><span class="pre">response_model</span></code>, and <code class="docutils literal notranslate"><span class="pre">to_response</span></code>. Rarely overridden.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code>: the handler. Owns <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and the commit
-bracket (<code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code> -&gt; commit -&gt; <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>);
-returns the domain object. Final: call it from a custom route to get
-the bracket, never override it.</p></li>
+<code class="docutils literal notranslate"><span class="pre">response_model</span></code>, and <code class="docutils literal notranslate"><span class="pre">to_response</span></code>. Override it to change the
+HTTP contract.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code>: the handler. Handles the steps: <code class="docutils literal notranslate"><span class="pre">authorize</span></code>, the
+business method, and the commit bracket (<code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code> -&gt;
+commit -&gt; <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>); returns the domain object. Final:
+call it from a custom route to run the same steps, never override it.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;</span></code> (<code class="docutils literal notranslate"><span class="pre">get_many</span></code> / <code class="docutils literal notranslate"><span class="pre">get_one</span></code> / <code class="docutils literal notranslate"><span class="pre">create</span></code> / <code class="docutils literal notranslate"><span class="pre">update</span></code> /
 <code class="docutils literal notranslate"><span class="pre">delete</span></code>): the business method. Auth-free, commit-free; the common
-override point (hash a password, derive a slug, …).</p></li>
+override point (hash a password, …).</p></li>
 </ul>
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.AsyncRestView.after_action_commit">
@@ -926,7 +915,7 @@ the same options in <code class="docutils literal notranslate"><span class="pre"
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.AsyncRestView.session">
-<span class="sig-name descname"><span class="pre">session</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">_AsyncSessionDependency</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x7f0e0d634da0&gt;,</span> <span class="pre">use_cache=True,</span> <span class="pre">scope=function)]</span></em><a class="headerlink" href="#fastapi_restly.views.AsyncRestView.session" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">session</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">_AsyncSessionDependency</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x7f48f4f24ec0&gt;,</span> <span class="pre">use_cache=True,</span> <span class="pre">scope=function)]</span></em><a class="headerlink" href="#fastapi_restly.views.AsyncRestView.session" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -1177,7 +1166,7 @@ overriding this method alone, which would fail response validation.</p>
 <dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.to_response">
 <span class="sig-name descname"><span class="pre">to_response</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">result</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.ResponseShape" title="fastapi_restly.views._base.ResponseShape"><span class="pre">ResponseShape</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">ResponseShape.SINGLE</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.BaseRestView.to_response" title="Link to this definition">#</a></dt>
 <dd><p>Endpoint-method response boundary.</p>
-<p><code class="docutils literal notranslate"><span class="pre">shape</span></code> selects the wire form, and with it what <code class="docutils literal notranslate"><span class="pre">result</span></code> is: one
+<p><code class="docutils literal notranslate"><span class="pre">shape</span></code> selects the response form, and with it what <code class="docutils literal notranslate"><span class="pre">result</span></code> is: one
 object for <code class="docutils literal notranslate"><span class="pre">SINGLE</span></code> (<a class="reference internal" href="#fastapi_restly.views.BaseRestView.to_single_response" title="fastapi_restly.views.BaseRestView.to_single_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_single_response()</span></code></a>), a
 <a class="reference internal" href="#fastapi_restly.views.ListResult" title="fastapi_restly.views.ListResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">ListResult</span></code></a> for <code class="docutils literal notranslate"><span class="pre">LIST</span></code> (<a class="reference internal" href="#fastapi_restly.views.BaseRestView.to_list_response" title="fastapi_restly.views.BaseRestView.to_list_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_list_response()</span></code></a>), and
 nothing for <code class="docutils literal notranslate"><span class="pre">EMPTY</span></code>. A plain Python list is not a valid <code class="docutils literal notranslate"><span class="pre">result</span></code>.
@@ -1398,7 +1387,7 @@ other than the database’s largest offset. A larger one returns 422.</p>
 <dt class="sig sig-object py" id="fastapi_restly.views.ReactAdminView">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">ReactAdminView</span></span><a class="headerlink" href="#fastapi_restly.views.ReactAdminView" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_ReactAdminMixin</span></code>, <a class="reference internal" href="#fastapi_restly.views.RestView" title="fastapi_restly.views._sync.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a></p>
-<p>RestView that speaks the ra-data-simple-rest wire contract.</p>
+<p>RestView that follows the ra-data-simple-rest HTTP contract.</p>
 <p>Use this instead of RestView when your frontend is react-admin
 with ra-data-simple-rest.</p>
 <dl class="py method">
@@ -1420,7 +1409,7 @@ to change the HTTP contract.</p>
 <dt class="sig sig-object py" id="fastapi_restly.views.ResponseShape">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">ResponseShape</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.views.ResponseShape" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/enum.html#enum.Enum" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></a></p>
-<p>The wire shape an endpoint method asks <a class="reference internal" href="#fastapi_restly.views.BaseRestView.to_response" title="fastapi_restly.views.BaseRestView.to_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BaseRestView.to_response()</span></code></a> to
+<p>The response shape an endpoint method asks <a class="reference internal" href="#fastapi_restly.views.BaseRestView.to_response" title="fastapi_restly.views.BaseRestView.to_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BaseRestView.to_response()</span></code></a> to
 produce.</p>
 <p>This is separate from write-action names such as <code class="docutils literal notranslate"><span class="pre">&quot;publish&quot;</span></code>. Endpoint
 methods choose one of these three response shapes; custom actions remain an
@@ -1454,17 +1443,19 @@ Basic usage:</p>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Foo</span>
 </pre></div>
 </div>
-<p>Each verb is three tiers (see “Customizing RestView” in the docs):</p>
+<p>Each CRUD route runs through three methods (see “Customizing RestView”
+in the docs):</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code>: the endpoint method. Owns the HTTP signature,
-<code class="docutils literal notranslate"><span class="pre">response_model</span></code>, and <code class="docutils literal notranslate"><span class="pre">to_response</span></code>. Rarely overridden.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code>: the handler. Owns <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and the commit
-bracket (<code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code> -&gt; commit -&gt; <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>);
-returns the domain object. Final: call it from a custom route to get
-the bracket, never override it.</p></li>
+<code class="docutils literal notranslate"><span class="pre">response_model</span></code>, and <code class="docutils literal notranslate"><span class="pre">to_response</span></code>. Override it to change the
+HTTP contract.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code>: the handler. Handles the steps: <code class="docutils literal notranslate"><span class="pre">authorize</span></code>, the
+business method, and the commit bracket (<code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code> -&gt;
+commit -&gt; <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>); returns the domain object. Final:
+call it from a custom route to run the same steps, never override it.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;</span></code> (<code class="docutils literal notranslate"><span class="pre">get_many</span></code> / <code class="docutils literal notranslate"><span class="pre">get_one</span></code> / <code class="docutils literal notranslate"><span class="pre">create</span></code> / <code class="docutils literal notranslate"><span class="pre">update</span></code> /
 <code class="docutils literal notranslate"><span class="pre">delete</span></code>): the business method. Auth-free, commit-free; the common
-override point (hash a password, derive a slug, …).</p></li>
+override point (hash a password, …).</p></li>
 </ul>
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.RestView.after_action_commit">
@@ -1748,7 +1739,7 @@ same options in <code class="docutils literal notranslate"><span class="pre">get
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.RestView.session">
-<span class="sig-name descname"><span class="pre">session</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">_SyncSessionDependency</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x7f0e0d634ce0&gt;,</span> <span class="pre">use_cache=True,</span> <span class="pre">scope=function)]</span></em><a class="headerlink" href="#fastapi_restly.views.RestView.session" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">session</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">_SyncSessionDependency</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x7f48f4f24e00&gt;,</span> <span class="pre">use_cache=True,</span> <span class="pre">scope=function)]</span></em><a class="headerlink" href="#fastapi_restly.views.RestView.session" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -2049,7 +2040,7 @@ The path and api_route_kwargs are passed into APIRouter.add_api_route(), see for
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
 <p><a class="reference internal" href="../class_based_views.html"><span class="doc">Views &amp; CRUD</span></a> introduces the class-based view concept and
-hierarchy, and <a class="reference internal" href="../customize.html"><span class="doc">Customizing RestView</span></a> explains the three-tier override model
+hierarchy, and <a class="reference internal" href="../customize.html"><span class="doc">Customizing RestView</span></a> explains how a view handles a request
 and collects the task-shaped override recipes.</p>
 </div>
 </section>

@@ -24,17 +24,20 @@ from contextlib import asynccontextmanager
 import fastapi_restly as fr
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import DeclarativeBase, Mapped
 
 fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
 
-class Product(fr.IDBase):
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+
+class Product(fr.IDMixin, Base):
     name: Mapped[str]
     price: Mapped[float]
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    await fr.db.async_create_all(fr.IDBase)  # dev tables; use Alembic in production
+    await fr.db.async_create_all(Base)  # dev tables; use Alembic in production
     yield
 
 app = FastAPI(lifespan=lifespan)
@@ -72,7 +75,7 @@ own list component as the UI takes shape. The [shop example](examples.md#shop)
 is a complete runnable version of this setup, with three resources,
 relationships, and a react-admin frontend under `ui/test-admin/`.
 
-## Wire contract
+## HTTP contract
 
 {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` translates the `ra-data-simple-rest` query format to SQL
 and returns responses the provider expects.
@@ -299,7 +302,7 @@ react-admin query string, then delegates to the standard {meth}`handle_get_many 
 
 It also adds a `PUT /{id}` route that delegates to the standard {meth}`handle_update <fastapi_restly.views.RestView.handle_update>`
 handler. The endpoint methods for the other CRUD routes (`GET /{id}`, `POST
-/`, `PATCH /{id}`, `DELETE /{id}`) and the write business-method tiers are
+/`, `PATCH /{id}`, `DELETE /{id}`) and the write business methods are
 inherited unchanged.
 
 The shared parsing and response helpers are internal.

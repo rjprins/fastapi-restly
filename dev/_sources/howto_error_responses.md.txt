@@ -91,15 +91,63 @@ own `422` validation errors and plain `HTTPException`s raised elsewhere,
 register handlers for `RequestValidationError` and `HTTPException` the
 standard FastAPI way.
 
+(default-exception-handling)=
 ## Database conflicts: `IntegrityError` to 409
 
-Not every conflict response comes from your own code: Restly installs a
-default handler that translates SQLAlchemy `IntegrityError`s into
-`409 Conflict` responses. It respects a handler you registered yourself, and
-it can be disabled with
-{func}`fr.configure(app=app, install_default_exception_handlers=False) <fastapi_restly.db.configure>`;
-the exact registration contract is in
-[Default Exception Handling](#default-exception-handling).
+Not every conflict response comes from your own code. Restly installs a
+default handler that translates a SQLAlchemy `IntegrityError` into a
+`409 Conflict` response. This covers unique constraint, foreign-key,
+not-null, and check-constraint violations. The body has FastAPI's normal
+error shape:
+
+```json
+{
+  "detail": "Unique constraint violated on user.email"
+}
+```
+
+The exact `detail` text is best-effort and depends on the database driver.
+The handler recognizes common PostgreSQL SQLSTATE integrity codes and SQLite
+constraint messages. For other databases, it uses a generic conflict message.
+
+Restly installs the handler in either of these cases:
+
+- `fr.configure(app=app, ...)` is called with the default
+  `install_default_exception_handlers=True`.
+- A view is registered directly on a `FastAPI` app with `fr.include_view(app)`.
+  This covers apps that configure database sessions separately.
+
+Restly skips the handler when the app already has a handler for
+`sqlalchemy.exc.IntegrityError`. A generic handler does not count.
+
+To turn the handler off, pass `install_default_exception_handlers=False`:
+
+```python
+fr.configure(
+    app=app,
+    async_database_url="sqlite+aiosqlite:///app.db",
+    install_default_exception_handlers=False,
+)
+```
+
+To use your own response format, register your own `IntegrityError` handler
+before Restly installs its defaults:
+
+```python
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError
+
+
+@app.exception_handler(IntegrityError)
+async def integrity_error_handler(request, exc):
+    return JSONResponse(
+        status_code=409,
+        content={"error": {"code": "constraint_conflict"}},
+    )
+
+
+fr.configure(app=app, async_database_url="sqlite+aiosqlite:///app.db")
+```
 
 ## See also
 

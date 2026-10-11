@@ -1,11 +1,9 @@
 # How-To Guides
 
 These guides are task-focused: each one shows how to accomplish a specific
-goal with FastAPI-Restly. If you are new to the framework, start with
-[Getting Started](getting_started.md), read [Using RestView](rest_views.md) for
-the default CRUD contract, then use [Build a Blog API](tutorial.md) for a
-complete multi-model example. Come back here
-when you have a concrete task.
+goal with FastAPI-Restly. If you are new to the framework, start with the
+tutorial, [Build a Blog API](tutorial.md). Come back here when you have a
+concrete task.
 
 ## Adopting and Modeling
 
@@ -19,7 +17,7 @@ schemas it works from.
 :link: howto_existing_project
 :link-type: doc
 
-Adopt Restly beside existing FastAPI routes, then wire it into your sessions and models.
+Adopt Restly beside existing FastAPI routes, then connect it to your sessions and models.
 :::
 
 :::{grid-item-card} Project structure
@@ -28,6 +26,13 @@ Adopt Restly beside existing FastAPI routes, then wire it into your sessions and
 
 Lay out a growing application by subject, keep imports pointing one way, and
 compose views and models from one place each.
+:::
+
+:::{grid-item-card} Declare Your Models
+:link: howto_models
+:link-type: doc
+
+Give your own declarative base Restly's defaults, change one default, and add `id` and timestamp columns.
 :::
 
 :::{grid-item-card} Custom Schemas and Field Types
@@ -166,8 +171,8 @@ where they belong: structural fields on the model, verbs on view mixins.
 :link: howto_typing
 :link-type: doc
 
-Use {class}`IDSchema <fastapi_restly.schemas.IDSchema>`, optional view generics, and typed CRUD methods without
-fighting the framework.
+Use {class}`IDRef <fastapi_restly.schemas.IDRef>`, optional view generics, and
+typed CRUD methods that your type checker understands.
 :::
 
 ::::
@@ -219,6 +224,7 @@ checklist.
 
 howto_existing_project
 howto_project_structure
+howto_models
 howto_custom_schema
 howto_relationship_idschema
 howto_response_schema

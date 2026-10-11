@@ -276,8 +276,8 @@ share the same CRUD structure via an internal abstract base class (not exposed
 as `fr.*`). The choice between them is determined by which class you subclass:
 `AsyncRestView` declares `session: AsyncSessionDep` and `RestView` declares
 `session: SessionDep`. A subclass can override that `session` annotation with
-its own `Annotated[..., Depends(...)]` dependency for
-[per-view session wiring](howto_existing_project.md#use-a-custom-session-dependency-on-one-view).
+its own `Annotated[..., Depends(...)]` dependency to
+[use another session on one view](howto_existing_project.md#use-a-custom-session-dependency-on-one-view).
 The async and sync variants have identical endpoint signatures; the only
 difference is that the async variant uses `await` in its process methods.
 
@@ -338,12 +338,12 @@ Both forms call {meth}`before_include_view() <fastapi_restly.views.BaseRestView.
 annotates endpoint signatures, and registers the {attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`), then
 attach an `APIRouter` to the parent app/router.
 
-### The Three Tiers of a CRUD Verb
+### The Methods of a CRUD Route
 
-Every CRUD verb is split into an endpoint method (`<verb>_endpoint`), a
-handler (`handle_<verb>`), and a business method (`<verb>`); the model and the
-override decision table live in
-[Customizing RestView](customize.md).
+Every CRUD route runs through an endpoint method (`<verb>_endpoint`), a
+handler (`handle_<verb>`), and a business method (`<verb>`). How the handler
+handles the steps, and the override decision table, live in
+[Customizing RestView](#view-request-steps).
 
 The implementation detail worth knowing here is that the endpoint method calls
 {meth}`to_response(obj, shape) <fastapi_restly.views.BaseRestView.to_response>`, the single response method, which delegates to
@@ -369,9 +369,10 @@ Nested schemas serve two different roles in Restly today:
   Loader options follow relationships the response class *names*. Code that reaches
   past that set -- an `after_action_commit` hook, a custom business method, a
   `@property` walking a relationship nothing else loads -- runs in plain async
-  context, where a bare attribute access raises `MissingGreenlet`. Restly's
-  declarative base mixes in SQLAlchemy's `AsyncAttrs` for exactly that case, so
-  those reads can be spelled `await obj.awaitable_attrs.items`. The
+  context, where a bare attribute access raises `MissingGreenlet`.
+  {class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>` mixes in
+  SQLAlchemy's `AsyncAttrs` for exactly that case, so those reads can be
+  spelled `await obj.awaitable_attrs.items`. The
   task-focused guide to all of this, including extending the loaded set and
   resolving `MissingGreenlet`, is
   [Relationship Loading and Async](howto_relationship_loading.md); this section
@@ -430,14 +431,12 @@ configure it once during startup:
 fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
 ```
 
-{func}`fr.configure(...) <fastapi_restly.db.configure>` rejects no-op calls; pass at least one setup option. The
-authoritative list of accepted options is the
-[Database reference](#api-database). This page does not
-duplicate the contract.
+{func}`fr.configure(...) <fastapi_restly.db.configure>` rejects no-op calls; pass at least one setup option. Its
+reference entry lists every accepted option. This page does not repeat them.
 
 Internally, Restly keeps a private context object so its own tests and fixtures
 can isolate runtime state. That context is not a public multi-engine feature.
-If an application needs multiple databases, wire a custom FastAPI dependency or
+If an application needs multiple databases, use a custom FastAPI dependency or
 session generator for that view. Restly does not currently bind different views
 to different named contexts.
 

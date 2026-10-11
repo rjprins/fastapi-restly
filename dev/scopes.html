@@ -161,15 +161,8 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
-    Tutorial
+    Getting Started
   </a>
 </li>
 
@@ -201,6 +194,13 @@
   </a>
 </li>
 
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
             <li class="nav-item dropdown">
                 <button class="btn dropdown-toggle nav-item" type="button"
                 data-bs-toggle="dropdown" aria-expanded="false"
@@ -209,13 +209,6 @@
                 </button>
                 <ul id="pst-nav-more-links" class="dropdown-menu">
                     
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
 <li class=" ">
   <a class="nav-link dropdown-item nav-internal" href="about.html">
     About
@@ -335,15 +328,8 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
-    Tutorial
+    Getting Started
   </a>
 </li>
 
@@ -455,6 +441,7 @@
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="howto_existing_project.html">Use Restly in an Existing Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Project structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_models.html">Declare Your Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
@@ -616,6 +603,18 @@ dotted query-parameter filter or sort (<code class="docutils literal notranslate
 related table without its scope. Shape the view’s schema, or override
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.get_relationship_loader_options" title="fastapi_restly.views.BaseRestView.get_relationship_loader_options"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code></a>,
 where embedded rows must be filtered.</p>
+<p>For the same reason, a model does not take over the scope of a related
+model. To make its rows follow that scope, give the model its own
+<code class="docutils literal notranslate"><span class="pre">default_scope</span></code> that names the other scope. A comment is visible when its
+post is visible:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">CommentClauses</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ClauseNamespace</span><span class="p">):</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Comment</span>
+
+    <span class="n">default_scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span><span class="n">Comment</span><span class="o">.</span><span class="n">post</span><span class="o">.</span><span class="n">has</span><span class="p">(</span><span class="n">PostClauses</span><span class="o">.</span><span class="n">default_scope</span><span class="p">))</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="clauses.html#clause-in-expression"><span class="std std-ref">A clause inside an expression</span></a> explains how the
+inner clause gets its values.</p>
 <p><code class="docutils literal notranslate"><span class="pre">default_scope</span></code> is a
 <a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.WhereClause" title="fastapi_restly.clauses.WhereClause"><code class="xref py py-class docutils literal notranslate"><span class="pre">WhereClause</span></code></a>: a predicate,
 with EXISTS (<code class="docutils literal notranslate"><span class="pre">.any()</span></code>/<code class="docutils literal notranslate"><span class="pre">.has()</span></code>) for a rule that depends on a related
@@ -696,10 +695,12 @@ bound value, which fails loudly when the value is missing:</p>
     <span class="n">scope</span> <span class="o">=</span> <span class="n">role_visibility</span>  <span class="c1"># a dependency binds RoleContext.include_deleted</span>
 </pre></div>
 </div>
-<p>A policy clause like this names a request-boundary value, so it lives
-beside the view that applies it, not in the model’s namespace; the
-namespace holds model facts such as <code class="docutils literal notranslate"><span class="pre">is_deleted</span></code>, and views compose policy
-from them. The framework applies the declared clause
+<p>A policy clause like this one belongs to the view that applies it, so
+declare it beside that view. The model’s namespace holds the rules for every
+read of the model: facts such as <code class="docutils literal notranslate"><span class="pre">is_deleted</span></code>, and rules such as “a draft is
+visible only to its author”. A rule in the namespace may read a request
+value, such as <code class="docutils literal notranslate"><span class="pre">Current.user_id</span></code>. A read without a bound value then fails
+with an error that names the missing value. The framework applies the declared clause
 itself, on every read; there is no apply-side override point, and a
 <code class="docutils literal notranslate"><span class="pre">scope</span></code> that is not a clause is rejected as the view class is defined.
 <a class="reference internal" href="#reading-the-scope">Reading the resolved scope</a> hands a route the

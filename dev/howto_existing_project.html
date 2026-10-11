@@ -161,15 +161,8 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
-    Tutorial
+    Getting Started
   </a>
 </li>
 
@@ -201,6 +194,13 @@
   </a>
 </li>
 
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="examples.html">
+    Examples
+  </a>
+</li>
+
             <li class="nav-item dropdown">
                 <button class="btn dropdown-toggle nav-item" type="button"
                 data-bs-toggle="dropdown" aria-expanded="false"
@@ -209,13 +209,6 @@
                 </button>
                 <ul id="pst-nav-more-links" class="dropdown-menu">
                     
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
 <li class=" ">
   <a class="nav-link dropdown-item nav-internal" href="about.html">
     About
@@ -335,15 +328,8 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
-    Tutorial
+    Getting Started
   </a>
 </li>
 
@@ -455,6 +441,7 @@
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Use Restly in an Existing Project</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_project_structure.html">Project structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="howto_models.html">Declare Your Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_custom_schema.html">Custom Schemas and Field Types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_relationship_idschema.html">Work with Foreign Keys and Relationships</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto_response_schema.html">Response Envelopes and List Metadata</a></li>
@@ -617,7 +604,7 @@ different status code, response shape, or query interface, see
 you call <a class="reference internal" href="api/views.html#fastapi_restly.views.include_view" title="fastapi_restly.views.include_view"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.include_view(...)</span></code></a>. To move a resource back to plain FastAPI,
 remove that include call and register an <code class="docutils literal notranslate"><span class="pre">APIRouter</span></code> with the same prefix and
 path operations.</p>
-<p>Your models, schemas, dependencies, and session wiring can stay in ordinary app
+<p>Your models, schemas, dependencies, and session setup can stay in ordinary app
 modules.</p>
 </section>
 <section id="replace-an-existing-hand-written-router">
@@ -627,14 +614,14 @@ modules.</p>
 contract first:</p>
 <ol class="arabic simple">
 <li><p>Map your routes to the view’s default CRUD contract. <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>, <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code>, and
-<code class="docutils literal notranslate"><span class="pre">GET</span></code>/<code class="docutils literal notranslate"><span class="pre">PATCH</span></code>/<code class="docutils literal notranslate"><span class="pre">DELETE</span></code> on <code class="docutils literal notranslate"><span class="pre">/{id}</span></code> are covered (<a class="reference internal" href="api_details.html#default-crud-routes"><span class="std std-ref">the exact
+<code class="docutils literal notranslate"><span class="pre">GET</span></code>/<code class="docutils literal notranslate"><span class="pre">PATCH</span></code>/<code class="docutils literal notranslate"><span class="pre">DELETE</span></code> on <code class="docutils literal notranslate"><span class="pre">/{id}</span></code> are covered (<a class="reference internal" href="rest_views.html#default-crud-routes"><span class="std std-ref">the exact
 contract</span></a>). Anything else on the
 router (exports, actions) stays as custom routes on the view or as plain
 FastAPI routes beside it.</p></li>
 <li><p>Keep custom semantics out of the swap. A route whose contract differs
 (e.g. <code class="docutils literal notranslate"><span class="pre">PUT</span></code> updates, a non-204 delete) can be excluded via
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_routes" title="fastapi_restly.views.BaseRestView.exclude_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_routes</span></code></a> and kept hand-written until you adapt it.</p></li>
-<li><p>Pin the wire contract with tests first. Write
+<li><p>Pin the HTTP contract with tests first. Write
 <a class="reference internal" href="howto_testing.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">RestlyTestClient</span></code></span></a> tests against the <em>old</em> router’s
 responses, then swap in the view and run them unchanged; payload or
 status drift shows up immediately.</p></li>
@@ -790,7 +777,7 @@ the view’s <code class="docutils literal notranslate"><span class="pre">sessio
 </div>
 <p>The custom dependency owns session construction and cleanup.
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> still owns the commit.
-Use this for read replicas, reporting databases, or other per-view session wiring.</p>
+Use this for read replicas, reporting databases, or any other view that needs its own session.</p>
 </section>
 <section id="use-the-configured-session-off-request">
 <h2>Use the Configured Session Off-Request<a class="headerlink" href="#use-the-configured-session-off-request" title="Link to this heading">#</a></h2>
@@ -810,9 +797,9 @@ session from FastAPI-Restly’s configured factory directly with
 </div>
 <p>Off-request code owns its commit; these helpers do not commit for you.</p>
 </section>
-<section id="use-your-own-declarativebase-models">
-<h2>Use Your Own DeclarativeBase Models<a class="headerlink" href="#use-your-own-declarativebase-models" title="Link to this heading">#</a></h2>
-<p>If your project already has SQLAlchemy models on a custom <code class="docutils literal notranslate"><span class="pre">DeclarativeBase</span></code>,
+<section id="use-your-existing-models">
+<span id="existing-models"></span><h2>Use Your Existing Models<a class="headerlink" href="#use-your-existing-models" title="Link to this heading">#</a></h2>
+<p>If your project already has SQLAlchemy models on its own <code class="docutils literal notranslate"><span class="pre">DeclarativeBase</span></code>,
 you can use those models directly in a
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
@@ -837,15 +824,19 @@ you can use those models directly in a
 </div>
 <p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> supports these models for
 default CRUD routes and
-<a class="reference internal" href="technical_details.html#id2"><span class="std std-ref">auto-generated schemas</span></a>. When
-creating tables, use your own base metadata (for example
-<code class="docutils literal notranslate"><span class="pre">AppBase.metadata.create_all(...)</span></code>).</p>
+<a class="reference internal" href="technical_details.html#id2"><span class="std std-ref">auto-generated schemas</span></a>. Pass
+the same base wherever Restly asks for your models’ tables, as in
+<code class="docutils literal notranslate"><span class="pre">fr.db.async_create_all(AppBase)</span></code> and
+<code class="docutils literal notranslate"><span class="pre">fr.testing.configure_tests(base=AppBase)</span></code>.</p>
+<p>Restly’s model defaults, such as dataclass constructors and datetimes with a
+time zone, are optional. <a class="reference internal" href="howto_models.html"><span class="std std-doc">Declare Your Models</span></a> explains them,
+and what changes when you add them to a base that already has models.</p>
 </section>
 <section id="see-also">
 <h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p><a class="reference internal" href="howto_testing.html"><span class="std std-doc">Test APIs with RestlyTestClient and Fixtures</span></a>: pin the
-wire contract while migrating; savepoint-isolated tests against your DB.</p></li>
+HTTP contract while migrating; savepoint-isolated tests against your DB.</p></li>
 <li><p><a class="reference internal" href="deploying.html"><span class="std std-doc">Deploying</span></a>: engine configuration from environment values,
 Alembic, and a production <code class="docutils literal notranslate"><span class="pre">main.py</span></code>.</p></li>
 <li><p><a class="reference internal" href="patterns.html"><span class="std std-doc">Patterns</span></a>: the idiomatic answers for nested resources,
@@ -909,7 +900,7 @@ webhooks, and other shapes your existing app probably has.</p></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#provide-your-own-session-generator">Provide Your Own Session Generator</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-a-custom-session-dependency-on-one-view">Use a Custom Session Dependency on One View</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-the-configured-session-off-request">Use the Configured Session Off-Request</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-your-own-declarativebase-models">Use Your Own DeclarativeBase Models</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-your-existing-models">Use Your Existing Models</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>
 </ul>
   </nav></div>
