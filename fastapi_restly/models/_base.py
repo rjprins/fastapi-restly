@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import (
     Composite,
     DeclarativeBase,
+    DeclarativeBaseNoMeta,
     Mapped,
     MappedAsDataclass,
     MappedColumn,
@@ -39,31 +40,12 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _require_dataclass_base(cls: type, mixin: str) -> None:
-    """Refuse a dataclass mixin on a model whose declarative base is not one.
-
-    SQLAlchemy accepts it, but makes that one model a dataclass. Its
-    constructor then requires every field without a default, such as an ``id``
-    declared without ``init=False``, and nothing says why.
-    """
-    base = next((c for c in cls.__mro__ if DeclarativeBase in c.__bases__), None)
-    if base is None or issubclass(base, MappedAsDataclass):
-        return
-    raise RestlyConfigurationError(
-        f"{cls.__name__} uses fr.{mixin}, which adds dataclass fields, but its "
-        f"base {base.__name__} is not a dataclass base. SQLAlchemy would make "
-        f"{cls.__name__} a dataclass while your other models are not, and that "
-        f"changes its constructor. Add fr.ModelDefaults to {base.__name__}: "
-        f"class {base.__name__}(fr.ModelDefaults, DeclarativeBase). Or declare "
-        f"the columns on {cls.__name__} yourself."
-    )
-
-
-class TimestampsMixin(MappedAsDataclass, kw_only=True):
+class TimestampsMixin(MappedAsDataclass, kw_only=True, eq=False):
     """
     Dataclass mixin adding UTC-aware created_at and updated_at timestamps.
 
-    Use it on models whose base has :class:`ModelDefaults`.
+    Made for models on a base with :class:`ModelDefaults`. On another base,
+    SQLAlchemy makes each model that uses it a dataclass.
     """
 
     created_at: Mapped[datetime] = mapped_column(
@@ -76,22 +58,15 @@ class TimestampsMixin(MappedAsDataclass, kw_only=True):
         server_default=func.now(),
     )
 
-    def __init_subclass__(cls, **kw: Any) -> None:
-        _require_dataclass_base(cls, "TimestampsMixin")
-        super().__init_subclass__(**kw)
 
-
-class IDMixin(MappedAsDataclass, kw_only=True):
+class IDMixin(MappedAsDataclass, kw_only=True, eq=False):
     """Dataclass mixin adding an auto-incrementing integer `id` primary key.
 
-    Use it on models whose base has :class:`ModelDefaults`.
+    Made for models on a base with :class:`ModelDefaults`. On another base,
+    SQLAlchemy makes each model that uses it a dataclass.
     """
 
     id: Mapped[int] = mapped_column(init=False, primary_key=True)
-
-    def __init_subclass__(cls, **kw: Any) -> None:
-        _require_dataclass_base(cls, "IDMixin")
-        super().__init_subclass__(**kw)
 
 
 class TableNameMixin:
@@ -149,12 +124,25 @@ _TYPE_ANNOTATION_MAP: dict[Any, Any] = {
 }
 
 
+def _declarative_base(cls: type) -> type | None:
+    """Return the class in ``cls``'s bases that subclasses DeclarativeBase."""
+    return next(
+        (
+            c
+            for c in cls.__mro__
+            if DeclarativeBase in c.__bases__ or DeclarativeBaseNoMeta in c.__bases__
+        ),
+        None,
+    )
+
+
 class ModelDefaults(
     AsyncAttrs,
     TableNameMixin,
     MappedAsDataclass,
     metaclass=_KwOnlyDataclassMeta,
     kw_only=True,
+    eq=False,
 ):
     """Restly's defaults for SQLAlchemy models, for your own declarative base.
 
@@ -168,12 +156,16 @@ class ModelDefaults(
 
     * A dataclass constructor that takes keyword arguments only. Type checkers
       accept a required field after a field with a default.
+    * Equality by identity, as for any SQLAlchemy model: two objects are equal
+      only when they are the same object. So a model object can go in a
+      ``set``, and comparing objects never loads a relationship.
     * A table name in snake_case from the class name: ``BlogPost`` gets
       ``blog_post``. Set ``__tablename__`` on a model to choose another name.
     * ``Mapped[datetime]`` as ``DateTime(timezone=True)``. Use
       ``mapped_column(DateTime())`` for a column without a time zone.
-    * An ``enum.Enum`` as a string column of up to 64 characters, not a
-      database enum type, so a new member needs no migration.
+    * An ``enum.Enum`` as a string column of up to 64 characters that stores
+      the member's name, not a database enum type. A new member then needs no
+      migration.
     * ``awaitable_attrs`` from SQLAlchemy's ``AsyncAttrs``. An unloaded
       attribute can then be reached from plain async code,
       ``await obj.awaitable_attrs.items``, where a bare ``obj.items`` would
@@ -183,11 +175,38 @@ class ModelDefaults(
 
     Declare your own ``metadata`` and ``type_annotation_map`` on ``Base`` as
     SQLAlchemy documents them. Your type entries win over Restly's.
+
+    Set dataclass options such as ``eq=True`` on a model, not on ``Base``.
+    SQLAlchemy takes the options from the first dataclass class in a model's
+    bases, which is often :class:`IDMixin`, so options on ``Base`` would apply
+    to some models only. ``Base`` with options raises
+    :class:`~fastapi_restly.exc.RestlyConfigurationError`.
     """
 
     def __init_subclass__(cls, **kw: Any) -> None:
+        base = _declarative_base(cls)
+        if base is cls and kw:
+            option, value = next(iter(kw.items()))
+            raise RestlyConfigurationError(
+                f"{cls.__name__} sets the dataclass options {', '.join(kw)}. On a "
+                f"base with fr.ModelDefaults, set them on each model instead: "
+                f"class Post(fr.IDMixin, {cls.__name__}, {option}={value!r}). "
+                f"SQLAlchemy takes the options from the first dataclass class in "
+                f"a model's bases. For a model with fr.IDMixin or "
+                f"fr.TimestampsMixin, that is the mixin, so options on "
+                f"{cls.__name__} would not apply to it."
+            )
+        if base is not None and not issubclass(base, ModelDefaults):
+            raise RestlyConfigurationError(
+                f"{cls.__name__} adds fr.ModelDefaults below the declarative base "
+                f"{base.__name__}. Restly's defaults change the registry of the "
+                f"base, so fr.ModelDefaults goes on the base itself: "
+                f"class {base.__name__}(fr.ModelDefaults, DeclarativeBase). That "
+                f"makes every model on {base.__name__} a dataclass. Or leave "
+                f"fr.ModelDefaults out: Restly's views also work without it."
+            )
         super().__init_subclass__(**kw)
-        if DeclarativeBase in cls.__bases__:
+        if base is cls:
             # SQLAlchemy has set up the registry by now, with the base's own
             # type_annotation_map. Restly's entries fill in what it leaves out.
             own = cls.registry.type_annotation_map

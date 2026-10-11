@@ -22,7 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   names, timezone-aware datetimes, enums stored as strings, and
   `awaitable_attrs`. The base keeps its own registry and `MetaData`, so it can
   set a naming convention, and its own `type_annotation_map` entries win over
-  Restly's.
+  Restly's. Set dataclass options such as `eq=True` on a model: on the base
+  they raise `RestlyConfigurationError`, because SQLAlchemy would apply them
+  to some models only. `fr.ModelDefaults` on a class below another
+  declarative base also raises.
 - `fr.IDMixin` at the top level. Before, it was only in `fr.models`.
 
 ### Changed
@@ -34,10 +37,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `201` on create, pass it.
 - `assert_status_code=None` now skips the status check. Before, it accepted
   any status below 400.
-- `fr.IDMixin` and `fr.TimestampsMixin` on a model whose base is not a
-  dataclass base now raise `RestlyConfigurationError`. Before, SQLAlchemy
-  made that one model a dataclass, so its constructor suddenly required
-  fields such as `id`, and a create request failed.
+- Models compare by identity, as SQLAlchemy models without dataclasses do:
+  two objects are equal only when they are the same object. This holds for
+  `fr.ModelDefaults`, `fr.IDMixin` and `fr.TimestampsMixin`. Before, two
+  objects of a model on `fr.DataclassBase` were equal when their fields were
+  equal, and a model object could not go in a `set`. To compare a model by
+  its fields again, pass `eq=True` on it: `class Post(fr.IDMixin, Base, eq=True)`.
 - `restly new` generates `app/models.py` with the project's own
   `class Base(fr.ModelDefaults, DeclarativeBase)`. The models, `alembic/env.py`,
   the test setup and `create_all` use that `Base` instead of
@@ -49,8 +54,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   base. Every app that used them shared one registry and one `MetaData`
   inside Restly. So the tables of one package ended up in the migrations of
   another, and to add a naming convention you had to change Restly's object.
-  Declare a base of your own instead. The tables, their names and their
-  column types stay the same, so Alembic finds no difference:
+  Declare one base of your own for the whole app instead. Put it in one
+  module, and import it from there in every module with models. The tables,
+  their names and their column types stay the same, so Alembic finds no
+  difference:
 
   ```python
   from sqlalchemy.orm import DeclarativeBase
@@ -62,9 +69,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       title: Mapped[str]
   ```
 
-  Then pass `Base` where you passed `fr.DataclassBase` or `fr.IDBase`: in
-  `configure_tests(base=...)`, in `create_all()` and `async_create_all()`,
-  and as `target_metadata = Base.metadata` in `alembic/env.py`.
+  Then use `Base` everywhere you used `fr.DataclassBase` or `fr.IDBase`:
+
+  - `class Tag(fr.DataclassBase)` becomes `class Tag(Base)`.
+  - `sa.Table("post_tag", fr.DataclassBase.metadata, ...)` becomes
+    `sa.Table("post_tag", Base.metadata, ...)`.
+  - `configure_tests(base=Base)`, `create_all(Base)` and
+    `async_create_all(Base)`.
+  - `target_metadata = Base.metadata` in `alembic/env.py`.
 
 ## [0.11.0] - 2026-10-09
 

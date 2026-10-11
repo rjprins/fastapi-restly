@@ -77,9 +77,15 @@ wherever they are used, at module level rather than inside a function. Run
 `alembic check` in CI to catch one that is missed: it reports the absent model
 as a dropped table rather than failing quietly.
 
-Restly's declarative bases map plain `Mapped[datetime]` columns to
-`DateTime(timezone=True)`. On PostgreSQL, upgrading an existing naive timestamp
-column requires an explicit interpretation of the stored values. If they
+(timezone-migration)=
+
+### Give an existing datetime column a time zone
+
+A base with
+{class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>` maps plain
+`Mapped[datetime]` columns to `DateTime(timezone=True)`. On PostgreSQL,
+upgrading an existing naive timestamp column requires an explicit
+interpretation of the stored values. If they
 represent UTC, use a reviewed migration such as:
 
 ```python

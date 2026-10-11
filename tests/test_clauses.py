@@ -435,7 +435,7 @@ def test_unrelated_C_attribute_does_not_collide():
     assert isinstance(OddClauses.anything, WhereClause)
 
 
-def test_namespace_registers_on_restly_idbase():
+def test_namespace_registers_on_a_model_defaults_base():
     from sqlalchemy.orm import Mapped as M
     from sqlalchemy.orm import mapped_column as mc
 

@@ -40,13 +40,18 @@ class Comment(fr.TimestampsMixin, fr.IDMixin, Base):
     blog_post_id: Mapped[int] = mapped_column(ForeignKey("blog_post.id"))
 ```
 
-Every model on `Base` then gets these defaults:
+`fr.ModelDefaults` already includes SQLAlchemy's `MappedAsDataclass` and
+`AsyncAttrs`, so leave those out of the base. Every model on `Base` then gets
+these defaults:
 
 - **A dataclass constructor.** The constructor takes keyword arguments only:
   `BlogPost(title="Hello")`. So a field with a default can come before a field
   without one, as `published` does above, and type checkers accept that. Use
   `mapped_column(init=False)` for a column that the constructor must not
   take.
+- **Equality by identity.** Two model objects are equal only when they are
+  the same object, as for any SQLAlchemy model. So a model object can go in a
+  `set`, and comparing objects never loads a relationship.
 - **A table name.** The table name is the class name in snake_case:
   `BlogPost` gets `blog_post`. That is why `ForeignKey("blog_post.id")` works.
   Set `__tablename__` on a model to choose another name.
@@ -54,9 +59,9 @@ Every model on `Base` then gets these defaults:
   `DateTime(timezone=True)`. Store UTC times in it. PostgreSQL returns them
   with a time zone, but SQLite returns them without one. For a clock time
   without a time zone, use `mapped_column(DateTime())` on that column.
-- **Enums as strings.** A column typed with an `enum.Enum` stores the member
-  as a string of up to 64 characters, not as a database enum type. A new
-  member then needs no database migration.
+- **Enums as strings.** A column typed with an `enum.Enum` stores the name of
+  the member, such as `RED`, as a string of up to 64 characters. It is not a
+  database enum type, so a new member needs no database migration.
 - **`awaitable_attrs`.** Code outside a view can await a relationship that is
   not loaded yet, as
   [Relationship Loading and Async](howto_relationship_loading.md) shows.
@@ -93,12 +98,21 @@ class Base(fr.ModelDefaults, DeclarativeBase):
 ```
 
 Your `type_annotation_map` entries win over Restly's. Restly's entries still
-apply to the types you leave out. So `{datetime: DateTime()}` stores every
-datetime on this base without a time zone, and enums are still strings.
+apply to the types you leave out. So `{datetime: DateTime()}` stores the
+datetimes on this base without a time zone, and enums are still strings. The
+columns of `fr.TimestampsMixin` keep their time zone, because the mixin sets
+their type itself.
 
 For one column, pass the type to `mapped_column`, as in
 `mapped_column(Enum(Color, native_enum=True))`. For one table, set
 `__tablename__`.
+
+Set dataclass options on each model, not on the base. For example,
+`class Post(fr.IDMixin, Base, eq=True)` makes two `Post` objects equal when
+their fields are equal. SQLAlchemy takes the options from the first dataclass
+class in the bases of a model, and that is often a mixin. So options on the
+base would apply to some models only, and the base raises
+{class}`fr.exc.RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`.
 
 (model-mixins)=
 
@@ -110,8 +124,8 @@ it.
 
 {class}`fr.TimestampsMixin <fastapi_restly.models.TimestampsMixin>` adds
 `created_at` and `updated_at`. Both are UTC datetimes with a time zone.
-SQLAlchemy sets them when it inserts the row, and sets `updated_at` again on
-every update. A schema can return them with
+The constructor sets both to the current time, and SQLAlchemy sets
+`updated_at` again on every update. A schema can return them with
 {class}`fr.TimestampsSchemaMixin <fastapi_restly.schemas.TimestampsSchemaMixin>`.
 
 For a different primary key, declare `id` yourself instead of using
@@ -130,10 +144,10 @@ class Product(Base):
     name: Mapped[str]
 ```
 
-The two mixins add dataclass fields, so they need a dataclass base: one with
-`fr.ModelDefaults`, or with SQLAlchemy's `MappedAsDataclass`. On a base
-without either, they raise
-{class}`fr.exc.RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`.
+The two mixins are SQLAlchemy dataclass mixins. On a base without
+`fr.ModelDefaults`, SQLAlchemy makes each model that uses them a dataclass.
+The constructor of that model then takes keyword arguments only, and requires
+every field without a default.
 
 ## Use the base in your app
 
@@ -156,7 +170,21 @@ Restly's views and schemas work with any SQLAlchemy declarative model,
 dataclass or not. Models that you already have can stay on their own base, as
 [Use Restly in an Existing Project](howto_existing_project.md) shows.
 
-Adding `fr.ModelDefaults` to an existing base changes every model on it into
-a dataclass. A field without a default becomes a required constructor
-argument. Two objects with the same field values are equal, and an object
-cannot go in a `set`. So add it to a new base, or change the models with care.
+Adding `fr.ModelDefaults` to a base that already has models changes those
+models:
+
+- Their constructors take keyword arguments only, and require every field
+  without a default.
+- `Mapped[datetime]` columns get a time zone. On PostgreSQL, `TIMESTAMP`
+  becomes `TIMESTAMP WITH TIME ZONE`. The migration must say how to read the
+  stored values, as [Deploying](#timezone-migration) shows.
+- Enum columns become strings. On PostgreSQL, a native `ENUM` becomes
+  `VARCHAR(64)`, so that needs a migration too.
+
+Alembic shows these column changes when it generates the migration. Review
+the migration before you run it.
+
+Put `fr.ModelDefaults` on the base itself. On a class below another
+declarative base, it raises
+{class}`fr.exc.RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`,
+because Restly's defaults change the registry of the whole base.

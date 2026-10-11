@@ -11,6 +11,7 @@ import pytest
 from sqlalchemy import DateTime, MetaData, Numeric
 from sqlalchemy.orm import (
     DeclarativeBase,
+    DeclarativeBaseNoMeta,
     Mapped,
     MappedAsDataclass,
     mapped_column,
@@ -122,19 +123,75 @@ def test_order_of_the_bases_does_not_matter():
     assert Reading.__table__.c.taken_at.type.timezone is True
 
 
-@pytest.mark.parametrize("mixin", [fr.IDMixin, fr.TimestampsMixin])
-def test_model_mixins_refuse_a_plain_base(mixin):
+def test_models_compare_by_identity():
+    class Base(fr.ModelDefaults, DeclarativeBase):
+        pass
+
+    class Tag(Base):
+        id: Mapped[int] = mapped_column(primary_key=True, init=False)
+        name: Mapped[str]
+
+    class Post(fr.TimestampsMixin, fr.IDMixin, Base):
+        title: Mapped[str]
+
+    for model, kwargs in [(Tag, {"name": "a"}), (Post, {"title": "a"})]:
+        first, second = model(**kwargs), model(**kwargs)
+        assert first != second
+        assert first == first
+        assert len({first, second}) == 2
+
+
+def test_a_model_can_compare_by_value():
+    class Base(fr.ModelDefaults, DeclarativeBase):
+        pass
+
+    class Post(fr.IDMixin, Base, eq=True):
+        title: Mapped[str]
+
+    assert Post(title="a") == Post(title="a")
+
+
+def test_dataclass_options_on_the_base_raise():
+    with pytest.raises(fr.exc.RestlyConfigurationError, match="on each model"):
+
+        class Base(fr.ModelDefaults, DeclarativeBase, eq=True):
+            pass
+
+
+def test_model_defaults_below_a_declarative_base_raises():
+    class AppBase(DeclarativeBase):
+        pass
+
+    with pytest.raises(fr.exc.RestlyConfigurationError, match="on the base itself"):
+
+        class RestlyModel(fr.ModelDefaults, AppBase):
+            __abstract__ = True
+
+
+def test_model_defaults_on_a_base_without_a_metaclass():
+    class Base(fr.ModelDefaults, DeclarativeBaseNoMeta):
+        pass
+
+    class Reading(fr.IDMixin, Base):
+        taken_at: Mapped[datetime]
+
+    assert Reading.__table__.c.taken_at.type.timezone is True
+
+
+def test_model_mixins_on_a_plain_base_make_the_model_a_dataclass():
     class Base(DeclarativeBase):
         pass
 
-    with pytest.raises(fr.exc.RestlyConfigurationError, match="fr.ModelDefaults"):
+    class Widget(fr.TimestampsMixin, fr.IDMixin, Base):
+        __tablename__ = "widget"
+        name: Mapped[str]
 
-        class Widget(mixin, Base):
-            __tablename__ = "widget"
-            key: Mapped[int] = mapped_column(primary_key=True)
+    assert dataclasses.is_dataclass(Widget)
+    assert Widget(name="w").name == "w"
+    assert Widget(name="w") != Widget(name="w")
 
 
-def test_model_mixins_accept_a_dataclass_base_without_restly_defaults():
+def test_model_mixins_on_a_dataclass_base_without_restly_defaults():
     class Base(MappedAsDataclass, DeclarativeBase):
         pass
 
