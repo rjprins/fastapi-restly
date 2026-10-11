@@ -33,7 +33,7 @@ Replace the `app = FastAPI(...)` line with this one:
 ```{literalinclude} ../example-projects/blog/blog/main.py
 :language: python
 :start-at: app = FastAPI(
-:end-at: app = FastAPI(
+:end-at: get_user_id)])
 ```
 
 `get_user_id` takes the user id from an `X-User-ID` header, so you can try
