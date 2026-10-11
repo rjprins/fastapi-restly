@@ -67,11 +67,14 @@ class TicketClauses(fr.ClauseNamespace):
         return Ticket.created_at >= Report.since()
 
     visible = fr.all_of(owned_by_tenant, fr.none_of(is_deleted))
+    default_scope = visible
 
 
 # constructor -> type symmetry
 assert_type(TicketClauses.is_deleted, fr.WhereClause)
 assert_type(TicketClauses.since, fr.WhereClause)
+# default_scope keeps the type of the clause assigned to it
+assert_type(TicketClauses.default_scope, fr.WhereClause)
 
 # composites are WhereClauses, so they compose on
 pure = fr.all_of(TicketClauses.owned_by_tenant, TicketClauses.is_deleted)
@@ -80,23 +83,15 @@ assert_type(fr.any_of(pure, TicketClauses.is_deleted), fr.WhereClause)
 
 
 def unscoped_composition(
-    default: fr.WhereClause | fr.clauses.Unscoped,
-    other: fr.WhereClause | fr.clauses.Unscoped,
+    default: fr.WhereClause, legacy: fr.WhereClause | fr.clauses.Unscoped
 ) -> None:
-    # A definite predicate in either position absorbs possible unscoping.
+    # UNSCOPED is a WhereClause, so every composition with it is one
     assert_type(fr.all_of(default, pure), fr.WhereClause)
-    assert_type(fr.all_of(pure, default), fr.WhereClause)
-    assert_type(fr.all_of(default, pure, other), fr.WhereClause)
-    # Other mixed positions retain a safe union, even with a known predicate.
-    assert_type(fr.all_of(default, other, pure), fr.WhereClause | fr.clauses.Unscoped)
-    assert_type(fr.all_of(default), fr.WhereClause | fr.clauses.Unscoped)
-    assert_type(fr.all_of(default, other), fr.WhereClause | fr.clauses.Unscoped)
-    assert_type(fr.all_of(fr.clauses.UNSCOPED), fr.clauses.Unscoped)
-    assert_type(fr.any_of(fr.clauses.UNSCOPED), fr.clauses.Unscoped)
-    assert_type(fr.any_of(default, pure), fr.WhereClause | fr.clauses.Unscoped)
-    assert_type(fr.any_of(pure, default), fr.WhereClause | fr.clauses.Unscoped)
-    assert_type(fr.none_of(default, other), fr.WhereClause)
+    assert_type(fr.all_of(fr.clauses.UNSCOPED), fr.WhereClause)
+    assert_type(fr.any_of(fr.clauses.UNSCOPED, pure), fr.WhereClause)
     assert_type(fr.none_of(fr.clauses.UNSCOPED), fr.WhereClause)
+    # an annotation that still spells out the union is accepted
+    assert_type(fr.all_of(legacy, pure), fr.WhereClause)
 
     # The motivating composition remains usable wherever a predicate is needed.
     scoped = fr.all_of(default, pure)
@@ -104,11 +99,8 @@ def unscoped_composition(
     assert_type(fr.apply_clauses(update(Ticket), scoped), Update)
     assert_type(fr.apply_clauses(delete(Ticket), scoped), Delete)
     fr.RefExists(Ticket, scope=scoped)
-
-    # A variable-length list may contain only UNSCOPED.
-    predicates: list[fr.WhereClause | fr.clauses.Unscoped] = [default, other]
-    assert_type(fr.all_of(*predicates), fr.WhereClause | fr.clauses.Unscoped)
-    assert_type(fr.any_of(*predicates), fr.WhereClause | fr.clauses.Unscoped)
+    # UNSCOPED goes uncalled into a condition, as SQL TRUE
+    _any_note = select(TicketNote).where(TicketNote.ticket.has(fr.clauses.UNSCOPED))
 
 
 # apply_clauses overloads per statement kind; the Select overload keeps
@@ -142,3 +134,6 @@ class TicketNoteClauses(fr.ClauseNamespace):
 
 
 _notes = select(TicketNote).where(TicketNote.ticket.has(TicketClauses.is_deleted))
+_visible_notes = select(TicketNote).where(
+    TicketNote.ticket.has(TicketClauses.default_scope)
+)

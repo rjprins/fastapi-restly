@@ -275,11 +275,11 @@ the members have no value.
 (unscoped-composition)=
 ### Composing with `UNSCOPED`
 
-Use `fr.clauses.UNSCOPED` to express no restriction. In boolean
-composition it accepts every row, equivalent to SQL `TRUE`. It remains
-a separate sentinel, not a `WhereClause`.
+Use `fr.clauses.UNSCOPED` to express no restriction. It is a
+`WhereClause` whose condition is SQL `TRUE`, so it accepts every row. It
+goes everywhere a clause goes, and calling it returns `sqlalchemy.true()`.
 
-The composition functions accept this sentinel with the following rules.
+The composition functions simplify it with the following rules.
 Here `C` is a predicate clause, and the argument order does not affect
 the result:
 
@@ -299,19 +299,17 @@ that result matches no rows. The false clause works as a scope too:
 lists and counts are empty, and retrieve and reference checks return 404.
 
 `all_of` removes `UNSCOPED` arguments before composing the remaining
-clauses. With one clause left it returns that exact object. With none left it returns the sentinel. This
-lets a predicate extend a possibly unscoped default without branching:
+clauses. With one clause left it returns that exact object. With none
+left it returns `UNSCOPED`. This lets a predicate extend a possibly
+unscoped default without branching:
 
 ```python
 scope = fr.all_of(ItemClauses.default_scope, has_active_subscription)
 ```
 
-The return type is `WhereClause` when a definite predicate is the first
-or second argument and the other arguments are predicates or `Unscoped`.
-Mixed argument lists outside those overloads use a safe union return
-type. `any_of` can return `Unscoped` when any argument may be unscoped.
-`none_of` always returns a `WhereClause`. Use `apply_clauses` for a
-result that may be the sentinel, which is not callable.
+Every composition returns a `WhereClause`, because `UNSCOPED` is one
+too. So the result works everywhere a clause works, even when it is
+`UNSCOPED`.
 
 `all_of()`, `any_of()`, and `none_of()` with no arguments raise.
 Passing `UNSCOPED` explicitly counts as an argument.

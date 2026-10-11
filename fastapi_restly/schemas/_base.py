@@ -37,7 +37,7 @@ from .._pagination import (
     NoPagination,
     NumberedPagination,
 )
-from ..clauses import Unscoped, WhereClause, apply_clauses
+from ..clauses import UNSCOPED, WhereClause, apply_clauses
 from ..clauses._scopes import _default_scope
 from ..exc import NotFound, RestlyConfigurationError
 
@@ -207,7 +207,7 @@ class RefExists:
     def __init__(
         self,
         model: type[Any] | type[_Infer],
-        scope: WhereClause | Unscoped | _NotGiven = _NOT_GIVEN,
+        scope: WhereClause | _NotGiven = _NOT_GIVEN,
     ) -> None:
         if scope is None:
             raise TypeError(
@@ -215,7 +215,7 @@ class RefExists:
                 "scope=fr.clauses.UNSCOPED, so a variable that happens to be "
                 "None can never silently unscope the check"
             )
-        if not isinstance(scope, (WhereClause, Unscoped, _NotGiven)):
+        if not isinstance(scope, (WhereClause, _NotGiven)):
             raise TypeError(
                 f"RefExists scope must be a WhereClause or UNSCOPED, got "
                 f"{type(scope).__name__}; wrap a raw expression with "
@@ -793,7 +793,7 @@ def _effective_ref_scope(marker: RefExists, model: type[Any]) -> WhereClause | N
     ``default_scope`` otherwise."""
     if isinstance(marker.scope, _NotGiven):
         return _default_scope(model)
-    if isinstance(marker.scope, Unscoped):
+    if marker.scope is UNSCOPED:
         return None
     return marker.scope
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, NoReturn, Sequence, TypeVar, final, overload
 
-from sqlalchemy import ColumnElement, Delete, Select, Update
+from sqlalchemy import ColumnElement, Delete, Select, Update, true
 from sqlalchemy.sql.expression import (
     BindParameter,
     ColumnClause,
@@ -16,6 +16,8 @@ from sqlalchemy.sql.expression import (
 from sqlalchemy.sql.visitors import cloned_traverse
 
 from ._context import ContextParam
+
+_ClauseT = TypeVar("_ClauseT", bound="WhereClause")
 
 
 class WhereClause:
@@ -45,8 +47,12 @@ class WhereClause:
 
     @classmethod
     def _of(
-        cls, build: Callable[[], ColumnElement[bool]], label: str, *, fixed: bool
-    ) -> WhereClause:
+        cls: type[_ClauseT],
+        build: Callable[[], ColumnElement[bool]],
+        label: str,
+        *,
+        fixed: bool,
+    ) -> _ClauseT:
         # the construction path around the teaching __init__
         self = cls.__new__(cls)
         self._build = build
@@ -96,20 +102,19 @@ class WhereClause:
 
 
 @final
-class Unscoped:
-    """Sentinel scope: explicitly no scope, everywhere a scope can appear.
+class Unscoped(WhereClause):
+    """The clause that accepts every row: explicitly no scope.
 
-    `UNSCOPED` is the one instance; the class is public so a `scope`
-    declaration or a `get_one` / `get_many` override can name the type
-    (`WhereClause | Unscoped`).
+    `UNSCOPED` is the one instance. Its condition is SQL TRUE, so it goes
+    everywhere a clause goes, and calling it returns ``true()``.
     The explicit spelling for a view's `scope` (where `None` means
     "fall back to the model's default"), a namespace's `default_scope`
     (where undeclared defers to
     a base model's namespace, or none), and a `RefExists` scope (where
     `None` is rejected, so a variable that happens to be None can never
-    silently unscope). `apply_clauses()` accepts it and applies nothing
-    for it, preserving existing filters and other supplied clauses.
-    Boolean composition treats it as SQL TRUE: all_of ignores it and
+    silently unscope). `apply_clauses()` applies nothing for it,
+    preserving existing filters and other supplied clauses.
+    Boolean composition simplifies it as SQL TRUE: all_of ignores it and
     returns the sole remaining clause unchanged, or UNSCOPED when none
     remain. any_of propagates it, and none_of returns a WhereClause over
     SQL false(). Composition validates other operands before simplifying.
@@ -123,7 +128,7 @@ class Unscoped:
         return "fr.clauses.UNSCOPED"
 
 
-UNSCOPED = Unscoped()
+UNSCOPED = Unscoped._of(true, "UNSCOPED", fixed=True)
 
 
 def _fill_members(expr: ColumnElement[bool]) -> ColumnElement[bool]:
@@ -185,7 +190,7 @@ def _bound_as_value(member: ContextParam[Any]) -> TypeError:
 
 
 def _without_unscoped(
-    name: str, clauses: tuple[WhereClause | Unscoped, ...]
+    name: str, clauses: tuple[WhereClause, ...]
 ) -> tuple[WhereClause, ...]:
     given: list[WhereClause] = []
     for clause in clauses:
@@ -254,12 +259,12 @@ _SelectT = TypeVar("_SelectT", bound=Select)
 
 
 @overload
-def apply_clauses(stmt: _SelectT, /, *clauses: WhereClause | Unscoped) -> _SelectT: ...
+def apply_clauses(stmt: _SelectT, /, *clauses: WhereClause) -> _SelectT: ...
 @overload
-def apply_clauses(stmt: Update, /, *clauses: WhereClause | Unscoped) -> Update: ...
+def apply_clauses(stmt: Update, /, *clauses: WhereClause) -> Update: ...
 @overload
-def apply_clauses(stmt: Delete, /, *clauses: WhereClause | Unscoped) -> Delete: ...
-def apply_clauses(stmt, /, *clauses: WhereClause | Unscoped):
+def apply_clauses(stmt: Delete, /, *clauses: WhereClause) -> Delete: ...
+def apply_clauses(stmt, /, *clauses: WhereClause):
     """Apply clauses to a statement built with plain SQLAlchemy.
 
     The bridge between the two worlds: build select()/update()/delete()

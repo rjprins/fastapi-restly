@@ -838,3 +838,18 @@ def test_unscoped_nested_composition_and_existing_statement_filter():
     assert "item.id =" in str(stmt)
     assert "deleted_at IS NULL" in str(stmt)
     assert list(params_of(stmt).values()) == [9]
+
+
+def test_unscoped_is_a_clause_over_sql_true():
+    assert isinstance(UNSCOPED, WhereClause)
+    assert UNSCOPED().compare(true())
+    # uncalled inside a relationship condition, it requires only the parent
+    stmt = select(Note).where(Note.folder.has(UNSCOPED))
+    assert "WHERE folder.id = note.folder_id AND true" in str(stmt)
+
+
+def test_a_namespace_clause_can_be_unscoped():
+    class _OpenClauses(ClauseNamespace):
+        everything = UNSCOPED
+
+    assert _OpenClauses.everything is UNSCOPED

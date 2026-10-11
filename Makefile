@@ -27,6 +27,7 @@ test-typing:
 	@echo "=== Type-checking the example projects ==="
 	cd example-projects/shop && uv run --with mypy mypy
 	cd example-projects/blog && uv run --with mypy mypy
+	cd example-projects/blog && uv run --with pyright pyright blog tests
 	cd example-projects/saas && uv run --with mypy mypy
 
 # Test the main framework
@@ -143,7 +144,7 @@ build-pages:
 help:
 	@echo "Available commands:"
 	@echo "  test-framework  - Test the main FastAPI-Restly framework"
-	@echo "  test-typing     - Run Pyright and mypy on typing fixtures, mypy on the examples"
+	@echo "  test-typing     - Run Pyright and mypy on typing fixtures, mypy on the examples, Pyright on the blog"
 	@echo "  test-shop       - Test the shop example"
 	@echo "  test-blog       - Test the blog example"
 	@echo "  test-saas       - Test the SaaS example"

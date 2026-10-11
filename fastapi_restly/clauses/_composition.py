@@ -2,18 +2,14 @@
 
 from __future__ import annotations
 
-from typing import overload
-
 from sqlalchemy import and_, false, not_, or_
 
-from ._runtime import UNSCOPED, Unscoped, WhereClause, _without_unscoped
+from ._runtime import UNSCOPED, WhereClause, _without_unscoped
 
 __all__ = ["all_of", "any_of", "none_of"]
 
 
-def _operands(
-    name: str, clauses: tuple[WhereClause | Unscoped, ...]
-) -> tuple[WhereClause, ...]:
+def _operands(name: str, clauses: tuple[WhereClause, ...]) -> tuple[WhereClause, ...]:
     if not clauses:
         raise TypeError(f"{name}() requires at least one clause")
     return _without_unscoped(name, clauses)
@@ -25,32 +21,7 @@ def _fixed(clauses: tuple[WhereClause, ...]) -> bool:
     return all(clause._fixed for clause in clauses)
 
 
-@overload
-def all_of(*clauses: WhereClause) -> WhereClause: ...
-
-
-@overload
-def all_of(first: WhereClause, /, *clauses: WhereClause | Unscoped) -> WhereClause: ...
-
-
-@overload
-def all_of(
-    first: WhereClause | Unscoped,
-    second: WhereClause,
-    /,
-    *clauses: WhereClause | Unscoped,
-) -> WhereClause: ...
-
-
-@overload
-def all_of(*clauses: Unscoped) -> Unscoped: ...
-
-
-@overload
-def all_of(*clauses: WhereClause | Unscoped) -> WhereClause | Unscoped: ...
-
-
-def all_of(*clauses: WhereClause | Unscoped) -> WhereClause | Unscoped:
+def all_of(*clauses: WhereClause) -> WhereClause:
     """AND the operands' predicates.
 
     UNSCOPED is a no-op. One remaining operand is returned unchanged, and
@@ -68,19 +39,7 @@ def all_of(*clauses: WhereClause | Unscoped) -> WhereClause | Unscoped:
     )
 
 
-@overload
-def any_of(*clauses: WhereClause) -> WhereClause: ...
-
-
-@overload
-def any_of(*clauses: Unscoped) -> Unscoped: ...
-
-
-@overload
-def any_of(*clauses: WhereClause | Unscoped) -> WhereClause | Unscoped: ...
-
-
-def any_of(*clauses: WhereClause | Unscoped) -> WhereClause | Unscoped:
+def any_of(*clauses: WhereClause) -> WhereClause:
     """OR the operands' predicates.
 
     UNSCOPED accepts every row, so any UNSCOPED operand returns the sentinel.
@@ -95,7 +54,7 @@ def any_of(*clauses: WhereClause | Unscoped) -> WhereClause | Unscoped:
     )
 
 
-def none_of(*clauses: WhereClause | Unscoped) -> WhereClause:
+def none_of(*clauses: WhereClause) -> WhereClause:
     """True when none of the operands' predicates hold.
 
     NOT over the OR of all operands. An UNSCOPED operand returns a

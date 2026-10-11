@@ -66,24 +66,17 @@ from .._exception_handlers import register_default_exception_handlers
 
 if sys.version_info >= (3, 14):
     import annotationlib
-from ..clauses import (
-    UNSCOPED,
-    Unscoped,
-    WhereClause,
-    all_of,
-    apply_clauses,
-    where_clause,
-)
+from ..clauses import UNSCOPED, WhereClause, all_of, apply_clauses, where_clause
 from ..clauses._scopes import _default_scope
 
 #: A per-read scope: ``None`` for the view's own, a clause that replaces it
 #: for that read, or ``fr.clauses.UNSCOPED``.
-ReadScope = WhereClause | Unscoped | None
+ReadScope = WhereClause | None
 
 # A per-read narrowing filter: a SQLAlchemy boolean expression, or anything
 # all_of takes. Private: only the final list handler accepts one, so no
 # override spells it.
-_ReadWhere = ColumnElement[bool] | WhereClause | Unscoped | None
+_ReadWhere = ColumnElement[bool] | WhereClause | None
 from .._mapping import is_mapped_class, is_mapped_instance
 from .._pagination import (
     _DEFAULT_PAGINATION,
@@ -1312,7 +1305,7 @@ class BaseRestView(
     #: (``ItemClauses.trashed`` containing the tenant clause ``visible``
     #: contains). A rule that must hold under every scope is a session-level
     #: ``with_loader_criteria``, not a view concern. See the Scopes guide.
-    scope: ClassVar[WhereClause | Unscoped | None] = None
+    scope: ClassVar[WhereClause | None] = None
     #: The type of the ``{id}`` path parameter on the default routes. ``None``
     #: (the default) takes the Python type of the model's primary key, and a
     #: composite key gets ``int``. Set a type to override it. Built-in item
@@ -1358,7 +1351,7 @@ class BaseRestView(
         # validate at class definition, so a raw expression fails at
         # import instead of on the first read
         scope = cls.__dict__.get("scope")
-        if not (scope is None or scope is UNSCOPED or isinstance(scope, WhereClause)):
+        if not (scope is None or isinstance(scope, WhereClause)):
             raise RestlyConfigurationError(
                 f"{cls.__name__}.scope must be a WhereClause, "
                 f"fr.clauses.UNSCOPED, or None, got {type(scope).__name__}; "
@@ -1856,7 +1849,7 @@ def _schema_response(view_cls: type) -> type[pydantic.BaseModel]:
 _AnyRestView = BaseRestView[Any, Any, Any, Any, Any]
 
 
-def resolve_scope(target: type[Any] | _AnyRestView) -> WhereClause | Unscoped:
+def resolve_scope(target: type[Any] | _AnyRestView) -> WhereClause:
     """The scope a read applies, resolved down the ladder.
 
     Pass a view, class or instance, for the visibility that view's reads
@@ -1900,20 +1893,18 @@ def resolve_scope(target: type[Any] | _AnyRestView) -> WhereClause | Unscoped:
     declared = target.scope
     if declared is None:
         return _model_scope(target.model)
-    if declared is UNSCOPED:
-        return UNSCOPED
     # backstop for a post-definition assignment; the declared form is
     # validated in __init_subclass__
     return _checked_scope(declared, label, "the scope")
 
 
-def _model_scope(model: type[Any]) -> WhereClause | Unscoped:
+def _model_scope(model: type[Any]) -> WhereClause:
     declared = _default_scope(model)
     return UNSCOPED if declared is None else declared
 
 
-def _checked_scope(scope: Any, label: str, what: str) -> WhereClause | Unscoped:
-    if scope is UNSCOPED or isinstance(scope, WhereClause):
+def _checked_scope(scope: Any, label: str, what: str) -> WhereClause:
+    if isinstance(scope, WhereClause):
         return scope
     raise RestlyConfigurationError(
         f"{label}: {what} must be a WhereClause or fr.clauses.UNSCOPED, got "
@@ -1921,8 +1912,8 @@ def _checked_scope(scope: Any, label: str, what: str) -> WhereClause | Unscoped:
     )
 
 
-def _checked_where(where: Any, label: str) -> WhereClause | Unscoped:
-    if where is UNSCOPED or isinstance(where, WhereClause):
+def _checked_where(where: Any, label: str) -> WhereClause:
+    if isinstance(where, WhereClause):
         return where
     if isinstance(where, ColumnElement):
         return where_clause(where)

@@ -5,7 +5,7 @@ from __future__ import annotations
 import weakref
 from typing import Any, ClassVar
 
-from ._runtime import UNSCOPED, Unscoped, WhereClause
+from ._runtime import UNSCOPED, WhereClause
 
 __all__ = ["ClauseNamespace"]
 
@@ -43,7 +43,7 @@ class ClauseNamespace:
     """
 
     model: ClassVar[type[Any]]
-    default_scope: ClassVar[WhereClause | Unscoped] = UNSCOPED
+    default_scope: ClassVar[WhereClause] = UNSCOPED
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
@@ -51,15 +51,12 @@ class ClauseNamespace:
         for name, value in vars(cls).items():
             if name.startswith("_") or name == "model":
                 continue
-            if name == "default_scope":
-                if value is UNSCOPED:
-                    continue
-                if value is None:
-                    raise TypeError(
-                        f"{cls.__name__}.default_scope = None says nothing; "
-                        "opt out explicitly with UNSCOPED "
-                        "(fr.clauses.UNSCOPED)"
-                    )
+            if name == "default_scope" and value is None:
+                raise TypeError(
+                    f"{cls.__name__}.default_scope = None says nothing; "
+                    "opt out explicitly with UNSCOPED "
+                    "(fr.clauses.UNSCOPED)"
+                )
             if not isinstance(value, WhereClause):
                 if name == "default_scope":
                     raise TypeError(

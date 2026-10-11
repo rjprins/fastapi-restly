@@ -37,6 +37,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `201` on create, pass it.
 - `assert_status_code=None` now skips the status check. Before, it accepted
   any status below 400.
+- `fr.clauses.UNSCOPED` is now a `WhereClause`. Its condition is SQL `TRUE`,
+  so it goes everywhere a clause goes: calling it returns `sqlalchemy.true()`,
+  and `Model.relationship.has(UNSCOPED)` works. The type
+  `WhereClause | Unscoped` is now just `WhereClause`, and `fr.all_of`,
+  `fr.any_of` and `fr.none_of` always return a `WhereClause`. So pyright now
+  accepts `Comment.post.has(PostClauses.default_scope)`. Code that uses
+  `isinstance(x, WhereClause)` to mean "a real filter" now also matches
+  `UNSCOPED`: test `x is fr.clauses.UNSCOPED` first.
 - Models compare by identity, as SQLAlchemy models without dataclasses do:
   two objects are equal only when they are the same object. This holds for
   `fr.ModelDefaults`, `fr.IDMixin` and `fr.TimestampsMixin`. Before, two
