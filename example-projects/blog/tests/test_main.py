@@ -1,7 +1,6 @@
 """The rules that "Tutorial: Add Authors and Drafts" builds, one test each.
 
-Anna (user 1) and Ben (user 2) play the two writers of the tutorial's
-"Try it" section.
+Anna (user 1) and Ben (user 2) play the two writers, as in the tutorial.
 """
 
 import warnings

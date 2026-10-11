@@ -2,8 +2,9 @@ import os
 from pathlib import Path
 
 # blog.main configures Restly when it is imported, so choose the test
-# database first, as "Test the rules" in Add Authors and Drafts does.
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
+# database first, as "Test the rules" in Add Authors and Drafts does. It lives
+# in memory, so each run creates the tables from the current models.
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite://"
 
 from blog.main import Base, app  # noqa: E402
 

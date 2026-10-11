@@ -54,8 +54,8 @@ Open <http://127.0.0.1:8000/docs>. The posts resource has five routes:
 | `DELETE` | `/posts/{id}` | Delete one post |
 
 Each route shows its request and response schema. Restly generated them from
-the model: `PostCreate` for the body of `POST`, `PostResponse` for every
-response, and so on. Create a post with the **Try it out** button, or with
+the model: `PostCreate` for the body of `POST`, `PostResponse` for a post in
+a response, and so on. Create a post with the **Try it out** button, or with
 `curl` from a second terminal:
 
 ```bash
@@ -143,9 +143,9 @@ the schema above `CommentView`, and point the view at it:
 A {attr}`schema <fastapi_restly.views.BaseRestView.schema>` says which fields
 the API accepts and returns. {class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>`
 adds the `id` field as read-only, so you do not declare it.
-`fr.MustExist[int, Post]` is a plain integer in JSON, and Restly checks that a
-`Post` with that id exists before it writes the comment. Send the same
-request again:
+{class}`fr.MustExist[int, Post] <fastapi_restly.schemas.MustExist>` is a
+plain integer in JSON, and Restly checks that a `Post` with that id exists
+before it writes the comment. Send the same request again:
 
 ```json
 {"detail": "Id not found for post_id: 999"}
@@ -223,6 +223,7 @@ These pages go deeper into what this tutorial used:
 - [Filter, Sort, and Paginate Lists](howto_query_modifiers.md): every filter
   operator, sorting, and paging
 - [Testing](howto_testing.md): test the API, with a rollback after each test
+- [Deploying](deploying.md): Alembic migrations instead of `async_create_all`
 - [Views](class_based_views.md): the sync `RestView`, and views without a
   model
 

@@ -4,7 +4,9 @@ docs/tutorial.md includes example-projects/blog/blog/part1.py, and
 docs/tutorial_customizing.md includes example-projects/blog/blog/main.py.
 Loading them by path here makes the framework suite fail when a tutorial's
 code stops working. Each block below is one section of a tutorial, with the
-responses that the section shows.
+responses that the section shows. The requests run against the complete file,
+so a response from an earlier state of the file, such as an error that a later
+step fixes, is not checked here.
 """
 
 import asyncio

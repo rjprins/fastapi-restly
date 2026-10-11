@@ -44,7 +44,9 @@ class AuthoredView(fr.AsyncRestView):
             return
         if Current.user_id() is None:
             raise fastapi.HTTPException(401, "Log in to write")
-        if obj is not None and obj.author_id != Current.user_id():
+        if action == "create":
+            return
+        if obj is None or obj.author_id != Current.user_id():
             raise fr.exc.Forbidden("Only the author can change this")
 
 

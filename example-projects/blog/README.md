@@ -30,8 +30,9 @@ uv run fastapi dev blog/main.py
 
 The server creates the SQLite database (`blog.db`) and its tables on startup,
 in the FastAPI `lifespan` hook. Visit <http://127.0.0.1:8000/docs> for the
-interactive OpenAPI UI. Send an `X-User-ID` header to act as a writer. The
-tutorial's "Try it" section has `curl` commands to start with.
+interactive OpenAPI UI. Send an `X-User-ID` header to act as a writer; it is
+a demo stand-in for real authentication. The tutorials show `curl` requests
+to start with.
 
 ## Run the tests
 
@@ -40,7 +41,7 @@ cd example-projects/blog
 uv run pytest -v
 ```
 
-The tests use a separate `test.db` database, and Restly's test fixtures roll
+The tests use a separate SQLite database in memory, and Restly's test fixtures roll
 back each test's changes. Each test checks one rule from the tutorial.
 
 ## Further reading

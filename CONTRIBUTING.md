@@ -95,7 +95,9 @@ make docs-serve
   illustrative); the landing-page teaser and Patterns entries are executed
   during review — keep them that way. The tutorials include their complete
   files from `example-projects/blog`, and `tests/test_tutorial.py` replays
-  the requests they show. Change the file and the test together.
+  the requests they show against those files. Change the file and the test
+  together. Check by hand the responses of an earlier state, such as the
+  error before a fix, and the code blocks that are not included.
 
 ## Pull Request Conventions
 

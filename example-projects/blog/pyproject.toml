@@ -33,6 +33,8 @@ dev = [
 config-settings = { editable_mode = "compat" }
 
 # blog/main.py is the tutorial code, which leaves view methods unannotated like
-# the rest of the docs. mypy checks the annotated parts; shop and saas run strict.
+# the rest of the docs. mypy checks the function bodies without asking for
+# annotations; shop and saas run strict.
 [tool.mypy]
 files = ["blog"]
+check_untyped_defs = true

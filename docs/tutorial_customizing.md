@@ -65,14 +65,17 @@ model reads `Current`. Add the `author_id` column to `Post`:
 
 `insert_default=Current.user_id` sets the column when SQLAlchemy inserts the
 row. Write `Current.user_id` without parentheses. With them, Python would
-read the value once, when it defines the class.
+read the value when it defines the class. No request has set a value then,
+so that fails.
 [Read the current user in a column default](#current-column-defaults)
 explains this. The default runs on every insert, from any view or script.
 
-The `post` table has a new column now. `async_create_all` creates missing
-tables, but it does not change a table that exists. Delete the `blog.db`
-file, and the server creates the tables again when it restarts. Then let Anna
-write a post. She also sends `"author_id": 2`:
+The `post` table has a new column now.
+{func}`async_create_all <fastapi_restly.db.async_create_all>` creates missing
+tables, but it does not change a table that exists. Stop the server with
+Ctrl+C, delete the `blog.db` file, and start the server again with
+`fastapi dev main.py`. It creates the tables again. Then let Anna write a
+post. She also sends `"author_id": 2`:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/posts \
@@ -153,11 +156,6 @@ curl -X POST http://127.0.0.1:8000/comments \
 # 404
 ```
 
-Code outside a request, such as a script, must bind `Current.user_id` before
-it reads posts. Without a value, the read fails with an error. It does not
-return all posts. [Scopes](scopes.md) covers this, and views that must see
-every post.
-
 ## Only the author may change a post
 
 Writing needs a user. Try to write a post without the header:
@@ -173,13 +171,11 @@ The post has no author, so the database refuses it. The answer should come
 before the database, and say what is wrong. And seeing a post does not mean
 that you may change it: another writer can read a published post, but must
 not edit it. Restly calls
-{meth}`authorize <fastapi_restly.views.RestView.authorize>` before each
-action, so the view overrides it:
+{meth}`authorize <fastapi_restly.views.AsyncRestView.authorize>` before each
+action, so the view overrides it. Add `import fastapi` to the imports, and
+add `authorize` to `PostView`:
 
 ```python
-import fastapi
-
-
 @fr.include_view(app)
 class PostView(fr.AsyncRestView):
     prefix = "/posts"
@@ -191,16 +187,19 @@ class PostView(fr.AsyncRestView):
             return
         if Current.user_id() is None:
             raise fastapi.HTTPException(401, "Log in to write")
-        if obj is not None and obj.author_id != Current.user_id():
+        if action == "create":
+            return
+        if obj is None or obj.author_id != Current.user_id():
             raise fr.exc.Forbidden("Only the author can change this")
 ```
 
 - `action` names the action. The CRUD actions are `get_many`, `get_one`,
   `create`, `update` and `delete`.
 - Everyone may read. The scope already decides which posts they see.
-- Every write needs a user.
-- For `update` and `delete`, `obj` is the loaded post. Only its author
-  passes.
+- Every write needs a user, and every user may create a post.
+- Every other write changes one post, and `obj` is that post. Only its
+  author passes. A write without `obj` fails, so a new action is safe until
+  you allow it.
 
 Send the anonymous request again, and let Ben try to edit Anna's draft:
 
@@ -231,9 +230,9 @@ Publishing is an action, not a field edit. Add a route for it to `PostView`:
 
 - {func}`@fr.post <fastapi_restly.views.post>` adds a route to the view,
   beside the CRUD routes.
-- {meth}`get_one <fastapi_restly.views.RestView.get_one>` loads the post
+- {meth}`get_one <fastapi_restly.views.AsyncRestView.get_one>` loads the post
   through the scope. Another writer's draft returns 404.
-- {meth}`write_action <fastapi_restly.views.RestView.write_action>` first
+- {meth}`write_action <fastapi_restly.views.AsyncRestView.write_action>` first
   calls `authorize("publish", post)`. The `authorize` method above lets only
   the author pass. When the block ends, Restly commits the change. If the
   block raises an exception, Restly does not commit.
@@ -275,14 +274,11 @@ Add this method to `PostView`:
 ```
 
 Restly calls
-{meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>`
+{meth}`after_action_commit <fastapi_restly.views.AsyncRestView.after_action_commit>`
 after it commits a write. `action` is the name of the action, and `new` is
 the saved post. The hook runs after the commit, so an error in it cannot
 undo the publish. [When `after_action_commit` raises](#after-action-commit-raises)
-shows how to handle such an error. A side effect that must be saved together
-with the post, such as an audit row, goes in
-{meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`
-instead. See [Transaction hooks](#transaction-hooks).
+shows how to handle such an error.
 
 Anna writes a second post and publishes it. The server terminal prints
 `New post: Second`:
@@ -293,6 +289,11 @@ curl -X POST http://127.0.0.1:8000/posts \
   -d '{"title": "Second", "content": "More"}'
 curl -X POST -H 'X-User-ID: 1' http://127.0.0.1:8000/posts/2/publish
 ```
+
+A side effect that must be saved together with the post, such as an audit
+row, goes in
+{meth}`before_action_commit <fastapi_restly.views.AsyncRestView.before_action_commit>`
+instead. See [Transaction hooks](#transaction-hooks).
 
 ## Share the rules with comments
 
@@ -318,8 +319,8 @@ comments on it. So comments get their own scope:
 - `post` is a relationship from a comment to its post.
 - `Comment.post.has(...)` is true when the comment's post matches the
   condition in the brackets.
-- The condition is the post scope, written without a call. Restly reads its
-  `Current.user_id` each time it applies the comment scope.
+- The condition is the post scope, written without parentheses. Restly reads
+  its `Current.user_id` each time it applies the comment scope.
 
 Together: a comment is visible when its post is visible.
 [A clause inside an expression](#clause-in-expression) explains this in more
@@ -355,8 +356,8 @@ Register only the views that have a model, not the base class.
 [Share Behaviour with Base Views](howto_inheritance.md) covers inheritance in
 more detail.
 
-The `comment` table has a new column, so delete `blog.db` again. Then try
-the whole story again, with comments:
+The `comment` table has a new column. Stop the server, delete `blog.db`, and
+start the server again. Then try the whole story again, with comments:
 
 ```bash
 # Anna writes a post, and a note on her draft.
@@ -405,12 +406,13 @@ fr.configure(
 ```
 
 Create `conftest.py` next to `main.py`. It sets the variable before it
-imports the app, because `main.py` configures Restly when it is imported:
+imports the app, because `main.py` configures Restly when it is imported. The
+tests use a database in memory, so each test run creates new tables:
 
 ```python
 import os
 
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite://"
 
 import fastapi_restly as fr  # noqa: E402
 from main import Base, app  # noqa: E402
@@ -474,21 +476,9 @@ Here is the blog with every change from this tutorial. The same file is the
 :language: python
 ```
 
-## When to override a CRUD method
-
-This blog overrides no CRUD method. Each rule is a declaration, such as a
-column default or a scope, or a hook that Restly calls, such as `authorize`.
-Try these first.
-
-Override a CRUD method such as `create` when an action needs logic that is
-not a rule about a field or a row. For example, `create` on a user view
-hashes the password before the user is saved.
-[Customizing RestView](#password-hash-example) shows that example. It also
-shows which method to override for each kind of change.
-
 ## Exercises
 
-Each exercise uses only what this tutorial showed. Write a test for each.
+Write a test for each exercise.
 
 1. Add `POST /posts/{id}/unpublish`. Only the author may call it, and it
    fails with 409 on a draft.
@@ -508,7 +498,8 @@ These pages cover the topics of this tutorial in more detail:
 - [Current context](howto_current.md): bind values in scripts, jobs, and
   tests
 - [Scopes](scopes.md): the model scope, view scopes, and a scope for one route
-- [Customizing RestView](customize.md): every method you can override
+- [Customizing RestView](customize.md): every method you can override, and
+  when to override one
 - [Share Behaviour with Base Views](howto_inheritance.md): the full
   inheritance guide
 - [Testing](howto_testing.md): the test fixtures, and test databases
