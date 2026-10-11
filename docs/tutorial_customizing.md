@@ -10,8 +10,7 @@ into a blog with several writers:
 
 Each rule is one declaration or one short method that Restly calls. The
 finished blog does not override any CRUD method. Start from the complete
-file at the end of Part 1. This tutorial does not use the `author_token` and
-`view_count` demo fields from Part 1.
+file at the end of Part 1.
 
 The examples use {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>`.
 The same code works with {class}`RestView <fastapi_restly.views.RestView>`,

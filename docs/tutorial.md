@@ -1,412 +1,230 @@
 # Tutorial: Build a Blog API
 
-This tutorial builds a small blog API with two related models. It uses
-FastAPI-Restly models, schemas, and view classes that inherit full CRUD
-endpoint methods. It assumes you have read [Getting
-Started](getting_started.md) and installed `fastapi-restly[standard]` with the
-`aiosqlite` driver.
+In this tutorial we build the API for a blog: posts, and comments on posts.
+At the end you have a running API with ten routes, documented in the browser,
+with filtering and paging. You also know what Restly adds to FastAPI. The
+tutorial takes about twenty minutes. [Add Authors and
+Drafts](tutorial_customizing.md) continues from the file you build here.
 
-This tutorial uses explicit schemas for clarity. For faster scaffolding, you can omit
-`schema = ...` on a view and let FastAPI-Restly auto-generate it from the model.
-See [Auto-Generated Schemas](technical_details.md#auto-generated-schemas).
+## Install
 
-## Models
+Python 3.10 or later is required. Install Restly with FastAPI's development
+server, and the async SQLite driver:
 
-We begin with the data layer: the database connection and two SQLAlchemy
-models declared against
-{class}`IDBase <fastapi_restly.models.IDBase>`, which provides an integer `id`
-primary key:
-
-```python
-import os
-
-import fastapi_restly as fr
-from contextlib import asynccontextmanager
-from fastapi import FastAPI
-from sqlalchemy import ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column
-
-fr.configure(
-    async_database_url=os.environ.get(
-        "DATABASE_URL", "sqlite+aiosqlite:///blog.db"
-    )
-)
-
-
-class Post(fr.IDBase):
-    title: Mapped[str]
-    content: Mapped[str]
-    published: Mapped[bool] = mapped_column(default=False)
-
-
-class Comment(fr.IDBase):
-    content: Mapped[str]
-    post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
+```bash
+pip install "fastapi-restly[standard]" aiosqlite
 ```
 
-### Table naming
+## Create and list posts
 
-{class}`IDBase <fastapi_restly.models.IDBase>` automatically derives table names from the class name using snake_case conversion:
-`Post` becomes `"post"`, `Comment` becomes `"comment"`, `BlogPost` would become `"blog_post"`.
-This is why `ForeignKey("post.id")` is the correct reference for `Post.id`.
+A blog needs posts. Create `main.py`. The first block is setup: it opens the
+database, declares the base class for the models, and creates the tables when
+the app starts. You do not change this block again in this tutorial.
 
-### IDBase and dataclass semantics
-
-{class}`IDBase <fastapi_restly.models.IDBase>` uses SQLAlchemy's `MappedAsDataclass`. Always pass fields as keyword arguments:
-
-```python
-Post(title="Hello", content="World", published=False)  # correct
+```{literalinclude} ../example-projects/blog/blog/part1.py
+:language: python
+:end-at: app = FastAPI(lifespan=lifespan)
 ```
 
-The `id` column is excluded from `__init__` automatically, so you do not pass it.
+Below it, add a model and a view:
 
-`IDBase` builds on {class}`DataclassBase <fastapi_restly.models.DataclassBase>`,
-which maps a plain `Mapped[datetime]` column to `DateTime(timezone=True)`.
-Treat these values as UTC instants. PostgreSQL enforces the timezone-aware
-column type, while SQLite returns naive datetime values. For an intentional
-timezone-free wall-clock field, opt out per column with
-`mapped_column(DateTime())`.
-
-These bases are a convenience, not a requirement. Restly views also work with
-models on your own `DeclarativeBase`, as in [Getting Started](getting_started.md).
-Use your own base when these defaults do not fit your project.
-
-## Schemas
-
-With the models in place, we can define the Pydantic schemas that shape the
-API's requests and responses, one per model, each extending
-{class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>`:
-
-```python
-class PostSchema(fr.IDSchema):
-    title: str
-    content: str
-    published: bool
-
-
-class CommentSchema(fr.IDSchema):
-    content: str
-    post_id: fr.MustExist[int, Post]
+```{literalinclude} ../example-projects/blog/blog/part1.py
+:language: python
+:start-at: class Post(Base):
+:end-at: model = Post
 ```
 
-### What IDSchema provides
-
-{class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>` is a Pydantic base class that adds a read-only `id` field to your schema.
-Because `id` is `ReadOnly`, it appears in responses but is ignored when creating or updating
-records. You do not need to declare `id` yourself.
-
-### Foreign keys with MustExist
-
-`post_id: fr.MustExist[int, Post]` declares a checked foreign-key column. In
-JSON, it is the raw id:
-
-```json
-1
-```
-
-So a `POST /comments` request body looks like:
-
-```json
-{
-  "content": "Great post!",
-  "post_id": 1
-}
-```
-
-And a response looks like:
-
-```json
-{
-  "id": 7,
-  "content": "Great post!",
-  "post_id": 1
-}
-```
-
-Declaring the field as `fr.MustExist[int, Post]` is what triggers this
-behaviour: the view machinery keeps the plain id in the `post_id` column and
-validates that a `Post` with that `id` exists (returning 404 if not). Restly
-matches the field name to a mapped column or relationship via the model's
-mapper, not to an `_id` suffix, so the FK column can be named anything.
-
-If you prefer a plain `int` field and want to skip the existence check,
-declare `post_id: int` in your schema instead.
-
-See [Work with Foreign Keys and Relationships](howto_relationship_idschema.md)
-for more detail, including list relations and nested relationship objects.
-
-## App setup
-
-Models and schemas meet in the view layer. We create the FastAPI app, then
-register one view class per resource; each view names its URL prefix, model,
-and schema:
-
-```python
-@asynccontextmanager
-async def lifespan(_app: FastAPI):
-    await fr.db.async_create_all(fr.IDBase)  # IDBase is the models' base above
-    yield
-
-
-app = FastAPI(lifespan=lifespan)
-
-
-@fr.include_view(app)
-class PostView(fr.AsyncRestView):
-    prefix = "/posts"
-    model = Post
-    schema = PostSchema
-
-
-@fr.include_view(app)
-class CommentView(fr.AsyncRestView):
-    prefix = "/comments"
-    model = Comment
-    schema = CommentSchema
-```
-
-Tables are created inside a FastAPI `lifespan` context manager so they are initialised
-after the event loop starts. This is safe with both `uvicorn` and testing tools.
-For production projects, use Alembic migrations instead of {func}`async_create_all <fastapi_restly.db.async_create_all>`.
-
-## Run it
-
-The application is complete, so we can start it:
+`Post` is a normal SQLAlchemy model. `PostView` is the Restly part:
+{attr}`prefix <fastapi_restly.views.View.prefix>` is the URL, `model` is the
+table, and {func}`fr.include_view <fastapi_restly.views.include_view>` adds
+the view's routes to the app. Start the server:
 
 ```bash
 fastapi dev main.py
 ```
 
-Open <http://127.0.0.1:8000/docs>. Both resources are listed with their
-request and response schemas, ready to try from the browser.
+Open <http://127.0.0.1:8000/docs>. The posts resource has five routes:
 
-## Default CRUD routes
+| Method   | Path          | Action          |
+|----------|---------------|-----------------|
+| `GET`    | `/posts`      | List posts      |
+| `POST`   | `/posts`      | Create a post   |
+| `GET`    | `/posts/{id}` | Get one post    |
+| `PATCH`  | `/posts/{id}` | Update one post |
+| `DELETE` | `/posts/{id}` | Delete one post |
 
-Each view inherits five endpoint methods. With `prefix = "/posts"`,
-`include_view` registers them at these paths:
+Each route shows its request and response schema. Restly generated them from
+the model: `PostCreate` for the body of `POST`, `PostResponse` for every
+response, and so on. Create a post with the **Try it out** button, or with
+`curl` from a second terminal:
 
-| Method   | Path          | Action         |
-|----------|---------------|----------------|
-| `GET`    | `/posts`     | List all posts |
-| `POST`   | `/posts`     | Create a post  |
-| `GET`    | `/posts/{id}` | Get one post   |
-| `PATCH`  | `/posts/{id}` | Update a post  |
-| `DELETE` | `/posts/{id}` | Delete a post  |
-
-The {attr}`prefix <fastapi_restly.views.View.prefix>` value must include the leading slash (e.g. `"/posts"`, not `"posts"`).
-
-To disable specific endpoints, set {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>`:
-
-```python
-class PostView(fr.AsyncRestView):
-    prefix = "/posts"
-    model = Post
-    schema = PostSchema
-    exclude_routes = (fr.ViewRoute.DELETE,)  # disables DELETE /posts/{id}
+```bash
+curl -X POST http://127.0.0.1:8000/posts \
+  -H 'Content-Type: application/json' \
+  -d '{"title": "Hello", "content": "My first post"}'
 ```
 
-## Read-only and write-only fields
+The response is `201 Created` with the stored post:
 
-So far every schema field travels in both directions. In practice some fields
-belong to only one. For example we will give `Post` an author token that clients send on
-creation but never see back, and a view count that is server-maintained and
-must not be writable. First we add the columns to the model:
-
-```python
-class Post(fr.IDBase):
-    title: Mapped[str]
-    content: Mapped[str]
-    published: Mapped[bool] = mapped_column(default=False)
-    author_token: Mapped[str] = mapped_column(default="")
-    view_count: Mapped[int] = mapped_column(default=0)
+```json
+{"id": 1, "title": "Hello", "content": "My first post", "published": false}
 ```
 
-and mark them in the schema:
+`published` was not in the request, so the column default applied. The list
+route returns the post in a page:
 
-```python
-class PostSchema(fr.IDSchema):
-    title: str
-    content: str
-    published: bool
-    author_token: fr.WriteOnly[str] = ""  # accepted on input, stripped from responses
-    view_count: fr.ReadOnly[int] = 0      # returned in responses, ignored on input
+```bash
+curl http://127.0.0.1:8000/posts
 ```
 
-- `ReadOnly` fields appear in responses but are ignored on create and update;
-  the server owns them.
-- `WriteOnly` fields are accepted on create and update but stripped from every
-  CRUD response.
-
-`id` on {class}`IDSchema <fastapi_restly.schemas.IDSchema>` is already `ReadOnly`, which is why it appears in responses without
-being part of the create/update body.
-
-Where each marker takes effect, including on schemas used outside a view, is
-covered in [ReadOnly and WriteOnly](howto_custom_schema.md#readonly-and-writeonly).
-
-## Querying lists
-
-The default list endpoints accept filtering, sorting, and pagination
-through URL query parameters. Filters use direct field names with optional
-operator suffixes:
-
-```text
-GET /posts?published=true&sort=-id&page=1&page_size=10
-GET /posts?title__icontains=hello
-GET /posts?created_at__gte=2024-01-01&created_at__lt=2025-01-01
+```json
+{
+  "data": [{"id": 1, "title": "Hello", "content": "My first post", "published": false}],
+  "total_count": 1,
+  "page": 1,
+  "page_size": 50,
+  "total_pages": 1
+}
 ```
 
-See [Filter, Sort, and Paginate Lists](howto_query_modifiers.md)
-for the full list of operators.
+This is what Restly adds to FastAPI: a model and a four-line view class give
+a complete, documented resource. [Using RestView](rest_views.md) describes
+the full contract of these routes.
 
-## Testing
+## Comment on posts
 
-FastAPI-Restly provides {class}`RestlyTestClient <fastapi_restly.testing.RestlyTestClient>`, a thin wrapper around FastAPI's `TestClient`
-that asserts sensible default status codes and gives clear failure messages.
-
-```python
-from fastapi_restly.testing import RestlyTestClient
-
-# Enter it: the app's lifespan, which creates the tables above, runs on entry.
-with RestlyTestClient(app) as client:
-    post = client.post(
-        "/posts", json={"title": "Hello", "content": "World", "published": False}
-    )
-    # Automatically asserts status 201
-
-    item = client.get(f"/posts/{post.json()['id']}")
-    # Automatically asserts status 200
-```
-
-For test isolation, install the testing extra (`pip install "fastapi-restly[testing]"`);
-pytest then auto-loads Restly's fixtures. Point the suite at a test database in
-`conftest.py`. Setting the environment variable before the import works because
-this tutorial's single file configures Restly when it is imported. An
-application built by a factory receives its test database explicitly instead,
-as shown in [Test APIs with RestlyTestClient and Fixtures](howto_testing.md):
+Readers want to comment on a post. A comment belongs to one post, so the
+model has a foreign key. Add the model and its view at the end of the file:
 
 ```python
-# conftest.py
-import os
+class Comment(Base):
+    __tablename__ = "comment"
 
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
-
-import fastapi_restly as fr
-
-from main import app  # noqa: E402
-
-fr.testing.configure_tests(
-    app=app,
-    base=fr.IDBase,
-    create_all=True,
-)
-```
-
-Tests then need nothing but the client, and everything they write is rolled back
-when they finish:
-
-```python
-# test_posts.py
-def test_create_post(restly_client):
-    resp = restly_client.post("/posts", json={"title": "Hi", "content": "...", "published": False})
-    assert resp.json()["title"] == "Hi"
-    # Database changes are rolled back automatically after this test
-```
-
-See [Testing](howto_testing.md) for the full setup and savepoint details.
-
-## Nested schemas
-
-The view's schema may nest related objects, and Restly eager-loads and
-serializes them for you. Create and update payloads may not nest: inputs map
-to model attributes or use `*_id: MustExist[int, Model]`. See
-[Work with Foreign Keys and Relationships](howto_relationship_idschema.md)
-for the details.
-
-## The complete file
-
-Here is everything this page built as one runnable `main.py`, including the
-read-only and write-only columns added along the way:
-
-```python
-import os
-from contextlib import asynccontextmanager
-
-import fastapi_restly as fr
-from fastapi import FastAPI
-from sqlalchemy import ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column
-
-fr.configure(
-    async_database_url=os.environ.get(
-        "DATABASE_URL", "sqlite+aiosqlite:///blog.db"
-    )
-)
-
-
-class Post(fr.IDBase):
-    title: Mapped[str]
-    content: Mapped[str]
-    published: Mapped[bool] = mapped_column(default=False)
-    author_token: Mapped[str] = mapped_column(default="")
-    view_count: Mapped[int] = mapped_column(default=0)
-
-
-class Comment(fr.IDBase):
+    id: Mapped[int] = mapped_column(primary_key=True)
     content: Mapped[str]
     post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
-
-
-class PostSchema(fr.IDSchema):
-    title: str
-    content: str
-    published: bool
-    author_token: fr.WriteOnly[str] = ""
-    view_count: fr.ReadOnly[int] = 0
-
-
-class CommentSchema(fr.IDSchema):
-    content: str
-    post_id: fr.MustExist[int, Post]
-
-
-@asynccontextmanager
-async def lifespan(_app: FastAPI):
-    await fr.db.async_create_all(fr.IDBase)
-    yield
-
-
-app = FastAPI(lifespan=lifespan)
-
-
-@fr.include_view(app)
-class PostView(fr.AsyncRestView):
-    prefix = "/posts"
-    model = Post
-    schema = PostSchema
 
 
 @fr.include_view(app)
 class CommentView(fr.AsyncRestView):
     prefix = "/comments"
     model = Comment
-    schema = CommentSchema
+```
+
+The server restarts by itself when you save the file, and the comments
+resource gets the same five routes. Now comment on a post that does not
+exist:
+
+```bash
+curl -X POST http://127.0.0.1:8000/comments \
+  -H 'Content-Type: application/json' \
+  -d '{"content": "Nice post", "post_id": 999}'
+```
+
+```json
+{"detail": "Foreign key constraint violated"}
+```
+
+The status is `409 Conflict`. The database refused the row, and Restly turned
+the database error into an HTTP error. That is correct, but it comes after
+the insert was tried, and it does not say which field was wrong. A missing
+post should answer `404`, and name the field. So comments need to check the
+post before the insert.
+
+Until now, Restly generated the view's schema from the model. For comments we
+write the schema ourselves, and mark `post_id` as a checked reference. Put
+the schema above `CommentView`, and point the view at it:
+
+```{literalinclude} ../example-projects/blog/blog/part1.py
+:language: python
+:start-at: class CommentSchema(fr.IDSchema):
+```
+
+A {attr}`schema <fastapi_restly.views.BaseRestView.schema>` says which fields
+the API accepts and returns. {class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>`
+adds the `id` field as read-only, so you do not declare it.
+`fr.MustExist[int, Post]` is a plain integer in JSON, and Restly checks that a
+`Post` with that id exists before it writes the comment. Send the same
+request again:
+
+```json
+{"detail": "Id not found for post_id: 999"}
+```
+
+The status is `404 Not Found`, and the message names the field. A comment on
+post `1` is accepted:
+
+```bash
+curl -X POST http://127.0.0.1:8000/comments \
+  -H 'Content-Type: application/json' \
+  -d '{"content": "Nice post", "post_id": 1}'
+```
+
+```json
+{"id": 1, "content": "Nice post", "post_id": 1}
+```
+
+[Work with Foreign Keys and Relationships](howto_relationship_idschema.md)
+covers references in more detail, including nested objects in responses.
+
+## Find posts
+
+Readers want to find posts. The list route already filters, sorts and pages
+through URL parameters, so this step adds no code. Create a second post, and
+mark it as published:
+
+```bash
+curl -X POST http://127.0.0.1:8000/posts \
+  -H 'Content-Type: application/json' \
+  -d '{"title": "Second", "content": "Now published", "published": true}'
+```
+
+Then try these:
+
+```bash
+curl 'http://127.0.0.1:8000/posts?published=true'
+# only the second post, with "total_count": 1
+
+curl 'http://127.0.0.1:8000/posts?title__icontains=hello'
+# only the first post
+
+curl 'http://127.0.0.1:8000/posts?sort=-id&page=1&page_size=10'
+# both posts, newest first
+```
+
+A field name filters on equality. A suffix such as `__icontains` chooses
+another operator. `sort` takes field names, with `-` for descending order.
+[Filter, Sort, and Paginate Lists](howto_query_modifiers.md) lists every
+operator and the paging settings.
+
+## The complete file
+
+Here is `main.py` with everything from this tutorial. The same file is the
+first stage of the [blog example](#example-blog), and the test suite runs it.
+
+```{literalinclude} ../example-projects/blog/blog/part1.py
+:language: python
 ```
 
 ## Next steps
 
-Continue with [Add Authors and Drafts](tutorial_customizing.md). It adds
-the current user, drafts that only their author can see, a publish action,
-and rules for who may change a post.
-These pages cover the topics from this tutorial in more detail:
+[Add Authors and Drafts](tutorial_customizing.md) continues with this file.
+It adds the current user, drafts that only their author can see, a publish
+action, and rules for who may change a post.
 
-- [Using RestView](rest_views.md): the default CRUD contract and
-  resource configuration
-- [Auto-Generated Schemas](technical_details.md#auto-generated-schemas): skip writing schemas for simple models
-- [Filter, Sort, and Paginate Lists](howto_query_modifiers.md): the full filter and sort reference
-- [Work with Foreign Keys and Relationships](howto_relationship_idschema.md): reference related rows by id
-- [Testing](howto_testing.md): savepoint isolation and test fixtures
-- [Examples](examples.md): complete sample apps that extend these patterns
-- [API Reference](api_reference.md)
+These pages go deeper into what this tutorial used:
+
+- [Using RestView](rest_views.md): the default CRUD contract and the view
+  settings
+- [Auto-Generated Schemas](#auto-generated-schemas): what
+  Restly generates from a model, and when to write a schema
+- [Work with Foreign Keys and Relationships](howto_relationship_idschema.md):
+  checked references and nested objects
+- [Filter, Sort, and Paginate Lists](howto_query_modifiers.md): every filter
+  operator, sorting, and paging
+- [Testing](howto_testing.md): test the API, with a rollback after each test
+- [Views](class_based_views.md): the sync `RestView`, and views without a
+  model
 
 ```{toctree}
 :maxdepth: 1

@@ -19,9 +19,10 @@ local changes to Restly do not appear in it.
 [example-projects/blog](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/blog)
 ([README](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/blog/README.md))
 is the app that the tutorials build: posts and comments with authors, drafts
-that only their author can see, and a publish action. Its `blog/main.py` is
-the complete file of [Add Authors and Drafts](tutorial_customizing.md), and
-its tests check each rule of that tutorial. It uses async views and SQLite.
+that only their author can see, and a publish action. Its `blog/part1.py` is
+the complete file of [Build a Blog API](tutorial.md), and `blog/main.py` is
+the complete file of [Add Authors and Drafts](tutorial_customizing.md). Its
+tests check each rule of that tutorial. It uses async views and SQLite.
 
 ## Shop
 

@@ -1,9 +1,12 @@
 # Blog Example
 
-The blog API that the FastAPI-Restly tutorials build. `blog/main.py` is the
+The blog API that the FastAPI-Restly tutorials build. `blog/part1.py` is the
 complete file of
-[Tutorial: Add Authors and Drafts](https://www.fastapi-restly.org/tutorial_customizing.html),
-and the documentation shows this file directly.
+[Tutorial: Build a Blog API](https://www.fastapi-restly.org/tutorial.html):
+posts and comments. `blog/main.py` continues it, and is the complete file of
+[Tutorial: Add Authors and Drafts](https://www.fastapi-restly.org/tutorial_customizing.html).
+The documentation shows both files directly. The framework's own test suite
+runs `part1.py`; the tests here check `main.py`.
 
 ## What it demonstrates
 
