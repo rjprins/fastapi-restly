@@ -369,9 +369,10 @@ Nested schemas serve two different roles in Restly today:
   Loader options follow relationships the response class *names*. Code that reaches
   past that set -- an `after_action_commit` hook, a custom business method, a
   `@property` walking a relationship nothing else loads -- runs in plain async
-  context, where a bare attribute access raises `MissingGreenlet`. Restly's
-  declarative base mixes in SQLAlchemy's `AsyncAttrs` for exactly that case, so
-  those reads can be spelled `await obj.awaitable_attrs.items`. The
+  context, where a bare attribute access raises `MissingGreenlet`.
+  {class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>` mixes in
+  SQLAlchemy's `AsyncAttrs` for exactly that case, so those reads can be
+  spelled `await obj.awaitable_attrs.items`. The
   task-focused guide to all of this, including extending the loaded set and
   resolving `MissingGreenlet`, is
   [Relationship Loading and Async](howto_relationship_loading.md); this section

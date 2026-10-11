@@ -431,13 +431,15 @@ The API is then at <http://127.0.0.1:8000>, with interactive documentation at
 ├── main.py        Application factory and the VIEWS it registers
 ├── asgi.py        app = create_app(), the only module a server imports
 ├── settings.py    Environment settings
+├── models.py      Base, the declarative base of every model
 └── users/         One resource: model, schemas, view
 tests/
 ```
 
 Each resource is a package holding its model, its schemas, and its view,
-because those three change together. Add a package beside `users/`, then add
-its view to `VIEWS` in `main.py`.
+because those three change together. Add a package beside `users/`, with its
+models on the `Base` from `models.py`, then add its view to `VIEWS` in
+`main.py`.
 
 Importing `main.py` must stay free of side effects: it defines `create_app()`
 and builds nothing, which is what lets the test suite name its own database.

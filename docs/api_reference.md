@@ -17,7 +17,7 @@ import fastapi_restly as fr
 | {mod}`fr <fastapi_restly>` | Names exported directly by the package, linked to their definitions in the submodules. |
 | {mod}`fr.views <fastapi_restly.views>` | View classes, route decorators, registration, CRUD methods, and action hooks. |
 | {mod}`fr.schemas <fastapi_restly.schemas>` | Pydantic bases, field markers, relationship references, and schema generation. |
-| {mod}`fr.models <fastapi_restly.models>` | SQLAlchemy declarative bases and mixins for IDs and timestamps. |
+| {mod}`fr.models <fastapi_restly.models>` | Defaults for your declarative base, and mixins for IDs and timestamps. |
 | {mod}`fr.db <fastapi_restly.db>` | Configuration, session dependencies, session context managers, and engine access. |
 | {mod}`fr.clauses <fastapi_restly.clauses>` | Reusable query predicates, boolean composition, and request context values. |
 | {mod}`fr.query <fastapi_restly.query>` | The list params (filter, sort, and pagination) and how to apply them to SQLAlchemy queries. |

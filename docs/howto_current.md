@@ -95,7 +95,11 @@ Pass `Current.user_id` as a SQLAlchemy column default to record who
 created a row:
 
 ```python
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
 
 
 class Note(fr.IDMixin, Base):

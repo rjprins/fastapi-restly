@@ -119,7 +119,12 @@ The Quickstart uses plain SQLAlchemy on purpose — Restly doesn't hide it, and
 the `Base` stays yours. In real projects you'll usually add `fr.ModelDefaults`
 to that base, for dataclass models, table names from the class name, and
 datetimes with a time zone. Then `fr.IDMixin` gives a model its `id`, and
-`fr.IDSchema` gives a schema its `id`; both appear in the examples below.
+`fr.IDSchema` gives a schema its `id`. The examples below use this base:
+
+```python
+class Base(fr.ModelDefaults, DeclarativeBase):
+    pass
+```
 
 ### Not just CRUD
 

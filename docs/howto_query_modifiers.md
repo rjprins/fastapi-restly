@@ -63,7 +63,8 @@ other operators would fail on every request. A
 would let a client read its value back.
 
 A datetime value without a UTC offset is read as UTC when the column is
-timezone-aware, which is the default for `Mapped[datetime]`; a column
+timezone-aware, which is the default for `Mapped[datetime]` on a base with
+{class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>`; a column
 declared `DateTime()` compares the naive value as given.
 
 ### Filter value validation
