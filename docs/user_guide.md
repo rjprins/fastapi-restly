@@ -1,11 +1,9 @@
 # How-To Guides
 
 These guides are task-focused: each one shows how to accomplish a specific
-goal with FastAPI-Restly. If you are new to the framework, start with
-[Getting Started](getting_started.md), read [Using RestView](rest_views.md) for
-the default CRUD contract, then use [Build a Blog API](tutorial.md) for a
-complete multi-model example. Come back here
-when you have a concrete task.
+goal with FastAPI-Restly. If you are new to the framework, start with the
+tutorial, [Build a Blog API](tutorial.md). Come back here when you have a
+concrete task.
 
 ## Adopting and Modeling
 

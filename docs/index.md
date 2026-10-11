@@ -94,9 +94,8 @@ method to `UserView`:
 `DELETE /users/{id}` now soft-disables (the row stays readable, with
 `active: false`); the other four routes are untouched.
 
-Run it with `fastapi dev main.py`. [Getting Started](getting_started.md) walks
-through the same flow step by step: install details, explicit schemas, and a
-first test.
+Run it with `fastapi dev main.py`. [Build a Blog API](tutorial.md) teaches
+Restly step by step, from the first model to authors, drafts, and tests.
 
 ## Features
 
@@ -104,7 +103,7 @@ first test.
 - **[True class-based views](class_based_views.md)**: inheritance, mixins, and method overrides
 - **[Explicit override points](customize.md)**: every CRUD verb split into an endpoint method and a business method you override
 - **[React Admin ready](howto_react_admin.md)**: `AsyncReactAdminView` speaks `ra-data-simple-rest`
-- **[SQLAlchemy 2.0 support](getting_started.md)**: async-first with modern patterns
+- **[SQLAlchemy 2.0 support](tutorial.md)**: async-first with modern patterns
 - **[Pydantic v2 integration](howto_custom_schema.md)**: validation and serialization for public contracts
 - **[Automatic schema generation](technical_details.md#auto-generated-schemas)**: response, create, and update schemas generated automatically
 - **[Filtering](howto_query_modifiers.md)**: filter, sort, and paginate from a stable URL dialect generated from the view's schema
@@ -119,10 +118,10 @@ first test.
 :gutter: 3
 
 :::{grid-item-card} Getting Started
-:link: getting_started
+:link: tutorial
 :link-type: doc
 
-Build a working REST API, then continue with a two-model blog API.
+Build a blog API step by step: posts and comments, then authors and drafts.
 :::
 
 :::{grid-item-card} Views
@@ -187,8 +186,7 @@ Production engine config, Alembic migrations, and an ASGI checklist.
 :maxdepth: 2
 :hidden:
 
-getting_started
-Tutorial <tutorial>
+Getting Started <tutorial>
 CRUD Views <class_based_views>
 How-To <user_guide>
 API <api_reference>

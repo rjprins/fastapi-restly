@@ -82,7 +82,8 @@ redirects = {
     "pytest_fixtures": "howto_testing.html",
     "the_handle_design": "customize.html",
     "howto_override_endpoints": "customize.html",
-    "tutorial_overview": "getting_started.html",
+    "tutorial_overview": "tutorial.html",
+    "getting_started": "tutorial.html",
     "api_details": "view_reference.html",
 }
 myst_heading_anchors = 3

@@ -59,5 +59,4 @@ open-source, **cookieless** tool. It counts page views and unique visits
 without setting cookies or storing personal data, so nothing tracks you across
 sites and there is nothing to consent to. No data is shared with third parties.
 
-Ready to try it? [Getting Started](getting_started.md) takes about fifteen
-minutes.
+Ready to try it? [Build a Blog API](tutorial.md) takes about twenty minutes.

@@ -15,8 +15,8 @@ class UserView(fr.AsyncRestView):
 ```
 
 `UserView` now serves list, create, retrieve, update, and delete requests under
-`/users`. [Getting Started](getting_started.md) supplies the surrounding app,
-database configuration, and model in one runnable file.
+`/users`. [Build a Blog API](tutorial.md) shows the surrounding app, database
+configuration, and model in one runnable file.
 
 ## Choose async or sync
 
@@ -239,7 +239,7 @@ The default CRUD contract has these boundaries:
 
 ## Next steps
 
-- [Getting Started](getting_started.md) builds and runs a first resource.
+- [Build a Blog API](tutorial.md) builds and runs a first resource.
 - [Customizing RestView](customize.md) changes behavior at the correct layer.
 - [Custom Schemas and Field Types](howto_custom_schema.md) defines stable request
   and response fields.

@@ -172,8 +172,8 @@ Why a `View` over a bare `APIRouter`?
 The install command at the top is the whole story: the `standard` extra brings
 the `fastapi dev` toolchain, and `aiosqlite` is the async SQLite driver used in
 the examples (Restly is driver-agnostic — use `asyncpg`/`psycopg` for
-PostgreSQL). Details, including the `[testing]` extra, are in
-[Getting Started](https://www.fastapi-restly.org/getting_started.html).
+PostgreSQL). The `[testing]` extra adds the test tools; see
+[Testing](https://www.fastapi-restly.org/howto_testing.html).
 
 ## Start a project
 
@@ -426,7 +426,7 @@ To connect Restly to an existing app's engine, sessions, and models, see
 
 ## Documentation
 
-- **[Getting Started](https://www.fastapi-restly.org/getting_started.html)**: fast path from zero to a working API
+- **[Tutorial](https://www.fastapi-restly.org/tutorial.html)**: build a blog API step by step, from the first model to authors and drafts
 - **[Views](https://www.fastapi-restly.org/class_based_views.html)**: choose a view type and understand the shared class mechanics
 - **[Using RestView](https://www.fastapi-restly.org/rest_views.html)**: define a model-backed CRUD resource and its contract
 - **[Customizing RestView](https://www.fastapi-restly.org/customize.html)**: choose the right method to override or add a custom route

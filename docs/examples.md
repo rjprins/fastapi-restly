@@ -73,5 +73,4 @@ commands in its README (linked above).
 The SaaS example also needs PostgreSQL. Its README includes the complete
 Compose, migration, application, and test commands.
 
-To build one of these yourself, start with
-[Getting Started](getting_started.md) and [Build a Blog API](tutorial.md).
+To build one of these yourself, start with [Build a Blog API](tutorial.md).

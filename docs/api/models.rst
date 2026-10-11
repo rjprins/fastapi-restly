@@ -24,5 +24,5 @@ object on an async session.
 
 .. seealso::
 
-   :doc:`/getting_started` discusses choosing between your own
-   DeclarativeBase and the convenience bases.
+   :doc:`/howto_existing_project` shows Restly views on models of your own
+   DeclarativeBase.

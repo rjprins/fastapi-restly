@@ -33,7 +33,7 @@ Three choices, each a flag, each asked for on a terminal when you leave it out:
 ## Start with one file
 
 A single module is the right shape for a first resource.
-[Getting Started](getting_started.md) builds a complete application in one
+[Build a Blog API](tutorial.md) builds a complete application in one
 file, and nothing is gained by splitting it while it stays that size.
 
 Split when the second or third resource arrives, or when one resource grows
