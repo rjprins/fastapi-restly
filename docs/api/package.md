@@ -26,10 +26,12 @@ through `fr`.
 | {func}`fr.delete <fastapi_restly.views.delete>` | Decorate a DELETE endpoint method. |
 | {func}`fr.get <fastapi_restly.views.get>` | Decorate a GET endpoint method. |
 | {class}`fr.IDBase <fastapi_restly.models.IDBase>` | Dataclass model base with an integer primary key. |
+| {class}`fr.IDMixin <fastapi_restly.models.IDMixin>` | Model field for an integer primary key named `id`. |
 | {class}`fr.IDRef <fastapi_restly.schemas.IDRef>` | Relationship reference serialized as a scalar ID. |
 | {class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>` | Schema base with a read-only ID, or a nested relationship reference when parameterized. |
 | {func}`fr.include_view <fastapi_restly.views.include_view>` | Register a view's endpoint methods on an app or router. |
 | {class}`fr.ListResult <fastapi_restly.views.ListResult>` | The objects, total count, and list params of a list, before response serialization. |
+| {class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>` | Restly's defaults for models, added to your own declarative base. |
 | {class}`fr.MustExist <fastapi_restly.schemas.MustExist>` | Scalar foreign-key annotation that checks the referenced row exists. |
 | {func}`fr.none_of <fastapi_restly.clauses.none_of>` | Negate a group of query clauses. |
 | {class}`fr.NoPagination <fastapi_restly.views.NoPagination>` | Settings for a view's `pagination` that returns every row, with a custom envelope. |

@@ -9,9 +9,11 @@ fastapi_restly:
   - ContextParam
   - DataclassBase
   - IDBase
+  - IDMixin
   - IDRef
   - IDSchema
   - ListResult
+  - ModelDefaults
   - MustExist
   - NoPagination
   - NumberedPagination
@@ -94,6 +96,7 @@ fastapi_restly.models:
   - DataclassBase
   - IDBase
   - IDMixin
+  - ModelDefaults
   - TimestampsMixin
 fastapi_restly.objects:
   - async_delete_object
@@ -191,7 +194,6 @@ fastapi_restly.exc:
 fastapi_restly.models:
   - CASCADE_ALL_ASYNC
   - CASCADE_ALL_DELETE_ORPHAN_ASYNC
-  - IDMixin
 fastapi_restly.objects:
   - async_delete_object
   - async_make_new_object

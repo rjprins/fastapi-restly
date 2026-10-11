@@ -27,8 +27,8 @@ from .clauses import (
 # Database layer
 from .db import AsyncSessionDep, SessionDep, configure, open_async_session, open_session
 
-# Model base classes
-from .models import DataclassBase, IDBase, TimestampsMixin
+# Models
+from .models import DataclassBase, IDBase, IDMixin, ModelDefaults, TimestampsMixin
 
 # Schema utilities
 from .schemas import (
@@ -103,9 +103,11 @@ __all__ = [
     "ContextNamespace",
     "ContextParam",
     # Models
+    "ModelDefaults",
+    "IDMixin",
+    "TimestampsMixin",
     "DataclassBase",
     "IDBase",
-    "TimestampsMixin",
     # Schemas
     "BaseSchema",
     "IDRef",

@@ -4,6 +4,7 @@ from ._base import (
     DataclassBase,
     IDBase,
     IDMixin,
+    ModelDefaults,
     TimestampsMixin,
 )
 
@@ -14,5 +15,6 @@ __all__ = [
     "DataclassBase",
     "IDBase",
     "IDMixin",
+    "ModelDefaults",
     "TimestampsMixin",
 ]

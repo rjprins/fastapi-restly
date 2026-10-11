@@ -16,6 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   members of the inner clause each time it is applied. A clause function
   cannot be placed inside an expression this way, and raises `TypeError`
   with the alternative.
+- `fr.ModelDefaults` adds Restly's model defaults to a declarative base of your
+  own: `class Base(fr.ModelDefaults, DeclarativeBase)`. The models get
+  dataclass constructors that take keyword arguments only, snake_case table
+  names, timezone-aware datetimes, enums stored as strings, and
+  `awaitable_attrs`. The base keeps its own registry and `MetaData`, so it can
+  set a naming convention, and its own `type_annotation_map` entries win over
+  Restly's.
+- `fr.IDMixin` at the top level. Before, it was only in `fr.models`.
 
 ### Changed
 
@@ -26,6 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `201` on create, pass it.
 - `assert_status_code=None` now skips the status check. Before, it accepted
   any status below 400.
+- `fr.IDMixin` and `fr.TimestampsMixin` on a model whose base is not a
+  dataclass base now raise `RestlyConfigurationError`. Before, SQLAlchemy
+  made that one model a dataclass, so its constructor suddenly required
+  fields such as `id`, and a create request failed.
 
 ## [0.11.0] - 2026-10-09
 
