@@ -352,7 +352,7 @@ covers models like these.
 A `MustExist` field filters the list endpoint by its own name, as in
 `GET /articles?author_id=1`. An `IDSchema[Model]` field filters by its id, as
 in `GET /articles?author.id=1`. A flat `IDRef` on a relationship gets no
-filter. [Foreign-key filtering](#foreign-key-filtering) lists the operators
+filter. [Filter by a foreign key](#foreign-key-filtering) lists the operators
 that each one gets.
 
 (idref-custom-routes)=
