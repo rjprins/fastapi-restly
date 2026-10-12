@@ -111,7 +111,7 @@ Pages: [Current & ContextParam](current.md), [Query Clauses](clauses.md),
 ## Operate
 
 Pages: [Testing](testing.md), [Deploying](deploying.md),
-[OpenAPI](openapi.md), [React Admin](howto_react_admin.md),
+[OpenAPI](openapi.md), [React Admin](react_admin.md),
 [Type Annotations](howto_typing.md).
 
 - [How do I set up a test suite for my app?](#test-setup)
@@ -169,6 +169,6 @@ authorization
 testing
 deploying
 openapi
-howto_react_admin
+react_admin
 howto_typing
 ```

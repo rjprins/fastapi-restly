@@ -29,7 +29,7 @@ model, and **model** for a SQLAlchemy ORM model.
 ## Choose a reference style
 
 Most APIs send ids. Forms and dropdowns submit them, and a client such as
-[React Admin](howto_react_admin.md) can fetch the row behind an id to show it.
+[React Admin](react_admin.md) can fetch the row behind an id to show it.
 Show the whole object only when one larger response is better for the client
 than a second request.
 

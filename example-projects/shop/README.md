@@ -56,5 +56,5 @@ the Playwright e2e suite.
 ## Further reading
 
 - Main framework documentation: [`/docs/`](../../docs/)
-- React Admin how-to: [`/docs/howto_react_admin.md`](../../docs/howto_react_admin.md)
+- React Admin how-to: [`/docs/react_admin.md`](../../docs/react_admin.md)
 - Top-level [README](../../README.md)

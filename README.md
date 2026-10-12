@@ -338,7 +338,7 @@ class ProductView(fr.AsyncReactAdminView):
 
 The view follows the `ra-data-simple-rest` HTTP contract.
 
-See [React Admin](https://www.fastapi-restly.org/howto_react_admin.html) in the docs for CORS setup and customization.
+See [React Admin](https://www.fastapi-restly.org/react_admin.html) in the docs for CORS setup and customization.
 
 ### Excluding built-in routes
 

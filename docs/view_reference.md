@@ -16,7 +16,7 @@ Each class below is a registration entry point:
 | {class}`fr.AsyncRestView <fastapi_restly.views.AsyncRestView>` | Async CRUD view. Use with async SQLAlchemy sessions. |
 | {class}`fr.RestView <fastapi_restly.views.RestView>` | Sync CRUD view. Use with sync SQLAlchemy sessions. |
 | {class}`fr.ListResult <fastapi_restly.views.ListResult>` | Value object returned by `get_many` (and `handle_get_many`), with `.objects`, `.total_count`, and `.list_params`, before `to_list_response` formats the HTTP response. |
-| {class}`fr.AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` | Async CRUD view that follows the `ra-data-simple-rest` HTTP contract used by [react-admin](https://marmelab.com/react-admin/). See [React Admin](howto_react_admin.md). |
+| {class}`fr.AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` | Async CRUD view that follows the `ra-data-simple-rest` HTTP contract used by [react-admin](https://marmelab.com/react-admin/). See [React Admin](react_admin.md). |
 | {class}`fr.ReactAdminView <fastapi_restly.views.ReactAdminView>` | Sync variant of `AsyncReactAdminView`. |
 
 (view-class-attributes)=

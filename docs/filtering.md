@@ -465,7 +465,7 @@ For another URL grammar, such as the filter syntax of another client
 library, override
 {meth}`apply_list_params(query, list_params) <fastapi_restly.views.RestView.apply_list_params>`.
 It turns the URL parameters into the query. The
-[React Admin](howto_react_admin.md) views override it for the react-admin
+[React Admin](react_admin.md) views override it for the react-admin
 grammar. Override `get_many()` itself only for a list that has another
 *result*, and build the query in the method.
 
@@ -505,7 +505,7 @@ validates them against the field when
 {func}`apply_list_params <fastapi_restly.query.apply_list_params>` builds the
 query.
 
-The [React Admin](howto_react_admin.md) views read another grammar, with
+The [React Admin](react_admin.md) views read another grammar, with
 their own parameters.
 
 ## See also

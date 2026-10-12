@@ -115,7 +115,7 @@ View                     ← routes, prefix, dependencies; no CRUD
 - {class}`ReactAdminView <fastapi_restly.views.ReactAdminView>` and
   {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>`
   serve the contract that React Admin expects; see
-  [React Admin](howto_react_admin.md).
+  [React Admin](react_admin.md).
 
 [View Reference](#view-method-surface) lists every method of these classes.
 

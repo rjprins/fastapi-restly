@@ -474,7 +474,7 @@ class ProductView(fr.AsyncRestView):
 
 The default `DELETE /{id}` answers `204 No Content`. This version answers
 `200` with the deleted row, as React Admin's `ra-data-simple-rest` expects
-([React Admin](howto_react_admin.md)).
+([React Admin](react_admin.md)).
 
 When Restly registers the view, an endpoint method that the class defines
 replaces the inherited method with the same name. The other inherited
@@ -554,7 +554,7 @@ class ProductView(DeleteReturnsObjectMixin, fr.AsyncRestView):
     schema = ProductSchema
 ```
 
-The [React Admin](howto_react_admin.md) views use this pattern. They replace
+The [React Admin](react_admin.md) views use this pattern. They replace
 {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>`
 for the `ra-data-simple-rest` contract, and keep the handlers and business
 methods.
