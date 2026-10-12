@@ -99,6 +99,7 @@ redirects = {
     "rest_views": "crud_routes.html",
     "customize": "lifecycle.html",
     "howto_custom_schema": "schemas.html",
+    "howto_response_schema": "responses.html",
 }
 myst_heading_anchors = 3
 myst_enable_extensions = ["colon_fence", "substitution"]

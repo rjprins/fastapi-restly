@@ -68,7 +68,7 @@ checked copy:
 default, filled from `data` and `total_count`, the number of rows.
 
 The envelope's shape and custom alternatives are covered in
-[Responses](howto_response_schema.md).
+[Responses](responses.md).
 
 (endpoint-decorators)=
 ## Endpoint decorators

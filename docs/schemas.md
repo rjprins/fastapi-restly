@@ -361,7 +361,7 @@ parameter of the view, as in `fr.AsyncRestView[Account, AccountResponse]`; see
 [Type Annotations](#view-generics).
 
 To change how one object becomes a response, or to send another shape, see
-[Responses](howto_response_schema.md).
+[Responses](responses.md).
 
 (generated-class-names)=
 ## The names of the generated classes
@@ -682,7 +682,7 @@ custom column type, write the schema yourself.
 - [Relationships](howto_relationship_idschema.md): foreign keys and
   relationships as ids or nested objects, and the check that a referenced row
   exists.
-- [Responses](howto_response_schema.md): how one object becomes a response,
+- [Responses](responses.md): how one object becomes a response,
   envelopes, and [a different schema for the list route](#list-schema).
 - [Filtering & Pagination](howto_query_modifiers.md): the filters and sort
   keys that come from the response class.

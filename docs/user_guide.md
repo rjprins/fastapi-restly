@@ -59,7 +59,7 @@ Pages: [Views](views.md), [CRUD Routes](crud_routes.md),
 ## Requests and responses
 
 Pages: [Schemas & Validation](schemas.md),
-[Responses](howto_response_schema.md),
+[Responses](responses.md),
 [Relationships](howto_relationship_idschema.md),
 [Filtering & Pagination](howto_query_modifiers.md),
 [Errors](howto_error_responses.md).
@@ -158,7 +158,7 @@ views
 crud_routes
 lifecycle
 schemas
-howto_response_schema
+responses
 howto_relationship_idschema
 howto_query_modifiers
 howto_error_responses

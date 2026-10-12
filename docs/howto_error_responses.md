@@ -13,7 +13,7 @@ Restly does not commit the write.
 Errors do not pass through
 {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>`. That
 method shapes only successful responses (see
-[Responses](howto_response_schema.md)). To change the error body, change the
+[Responses](responses.md)). To change the error body, change the
 exception handlers of the app, as in any FastAPI app.
 
 (raise-http-error)=

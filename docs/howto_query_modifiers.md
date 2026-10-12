@@ -510,7 +510,7 @@ their own parameters.
 
 ## See also
 
-- [Responses](howto_response_schema.md): the list envelope and its fields.
+- [Responses](responses.md): the list envelope and its fields.
 - [Errors](howto_error_responses.md): the `422` and `400` answers to a bad list
   request.
 - [Nest a resource under its parent](#nested-resources): a child resource under its parent,

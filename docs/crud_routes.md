@@ -67,7 +67,7 @@ also accepts `/users/`, as a route that OpenAPI does not show.
 a column of the model. It sorts with `?sort=field,-other_field`, and it is
 paginated by default. A query key that the list does not know returns `422`.
 [Filtering & Pagination](howto_query_modifiers.md) defines the parameters.
-[Responses](howto_response_schema.md) shows the response bodies and how to
+[Responses](responses.md) shows the response bodies and how to
 change the `data` envelope.
 
 A row that does not exist returns `404`, and so does a row that the view's

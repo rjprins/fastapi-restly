@@ -372,7 +372,7 @@ class TagView(fr.AsyncRestView):
 
 For a different response shape, set the pagination's `envelope` to your own
 Pydantic model: rename the fields, drop some, nest them, or return a bare
-array. See [Responses](https://www.fastapi-restly.org/howto_response_schema.html).
+array. See [Responses](https://www.fastapi-restly.org/responses.html).
 
 ## Testing
 
