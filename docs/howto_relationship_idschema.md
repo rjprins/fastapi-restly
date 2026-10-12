@@ -12,6 +12,7 @@ FastAPI-Restly uses the term **"schema"** for Pydantic request/response models a
 **"model"** for SQLAlchemy ORM models.
 :::
 
+(reference-exists)=
 ## Choosing a reference style
 
 Most APIs communicate through ids. They are what forms and dropdowns submit,
@@ -579,6 +580,7 @@ relationship-shaped data. Scalar fields
 {class}`IDRef <fastapi_restly.schemas.IDRef>`) do not need this step because
 their JSON value is already scalar.
 
+(visibility-and-multi-tenancy)=
 ## Visibility and multi-tenancy
 
 Reference resolution applies the referenced model's `default_scope`, the

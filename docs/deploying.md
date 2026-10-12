@@ -41,6 +41,7 @@ and for how to decline it. If your app already has an engine, pass that one
 instead; see
 [Reuse Your Existing Engine](#reuse-existing-engine).
 
+(alembic)=
 ## Migrations with Alembic
 
 In production, never call `metadata.create_all()`; use Alembic instead.

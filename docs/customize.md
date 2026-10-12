@@ -115,6 +115,7 @@ place across list, count, and single-row reads: a hidden row returns 404 from
 {meth}`count <fastapi_restly.views.RestView.count>` produces the total, with `authorize("get_many")` added by
 {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>`.
 
+(which-method-to-override)=
 ## Which method do I override for X?
 
 The table below maps the change you want to make to the method that owns it:
@@ -141,6 +142,7 @@ contract itself changes.
 
 The sections below give recipes for each of these override points.
 
+(business-methods)=
 ## Override the business methods
 
 Each business method maps to one domain operation, so override only the one
@@ -366,6 +368,7 @@ with a bare session.
 
 Do not extract early. Wait until there is a second caller.
 
+(replace-endpoint-method)=
 ## Replace an endpoint method to change the HTTP contract
 
 Business methods and hooks change behavior while preserving the default CRUD route's HTTP contract. Replace the endpoint method when the HTTP contract itself must change: response shape, headers, status code, or query-parameter semantics.
@@ -444,6 +447,7 @@ class ProductView(DeleteReturnsObjectMixin, fr.AsyncRestView):
 
 [React Admin views](howto_react_admin.md#share-the-react-admin-contract-across-multiple-views) use this same pattern: they replace {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` for the `ra-data-simple-rest` HTTP contract and keep the standard verbs and handlers.
 
+(custom-read-route)=
 ## Add a custom read route
 
 A CRUD view can add routes alongside its inherited CRUD routes. Use {func}`@fr.get <fastapi_restly.views.get>` for computed read endpoints, calling {meth}`get_one(id) <fastapi_restly.views.RestView.get_one>` for a scoped load that 404s on missing rows, or {meth}`handle_get_one(id) <fastapi_restly.views.RestView.handle_get_one>` to include read authorization:
@@ -488,6 +492,7 @@ The criterion narrows inside the scope and never past it, so a row the view hide
 
 {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` and {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` take the same identity, so `PATCH /users/by-email/{email}` runs the full commit bracket against the row that criterion picks.
 
+(custom-action-route)=
 ## Add a custom action route
 
 Use {func}`@fr.post <fastapi_restly.views.post>` (or {func}`@fr.patch <fastapi_restly.views.patch>`, {func}`@fr.delete <fastapi_restly.views.delete>`) for state-change actions such as archive, publish, or recalculate. Two shapes cover most actions.

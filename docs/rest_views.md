@@ -18,6 +18,7 @@ class UserView(fr.AsyncRestView):
 `/users`. [Build a Blog API](tutorial.md) shows the surrounding app, database
 configuration, and model in one runnable file.
 
+(choose-async-or-sync)=
 ## Choose async or sync
 
 Use {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` for new

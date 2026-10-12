@@ -67,6 +67,7 @@ timezone-aware, which is the default for `Mapped[datetime]` on a base with
 {class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>`; a column
 declared `DateTime()` compares the naive value as given.
 
+(filter-value-validation)=
 ### Filter value validation
 
 Equality, `__ne`, `__in`, and range filters run the field's Pydantic
@@ -219,6 +220,7 @@ class LogView(AppView):
     pagination = APP_PAGINATION.replace(default_page_size=10, max_page_size=10)
 ```
 
+(no-pagination)=
 ### The pagination envelope
 
 A list endpoint wraps its rows in a `data` envelope with `total_count` and

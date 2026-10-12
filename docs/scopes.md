@@ -382,6 +382,7 @@ class OrderCreate(fr.BaseSchema):
 `default_scope`; the per-field override exists on the scalar marker
 only.
 
+(coming-from-rails)=
 ## Coming from Rails
 
 This is `default_scope` without the parts that earned Rails'

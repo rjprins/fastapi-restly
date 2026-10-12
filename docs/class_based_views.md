@@ -85,6 +85,7 @@ larger codebases:
 
 A CBV solves all three with one tool: the class itself.
 
+(register-a-view)=
 ## Declaration and registration
 
 The base class itself is small: FastAPI router metadata plus one
