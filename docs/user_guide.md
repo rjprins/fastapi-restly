@@ -245,6 +245,7 @@ howto_error_responses
 howto_current
 clauses
 scopes
+authorization
 howto_testing
 deploying
 howto_openapi

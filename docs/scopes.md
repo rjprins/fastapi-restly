@@ -189,6 +189,40 @@ itself, on every read; there is no apply-side override point, and a
 [Reading the resolved scope](#reading-the-scope) hands a route the
 clause without opening one.
 
+(read-scope)=
+### The scope: filter every read at once
+
+The following view scopes every read to rows owned by the requesting user:
+
+```python
+class Current(fr.ContextNamespace):
+    user_id: fr.ContextParam[int]
+
+@fr.include_view(app)
+class DocumentView(fr.AsyncRestView):
+    prefix = "/documents"
+    model = Document
+    schema = DocumentSchema
+    scope = fr.where_clause(Document.owner_id == Current.user_id)
+```
+
+with ``Current.depends(...)`` binding ``user_id`` per request.
+{meth}`get_many <fastapi_restly.views.RestView.get_many>` (list and count) and
+{meth}`get_one <fastapi_restly.views.RestView.get_one>` both apply the scope,
+so one declaration covers:
+
+- the listed page,
+- the pagination total ({meth}`count <fastapi_restly.views.RestView.count>` counts the same scoped query),
+- and single-row fetches: a row hidden from the list returns 404 from `GET /{id}` as well, with no extra code.
+
+Because {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` and {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` load through `get_one` first, they inherit the same visibility check. `get_one` stays auth-free even though it 404s on hidden rows: visibility comes from the query, and custom routes that call `get_one(id)` get the same scope.
+
+[Scopes](scopes.md) covers composing clauses, the model-wide
+`default_scope`, and per-read scope replacement. Overriding
+``build_query()`` is removed. A view that still defines it fails at class
+definition with a pointer to
+[Migrating from build_query](#migrating-build-query).
+
 (per-read-scope)=
 ## A route names its own scope
 

@@ -37,13 +37,6 @@ means a plain `model: type[DeclarativeBase]` annotation no longer
 shadows a dependency, but it can still shadow inherited attribute lookups
 in some setups. `if TYPE_CHECKING:` is the safe wrapper for both.
 
-## Admin bypass: runtime flag, not a parallel view tree
-
-Read scope is *visibility*, not *policy*. Rows outside the
-[scope](scopes.md) return 404;
-allow/deny decisions such as "only managers may create" belong in
-{meth}`authorize <fastapi_restly.views.RestView.authorize>`, described in
-[`authorize`: gate the action](customize.md#authorize-gate-the-action).
 
 ## Cross-references
 

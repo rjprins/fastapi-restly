@@ -596,7 +596,7 @@ checks are then your responsibility. Gate them in
 {meth}`authorize <fastapi_restly.views.RestView.authorize>` /
 {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>` like any
 other write-path authorization; both hooks are described in
-[Request Lifecycle & Hooks](customize.md#authorize-gate-the-action).
+[Request Lifecycle & Hooks](#authorize-gate).
 
 Gate in `authorize`, where `data` carries the write-side value before
 resolution. For a {class}`MustExist <fastapi_restly.schemas.MustExist>` field,
