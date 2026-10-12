@@ -3,19 +3,34 @@
 [React-admin](https://marmelab.com/react-admin/) with
 [`ra-data-simple-rest`](https://github.com/marmelab/react-admin/tree/master/packages/ra-data-simple-rest)
 expects a REST dialect that differs from the
-[default Restly contract](howto_response_schema.md#what-restly-returns-by-default)
-in three ways: JSON-encoded `sort`, `range`, and `filter` query parameters, a
-`Content-Range` response header carrying the total row count, and `PUT`-based
-updates. The response body already matches, since both dialects return a plain
-JSON array from list endpoints.
-{class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` and {class}`ReactAdminView <fastapi_restly.views.ReactAdminView>` implement this dialect, so
-`ra-data-simple-rest` works without a custom data provider.
+[default CRUD routes](#default-crud-behavior) of Restly in four ways:
 
-## Quick start
+- The list route reads three JSON-encoded query parameters: `sort`, `range`
+  and `filter`.
+- The list route returns a plain JSON array, not a `data` envelope.
+- The list response has a `Content-Range` header with the total number of
+  rows.
+- Updates use `PUT`.
 
-To adopt the contract, replace {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` with {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` (or {class}`RestView <fastapi_restly.views.RestView>` with
-{class}`ReactAdminView <fastapi_restly.views.ReactAdminView>` for sync sessions). The react-admin frontend runs on its own
-origin during development, so the app also needs the CORS middleware from the
+{class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` and
+{class}`ReactAdminView <fastapi_restly.views.ReactAdminView>` speak this
+dialect, so `ra-data-simple-rest` works without a custom data provider. They
+are a {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` and a
+{class}`RestView <fastapi_restly.views.RestView>` with a different list
+route and an added `PUT` route. Everything else is inherited: the other
+routes, the business methods, the hooks, and the scope. So the rest of the
+Guide applies to these views too.
+
+(react-admin-quick-start)=
+
+## Connect react-admin to a view
+
+Replace {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` with
+{class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>`, or
+{class}`RestView <fastapi_restly.views.RestView>` with
+{class}`ReactAdminView <fastapi_restly.views.ReactAdminView>` for sync
+sessions. During development, the react-admin frontend runs on its own
+origin, so the app also needs [CORS middleware](#react-admin-cors) from the
 start:
 
 ```python
@@ -70,56 +85,62 @@ export default () => (
 );
 ```
 
-`ListGuesser` infers the list columns from the response; replace it with your
-own list component as the UI takes shape. The [shop example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/shop)
-is a complete runnable version of this setup, with three resources,
-relationships, and a react-admin frontend under `ui/test-admin/`.
+`ListGuesser` finds the list columns from the response. Replace it with your
+own list component as the UI grows.
 
-## HTTP contract
+The [shop example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/shop)
+runs this setup. Its API in
+[`shop/main.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/shop/shop/main.py)
+has three resources with relationships, and products with UUID ids. Its
+react-admin frontend is in
+[`ui/test-admin/`](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/shop/ui/test-admin).
+Its README shows how to run both.
 
-{class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` translates the `ra-data-simple-rest` query format to SQL
-and returns responses the provider expects.
+(react-admin-contract)=
 
-### List: `GET /resource`
+## What a react-admin view serves
 
-The list endpoint reads react-admin's three JSON-encoded query parameters:
+### The list route: `GET /resource`
+
+The list route reads the three JSON-encoded query parameters of react-admin:
 
 | Query parameter | Format | Example |
 |---|---|---|
 | `sort` | JSON `[field, direction]` | `sort=["name","ASC"]` |
-| `range` | JSON `[start, end]` (inclusive) | `range=[0,24]` |
+| `range` | JSON `[start, end]` (both included) | `range=[0,24]` |
 | `filter` | JSON object | `filter={"name":"foo"}` or `filter={"id":[1,2,3]}` |
 
-Those three are the whole contract. Any other query key is rejected with a
-422, so a typo cannot widen the result set unnoticed; the standard dialect's
-`page`, `page_size` and per-field filters are unknown keys here too. A key
-that a dependency declares, or an `APIKeyQuery` key, is accepted. Declare
-`extra_query_params` on the view for a key it reads itself.
+These three are the whole contract. Any other query key gets a 422, so a typo
+cannot return more rows than you asked for without notice. The `page`,
+`page_size` and field filters of the standard dialect are unknown keys here
+too. A key that a dependency declares, or an `APIKeyQuery` key, is accepted.
+For a key that the view reads itself, declare
+{attr}`extra_query_params <fastapi_restly.views.BaseRestView.extra_query_params>`
+on the view.
 
 The response body is a plain JSON array, and the `Content-Range` header
-carries the total:
+holds the total:
 
 ```
 Content-Range: items 0-24/315
 ```
 
-`ra-data-simple-rest` requests the path without a trailing slash
-(`GET /products?sort=...`). Restly registers default and custom `RestView`
-collection routes both with and without the trailing slash, so these requests
-are served directly, with no redirect involved.
+`ra-data-simple-rest` requests the collection path without a trailing slash
+(`GET /products?sort=...`). This is the main path of a Restly collection, so
+no redirect happens.
 
-The `id` array form of `filter` (`{"id": [1, 2, 3]}`) is used by react-admin
-for `getMany` calls. It translates to `WHERE id IN (1, 2, 3)`. Other filter
-values match by exact equality, and only fields that the view's response
-class sends are accepted: unknown fields, including react-admin's full-text `q`
-search parameter, are rejected with a 400. Substring or full-text search
-requires overriding the view's `apply_list_params`.
+React-admin uses the `id` array form of `filter` (`{"id": [1, 2, 3]}`) for
+its `getMany` calls. It becomes `WHERE id IN (1, 2, 3)`. Other filter values
+must be equal to the column value. Only fields that the view's response class
+sends are accepted. Other fields, also react-admin's full-text search
+parameter `q`, get a 400. For a search on part of a value, or a full-text
+search, override the view's
+{meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`.
 
-### Other operations
+### The other routes
 
-Four of the remaining routes serve react-admin's other data provider calls;
-the standard PATCH route stays available alongside them for clients that
-prefer partial updates:
+Four of the other routes serve the other data provider calls of react-admin.
+The standard `PATCH` route stays, for clients that send partial updates:
 
 | Method | Path | Purpose | Source |
 |---|---|---|---|
@@ -129,17 +150,23 @@ prefer partial updates:
 | `PATCH` | `/{id}` | Partial update | inherited from `AsyncRestView` |
 | `DELETE` | `/{id}` | Delete (react-admin `delete`) | inherited from `AsyncRestView` |
 
-`AsyncReactAdminView` and {class}`ReactAdminView <fastapi_restly.views.ReactAdminView>` add a `PUT /{id}` endpoint because
-`ra-data-simple-rest`'s default `update` method issues a `PUT` request. Note
-that react-admin sends the complete record on update, `id` and read-only
-fields included; the update schema drops the fields it does not accept
-instead of rejecting the request.
+The views add `PUT /{id}`, because the default `update` method of
+`ra-data-simple-rest` sends a `PUT` request. React-admin sends the complete
+record on update, with `id` and the read-only fields. The update schema drops
+the fields that it does not accept, and does not reject the request.
 
-The PUT route delegates to the same {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` handler as PATCH and
-accepts the view's standard {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` payload, so an
-{meth}`update <fastapi_restly.views.RestView.update>` business-method override changes both methods. To give PUT
-its own semantics, replace the `put` endpoint method. This version requires the
-complete record, while PATCH still accepts a partial one:
+(react-admin-put)=
+
+### Give PUT its own rules
+
+The `PUT` route calls the same
+{meth}`handle_update <fastapi_restly.views.RestView.handle_update>` handler
+as `PATCH`, with the view's standard
+{attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>`
+payload. So an {meth}`update <fastapi_restly.views.RestView.update>` business
+method that you override changes both routes. To give `PUT` its own rules,
+[replace](#replace-endpoint-method) its endpoint method `put`. This version
+requires the complete record, while `PATCH` still accepts a part of it:
 
 ```python
 class ProductReplace(fr.BaseSchema):
@@ -157,25 +184,37 @@ class ProductView(fr.AsyncReactAdminView):
         return self.to_response(obj)
 ```
 
-A PUT with a missing field returns 422. Keys the schema does not declare, such
-as the `id` react-admin sends, are ignored.
+A `PUT` with a missing field returns 422. Keys that the schema does not
+declare, such as the `id` that react-admin sends, are ignored.
 
-## Serialize related lists as scalar id arrays with `IDRef`
+(react-admin-id-arrays)=
 
-`ra-data-simple-rest` expects to-many references as plain id arrays
-(`"products": [1, 2, 3]`). Declare the field as `list[fr.IDRef[Product]]`;
-[Reference several rows](#reference-lists)
-describes the full behavior. The [shop example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/shop) runs this
-end to end.
+## Send to-many references as id arrays
 
-## CORS setup
+`ra-data-simple-rest` expects a to-many reference as a plain array of ids
+(`"products": [1, 2, 3]`). Declare the field as
+{class}`list[fr.IDRef[Model]] <fastapi_restly.schemas.IDRef>`. The shop
+example does this for the products of an order:
 
-During development the react-admin app and the API run on different origins,
-so the browser applies CORS to every request. Two things must be true: the
-API must allow the frontend origin, and the `Content-Range` header must be
-exposed to JavaScript, because browsers hide non-safelisted response headers
-from scripts. Both are handled by adding `CORSMiddleware` with `Content-Range`
-in `expose_headers`:
+```{literalinclude} ../example-projects/shop/shop/main.py
+:language: python
+:start-at: class OrderSchema(
+:end-at: products: list[fr.IDRef[Product]]
+```
+
+[Relationships](howto_relationship_idschema.md) describes lists of
+references in full.
+
+(react-admin-cors)=
+
+## Set up CORS for the frontend
+
+During development, the react-admin app and the API run on different
+origins, so the browser applies CORS to every request. Two things must be
+true. The API must allow the origin of the frontend. And the `Content-Range`
+header must be exposed to JavaScript, because browsers hide most response
+headers from scripts. Add `CORSMiddleware` with `Content-Range` in
+`expose_headers` to do both:
 
 ```python
 from fastapi.middleware.cors import CORSMiddleware
@@ -189,52 +228,59 @@ app.add_middleware(
 )
 ```
 
-{class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` also sets `Access-Control-Expose-Headers: Content-Range`
-on its list responses, so a missing `expose_headers` entry alone does not
-break pagination. Do not rely on that fallback: middleware or a proxy that
-sets its own `Access-Control-Expose-Headers` replaces the view's header, and
-one that strips it hides the total from the frontend entirely. Declare the
-exposure in configuration you control.
+The react-admin views also set `Access-Control-Expose-Headers: Content-Range`
+on their list responses, so pagination still works when `expose_headers`
+lacks the entry. Do not depend on that. Middleware or a proxy that sets its
+own `Access-Control-Expose-Headers` replaces the header of the view, and one
+that removes it hides the total from the frontend. Declare the header in
+configuration that you control. FastAPI's
+[CORS guide](https://fastapi.tiangolo.com/tutorial/cors/) explains the
+middleware.
 
-## Troubleshooting a blank list
+(react-admin-blank-list)=
 
-A react-admin list that renders "No Products found" against an API that
-demonstrably has rows is usually one of three misconfigurations, and the
-browser console says which one. Open the devtools console and match the
-error:
+## Fix a list that shows no rows
 
-**"The Content-Range header is missing in the HTTP Response"**, raised by
-`ra-data-simple-rest`, means the response reached the browser but JavaScript
+A react-admin list can show "No Products found" while the API has rows. This
+is usually one of three configuration errors, and the browser console tells
+you which one. Open the console in the developer tools and find the error:
+
+**"The Content-Range header is missing in the HTTP Response"** comes from
+`ra-data-simple-rest`. The response reached the browser, but JavaScript
 cannot read the `Content-Range` header. Add `Content-Range` to
-`expose_headers` as shown [above](#cors-setup), and check for middleware or
-proxies that overwrite or strip `Access-Control-Expose-Headers`. Seeing the
-header in `curl -i` output proves nothing here; what matters is what the
-browser exposes to scripts.
+`expose_headers`, as [Set up CORS](#react-admin-cors) shows. Then look for
+middleware or proxies that replace or remove `Access-Control-Expose-Headers`.
+`curl -i` shows the header, but that proves nothing here: only what the
+browser exposes to scripts matters.
 
-**"TypeError: Failed to fetch"** with a CORS policy error above it means the
-request itself was blocked because the API sends no
-`Access-Control-Allow-Origin` for the frontend origin. Add `CORSMiddleware`
-with the frontend origin in `allow_origins`.
+**"TypeError: Failed to fetch"**, with a CORS policy error above it, means
+that the browser blocked the request: the API sends no
+`Access-Control-Allow-Origin` for the origin of the frontend. Add
+`CORSMiddleware` with the frontend origin in `allow_origins`.
 
-**"422 (Unprocessable Content)"** on the list request means the endpoint
-rejected react-admin's query grammar, so the view is a plain
-{class}`AsyncRestView <fastapi_restly.views.AsyncRestView>`: the standard dialect does not accept the JSON-encoded
-`sort`, `range`, and `filter` parameters. Switch the view to
+**"422 (Unprocessable Content)"** on the list request means that the route
+rejected the query of react-admin, so the view is a plain
+{class}`AsyncRestView <fastapi_restly.views.AsyncRestView>`: the standard
+dialect does not accept the JSON-encoded `sort`, `range` and `filter`
+parameters. Change the view to
 {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>`.
 
-## Customization
+(react-admin-settings)=
 
-A few view-level settings adjust the defaults described above, and a base
-class can share them across views.
+## Change the defaults
+
+A few settings on the view change the defaults above, and a base class can
+share them between views.
+
+(react-admin-page-size)=
 
 ### Set the default page size
 
-When the frontend does not send a `range` query parameter, the react-admin
-views return the first 25 rows, overriding the framework-wide
+When the frontend sends no `range` query parameter, the react-admin views
+return the first 25 rows. This replaces the default
 {attr}`default_page_size <fastapi_restly.views.NumberedPagination.default_page_size>`
-of 50. Set it in the view's
-{attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` to choose a
-different value:
+of 50 for other views. To choose another value, set it in the view's
+{attr}`pagination <fastapi_restly.views.BaseRestView.pagination>`:
 
 ```python
 @fr.include_view(app)
@@ -245,16 +291,18 @@ class ProductView(fr.AsyncReactAdminView):
 ```
 
 A react-admin view uses two pagination settings: `default_page_size`, and
-`max_page_size`, the most rows one `range` may ask for. A wider `range`, or
-one with a negative start or an end before its start, answers `400`. The view
-pages with `range` and reports the total in the `Content-Range` header, so
-other settings, such as parameter names or an envelope, fail at registration.
-So does `pagination = None`: the header requires the total count.
+`max_page_size`, the most rows that one `range` may ask for. A wider
+`range`, or one with a negative start or an end before its start, gets a
+`400`. The view pages with `range` and reports the total in the
+`Content-Range` header, so other settings, such as parameter names or an
+envelope, raise an error when you register the view. So does
+`pagination = None`, because the header needs the total count.
 
 ### Change the Content-Range unit
 
-`ra-data-simple-rest` ignores the unit part of the header (it only parses the
-numbers), but if another consumer cares, override `get_react_admin_range_unit`:
+`ra-data-simple-rest` ignores the unit in the header; it only reads the
+numbers. If another client needs a unit, override
+`get_react_admin_range_unit`:
 
 ```python
 class ProductView(fr.AsyncReactAdminView):
@@ -265,11 +313,11 @@ class ProductView(fr.AsyncReactAdminView):
         return "products"
 ```
 
-### Share the react-admin contract across multiple views
+### Share these settings between views
 
-Put shared customizations in a project base class and inherit your views from
-it, following the pattern in
-[Share Behaviour with Base Views](#share-behaviour-with-base-views):
+Put the shared settings in a base class of your project, and let your views
+inherit from it, as
+[Share Behaviour with Base Views](#share-behaviour-with-base-views) explains:
 
 ```python
 class ReactAdminBase(fr.AsyncReactAdminView):
@@ -289,20 +337,30 @@ class CustomerView(ReactAdminBase):
     model = Customer
 ```
 
-## Under the hood
+(react-admin-internals)=
 
-{class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` is a thin subclass of {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` built with the
-[route replacement](#replace-endpoint-method)
-pattern. It replaces {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` to parse the
-react-admin query string, then delegates to the standard {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>` /
-{meth}`get_many <fastapi_restly.views.RestView.get_many>` flow. The react-admin dialect itself lives in {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
-(JSON `sort` / `range` / `filter`) and
+## Internals
+
+{class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` is a
+small subclass of
+{class}`AsyncRestView <fastapi_restly.views.AsyncRestView>`, built by
+[replacing an endpoint method](#replace-endpoint-method). It replaces
+{meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>`
+to read the react-admin query string. Then it calls the standard
+{meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>` and
+{meth}`get_many <fastapi_restly.views.RestView.get_many>`. The react-admin
+dialect itself is in
+{meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
+(JSON `sort`, `range` and `filter`) and
 {meth}`to_list_response <fastapi_restly.views.BaseRestView.to_list_response>`
-(plain array body plus `Content-Range`).
+(a plain array body and `Content-Range`). These views do not use the list
+parameters of the standard dialect, which
+[Filtering & Pagination](#list-parameters-lifecycle) describes.
 
-It also adds a `PUT /{id}` route that delegates to the standard {meth}`handle_update <fastapi_restly.views.RestView.handle_update>`
-handler. The endpoint methods for the other CRUD routes (`GET /{id}`, `POST
-/`, `PATCH /{id}`, `DELETE /{id}`) and the write business methods are
-inherited unchanged.
+The views also add a `PUT /{id}` route that calls the standard
+{meth}`handle_update <fastapi_restly.views.RestView.handle_update>` handler.
+The endpoint methods of the other CRUD routes (`GET /{id}`, `POST /`,
+`PATCH /{id}`, `DELETE /{id}`) and the business methods for writes are
+inherited without change.
 
-The shared parsing and response helpers are internal.
+The shared helpers that parse the query and build the response are internal.
