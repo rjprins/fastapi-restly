@@ -1,4 +1,4 @@
-"""Restore a soft-deleted row, as docs/patterns.md shows it.
+"""Restore a soft-deleted row, as docs/scopes.md shows it.
 
 The view scope hides deleted rows; the restore route reads through the
 complementary clause and mutates inside ``write_action``. Sync and async.

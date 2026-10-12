@@ -139,15 +139,6 @@ work.
 Define a model-backed CRUD resource and understand its default contract.
 :::
 
-:::{grid-item-card} Patterns
-:link: patterns
-:link-type: doc
-
-Find the idiomatic answers for nested resources and sub-resources, a
-different list schema, restoring soft-deleted rows, webhook receivers, login
-flows, custom actions, and tenant scoping.
-:::
-
 :::{grid-item-card} Nested Resources
 :link: howto_nested
 :link-type: doc
@@ -248,7 +239,6 @@ howto_nested
 customize
 howto_custom_schema
 howto_response_schema
-patterns
 howto_relationship_idschema
 howto_relationship_loading
 howto_query_modifiers

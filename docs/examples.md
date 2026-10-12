@@ -62,8 +62,7 @@ The routes below highlight the patterns involved:
 These patterns are covered in
 [Compose Views with Mixins](howto_compose_views_with_mixins.md),
 [Share Behaviour with Base Views](howto_inheritance.md),
-[Request Lifecycle & Hooks](customize.md), and
-[Patterns](patterns.md).
+and [Request Lifecycle & Hooks](customize.md).
 
 ## Running them
 

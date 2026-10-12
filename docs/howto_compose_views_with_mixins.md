@@ -243,7 +243,7 @@ business method, not the handler.
 {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` still
 loads, authorizes, and commits; the mixin only changes what "delete" does. To
 bring a flipped row back, see
-[Restore a soft-deleted row](patterns.md#restore-a-soft-deleted-row).
+[A route names its own scope](#per-read-scope).
 
 ### Audit stamps: two column defaults
 

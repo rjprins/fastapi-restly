@@ -345,6 +345,39 @@ class AuthView(fr.View):
 The class gives three related endpoints one shared prefix and tag, and a
 single place for auth dependencies, with no model, no schema, and no CRUD.
 
+(receive-a-webhook)=
+
+### Receive a webhook (inbound)
+
+An inbound webhook receiver is not CRUD, so use a bare
+{class}`fr.View <fastapi_restly.views.View>` with the raw `Request`. Verify
+the signature before parsing, and commit explicitly: the framework's
+auto-commit bracket only wraps {class}`RestView <fastapi_restly.views.RestView>`
+handlers, so a bare `View` route owns its commit (the same contract as
+{func}`fr.open_async_session() <fastapi_restly.db.open_async_session>`).
+
+```python
+from fastapi import Request
+
+@fr.include_view(app)
+class PaymentWebhookView(fr.View):
+    prefix = "/webhooks"
+    session: fr.AsyncSessionDep
+
+    @fr.post("/payments", status_code=204)
+    async def receive_payment_event(self, request: Request):
+        payload = await request.body()
+        verify_signature(payload, request.headers.get("X-Signature"))
+        event = json.loads(payload)
+        self.session.add(PaymentEvent(kind=event["type"], data=payload.decode()))
+        await self.session.commit()  # a bare View owns its commit
+```
+
+For *outbound* webhooks (calling someone else after a write), use the
+{meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>` hook
+instead, or an outbox row for a webhook that must arrive. See
+[When `after_action_commit` raises](#after-action-commit-raises).
+
 ## When *not* to use a CBV
 
 If you have a single one-off endpoint that does not share anything with

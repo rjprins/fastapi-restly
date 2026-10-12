@@ -370,6 +370,6 @@ OpenAPI then shows them as one.
 
 - [Auto-generated schemas](technical_details.md#auto-generated-schemas): how
   the derived schemas are built when you do not declare one.
-- [Patterns: a different schema for the list
-  endpoint](patterns.md#a-different-schema-for-the-list-endpoint): when the
+- [A different schema for the list
+  endpoint](#list-schema): when the
   list and detail routes need different shapes.

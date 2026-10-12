@@ -348,5 +348,5 @@ and what changes when you add them to a base that already has models.
   HTTP contract while migrating; savepoint-isolated tests against your DB.
 - [Deploying](deploying.md): engine configuration from environment values,
   Alembic, and a production `main.py`.
-- [Patterns](patterns.md): the idiomatic answers for nested resources,
-  webhooks, and other shapes your existing app probably has.
+- [Nested Resources](#nested-resources) and
+  [Receive a webhook](#receive-a-webhook): shapes your existing app probably has.

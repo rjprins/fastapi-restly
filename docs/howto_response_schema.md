@@ -280,10 +280,42 @@ you return. A new contract therefore needs both pieces: the `to_response`
 override for the runtime shape, and a replacement endpoint method with a matching
 `response_model`.
 
+(list-schema)=
+
+## A different schema for the list endpoint
+
+There is no `schema_list` attribute. A different list shape is an
+HTTP-contract change, so it belongs in the endpoint method: replace
+{meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>`
+with your own `response_model` and serialize through the slimmer schema.
+Filtering, sorting, and pagination parameters keep working:
+
+```python
+class UserSummary(fr.IDSchema):
+    name: str
+
+
+class UserView(fr.AsyncRestView):
+    prefix = "/users"
+    model = User
+    schema = UserSchema  # detail routes keep the full schema
+
+    @fr.get("/", response_model=list[UserSummary])
+    async def get_many_endpoint(self, list_params):
+        result = await self.handle_get_many(list_params)
+        return [
+            UserSummary.model_validate(u, from_attributes=True)
+            for u in result.objects
+        ]
+```
+
+Replacing an endpoint method is the outermost override; see
+[Replace an endpoint method to change the HTTP contract](customize.md#replace-an-endpoint-method-to-change-the-http-contract).
+
 ## See also
 
 - [Schemas & Validation](howto_custom_schema.md): which fields an object exposes.
-- [Request Lifecycle & Hooks](customize.md): endpoint-method replacement mechanics, and [a different schema for the list endpoint](patterns.md#a-different-schema-for-the-list-endpoint).
+- [Request Lifecycle & Hooks](customize.md): endpoint-method replacement mechanics, and [a different schema for the list endpoint](#list-schema).
 - [Errors](howto_error_responses.md): errors bypass `to_response`.
 - [Filtering & Pagination](howto_query_modifiers.md): the pagination inputs clients send.
 - [Relationship Loading and Async](howto_relationship_loading.md): how nested relationship fields load, and `MissingGreenlet` on async.
