@@ -24,7 +24,7 @@ default CRUD routes, query parameters, error translation, and test fixtures.
   all work from {func}`fr.configure() <fastapi_restly.db.configure>` onward.
 - **Customization is never off the path.** Applications are rarely just CRUD.
   Every CRUD operation has explicit override points, so the default behavior
-  is a starting point, not a boundary (see [Request Lifecycle & Hooks](customize.md)).
+  is a starting point, not a boundary (see [Request Lifecycle & Hooks](lifecycle.md)).
 - **Documentation you don't have to guess at.** Common paths have runnable
   examples and extension points say where custom behavior belongs, for your
   team.

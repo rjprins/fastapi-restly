@@ -250,7 +250,7 @@ not see this.
 
 - [View Reference](#view-method-surface): the methods that the type
   parameters type, sorted by kind.
-- [Request Lifecycle & Hooks](customize.md): which method to override for
+- [Request Lifecycle & Hooks](lifecycle.md): which method to override for
   each change.
 - [Relationships](howto_relationship_idschema.md): what
   {class}`fr.MustExist <fastapi_restly.schemas.MustExist>`,

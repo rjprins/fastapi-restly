@@ -544,7 +544,7 @@ The default CRUD routes have these limits:
 ## See also
 
 - [Build a Blog API](tutorial.md): build and run a first resource.
-- [Request Lifecycle & Hooks](customize.md): change what a route does.
+- [Request Lifecycle & Hooks](lifecycle.md): change what a route does.
 - [Schemas & Validation](howto_custom_schema.md): the fields that the routes
   accept and return.
 - [Views](views.md): registration, shared dependencies and base

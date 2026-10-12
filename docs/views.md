@@ -730,7 +730,7 @@ the route methods before registration. On a CRUD view, call `super()` in it.
 
 - [CRUD Routes](crud_routes.md): the default CRUD routes and their
   configuration.
-- [Request Lifecycle & Hooks](customize.md): how a view handles a request,
+- [Request Lifecycle & Hooks](lifecycle.md): how a view handles a request,
   and which method to override.
 - [View Reference](view_reference.md): every class attribute and method of
   {class}`View <fastapi_restly.views.View>`,

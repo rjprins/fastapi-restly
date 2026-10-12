@@ -178,7 +178,7 @@ Some errors are not a `RestlyHTTPError`, so this handler does not change them:
 
 ## See also
 
-- [Request Lifecycle & Hooks](customize.md): where
+- [Request Lifecycle & Hooks](lifecycle.md): where
   {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the business
   methods run, and when the commit happens.
 - [Filtering & Pagination](howto_query_modifiers.md): the list parameters that

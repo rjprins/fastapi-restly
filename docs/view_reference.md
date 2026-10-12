@@ -2,7 +2,7 @@
 
 This page lists everything you can set, override, or call on a view.
 [CRUD Routes](crud_routes.md) explains the default HTTP contract, and
-[Request Lifecycle & Hooks](customize.md) explains which method to override.
+[Request Lifecycle & Hooks](lifecycle.md) explains which method to override.
 [Modules](api/index.rst) documents the complete signatures.
 
 ## View classes
@@ -157,7 +157,7 @@ and `fr.clauses.UNSCOPED` reads unscoped.
 
 Internal methods prefixed with `_`, such as `_reject_unknown_query_params`, are implementation details even though they are visible on instances.
 
-See [Views](#the-view-hierarchy) for the class hierarchy, [Request Lifecycle & Hooks](customize.md) for examples of choosing which method to override, and [Type Annotations](howto_typing.md) for the typed signatures of these methods.
+See [Views](#the-view-hierarchy) for the class hierarchy, [Request Lifecycle & Hooks](lifecycle.md) for examples of choosing which method to override, and [Type Annotations](howto_typing.md) for the typed signatures of these methods.
 
 (advanced-object-helpers)=
 ### The same operations outside a view

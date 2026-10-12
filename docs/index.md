@@ -101,7 +101,7 @@ Restly step by step, from the first model to authors, drafts, and tests.
 
 - **[Default CRUD routes](#default-crud-routes)**: GET, POST, PATCH, DELETE with minimal boilerplate
 - **[True class-based views](views.md)**: inheritance, mixins, and method overrides
-- **[Explicit override points](customize.md)**: every CRUD verb split into an endpoint method and a business method you override
+- **[Explicit override points](lifecycle.md)**: every CRUD verb split into an endpoint method and a business method you override
 - **[React Admin ready](howto_react_admin.md)**: `AsyncReactAdminView` speaks `ra-data-simple-rest`
 - **[SQLAlchemy 2.0 support](tutorial.md)**: async-first with modern patterns
 - **[Pydantic v2 integration](howto_custom_schema.md)**: validation and serialization for public contracts

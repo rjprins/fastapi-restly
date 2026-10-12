@@ -36,7 +36,7 @@ Page: [Models](models.md).
 ## Routes
 
 Pages: [Views](views.md), [CRUD Routes](crud_routes.md),
-[Request Lifecycle & Hooks](customize.md).
+[Request Lifecycle & Hooks](lifecycle.md).
 
 - [Should I use `View`, `AsyncRestView`, `RestView` or a plain FastAPI function?](#choose-a-view-class)
 - [How do I declare a route, or serve several HTTP methods on one path?](#declare-a-route)
@@ -156,7 +156,7 @@ database
 models
 views
 crud_routes
-customize
+lifecycle
 howto_custom_schema
 howto_response_schema
 howto_relationship_idschema
