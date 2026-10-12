@@ -5,50 +5,6 @@ SQLAlchemy session listeners restrict tenant reads. Clause namespaces define
 [scopes](scopes.md), such as hiding soft-deleted rows. View mixins override
 shared behavior, such as setting a timestamp instead of deleting a row.
 
-Keep per-view logic in the business method: hash passwords, derive slugs,
-update rollups, and dispatch resource-specific events in
-{meth}`create <fastapi_restly.views.RestView.create>` /
-{meth}`update <fastapi_restly.views.RestView.update>`, as described in
-[Override the business methods](customize.md#override-the-business-methods).
-The discriminating question is whether the value depends on the request
-payload. A field that only reads request context (the auth user id, the tenant
-id) is structural and belongs on the model. A value computed from schema
-fields, as in `hash_password(schema.password)` or
-`slugify(schema.name) + uniqueness_probe`, belongs in a per-view `create` /
-`update` override.
-
-## Reusing logic outside the view
-
-A per-view {meth}`create <fastapi_restly.views.RestView.create>` /
-{meth}`update <fastapi_restly.views.RestView.update>` override has
-`self.session`, `self.request`, and any mixin-provided state. That is usually
-the right home for the logic.
-
-If the same logic must also run from a script or worker, extract a plain
-function, put it where it is easiest to find, and call it from both:
-
-```python
-def hash_and_set_password(user: User, raw_password: str) -> None:
-    user.password = bcrypt.hashpw(raw_password.encode(), bcrypt.gensalt())
-
-
-class UserView(fr.AsyncRestView):
-    model = User
-    schema = UserSchema
-
-    async def create(self, schema_obj):
-        user = await self.make_new_object(schema_obj)
-        hash_and_set_password(user, schema_obj.password)
-        return await self.save_object(user)
-```
-
-`create` is commit-free, so the surrounding commit bracket persists the
-password hash with the row. The view methods `make_new_object` and `save_object` wrap the free
-functions in `fastapi_restly.objects`; import the free functions for workers
-with a bare session.
-
-Do not extract early. Wait until there is a second caller.
-
 ## Two ergonomic gotchas
 
 Two recurring issues come up when writing mixins of this kind.

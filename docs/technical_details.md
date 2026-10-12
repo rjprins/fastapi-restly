@@ -282,21 +282,6 @@ route registration. Making that source a dependency lets FastAPI share its
 cached session with the application's `Depends(get_db)`, without rewriting
 view annotations. The wrapper checks for uncommitted changes before the source
 cleans up. The built-in generators roll back and close on exit.
-They do **not** commit on response. `handle_<verb>` normally owns
-the commit and runs
-{meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`,
-then the commit itself, then
-{meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>`
-around domain logic. Inside `shared_write_action_commit`, the outermost block
-owns the commit and handlers return after flush, before the commit and
-after-hook.
-Custom write routes can use the same bracket with
-`async with self.write_action(action, ...)`. Several brackets can share a commit
-with [shared_write_action_commit()](#shared-write-action-commit).
-If a request ends with uncommitted
-changes, Restly warns with {class}`RestlyUncommittedChangesWarning <fastapi_restly.exc.RestlyUncommittedChangesWarning>` by default.
-[Custom session generators](howto_existing_project.md#provide-your-own-session-generator)
-control construction and cleanup, not commit ownership.
 
 [CRUD Routes](rest_views.md) owns the user-facing model, schema,
 identity, route, and list configuration. At registration,
@@ -331,13 +316,6 @@ class MyView(fr.AsyncRestView):
 Both forms call {meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>` (which generates derived schemas,
 annotates endpoint signatures, and registers the {attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`), then
 attach an `APIRouter` to the parent app/router.
-
-### The Methods of a CRUD Route
-
-Every CRUD route runs through an endpoint method (`<verb>_endpoint`), a
-handler (`handle_<verb>`), and a business method (`<verb>`). How the handler
-handles the steps, and the override decision table, live in
-[Request Lifecycle & Hooks](#view-request-steps).
 
 (list-parameters-lifecycle)=
 ## List Parameters Lifecycle

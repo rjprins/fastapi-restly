@@ -147,6 +147,18 @@ Each business method maps to one domain operation, so override only the one
 you need. These methods are auth-free and commit-free; the handler adds
 authorization and commit handling around them.
 
+Keep per-view logic in the business method: hash passwords, derive slugs,
+update rollups, and dispatch resource-specific events in
+{meth}`create <fastapi_restly.views.RestView.create>` /
+{meth}`update <fastapi_restly.views.RestView.update>`, as described in
+[Override the business methods](customize.md#override-the-business-methods).
+The discriminating question is whether the value depends on the request
+payload. A field that only reads request context (the auth user id, the tenant
+id) is structural and belongs on the model. A value computed from schema
+fields, as in `hash_password(schema.password)` or
+`slugify(schema.name) + uniqueness_probe`, belongs in a per-view `create` /
+`update` override.
+
 (password-hash-example)=
 ### `create`: hash a password
 
@@ -330,6 +342,22 @@ once the mark is durable:
             await enqueue_async_delete(old["id"])  # the real delete runs off-request
 ```
 
+Restly's built-in session generators do **not** commit on response. `handle_<verb>` normally owns
+the commit and runs
+{meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`,
+then the commit itself, then
+{meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>`
+around domain logic. Inside `shared_write_action_commit`, the outermost block
+owns the commit and handlers return after flush, before the commit and
+after-hook.
+Custom write routes can use the same bracket with
+`async with self.write_action(action, ...)`. Several brackets can share a commit
+with [shared_write_action_commit()](#shared-write-action-commit).
+If a request ends with uncommitted
+changes, Restly warns with {class}`RestlyUncommittedChangesWarning <fastapi_restly.exc.RestlyUncommittedChangesWarning>` by default.
+[Custom session generators](howto_existing_project.md#provide-your-own-session-generator)
+control construction and cleanup, not commit ownership.
+
 (after-action-commit-raises)=
 ### When `after_action_commit` raises
 
@@ -380,6 +408,38 @@ async def import_user(session, payload) -> User:
 ```
 
 Because none of these commit, the same code works inside a view or worker; only the caller owns the transaction.
+
+### Reusing logic outside the view
+
+A per-view {meth}`create <fastapi_restly.views.RestView.create>` /
+{meth}`update <fastapi_restly.views.RestView.update>` override has
+`self.session`, `self.request`, and any mixin-provided state. That is usually
+the right home for the logic.
+
+If the same logic must also run from a script or worker, extract a plain
+function, put it where it is easiest to find, and call it from both:
+
+```python
+def hash_and_set_password(user: User, raw_password: str) -> None:
+    user.password = bcrypt.hashpw(raw_password.encode(), bcrypt.gensalt())
+
+
+class UserView(fr.AsyncRestView):
+    model = User
+    schema = UserSchema
+
+    async def create(self, schema_obj):
+        user = await self.make_new_object(schema_obj)
+        hash_and_set_password(user, schema_obj.password)
+        return await self.save_object(user)
+```
+
+`create` is commit-free, so the surrounding commit bracket persists the
+password hash with the row. The view methods `make_new_object` and `save_object` wrap the free
+functions in `fastapi_restly.objects`; import the free functions for workers
+with a bare session.
+
+Do not extract early. Wait until there is a second caller.
 
 ## Replace an endpoint method to change the HTTP contract
 
