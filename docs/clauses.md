@@ -1,11 +1,14 @@
 # Query Clauses
 
-A query clause is a named, reusable SQLAlchemy predicate: a
-{class}`WhereClause <fastapi_restly.clauses.WhereClause>`. Declare it
-once, compose it with others, and apply it to any statement.
+A query clause is a named SQLAlchemy condition that you can reuse: a
+{class}`WhereClause <fastapi_restly.clauses.WhereClause>`. Declare it once,
+combine it with other clauses, and apply it to any statement. A clause takes
+no arguments. A value that changes per request, such as the current user,
+comes from a context member, and Restly reads it each time the clause is
+applied.
 
-For example, you could reuse the same rules to list and count a user's
-non-deleted tasks:
+This example uses the same rules to list and to count the tasks of a user
+that are not deleted:
 
 ```python
 import fastapi_restly as fr
@@ -32,28 +35,29 @@ with Current.bind(user_id=42):
     count = fr.apply_clauses(select(func.count(Task.id)), TaskClauses.visible)
 ```
 
-Both statements select non-deleted tasks belonging to user 42.
+Both statements select the tasks of user 42 that are not deleted. The parts:
 
-{func}`fr.where_clause <fastapi_restly.clauses.where_clause>` creates a
-clause from a SQLAlchemy condition, or from a function that returns one.
-See [Declaring clauses](#declaring-clauses).
+- {func}`fr.where_clause <fastapi_restly.clauses.where_clause>` makes a clause
+  from a SQLAlchemy condition, or from a function that returns one. See
+  [Declare a clause](#declaring-clauses).
+- `Current.user_id` is a member of a
+  {class}`ContextNamespace <fastapi_restly.clauses.ContextNamespace>`. In the
+  condition it is a placeholder. A binding around the code that applies the
+  clause gives it a value. See [Give a clause its values](#binding-values).
+- {class}`ClauseNamespace <fastapi_restly.clauses.ClauseNamespace>` groups
+  the clauses of the model. `default_scope = visible` makes `visible` the
+  scope of every {class}`RestView <fastapi_restly.views.RestView>` read and
+  every reference check on `Task`. See [Scopes](#default-scope).
+- {func}`fr.all_of <fastapi_restly.clauses.all_of>` and
+  {func}`fr.none_of <fastapi_restly.clauses.none_of>`
+  [combine clauses](#composing-clauses), and
+  {func}`fr.apply_clauses <fastapi_restly.clauses.apply_clauses>`
+  [applies them to a statement](#applying-clauses).
 
-`Current.user_id` is a member of a
-{class}`ContextNamespace <fastapi_restly.clauses.ContextNamespace>`. A
-clause takes no arguments: a value that changes per request or per call is
-a member, bound around the code that applies the clause. See
-[Supplying values](#binding-values).
+(declaring-clauses)=
+## Declare a clause
 
-{class}`ClauseNamespace <fastapi_restly.clauses.ClauseNamespace>` groups
-the model's clauses. `default_scope = visible` makes `visible` the default
-scope for {class}`RestView <fastapi_restly.views.RestView>` reads and
-reference checks on `Task`. See [Scopes](#default-scope).
-
-[Compose](#composing-clauses) clauses, then
-[apply them to statements](#applying-clauses) with
-{func}`fr.apply_clauses <fastapi_restly.clauses.apply_clauses>`.
-
-The remaining examples share three models:
+The examples below use three models:
 
 ```python
 from datetime import datetime, timedelta
@@ -96,11 +100,8 @@ class Subscription(Base):
     status: Mapped[str]
 ```
 
-(declaring-clauses)=
-## Declaring clauses
-
-{func}`fr.where_clause <fastapi_restly.clauses.where_clause>` builds a
-clause. A ready-made SQLAlchemy condition needs no function:
+{func}`fr.where_clause <fastapi_restly.clauses.where_clause>` makes a clause.
+A ready SQLAlchemy condition needs no function:
 
 ```python
 import fastapi_restly as fr
@@ -111,10 +112,9 @@ recently_created = fr.where_clause(
 )
 ```
 
-A clause is a predicate and never joins. Express a condition on a
-related table with the relationship's `any()` or `has()`, which generate
-EXISTS. A join used for an existence check multiplies rows on
-one-to-many relationships; EXISTS cannot.
+A clause is a condition and never joins. For a condition on a related table,
+use the relationship's `any()` or `has()`, which generate `EXISTS`. A join
+for this purpose repeats rows on a one-to-many relationship. `EXISTS` cannot.
 
 ```python
 has_active_subscription = fr.where_clause(
@@ -122,8 +122,8 @@ has_active_subscription = fr.where_clause(
 )
 ```
 
-Decorate a function when the condition needs a Python branch. The
-function takes no parameters and runs each time the clause is applied:
+When the condition needs a Python `if`, decorate a function. The function
+takes no parameters, and it runs each time the clause is applied:
 
 ```python
 from sqlalchemy import ColumnElement, true
@@ -136,17 +136,18 @@ def owned_unless_admin() -> ColumnElement[bool]:
     return Item.user_id == Current.user_id()
 ```
 
-A function with parameters raises `TypeError` at declaration. The values
-a condition needs come from context members, described under
-[Supplying values](#binding-values).
+A function with parameters raises `TypeError` when you declare the clause.
+The values that a condition needs come from context members; see
+[Give a clause its values](#binding-values).
 
 (clause-namespaces)=
-## Grouping clauses per model
+## Group the clauses of a model
 
-A model's clauses live in one
+Put the clauses of a model in one
 {class}`fr.ClauseNamespace <fastapi_restly.clauses.ClauseNamespace>`
-subclass. Declare `model` in the class body; on definition the namespace
-validates itself and registers as the model's clause namespace:
+subclass, and declare `model` in the class body. When Python defines the
+class, the namespace checks itself and registers as the clause namespace of
+the model:
 
 ```python
 class ItemClauses(fr.ClauseNamespace):
@@ -166,20 +167,23 @@ class ItemClauses(fr.ClauseNamespace):
     trashed = fr.all_of(owned_by_user, is_deleted)
 ```
 
-Earlier names in the class body are in scope for later compositions, as
-`visible` shows. The `@staticmethod` under the clause decorator is for
-the type checker, which reads a bare `def` in a class body as a method;
-`where_clause` unwraps it. Usage is by class name: `ItemClauses.visible`,
-`ItemClauses.trashed`, plain attribute access that any type checker
-follows. Name the namespace after the model, and define it in the
-model's module: importing the model then guarantees the namespace is
-registered. `model` is optional: a namespace without one is a plain group
-of clauses, or a base class for namespaces that declare one, and declaring
-`model` is what registers the namespace for its model.
+A later line in the class body can use an earlier name, as `visible` shows.
+The `@staticmethod` under the decorator is for the type checker, which reads a
+plain `def` in a class body as a method; `where_clause` removes it. Use the
+clauses through the class name, such as `ItemClauses.visible`. A type checker
+follows this plain attribute access.
 
-The namespace validates itself at definition time. A public attribute
-that is not a clause raises, which catches the bare expression that
-forgot its wrapper:
+Name the namespace after the model, and define it in the module of the model.
+Then importing the model always registers the namespace. `model` is optional.
+A namespace without a model is a plain group of clauses, or a base class for
+namespaces that declare one. Only a namespace with `model` registers.
+
+The SaaS example groups the task rules this way, with a clause function for
+the member role, in `TaskClauses` in
+[`app/tasks/models.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/tasks/models.py).
+
+The namespace checks itself when Python defines it. A public attribute that is
+not a clause raises. This catches a condition that you forgot to wrap:
 
 ```python
 class ItemClauses(fr.ClauseNamespace):
@@ -187,45 +191,42 @@ class ItemClauses(fr.ClauseNamespace):
     is_deleted = Item.deleted_at.is_not(None)   # TypeError at import
 ```
 
-Helpers and constants are allowed with a leading underscore. A second
-namespace for the same model raises.
+A helper or a constant is allowed when its name starts with an underscore. A
+second namespace for the same model raises.
 
-A tenant predicate that must survive every replacement scope belongs in the
-session-level rule documented under [tenant row scoping](#tenant-row-scoping).
+Name a clause so that it reads as true after `WHERE`: `owned_by_user`,
+`is_deleted`, `has_active_subscription`. Do not add `_filter` or `_clause`;
+the namespace and the type already say what the attribute is.
 
-Name clauses as predicate phrases that read truthfully after WHERE:
-`owned_by_user`, `is_deleted`, `has_active_subscription`. Skip
-mechanism suffixes such as `_filter` or `_clause`; the namespace and the
-type already say what the attribute is.
-
-One attribute name is reserved: a `WhereClause` declared as
-`default_scope` becomes the scope every view read and every reference
-check on the model applies, and undeclared means `UNSCOPED`; the
-namespace enforces the shape at definition. [Scopes](scopes.md) owns
-that topic.
+One name is reserved: the clause named `default_scope` is the scope of every
+view read and every reference check on the model. [Scopes](scopes.md) owns
+that topic. A tenant rule that must hold under every scope is not a clause;
+it is a session rule, described under
+[tenant row scoping](#tenant-row-scoping).
 
 (composing-clauses)=
-## Composing
+## Combine clauses
 
 {func}`fr.all_of <fastapi_restly.clauses.all_of>`,
-{func}`fr.any_of <fastapi_restly.clauses.any_of>`, and
-{func}`fr.none_of <fastapi_restly.clauses.none_of>` compose clauses into
-a new clause:
+{func}`fr.any_of <fastapi_restly.clauses.any_of>` and
+{func}`fr.none_of <fastapi_restly.clauses.none_of>` combine clauses into a new
+clause:
 
 ```python
 live_and_owned = fr.all_of(ItemClauses.owned_by_user, fr.none_of(is_deleted))
 active_or_new = fr.any_of(has_active_subscription, recently_created)
 ```
 
-`none_of(a, b)` is NOT over the OR of its operands: true when none
-hold.
+`all_of` is AND, and `any_of` is OR. `none_of(a, b)` is NOT over `a OR b`: it
+is true when none of the clauses holds. Called with no arguments, each of the
+three raises.
 
 (clause-in-expression)=
-### A clause inside an expression
+### Use a clause inside another condition
 
-A clause can also go into the condition of another clause. Write it
-there without a call. This is how a rule follows a relationship: an item
-is live when its collection is not archived.
+A clause can go inside the condition of another clause. Write it there
+without a call. This is how a rule follows a relationship: an item is live
+when its collection is not archived.
 
 ```python
 class CollectionClauses(fr.ClauseNamespace):
@@ -243,15 +244,19 @@ in_own_collection = fr.where_clause(
 )
 ```
 
-SQLAlchemy builds the outer condition once, when the module runs. A
-context member inside it, such as `Current.user_id`, stays a placeholder.
-The outer clause reads the member each time it is applied, in the same way
-as a member written directly in its own condition.
+SQLAlchemy builds the outer condition once, when the module runs. A context
+member inside it, such as `Current.user_id`, stays a placeholder. The outer
+clause reads the member each time it is applied, as it reads a member in its
+own condition.
+
+The blog example gives comments the scope of their post this way:
+`CommentClauses` in
+[`blog/main.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/blog/blog/main.py).
 
 A clause function runs each time its clause is applied, so it has no
-condition yet when the outer expression is built. Placing one inside an
-expression raises `TypeError`, and so does a composite that contains one.
-Write the outer condition as a clause function too, and call the inner
+condition yet when Python builds the outer condition. A clause function inside
+a condition raises `TypeError`, and so does a combined clause that contains
+one. Write the outer condition as a clause function too, and call the inner
 clause in its body:
 
 ```python
@@ -266,22 +271,21 @@ def in_owned_collection() -> ColumnElement[bool]:
 Here `collection_owned_unless_admin` stands for any clause function on
 `Collection`.
 
-In plain SQLAlchemy, there is no outer clause to read the members. Call a
-clause that contains members there, as
-[Using a clause in plain SQLAlchemy](#clauses-in-plain-sqlalchemy) shows.
-Without the call, SQLAlchemy rejects the statement when it runs, because
-the members have no value.
+In plain SQLAlchemy there is no outer clause to read the members. There, call
+a clause that contains members, as
+[Use a clause in plain SQLAlchemy](#clauses-in-plain-sqlalchemy) shows.
+Without the call, SQLAlchemy rejects the statement when it runs, because the
+members have no value.
 
 (unscoped-composition)=
-### Composing with `UNSCOPED`
+### Combine with `UNSCOPED`
 
-Use `fr.clauses.UNSCOPED` to express no restriction. It is a
-`WhereClause` whose condition is SQL `TRUE`, so it accepts every row. It
-goes everywhere a clause goes, and calling it returns `sqlalchemy.true()`.
+`fr.clauses.UNSCOPED` means no limit. It is a `WhereClause` whose condition
+is SQL `TRUE`, so it accepts every row. It works everywhere a clause works,
+and calling it returns `sqlalchemy.true()`.
 
-The composition functions simplify it with the following rules.
-Here `C` is a predicate clause, and the argument order does not affect
-the result:
+The combining functions simplify it with these rules. `C` is a clause, and
+the order of the arguments does not change the result:
 
 | Expression | Result |
 |---|---|
@@ -293,49 +297,47 @@ the result:
 | `fr.none_of(UNSCOPED, C)` | A `WhereClause` over `sqlalchemy.false()` |
 | `fr.none_of(UNSCOPED)` | A `WhereClause` over `sqlalchemy.false()` |
 
-`UNSCOPED` is a no-op in AND composition. It cannot be dropped from OR
-or NOT: every row OR published rows still means every row. NOT over
-that result matches no rows. The false clause works as a scope too:
-lists and counts are empty, and retrieve and reference checks return 404.
+In AND, `UNSCOPED` changes nothing. In OR and NOT it decides the result:
+every row OR the published rows is still every row, and NOT over that
+matches no rows. The false clause works as a scope too: lists and counts are
+empty, and single-row reads and reference checks return `404`.
 
-`all_of` removes `UNSCOPED` arguments before composing the remaining
-clauses. With one clause left it returns that exact object. With none
-left it returns `UNSCOPED`. This lets a predicate extend a possibly
-unscoped default without branching:
+`all_of` drops its `UNSCOPED` arguments and combines the rest. With one clause
+left, it returns that same object. With none left, it returns `UNSCOPED`. So
+a condition can extend a default scope that may be `UNSCOPED`, without an
+`if`:
 
 ```python
 scope = fr.all_of(ItemClauses.default_scope, has_active_subscription)
 ```
 
-Every composition returns a `WhereClause`, because `UNSCOPED` is one
-too. So the result works everywhere a clause works, even when it is
-`UNSCOPED`.
+Each combining function returns a `WhereClause`, since `UNSCOPED` is one too.
+So the result works everywhere a clause works, also when it is `UNSCOPED`.
+Passing `UNSCOPED` counts as an argument for the rule that a call needs at
+least one.
 
-`all_of()`, `any_of()`, and `none_of()` with no arguments raise.
-Passing `UNSCOPED` explicitly counts as an argument.
+Restly still checks the other arguments when `UNSCOPED` decides the result. A
+raw expression or a `ContextParam` in `all_of`, `any_of` or `none_of` still
+raises. A clause that OR or NOT makes irrelevant is not evaluated, so it
+needs no bound values.
 
-Other operands are validated even when `UNSCOPED` determines the whole
-result. A raw expression or a `ContextParam` in a boolean composition
-still raises. Once validated, clauses discarded by OR or NOT
-simplification are not evaluated and need no bound values.
-
-`apply_clauses(stmt, UNSCOPED)` adds no restriction. Existing filters
-on `stmt` stay in place, and other supplied clauses still apply.
-`UNSCOPED` does not clear a statement that was already filtered.
+`apply_clauses(stmt, UNSCOPED)` adds no condition. Filters already on `stmt`
+stay, and the other clauses you pass still apply. `UNSCOPED` does not remove
+a filter from a statement.
 
 (binding-values)=
 (shared-params)=
-## Supplying values
+## Give a clause its values
 
-A clause takes no arguments. A value that changes per request or per call
-is a member of a
+A clause takes no arguments. A value that changes per request or per call is
+a member of a
 {class}`ContextNamespace <fastapi_restly.clauses.ContextNamespace>`: the
-application's [Current](howto_current.md), or a small namespace declared
-next to the code that uses it. The examples use the `Current` declared at
-the top of this page.
+[Current](howto_current.md) of the application, or a small namespace next to
+the code that uses it. The examples use the `Current` declared at the top of
+this page.
 
-Embed a member in a condition. It becomes a placeholder, filled with the
-bound value each time the clause is applied:
+Put the member in a condition. It becomes a placeholder, which gets the bound
+value each time the clause is applied:
 
 ```python
 owned_item = fr.where_clause(Item.user_id == Current.user_id)
@@ -346,17 +348,17 @@ with Current.bind(user_id=42):
     collections = fr.apply_clauses(select(Collection), owned_collection)
 ```
 
-One binding supplies every clause that uses the member.
-`Current.user_id` without parentheses is the placeholder.
-`Current.user_id()` reads the value immediately, which would require
-an active binding at declaration time.
+One binding gives a value to every clause that uses the member.
+`Current.user_id` without parentheses is the placeholder. In a condition that
+the module builds, `Current.user_id()` would read the value at once, so it
+would need a binding when the module runs.
 
-Put the column first. `Item.user_id == Current.user_id` builds SQL because
+Put the column first. `Item.user_id == Current.user_id` builds SQL, because
 the column builds the comparison. `Current.role != "member"` raises
-`TypeError`: Python would compare the member object, and the rule would
-compile to `WHERE true`. A rule that compares a bound value with a constant
-is a Python branch, so write it as a clause function that reads the member
-in its body:
+`TypeError`: Python would compare the member object itself, and the rule
+would become `WHERE true`. A rule that compares a bound value with a constant
+is a Python `if`, so write it as a clause function that reads the member in
+its body:
 
 ```python
 @fr.where_clause
@@ -365,15 +367,14 @@ def owned_by_current_user() -> ColumnElement[bool]:
 ```
 
 Arithmetic with the member first, such as `Current.now - Item.created_at`,
-and a member inside a plain tuple raise `TypeError` when the clause is
-applied: SQLAlchemy would pass the member object to the database as a value.
-Wrap the member with `sqlalchemy.type_coerce(Current.now, DateTime)`, and
+raises `TypeError` when the clause is applied, and so does a member inside a
+plain tuple. SQLAlchemy would send the member object to the database as a
+value. Wrap the member as `sqlalchemy.type_coerce(Current.now, DateTime)`, and
 write a tuple as `sqlalchemy.tuple_(...)`.
 
-Both forms read the member when the clause is applied: by
-`apply_clauses`, by a view read, by a reference check, or when the clause
-is called. The statement carries the values with it, so it can run after
-the binding has ended:
+Both forms read the member when the clause is applied: by `apply_clauses`, by
+a view read, by a reference check, or when you call the clause. The statement
+keeps the values, so it can run after the binding has ended:
 
 ```python
 def owned_items_stmt(user_id: int):
@@ -384,12 +385,11 @@ def owned_items_stmt(user_id: int):
 rows = session.scalars(owned_items_stmt(42))
 ```
 
-A member without a binding raises `LookupError` when the clause is
-applied, never a silently unfiltered query. For values supplied per
-request, [bind Current from a FastAPI dependency](#current-request-binding).
+A member without a binding raises `LookupError` when the clause is applied.
+The query never runs without its filter. For values per request,
+[bind Current from a FastAPI dependency](#current-request-binding).
 
-A value that one part of the application uses gets its own namespace
-there:
+A value that one part of the application uses gets its own namespace there:
 
 ```python
 class ReportPeriod(fr.ContextNamespace):
@@ -405,23 +405,22 @@ with Current.bind(user_id=42), ReportPeriod.bind(start=aug_1, end=aug_31):
     stmt = fr.apply_clauses(select(Item), owned_item, in_period)
 ```
 
-Member names are local to their namespace. `ReportPeriod.start` and
-another namespace's `start` can appear in one statement, and neither
-collides with a column or a hand-written `bindparam()` of the same name:
-each placeholder compiles to its own numbered parameter, such as
-`:start_1`.
+Member names belong to their namespace. `ReportPeriod.start` and a `start` of
+another namespace can be in one statement. Neither clashes with a column or a
+hand-written `bindparam()` of the same name: each placeholder becomes its own
+numbered parameter, such as `:start_1`.
 
-A placeholder is filled only when a clause is applied. An expression that
-embeds a member and never passes through a clause fails at execution with
-SQLAlchemy's "A value is required for bind parameter". Call the clause for
+A placeholder gets its value only when a clause is applied. An expression
+that has a member but never passes through a clause fails when it runs, with
+SQLAlchemy's "A value is required for bind parameter". Call the clause to get
 its expression, or read the value with `Current.user_id()`.
 
 (applying-clauses)=
-## Applying clauses to a statement
+## Apply clauses to a statement
 
-Statement construction stays plain SQLAlchemy.
-{func}`fr.apply_clauses <fastapi_restly.clauses.apply_clauses>` is the
-bridge: it adds the clauses' predicates to the statement's WHERE:
+You build the statement with plain SQLAlchemy.
+{func}`fr.apply_clauses <fastapi_restly.clauses.apply_clauses>` adds the
+conditions of the clauses to its `WHERE`:
 
 ```python
 from sqlalchemy import select
@@ -432,9 +431,9 @@ with Current.bind(user_id=42):
     )
 ```
 
-`update()` and `delete()` statements take clauses the same way. The
-result is a normal `Select`, `Update` or `Delete` of the exact type the
-statement had, so chain onto it freely:
+`update()` and `delete()` statements take clauses in the same way. The result
+has the type of the statement you passed, a `Select`, an `Update` or a
+`Delete`, so you can keep building on it:
 
 ```python
 from sqlalchemy import update
@@ -449,8 +448,11 @@ with Current.bind(user_id=42):
     )
 ```
 
-`apply_clauses` rejects a predicate that references a table the
-statement does not select from:
+The SaaS example applies the scope of another view this way, in
+[`app/projects/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py).
+
+`apply_clauses` rejects a condition on a table that the statement does not
+select from:
 
 ```python
 fr.apply_clauses(select(Item), fr.where_clause(Collection.archived_at.is_(None)))
@@ -458,17 +460,17 @@ fr.apply_clauses(select(Item), fr.where_clause(Collection.archived_at.is_(None))
 #   express the condition as EXISTS (.any()/.has())
 ```
 
-Without this check SQLAlchemy adds the missing table to the FROM clause
-and the query becomes a cartesian product that filters almost nothing.
-Predicates inside EXISTS and `IN (SELECT ...)` subqueries bring their
-own FROM and pass the check.
+Without this check, SQLAlchemy would add the missing table to the `FROM`, and
+the query would combine every item with every collection, so the condition
+would filter almost nothing. A condition inside an `EXISTS` or an
+`IN (SELECT ...)` subquery has its own `FROM`, and passes the check.
 
 (clauses-in-plain-sqlalchemy)=
-## Using a clause in plain SQLAlchemy
+## Use a clause in plain SQLAlchemy
 
-Calling a {class}`WhereClause <fastapi_restly.clauses.WhereClause>`
-returns the raw `ColumnElement`, which drops into any SQLAlchemy
-expression position: a hand-built `.where()`, a join condition, a CASE:
+Calling a {class}`WhereClause <fastapi_restly.clauses.WhereClause>` returns its
+SQLAlchemy condition, a `ColumnElement`. You can use it anywhere SQLAlchemy
+takes a condition: a `.where()`, a join condition, a `CASE`:
 
 ```python
 from sqlalchemy import and_, case, select
@@ -485,15 +487,14 @@ stmt = stmt.join(
 status = case((ItemClauses.is_deleted(), "trash"), else_="live")
 ```
 
-The call reads context members like any other application of the clause.
-This path skips the table validation that `apply_clauses` performs. A
-clause is never a boolean: `if ItemClauses.is_deleted:` raises
-`TypeError` instead of always passing.
+The call reads context members, as any other use of the clause does. It
+skips the table check of `apply_clauses`. A clause is never a boolean:
+`if ItemClauses.is_deleted:` raises `TypeError`, so it cannot pass by mistake.
 
 (call-site-values)=
-## A value the caller already has
+## Use a value the caller already has
 
-A condition whose value is in hand where the statement is built needs no
+A condition whose value is known where you build the statement needs no
 clause. Write a plain function that returns the expression:
 
 ```python
@@ -507,17 +508,22 @@ with Current.bind(user_id=42):
     )
 ```
 
-Wrap the expression where a clause is required, such as a per-read
-`scope=`:
+Where Restly needs a clause, such as a per-read `scope=`, wrap the
+expression:
 
 ```python
 scope = fr.all_of(ItemClauses.visible, fr.where_clause(name_matches(term)))
 ```
 
 A list route on a view takes the expression directly:
-[`handle_get_many(list_params, where=...)`](#per-read-where) narrows
+[`handle_get_many(list_params, where=...)`](#per-read-where) narrows the read
 inside the scope.
 
-```{seealso}
-{doc}`api/clauses` lists every symbol with its signature.
-```
+## See also
+
+- [Scopes](scopes.md): the clause that every read and every reference check
+  of a model applies.
+- [Current & ContextParam](howto_current.md): declare context members and bind
+  them.
+- [Models](#tenant-row-scoping): the tenant rule as a session rule.
+- {doc}`api/clauses`: every name with its signature.
