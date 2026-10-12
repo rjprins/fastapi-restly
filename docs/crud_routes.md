@@ -537,7 +537,7 @@ The default CRUD routes have these limits:
   relationships. Request bodies with nested objects are not supported in
   general. Use `MustExist`, `IDRef` or `IDSchema` to refer to other rows, or
   change the payload in a business method; see
-  [Relationships](howto_relationship_idschema.md).
+  [Relationships](relationships.md).
 - The update route uses `PATCH`, not `PUT`. Add a `PUT` route only when the
   client needs one.
 

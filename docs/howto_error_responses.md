@@ -25,7 +25,7 @@ a `fastapi.HTTPException`:
 
 | Exception | Status | When |
 |---|---|---|
-| {class}`fr.exc.NotFound <fastapi_restly.exc.NotFound>` | `404` | The row does not exist, or the [scope](scopes.md) hides it. Restly raises it for `/{id}` routes and for a [reference](howto_relationship_idschema.md) to a missing row. |
+| {class}`fr.exc.NotFound <fastapi_restly.exc.NotFound>` | `404` | The row does not exist, or the [scope](scopes.md) hides it. Restly raises it for `/{id}` routes and for a [reference](relationships.md) to a missing row. |
 | {class}`fr.exc.Forbidden <fastapi_restly.exc.Forbidden>` | `403` | The caller may not do this action. Raise it in {meth}`authorize <fastapi_restly.views.RestView.authorize>`. |
 | {class}`fr.exc.Conflict <fastapi_restly.exc.Conflict>` | `409` | The request does not fit the current state of the row, such as publishing a post that is already published. |
 | {class}`fr.exc.BadQueryParam <fastapi_restly.exc.BadQueryParam>` | `400` | Restly cannot apply a list parameter, such as `?sort=unknown_field`. |

@@ -190,7 +190,7 @@ Two kinds of fields get it:
 A field gets it only when a view for the target model is included on the same
 app. A nested object, such as `author: AuthorSchema`, gets none. The
 reference types themselves are on
-[Relationships](howto_relationship_idschema.md).
+[Relationships](relationships.md).
 
 There is a known limit: views that you include on an `APIRouter`, not on the
 app, do not get these annotations. The check for two classes with the same

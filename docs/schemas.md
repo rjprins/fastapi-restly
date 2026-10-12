@@ -46,7 +46,7 @@ Find the section for your goal:
 | A response that differs from the input | [Your own response class](#own-response-class) |
 | Clear type names in OpenAPI and generated clients | [Name your schemas](#name-your-schemas) |
 | A custom route that returns the view's classes | [Name the classes in a custom route](#name-the-response-classes) |
-| A foreign key, or a relationship as an id or an object | [Relationships](howto_relationship_idschema.md) |
+| A foreign key, or a relationship as an id or an object | [Relationships](relationships.md) |
 
 (write-or-generate)=
 ## Generate the schema or write it
@@ -119,7 +119,7 @@ a plain `pydantic.BaseModel`. Its fields can still use `ReadOnly`,
 `fr.IDSchema[User]`, with the model as a type parameter, gives the schema the
 model's type; [Type Annotations](howto_typing.md) explains when that helps.
 As the type of a field, `fr.IDSchema[User]` is a reference to another row;
-see [Relationships](howto_relationship_idschema.md).
+see [Relationships](relationships.md).
 
 (readonly-and-writeonly)=
 ## Hide a field from requests or from responses
@@ -641,7 +641,7 @@ Three rules decide the rest:
 - **Relationships**: never included. A foreign key column, such as
   `customer_id`, is an ordinary field. To show a related row in a response,
   write the schema yourself, for example with an `IDRef[Customer]` field; see
-  [Relationships](howto_relationship_idschema.md).
+  [Relationships](relationships.md).
 
 A view and a direct call of `derive_schema(model)` give the same schema.
 
@@ -679,7 +679,7 @@ custom column type, write the schema yourself.
 
 ## See also
 
-- [Relationships](howto_relationship_idschema.md): foreign keys and
+- [Relationships](relationships.md): foreign keys and
   relationships as ids or nested objects, and the check that a referenced row
   exists.
 - [Responses](responses.md): how one object becomes a response,

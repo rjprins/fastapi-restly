@@ -164,7 +164,7 @@ curl -X POST http://127.0.0.1:8000/comments \
 {"id": 1, "content": "Nice post", "post_id": 1}
 ```
 
-[Relationships](howto_relationship_idschema.md)
+[Relationships](relationships.md)
 covers references in more detail, including nested objects in responses.
 
 ## Find posts
@@ -218,7 +218,7 @@ These pages go deeper into what this tutorial used:
   settings
 - [How Restly generates a schema](#auto-generated-schemas): what
   Restly generates from a model, and when to write a schema
-- [Relationships](howto_relationship_idschema.md):
+- [Relationships](relationships.md):
   checked references and nested objects
 - [Filtering & Pagination](howto_query_modifiers.md): every filter
   operator, sorting, and paging

@@ -87,7 +87,7 @@ redirects = {
     "api_details": "view_reference.html",
     "patterns": "user_guide.html",
     "examples": "user_guide.html",
-    "howto_relationship_loading": "howto_relationship_idschema.html",
+    "howto_relationship_loading": "relationships.html",
     "howto_inheritance": "views.html",
     "howto_compose_views_with_mixins": "models.html",
     "howto_nested": "crud_routes.html",
@@ -100,6 +100,7 @@ redirects = {
     "customize": "lifecycle.html",
     "howto_custom_schema": "schemas.html",
     "howto_response_schema": "responses.html",
+    "howto_relationship_idschema": "relationships.html",
 }
 myst_heading_anchors = 3
 myst_enable_extensions = ["colon_fence", "substitution"]

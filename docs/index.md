@@ -109,7 +109,7 @@ Restly step by step, from the first model to authors, drafts, and tests.
 - **[Filtering](howto_query_modifiers.md)**: filter, sort, and paginate from a stable URL dialect generated from the view's schema
 - **[Current & ContextParam](howto_current.md)**: bind values, such as the current user, to a request-local context and read them anywhere in the request
 - **[Scopes](scopes.md)**: control what a view can return with one SQLAlchemy where clause, applied to every read and reference check
-- **[Relationship support](howto_relationship_idschema.md)**: handle foreign keys and nested objects
+- **[Relationship support](relationships.md)**: handle foreign keys and nested objects
 - **[Testing utilities](howto_testing.md)**: built-in test helpers with savepoint isolation
 
 ## Documentation

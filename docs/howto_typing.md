@@ -78,7 +78,7 @@ method:
 {class}`fr.MustExist <fastapi_restly.schemas.MustExist>` takes the type of
 the primary key first, then the model: `fr.MustExist[UUID, Account]` for a
 UUID key. When to use which form, and what each one does at runtime, is on
-[Relationships](howto_relationship_idschema.md).
+[Relationships](relationships.md).
 
 (view-generics)=
 ## Type the methods that you override
@@ -252,7 +252,7 @@ not see this.
   parameters type, sorted by kind.
 - [Request Lifecycle & Hooks](lifecycle.md): which method to override for
   each change.
-- [Relationships](howto_relationship_idschema.md): what
+- [Relationships](relationships.md): what
   {class}`fr.MustExist <fastapi_restly.schemas.MustExist>`,
   {class}`fr.IDRef <fastapi_restly.schemas.IDRef>` and
   {class}`fr.IDSchema[Model] <fastapi_restly.schemas.IDSchema>` do at
