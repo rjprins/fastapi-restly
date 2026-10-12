@@ -76,6 +76,27 @@ class TestPasswordHashing:
         assert verify_password("trustno1", user.password)
         assert not verify_password("wrong", user.password)
 
+    async def test_patch_does_not_change_the_password(self, async_client, async_actor):
+        """PATCH has no password field: only change-password sets one."""
+        from app.users.models import User
+
+        created = await async_client.post(
+            "/users",
+            json={"email": "cleo@example.com", "name": "Cleo", "password": "trustno1"},
+        )
+        user_id = created.json()["id"]
+
+        response = await async_client.patch(
+            f"/users/{user_id}", json={"name": "Cleo B", "password": "plain-new"}
+        )
+        assert response.status_code == 200
+        assert response.json()["name"] == "Cleo B"
+
+        async with _async_session(async_actor) as session:
+            user = (await session.scalars(select(User).where(User.id == user_id))).one()
+        assert user.password != "plain-new"
+        assert verify_password("trustno1", user.password)
+
     def test_change_password_requires_current(self, client):
         """The action route rejects a wrong current password with 403."""
         u = client.post(

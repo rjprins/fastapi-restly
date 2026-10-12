@@ -12,7 +12,13 @@ from ..current import Current
 from ..views import AuthenticatedView, SoftDeleteMixin
 from .models import User
 from .roles import UserRole
-from .schemas import UserFullResponse, UserPublicResponse, UserResponse, UserSchema
+from .schemas import (
+    UserFullResponse,
+    UserPublicResponse,
+    UserResponse,
+    UserSchema,
+    UserUpdate,
+)
 
 
 class UpdateMeRequest(BaseModel):
@@ -43,11 +49,16 @@ class UserView(SoftDeleteMixin, AuthenticatedView[User]):
     itself (``app.models``), and ``SoftDeleteMixin`` flips ``deleted_at``
     on delete. This view keeps user-specific behavior: password hashing,
     field-level permissions, /me routes, and change-password.
+
+    ``schema_update`` leaves ``password`` out of the PATCH body. Otherwise a
+    PATCH could set a password without the current-password check of
+    change-password, and without a hash.
     """
 
     prefix = "/users"
     model = User
     schema = UserSchema
+    schema_update = UserUpdate
     # No scope declared: reads apply UserClauses.default_scope.
 
     def _can_see_salary(self) -> bool:

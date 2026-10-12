@@ -25,6 +25,7 @@ class User(
     ``UserView.create`` (the bare business verb) hashes the incoming plaintext
     from the ``password`` schema field before the row is persisted. The schema
     marks ``password`` as ``WriteOnly``, so it never appears in responses.
+    After that, only the change-password action sets it; PATCH does not.
     """
 
     email: orm.Mapped[str] = orm.mapped_column(unique=True)

@@ -220,7 +220,9 @@ The generated update body takes `password` too. Without more code,
 {meth}`update_object <fastapi_restly.views.RestView.update_object>` writes
 only the fields that the request sends, so the check uses the same set. The
 other way is an [explicit update schema](#explicit-write-schemas) without
-`password`, with a separate route that changes the password.
+`password`, with a separate route that changes the password. The SaaS example
+does this: its change-password route checks the current password first
+([`app/users/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/users/views.py)).
 
 ### Refuse a change in `update`
 

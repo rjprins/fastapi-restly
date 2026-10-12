@@ -13,9 +13,10 @@ class UserSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     """Schema for User model.
 
     ``password`` is plaintext in the request (write-only) and is never echoed
-    back. The view's ``create`` (the bare business verb) hashes it into
-    ``User.password_hash`` before the row is persisted. ``password_hash`` is
-    intentionally not on the schema — clients should never see it.
+    back. The view's ``create`` (the bare business verb) hashes it into the
+    ``User.password`` column before the row is persisted. The PATCH body,
+    ``UserUpdate``, leaves it out: a password changes only through the
+    change-password action.
 
     Soft-delete + audit fields are ReadOnly so they appear in responses
     (e.g. ``deleted_at`` after a soft delete) but PATCH bodies can't spoof
@@ -35,6 +36,20 @@ class UserSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     deleted_at: fr.ReadOnly[datetime | None] = None
     created_by_id: fr.ReadOnly[int | None] = None
     updated_by_id: fr.ReadOnly[int | None] = None
+
+
+class UserUpdate(BaseModel):
+    """The PATCH body for a user: every writable field except ``password``.
+
+    A password changes only through ``POST /users/{id}/change-password``,
+    which checks the current password first. A PATCH that sends
+    ``password`` has it ignored, like any field this class does not declare.
+    """
+
+    email: str | None = None
+    name: str | None = None
+    role: UserRole | None = None
+    salary: int | None = None
 
 
 class UserPublicResponse(BaseModel):
