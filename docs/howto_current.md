@@ -1,9 +1,9 @@
 (current)=
 # Current & ContextParam
 
-`Current` makes values such as the authenticated user's id available to
-code throughout a request. Bind the value once, then read it wherever it
-is needed:
+`Current` holds values such as the id of the user who sends the request, so
+that any code in the request can read them. Bind a value once, then read it
+wherever you need it:
 
 ```python
 import fastapi_restly as fr
@@ -17,24 +17,35 @@ with Current.bind(user_id=42):
     print(Current.user_id())  # 42
 ```
 
-`Current.user_id()` returns the bound value. Reading it without a binding
-raises `LookupError`. A binding lasts until its `with` block exits.
+`Current` is a class that you declare in your application, usually in
+`app/current.py`, as [New & Existing Projects](#project-current) shows. Its
+base, {class}`fr.ContextNamespace <fastapi_restly.clauses.ContextNamespace>`,
+gives it the binding methods. Each annotation with
+{class}`fr.ContextParam <fastapi_restly.clauses.ContextParam>` declares one
+value, a member. Import the same `Current` wherever you use it.
 
-Call the member to read it. `Current.user_id == 42` and `if Current.user_id:`
-raise `TypeError`: without the call they would test the member object, not
-the bound value.
+There are two ways to bind a member:
 
-`Current` is a class you define in your application, conventionally in
-`app/current.py`. Its base,
-{class}`fr.ContextNamespace <fastapi_restly.clauses.ContextNamespace>`,
-provides binding and dependency integration. Each annotated
-{class}`fr.ContextParam <fastapi_restly.clauses.ContextParam>` declares
-one value. Import the same `Current` wherever it is used.
+- For each request, a FastAPI dependency binds it from your authentication:
+  [Bind from a FastAPI dependency](#current-request-binding).
+- Around any block of code, such as a script or a job, `Current.bind(...)`
+  binds it: [Bind in a script or job](#current-manual-binding).
 
-Use `Current` for values that code across the application needs, such as
-the acting user. Keep ordinary function inputs as arguments. A function
-that reads `Current` requires a binding even though its signature does
-not mention one.
+Call the member to read it: `Current.user_id()` returns the bound value.
+Without a binding, it raises `LookupError`. A binding lasts until its `with`
+block exits, or until the request ends. `Current.user_id == 42` and
+`if Current.user_id:` raise `TypeError`, because without the call they would
+test the member, not the bound value.
+
+Pass the member without calling it where the value is read later. In a
+[query clause](#binding-values), the member is a placeholder that gets the
+bound value each time the clause is applied. In a
+[column default](#current-column-defaults), SQLAlchemy calls the member when
+it writes the row.
+
+Use `Current` for values that code across the application needs, such as the
+user who acts. Keep ordinary function inputs as arguments. A function that
+reads `Current` needs a binding, even though its signature does not show it.
 
 (current-request-binding)=
 ## Bind from a FastAPI dependency
@@ -68,25 +79,27 @@ def me() -> dict[str, int]:
     return {"user_id": Current.user_id()}
 ```
 
-Only trust this header when an authenticating proxy replaces client-supplied
-values and clients cannot reach the app directly.
+Trust this header only when an authenticating proxy replaces the values that
+clients send, and clients cannot reach the app directly.
 
 `SetCurrentContextDep` is already a {func}`Depends <fastapi.Depends>` object.
-Add it directly to `dependencies`, without another `Depends(...)` wrapper.
+Add it directly to `dependencies`, without another `Depends(...)` around it.
 
 FastAPI calls `get_user_id` before the endpoint. The generated dependency
-binds its result for the request. Both `def` and `async def` endpoints
-can read it. Binding supplies the value, it does not authenticate the
-caller or perform an authorization check.
+binds the result for the request. Both `def` and `async def` endpoints can
+read it. Binding only supplies the value. It does not check who the caller is,
+and it does not decide what the caller may do: that is
+[`authorize`](#authorize-gate).
 
-Attach the dependency to the app when every route needs it. Use an
-`APIRouter`'s `dependencies` or a view's
-{attr}`dependencies <fastapi_restly.views.View.dependencies>` for a
-smaller group of routes. Each source can be a callable, a `Depends(...)`
-object, or an `Annotated` dependency alias.
+Attach the dependency to the app when every route needs it. Use the
+`dependencies` of an `APIRouter`, or a view's
+{attr}`dependencies <fastapi_restly.views.View.dependencies>`, for a smaller
+group of routes. Each source can be a callable, a `Depends(...)` object, or
+an `Annotated` dependency alias.
 
-`Current.depends(...)` binds one member or several, each from its own
-dependency, in one declaration.
+One `Current.depends(...)` call can bind several members, each from its own
+dependency. The SaaS example binds four members from its authentication in
+[`app/current.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/current.py).
 
 (current-column-defaults)=
 ## Read the current user in a column default
@@ -148,14 +161,14 @@ with Current.bind(user_id=42), Session(engine) as session:
     assert note.created_by_id == 42
 ```
 
-A worker receives its input through the job payload. Bind those values
-in the worker before calling code that reads `Current`.
+A worker receives its input in the job payload. Bind those values in the
+worker before it calls code that reads `Current`.
 
 (current-binding-lifetime)=
-## Restore values after a nested binding
+## How long a binding lasts
 
-An inner binding temporarily replaces an outer value. Exiting the block
-restores the previous value, including when an exception leaves the block:
+An inner binding replaces an outer value until its block exits. Then the
+previous value comes back, also when an exception leaves the block:
 
 ```python
 with Current.bind(user_id=42):
@@ -164,45 +177,46 @@ with Current.bind(user_id=42):
     assert Current.user_id() == 42
 ```
 
-Bindings use {class}`contextvars.ContextVar`, not process-wide mutable
-class attributes. Async tasks inherit the context in which they are
-created. Resetting a parent binding does not clear a task's inherited
-context. Bind explicitly when starting work for a different user.
+Bindings use {class}`contextvars.ContextVar`, not class attributes that the
+whole process shares. So two requests that run at the same time each see
+their own values. An async task gets a copy of the context in which it is
+created. When the parent's binding ends, the task keeps its copy. Bind
+explicitly when you start work for a different user.
 
 (current-database-sessions)=
-## Database sessions
+## Put the database session in Current
 
 You can bind a SQLAlchemy {class}`Session <sqlalchemy.orm.Session>` or
 {class}`AsyncSession <sqlalchemy.ext.asyncio.AsyncSession>` to a
-`Current.session` member. This is not inherently wrong and can be
-convenient, but it is not the recommended pattern. Prefer passing
-the session explicitly to functions that use the database.
+`Current.session` member. This works, but we do not recommend it. Pass the
+session as an argument to the functions that use the database.
 
-This use of `Current.session` is comparable to SQLAlchemy's
-{class}`scoped_session <sqlalchemy.orm.scoped_session>`: callers look up
-the session from context instead of receiving it as an argument.
-`Current` only holds the supplied session. It does not create sessions
-or manage their transactions.
+`Current.session` works like SQLAlchemy's
+{class}`scoped_session <sqlalchemy.orm.scoped_session>`: code finds the
+session in the context instead of receiving it as an argument. `Current`
+only holds the session that you bind. It does not create sessions, and it
+does not manage their transactions.
 
-Implicit access can obscure which operations belong to the same database
-transaction. Helpers that look independent can use the same session.
-Committing it includes pending changes from all those helpers.
-Keep responsibility for creating, committing, rolling back, and closing
-the session explicit. See SQLAlchemy's
+When code finds the session in the context, it is harder to see which
+operations share one transaction. Helpers that look independent can use the
+same session. A commit then includes the pending changes of all those
+helpers. Keep it clear which code creates, commits, rolls back and closes
+the session. See SQLAlchemy's
 [session lifecycle guidance](https://docs.sqlalchemy.org/en/20/orm/session_basics.html#when-do-i-construct-a-session-when-do-i-commit-it-and-when-do-i-close-it).
 
-Coroutines scheduled with {func}`asyncio.create_task` or
-{func}`asyncio.gather` inherit the current bindings by default.
-If `Current.session` is bound, they receive the same session object,
-not separate sessions. Give concurrent database tasks separate sessions.
-SQLAlchemy's
+Coroutines that you start with {func}`asyncio.create_task` or
+{func}`asyncio.gather` get the current bindings. If `Current.session` is
+bound, they get the same session object, not separate sessions. Give
+database tasks that run at the same time separate sessions. SQLAlchemy's
 [async scoped-session guidance](https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#using-asyncio-scoped-session)
-also recommends passing sessions explicitly for new asyncio code.
+also recommends passing sessions as arguments in new asyncio code.
 
 (current-testing)=
-## Override the source in an API test
+## Use another user in a test
 
-FastAPI's `app.dependency_overrides` still addresses the original source:
+FastAPI's `app.dependency_overrides` still works on the source dependency.
+Override the source, and the generated dependency binds the value that the
+override returns:
 
 ```python
 from fastapi.testclient import TestClient
@@ -215,21 +229,22 @@ finally:
     app.dependency_overrides.pop(get_user_id)
 ```
 
-For a test that calls application code directly, use `Current.bind(...)`
-around the call. A binding in the test's context is not a replacement for
-testing the request dependency.
+A test that calls application code directly, without a request, binds the
+values with `Current.bind(...)` around the call. That does not test the
+request dependency, so keep a test that goes through a request too.
+[Testing](howto_testing.md) covers the test setup.
 
 (current-members)=
 ## Declare and share context members
 
-Add one `name: fr.ContextParam[T]` annotation per value on `Current`.
-The attribute name is also the keyword accepted by `bind()` and
-`depends()`. Unknown names raise `TypeError`. `T` describes the return
-type of the member's call. Manual binding does not validate or coerce
-the value, so validate inputs where they enter the application.
+Add one `name: fr.ContextParam[T]` annotation on `Current` for each value.
+The attribute name is also the keyword that `bind()` and `depends()` take.
+An unknown name raises `TypeError`. `T` is the type that a call of the member
+returns. A manual binding does not check or convert the value, so validate
+input where it enters the application.
 
-Use a separate namespace when a value belongs to one part of the
-application. Assign an existing member to share its binding:
+Use a separate namespace for a value that only one part of the application
+uses. To share a member between namespaces, assign the existing member:
 
 ```python
 class ReportContext(fr.ContextNamespace):
@@ -242,24 +257,24 @@ with ReportContext.bind(user_id=42, locale="nl"):
     assert ReportContext.locale() == "nl"
 ```
 
-`ReportContext.user_id` is the same member as `Current.user_id`.
-Declaring a new `user_id: fr.ContextParam[int]` instead would create an
-independent member. Subclasses inherit their parent's members. Prefix
-helper methods with `_`, since public members must be context values.
+`ReportContext.user_id` is the same member as `Current.user_id`. A new
+`user_id: fr.ContextParam[int]` annotation would create a separate member
+instead. A subclass inherits the members of its parent. Start the names of
+helper methods with `_`, because every public attribute must be a member.
 
-Use only one name per member in a `bind()` or `depends()` call. Two names
-for the same member raise `TypeError`, even if their values are equal.
+A `bind()` or `depends()` call must use one name for each member. Two names
+for the same member raise `TypeError`, even when their values are equal.
 
-A nullable annotation such as `fr.ContextParam[int | None]` does not
-provide a default. Bind `None` explicitly when absence is a valid value.
-An unbound read still raises `LookupError`.
+A nullable annotation, such as `fr.ContextParam[int | None]`, gives no
+default value. Bind `None` explicitly when "no value" is a valid value. A
+read without a binding still raises `LookupError`.
 
 (current-explain)=
-## Inspect a binding
+## See what is bound
 
 {meth}`Current.explain <fastapi_restly.clauses.ContextNamespace.explain>`
-lists each member's value and the file and line that bound it.
-Unbound members are shown as `UNBOUND`:
+lists each member with its value, and the file and line that bound it.
+A member without a binding shows as `UNBOUND`:
 
 ```python
 # app/example.py
@@ -278,10 +293,13 @@ Current
 └─ user_id: UNBOUND
 ```
 
-For a generated dependency, the origin names the `Current.depends(...)`
-declaration. Inspect this output when a value is missing or unexpected.
+For a generated dependency, the line is the `Current.depends(...)` call.
+Read this output when a value is missing or not what you expect.
 
-```{seealso}
-[Using Current in query clauses](#shared-params) explains how query
-fragments consume the same values.
-```
+## See also
+
+- [Query Clauses](#binding-values): use the same members in query clauses
+  and scopes.
+- [Models](#server-stamped-fields): stamp the author and the tenant on every
+  write.
+- [Authorization](#authorize-gate): decide what the caller may do.
