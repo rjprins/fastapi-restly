@@ -90,7 +90,7 @@ does not say what it means.
 `UNSCOPED` is the only way to say "no scope", here and everywhere else. Search
 for `UNSCOPED` to find where code reads past a scope. A variable or a
 composed clause can also pass `UNSCOPED` on, so follow those too.
-[Composing with `UNSCOPED`](#unscoped-composition) shows what `fr.all_of`,
+[Combine with `UNSCOPED`](#unscoped-composition) shows what `fr.all_of`,
 `fr.any_of` and `fr.none_of` do with it.
 
 ### Rows that a scope does not reach
@@ -114,7 +114,7 @@ class CommentClauses(fr.ClauseNamespace):
     default_scope = fr.where_clause(Comment.post.has(PostClauses.default_scope))
 ```
 
-[A clause inside an expression](#clause-in-expression) explains how the
+[Use a clause inside another condition](#clause-in-expression) explains how the
 inner clause gets its values.
 
 (view-scope)=
@@ -227,7 +227,7 @@ author". A rule in the namespace may read a request value, such as
 ### Bind the values that a scope reads
 
 A scope is a clause, so its values come from context members, as
-[Supplying values](#binding-values) explains. Bind the values for each
+[Give a clause its values](#binding-values) explains. Bind the values for each
 request with a generated dependency, as
 [Bind from a FastAPI dependency](#current-request-binding) shows:
 
@@ -292,7 +292,7 @@ The two routes use the view's response classes, `ItemListResponse` and
 `ItemResponse`, so OpenAPI shows the same types as for the CRUD routes. A view
 with other pagination passes it, as in
 {func}`derive_schema_list_response(ItemResponse, pagination=AppView.pagination) <fastapi_restly.schemas.derive_schema_list_response>`.
-[A custom route names the same classes](#name-the-response-classes) explains
+[Name the view's classes in a custom route](#name-the-response-classes) explains
 this.
 
 The argument replaces the scope. It does not narrow it. So put a rule that

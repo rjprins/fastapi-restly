@@ -43,7 +43,7 @@ Apart from this, the two classes are the same: the same routes, the same
 configuration and the same methods to override. You choose for each view, so
 one application can use both. [Database & Configuration](database.md) shows
 how to configure the sessions. To give one view another session, see
-[Use a custom session dependency on one view](#session-dependency-one-view).
+[Use another database on one view](#session-dependency-one-view).
 The examples on this page use `AsyncRestView`.
 
 (default-crud-routes)=
@@ -232,7 +232,7 @@ limits the rows to that parent. Every CRUD route keeps working, including
 pages, filters and sorting.
 
 A flat view that filters on the foreign key, `GET /tasks?project_id=17`,
-needs no extra code; see [Foreign-key filtering](#foreign-key-filtering).
+needs no extra code; see [Filter by a foreign key](#foreign-key-filtering).
 Nest the view when the nested URL is part of your API.
 
 (nested-one-level)=
@@ -333,7 +333,7 @@ class ProjectTaskView(fr.AsyncRestView):
 - `scope` limits every read to the tasks of that project: the list, its
   total count, get one, update and delete. A task of another project returns
   `404`. A view's scope replaces the model's default scope
-  ([Views: replacing the scope](#view-scope)), so `fr.resolve_scope(Task)`
+  ([Give one view other rows](#view-scope)), so `fr.resolve_scope(Task)`
   adds the default scope back.
 - `create` sets the project id; see [Create a child](#nested-create).
 

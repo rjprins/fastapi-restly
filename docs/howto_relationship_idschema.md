@@ -151,7 +151,7 @@ that the scope hides returns `404`, as a missing row does. So if the scope of
 article.
 
 On a `MustExist` field, `RefExists` can check against another clause, or
-against no clause; see [References: overriding per field](#reference-scopes).
+against no clause; see [Check a reference against another scope](#reference-scopes).
 An `IDRef` or `IDSchema` field always uses the default scope. The SaaS example
 lets a member attach labels only to a task that is assigned to them, with
 `RefExists(Task, scope=TaskClauses.visible)` in
@@ -430,7 +430,7 @@ field that a relationship fills must be loaded first. An unloaded
 relationship raises `MissingGreenlet`. Restly loads them for you in most
 cases: it eager-loads each relationship that the view's response class names,
 on reads and on writes. By default the response class is the view's schema
-without its `WriteOnly` fields; see [Your own response class](#own-response-class).
+without its `WriteOnly` fields; see [Set your own response class](#own-response-class).
 
 ### What Restly loads for you
 

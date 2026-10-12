@@ -18,7 +18,7 @@ view's response class, and gives each field that maps to a column one filter,
 plus filters with an operator suffix such as `__gte`. So a client can filter
 and sort only on fields it can see. By default the response class is the
 view's schema without its `WriteOnly` fields; see
-[Your own response class](#own-response-class).
+[Set your own response class](#own-response-class).
 
 The filters narrow the rows inside the view's [scope](scopes.md). They can
 never show a row that the scope hides.
@@ -475,7 +475,7 @@ as `GET /`. Restly gives it the view's
 so filters, sort and page are read and checked in the same way, OpenAPI shows
 them, and an unknown key returns `422`. A custom list route, such as a trash
 route, passes them on with `self.handle_get_many(list_params, scope=...)`; see
-[A route names its own scope](#per-read-scope). The route can take its own
+[Read other rows on one route](#per-read-scope). The route can take its own
 query parameters next to `list_params`, as in
 `def search(self, list_params, mode: SearchMode)`.
 
@@ -513,5 +513,5 @@ their own parameters.
 - [Responses](howto_response_schema.md): the list envelope and its fields.
 - [Errors](howto_error_responses.md): the `422` and `400` answers to a bad list
   request.
-- [Nested Resources](#nested-resources): a child resource under its parent,
+- [Nest a resource under its parent](#nested-resources): a child resource under its parent,
   such as `/projects/{project_id}/tasks`.

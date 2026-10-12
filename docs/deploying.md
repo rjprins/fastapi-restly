@@ -49,7 +49,7 @@ engine yourself and pass it to `fr.configure()`, as the template below does.
 Restly's [engine defaults](#engine-defaults) apply only to an engine that
 Restly builds from a URL. For this reason, the template also sets
 `pool_pre_ping=True` itself. If your application already builds an engine,
-pass that one; see [Reuse your existing engine](#reuse-existing-engine).
+pass that one; see [Reuse your existing engine or sessionmaker](#reuse-existing-engine).
 
 (production-main-template)=
 

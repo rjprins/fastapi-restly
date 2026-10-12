@@ -17,7 +17,7 @@ shape.
 
 The response class decides which fields go out. By default it is the view's
 schema without its `WriteOnly` fields; see
-[Your own response class](#own-response-class). This page covers what is
+[Set your own response class](#own-response-class). This page covers what is
 around the fields, and where each change goes:
 
 - the envelope of every list: the pagination's envelope; see
@@ -152,7 +152,7 @@ settings. So a required field that Restly cannot fill, such as a misspelled
 keeps the fields that it declares.
 
 To give every list the same envelope, set the pagination on a project base
-view; see [Set it once for every view](#set-pagination-once). A custom list
+view; see [Set the pagination once for every view](#set-pagination-once). A custom list
 route can then name the view's list response class, so OpenAPI shows the same
 type as for `GET /`; see
 [Name the view's classes in a custom route](#name-the-response-classes).
@@ -362,5 +362,5 @@ In each case only the fields of the response class go out.
   that clients send.
 - [Errors](howto_error_responses.md): the error shape, which does not pass
   through `to_response`.
-- [Relationship Loading and Async](#relationship-loading): how nested
+- [Return related objects in a response](#relationship-loading): how nested
   relationship fields load, and `MissingGreenlet` on async.

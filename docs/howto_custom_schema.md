@@ -169,7 +169,7 @@ field with a
 For an optional write-only field, write `WriteOnly[Optional[str]]`.
 
 A JSON column has its own rules for `WriteOnly` fields; see
-[JSON document columns](#json-document-columns).
+[Validate the document in a JSON column](#json-document-columns).
 
 (explicit-write-schemas)=
 ## Write the request body yourself
@@ -261,7 +261,7 @@ validator also runs in these places:
   row. A row that breaks the rule, for example one that a script wrote, then
   fails with a server error.
 - List filters run it on each filter value; see
-  [Filter value validation](#filter-value-validation).
+  [Filter values go through the field's validation](#filter-value-validation).
 
 To check only what comes in, put the validator on a request body that you set
 on the view. The SaaS example does this for organizations

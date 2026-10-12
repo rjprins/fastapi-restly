@@ -317,7 +317,7 @@ class ProductView(fr.AsyncReactAdminView):
 
 Put the shared settings in a base class of your project, and let your views
 inherit from it, as
-[Share Behaviour with Base Views](#share-behaviour-with-base-views) explains:
+[Share behavior with base views](#share-behaviour-with-base-views) explains:
 
 ```python
 class ReactAdminBase(fr.AsyncReactAdminView):

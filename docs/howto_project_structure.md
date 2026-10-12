@@ -350,8 +350,8 @@ class UserView(SoftDeleteMixin, AuthenticatedView):
     schema = UserSchema
 ```
 
-[Share Behaviour with Base Views](#share-behaviour-with-base-views) explains
-the base class, and [Models](#structural-pieces) explains the mixins. The
+[Share behavior with base views](#share-behaviour-with-base-views) explains
+the base class, and [Where tenant, audit and soft-delete rules go](#structural-pieces) explains the mixins. The
 SaaS example has this
 [root `views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py).
 
@@ -415,7 +415,7 @@ def create_app() -> FastAPI:
 
 A view that you register on two routers serves its routes on both. The
 default operation IDs include the full path, so the two versions get
-different IDs; see [Default route names and operation IDs](#default-route-metadata).
+different IDs; see [The names and operation IDs of the CRUD routes](#default-route-metadata).
 A base view can also hold the version prefix for all the views that inherit
 from it; see [Concatenate URL prefixes](#prefix-concatenation).
 
@@ -425,6 +425,6 @@ from it; see [Concatenate URL prefixes](#prefix-concatenation).
   `fr.configure()`.
 - [Deploying](deploying.md): run the application, and set up Alembic.
 - [Testing](howto_testing.md): the `conftest.py` for this layout.
-- [Nested Resources](#nested-resources) and
+- [Nest a resource under its parent](#nested-resources) and
   [Receive a webhook](#receive-a-webhook): shapes that your existing app
   probably has.

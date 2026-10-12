@@ -216,7 +216,7 @@ These pages go deeper into what this tutorial used:
 
 - [CRUD Routes](rest_views.md): the default CRUD contract and the view
   settings
-- [Auto-Generated Schemas](#auto-generated-schemas): what
+- [How Restly generates a schema](#auto-generated-schemas): what
   Restly generates from a model, and when to write a schema
 - [Relationships](howto_relationship_idschema.md):
   checked references and nested objects

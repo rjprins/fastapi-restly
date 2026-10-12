@@ -155,7 +155,7 @@ from the classes that Restly builds from the view's
 {attr}`schema <fastapi_restly.views.BaseRestView.schema>`, such as
 `UserResponse` and `UserCreate`. To change the fields of every route, set
 the view's response class; see
-[Your own response class](#own-response-class). To document and return
+[Set your own response class](#own-response-class). To document and return
 another shape on one route, replace its endpoint method with your own
 decorator and `response_model`; see
 [Change the shape of one route](#one-route-shape) and

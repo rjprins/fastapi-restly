@@ -217,7 +217,7 @@ curl -X PATCH http://127.0.0.1:8000/posts/1 \
 Ben gets 404, because the scope hides the draft from him: for this reader,
 the post does not exist. When he can see the post but may not change it,
 `authorize` answers 403. The next section shows this.
-[`authorize`: gate the action](#authorize-gate) has more examples.
+[Allow or refuse an action](#authorize-gate) has more examples.
 
 ## Publish a draft
 
@@ -323,7 +323,7 @@ comments on it. So comments get their own scope:
   its `Current.user_id` each time it applies the comment scope.
 
 Together: a comment is visible when its post is visible.
-[A clause inside an expression](#clause-in-expression) explains this in more
+[Use a clause inside another condition](#clause-in-expression) explains this in more
 detail.
 
 Views are normal Python classes. Move `authorize` from `PostView` into a
@@ -353,7 +353,7 @@ class CommentView(AuthoredView):
 ```
 
 Register only the views that have a model, not the base class.
-[Share Behaviour with Base Views](#share-behaviour-with-base-views) covers inheritance in
+[Share behavior with base views](#share-behaviour-with-base-views) covers inheritance in
 more detail.
 
 The `comment` table has a new column. Stop the server, delete `blog.db`, and
@@ -488,7 +488,7 @@ Write a test for each exercise.
    in `CommentView`, and call `super().authorize(...)` for the other cases.
    Load the post with `await self.session.get(Post, obj.post_id)`, because
    `obj.post` does not load by itself in async code.
-   [Relationship Loading and Async](#relationship-loading) explains
+   [Return related objects in a response](#relationship-loading) explains
    why.
 
 ## Next steps
@@ -500,7 +500,7 @@ These pages cover the topics of this tutorial in more detail:
 - [Scopes](scopes.md): the model scope, view scopes, and a scope for one route
 - [Request Lifecycle & Hooks](customize.md): every method you can override, and
   when to override one
-- [Share Behaviour with Base Views](#share-behaviour-with-base-views): the full
+- [Share behavior with base views](#share-behaviour-with-base-views): the full
   inheritance guide
 - [Testing](howto_testing.md): the test fixtures, and test databases
 - [New & Existing Projects](howto_project_structure.md): split the file into

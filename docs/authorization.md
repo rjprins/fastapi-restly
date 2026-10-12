@@ -85,7 +85,7 @@ class InvoiceView(fr.AsyncRestView):
                 raise fr.exc.Forbidden("Only a manager can change the amount")
 ```
 
-[Dependency injection on class attributes](#dependency-injection-on-class-attributes)
+[Declare dependencies as class attributes](#dependency-injection-on-class-attributes)
 explains `current_user`. A rule that needs the database can query
 `self.session`. In the SaaS example, a member may change the labels of a task
 only when the task is assigned to them
@@ -141,7 +141,7 @@ A custom route reaches `authorize` in one of these ways:
   `authorize("get_one", ...)`.
 - The route calls `self.authorize(...)` itself. A route that builds its own
   query does this, as the count route in
-  [Reading the resolved scope](#reading-the-scope) does.
+  [Use the scope in your own query](#reading-the-scope) does.
 
 The business methods, such as
 {meth}`get_one <fastapi_restly.views.RestView.get_one>`, never call

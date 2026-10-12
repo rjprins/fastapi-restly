@@ -554,7 +554,7 @@ The SaaS example's `GET /users/me` returns the caller's own row:
 `Current.user_id()` is the id of the caller
 ([Current & ContextParam](howto_current.md)). `UserResponse` is the view's
 response class, so OpenAPI shows the same type as for `GET /users/{id}`. See
-[A custom route names the same classes](#name-the-response-classes). The
+[Name the view's classes in a custom route](#name-the-response-classes). The
 route `/me` works beside `/{id}`, because the item routes match only an
 integer id ([Item paths and static routes](#item-route-matching)).
 
@@ -674,10 +674,10 @@ one block
 
 Name the view's response classes in `response_model`, so OpenAPI shows the
 same types as for the CRUD routes: see
-[A custom route names the same classes](#name-the-response-classes). A route
+[Name the view's classes in a custom route](#name-the-response-classes). A route
 that builds a schema with `model_construct()` skips validation, so its
 reference fields need the right form: see
-[Reference fields in custom routes](#idref-custom-routes).
+[Build references in a custom route](#idref-custom-routes).
 
 (shared-write-action-commit)=
 ## Commit several writes together
@@ -769,7 +769,7 @@ Inside every method and custom route, you can use these attributes:
 
 A class attribute that you declare with `Annotated[..., Depends(...)]`, such
 as the current user, is also set on `self` for each request. See
-[Dependency injection on class attributes](#dependency-injection-on-class-attributes).
+[Declare dependencies as class attributes](#dependency-injection-on-class-attributes).
 
 ## Internals
 
