@@ -62,7 +62,7 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Views &amp; CRUD" href="class_based_views.html" />
+    <link rel="next" title="Guide" href="guide.html" />
     <link rel="prev" title="Tutorial: Build a Blog API" href="tutorial.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -162,21 +162,14 @@
     
 <li class="nav-item current active">
   <a class="nav-link nav-internal" href="tutorial.html">
-    Getting Started
+    Tutorial
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="class_based_views.html">
-    CRUD Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="user_guide.html">
-    How-To
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
   </a>
 </li>
 
@@ -191,13 +184,6 @@
 <li class="nav-item ">
   <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
     Blog
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
   </a>
 </li>
 
@@ -329,21 +315,14 @@
     
 <li class="nav-item current active">
   <a class="nav-link nav-internal" href="tutorial.html">
-    Getting Started
+    Tutorial
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="class_based_views.html">
-    CRUD Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="user_guide.html">
-    How-To
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
   </a>
 </li>
 
@@ -358,13 +337,6 @@
 <li class="nav-item ">
   <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
     Blog
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
   </a>
 </li>
 
@@ -539,7 +511,7 @@ imports. Then put this code above the <code class="docutils literal notranslate"
 <p><code class="docutils literal notranslate"><span class="pre">get_user_id</span></code> takes the user id from an <code class="docutils literal notranslate"><span class="pre">X-User-ID</span></code> header, so you can try
 the API with <code class="docutils literal notranslate"><span class="pre">curl</span></code>. Any client can send this header, so use it only for
 trying things out. In a real app, this function checks a session cookie or
-a token. <a class="reference internal" href="howto_current.html#current-request-binding"><span class="std std-ref">Bind from a FastAPI dependency</span></a> shows
+a token. <a class="reference internal" href="current.html#current-request-binding"><span class="std std-ref">Bind from a FastAPI dependency</span></a> shows
 where your own authentication goes.</p>
 <p><a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.ContextNamespace.depends" title="fastapi_restly.clauses.ContextNamespace.depends"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Current.depends(...)</span></code></a>
 turns <code class="docutils literal notranslate"><span class="pre">get_user_id</span></code> into a FastAPI dependency. For each request, it calls
@@ -569,7 +541,7 @@ model reads <code class="docutils literal notranslate"><span class="pre">Current
 row. Write <code class="docutils literal notranslate"><span class="pre">Current.user_id</span></code> without parentheses. With them, Python would
 read the value when it defines the class. No request has set a value then,
 so that fails.
-<a class="reference internal" href="howto_current.html#current-column-defaults"><span class="std std-ref">Read the current user in a column default</span></a>
+<a class="reference internal" href="current.html#current-column-defaults"><span class="std std-ref">Read the current user in a column default</span></a>
 explains this. The default runs on every insert, from any view or script.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">post</span></code> table has a new column now.
 <a class="reference internal" href="api/db.html#fastapi_restly.db.async_create_all" title="fastapi_restly.db.async_create_all"><code class="xref py py-func docutils literal notranslate"><span class="pre">async_create_all</span></code></a> creates missing
@@ -707,7 +679,7 @@ curl<span class="w"> </span>-X<span class="w"> </span>PATCH<span class="w"> </sp
 <p>Ben gets 404, because the scope hides the draft from him: for this reader,
 the post does not exist. When he can see the post but may not change it,
 <code class="docutils literal notranslate"><span class="pre">authorize</span></code> answers 403. The next section shows this.
-<a class="reference internal" href="customize.html#authorize-gate"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">authorize</span></code>: gate the action</span></a> has more examples.</p>
+<a class="reference internal" href="authorization.html#authorize-gate"><span class="std std-ref">Allow or refuse an action</span></a> has more examples.</p>
 </section>
 <section id="publish-a-draft">
 <h2>Publish a draft<a class="headerlink" href="#publish-a-draft" title="Link to this heading">#</a></h2>
@@ -768,7 +740,7 @@ function above <code class="docutils literal notranslate"><span class="pre">Post
 <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView.after_action_commit" title="fastapi_restly.views.AsyncRestView.after_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_action_commit</span></code></a>
 after it commits a write. <code class="docutils literal notranslate"><span class="pre">action</span></code> is the name of the action, and <code class="docutils literal notranslate"><span class="pre">new</span></code> is
 the saved post. The hook runs after the commit, so an error in it cannot
-undo the publish. <a class="reference internal" href="customize.html#after-action-commit-raises"><span class="std std-ref">When <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> raises</span></a>
+undo the publish. <a class="reference internal" href="lifecycle.html#after-action-commit-raises"><span class="std std-ref">When <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> raises</span></a>
 shows how to handle such an error.</p>
 <p>Anna writes a second post and publishes it. The server terminal prints
 <code class="docutils literal notranslate"><span class="pre">New</span> <span class="pre">post:</span> <span class="pre">Second</span></code>:</p>
@@ -781,7 +753,7 @@ curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </spa
 <p>A side effect that must be saved together with the post, such as an audit
 row, goes in
 <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView.before_action_commit" title="fastapi_restly.views.AsyncRestView.before_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_action_commit</span></code></a>
-instead. See <a class="reference internal" href="customize.html#transaction-hooks"><span class="std std-ref">Transaction hooks</span></a>.</p>
+instead. See <a class="reference internal" href="lifecycle.html#transaction-hooks"><span class="std std-ref">Run code before or after the commit</span></a>.</p>
 </section>
 <section id="share-the-rules-with-comments">
 <h2>Share the rules with comments<a class="headerlink" href="#share-the-rules-with-comments" title="Link to this heading">#</a></h2>
@@ -826,7 +798,7 @@ condition in the brackets.</p></li>
 its <code class="docutils literal notranslate"><span class="pre">Current.user_id</span></code> each time it applies the comment scope.</p></li>
 </ul>
 <p>Together: a comment is visible when its post is visible.
-<a class="reference internal" href="clauses.html#clause-in-expression"><span class="std std-ref">A clause inside an expression</span></a> explains this in more
+<a class="reference internal" href="clauses.html#clause-in-expression"><span class="std std-ref">Use a clause inside another condition</span></a> explains this in more
 detail.</p>
 <p>Views are normal Python classes. Move <code class="docutils literal notranslate"><span class="pre">authorize</span></code> from <code class="docutils literal notranslate"><span class="pre">PostView</span></code> into a
 base class, and put the base class below the <code class="docutils literal notranslate"><span class="pre">app</span> <span class="pre">=</span> <span class="pre">FastAPI(...)</span></code> line:</p>
@@ -859,7 +831,7 @@ base class, and put the base class below the <code class="docutils literal notra
 </pre></div>
 </div>
 <p>Register only the views that have a model, not the base class.
-<a class="reference internal" href="howto_inheritance.html"><span class="std std-doc">Share Behaviour with Base Views</span></a> covers inheritance in
+<a class="reference internal" href="views.html#share-behaviour-with-base-views"><span class="std std-ref">Share behavior with base views</span></a> covers inheritance in
 more detail.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">comment</span></code> table has a new column. Stop the server, delete <code class="docutils literal notranslate"><span class="pre">blog.db</span></code>, and
 start the server again. Then try the whole story again, with comments:</p>
@@ -956,14 +928,14 @@ starts from an empty blog. Create <code class="docutils literal notranslate"><sp
 2 passed
 </pre></div>
 </div>
-<p>The <a class="reference internal" href="examples.html#example-blog"><span class="std std-ref">blog example</span></a> has a test for every rule in this
-tutorial. <a class="reference internal" href="howto_testing.html"><span class="std std-doc">Testing</span></a> covers the fixtures, and apps that
+<p>The <a class="reference external" href="https://github.com/rjprins/fastapi-restly/tree/main/example-projects/blog">blog example</a> has a test for every rule in this
+tutorial. <a class="reference internal" href="testing.html"><span class="std std-doc">Testing</span></a> covers the fixtures, and apps that
 build their configuration in a factory.</p>
 </section>
 <section id="the-complete-file">
 <h2>The complete file<a class="headerlink" href="#the-complete-file" title="Link to this heading">#</a></h2>
 <p>Here is the blog with every change from this tutorial. The same file is the
-<a class="reference internal" href="examples.html#example-blog"><span class="std std-ref">blog example</span></a>:</p>
+<a class="reference external" href="https://github.com/rjprins/fastapi-restly/tree/main/example-projects/blog">blog example</a>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">asynccontextmanager</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
@@ -1107,7 +1079,7 @@ the publish route, and return it as a read-only field.</p></li>
 in <code class="docutils literal notranslate"><span class="pre">CommentView</span></code>, and call <code class="docutils literal notranslate"><span class="pre">super().authorize(...)</span></code> for the other cases.
 Load the post with <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">self.session.get(Post,</span> <span class="pre">obj.post_id)</span></code>, because
 <code class="docutils literal notranslate"><span class="pre">obj.post</span></code> does not load by itself in async code.
-<a class="reference internal" href="howto_relationship_loading.html"><span class="std std-doc">Relationship Loading and Async</span></a> explains
+<a class="reference internal" href="relationships.html#relationship-loading"><span class="std std-ref">Return related objects in a response</span></a> explains
 why.</p></li>
 </ol>
 </section>
@@ -1115,19 +1087,19 @@ why.</p></li>
 <h2>Next steps<a class="headerlink" href="#next-steps" title="Link to this heading">#</a></h2>
 <p>These pages cover the topics of this tutorial in more detail:</p>
 <ul class="simple">
-<li><p><a class="reference internal" href="howto_current.html"><span class="std std-doc">Current context</span></a>: bind values in scripts, jobs, and
+<li><p><a class="reference internal" href="current.html"><span class="std std-doc">Current &amp; ContextParam</span></a>: bind values in scripts, jobs, and
 tests</p></li>
 <li><p><a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a>: the model scope, view scopes, and a scope for one route</p></li>
-<li><p><a class="reference internal" href="customize.html"><span class="std std-doc">Customizing RestView</span></a>: every method you can override, and
+<li><p><a class="reference internal" href="lifecycle.html"><span class="std std-doc">Request Lifecycle &amp; Hooks</span></a>: every method you can override, and
 when to override one</p></li>
-<li><p><a class="reference internal" href="howto_inheritance.html"><span class="std std-doc">Share Behaviour with Base Views</span></a>: the full
+<li><p><a class="reference internal" href="views.html#share-behaviour-with-base-views"><span class="std std-ref">Share behavior with base views</span></a>: the full
 inheritance guide</p></li>
-<li><p><a class="reference internal" href="howto_testing.html"><span class="std std-doc">Testing</span></a>: the test fixtures, and test databases</p></li>
-<li><p><a class="reference internal" href="howto_project_structure.html"><span class="std std-doc">Project structure</span></a>: split the file into
+<li><p><a class="reference internal" href="testing.html"><span class="std std-doc">Testing</span></a>: the test fixtures, and test databases</p></li>
+<li><p><a class="reference internal" href="projects.html"><span class="std std-doc">New &amp; Existing Projects</span></a>: split the file into
 packages as the app grows, or generate a project with <code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code></p></li>
 <li><p><a class="reference internal" href="deploying.html"><span class="std std-doc">Deploying</span></a>: a production database, and Alembic migrations
 instead of <code class="docutils literal notranslate"><span class="pre">async_create_all</span></code></p></li>
-<li><p><a class="reference internal" href="howto_existing_project.html"><span class="std std-doc">Use Restly in an Existing Project</span></a>: add Restly
+<li><p><a class="reference internal" href="projects.html"><span class="std std-doc">New &amp; Existing Projects</span></a>: add Restly
 beside the routes you already have</p></li>
 <li><p><a class="reference internal" href="api_reference.html"><span class="std std-doc">API Reference</span></a></p></li>
 </ul>
@@ -1154,11 +1126,11 @@ beside the routes you already have</p></li>
       </div>
     </a>
     <a class="right-next"
-       href="class_based_views.html"
+       href="guide.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Views &amp; CRUD</p>
+        <p class="prev-next-title">Guide</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>

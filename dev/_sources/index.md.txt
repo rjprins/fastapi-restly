@@ -18,8 +18,8 @@ class UserView(fr.AsyncRestView):
     model = User  # SQLAlchemy model
 ```
 
-See [Using RestView](rest_views.md) for the full guide and [Customizing
-RestView](customize.md) for how you can change it.
+The [Guide](guide.md) explains each part of a view and how you can change
+it.
 
 ## Quick Start
 
@@ -72,7 +72,7 @@ class UserView(fr.AsyncRestView):
 
 That view exposes the routes below. Their Pydantic schemas are
 [generated from the model](#auto-generated-schemas), and you can
-[customize them](howto_custom_schema.md).
+[customize them](schemas.md).
 
 ```text
 GET    /users       # list users: filter, sort, paginate via URL params
@@ -100,67 +100,38 @@ Restly step by step, from the first model to authors, drafts, and tests.
 ## Features
 
 - **[Default CRUD routes](#default-crud-routes)**: GET, POST, PATCH, DELETE with minimal boilerplate
-- **[True class-based views](class_based_views.md)**: inheritance, mixins, and method overrides
-- **[Explicit override points](customize.md)**: every CRUD verb split into an endpoint method and a business method you override
-- **[React Admin ready](howto_react_admin.md)**: `AsyncReactAdminView` speaks `ra-data-simple-rest`
+- **[True class-based views](views.md)**: inheritance, mixins, and method overrides
+- **[Explicit override points](lifecycle.md)**: every CRUD verb split into an endpoint method and a business method you override
+- **[React Admin ready](react_admin.md)**: `AsyncReactAdminView` speaks `ra-data-simple-rest`
 - **[SQLAlchemy 2.0 support](tutorial.md)**: async-first with modern patterns
-- **[Pydantic v2 integration](howto_custom_schema.md)**: validation and serialization for public contracts
-- **[Automatic schema generation](technical_details.md#auto-generated-schemas)**: response, create, and update schemas generated automatically
-- **[Filtering](howto_query_modifiers.md)**: filter, sort, and paginate from a stable URL dialect generated from the view's schema
-- **[Current context](howto_current.md)**: bind values, such as the current user, to a request-local context and read them anywhere in the request
+- **[Pydantic v2 integration](schemas.md)**: validation and serialization for public contracts
+- **[Automatic schema generation](#auto-generated-schemas)**: response, create, and update schemas generated automatically
+- **[Filtering](filtering.md)**: filter, sort, and paginate from a stable URL dialect generated from the view's schema
+- **[Current & ContextParam](current.md)**: bind values, such as the current user, to a request-local context and read them anywhere in the request
 - **[Scopes](scopes.md)**: control what a view can return with one SQLAlchemy where clause, applied to every read and reference check
-- **[Relationship support](howto_relationship_idschema.md)**: handle foreign keys and nested objects
-- **[Testing utilities](howto_testing.md)**: built-in test helpers with savepoint isolation
+- **[Relationship support](relationships.md)**: handle foreign keys and nested objects
+- **[Testing utilities](testing.md)**: built-in test helpers with savepoint isolation
 
 ## Documentation
 
-::::{grid} 1 2 2 3
+::::{grid} 1 2 2 2
 :gutter: 3
 
-:::{grid-item-card} Getting Started
+:::{grid-item-card} Tutorial
 :link: tutorial
 :link-type: doc
 
 Build a blog API step by step: posts and comments, then authors and drafts.
 :::
 
-:::{grid-item-card} Views
-:link: class_based_views
+:::{grid-item-card} Guide
+:link: guide
 :link-type: doc
 
-Choose a view type, then learn how registration, dependencies, and inheritance
-work.
+One page for each part of Restly: how it works, and how to use it.
 :::
 
-:::{grid-item-card} Using RestView
-:link: rest_views
-:link-type: doc
-
-Define a model-backed CRUD resource and understand its default contract.
-:::
-
-:::{grid-item-card} Customizing RestView
-:link: customize
-:link-type: doc
-
-How a view handles each request, with recipes for every override point.
-:::
-
-:::{grid-item-card} How-To Guides
-:link: user_guide
-:link-type: doc
-
-Task-focused guides, from adoption in an existing app to deployment.
-:::
-
-:::{grid-item-card} Examples
-:link: examples
-:link-type: doc
-
-Complete sample applications from a tiny API to a production-shaped service.
-:::
-
-:::{grid-item-card} API Reference
+:::{grid-item-card} API
 :link: api_reference
 :link-type: doc
 
@@ -173,24 +144,15 @@ Public Python API by module, with signatures and default behavior.
 
 History, design goals, and why this framework exists.
 :::
-
-:::{grid-item-card} Deploying
-:link: deploying
-:link-type: doc
-
-Production engine config, Alembic migrations, and an ASGI checklist.
-:::
 ::::
 
 ```{toctree}
 :maxdepth: 2
 :hidden:
 
-Getting Started <tutorial>
-CRUD Views <class_based_views>
-How-To <user_guide>
+Tutorial <tutorial>
+Guide <guide>
 API <api_reference>
 Blog <https://www.fastapi-restly.org/blog/>
-examples
 About <about>
 ```

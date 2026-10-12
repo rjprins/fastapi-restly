@@ -27,5 +27,5 @@ into your test session without needing to import them individually.
 
 .. seealso::
 
-   :doc:`/howto_testing` covers the setup, the cleanup modes, the fixture
+   :doc:`/testing` covers the setup, the cleanup modes, the fixture
    reference, and how the rollback works.

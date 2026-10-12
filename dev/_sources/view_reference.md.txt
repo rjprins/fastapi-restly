@@ -1,9 +1,9 @@
 # View Reference
 
 This page lists everything you can set, override, or call on a view.
-[Using RestView](rest_views.md) explains the default HTTP contract, and
-[Customizing RestView](customize.md) explains which method to override.
-[API Modules](api/index.rst) documents the complete signatures.
+[CRUD Routes](crud_routes.md) explains the default HTTP contract, and
+[Request Lifecycle & Hooks](lifecycle.md) explains which method to override.
+[Modules](api/index.rst) documents the complete signatures.
 
 ## View classes
 
@@ -16,7 +16,7 @@ Each class below is a registration entry point:
 | {class}`fr.AsyncRestView <fastapi_restly.views.AsyncRestView>` | Async CRUD view. Use with async SQLAlchemy sessions. |
 | {class}`fr.RestView <fastapi_restly.views.RestView>` | Sync CRUD view. Use with sync SQLAlchemy sessions. |
 | {class}`fr.ListResult <fastapi_restly.views.ListResult>` | Value object returned by `get_many` (and `handle_get_many`), with `.objects`, `.total_count`, and `.list_params`, before `to_list_response` formats the HTTP response. |
-| {class}`fr.AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` | Async CRUD view that follows the `ra-data-simple-rest` HTTP contract used by [react-admin](https://marmelab.com/react-admin/). See [React Admin Integration](howto_react_admin.md). |
+| {class}`fr.AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` | Async CRUD view that follows the `ra-data-simple-rest` HTTP contract used by [react-admin](https://marmelab.com/react-admin/). See [React Admin](react_admin.md). |
 | {class}`fr.ReactAdminView <fastapi_restly.views.ReactAdminView>` | Sync variant of `AsyncReactAdminView`. |
 
 (view-class-attributes)=
@@ -26,23 +26,23 @@ Every `View` subclass, CRUD or not, honors these class attributes:
 
 | Attribute | Type | Description |
 |---|---|---|
-| {attr}`prefix <fastapi_restly.views.View.prefix>` | `ClassVar[str]` | URL prefix for all routes in the view (e.g. `"/users"`). Required. |
-| {attr}`tags <fastapi_restly.views.View.tags>` | `ClassVar[Iterable[str \| Enum] \| None]` | OpenAPI tags. When unset, a tag derived from the view class name is used; setting this replaces the derived tag. |
+| {attr}`prefix <fastapi_restly.views.View.prefix>` | `ClassVar[str]` | URL prefix for all routes in the view (e.g. `"/users"`). A view without a prefix puts its routes at the root. Each class in the hierarchy adds its own, base first. |
+| {attr}`tags <fastapi_restly.views.View.tags>` | `ClassVar[Iterable[str \| Enum] \| None]` | OpenAPI tags. When unset, the tag is the last part of the prefix in title case (`/order-items` gives `Order Items`), or the class name when there is no prefix. Setting this replaces that tag. |
 | {attr}`dependencies <fastapi_restly.views.View.dependencies>` | `ClassVar[Sequence[Depends] \| None]` | FastAPI dependencies applied to every route in the view. Each class in the hierarchy adds its own, base first. |
 | {attr}`responses <fastapi_restly.views.View.responses>` | `ClassVar[dict[int \| str, dict[str, Any]]]` | OpenAPI response overrides. `View` defaults to `{}`; `BaseRestView` defaults to `{404: {"description": "Not found"}}`. Each class in the hierarchy adds its own, and a subclass's entry for a status code wins. |
-| {attr}`route_options <fastapi_restly.views.View.route_options>` | `ClassVar[Mapping[str \| ViewRoute, Mapping[str, Any]]]` | Per-route FastAPI keyword arguments. See [OpenAPI customization](#default-route-metadata) for names, operation IDs, and override rules. |
+| {attr}`route_options <fastapi_restly.views.View.route_options>` | `ClassVar[Mapping[str \| ViewRoute, Mapping[str, Any]]]` | Per-route FastAPI keyword arguments. See [OpenAPI](#route-options) for names, operation IDs, and override rules. |
 
 `RestView` and `AsyncRestView` add the following:
 
 | Attribute | Type | Description |
 |---|---|---|
 | {attr}`schema <fastapi_restly.views.BaseRestView.schema>` | `ClassVar[type[pydantic.BaseModel]]` | The view's schema. Restly derives the response, create and update schemas from it. If omitted, auto-generated from `model` as `<Model>Schema`. |
-| {attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>` | `ClassVar[type[pydantic.BaseModel]]` | The class of everything that goes out: the responses, the list items, the fields the list params filter on, and the relationships the view loads. Auto-derived by removing `WriteOnly` fields and named `ModelResponse`. See [Your own response class](#own-response-class). |
+| {attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>` | `ClassVar[type[pydantic.BaseModel]]` | The class of everything that goes out: the responses, the list items, the fields the list params filter on, and the relationships the view loads. Auto-derived by removing `WriteOnly` fields and named `ModelResponse`. See [Set your own response class](#own-response-class). |
 | {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` | `ClassVar[type[pydantic.BaseModel]]` | Schema for `POST` input. Auto-derived by removing `ReadOnly` fields and named `ModelCreate`. |
 | {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` | `ClassVar[type[pydantic.BaseModel]]` | Schema for `PATCH` input. Auto-derived by making all writable fields optional and named `ModelUpdate`. |
 | {attr}`model <fastapi_restly.views.BaseRestView.model>` | `ClassVar[type[Any]]` | The SQLAlchemy mapped class. A class without a mapper raises at class definition. |
 | {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` | `ClassVar[type \| None]` | Type of the `{id}` path parameter on the default routes. `None` (the default) takes the model's primary key type; a composite key gets `int`. |
-| {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` | `ClassVar[Iterable[str \| ViewRoute]]` | Default routes to leave out: `fr.ViewRoute` values (`GET_MANY`, `GET_ONE`, `CREATE`, `UPDATE`, `DELETE`) or endpoint method names such as `"delete_endpoint"`. See [Exclude CRUD routes](customize.md#exclude-crud-routes). |
+| {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` | `ClassVar[Iterable[str \| ViewRoute]]` | Default routes to leave out: `fr.ViewRoute` values (`GET_MANY`, `GET_ONE`, `CREATE`, `UPDATE`, `DELETE`) or endpoint method names such as `"delete_endpoint"`. See [Exclude CRUD routes](#exclude-crud-routes). |
 | {attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>` | `ClassVar[type[pydantic.BaseModel]]` | The list params (filter, sort, page) as a Pydantic model, generated from `schema_response` by `fr.query.derive_schema_list_params`. Any route method that declares a `list_params` parameter is annotated with it, so a custom list route takes the same parameters as `GET /`. |
 | {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` | `ClassVar[NumberedPagination \| NoPagination \| None]` | How list endpoints paginate, `NumberedPagination()` by default. A `NoPagination` returns every row and runs no count query; `None` is short for `NoPagination()`, a plain `Envelope` (`data` only). Views inherit it, so a project base view sets it once. See [Pagination settings](#pagination-settings). |
 | {attr}`extra_query_params <fastapi_restly.views.BaseRestView.extra_query_params>` | `ClassVar[Iterable[str]]` | Query keys to allow beyond those derived from the response class, for view-specific parameters read from the request outside the list grammar (e.g. `?include_deleted=true`). A key that the endpoint method or a dependency declares, or an `APIKeyQuery` key, needs no entry. |
@@ -68,7 +68,7 @@ checked copy:
 default, filled from `data` and `total_count`, the number of rows.
 
 The envelope's shape and custom alternatives are covered in
-[Response Envelopes and List Metadata](howto_response_schema.md).
+[Responses](responses.md).
 
 (endpoint-decorators)=
 ## Endpoint decorators
@@ -99,7 +99,7 @@ the endpoint method (`<verb>_endpoint`), the handler (`handle_<verb>`), and
 the business method (`<verb>`). The handler handles the steps and is final.
 You override the endpoint method or the business method, whichever owns your
 change. The steps and the decision table live in
-[Customizing RestView](#view-request-steps).
+[Request Lifecycle & Hooks](#view-request-steps).
 
 Alongside these three are the declared read [scope](scopes.md) (the
 `scope` class attribute) and cross-cutting **override points**
@@ -135,8 +135,8 @@ names are identical between variants.
 | Business method | {meth}`create <fastapi_restly.views.RestView.create>` | `(schema_obj)` | `Model` | Build a new object and save it. Commit-free: the usual create override point. |
 | Business method | {meth}`update <fastapi_restly.views.RestView.update>` | `(obj, schema_obj)` | `Model` | Apply the update payload to `obj` and save it. Commit-free. |
 | Business method | {meth}`delete <fastapi_restly.views.RestView.delete>` | `(obj)` | `None` | Remove `obj` and flush. Override (e.g. on a soft-delete mixin) to flip a timestamp instead. |
-| Configuration | {attr}`scope <fastapi_restly.views.BaseRestView.scope>` | class attribute | `WhereClause \| Unscoped \| None` | The clause every read applies, shared by `get_many`, `count`, and `get_one`. `None` falls back to the model's declared `default_scope`; `fr.clauses.UNSCOPED` reads unscoped. See [Scopes](scopes.md). |
-| Function | {func}`fr.resolve_scope(view_or_model) <fastapi_restly.views.resolve_scope>` | `(view_or_model)` | `WhereClause \| Unscoped` | The scope a read applies, resolved down the ladder: the view's `scope`, the model's `default_scope`, then `fr.clauses.UNSCOPED`. Takes a view class or instance, or a mapped model class for the model rung alone. Apply it with `fr.apply_clauses` in a route that builds its own query (a count, a nested list) and the route sees the rows `get_one` and `get_many` see. See [Reading the resolved scope](#reading-the-scope). |
+| Configuration | {attr}`scope <fastapi_restly.views.BaseRestView.scope>` | class attribute | `WhereClause \| None` | The clause every read applies, shared by `get_many`, `count`, and `get_one`. `None` falls back to the model's declared `default_scope`; `fr.clauses.UNSCOPED` reads unscoped. See [Scopes](scopes.md). |
+| Function | {func}`fr.resolve_scope(view_or_model) <fastapi_restly.views.resolve_scope>` | `(view_or_model)` | `WhereClause` | The scope a read applies, resolved down the ladder: the view's `scope`, the model's `default_scope`, then `fr.clauses.UNSCOPED`. Takes a view class or instance, or a mapped model class for the model rung alone. Apply it with `fr.apply_clauses` in a route that builds its own query (a count, a nested list) and the route sees the rows `get_one` and `get_many` see. See [Use the scope in your own query](#reading-the-scope). |
 | Override point | {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>` | `(query, list_params)` | `sqlalchemy.Select` | Apply URL filter/sort/pagination to `query`. Override for a non-default URL grammar. |
 | Override point | {meth}`count <fastapi_restly.views.RestView.count>` | `(query)` | `int` | Total for a paginated list: receives the same params-applied query, strips `ORDER BY`, `LIMIT`, and `OFFSET`, and counts it `DISTINCT` through a subquery, so a query that joins a to-many relationship does not inflate the total. Unpaginated views skip it. Override for estimated counts on huge tables. |
 | Override point | {meth}`authorize <fastapi_restly.views.RestView.authorize>` | `(action, obj=None, data=None)` | `None` | Gate a verb. A no-op by default; override to enforce policy and raise `fr.exc.Forbidden` / `fr.exc.NotFound` to reject. Row *visibility* belongs in the scope. |
@@ -144,7 +144,7 @@ names are identical between variants.
 | Override point | {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>` | `(action, new, old=None)` | `None` | Post-commit side effect (email, webhook, cache invalidation). `old` enables dirty detection. An exception here fails the request but cannot undo the write; see [When `after_action_commit` raises](#after-action-commit-raises). |
 | Override point | {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>` | `(result, shape=ResponseShape.SINGLE)` | response payload | The single response method, called by the endpoint methods with the `ResponseShape` (`SINGLE` / `LIST` / `EMPTY`), not the write action. Override for envelopes or custom status codes; for a per-verb HTTP contract change, override that verb's endpoint method. |
 | Override point | {meth}`snapshot <fastapi_restly.views.BaseRestView.snapshot>` | `(obj)` | `dict[str, Any]` | Frozen capture of an object's already-loaded column values, taken after `authorize` and before the mutation, passed as `old` to the commit hooks. |
-| Override point | {meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>` | `()` | `list[Any]` | Loader options (`selectinload(...)`) for the relationships the response class names, applied on reads (`get_one` / `get_many`) and on the write-response reload in `save_object`. Override to eager-load relationships the response class does not name on both paths; see [Relationship Loading and Async](howto_relationship_loading.md). |
+| Override point | {meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>` | `()` | `list[Any]` | Loader options (`selectinload(...)`) for the relationships the response class names, applied on reads (`get_one` / `get_many`) and on the write-response reload in `save_object`. Override to eager-load relationships the response class does not name. A write reloads only when a relationship the response class names is not loaded; see [Return related objects in a response](#relationship-loading). |
 | Helper | {meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>` | `(obj)` | instance of `schema_response` | Validate and serialize one ORM object with Restly's alias/reference/write-only handling. Override for custom projections or an intentional `model_construct()` fast path. |
 | Helper | {meth}`to_list_response <fastapi_restly.views.BaseRestView.to_list_response>` | `(list_result)` | envelope model instance | Build the list response body: an instance of the pagination's envelope, or of `Envelope` when `pagination` is `None`. The page comes from `list_result.list_params`. To change the shape, set the pagination's `envelope`. A shape no envelope model can express, such as a header, needs `get_many_endpoint` replaced with a matching `response_model`. |
 | Domain utility | {meth}`make_new_object <fastapi_restly.views.RestView.make_new_object>` | `(schema_obj)` | `Model` | Build and stage a new object without flushing, resolving references and skipping read-only fields. Final. |
@@ -157,7 +157,7 @@ and `fr.clauses.UNSCOPED` reads unscoped.
 
 Internal methods prefixed with `_`, such as `_reject_unknown_query_params`, are implementation details even though they are visible on instances.
 
-See [Views](class_based_views.md#the-view-hierarchy) for the class hierarchy, [Customizing RestView](customize.md) for examples of choosing which method to override, and [Use Type Annotations](howto_typing.md) for the typed signatures of these methods.
+See [Views](#the-view-hierarchy) for the class hierarchy, [Request Lifecycle & Hooks](lifecycle.md) for examples of choosing which method to override, and [Type Annotations](typing.md) for the typed signatures of these methods.
 
 (advanced-object-helpers)=
 ### The same operations outside a view

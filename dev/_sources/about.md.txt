@@ -18,18 +18,18 @@ default CRUD routes, query parameters, error translation, and test fixtures.
   can always drop one level down to plain FastAPI or SQLAlchemy.
 - **Out of the box.** The common path should need no extra code: engine and
   session setup, commit handling, schema generation,
-  [list filtering](howto_query_modifiers.md) with strict validation,
-  [error translation](howto_error_responses.md), and
-  [savepoint-isolated test fixtures](howto_testing.md)
+  [list filtering](filtering.md) with strict validation,
+  [error translation](errors.md), and
+  [savepoint-isolated test fixtures](testing.md)
   all work from {func}`fr.configure() <fastapi_restly.db.configure>` onward.
 - **Customization is never off the path.** Applications are rarely just CRUD.
   Every CRUD operation has explicit override points, so the default behavior
-  is a starting point, not a boundary (see [Customizing RestView](customize.md)).
+  is a starting point, not a boundary (see [Request Lifecycle & Hooks](lifecycle.md)).
 - **Documentation you don't have to guess at.** Common paths have runnable
   examples and extension points say where custom behavior belongs, for your
   team.
 
-The core patterns ([class-based views](class_based_views.md), the override
+The core patterns ([class-based views](views.md), the override
 hierarchy, and schema generation) are proven by four years of internal
 production use. The public
 API surface is still settling on the way to `1.0.0` (see the

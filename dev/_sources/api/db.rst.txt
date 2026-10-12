@@ -25,6 +25,6 @@ savepoint-only mode used in testing.
 
 .. seealso::
 
-   :doc:`/howto_existing_project` shows how to connect Restly to existing
+   :doc:`/database` shows how to connect Restly to existing
    engines and sessions, and :doc:`/deploying` covers production engine
    configuration.

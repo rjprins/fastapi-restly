@@ -161,21 +161,14 @@
     
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
-    Getting Started
+    Tutorial
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="class_based_views.html">
-    CRUD Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="user_guide.html">
-    How-To
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
   </a>
 </li>
 
@@ -190,13 +183,6 @@
 <li class="nav-item ">
   <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
     Blog
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
   </a>
 </li>
 
@@ -330,21 +316,14 @@
     
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
-    Getting Started
+    Tutorial
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="class_based_views.html">
-    CRUD Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="user_guide.html">
-    How-To
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
   </a>
 </li>
 
@@ -359,13 +338,6 @@
 <li class="nav-item ">
   <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
     Blog
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
   </a>
 </li>
 
@@ -480,8 +452,8 @@ and <code class="docutils literal notranslate"><span class="pre">User</span></co
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>  <span class="c1"># SQLAlchemy model</span>
 </pre></div>
 </div>
-<p>See <a class="reference internal" href="rest_views.html"><span class="std std-doc">Using RestView</span></a> for the full guide and <a class="reference internal" href="customize.html"><span class="std std-doc">Customizing
-RestView</span></a> for how you can change it.</p>
+<p>The <a class="reference internal" href="guide.html"><span class="std std-doc">Guide</span></a> explains each part of a view and how you can change
+it.</p>
 <section id="quick-start">
 <h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading">#</a></h2>
 <p>Install FastAPI-Restly along with an async SQLite driver:</p>
@@ -528,8 +500,8 @@ application:</p>
 </pre></div>
 </div>
 <p>That view exposes the routes below. Their Pydantic schemas are
-<a class="reference internal" href="technical_details.html#auto-generated-schemas"><span class="std std-ref">generated from the model</span></a>, and you can
-<a class="reference internal" href="howto_custom_schema.html"><span class="std std-doc">customize them</span></a>.</p>
+<a class="reference internal" href="schemas.html#auto-generated-schemas"><span class="std std-ref">generated from the model</span></a>, and you can
+<a class="reference internal" href="schemas.html"><span class="std std-doc">customize them</span></a>.</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET    /users       # list users: filter, sort, paginate via URL params
 POST   /users       # create a user
 GET    /users/{id}   # read one user
@@ -552,29 +524,29 @@ Restly step by step, from the first model to authors, drafts, and tests.</p>
 <section id="features">
 <h2>Features<a class="headerlink" href="#features" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><strong><a class="reference internal" href="rest_views.html#default-crud-routes"><span class="std std-ref">Default CRUD routes</span></a></strong>: GET, POST, PATCH, DELETE with minimal boilerplate</p></li>
-<li><p><strong><a class="reference internal" href="class_based_views.html"><span class="std std-doc">True class-based views</span></a></strong>: inheritance, mixins, and method overrides</p></li>
-<li><p><strong><a class="reference internal" href="customize.html"><span class="std std-doc">Explicit override points</span></a></strong>: every CRUD verb split into an endpoint method and a business method you override</p></li>
-<li><p><strong><a class="reference internal" href="howto_react_admin.html"><span class="std std-doc">React Admin ready</span></a></strong>: <code class="docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code> speaks <code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code></p></li>
+<li><p><strong><a class="reference internal" href="crud_routes.html#default-crud-routes"><span class="std std-ref">Default CRUD routes</span></a></strong>: GET, POST, PATCH, DELETE with minimal boilerplate</p></li>
+<li><p><strong><a class="reference internal" href="views.html"><span class="std std-doc">True class-based views</span></a></strong>: inheritance, mixins, and method overrides</p></li>
+<li><p><strong><a class="reference internal" href="lifecycle.html"><span class="std std-doc">Explicit override points</span></a></strong>: every CRUD verb split into an endpoint method and a business method you override</p></li>
+<li><p><strong><a class="reference internal" href="react_admin.html"><span class="std std-doc">React Admin ready</span></a></strong>: <code class="docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code> speaks <code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code></p></li>
 <li><p><strong><a class="reference internal" href="tutorial.html"><span class="std std-doc">SQLAlchemy 2.0 support</span></a></strong>: async-first with modern patterns</p></li>
-<li><p><strong><a class="reference internal" href="howto_custom_schema.html"><span class="std std-doc">Pydantic v2 integration</span></a></strong>: validation and serialization for public contracts</p></li>
-<li><p><strong><a class="reference internal" href="technical_details.html#id2"><span class="std std-ref">Automatic schema generation</span></a></strong>: response, create, and update schemas generated automatically</p></li>
-<li><p><strong><a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">Filtering</span></a></strong>: filter, sort, and paginate from a stable URL dialect generated from the view’s schema</p></li>
-<li><p><strong><a class="reference internal" href="howto_current.html"><span class="std std-doc">Current context</span></a></strong>: bind values, such as the current user, to a request-local context and read them anywhere in the request</p></li>
+<li><p><strong><a class="reference internal" href="schemas.html"><span class="std std-doc">Pydantic v2 integration</span></a></strong>: validation and serialization for public contracts</p></li>
+<li><p><strong><a class="reference internal" href="schemas.html#auto-generated-schemas"><span class="std std-ref">Automatic schema generation</span></a></strong>: response, create, and update schemas generated automatically</p></li>
+<li><p><strong><a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering</span></a></strong>: filter, sort, and paginate from a stable URL dialect generated from the view’s schema</p></li>
+<li><p><strong><a class="reference internal" href="current.html"><span class="std std-doc">Current &amp; ContextParam</span></a></strong>: bind values, such as the current user, to a request-local context and read them anywhere in the request</p></li>
 <li><p><strong><a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a></strong>: control what a view can return with one SQLAlchemy where clause, applied to every read and reference check</p></li>
-<li><p><strong><a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Relationship support</span></a></strong>: handle foreign keys and nested objects</p></li>
-<li><p><strong><a class="reference internal" href="howto_testing.html"><span class="std std-doc">Testing utilities</span></a></strong>: built-in test helpers with savepoint isolation</p></li>
+<li><p><strong><a class="reference internal" href="relationships.html"><span class="std std-doc">Relationship support</span></a></strong>: handle foreign keys and nested objects</p></li>
+<li><p><strong><a class="reference internal" href="testing.html"><span class="std std-doc">Testing utilities</span></a></strong>: built-in test helpers with savepoint isolation</p></li>
 </ul>
 </section>
 <section id="documentation">
 <h2>Documentation<a class="headerlink" href="#documentation" title="Link to this heading">#</a></h2>
 <div class="sd-container-fluid sd-sphinx-override sd-mb-4 docutils">
-<div class="sd-row sd-row-cols-1 sd-row-cols-xs-1 sd-row-cols-sm-2 sd-row-cols-md-2 sd-row-cols-lg-3 sd-g-3 sd-g-xs-3 sd-g-sm-3 sd-g-md-3 sd-g-lg-3 docutils">
+<div class="sd-row sd-row-cols-1 sd-row-cols-xs-1 sd-row-cols-sm-2 sd-row-cols-md-2 sd-row-cols-lg-2 sd-g-3 sd-g-xs-3 sd-g-sm-3 sd-g-md-3 sd-g-lg-3 docutils">
 <div class="sd-col sd-d-flex-row docutils">
 <div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
-Getting Started</div>
+Tutorial</div>
 <p class="sd-card-text">Build a blog API step by step: posts and comments, then authors and drafts.</p>
 </div>
 <a class="sd-stretched-link sd-hide-link-text reference internal" href="tutorial.html"><span class="doc">Tutorial: Build a Blog API</span></a></div>
@@ -583,53 +555,16 @@ Getting Started</div>
 <div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
-Views</div>
-<p class="sd-card-text">Choose a view type, then learn how registration, dependencies, and inheritance
-work.</p>
+Guide</div>
+<p class="sd-card-text">One page for each part of Restly: how it works, and how to use it.</p>
 </div>
-<a class="sd-stretched-link sd-hide-link-text reference internal" href="class_based_views.html"><span class="doc">Views &amp; CRUD</span></a></div>
-</div>
-<div class="sd-col sd-d-flex-row docutils">
-<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
-<div class="sd-card-body docutils">
-<div class="sd-card-title sd-font-weight-bold docutils">
-Using RestView</div>
-<p class="sd-card-text">Define a model-backed CRUD resource and understand its default contract.</p>
-</div>
-<a class="sd-stretched-link sd-hide-link-text reference internal" href="rest_views.html"><span class="doc">Using RestView</span></a></div>
+<a class="sd-stretched-link sd-hide-link-text reference internal" href="guide.html"><span class="doc">Guide</span></a></div>
 </div>
 <div class="sd-col sd-d-flex-row docutils">
 <div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
-Customizing RestView</div>
-<p class="sd-card-text">How a view handles each request, with recipes for every override point.</p>
-</div>
-<a class="sd-stretched-link sd-hide-link-text reference internal" href="customize.html"><span class="doc">Customizing RestView</span></a></div>
-</div>
-<div class="sd-col sd-d-flex-row docutils">
-<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
-<div class="sd-card-body docutils">
-<div class="sd-card-title sd-font-weight-bold docutils">
-How-To Guides</div>
-<p class="sd-card-text">Task-focused guides, from adoption in an existing app to deployment.</p>
-</div>
-<a class="sd-stretched-link sd-hide-link-text reference internal" href="user_guide.html"><span class="doc">How-To Guides</span></a></div>
-</div>
-<div class="sd-col sd-d-flex-row docutils">
-<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
-<div class="sd-card-body docutils">
-<div class="sd-card-title sd-font-weight-bold docutils">
-Examples</div>
-<p class="sd-card-text">Complete sample applications from a tiny API to a production-shaped service.</p>
-</div>
-<a class="sd-stretched-link sd-hide-link-text reference internal" href="examples.html"><span class="doc">Examples</span></a></div>
-</div>
-<div class="sd-col sd-d-flex-row docutils">
-<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
-<div class="sd-card-body docutils">
-<div class="sd-card-title sd-font-weight-bold docutils">
-API Reference</div>
+API</div>
 <p class="sd-card-text">Public Python API by module, with signatures and default behavior.</p>
 </div>
 <a class="sd-stretched-link sd-hide-link-text reference internal" href="api_reference.html"><span class="doc">API Reference</span></a></div>
@@ -642,15 +577,6 @@ About</div>
 <p class="sd-card-text">History, design goals, and why this framework exists.</p>
 </div>
 <a class="sd-stretched-link sd-hide-link-text reference internal" href="about.html"><span class="doc">About FastAPI-Restly</span></a></div>
-</div>
-<div class="sd-col sd-d-flex-row docutils">
-<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
-<div class="sd-card-body docutils">
-<div class="sd-card-title sd-font-weight-bold docutils">
-Deploying</div>
-<p class="sd-card-text">Production engine config, Alembic migrations, and an ASGI checklist.</p>
-</div>
-<a class="sd-stretched-link sd-hide-link-text reference internal" href="deploying.html"><span class="doc">Deploying</span></a></div>
 </div>
 </div>
 </div>

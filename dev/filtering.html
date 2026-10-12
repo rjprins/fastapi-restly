@@ -1,0 +1,1115 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" data-theme="auto">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, follow">
+
+    <title>Filtering &amp; Pagination &#8212; FastAPI-Restly 0.11.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "auto";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "auto";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=f3b36f1a"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'filtering';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://www.fastapi-restly.org/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <link rel="canonical" href="https://www.fastapi-restly.org/dev/filtering.html" />
+    <link rel="icon" href="_static/favicon.svg"/>
+    <link rel="author" title="About these documents" href="about.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Errors" href="errors.html" />
+    <link rel="prev" title="Relationships" href="relationships.html" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.11" />
+<meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700&amp;display=swap"
+      rel="stylesheet" />
+<!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
+<script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="auto">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/fr-monogram.svg" class="logo__image only-light" alt=""/>
+    <img src="_static/fr-monogram-dark.svg" class="logo__image only-dark pst-js-only" alt=""/>
+  
+  
+    <p class="title logo__title">FastAPI-Restly</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="projects.html">New &amp; Existing Projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="database.html">Database &amp; Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Filtering &amp; Pagination</a></li>
+<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="current.html">Current &amp; ContextParam</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
+<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
+<li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="guide.html" class="nav-link">Guide</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Filtering &amp; Pagination</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="filtering-pagination">
+<h1>Filtering &amp; Pagination<a class="headerlink" href="#filtering-pagination" title="Link to this heading">#</a></h1>
+<p>The list endpoint of a view, <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{prefix}</span></code>, reads filters, a sort order and
+a page from the URL:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?name=John
+GET /users?status=active,pending
+GET /users?age__gte=18&amp;age__lt=65
+GET /users?deleted_at__isnull=true
+GET /users?email__icontains=example
+GET /users?sort=-created_at,name
+GET /users?page=2&amp;page_size=50
+</pre></div>
+</div>
+<p>Restly builds these list parameters when the view registers. It reads the
+view’s response class, and gives each field that maps to a column one filter,
+plus filters with an operator suffix such as <code class="docutils literal notranslate"><span class="pre">__gte</span></code>. So a client can filter
+and sort only on fields it can see. By default the response class is the
+view’s schema without its <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields; see
+<a class="reference internal" href="schemas.html#own-response-class"><span class="std std-ref">Set your own response class</span></a>.</p>
+<p>The filters narrow the rows inside the view’s <a class="reference internal" href="scopes.html"><span class="std std-doc">scope</span></a>. They can
+never show a row that the scope hides.</p>
+<p>Restly rejects an unknown key with <code class="docutils literal notranslate"><span class="pre">422</span></code>. A filter only narrows the result, so
+a mistyped key that Restly ignored would return more rows than the client
+asked for. To allow a key of your own, see
+<a class="reference internal" href="#extra-query-parameters">Accept extra query parameters</a>.</p>
+<p>Lists are paginated by default: 50 rows per page, and a client can ask for up
+to 1000. The rows come in a <code class="docutils literal notranslate"><span class="pre">data</span></code> envelope with the total count. The view’s
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.pagination" title="fastapi_restly.views.BaseRestView.pagination"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pagination</span></code></a> setting
+changes the limits and the parameter names, or turns pagination off.</p>
+<section id="filter-a-list">
+<span id="id1"></span><h2>Filter a list<a class="headerlink" href="#filter-a-list" title="Link to this heading">#</a></h2>
+<p>A filter compares a field with a value from the URL. Plain equality uses the
+name of the field:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?name=John
+</pre></div>
+</div>
+<p>A suffix on the name chooses another comparison:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Suffix</p></th>
+<th class="head"><p>SQL</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><em>(none)</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">field</span> <span class="pre">=</span> <span class="pre">value</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">?name=John</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">__gte</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">field</span> <span class="pre">&gt;=</span> <span class="pre">value</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">?age__gte=18</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">__lte</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">field</span> <span class="pre">&lt;=</span> <span class="pre">value</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">?age__lte=64</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">__gt</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">field</span> <span class="pre">&gt;</span> <span class="pre">value</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">?age__gt=17</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">__lt</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">field</span> <span class="pre">&lt;</span> <span class="pre">value</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">?age__lt=65</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">__in</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">field</span> <span class="pre">IN</span> <span class="pre">(...)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">?status__in=active,pending</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">__ne</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">field</span> <span class="pre">!=</span> <span class="pre">value</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">?status__ne=archived</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">__contains</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">field</span> <span class="pre">LIKE</span> <span class="pre">'%value%'</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">?email__contains=Example</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">__icontains</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">field</span> <span class="pre">ILIKE</span> <span class="pre">'%value%'</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">?email__icontains=example</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">__isnull</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">field</span> <span class="pre">IS</span> <span class="pre">NULL</span></code> or <code class="docutils literal notranslate"><span class="pre">IS</span> <span class="pre">NOT</span> <span class="pre">NULL</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">?deleted_at__isnull=true</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">__isnull</span></code> takes <code class="docutils literal notranslate"><span class="pre">true</span></code> or <code class="docutils literal notranslate"><span class="pre">false</span></code>, not the text <code class="docutils literal notranslate"><span class="pre">null</span></code>.</p>
+<p>Not every field gets every suffix:</p>
+<ul class="simple">
+<li><p>The range suffixes (<code class="docutils literal notranslate"><span class="pre">__gte</span></code>, <code class="docutils literal notranslate"><span class="pre">__lte</span></code>, <code class="docutils literal notranslate"><span class="pre">__gt</span></code>, <code class="docutils literal notranslate"><span class="pre">__lt</span></code>) exist only for types
+that have an order, such as numbers, text and dates. Booleans and UUIDs do
+not get them.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">__contains</span></code> and <code class="docutils literal notranslate"><span class="pre">__icontains</span></code> exist only for text fields.</p></li>
+<li><p>A field that holds a <code class="docutils literal notranslate"><span class="pre">dict</span></code> or a <code class="docutils literal notranslate"><span class="pre">list</span></code>, such as a <code class="docutils literal notranslate"><span class="pre">JSON</span></code> or <code class="docutils literal notranslate"><span class="pre">ARRAY</span></code>
+column, gets only <code class="docutils literal notranslate"><span class="pre">__isnull</span></code>. A value from the URL cannot become a
+collection, so the other filters would fail on every request.</p></li>
+<li><p>A <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.WriteOnly" title="fastapi_restly.schemas.WriteOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">WriteOnly</span></code></a> field, or a field
+with <code class="docutils literal notranslate"><span class="pre">Field(exclude=True)</span></code>, gets no filter and is not a sort key. A filter
+on it would let a client find out its value.</p></li>
+</ul>
+<p>A date and time without a UTC offset is read as UTC when the column stores a
+time zone. On a base with
+<a class="reference internal" href="api/models.html#fastapi_restly.models.ModelDefaults" title="fastapi_restly.models.ModelDefaults"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code></a>,
+<code class="docutils literal notranslate"><span class="pre">Mapped[datetime]</span></code> stores one by default. A column declared <code class="docutils literal notranslate"><span class="pre">DateTime()</span></code>
+compares the value as it is.</p>
+<section id="filter-values-go-through-the-field-s-validation">
+<span id="filter-value-validation"></span><h3>Filter values go through the field’s validation<a class="headerlink" href="#filter-values-go-through-the-field-s-validation" title="Link to this heading">#</a></h3>
+<p>Equality, <code class="docutils literal notranslate"><span class="pre">__ne</span></code>, <code class="docutils literal notranslate"><span class="pre">__in</span></code> and the range filters validate each value with the
+field’s Pydantic validation, so the field validators of the schema run on
+filter values too. A value that fails returns <code class="docutils literal notranslate"><span class="pre">400</span></code> (see
+<a class="reference internal" href="errors.html#list-request-errors"><span class="std std-ref">Why a bad list request returns 422 or 400</span></a>).</p>
+<p>Restly validates one value at a time, without the other fields. So:</p>
+<ul class="simple">
+<li><p>Model validators do not run.</p></li>
+<li><p><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic-core/pydantic_core_schema/#pydantic_core.core_schema.ValidationInfo.field_name" title="(in Pydantic v0.0.0)"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pydantic.ValidationInfo.field_name</span></code></a> is the Python name of the field,
+also when the URL uses an alias.</p></li>
+<li><p><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic-core/pydantic_core_schema/#pydantic_core.core_schema.ValidationInfo.data" title="(in Pydantic v0.0.0)"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pydantic.ValidationInfo.data</span></code></a> is <code class="docutils literal notranslate"><span class="pre">{}</span></code>.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">__contains</span></code> and <code class="docutils literal notranslate"><span class="pre">__icontains</span></code> use the text as it is, and <code class="docutils literal notranslate"><span class="pre">__isnull</span></code> reads a
+boolean.</p>
+</section>
+<section id="match-one-of-several-values">
+<h3>Match one of several values<a class="headerlink" href="#match-one-of-several-values" title="Link to this heading">#</a></h3>
+<p>Values separated by commas in a plain equality filter are combined with OR:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?status=active,pending
+</pre></div>
+</div>
+<p>This gives <code class="docutils literal notranslate"><span class="pre">WHERE</span> <span class="pre">status</span> <span class="pre">=</span> <span class="pre">'active'</span> <span class="pre">OR</span> <span class="pre">status</span> <span class="pre">=</span> <span class="pre">'pending'</span></code>, which is the same
+as SQL <code class="docutils literal notranslate"><span class="pre">IN</span></code>. To make <code class="docutils literal notranslate"><span class="pre">IN</span></code> visible in the URL, use <code class="docutils literal notranslate"><span class="pre">__in</span></code>:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?status__in=active,pending
+</pre></div>
+</div>
+</section>
+<section id="exclude-several-values">
+<h3>Exclude several values<a class="headerlink" href="#exclude-several-values" title="Link to this heading">#</a></h3>
+<p>Values separated by commas in <code class="docutils literal notranslate"><span class="pre">__ne</span></code> are combined with AND. A row must differ
+from every value:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?status__ne=archived,deleted
+</pre></div>
+</div>
+<p>This gives <code class="docutils literal notranslate"><span class="pre">WHERE</span> <span class="pre">status</span> <span class="pre">!=</span> <span class="pre">'archived'</span> <span class="pre">AND</span> <span class="pre">status</span> <span class="pre">!=</span> <span class="pre">'deleted'</span></code>, which is the
+same as SQL <code class="docutils literal notranslate"><span class="pre">NOT</span> <span class="pre">IN</span></code>.</p>
+</section>
+<section id="search-for-text">
+<h3>Search for text<a class="headerlink" href="#search-for-text" title="Link to this heading">#</a></h3>
+<p>To require several pieces of text at once, repeat the parameter. Each value
+becomes its own <code class="docutils literal notranslate"><span class="pre">LIKE</span></code> or <code class="docutils literal notranslate"><span class="pre">ILIKE</span></code> condition, and the conditions are combined
+with AND:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?name__contains=john&amp;name__contains=doe
+GET /users?name__icontains=john&amp;name__icontains=doe
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">__contains</span></code> gives <code class="docutils literal notranslate"><span class="pre">WHERE</span> <span class="pre">name</span> <span class="pre">LIKE</span> <span class="pre">'%john%'</span> <span class="pre">AND</span> <span class="pre">name</span> <span class="pre">LIKE</span> <span class="pre">'%doe%'</span></code>.
+<code class="docutils literal notranslate"><span class="pre">__icontains</span></code> uses <code class="docutils literal notranslate"><span class="pre">ILIKE</span></code>.</p>
+<p>Restly also splits one <code class="docutils literal notranslate"><span class="pre">__contains</span></code> or <code class="docutils literal notranslate"><span class="pre">__icontains</span></code> value at each space, so
+<code class="docutils literal notranslate"><span class="pre">?name__contains=john%20doe</span></code> gives the same result. Prefer the repeated
+parameter when you build the URL yourself: it has only one meaning.</p>
+<p>Restly escapes <code class="docutils literal notranslate"><span class="pre">%</span></code>, <code class="docutils literal notranslate"><span class="pre">_</span></code> and <code class="docutils literal notranslate"><span class="pre">\</span></code> before it builds the <code class="docutils literal notranslate"><span class="pre">LIKE</span></code> condition. A
+search finds the text as written; these characters are not wildcards.</p>
+</section>
+<section id="combine-filters-on-one-field">
+<h3>Combine filters on one field<a class="headerlink" href="#combine-filters-on-one-field" title="Link to this heading">#</a></h3>
+<p>Repeat the parameter to add conditions with AND:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?created_at__gte=2024-01-01&amp;created_at__lt=2025-01-01
+</pre></div>
+</div>
+<p>This gives <code class="docutils literal notranslate"><span class="pre">WHERE</span> <span class="pre">created_at</span> <span class="pre">&gt;=</span> <span class="pre">'2024-01-01'</span> <span class="pre">AND</span> <span class="pre">created_at</span> <span class="pre">&lt;</span> <span class="pre">'2025-01-01'</span></code>.</p>
+</section>
+</section>
+<section id="filter-on-a-related-row">
+<span id="relation-filtering"></span><h2>Filter on a related row<a class="headerlink" href="#filter-on-a-related-row" title="Link to this heading">#</a></h2>
+<p>A dot reaches a field of a related row:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /orders?user.name=Alice
+GET /orders?user.name__contains=ali
+</pre></div>
+</div>
+<p>The relation must be a <code class="docutils literal notranslate"><span class="pre">relationship</span></code> on the SQLAlchemy model and a nested
+schema on the response class, as in
+<a class="reference internal" href="relationships.html#relationship-loading"><span class="std std-ref">Return related objects in a response</span></a>. A nested schema
+that can be <code class="docutils literal notranslate"><span class="pre">None</span></code> (<code class="docutils literal notranslate"><span class="pre">UserSchema</span> <span class="pre">|</span> <span class="pre">None</span></code>) works, and so do several steps
+(<code class="docutils literal notranslate"><span class="pre">?blog.author.name=Alice</span></code>). A list of nested schemas (<code class="docutils literal notranslate"><span class="pre">list[UserSchema]</span></code>)
+does not.</p>
+<p>A path can follow a relationship of a model to the same model, such as
+<code class="docutils literal notranslate"><span class="pre">?manager.name=Alice</span></code> or <code class="docutils literal notranslate"><span class="pre">?manager.manager.name=Alice</span></code>. Each step must be a
+nested schema. Two relationships to the same model can be filtered together:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /people?home_city.name=Amsterdam&amp;work_city.name=Berlin
+GET /people?home_city.country.code=NL&amp;work_city.country.code=DE
+</pre></div>
+</div>
+<p>Sorting accepts the same paths. A filter and a sort on the same relationship
+share one join. The joins are inner joins: a row without the related row is
+left out, also for a dotted <code class="docutils literal notranslate"><span class="pre">__isnull</span></code> filter.</p>
+<p>A dotted filter joins the related table without that model’s default scope;
+see <a class="reference internal" href="scopes.html#default-scope"><span class="std std-ref">Scopes</span></a>. Restly joins through SQL aliases. If you add a
+session rule with <a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/queryguide/api.html#sqlalchemy.orm.with_loader_criteria" title="(in SQLAlchemy v2.0)"><code class="xref py py-func docutils literal notranslate"><span class="pre">sqlalchemy.orm.with_loader_criteria()</span></code></a>, set
+<code class="docutils literal notranslate"><span class="pre">include_aliases=True</span></code>, so the rule also covers these joins. See
+<a class="reference internal" href="models.html#tenant-row-scoping"><span class="std std-ref">Keep each tenant’s rows apart</span></a>.</p>
+<p>Aliases apply to every part of the path, the relationship and the field,
+because the list parameters always use the public names of the response
+class:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">AuthorSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">&quot;authorName&quot;</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ArticleSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">author</span><span class="p">:</span> <span class="n">AuthorSchema</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">&quot;writer&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The URL must then use the aliases:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /articles?writer.authorName=Alice    # accepted
+GET /articles?author.name=Alice          # rejected: use the aliases
+</pre></div>
+</div>
+</section>
+<section id="filter-by-a-foreign-key">
+<span id="foreign-key-filtering"></span><h2>Filter by a foreign key<a class="headerlink" href="#filter-by-a-foreign-key" title="Link to this heading">#</a></h2>
+<p>A foreign key declared with
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Post]</span></code></a> filters by
+its own public name, the same name it has in JSON:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /comments?post_id=1
+GET /comments?post_id=1,2          # OR, as SQL IN
+GET /comments?post_id__in=1,2
+GET /comments?post_id__ne=1
+GET /comments?post_id__gte=10      # range suffixes work on int ids
+GET /comments?post_id__isnull=true
+</pre></div>
+</div>
+<p>A <code class="docutils literal notranslate"><span class="pre">MustExist[pk,</span> <span class="pre">...]</span></code> field gets the filters of its <code class="docutils literal notranslate"><span class="pre">pk</span></code> type. An <code class="docutils literal notranslate"><span class="pre">int</span></code> id
+gets equality, <code class="docutils literal notranslate"><span class="pre">__in</span></code>, <code class="docutils literal notranslate"><span class="pre">__ne</span></code>, <code class="docutils literal notranslate"><span class="pre">__isnull</span></code> and the range suffixes. A <code class="docutils literal notranslate"><span class="pre">UUID</span></code> id
+gets no range suffixes, as the <a class="reference internal" href="#filter-a-list">list of suffixes</a> says. No id
+gets <code class="docutils literal notranslate"><span class="pre">__contains</span></code>.</p>
+<p>A relationship reference filters differently (see
+<a class="reference internal" href="relationships.html#reference-styles"><span class="std std-ref">Choose a reference style</span></a>):</p>
+<ul class="simple">
+<li><p>An <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema[Model]</span></code></a> field filters
+by its id, as in <code class="docutils literal notranslate"><span class="pre">?author.id=1</span></code>, with equality, <code class="docutils literal notranslate"><span class="pre">__in</span></code>, <code class="docutils literal notranslate"><span class="pre">__ne</span></code> and
+<code class="docutils literal notranslate"><span class="pre">__isnull</span></code>.</p></li>
+<li><p>A flat <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef[Model]</span></code></a> field on a
+relationship gets no filter. To filter by it, also put the foreign key
+column in the response class, for example as <code class="docutils literal notranslate"><span class="pre">author_id:</span> <span class="pre">fr.ReadOnly[int]</span></code>.</p></li>
+</ul>
+</section>
+<section id="use-aliases-in-the-url">
+<span id="public-names"></span><h2>Use aliases in the URL<a class="headerlink" href="#use-aliases-in-the-url" title="Link to this heading">#</a></h2>
+<p>The keys of the list parameters use the <strong>public name</strong> of each field: its
+alias when it has one, and its Python name otherwise. The URL accepts only the
+public name. <code class="docutils literal notranslate"><span class="pre">populate_by_name</span></code> changes how Pydantic reads a request body. It
+does not add the Python names to the URL.</p>
+<p>Take a field with an alias:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">user_name</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">&quot;userName&quot;</span><span class="p">)]</span>
+</pre></div>
+</div>
+<p>The URL accepts only the alias:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?userName=Alice        # accepted
+GET /users?user_name=Alice       # rejected: the Python name is not public
+</pre></div>
+</div>
+<p>To use another key in the URL, change the alias.</p>
+</section>
+<section id="sort-a-list">
+<span id="id2"></span><h2>Sort a list<a class="headerlink" href="#sort-a-list" title="Link to this heading">#</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">sort</span></code> parameter takes field names separated by commas. A <code class="docutils literal notranslate"><span class="pre">-</span></code> before a
+name sorts that field in descending order:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?sort=-created_at,name
+</pre></div>
+</div>
+<p>A dotted path sorts by a related field, as it filters:
+<code class="docutils literal notranslate"><span class="pre">?sort=-city.country.code</span></code> orders by that column, and joins each step of the
+path.</p>
+<p>Restly always adds the primary key as the last sort term, every column of a
+composite key included. So rows with equal values are never skipped or
+repeated from one page to the next. Without <code class="docutils literal notranslate"><span class="pre">sort</span></code>, the list is in primary key
+order.</p>
+</section>
+<section id="page-through-a-list">
+<span id="list-pagination"></span><h2>Page through a list<a class="headerlink" href="#page-through-a-list" title="Link to this heading">#</a></h2>
+<p>The client asks for a page with <code class="docutils literal notranslate"><span class="pre">page</span></code> and <code class="docutils literal notranslate"><span class="pre">page_size</span></code>:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /users?page=2&amp;page_size=50
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">page</span></code> starts at 1. <code class="docutils literal notranslate"><span class="pre">page_size</span></code> must be at least 1 and at most
+<code class="docutils literal notranslate"><span class="pre">max_page_size</span></code>, 1000 by default. Without <code class="docutils literal notranslate"><span class="pre">page_size</span></code>, the endpoint uses
+<code class="docutils literal notranslate"><span class="pre">default_page_size</span></code>, 50 by default. Restly also rejects a page whose SQL
+offset, <code class="docutils literal notranslate"><span class="pre">(page</span> <span class="pre">-</span> <span class="pre">1)</span> <span class="pre">*</span> <span class="pre">page_size</span></code>, is larger than <code class="docutils literal notranslate"><span class="pre">2**63</span> <span class="pre">-</span> <span class="pre">1</span></code>. A value out of
+range returns FastAPI’s standard <code class="docutils literal notranslate"><span class="pre">422</span></code>.</p>
+<p>The response holds the page in <code class="docutils literal notranslate"><span class="pre">data</span></code>, with <code class="docutils literal notranslate"><span class="pre">total_count</span></code>, <code class="docutils literal notranslate"><span class="pre">page</span></code>,
+<code class="docutils literal notranslate"><span class="pre">page_size</span></code> and <code class="docutils literal notranslate"><span class="pre">total_pages</span></code>. To change this envelope, see
+<a class="reference internal" href="responses.html#change-list-envelope"><span class="std std-ref">Change the list envelope</span></a>.</p>
+<p>Set the limits with
+<a class="reference internal" href="api/views.html#fastapi_restly.views.NumberedPagination" title="fastapi_restly.views.NumberedPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.NumberedPagination</span></code></a> on the
+view class. On a public endpoint, use a smaller page size and maximum.
+<code class="docutils literal notranslate"><span class="pre">max_page</span></code> also limits the page number:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">pagination</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">NumberedPagination</span><span class="p">(</span>
+        <span class="n">default_page_size</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span> <span class="n">max_page_size</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">max_page</span><span class="o">=</span><span class="mi">100</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<section id="rename-the-page-parameters">
+<h3>Rename the page parameters<a class="headerlink" href="#rename-the-page-parameters" title="Link to this heading">#</a></h3>
+<p>Rename the two parameters with <code class="docutils literal notranslate"><span class="pre">page_query_param</span></code> and
+<code class="docutils literal notranslate"><span class="pre">page_size_query_param</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">pagination</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">NumberedPagination</span><span class="p">(</span>
+        <span class="n">page_query_param</span><span class="o">=</span><span class="s2">&quot;p&quot;</span><span class="p">,</span> <span class="n">page_size_query_param</span><span class="o">=</span><span class="s2">&quot;size&quot;</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<p>Clients then send <code class="docutils literal notranslate"><span class="pre">?p=2&amp;size=50</span></code>, <code class="docutils literal notranslate"><span class="pre">page</span></code> and <code class="docutils literal notranslate"><span class="pre">page_size</span></code> become unknown keys,
+and OpenAPI shows the new names. A schema field with the same public name as
+a pagination parameter fails when the view registers: rename the parameter,
+or give the field an alias. A renamed parameter frees its old name, so a field
+called <code class="docutils literal notranslate"><span class="pre">page</span></code> gets its filter back.</p>
+</section>
+<section id="set-the-pagination-once-for-every-view">
+<span id="set-pagination-once"></span><h3>Set the pagination once for every view<a class="headerlink" href="#set-the-pagination-once-for-every-view" title="Link to this heading">#</a></h3>
+<p>Views inherit <code class="docutils literal notranslate"><span class="pre">pagination</span></code>, so a project base view sets it once. A view that
+differs changes one setting with <code class="docutils literal notranslate"><span class="pre">replace()</span></code>, which returns a checked copy:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">APP_PAGINATION</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">NumberedPagination</span><span class="p">(</span>
+    <span class="n">page_size_query_param</span><span class="o">=</span><span class="s2">&quot;size&quot;</span><span class="p">,</span> <span class="n">max_page_size</span><span class="o">=</span><span class="mi">100</span>
+<span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">AppView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">pagination</span> <span class="o">=</span> <span class="n">APP_PAGINATION</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">LogView</span><span class="p">(</span><span class="n">AppView</span><span class="p">):</span>
+    <span class="n">pagination</span> <span class="o">=</span> <span class="n">APP_PAGINATION</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">default_page_size</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">max_page_size</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="return-every-row-without-pagination">
+<span id="no-pagination"></span><h3>Return every row without pagination<a class="headerlink" href="#return-every-row-without-pagination" title="Link to this heading">#</a></h3>
+<p>Set <code class="docutils literal notranslate"><span class="pre">pagination</span> <span class="pre">=</span> <span class="pre">None</span></code> to return every matching row:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TagView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/tags&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Tag</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">TagSchema</span>
+    <span class="n">pagination</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="c1"># Response: {&quot;data&quot;: [ /* every tag */ ]}</span>
+</pre></div>
+</div>
+<p>The list has no <code class="docutils literal notranslate"><span class="pre">page</span></code> and <code class="docutils literal notranslate"><span class="pre">page_size</span></code> parameters, and Restly runs no count
+query. Filters and <code class="docutils literal notranslate"><span class="pre">sort</span></code> still work. The response keeps the <code class="docutils literal notranslate"><span class="pre">data</span></code> envelope,
+without the count and page fields.</p>
+<p><code class="docutils literal notranslate"><span class="pre">None</span></code> is short for
+<a class="reference internal" href="api/views.html#fastapi_restly.views.NoPagination" title="fastapi_restly.views.NoPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.NoPagination()</span></code></a>. Use
+<code class="docutils literal notranslate"><span class="pre">fr.NoPagination(envelope=...)</span></code> to choose the envelope of a list without
+pagination; see <a class="reference internal" href="responses.html#change-list-envelope"><span class="std std-ref">Change the list envelope</span></a>.</p>
+<p>Use this only for a table that stays small, such as tags or countries. A list
+without pagination returns the whole table in one response.</p>
+</section>
+<section id="coming-from-fastapi-pagination">
+<span id="fastapi-pagination-migration"></span><h3>Coming from fastapi-pagination<a class="headerlink" href="#coming-from-fastapi-pagination" title="Link to this heading">#</a></h3>
+<p>The default <code class="docutils literal notranslate"><span class="pre">Page</span></code> of fastapi-pagination takes <code class="docutils literal notranslate"><span class="pre">?page=</span></code> and <code class="docutils literal notranslate"><span class="pre">?size=</span></code>, and
+returns <code class="docutils literal notranslate"><span class="pre">items</span></code>, <code class="docutils literal notranslate"><span class="pre">total</span></code>, <code class="docutils literal notranslate"><span class="pre">page</span></code>, <code class="docutils literal notranslate"><span class="pre">size</span></code> and <code class="docutils literal notranslate"><span class="pre">pages</span></code>. To keep that contract
+for existing clients, rename the page size parameter and the fields of the
+envelope:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Generic</span><span class="p">,</span> <span class="n">TypeVar</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pydantic</span>
+
+<span class="n">T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;T&quot;</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Page</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">,</span> <span class="n">Generic</span><span class="p">[</span><span class="n">T</span><span class="p">]):</span>
+    <span class="n">data</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">T</span><span class="p">]</span> <span class="o">=</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">&quot;items&quot;</span><span class="p">)</span>
+    <span class="n">total_count</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">&quot;total&quot;</span><span class="p">)</span>
+    <span class="n">page</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">page_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">&quot;size&quot;</span><span class="p">)</span>
+    <span class="n">total_pages</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">&quot;pages&quot;</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">AppView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">pagination</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">NumberedPagination</span><span class="p">(</span>
+        <span class="n">page_size_query_param</span><span class="o">=</span><span class="s2">&quot;size&quot;</span><span class="p">,</span> <span class="n">max_page_size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">envelope</span><span class="o">=</span><span class="n">Page</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<p>The default page size of 50 and the maximum of 100 match those of
+fastapi-pagination. fastapi-pagination has no filters and no sorting. Restly
+adds both, as this page describes.</p>
+</section>
+</section>
+<section id="accept-extra-query-parameters">
+<span id="extra-query-parameters"></span><h2>Accept extra query parameters<a class="headerlink" href="#accept-extra-query-parameters" title="Link to this heading">#</a></h2>
+<p>A query parameter that the route declares needs no setup: a parameter of the
+endpoint method, or one that a dependency reads, wherever the dependency is
+declared. That is the app or a router, the view’s <code class="docutils literal notranslate"><span class="pre">dependencies</span></code>, or a class
+attribute. The key of an <code class="docutils literal notranslate"><span class="pre">APIKeyQuery</span></code> counts too. The unknown-key check
+accepts these keys, and OpenAPI shows them next to the filters.</p>
+<p>A view that reads a key straight from <code class="docutils literal notranslate"><span class="pre">self.request.query_params</span></code>, in an
+override, must name it. Otherwise the unknown-key check rejects it with
+<code class="docutils literal notranslate"><span class="pre">422</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">extra_query_params</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;include_deleted&quot;</span><span class="p">,)</span>
+</pre></div>
+</div>
+</section>
+<section id="change-the-list-query-of-a-view">
+<span id="change-list-query"></span><h2>Change the list query of a view<a class="headerlink" href="#change-the-list-query-of-a-view" title="Link to this heading">#</a></h2>
+<p>The filters apply to a query that the view’s scope builds first. To limit
+the rows of a view, declare its
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.scope" title="fastapi_restly.views.BaseRestView.scope"><code class="xref py py-attr docutils literal notranslate"><span class="pre">scope</span></code></a>.
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a>,
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.count" title="fastapi_restly.views.RestView.count"><code class="xref py py-meth docutils literal notranslate"><span class="pre">count</span></code></a> and
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> all apply it, so the
+list, the total and the single-row reads agree:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="o">...</span>
+    <span class="n">scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span><span class="n">User</span><span class="o">.</span><span class="n">active</span><span class="o">.</span><span class="n">is_</span><span class="p">(</span><span class="kc">True</span><span class="p">))</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a> owns this topic, including the <code class="docutils literal notranslate"><span class="pre">default_scope</span></code> of a model.
+<code class="docutils literal notranslate"><span class="pre">get_many</span></code> takes no <code class="docutils literal notranslate"><span class="pre">query</span></code> argument, so put base query changes in the scope.</p>
+<p>For another URL grammar, such as the filter syntax of another client
+library, override
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_list_params" title="fastapi_restly.views.RestView.apply_list_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_list_params(query,</span> <span class="pre">list_params)</span></code></a>.
+It turns the URL parameters into the query. The
+<a class="reference internal" href="react_admin.html"><span class="std std-doc">React Admin</span></a> views override it for the react-admin
+grammar. Override <code class="docutils literal notranslate"><span class="pre">get_many()</span></code> itself only for a list that has another
+<em>result</em>, and build the query in the method.</p>
+<p>A route method with a <code class="docutils literal notranslate"><span class="pre">list_params</span></code> parameter takes the same list parameters
+as <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>. Restly gives it the view’s
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_list_params" title="fastapi_restly.views.BaseRestView.schema_list_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_list_params</span></code></a>,
+so filters, sort and page are read and checked in the same way, OpenAPI shows
+them, and an unknown key returns <code class="docutils literal notranslate"><span class="pre">422</span></code>. A custom list route, such as a trash
+route, passes them on with <code class="docutils literal notranslate"><span class="pre">self.handle_get_many(list_params,</span> <span class="pre">scope=...)</span></code>; see
+<a class="reference internal" href="scopes.html#per-read-scope"><span class="std std-ref">Read other rows on one route</span></a>. The route can take its own
+query parameters next to <code class="docutils literal notranslate"><span class="pre">list_params</span></code>, as in
+<code class="docutils literal notranslate"><span class="pre">def</span> <span class="pre">search(self,</span> <span class="pre">list_params,</span> <span class="pre">mode:</span> <span class="pre">SearchMode)</span></code>.</p>
+</section>
+<section id="internals">
+<h2>Internals<a class="headerlink" href="#internals" title="Link to this heading">#</a></h2>
+<section id="how-restly-builds-the-list-parameters">
+<span id="list-parameters-lifecycle"></span><h3>How Restly builds the list parameters<a class="headerlink" href="#how-restly-builds-the-list-parameters" title="Link to this heading">#</a></h3>
+<p>In <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.before_include_view" title="fastapi_restly.views.BaseRestView.before_include_view"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_include_view()</span></code></a>,
+Restly sets one class attribute,
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_list_params" title="fastapi_restly.views.BaseRestView.schema_list_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_list_params</span></code></a>.
+It is a Pydantic model that
+<a class="reference internal" href="api/query.html#fastapi_restly.query.derive_schema_list_params" title="fastapi_restly.query.derive_schema_list_params"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_schema_list_params(cls.schema_response,</span> <span class="pre">cls.model,</span> <span class="pre">pagination=cls.pagination)</span></code></a>
+generates. It holds the pagination parameters, <code class="docutils literal notranslate"><span class="pre">sort</span></code>, and the filters for
+each field of the response class that maps to a column of the model. Restly
+builds it once, when the view registers, and never again.</p>
+<p>A route reads the list parameters through a dependency, not as a FastAPI
+query model. FastAPI splits a query model into separate parameters only when
+it is the only query parameter of the route. Next to a dependency that reads
+<code class="docutils literal notranslate"><span class="pre">?api_key=</span></code>, the filters would become one required object. So Restly
+validates the model from the query string itself, and shows each key as its
+own parameter in OpenAPI, next to the other parameters of the route.</p>
+<p>Apart from <code class="docutils literal notranslate"><span class="pre">__isnull</span></code>, the filter values are text in this model. Restly
+validates them against the field when
+<a class="reference internal" href="api/query.html#fastapi_restly.query.apply_list_params" title="fastapi_restly.query.apply_list_params"><code class="xref py py-func docutils literal notranslate"><span class="pre">apply_list_params</span></code></a> builds the
+query.</p>
+<p>The <a class="reference internal" href="react_admin.html"><span class="std std-doc">React Admin</span></a> views read another grammar, with
+their own parameters.</p>
+</section>
+</section>
+<section id="see-also">
+<h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="responses.html"><span class="std std-doc">Responses</span></a>: the list envelope and its fields.</p></li>
+<li><p><a class="reference internal" href="errors.html"><span class="std std-doc">Errors</span></a>: the <code class="docutils literal notranslate"><span class="pre">422</span></code> and <code class="docutils literal notranslate"><span class="pre">400</span></code> answers to a bad list
+request.</p></li>
+<li><p><a class="reference internal" href="crud_routes.html#nested-resources"><span class="std std-ref">Nest a resource under its parent</span></a>: a child resource under its parent,
+such as <code class="docutils literal notranslate"><span class="pre">/projects/{project_id}/tasks</span></code>.</p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="relationships.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Relationships</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="errors.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Errors</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#filter-a-list">Filter a list</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#filter-values-go-through-the-field-s-validation">Filter values go through the field’s validation</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#match-one-of-several-values">Match one of several values</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#exclude-several-values">Exclude several values</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#search-for-text">Search for text</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combine-filters-on-one-field">Combine filters on one field</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#filter-on-a-related-row">Filter on a related row</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#filter-by-a-foreign-key">Filter by a foreign key</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-aliases-in-the-url">Use aliases in the URL</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#sort-a-list">Sort a list</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#page-through-a-list">Page through a list</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rename-the-page-parameters">Rename the page parameters</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#set-the-pagination-once-for-every-view">Set the pagination once for every view</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#return-every-row-without-pagination">Return every row without pagination</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#coming-from-fastapi-pagination">Coming from fastapi-pagination</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#accept-extra-query-parameters">Accept extra query parameters</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#change-the-list-query-of-a-view">Change the list query of a view</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#internals">Internals</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-restly-builds-the-list-parameters">How Restly builds the list parameters</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+<p class="sidebar-newsletter">
+  <a href="newsletter.html">Subscribe to newsletter</a>
+</p></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, Rutger Prins.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

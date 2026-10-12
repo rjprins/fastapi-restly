@@ -12,5 +12,5 @@ deleting them, and snapshotting loaded column values.
 
 .. seealso::
 
-   :doc:`/customize` covers the view-bound counterparts of
+   :doc:`/lifecycle` covers the view-bound counterparts of
    these helpers and includes the domain-utilities table.

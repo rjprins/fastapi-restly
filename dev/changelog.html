@@ -62,8 +62,8 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Examples" href="examples.html" />
-    <link rel="prev" title="Technical Details" href="technical_details.html" />
+    <link rel="next" title="About FastAPI-Restly" href="about.html" />
+    <link rel="prev" title="View Reference" href="view_reference.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -162,21 +162,14 @@
     
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
-    Getting Started
+    Tutorial
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="class_based_views.html">
-    CRUD Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="user_guide.html">
-    How-To
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
   </a>
 </li>
 
@@ -191,13 +184,6 @@
 <li class="nav-item ">
   <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
     Blog
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
   </a>
 </li>
 
@@ -329,21 +315,14 @@
     
 <li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
-    Getting Started
+    Tutorial
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="class_based_views.html">
-    CRUD Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="user_guide.html">
-    How-To
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
   </a>
 </li>
 
@@ -358,13 +337,6 @@
 <li class="nav-item ">
   <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
     Blog
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
   </a>
 </li>
 
@@ -439,7 +411,7 @@
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
-<li class="toctree-l1 has-children"><a class="reference internal" href="api/index.html">API Modules</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="api/index.html">Modules</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="api/package.html">Package API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/clauses.html">Clauses API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/db.html">Database API</a></li>
@@ -454,7 +426,6 @@
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="view_reference.html">View Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="technical_details.html">Technical Details</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Changelog</a></li>
 </ul>
 </div>
@@ -561,6 +532,14 @@ to fail, but some checks are looser: to test for an exact status, such as
 <code class="docutils literal notranslate"><span class="pre">201</span></code> on create, pass it.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">assert_status_code=None</span></code> now skips the status check. Before, it accepted
 any status below 400.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code> is now a <code class="docutils literal notranslate"><span class="pre">WhereClause</span></code>. Its condition is SQL <code class="docutils literal notranslate"><span class="pre">TRUE</span></code>,
+so it goes everywhere a clause goes: calling it returns <code class="docutils literal notranslate"><span class="pre">sqlalchemy.true()</span></code>,
+and <code class="docutils literal notranslate"><span class="pre">Model.relationship.has(UNSCOPED)</span></code> works. The type
+<code class="docutils literal notranslate"><span class="pre">WhereClause</span> <span class="pre">|</span> <span class="pre">Unscoped</span></code> is now just <code class="docutils literal notranslate"><span class="pre">WhereClause</span></code>, and <code class="docutils literal notranslate"><span class="pre">fr.all_of</span></code>,
+<code class="docutils literal notranslate"><span class="pre">fr.any_of</span></code> and <code class="docutils literal notranslate"><span class="pre">fr.none_of</span></code> always return a <code class="docutils literal notranslate"><span class="pre">WhereClause</span></code>. So pyright now
+accepts <code class="docutils literal notranslate"><span class="pre">Comment.post.has(PostClauses.default_scope)</span></code>. Code that uses
+<code class="docutils literal notranslate"><span class="pre">isinstance(x,</span> <span class="pre">WhereClause)</span></code> to mean “a real filter” now also matches
+<code class="docutils literal notranslate"><span class="pre">UNSCOPED</span></code>: test <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">is</span> <span class="pre">fr.clauses.UNSCOPED</span></code> first.</p></li>
 <li><p>Models compare by identity, as SQLAlchemy models without dataclasses do:
 two objects are equal only when they are the same object. This holds for
 <code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code>, <code class="docutils literal notranslate"><span class="pre">fr.IDMixin</span></code> and <code class="docutils literal notranslate"><span class="pre">fr.TimestampsMixin</span></code>. Before, two
@@ -1334,20 +1313,20 @@ the pytest plugin path is <code class="docutils literal notranslate"><span class
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="technical_details.html"
+       href="view_reference.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Technical Details</p>
+        <p class="prev-next-title">View Reference</p>
       </div>
     </a>
     <a class="right-next"
-       href="examples.html"
+       href="about.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Examples</p>
+        <p class="prev-next-title">About FastAPI-Restly</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>

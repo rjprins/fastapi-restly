@@ -1,0 +1,1457 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" data-theme="auto">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, follow">
+
+    <title>Request Lifecycle &amp; Hooks &#8212; FastAPI-Restly 0.11.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "auto";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "auto";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=f3b36f1a"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'lifecycle';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://www.fastapi-restly.org/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <link rel="canonical" href="https://www.fastapi-restly.org/dev/lifecycle.html" />
+    <link rel="icon" href="_static/favicon.svg"/>
+    <link rel="author" title="About these documents" href="about.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Schemas &amp; Validation" href="schemas.html" />
+    <link rel="prev" title="CRUD Routes" href="crud_routes.html" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.11" />
+<meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700&amp;display=swap"
+      rel="stylesheet" />
+<!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
+<script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="auto">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/fr-monogram.svg" class="logo__image only-light" alt=""/>
+    <img src="_static/fr-monogram-dark.svg" class="logo__image only-dark pst-js-only" alt=""/>
+  
+  
+    <p class="title logo__title">FastAPI-Restly</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="projects.html">New &amp; Existing Projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="database.html">Database &amp; Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Request Lifecycle &amp; Hooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering &amp; Pagination</a></li>
+<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="current.html">Current &amp; ContextParam</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
+<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
+<li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="guide.html" class="nav-link">Guide</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Request Lifecycle &amp; Hooks</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="request-lifecycle-hooks">
+<h1>Request Lifecycle &amp; Hooks<a class="headerlink" href="#request-lifecycle-hooks" title="Link to this heading">#</a></h1>
+<p>Every CRUD route of a <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> or
+<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> runs the same
+steps in the same order. It checks that the caller may act, makes the change,
+commits it and builds the response. Each step is a method on the view. To
+change a route, you override the method of one step. A custom route calls the
+same methods, so it runs the same steps.</p>
+<p><a class="reference internal" href="crud_routes.html"><span class="std std-doc">CRUD Routes</span></a> lists the default routes and their settings.
+<a class="reference internal" href="views.html"><span class="std std-doc">Views</span></a> covers what every view shares: registration,
+dependencies and inheritance.</p>
+<section id="how-a-view-handles-a-request">
+<span id="view-request-steps"></span><h2>How a view handles a request<a class="headerlink" href="#how-a-view-handles-a-request" title="Link to this heading">#</a></h2>
+<p>Take <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code>, the create route. FastAPI calls
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create_endpoint" title="fastapi_restly.views.RestView.create_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create_endpoint</span></code></a>, the
+<strong>endpoint method</strong>. It calls
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_create" title="fastapi_restly.views.RestView.handle_create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_create</span></code></a>, the
+<strong>handler</strong>. The handler runs the steps in this order:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>POST /
+  └─ create_endpoint(schema_obj)                 # endpoint method: the HTTP contract
+       ├─ handle_create(schema_obj)              # handler: runs the steps (final)
+       │    ├─ authorize(&quot;create&quot;, data=schema_obj)
+       │    ├─ create(schema_obj)                 # business method: the change
+       │    │    ├─ make_new_object(schema_obj)   # build the ORM object (final)
+       │    │    └─ save_object(obj)              # flush and refresh, no commit (final)
+       │    ├─ before_action_commit(&quot;create&quot;, new=obj)
+       │    ├─ commit
+       │    └─ after_action_commit(&quot;create&quot;, new=obj)
+       └─ to_response(obj)
+</pre></div>
+</div>
+<p>Every CRUD route has these three methods. The names follow one pattern for
+all five actions: <code class="docutils literal notranslate"><span class="pre">update_endpoint</span></code> calls <code class="docutils literal notranslate"><span class="pre">handle_update</span></code>, which calls
+<code class="docutils literal notranslate"><span class="pre">update</span></code>, and so on.</p>
+<ul class="simple">
+<li><p>The <strong>endpoint method</strong>, <code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code>, is the method that FastAPI
+calls. It owns the HTTP contract: the route decorator, the parameters, the
+<code class="docutils literal notranslate"><span class="pre">response_model</span></code> and the call to
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response" title="fastapi_restly.views.BaseRestView.to_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_response</span></code></a>.
+Replace it only to change that contract, such as the status code. See
+<a class="reference internal" href="#replace-endpoint-method">Change the status code, headers or response of one route</a>.</p></li>
+<li><p>The <strong>handler</strong>, <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code>, runs the steps. It calls
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a> and then the
+business method. On a write, it ends with the <strong>commit bracket</strong>:
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.before_action_commit" title="fastapi_restly.views.RestView.before_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_action_commit</span></code></a>,
+the commit, then
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_action_commit" title="fastapi_restly.views.RestView.after_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_action_commit</span></code></a>.
+It returns the object. Only the delete handler returns nothing. A handler
+is final: a view class that defines one fails when Python creates the
+class. A custom route calls a handler to run the same steps.</p></li>
+<li><p>The <strong>business method</strong> is the bare verb:
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a>,
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a>,
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete" title="fastapi_restly.views.RestView.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a>,
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> or
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a>. It makes the
+change: it builds the object, applies the input and saves. It does not check
+permissions and does not commit. So when your override runs, <code class="docutils literal notranslate"><span class="pre">authorize</span></code> has
+already passed, and the commit comes after it.</p></li>
+</ul>
+<p>Update and delete have the same steps, with a load first. Their handlers load
+the row through <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a>, so a
+row that the caller cannot see is a 404. Then they call <code class="docutils literal notranslate"><span class="pre">authorize</span></code> with the
+loaded row and take a
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.snapshot" title="fastapi_restly.views.BaseRestView.snapshot"><code class="xref py py-meth docutils literal notranslate"><span class="pre">snapshot</span></code></a> of it as <code class="docutils literal notranslate"><span class="pre">old</span></code>.
+The business method runs next, then the commit bracket. The hooks receive both
+<code class="docutils literal notranslate"><span class="pre">new</span></code> and <code class="docutils literal notranslate"><span class="pre">old</span></code>, so they can see what changed.</p>
+<section id="a-read-visibility-then-policy">
+<span id="read-request-steps"></span><h3>A read: visibility, then policy<a class="headerlink" href="#a-read-visibility-then-policy" title="Link to this heading">#</a></h3>
+<p>A read has no commit bracket. Two steps decide whether the caller gets the
+row:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>GET /{id}
+  └─ get_one_endpoint(id)            # endpoint method
+       ├─ handle_get_one(id)         # handler
+       │    ├─ get_one(id)           # business method
+       │    │    └─ the view scope   # VISIBILITY: soft delete, role, row-level
+       │    │                        #   a hidden row is a 404 for every caller
+       │    └─ authorize(&quot;get_one&quot;, obj=obj)   # POLICY: checks the loaded row
+       └─ to_response(obj)
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><strong>Visibility.</strong> The business method
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> loads the row
+through the view’s scope. A row outside the scope is a 404 for every caller,
+as if the row did not exist. See <a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a>.</p></li>
+<li><p><strong>Policy.</strong> The handler then calls <code class="docutils literal notranslate"><span class="pre">authorize(&quot;get_one&quot;,</span> <span class="pre">obj=obj)</span></code> with the
+loaded row. A refusal is a 403. See <a class="reference internal" href="authorization.html"><span class="std std-doc">Authorization</span></a>.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">get_one</span></code> itself does not call <code class="docutils literal notranslate"><span class="pre">authorize</span></code>: the handler does. A list has the
+same two steps in the other order.
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_many" title="fastapi_restly.views.RestView.handle_get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_many</span></code></a> first
+calls <code class="docutils literal notranslate"><span class="pre">authorize(&quot;get_many&quot;)</span></code>, with no row. Then
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a> applies the scope
+and the client’s filters, sort and page
+(<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_list_params" title="fastapi_restly.views.RestView.apply_list_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_list_params</span></code></a>).
+On a paginated view, it also counts the total
+(<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.count" title="fastapi_restly.views.RestView.count"><code class="xref py py-meth docutils literal notranslate"><span class="pre">count</span></code></a>).</p>
+</section>
+</section>
+<section id="which-method-do-i-override">
+<span id="which-method-to-override"></span><h2>Which method do I override<a class="headerlink" href="#which-method-do-i-override" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>I want to change…</p></th>
+<th class="head"><p>Use</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>What an action does on the HTTP routes: hash a password, check a rule</p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a> / <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a> / <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete" title="fastapi_restly.views.RestView.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a> (<a class="reference internal" href="#business-methods">below</a>)</p></td>
+</tr>
+<tr class="row-odd"><td><p>A value that every write path must set: a slug, the author</p></td>
+<td><p>a column default or a mapper event on the model (<a class="reference internal" href="models.html#write-path-values"><span class="std std-ref">Models</span></a>)</p></td>
+</tr>
+<tr class="row-even"><td><p>Who may perform an action</p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a> (<a class="reference internal" href="authorization.html#authorize-gate"><span class="std std-ref">Authorization</span></a>)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Which rows a caller can see</p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.scope" title="fastapi_restly.views.BaseRestView.scope"><code class="xref py py-attr docutils literal notranslate"><span class="pre">scope</span></code></a> (<a class="reference internal" href="scopes.html#view-scope"><span class="std std-ref">Scopes</span></a>)</p></td>
+</tr>
+<tr class="row-even"><td><p>The filter, sort and page grammar</p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_list_params" title="fastapi_restly.views.RestView.apply_list_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_list_params</span></code></a> (<a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering &amp; Pagination</span></a>)</p></td>
+</tr>
+<tr class="row-odd"><td><p>The list total</p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.count" title="fastapi_restly.views.RestView.count"><code class="xref py py-meth docutils literal notranslate"><span class="pre">count</span></code></a></p></td>
+</tr>
+<tr class="row-even"><td><p>A side effect inside the commit: an outbox or audit row</p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.before_action_commit" title="fastapi_restly.views.RestView.before_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_action_commit</span></code></a> (<a class="reference internal" href="#transaction-hooks">below</a>)</p></td>
+</tr>
+<tr class="row-odd"><td><p>A side effect after the commit: an email, a webhook</p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_action_commit" title="fastapi_restly.views.RestView.after_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_action_commit</span></code></a> (<a class="reference internal" href="#transaction-hooks">below</a>)</p></td>
+</tr>
+<tr class="row-even"><td><p>The response shape of every route</p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response" title="fastapi_restly.views.BaseRestView.to_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_response</span></code></a> (<a class="reference internal" href="responses.html#to-response"><span class="std std-ref">Responses</span></a>)</p></td>
+</tr>
+<tr class="row-odd"><td><p>The HTTP contract of one route: status, headers, parameters</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code> (<a class="reference internal" href="#replace-endpoint-method">below</a>)</p></td>
+</tr>
+<tr class="row-even"><td><p>A path that is not CRUD: a lookup, an action such as publish</p></td>
+<td><p>a method with <a class="reference internal" href="api/views.html#fastapi_restly.views.get" title="fastapi_restly.views.get"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.get</span></code></a> or <a class="reference internal" href="api/views.html#fastapi_restly.views.post" title="fastapi_restly.views.post"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.post</span></code></a> (<a class="reference internal" href="#custom-read-route">read route</a>, <a class="reference internal" href="#custom-action-route">action route</a>)</p></td>
+</tr>
+<tr class="row-odd"><td><p>A lookup by another key, such as a slug or an email</p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_one" title="fastapi_restly.views.RestView.handle_get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_one</span></code></a> with an expression, in a custom route (<a class="reference internal" href="#natural-key-route">below</a>)</p></td>
+</tr>
+<tr class="row-even"><td><p>A list of a subset, such as one project’s tasks</p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_many" title="fastapi_restly.views.RestView.handle_get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_many</span></code></a> with <code class="docutils literal notranslate"><span class="pre">where=</span></code>, in a custom route (<a class="reference internal" href="scopes.html#per-read-where"><span class="std std-ref">Scopes</span></a>)</p></td>
+</tr>
+<tr class="row-odd"><td><p>One commit over several writes</p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.shared_write_action_commit" title="fastapi_restly.views.RestView.shared_write_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">shared_write_action_commit</span></code></a> in a custom route (<a class="reference internal" href="#shared-write-action-commit">below</a>)</p></td>
+</tr>
+<tr class="row-even"><td><p>The same change on several views</p></td>
+<td><p>a base view or a mixin (<a class="reference internal" href="views.html#share-behaviour-with-base-views"><span class="std std-ref">Views</span></a>)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Start at the business method. Move a side effect that depends on the commit to
+a hook. Replace the endpoint method only when the HTTP contract changes.</p>
+</section>
+<section id="change-what-an-action-does">
+<span id="business-methods"></span><h2>Change what an action does<a class="headerlink" href="#change-what-an-action-does" title="Link to this heading">#</a></h2>
+<p>Override the business method of the action:
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a>,
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a>,
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete" title="fastapi_restly.views.RestView.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a>,
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> or
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a>. Override only the
+one you need. The handler still checks permissions and commits around it.</p>
+<p>Before you set a value in <code class="docutils literal notranslate"><span class="pre">create</span></code> or <code class="docutils literal notranslate"><span class="pre">update</span></code>, ask which write paths must set
+it. The view’s routes are not the only code that writes rows. Scripts, jobs,
+imports and the <a class="reference internal" href="api/objects.html#module-fastapi_restly.objects" title="fastapi_restly.objects"><code class="xref py py-mod docutils literal notranslate"><span class="pre">fr.objects</span></code></a> functions write
+them too, and they never call the view.</p>
+<ul class="simple">
+<li><p>A value that every write path must set belongs on the model, as a column
+default or a mapper event. <a class="reference internal" href="models.html#write-path-values"><span class="std std-ref">Models</span></a> shows both.</p></li>
+<li><p>A value that only the HTTP routes set belongs in <code class="docutils literal notranslate"><span class="pre">create</span></code> or <code class="docutils literal notranslate"><span class="pre">update</span></code>.</p></li>
+</ul>
+<p>The common cases:</p>
+<ul class="simple">
+<li><p><strong>Hash a password:</strong> in <code class="docutils literal notranslate"><span class="pre">create</span></code>. The plain password arrives in the request
+body, and only the route has it. A script that also gets plain passwords
+calls the same function: see
+<a class="reference internal" href="#logic-outside-a-view">Run the same logic in a script or a worker</a>.</p></li>
+<li><p><strong>Make a slug from the title:</strong> on the model. Every new row needs a slug,
+whichever path writes it.</p></li>
+<li><p><strong>Keep a total on a parent row up to date</strong>, such as the story points of a
+project: on the model. The total is wrong as soon as one write path skips it.</p></li>
+<li><p><strong>Send an event about a change:</strong> in a
+<a class="reference internal" href="#transaction-hooks">transaction hook</a>, for an event about an action of the
+view. An event that every write path must send needs a SQLAlchemy session
+event instead.</p></li>
+</ul>
+<section id="hash-a-password-in-create">
+<span id="password-hash-example"></span><h3>Hash a password in <code class="docutils literal notranslate"><span class="pre">create</span></code><a class="headerlink" href="#hash-a-password-in-create" title="Link to this heading">#</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mapped</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.auth</span><span class="w"> </span><span class="kn">import</span> <span class="n">hash_password</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Base</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">User</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDMixin</span><span class="p">,</span> <span class="n">Base</span><span class="p">):</span>
+    <span class="n">email</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">password</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>  <span class="c1"># stores the hash. UserView.create writes it</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">password</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">WriteOnly</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>  <span class="c1"># accepted on input, never in a response</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_new_object</span><span class="p">(</span><span class="n">schema_obj</span><span class="p">)</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="n">hash_password</span><span class="p">(</span><span class="n">schema_obj</span><span class="o">.</span><span class="n">password</span><span class="p">)</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_object</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_create" title="fastapi_restly.views.RestView.handle_create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_create</span></code></a> still calls
+<code class="docutils literal notranslate"><span class="pre">authorize</span></code> and commits. The override only changes how the object is built.
+The schema field and the column have the same name, because
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.make_new_object" title="fastapi_restly.views.RestView.make_new_object"><code class="xref py py-meth docutils literal notranslate"><span class="pre">make_new_object</span></code></a> passes
+every writable schema field to the model’s constructor. So the plain password
+goes into <code class="docutils literal notranslate"><span class="pre">password</span></code> first, and the override replaces it with the hash before
+the flush. <code class="docutils literal notranslate"><span class="pre">fr.WriteOnly</span></code> keeps the field out of every response.</p>
+<p>The generated update body takes <code class="docutils literal notranslate"><span class="pre">password</span></code> too. Without more code,
+<code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/users/{id}</span></code> stores a new password as plain text. So hash it in
+<code class="docutils literal notranslate"><span class="pre">update</span></code> as well:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">update_object</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;password&quot;</span> <span class="ow">in</span> <span class="n">schema_obj</span><span class="o">.</span><span class="n">model_fields_set</span><span class="p">:</span>
+            <span class="n">obj</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="n">hash_password</span><span class="p">(</span><span class="n">schema_obj</span><span class="o">.</span><span class="n">password</span><span class="p">)</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_object</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update_object" title="fastapi_restly.views.RestView.update_object"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update_object</span></code></a> writes
+only the fields that the request sends, so the check uses the same set. The
+other way is an <a class="reference internal" href="schemas.html#explicit-write-schemas"><span class="std std-ref">explicit update schema</span></a> without
+<code class="docutils literal notranslate"><span class="pre">password</span></code>, with a separate route that changes the password.</p>
+</section>
+<section id="refuse-a-change-in-update">
+<h3>Refuse a change in <code class="docutils literal notranslate"><span class="pre">update</span></code><a class="headerlink" href="#refuse-a-change-in-update" title="Link to this heading">#</a></h3>
+<p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a> receives the row that
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update</span></code></a> has
+already loaded through the scope, not the id. A rule that needs the stored row
+or the database goes here:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">locked</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">Conflict</span><span class="p">(</span><span class="s2">&quot;This record is locked&quot;</span><span class="p">)</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">update_object</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">)</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_object</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>A rule about who may make the change goes in
+<a class="reference internal" href="authorization.html#authorize-gate"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">authorize</span></code></span></a>. A rule about one field’s value is a Pydantic
+validator on the schema: see <a class="reference internal" href="schemas.html#validation"><span class="std std-ref">Validation</span></a>.
+<a class="reference internal" href="errors.html"><span class="std std-doc">Errors</span></a> lists the exceptions to raise.</p>
+</section>
+<section id="add-a-value-to-each-row-of-a-list">
+<h3>Add a value to each row of a list<a class="headerlink" href="#add-a-value-to-each-row-of-a-list" title="Link to this heading">#</a></h3>
+<p>To change the rows after the query, override
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a> and call <code class="docutils literal notranslate"><span class="pre">super()</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_many</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_many</span><span class="p">(</span><span class="n">list_params</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">scope</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">project</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">objects</span><span class="p">:</span>
+            <span class="n">project</span><span class="o">.</span><span class="n">can_edit</span> <span class="o">=</span> <span class="n">project</span><span class="o">.</span><span class="n">owner_id</span> <span class="o">==</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">result</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">Current.user_id()</span></code> is the id of the caller
+(<a class="reference internal" href="current.html"><span class="std std-doc">Current &amp; ContextParam</span></a>). The view’s schema declares the
+field:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="n">can_edit</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+</pre></div>
+</div>
+<p>It is not a column, so <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> keeps it out of the create and update
+bodies. The handlers always pass <code class="docutils literal notranslate"><span class="pre">scope=</span></code>, so the override declares it and
+passes it on. To change the single-row read too, override
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> the same way, as the
+<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py">SaaS example</a>
+does.</p>
+<p>Other changes to a list have their own place. A <a class="reference internal" href="scopes.html#view-scope"><span class="std std-ref">scope</span></a> hides
+rows.
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_list_params" title="fastapi_restly.views.RestView.apply_list_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_list_params</span></code></a>
+changes the filter, sort and page grammar
+(<a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering &amp; Pagination</span></a>).
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.get_relationship_loader_options" title="fastapi_restly.views.BaseRestView.get_relationship_loader_options"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code></a>
+loads more relationships (<a class="reference internal" href="relationships.html#eager-load-extra-relationships"><span class="std std-ref">Relationships</span></a>).</p>
+</section>
+</section>
+<section id="build-and-save-objects">
+<span id="domain-utilities"></span><h2>Build and save objects<a class="headerlink" href="#build-and-save-objects" title="Link to this heading">#</a></h2>
+<p>The business methods are built from three utilities. Call them from your
+<code class="docutils literal notranslate"><span class="pre">create</span></code> and <code class="docutils literal notranslate"><span class="pre">update</span></code> overrides. They are final: a view class that defines
+one, itself or through a mixin, fails when Python creates the class.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Method</p></th>
+<th class="head"><p>What it does</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.make_new_object" title="fastapi_restly.views.RestView.make_new_object"><code class="xref py py-meth docutils literal notranslate"><span class="pre">self.make_new_object(schema_obj)</span></code></a></p></td>
+<td><p>Builds a new ORM object from the schema and adds it to the session. It resolves references and skips the fields that the schema marks read-only. It does not flush.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update_object" title="fastapi_restly.views.RestView.update_object"><code class="xref py py-meth docutils literal notranslate"><span class="pre">self.update_object(obj,</span> <span class="pre">schema_obj)</span></code></a></p></td>
+<td><p>Writes the writable fields that the client sent onto an existing object, and resolves references. It does not flush.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.save_object" title="fastapi_restly.views.RestView.save_object"><code class="xref py py-meth docutils literal notranslate"><span class="pre">self.save_object(obj)</span></code></a></p></td>
+<td><p>Flushes and refreshes <code class="docutils literal notranslate"><span class="pre">obj</span></code>, then loads the relationships that the response class names. It does not commit.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>None of them commits. The handler, or a <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block, commits.</p>
+<p>The same operations are functions in <a class="reference internal" href="api/objects.html#module-fastapi_restly.objects" title="fastapi_restly.objects"><code class="xref py py-mod docutils literal notranslate"><span class="pre">fr.objects</span></code></a>,
+for code outside a view:
+<a class="reference internal" href="api/objects.html#fastapi_restly.objects.async_make_new_object" title="fastapi_restly.objects.async_make_new_object"><code class="xref py py-func docutils literal notranslate"><span class="pre">async_make_new_object</span></code></a>,
+<a class="reference internal" href="api/objects.html#fastapi_restly.objects.async_update_object" title="fastapi_restly.objects.async_update_object"><code class="xref py py-func docutils literal notranslate"><span class="pre">async_update_object</span></code></a>,
+<a class="reference internal" href="api/objects.html#fastapi_restly.objects.async_save_object" title="fastapi_restly.objects.async_save_object"><code class="xref py py-func docutils literal notranslate"><span class="pre">async_save_object</span></code></a> and
+<a class="reference internal" href="api/objects.html#fastapi_restly.objects.async_delete_object" title="fastapi_restly.objects.async_delete_object"><code class="xref py py-func docutils literal notranslate"><span class="pre">async_delete_object</span></code></a>, and
+their sync versions. See
+<a class="reference internal" href="view_reference.html#advanced-object-helpers"><span class="std std-ref">The same operations outside a view</span></a>. These
+functions do not call <code class="docutils literal notranslate"><span class="pre">authorize</span></code> or the hooks. They only build, change, save
+or delete.</p>
+<section id="run-the-same-logic-in-a-script-or-a-worker">
+<span id="logic-outside-a-view"></span><h3>Run the same logic in a script or a worker<a class="headerlink" href="#run-the-same-logic-in-a-script-or-a-worker" title="Link to this heading">#</a></h3>
+<p>While the view is the only caller, keep the logic in its <code class="docutils literal notranslate"><span class="pre">create</span></code> or <code class="docutils literal notranslate"><span class="pre">update</span></code>.
+There it has <code class="docutils literal notranslate"><span class="pre">self.session</span></code>, <code class="docutils literal notranslate"><span class="pre">self.request</span></code> and the view’s dependencies.</p>
+<p>When a script or a worker must run the same logic, move it into a plain
+function and call it from both:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.objects</span><span class="w"> </span><span class="kn">import</span> <span class="n">async_make_new_object</span><span class="p">,</span> <span class="n">async_save_object</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">set_password</span><span class="p">(</span><span class="n">user</span><span class="p">:</span> <span class="n">User</span><span class="p">,</span> <span class="n">raw_password</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">user</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="n">hash_password</span><span class="p">(</span><span class="n">raw_password</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_new_object</span><span class="p">(</span><span class="n">schema_obj</span><span class="p">)</span>
+        <span class="n">set_password</span><span class="p">(</span><span class="n">user</span><span class="p">,</span> <span class="n">schema_obj</span><span class="o">.</span><span class="n">password</span><span class="p">)</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_object</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
+
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">import_user</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">payload</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">User</span><span class="p">:</span>
+    <span class="n">user</span> <span class="o">=</span> <span class="k">await</span> <span class="n">async_make_new_object</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">User</span><span class="p">,</span> <span class="n">payload</span><span class="p">)</span>
+    <span class="n">set_password</span><span class="p">(</span><span class="n">user</span><span class="p">,</span> <span class="n">payload</span><span class="o">.</span><span class="n">password</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">async_save_object</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">user</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">user</span>
+</pre></div>
+</div>
+<p>The script owns its transaction, so it commits itself. Do not move logic out
+of the view before there is a second caller.</p>
+<p>A value that every write path must set does not need this. Put it on the
+model (<a class="reference internal" href="models.html#write-path-values"><span class="std std-ref">Models</span></a>), and every path gets it.</p>
+</section>
+</section>
+<section id="what-commits-and-when">
+<span id="what-commits"></span><h2>What commits, and when<a class="headerlink" href="#what-commits-and-when" title="Link to this heading">#</a></h2>
+<p>Restly commits for you, once for each write action. The handler of a write
+route, or a <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.write_action" title="fastapi_restly.views.RestView.write_action"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_action</span></code></a>
+block in a custom route, runs <code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code>, commits, and then runs
+<code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>. Your business methods and hooks do not commit.</p>
+<p>The session that Restly opens for a request does not commit when the request
+ends. It rolls back and closes. So a custom route that writes must commit
+through a handler or a <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block. When a request ends with changes
+that are not committed, Restly warns with
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyUncommittedChangesWarning" title="fastapi_restly.exc.RestlyUncommittedChangesWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyUncommittedChangesWarning</span></code></a>.
+The warning is on by default. To turn it off for the app, pass
+<code class="docutils literal notranslate"><span class="pre">warn_on_uncommitted=False</span></code> to <a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure</span></code></a>.
+A route that rolls back on purpose, such as a dry run, can turn it off for one
+request with <code class="docutils literal notranslate"><span class="pre">session.info[&quot;_fr_suppress_uncommitted&quot;]</span> <span class="pre">=</span> <span class="pre">True</span></code>.</p>
+<p>A <a class="reference internal" href="database.html#own-session-generator"><span class="std std-ref">session generator of your own</span></a> decides how a
+session is made and closed. It does not change who commits.</p>
+<p>To commit several writes at once, see
+<a class="reference internal" href="#shared-write-action-commit">Commit several writes together</a>.</p>
+</section>
+<section id="run-code-before-or-after-the-commit">
+<span id="transaction-hooks"></span><h2>Run code before or after the commit<a class="headerlink" href="#run-code-before-or-after-the-commit" title="Link to this heading">#</a></h2>
+<p>Every write action calls two hooks around its commit:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.before_action_commit" title="fastapi_restly.views.RestView.before_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_action_commit(action,</span> <span class="pre">new,</span> <span class="pre">old=None)</span></code></a>
+runs inside the transaction, before the commit. What it writes is committed
+together with the change, or not at all. Use it for outbox rows and audit
+rows.</p></li>
+<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_action_commit" title="fastapi_restly.views.RestView.after_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_action_commit(action,</span> <span class="pre">new,</span> <span class="pre">old=None)</span></code></a>
+runs after the commit, when the change is saved. Use it for email, webhooks
+and cache invalidation.</p></li>
+</ul>
+<p>The hooks run for the CRUD writes and for every <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block. Reads do
+not call them, and neither do the <code class="docutils literal notranslate"><span class="pre">fr.objects</span></code> functions. The arguments are:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">action</span></code>: the name of the action, such as <code class="docutils literal notranslate"><span class="pre">&quot;create&quot;</span></code>, or the name that a
+custom route gives <code class="docutils literal notranslate"><span class="pre">write_action</span></code>. See <a class="reference internal" href="authorization.html#action-names"><span class="std std-ref">Action names</span></a>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">new</span></code>: the saved object. On a delete, it is <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">old</span></code>: a dict of the row’s column values before the change, from
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.snapshot" title="fastapi_restly.views.BaseRestView.snapshot"><code class="xref py py-meth docutils literal notranslate"><span class="pre">snapshot</span></code></a>. It holds only
+the columns that were loaded. On a create, it is <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
+</ul>
+<p>With <code class="docutils literal notranslate"><span class="pre">old</span></code>, a hook can check what changed:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">after_action_commit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">new</span><span class="p">,</span> <span class="n">old</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="s2">&quot;update&quot;</span> <span class="ow">and</span> <span class="n">old</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">new</span><span class="o">.</span><span class="n">status</span><span class="p">:</span>
+            <span class="k">await</span> <span class="n">notify_status_change</span><span class="p">(</span><span class="n">new</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">new</span><span class="o">.</span><span class="n">status</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Do not change <code class="docutils literal notranslate"><span class="pre">new</span></code> or the database in <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>. The commit is
+done, so the change is not saved. A change to <code class="docutils literal notranslate"><span class="pre">new</span></code> still shows in the
+response of this request, which hides the problem. Make the change in the
+business method or in <code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code>.</p>
+<p>On a delete, <code class="docutils literal notranslate"><span class="pre">new</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code> and <code class="docutils literal notranslate"><span class="pre">old</span></code> holds the columns of the removed row. A
+delete that must finish outside the request can mark the row in <code class="docutils literal notranslate"><span class="pre">delete</span></code>, as a
+<a class="reference internal" href="models.html#soft-delete-recipe"><span class="std std-ref">soft delete</span></a> does. After the commit,
+<code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> starts the real delete:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;pending_deletion&quot;</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>  <span class="c1"># no super(): the row stays</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">after_action_commit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">new</span><span class="p">,</span> <span class="n">old</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="s2">&quot;delete&quot;</span><span class="p">:</span>
+            <span class="k">await</span> <span class="n">enqueue_async_delete</span><span class="p">(</span><span class="n">old</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">])</span>  <span class="c1"># a worker deletes the row</span>
+</pre></div>
+</div>
+<section id="when-after-action-commit-raises">
+<span id="after-action-commit-raises"></span><h3>When <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> raises<a class="headerlink" href="#when-after-action-commit-raises" title="Link to this heading">#</a></h3>
+<p>The write is already committed, so an exception from the hook cannot undo it.
+The request still fails, and a client that tries again repeats the write. For
+an effect that may fail without harm, catch and log the error in the hook:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">after_action_commit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">new</span><span class="p">,</span> <span class="n">old</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="s2">&quot;create&quot;</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">await</span> <span class="n">send_confirmation_email</span><span class="p">(</span><span class="n">new</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>  <span class="c1"># the order is saved; don&#39;t fail the request</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Confirmation email failed for order </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">new</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>An effect that must happen belongs in an outbox row, written in
+<code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code>. A worker then delivers it and tries again when it
+fails. Make the delivery safe to repeat, because a retry can deliver it twice.
+FastAPI’s <code class="docutils literal notranslate"><span class="pre">BackgroundTasks</span></code> does not replace an outbox: a crash loses the
+task, and nothing tries it again.</p>
+</section>
+</section>
+<section id="change-the-status-code-or-headers-of-one-route">
+<span id="replace-endpoint-method"></span><h2>Change the status code or headers of one route<a class="headerlink" href="#change-the-status-code-or-headers-of-one-route" title="Link to this heading">#</a></h2>
+<p>Business methods and hooks keep the HTTP contract of the CRUD route. Replace
+the endpoint method when the contract itself must change: the status code,
+the headers or the parameters. To change the shape of the response body, such
+as an envelope around one object, see
+<a class="reference internal" href="responses.html#one-route-shape"><span class="std std-ref">Change the shape of one route</span></a> on Responses. It replaces
+the endpoint method in the same way.</p>
+<p>Define a method with the same name, such as <code class="docutils literal notranslate"><span class="pre">delete_endpoint</span></code>, and give it a
+route decorator. Most replacements call the handler and only change the
+response:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ProductView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/products&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Product</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ProductSchema</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>               <span class="c1"># load through the scope, or 404</span>
+        <span class="n">serialized</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_single_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_delete</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>               <span class="c1"># authorize, delete, commit</span>
+        <span class="k">return</span> <span class="n">serialized</span>
+</pre></div>
+</div>
+<p>The default <code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/{id}</span></code> answers <code class="docutils literal notranslate"><span class="pre">204</span> <span class="pre">No</span> <span class="pre">Content</span></code>. This version answers
+<code class="docutils literal notranslate"><span class="pre">200</span></code> with the deleted row, as React Admin’s <code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code> expects
+(<a class="reference internal" href="react_admin.html"><span class="std std-doc">React Admin</span></a>).</p>
+<p>When Restly registers the view, an endpoint method that the class defines
+replaces the inherited method with the same name. The other inherited
+endpoint methods stay.</p>
+<p>Registration also fills in the view’s types where your method has no
+annotation, or <code class="docutils literal notranslate"><span class="pre">Any</span></code>. <code class="docutils literal notranslate"><span class="pre">id</span></code> gets
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.id_type" title="fastapi_restly.views.BaseRestView.id_type"><code class="xref py py-attr docutils literal notranslate"><span class="pre">id_type</span></code></a>, <code class="docutils literal notranslate"><span class="pre">schema_obj</span></code>
+gets <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a>
+or <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a>,
+and the return annotation gets the route’s default response model. Restly
+keeps an annotation that you write, so <code class="docutils literal notranslate"><span class="pre">schema_obj:</span> <span class="pre">ProductReplace</span></code> validates
+the request body against <code class="docutils literal notranslate"><span class="pre">ProductReplace</span></code>. <code class="docutils literal notranslate"><span class="pre">list_params</span></code> is the exception: it
+always gets the view’s
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_list_params" title="fastapi_restly.views.BaseRestView.schema_list_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_list_params</span></code></a>.</p>
+<section id="change-the-list-route">
+<h3>Change the list route<a class="headerlink" href="#change-the-list-route" title="Link to this heading">#</a></h3>
+<p>Replace
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many_endpoint" title="fastapi_restly.views.RestView.get_many_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many_endpoint</span></code></a>
+when the contract of the list changes, for example to send the total in a
+header. Keep the <code class="docutils literal notranslate"><span class="pre">list_params</span></code> parameter to keep Restly’s
+<a class="reference internal" href="filtering.html"><span class="std std-doc">filter, sort and page parameters</span></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+
+<span class="n">ProductResponse</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">derive_schema_response</span><span class="p">(</span><span class="n">ProductSchema</span><span class="p">)</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ProductView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/products&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Product</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ProductSchema</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="nb">list</span><span class="p">[</span><span class="n">ProductResponse</span><span class="p">])</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_many_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span><span class="n">list_params</span><span class="p">)</span>
+        <span class="n">serialized</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">to_single_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">objects</span>
+        <span class="p">]</span>
+        <span class="k">return</span> <span class="n">fastapi</span><span class="o">.</span><span class="n">Response</span><span class="p">(</span>
+            <span class="n">content</span><span class="o">=</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">serialized</span><span class="p">),</span>
+            <span class="n">media_type</span><span class="o">=</span><span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+            <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;X-Total-Count&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">total_count</span><span class="p">)},</span>
+        <span class="p">)</span>
+</pre></div>
+</div>
+<p>The route sends a plain list, not the default envelope, so it names its
+<code class="docutils literal notranslate"><span class="pre">response_model</span></code>. Without it, registration documents the envelope in
+OpenAPI, and generated clients expect the wrong body.
+<a class="reference internal" href="schemas.html#name-the-response-classes"><span class="std std-ref">Name the view’s classes in a custom route</span></a>
+explains <code class="docutils literal notranslate"><span class="pre">derive_schema_response</span></code>.</p>
+</section>
+<section id="share-a-changed-route-across-views">
+<h3>Share a changed route across views<a class="headerlink" href="#share-a-changed-route-across-views" title="Link to this heading">#</a></h3>
+<p>When several views need the same contract, put the replacement in a mixin.
+List the mixin before the view class, so Python finds its method first:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">DeleteReturnsObjectMixin</span><span class="p">:</span>
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+        <span class="n">serialized</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_single_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_delete</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">serialized</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ProductView</span><span class="p">(</span><span class="n">DeleteReturnsObjectMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/products&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Product</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ProductSchema</span>
+</pre></div>
+</div>
+<p>The <a class="reference internal" href="react_admin.html"><span class="std std-doc">React Admin</span></a> views use this pattern. They replace
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many_endpoint" title="fastapi_restly.views.RestView.get_many_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many_endpoint</span></code></a>
+for the <code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code> contract, and keep the handlers and business
+methods.</p>
+</section>
+</section>
+<section id="add-a-custom-read-route">
+<span id="custom-read-route"></span><h2>Add a custom read route<a class="headerlink" href="#add-a-custom-read-route" title="Link to this heading">#</a></h2>
+<p>A CRUD view can have more routes beside its CRUD routes. Declare a method with
+<a class="reference internal" href="api/views.html#fastapi_restly.views.get" title="fastapi_restly.views.get"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.get</span></code></a>, as on any view
+(<a class="reference internal" href="views.html#register-a-view"><span class="std std-ref">Views</span></a>). To load one row, call
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_one" title="fastapi_restly.views.RestView.handle_get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_one</span></code></a>. It
+loads the row through the scope, so a row that the caller cannot see is a
+404. Then it calls <code class="docutils literal notranslate"><span class="pre">authorize(&quot;get_one&quot;,</span> <span class="pre">obj=row)</span></code>, as <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code> does.
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> alone also loads
+through the scope, but it does not call <code class="docutils literal notranslate"><span class="pre">authorize</span></code>.</p>
+<p>The SaaS example’s <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users/me</span></code> returns the caller’s own row:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">UserResponse</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_current_user</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get current user&#39;s profile.&quot;&quot;&quot;</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_one</span><span class="p">(</span><span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">())</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_single_response</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">Current.user_id()</span></code> is the id of the caller
+(<a class="reference internal" href="current.html"><span class="std std-doc">Current &amp; ContextParam</span></a>). <code class="docutils literal notranslate"><span class="pre">UserResponse</span></code> is the view’s
+response class, so OpenAPI shows the same type as for <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users/{id}</span></code>. See
+<a class="reference internal" href="schemas.html#name-the-response-classes"><span class="std std-ref">Name the view’s classes in a custom route</span></a>. The
+route <code class="docutils literal notranslate"><span class="pre">/me</span></code> works beside <code class="docutils literal notranslate"><span class="pre">/{id}</span></code>, because the item routes match only an
+integer id (<a class="reference internal" href="crud_routes.html#item-route-matching"><span class="std std-ref">Item paths and static routes</span></a>).</p>
+<p>The handlers return the ORM object, so a route can read every attribute of
+the model, also the ones that the response leaves out. In the
+<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py">same example</a>,
+<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/projects/{id}/stats</span></code> calls <code class="docutils literal notranslate"><span class="pre">handle_get_one(id)</span></code>, and then counts the
+project’s tasks.</p>
+<section id="look-a-row-up-by-another-key">
+<span id="natural-key-route"></span><h3>Look a row up by another key<a class="headerlink" href="#look-a-row-up-by-another-key" title="Link to this heading">#</a></h3>
+<p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_one" title="fastapi_restly.views.RestView.handle_get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_one</span></code></a> and
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> take a SQLAlchemy
+boolean expression in place of the id. The expression picks the row instead
+of the primary key. Everything else about the load stays the same: the view’s
+<a class="reference internal" href="scopes.html#view-scope"><span class="std std-ref">scope</span></a>, the relationships that the response loads, and the 404.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/by-email/</span><span class="si">{email}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">UserResponse</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_by_email</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">email</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_one</span><span class="p">(</span><span class="n">User</span><span class="o">.</span><span class="n">email</span> <span class="o">==</span> <span class="n">email</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Combine columns with <code class="docutils literal notranslate"><span class="pre">sqlalchemy.and_(...)</span></code>. This is also how a custom route
+reaches a row of a model with a composite primary key. A plain id cannot name
+such a row, and passing one raises <code class="docutils literal notranslate"><span class="pre">NotImplementedError</span></code>.</p>
+<p>The expression narrows the read inside the scope. It never reaches past it,
+so a row that the view hides stays a 404 under any key. Only
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.scope" title="fastapi_restly.views.BaseRestView.scope"><code class="xref py py-attr docutils literal notranslate"><span class="pre">scope</span></code></a> changes what the view
+sees. When more than one row matches, Restly raises SQLAlchemy’s
+<code class="docutils literal notranslate"><span class="pre">MultipleResultsFound</span></code> and does not return the first row: a key that matches
+several rows is a bug in the expression.</p>
+<p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update</span></code></a> and
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_delete" title="fastapi_restly.views.RestView.handle_delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_delete</span></code></a> take the
+same expression. So a custom <code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/users/by-email/{email}</span></code> route that calls
+<code class="docutils literal notranslate"><span class="pre">handle_update(User.email</span> <span class="pre">==</span> <span class="pre">email,</span> <span class="pre">schema_obj)</span></code> runs the same steps as
+<code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/users/{id}</span></code>. The SaaS example reads and updates projects by slug in
+<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py"><code class="docutils literal notranslate"><span class="pre">app/projects/views.py</span></code></a>.</p>
+</section>
+</section>
+<section id="add-a-custom-action-route">
+<span id="custom-action-route"></span><h2>Add a custom action route<a class="headerlink" href="#add-a-custom-action-route" title="Link to this heading">#</a></h2>
+<p>An action changes state: publish, archive, recalculate. Declare it with
+<a class="reference internal" href="api/views.html#fastapi_restly.views.post" title="fastapi_restly.views.post"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.post</span></code></a>, or with
+<a class="reference internal" href="api/views.html#fastapi_restly.views.patch" title="fastapi_restly.views.patch"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.patch</span></code></a> or
+<a class="reference internal" href="api/views.html#fastapi_restly.views.delete" title="fastapi_restly.views.delete"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.delete</span></code></a>. Most actions take one of
+three forms.</p>
+<p><strong>Change one row in a <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block.</strong> Load the row with
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a>. Then change it inside
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.write_action" title="fastapi_restly.views.RestView.write_action"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_action</span></code></a>, under the
+name of the action. The blog example publishes a post:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/publish&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">publish</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="n">post</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="s2">&quot;publish&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">post</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">post</span><span class="o">.</span><span class="n">published</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">Conflict</span><span class="p">(</span><span class="s2">&quot;Already published&quot;</span><span class="p">)</span>
+            <span class="n">post</span><span class="o">.</span><span class="n">published</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">post</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>When the block starts, Restly calls <code class="docutils literal notranslate"><span class="pre">authorize(&quot;publish&quot;,</span> <span class="pre">obj=post)</span></code> and takes
+the snapshot of the row. When the block ends, Restly runs
+<code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code>, commits, and runs <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>, each with the
+action name <code class="docutils literal notranslate"><span class="pre">&quot;publish&quot;</span></code>. If the block raises, as it does here for a post that
+is already published, nothing is committed. The route loads with <code class="docutils literal notranslate"><span class="pre">get_one</span></code>,
+not with <code class="docutils literal notranslate"><span class="pre">handle_get_one</span></code>, because <code class="docutils literal notranslate"><span class="pre">write_action</span></code> authorizes the action
+itself. <a class="reference internal" href="authorization.html#authorize-custom-actions"><span class="std std-ref">Authorize a custom action</span></a> shows how
+<code class="docutils literal notranslate"><span class="pre">authorize</span></code> handles a new name.</p>
+<p>The SaaS example uses this form for the task changes <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/tasks/{id}/start</span></code>,
+<code class="docutils literal notranslate"><span class="pre">complete</span></code> and <code class="docutils literal notranslate"><span class="pre">reopen</span></code>
+(<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/tasks/views.py"><code class="docutils literal notranslate"><span class="pre">app/tasks/views.py</span></code></a>),
+and for <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/users/{id}/change-password</span></code>
+(<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/users/views.py"><code class="docutils literal notranslate"><span class="pre">app/users/views.py</span></code></a>).</p>
+<p><strong>Run a CRUD action under another path.</strong> When the action is a create or an
+update with another path or another body, call the handler,
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_create" title="fastapi_restly.views.RestView.handle_create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_create</span></code></a> or
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update</span></code></a>. The
+route then runs every step of that CRUD action, with <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and the
+commit. The SaaS example’s <code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/users/me</span></code> updates the caller’s own row:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">UserResponse</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update_current_user</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">UpdateMeRequest</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_update</span><span class="p">(</span><span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">(),</span> <span class="n">request</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_single_response</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">UpdateMeRequest</span></code> has only <code class="docutils literal notranslate"><span class="pre">name</span></code> and <code class="docutils literal notranslate"><span class="pre">email</span></code>, so this route cannot change
+other fields.
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update_object" title="fastapi_restly.views.RestView.update_object"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update_object</span></code></a> writes
+the fields of the schema it receives, and only the fields that the client
+sent. A change to the <code class="docutils literal notranslate"><span class="pre">update</span></code> business method applies here too.</p>
+<p><strong>Create in a block of your own.</strong> Some creates need more than <code class="docutils literal notranslate"><span class="pre">create</span></code> does,
+such as a parent row and its child rows. Use a <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block without
+<code class="docutils literal notranslate"><span class="pre">obj</span></code>, and set the new object on the handle before the block ends:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="s2">&quot;create&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">schema_obj</span><span class="p">)</span> <span class="k">as</span> <span class="n">w</span><span class="p">:</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_new_object</span><span class="p">(</span><span class="n">schema_obj</span><span class="p">)</span>
+        <span class="n">w</span><span class="o">.</span><span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_object</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">w</span><span class="o">.</span><span class="n">obj</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The hooks receive <code class="docutils literal notranslate"><span class="pre">w.obj</span></code> as <code class="docutils literal notranslate"><span class="pre">new</span></code>. If the block ends without it, Restly
+raises <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code>. For a write that has no single object, pass <code class="docutils literal notranslate"><span class="pre">obj=None</span></code>
+instead. The SaaS example’s <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/uploads</span></code> saves an upload and its lines this
+way
+(<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/uploads/views.py"><code class="docutils literal notranslate"><span class="pre">app/uploads/views.py</span></code></a>).
+<code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/task-labels/create-and-attach</span></code> saves a label and its link to a task in
+one block
+(<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/labels/views.py"><code class="docutils literal notranslate"><span class="pre">app/labels/views.py</span></code></a>).</p>
+<p>Name the view’s response classes in <code class="docutils literal notranslate"><span class="pre">response_model</span></code>, so OpenAPI shows the
+same types as for the CRUD routes: see
+<a class="reference internal" href="schemas.html#name-the-response-classes"><span class="std std-ref">Name the view’s classes in a custom route</span></a>. A route
+that builds a schema with <code class="docutils literal notranslate"><span class="pre">model_construct()</span></code> skips validation, so its
+reference fields need the right form: see
+<a class="reference internal" href="relationships.html#idref-custom-routes"><span class="std std-ref">Build references in a custom route</span></a>.</p>
+</section>
+<section id="commit-several-writes-together">
+<span id="shared-write-action-commit"></span><h2>Commit several writes together<a class="headerlink" href="#commit-several-writes-together" title="Link to this heading">#</a></h2>
+<p>Each handler and each <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block commits on its own. To commit
+several of them at once, put them inside a
+<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView.shared_write_action_commit" title="fastapi_restly.views.AsyncRestView.shared_write_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code></a>
+block. The outermost block commits once. Then the queued <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>
+hooks run:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/bulk&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">bulk_create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">OrderCreate</span><span class="p">]):</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">shared_write_action_commit</span><span class="p">():</span>
+            <span class="n">orders</span> <span class="o">=</span> <span class="p">[</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_create</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">order</span><span class="p">)</span> <span class="k">for</span> <span class="n">order</span> <span class="ow">in</span> <span class="n">orders</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Inside the block, each action still calls <code class="docutils literal notranslate"><span class="pre">authorize</span></code>, takes the snapshot,
+makes its change and runs <code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code>. Then it flushes and returns.
+Its changes are not committed yet, and its <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> has not run.
+So build the responses after the block, as in the example. Do the same for
+code that needs an after-hook to have run. On <code class="docutils literal notranslate"><span class="pre">fr.RestView</span></code>, use <code class="docutils literal notranslate"><span class="pre">with</span></code> and
+the sync handlers. The method has the same name.</p>
+<p>The block can also hold other writes, for an operation on more than one
+model:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">shared_write_action_commit</span><span class="p">():</span>
+        <span class="n">project</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_create</span><span class="p">(</span><span class="n">project_data</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">add_all</span><span class="p">(</span>
+            <span class="n">Task</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">project</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">task</span><span class="o">.</span><span class="n">title</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="n">source_tasks</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">project</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The new project, the rows that its <code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code> writes, and the
+copied tasks are committed together. If any part fails, none of them is
+committed.</p>
+<p>Blocks inside each other share the commit when their views share a session.
+An exception that leaves a block cancels the shared commit and drops the
+queued hooks. This also happens when an outer block catches the exception.
+Rolling back stays the job of the session’s owner. A direct <code class="docutils literal notranslate"><span class="pre">session.commit()</span></code>
+inside the block raises <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code>, because the outermost block owns the
+commit.</p>
+<p>When some rows may fail and the others must still be saved, put SQLAlchemy’s
+<code class="docutils literal notranslate"><span class="pre">session.begin_nested()</span></code> around each handler call. Catch the error outside
+that savepoint:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.exc</span><span class="w"> </span><span class="kn">import</span> <span class="n">IntegrityError</span>
+
+    <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">shared_write_action_commit</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">begin_nested</span><span class="p">():</span>
+                    <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_create</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">IntegrityError</span><span class="p">:</span>
+                <span class="k">continue</span>
+</pre></div>
+</div>
+<p>The savepoint holds the row’s change and the rows that its
+<code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code> wrote. So a failed row rolls back both, and its queued
+after-hook is dropped. After the shared commit, the after-hooks of the saved
+rows run in order. They stop at the first exception.</p>
+<p>The SaaS example runs both forms. <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/tasks/bulk</span></code>, <code class="docutils literal notranslate"><span class="pre">/tasks/bulk-delete</span></code>
+and <code class="docutils literal notranslate"><span class="pre">/tasks/import-csv</span></code> put a savepoint around each row inside one
+<code class="docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code> block
+(<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/tasks/views.py"><code class="docutils literal notranslate"><span class="pre">app/tasks/views.py</span></code></a>).
+<code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/projects/{id}/clone</span></code> commits a project, its outbox event and the copied
+tasks together
+(<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py"><code class="docutils literal notranslate"><span class="pre">app/projects/views.py</span></code></a>).</p>
+</section>
+<section id="what-is-available-on-self">
+<h2>What is available on <code class="docutils literal notranslate"><span class="pre">self</span></code><a class="headerlink" href="#what-is-available-on-self" title="Link to this heading">#</a></h2>
+<p>Inside every method and custom route, you can use these attributes:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.session" title="fastapi_restly.views.RestView.session"><code class="xref py py-attr docutils literal notranslate"><span class="pre">self.session</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">AsyncSession</span></code>, or <code class="docutils literal notranslate"><span class="pre">Session</span></code> on <code class="docutils literal notranslate"><span class="pre">RestView</span></code></p></td>
+<td><p>The database session of the request</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.request" title="fastapi_restly.views.BaseRestView.request"><code class="xref py py-attr docutils literal notranslate"><span class="pre">self.request</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">fastapi.Request</span></code></p></td>
+<td><p>The HTTP request</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.model" title="fastapi_restly.views.BaseRestView.model"><code class="xref py py-attr docutils literal notranslate"><span class="pre">self.model</span></code></a></p></td>
+<td><p>the model class</p></td>
+<td><p>The SQLAlchemy model of the view</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">self.schema</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">type[pydantic.BaseModel]</span></code></p></td>
+<td><p>The view’s schema</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>A class attribute that you declare with <code class="docutils literal notranslate"><span class="pre">Annotated[...,</span> <span class="pre">Depends(...)]</span></code>, such
+as the current user, is also set on <code class="docutils literal notranslate"><span class="pre">self</span></code> for each request. See
+<a class="reference internal" href="views.html#dependency-injection-on-class-attributes"><span class="std std-ref">Declare dependencies as class attributes</span></a>.</p>
+</section>
+<section id="internals">
+<h2>Internals<a class="headerlink" href="#internals" title="Link to this heading">#</a></h2>
+<p>The CRUD handlers and <code class="docutils literal notranslate"><span class="pre">write_action</span></code> share one implementation of the commit
+bracket: <a class="reference internal" href="api/views.html#fastapi_restly.views.async_run_write_action" title="fastapi_restly.views.async_run_write_action"><code class="xref py py-func docutils literal notranslate"><span class="pre">async_run_write_action</span></code></a>
+and <a class="reference internal" href="api/views.html#fastapi_restly.views.run_write_action" title="fastapi_restly.views.run_write_action"><code class="xref py py-func docutils literal notranslate"><span class="pre">run_write_action</span></code></a>. Each one
+calls <code class="docutils literal notranslate"><span class="pre">authorize</span></code>, takes the snapshot, runs a function that makes the change,
+and then runs <code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code>, the commit and <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>.
+Inside a <code class="docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code> block, it flushes instead of
+committing and queues the after-hook for the outermost block.</p>
+</section>
+<section id="see-also">
+<h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="authorization.html"><span class="std std-doc">Authorization</span></a>: who may perform each action.</p></li>
+<li><p><a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a>: which rows a view can see.</p></li>
+<li><p><a class="reference internal" href="views.html"><span class="std std-doc">Views</span></a>: registration, dependencies and base views.</p></li>
+<li><p><a class="reference internal" href="models.html#write-path-values"><span class="std std-ref">Models</span></a>: values that every write path must set.</p></li>
+<li><p><a class="reference internal" href="view_reference.html#view-method-surface"><span class="std std-ref">View Reference</span></a>: every view method, with its
+signature.</p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="crud_routes.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">CRUD Routes</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="schemas.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Schemas &amp; Validation</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#how-a-view-handles-a-request">How a view handles a request</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#a-read-visibility-then-policy">A read: visibility, then policy</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#which-method-do-i-override">Which method do I override</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#change-what-an-action-does">Change what an action does</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#hash-a-password-in-create">Hash a password in <code class="docutils literal notranslate"><span class="pre">create</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#refuse-a-change-in-update">Refuse a change in <code class="docutils literal notranslate"><span class="pre">update</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#add-a-value-to-each-row-of-a-list">Add a value to each row of a list</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#build-and-save-objects">Build and save objects</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#run-the-same-logic-in-a-script-or-a-worker">Run the same logic in a script or a worker</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-commits-and-when">What commits, and when</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#run-code-before-or-after-the-commit">Run code before or after the commit</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#when-after-action-commit-raises">When <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> raises</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#change-the-status-code-or-headers-of-one-route">Change the status code or headers of one route</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#change-the-list-route">Change the list route</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#share-a-changed-route-across-views">Share a changed route across views</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#add-a-custom-read-route">Add a custom read route</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#look-a-row-up-by-another-key">Look a row up by another key</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#add-a-custom-action-route">Add a custom action route</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#commit-several-writes-together">Commit several writes together</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-is-available-on-self">What is available on <code class="docutils literal notranslate"><span class="pre">self</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#internals">Internals</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+<p class="sidebar-newsletter">
+  <a href="newsletter.html">Subscribe to newsletter</a>
+</p></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, Rutger Prins.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

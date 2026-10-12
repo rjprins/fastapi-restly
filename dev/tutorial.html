@@ -162,21 +162,14 @@
     
 <li class="nav-item current active">
   <a class="nav-link nav-internal" href="#">
-    Getting Started
+    Tutorial
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="class_based_views.html">
-    CRUD Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="user_guide.html">
-    How-To
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
   </a>
 </li>
 
@@ -191,13 +184,6 @@
 <li class="nav-item ">
   <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
     Blog
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
   </a>
 </li>
 
@@ -329,21 +315,14 @@
     
 <li class="nav-item current active">
   <a class="nav-link nav-internal" href="#">
-    Getting Started
+    Tutorial
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="class_based_views.html">
-    CRUD Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="user_guide.html">
-    How-To
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
   </a>
 </li>
 
@@ -358,13 +337,6 @@
 <li class="nav-item ">
   <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
     Blog
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
   </a>
 </li>
 
@@ -624,7 +596,7 @@ route returns the post in a page:</p>
 </pre></div>
 </div>
 <p>This is what Restly adds to FastAPI: a model and a four-line view class give
-a complete, documented resource. <a class="reference internal" href="rest_views.html"><span class="std std-doc">Using RestView</span></a> describes
+a complete, documented resource. <a class="reference internal" href="crud_routes.html"><span class="std std-doc">CRUD Routes</span></a> describes
 the full contract of these routes.</p>
 </section>
 <section id="comment-on-posts">
@@ -695,7 +667,7 @@ post <code class="docutils literal notranslate"><span class="pre">1</span></code
 <div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Nice post&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;post_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">}</span>
 </pre></div>
 </div>
-<p><a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys and Relationships</span></a>
+<p><a class="reference internal" href="relationships.html"><span class="std std-doc">Relationships</span></a>
 covers references in more detail, including nested objects in responses.</p>
 </section>
 <section id="find-posts">
@@ -721,13 +693,13 @@ curl<span class="w"> </span><span class="s1">&#39;http://127.0.0.1:8000/posts?so
 </div>
 <p>A field name filters on equality. A suffix such as <code class="docutils literal notranslate"><span class="pre">__icontains</span></code> chooses
 another operator. <code class="docutils literal notranslate"><span class="pre">sort</span></code> takes field names, with <code class="docutils literal notranslate"><span class="pre">-</span></code> for descending order.
-<a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">Filter, Sort, and Paginate Lists</span></a> lists every
+<a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering &amp; Pagination</span></a> lists every
 operator and the paging settings.</p>
 </section>
 <section id="the-complete-file">
 <h2>The complete file<a class="headerlink" href="#the-complete-file" title="Link to this heading">#</a></h2>
 <p>Here is <code class="docutils literal notranslate"><span class="pre">main.py</span></code> with everything from this tutorial. The same file is the
-first stage of the <a class="reference internal" href="examples.html#example-blog"><span class="std std-ref">blog example</span></a>, and the test suite runs it.</p>
+first stage of the <a class="reference external" href="https://github.com/rjprins/fastapi-restly/tree/main/example-projects/blog">blog example</a>, and the test suite runs it.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">asynccontextmanager</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span>
@@ -795,18 +767,18 @@ It adds the current user, drafts that only their author can see, a publish
 action, and rules for who may change a post.</p>
 <p>These pages go deeper into what this tutorial used:</p>
 <ul class="simple">
-<li><p><a class="reference internal" href="rest_views.html"><span class="std std-doc">Using RestView</span></a>: the default CRUD contract and the view
+<li><p><a class="reference internal" href="crud_routes.html"><span class="std std-doc">CRUD Routes</span></a>: the default CRUD contract and the view
 settings</p></li>
-<li><p><a class="reference internal" href="technical_details.html#auto-generated-schemas"><span class="std std-ref">Auto-Generated Schemas</span></a>: what
+<li><p><a class="reference internal" href="schemas.html#auto-generated-schemas"><span class="std std-ref">How Restly generates a schema</span></a>: what
 Restly generates from a model, and when to write a schema</p></li>
-<li><p><a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Work with Foreign Keys and Relationships</span></a>:
+<li><p><a class="reference internal" href="relationships.html"><span class="std std-doc">Relationships</span></a>:
 checked references and nested objects</p></li>
-<li><p><a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">Filter, Sort, and Paginate Lists</span></a>: every filter
+<li><p><a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering &amp; Pagination</span></a>: every filter
 operator, sorting, and paging</p></li>
-<li><p><a class="reference internal" href="howto_testing.html"><span class="std std-doc">Testing</span></a>: test the API, with a rollback after each test</p></li>
+<li><p><a class="reference internal" href="testing.html"><span class="std std-doc">Testing</span></a>: test the API, with a rollback after each test</p></li>
 <li><p><a class="reference internal" href="deploying.html"><span class="std std-doc">Deploying</span></a>: Alembic migrations instead of <code class="docutils literal notranslate"><span class="pre">async_create_all</span></code></p></li>
-<li><p><a class="reference internal" href="class_based_views.html"><span class="std std-doc">Views</span></a>: the sync <code class="docutils literal notranslate"><span class="pre">RestView</span></code>, and views without a
-model</p></li>
+<li><p><a class="reference internal" href="views.html"><span class="std std-doc">Views</span></a>: views without a model, and
+<a class="reference internal" href="crud_routes.html#choose-async-or-sync"><span class="std std-ref">the sync <code class="docutils literal notranslate"><span class="pre">RestView</span></code></span></a></p></li>
 </ul>
 <div class="toctree-wrapper compound">
 </div>

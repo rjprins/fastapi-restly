@@ -33,7 +33,7 @@ Replace the `app = FastAPI(...)` line with this one:
 ```{literalinclude} ../example-projects/blog/blog/main.py
 :language: python
 :start-at: app = FastAPI(
-:end-at: app = FastAPI(
+:end-at: get_user_id)])
 ```
 
 `get_user_id` takes the user id from an `X-User-ID` header, so you can try
@@ -217,7 +217,7 @@ curl -X PATCH http://127.0.0.1:8000/posts/1 \
 Ben gets 404, because the scope hides the draft from him: for this reader,
 the post does not exist. When he can see the post but may not change it,
 `authorize` answers 403. The next section shows this.
-[`authorize`: gate the action](#authorize-gate) has more examples.
+[Allow or refuse an action](#authorize-gate) has more examples.
 
 ## Publish a draft
 
@@ -293,7 +293,7 @@ curl -X POST -H 'X-User-ID: 1' http://127.0.0.1:8000/posts/2/publish
 A side effect that must be saved together with the post, such as an audit
 row, goes in
 {meth}`before_action_commit <fastapi_restly.views.AsyncRestView.before_action_commit>`
-instead. See [Transaction hooks](#transaction-hooks).
+instead. See [Run code before or after the commit](#transaction-hooks).
 
 ## Share the rules with comments
 
@@ -323,7 +323,7 @@ comments on it. So comments get their own scope:
   its `Current.user_id` each time it applies the comment scope.
 
 Together: a comment is visible when its post is visible.
-[A clause inside an expression](#clause-in-expression) explains this in more
+[Use a clause inside another condition](#clause-in-expression) explains this in more
 detail.
 
 Views are normal Python classes. Move `authorize` from `PostView` into a
@@ -353,7 +353,7 @@ class CommentView(AuthoredView):
 ```
 
 Register only the views that have a model, not the base class.
-[Share Behaviour with Base Views](howto_inheritance.md) covers inheritance in
+[Share behavior with base views](#share-behaviour-with-base-views) covers inheritance in
 more detail.
 
 The `comment` table has a new column. Stop the server, delete `blog.db`, and
@@ -463,14 +463,14 @@ test_main.py ..                                              [100%]
 2 passed
 ```
 
-The [blog example](#example-blog) has a test for every rule in this
-tutorial. [Testing](howto_testing.md) covers the fixtures, and apps that
+The [blog example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/blog) has a test for every rule in this
+tutorial. [Testing](testing.md) covers the fixtures, and apps that
 build their configuration in a factory.
 
 ## The complete file
 
 Here is the blog with every change from this tutorial. The same file is the
-[blog example](#example-blog):
+[blog example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/blog):
 
 ```{literalinclude} ../example-projects/blog/blog/main.py
 :language: python
@@ -488,25 +488,25 @@ Write a test for each exercise.
    in `CommentView`, and call `super().authorize(...)` for the other cases.
    Load the post with `await self.session.get(Post, obj.post_id)`, because
    `obj.post` does not load by itself in async code.
-   [Relationship Loading and Async](howto_relationship_loading.md) explains
+   [Return related objects in a response](#relationship-loading) explains
    why.
 
 ## Next steps
 
 These pages cover the topics of this tutorial in more detail:
 
-- [Current context](howto_current.md): bind values in scripts, jobs, and
+- [Current & ContextParam](current.md): bind values in scripts, jobs, and
   tests
 - [Scopes](scopes.md): the model scope, view scopes, and a scope for one route
-- [Customizing RestView](customize.md): every method you can override, and
+- [Request Lifecycle & Hooks](lifecycle.md): every method you can override, and
   when to override one
-- [Share Behaviour with Base Views](howto_inheritance.md): the full
+- [Share behavior with base views](#share-behaviour-with-base-views): the full
   inheritance guide
-- [Testing](howto_testing.md): the test fixtures, and test databases
-- [Project structure](howto_project_structure.md): split the file into
+- [Testing](testing.md): the test fixtures, and test databases
+- [New & Existing Projects](projects.md): split the file into
   packages as the app grows, or generate a project with `restly new`
 - [Deploying](deploying.md): a production database, and Alembic migrations
   instead of `async_create_all`
-- [Use Restly in an Existing Project](howto_existing_project.md): add Restly
+- [New & Existing Projects](projects.md): add Restly
   beside the routes you already have
 - [API Reference](api_reference.md)

@@ -1,0 +1,1047 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" data-theme="auto">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, follow">
+
+    <title>New &amp; Existing Projects &#8212; FastAPI-Restly 0.11.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "auto";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "auto";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=f3b36f1a"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'projects';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://www.fastapi-restly.org/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <link rel="canonical" href="https://www.fastapi-restly.org/dev/projects.html" />
+    <link rel="icon" href="_static/favicon.svg"/>
+    <link rel="author" title="About these documents" href="about.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Database &amp; Configuration" href="database.html" />
+    <link rel="prev" title="Guide" href="guide.html" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.11" />
+<meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700&amp;display=swap"
+      rel="stylesheet" />
+<!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
+<script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="auto">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/fr-monogram.svg" class="logo__image only-light" alt=""/>
+    <img src="_static/fr-monogram-dark.svg" class="logo__image only-dark pst-js-only" alt=""/>
+  
+  
+    <p class="title logo__title">FastAPI-Restly</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">New &amp; Existing Projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="database.html">Database &amp; Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering &amp; Pagination</a></li>
+<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="current.html">Current &amp; ContextParam</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
+<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
+<li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="guide.html" class="nav-link">Guide</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">New &amp; Existing Projects</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="new-existing-projects">
+<h1>New &amp; Existing Projects<a class="headerlink" href="#new-existing-projects" title="Link to this heading">#</a></h1>
+<p>Restly adds views to a FastAPI application. It does not replace the
+application, and it does not need its own project layout. Three facts hold
+for a new project and for an existing one:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.include_view" title="fastapi_restly.views.include_view"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.include_view()</span></code></a> registers the
+routes of a view on any <code class="docutils literal notranslate"><span class="pre">FastAPI</span></code> app or <code class="docutils literal notranslate"><span class="pre">APIRouter</span></code>, next to the routes
+that are already there.</p></li>
+<li><p>There is no global Restly router. A view has routes only where you call
+<code class="docutils literal notranslate"><span class="pre">fr.include_view()</span></code>.</p></li>
+<li><p>There is no autodiscovery. Nothing scans your packages for views or models.
+You import each view and register it yourself.</p></li>
+</ul>
+<p>Restly also needs one call to
+<a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure()</span></code></a> at startup, which tells it
+where its database sessions come from; see
+<a class="reference internal" href="database.html#configure-restly"><span class="std std-ref">Database &amp; Configuration</span></a>.</p>
+<p>So any set of modules that Python can import works. The first part of this
+page adds Restly to an application that you already have. The second part
+shows the layout that we recommend for a new project, which <code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code>
+generates.</p>
+<section id="add-a-view-next-to-your-existing-routes">
+<span id="add-to-existing-app"></span><h2>Add a view next to your existing routes<a class="headerlink" href="#add-a-view-next-to-your-existing-routes" title="Link to this heading">#</a></h2>
+<p>Call <code class="docutils literal notranslate"><span class="pre">fr.include_view()</span></code> where you already compose your routes. Your
+existing routers and the new views can share the same app or router:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">APIRouter</span><span class="p">,</span> <span class="n">FastAPI</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">async_engine</span>          <span class="c1"># the async engine your app already builds</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.orders</span><span class="w"> </span><span class="kn">import</span> <span class="n">router</span> <span class="k">as</span> <span class="n">orders_router</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">()</span>
+<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">async_engine</span><span class="o">=</span><span class="n">async_engine</span><span class="p">)</span>
+
+<span class="n">api</span> <span class="o">=</span> <span class="n">APIRouter</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/api&quot;</span><span class="p">)</span>
+
+<span class="n">api</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">orders_router</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/orders&quot;</span><span class="p">)</span>  <span class="c1"># existing FastAPI routes</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
+
+
+<span class="n">fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">UserView</span><span class="p">)</span>  <span class="c1"># registers the /api/users CRUD routes</span>
+
+<span class="n">app</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">api</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">fr.include_view()</span></code> also works as a class decorator;
+<a class="reference internal" href="views.html#register-a-view"><span class="std std-ref">Views</span></a> explains both forms. Pass <code class="docutils literal notranslate"><span class="pre">app</span></code> to
+<code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code>, also when the views are on a router. That call installs
+Restly’s error handlers on the app and checks its OpenAPI schema, and
+<code class="docutils literal notranslate"><span class="pre">fr.include_view()</span></code> on a router cannot do this; see
+<a class="reference internal" href="database.html#configure-restly"><span class="std std-ref">Database &amp; Configuration</span></a>.</p>
+<p>You adopt Restly one resource at a time. In the example, the orders routes
+stay hand-written, and the users routes come from <code class="docutils literal notranslate"><span class="pre">UserView</span></code>. If you add a
+<code class="docutils literal notranslate"><span class="pre">ProductView</span></code> later, the orders router does not change.</p>
+<p>A plain FastAPI route can also sit next to a view, for an endpoint that is not
+part of the CRUD routes:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users/</span><span class="si">{id}</span><span class="s2">/export&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">export_user</span><span class="p">(</span><span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+</section>
+<section id="write-one-crud-route-by-hand">
+<span id="hand-written-crud-route"></span><h2>Write one CRUD route by hand<a class="headerlink" href="#write-one-crud-route-by-hand" title="Link to this heading">#</a></h2>
+<p>To write one of the default CRUD routes yourself, leave it out of the view
+with <a class="reference internal" href="crud_routes.html#exclude-crud-routes"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">exclude_routes</span></code></span></a> and add your own FastAPI route:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
+    <span class="n">exclude_routes</span> <span class="o">=</span> <span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">DELETE</span><span class="p">,)</span>
+
+
+<span class="n">fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">UserView</span><span class="p">)</span>
+
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="s2">&quot;/users/</span><span class="si">{id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">204</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete_user</span><span class="p">(</span><span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">UserView</span></code> still serves list, create, read and update. Your FastAPI route
+serves DELETE. When the HTTP contract stays the same and only the logic
+changes, override a business method instead, such as
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete" title="fastapi_restly.views.RestView.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a>. For a different status
+code, response shape or query interface, see
+<a class="reference internal" href="lifecycle.html#which-method-to-override"><span class="std std-ref">Request Lifecycle &amp; Hooks</span></a>.</p>
+</section>
+<section id="move-a-resource-back-to-plain-fastapi">
+<span id="move-back-to-fastapi"></span><h2>Move a resource back to plain FastAPI<a class="headerlink" href="#move-a-resource-back-to-plain-fastapi" title="Link to this heading">#</a></h2>
+<p>A resource has Restly routes only where you call <code class="docutils literal notranslate"><span class="pre">fr.include_view()</span></code>. To move
+it back to plain FastAPI, remove that call and register an <code class="docutils literal notranslate"><span class="pre">APIRouter</span></code> with
+the same prefix and path operations. Your models, schemas, dependencies and
+session setup can stay where they are.</p>
+</section>
+<section id="replace-a-hand-written-router-with-a-view">
+<span id="replace-hand-written-router"></span><h2>Replace a hand-written router with a view<a class="headerlink" href="#replace-a-hand-written-router-with-a-view" title="Link to this heading">#</a></h2>
+<p>Before you replace a hand-written CRUD router with a
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a>, compare the two HTTP
+contracts:</p>
+<ol class="arabic simple">
+<li><p>Map your routes to the default CRUD routes of the view: <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>, <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code>,
+and <code class="docutils literal notranslate"><span class="pre">GET</span></code>, <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> and <code class="docutils literal notranslate"><span class="pre">DELETE</span></code> on <code class="docutils literal notranslate"><span class="pre">/{id}</span></code>
+(<a class="reference internal" href="crud_routes.html#default-crud-behavior"><span class="std std-ref">the exact contract</span></a>). Other routes on the
+router, such as exports and actions, become custom routes on the view or
+stay as plain FastAPI routes next to it.</p></li>
+<li><p>Keep routes with a different contract out of the change. For example, a
+<code class="docutils literal notranslate"><span class="pre">PUT</span></code> update or a delete that does not answer 204 can stay hand-written:
+leave it out with
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_routes" title="fastapi_restly.views.BaseRestView.exclude_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_routes</span></code></a>
+until you change its contract.</p></li>
+<li><p>Write tests before you change anything. Test the responses of the old
+router with <a class="reference internal" href="testing.html#test-clients"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">RestlyTestClient</span></code></span></a>. Then replace the router
+with the view and run the same tests again. A changed payload or status
+code then shows at once.</p></li>
+</ol>
+<p>A resource in the middle of this change looks like this:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ProductView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/products&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Product</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ProductSchema</span>          <span class="c1"># match your old response shape exactly</span>
+    <span class="n">exclude_routes</span> <span class="o">=</span> <span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">DELETE</span><span class="p">,)</span>  <span class="c1"># the old DELETE returns the object</span>
+
+
+<span class="n">fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">ProductView</span><span class="p">)</span>
+<span class="n">api</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">legacy_delete_router</span><span class="p">)</span>  <span class="c1"># until the contract is changed</span>
+</pre></div>
+</div>
+</section>
+<section id="keep-your-engine-and-your-models">
+<h2>Keep your engine and your models<a class="headerlink" href="#keep-your-engine-and-your-models" title="Link to this heading">#</a></h2>
+<p>Restly can use the database setup and the models that your application
+already has:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="database.html#reuse-existing-engine"><span class="std std-ref">Reuse your existing engine or sessionmaker</span></a>
+shows how to give your engine to <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code>.</p></li>
+<li><p><a class="reference internal" href="models.html#existing-models"><span class="std std-ref">Use your existing models</span></a> shows what Restly needs from
+your models.</p></li>
+</ul>
+</section>
+<section id="generate-a-new-project">
+<span id="restly-new"></span><h2>Generate a new project<a class="headerlink" href="#generate-a-new-project" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> creates a project with a <code class="docutils literal notranslate"><span class="pre">users</span></code> resource, a test suite, and the
+setup for settings and the database schema:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>fastapi-restly
+restly<span class="w"> </span>new<span class="w"> </span>myapp
+</pre></div>
+</div>
+<p>The name is used for the directory, for <code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code> and for the
+databases. The package inside is always <code class="docutils literal notranslate"><span class="pre">app</span></code>, so
+<code class="docutils literal notranslate"><span class="pre">from</span> <span class="pre">app.settings</span> <span class="pre">import</span> <span class="pre">Settings</span></code> is the same line in every Restly project.</p>
+<p>There are three choices. Each one is a flag, and on a terminal the command
+asks for each flag that you leave out:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p></p></th>
+<th class="head"><p>default</p></th>
+<th class="head"><p>alternative</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Views and driver</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--async</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--sync</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Database</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--postgres</span></code>, with a <code class="docutils literal notranslate"><span class="pre">compose.yaml</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--sqlite</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Schema</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--alembic</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--create-all</span></code>, built at startup and in tests</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><a class="reference external" href="https://github.com/rjprins/fastapi-restly/tree/main/example-projects/starter">example-projects/starter</a>
+is exactly what <code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span> <span class="pre">myapp</span></code> writes with the default answers: async
+views, PostgreSQL and Alembic. Read it to see the recommended layout at its
+smallest. A check in CI keeps it equal to the output of the generator. It
+uses the released version of Restly, not this repository, so local changes to
+Restly do not show in it.</p>
+</section>
+<section id="start-with-one-file">
+<h2>Start with one file<a class="headerlink" href="#start-with-one-file" title="Link to this heading">#</a></h2>
+<p>A single module is the right shape for a first resource.
+<a class="reference internal" href="tutorial.html"><span class="std std-doc">Build a Blog API</span></a> builds a complete application in one file,
+and splitting that file would not help while it stays that small.</p>
+<p>Split it when the second or third resource arrives, or when one resource gets
+explicit schemas and several overrides.</p>
+</section>
+<section id="organize-by-subject-then-by-type">
+<span id="project-layout"></span><h2>Organize by subject, then by type<a class="headerlink" href="#organize-by-subject-then-by-type" title="Link to this heading">#</a></h2>
+<p>Give each resource a package, and name the modules inside it after the kind
+of code that they hold:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>app/
+├── main.py                 # Application factory, VIEWS, and lifespan
+├── asgi.py                 # app = create_app(), the deployment entrypoint
+├── settings.py             # Pydantic settings
+├── current.py              # Current namespace (optional)
+├── models.py               # Declarative base and shared model mixins
+├── views.py                # Shared base view and mixins
+├── users/
+│   ├── __init__.py
+│   ├── models.py
+│   ├── schemas.py
+│   └── views.py
+└── tasks/
+    ├── __init__.py
+    ├── models.py
+    ├── schemas.py
+    └── views.py
+</pre></div>
+</div>
+<p>The subject comes first, and the type of code second. This matters once the
+application is large enough. The
+<a class="reference external" href="https://github.com/rjprins/fastapi-restly/tree/main/example-projects/saas/app">SaaS example</a>
+is a complete application in this layout.</p>
+</section>
+<section id="keep-imports-pointing-one-way">
+<span id="import-direction"></span><h2>Keep imports pointing one way<a class="headerlink" href="#keep-imports-pointing-one-way" title="Link to this heading">#</a></h2>
+<p>Within a subject, models import nothing from the other modules, schemas
+import models, and views import both. The composition of the application
+imports the views. With this order, you can import one subject without the
+rest. Alembic needs that, because it loads the models without an
+application. Tests need it too, because they load one view without the rest
+of the app.</p>
+<p>Importing a subject package must not register anything. Keep <code class="docutils literal notranslate"><span class="pre">__init__.py</span></code>
+empty, or give it only a docstring. Import the module that holds a class,
+not a module that re-exports a whole subject.</p>
+</section>
+<section id="declare-the-base-once">
+<span id="project-base"></span><h2>Declare the base once<a class="headerlink" href="#declare-the-base-once" title="Link to this heading">#</a></h2>
+<p>Declare your declarative base in <code class="docutils literal notranslate"><span class="pre">app/models.py</span></code>, and import it in the
+<code class="docutils literal notranslate"><span class="pre">models.py</span></code> of each subject:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># app/models.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">DeclarativeBase</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Base</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ModelDefaults</span><span class="p">,</span> <span class="n">DeclarativeBase</span><span class="p">):</span>
+    <span class="k">pass</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># app/users/models.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mapped</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Base</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">User</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDMixin</span><span class="p">,</span> <span class="n">Base</span><span class="p">):</span>
+    <span class="n">email</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Model mixins that several subjects share, such as a tenant column, also go in
+<code class="docutils literal notranslate"><span class="pre">app/models.py</span></code>. <a class="reference internal" href="models.html#model-defaults"><span class="std std-ref">Models</span></a> explains what goes in the base.</p>
+</section>
+<section id="share-current-from-the-package-root">
+<span id="project-current"></span><h2>Share Current from the package root<a class="headerlink" href="#share-current-from-the-package-root" title="Link to this heading">#</a></h2>
+<p>When several modules need values from the request, declare
+<a class="reference internal" href="current.html"><span class="std std-doc">Current</span></a> in <code class="docutils literal notranslate"><span class="pre">app/current.py</span></code>. Import it from there
+wherever you use it:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">app.current</span><span class="w"> </span><span class="kn">import</span> <span class="n">Current</span>
+</pre></div>
+</div>
+<p>The module can also define <code class="docutils literal notranslate"><span class="pre">SetCurrentContextDep</span></code> with
+<a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.ContextNamespace.depends" title="fastapi_restly.clauses.ContextNamespace.depends"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Current.depends</span></code></a>.
+Attach this dependency in <code class="docutils literal notranslate"><span class="pre">main.py</span></code> or in the shared <code class="docutils literal notranslate"><span class="pre">views.py</span></code>.</p>
+<p>Do not import view modules or the application factory in <code class="docutils literal notranslate"><span class="pre">current.py</span></code>.
+Models and scripts must be able to import it without building an application.
+<code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> does not generate this module.</p>
+</section>
+<section id="compose-in-one-place">
+<span id="id1"></span><h2>Compose in one place<a class="headerlink" href="#compose-in-one-place" title="Link to this heading">#</a></h2>
+<p>Register all your views in one place: a <code class="docutils literal notranslate"><span class="pre">VIEWS</span></code> tuple in <code class="docutils literal notranslate"><span class="pre">main.py</span></code>, which
+the application factory registers after it calls
+<a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure(app,</span> <span class="pre">...)</span></code></a>. This is the
+<code class="docutils literal notranslate"><span class="pre">main.py</span></code> that <code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> writes:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="sd">&quot;&quot;&quot;Application factory.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncIterator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">asynccontextmanager</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">Settings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.users.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">UserView</span>
+
+<span class="n">VIEWS</span> <span class="o">=</span> <span class="p">(</span><span class="n">UserView</span><span class="p">,)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">create_app</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">FastAPI</span><span class="p">:</span>
+    <span class="n">settings</span> <span class="o">=</span> <span class="n">Settings</span><span class="o">.</span><span class="n">current</span>
+    <span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">&quot;myapp&quot;</span><span class="p">,</span> <span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">)</span>
+    <span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">async_database_url</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">database_url</span><span class="p">,</span> <span class="n">health</span><span class="o">=</span><span class="s2">&quot;/health&quot;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">view</span> <span class="ow">in</span> <span class="n">VIEWS</span><span class="p">:</span>
+        <span class="n">fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">view</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">app</span>
+
+
+<span class="nd">@asynccontextmanager</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">lifespan</span><span class="p">(</span><span class="n">_app</span><span class="p">:</span> <span class="n">FastAPI</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AsyncIterator</span><span class="p">[</span><span class="kc">None</span><span class="p">]:</span>
+    <span class="k">yield</span>
+    <span class="c1"># An async engine that is never disposed drops its connections rather than</span>
+    <span class="c1"># closing them, leaving a ResourceWarning for each one.</span>
+    <span class="k">await</span> <span class="n">fr</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_async_engine</span><span class="p">()</span><span class="o">.</span><span class="n">dispose</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Add each new view to <code class="docutils literal notranslate"><span class="pre">VIEWS</span></code>. Each view imports its own models, so importing
+<code class="docutils literal notranslate"><span class="pre">main.py</span></code> imports every model, and <code class="docutils literal notranslate"><span class="pre">Base.metadata</span></code> then holds the whole
+schema. Alembic’s <code class="docutils literal notranslate"><span class="pre">env.py</span></code> imports <code class="docutils literal notranslate"><span class="pre">main.py</span></code> for this reason; see
+<a class="reference internal" href="deploying.html#alembic"><span class="std std-ref">Set up migrations with Alembic</span></a>. A model that no view imports, such as an
+outbox table, needs its own import, which that section also explains.</p>
+<p>Importing <code class="docutils literal notranslate"><span class="pre">main.py</span></code> must not build the application. <code class="docutils literal notranslate"><span class="pre">create_app()</span></code> builds it,
+and only the server calls it. <a class="reference internal" href="deploying.html#running-the-app"><span class="std std-ref">Run the app</span></a> shows how,
+and why the application object does not belong in <code class="docutils literal notranslate"><span class="pre">main.py</span></code>. The lifespan in
+this file closes the engine on shutdown; see
+<a class="reference internal" href="database.html#engine-disposal"><span class="std std-ref">Close the engine on shutdown</span></a>.</p>
+</section>
+<section id="share-view-behavior-from-the-package-root">
+<span id="project-views"></span><h2>Share view behavior from the package root<a class="headerlink" href="#share-view-behavior-from-the-package-root" title="Link to this heading">#</a></h2>
+<p>Behavior that every view shares belongs in a root <code class="docutils literal notranslate"><span class="pre">views.py</span></code>: the base class
+that your views inherit from, and any mixins. The subject packages hold the
+concrete views, and the root module holds what they build on. Add this module
+when a second view needs the same behavior. For this reason, a generated
+project does not have one.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># app/users/views.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..views</span><span class="w"> </span><span class="kn">import</span> <span class="n">AuthenticatedView</span><span class="p">,</span> <span class="n">SoftDeleteMixin</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">User</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.schemas</span><span class="w"> </span><span class="kn">import</span> <span class="n">UserSchema</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">SoftDeleteMixin</span><span class="p">,</span> <span class="n">AuthenticatedView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="views.html#share-behaviour-with-base-views"><span class="std std-ref">Share behavior with base views</span></a> explains
+the base class, and <a class="reference internal" href="models.html#structural-pieces"><span class="std std-ref">Where tenant, audit and soft-delete rules go</span></a> explains the mixins. The
+SaaS example has this
+<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py">root <code class="docutils literal notranslate"><span class="pre">views.py</span></code></a>.</p>
+</section>
+<section id="add-modules-only-when-you-need-them">
+<span id="when-to-add-modules"></span><h2>Add modules only when you need them<a class="headerlink" href="#add-modules-only-when-you-need-them" title="Link to this heading">#</a></h2>
+<p>Do not create a module before you have something to put in it. In particular,
+a subject does not need a <code class="docutils literal notranslate"><span class="pre">service.py</span></code>. For CRUD, the view class already is
+that layer. Your logic goes in business methods such as
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a> and
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a>. A layer that only
+passes calls on to them adds code but no new place to change behavior. Write
+a <code class="docutils literal notranslate"><span class="pre">service.py</span></code> when logic also runs outside a request, such as work that a
+background worker shares; see <a class="reference internal" href="lifecycle.html#domain-utilities"><span class="std std-ref">Build and save objects</span></a>.</p>
+<p>The same holds for <code class="docutils literal notranslate"><span class="pre">dependencies.py</span></code>, <code class="docutils literal notranslate"><span class="pre">constants.py</span></code> and <code class="docutils literal notranslate"><span class="pre">exceptions.py</span></code> in a
+subject. Add one when it holds more than one item.</p>
+<p>When <code class="docutils literal notranslate"><span class="pre">main.py</span></code> grows long, move <code class="docutils literal notranslate"><span class="pre">VIEWS</span></code> and the registration loop to an
+<code class="docutils literal notranslate"><span class="pre">api.py</span></code> with a <code class="docutils literal notranslate"><span class="pre">register_views(app)</span></code> function. <code class="docutils literal notranslate"><span class="pre">main.py</span></code> imports it, so
+importing <code class="docutils literal notranslate"><span class="pre">main.py</span></code> still imports every model.</p>
+<p>Keep concerns of the whole application in top-level modules that are named
+for what they do, such as <code class="docutils literal notranslate"><span class="pre">auth.py</span></code>, <code class="docutils literal notranslate"><span class="pre">settings.py</span></code> or <code class="docutils literal notranslate"><span class="pre">outbox.py</span></code>. Turn one
+into a package only when it grows several modules that belong together.</p>
+</section>
+<section id="serve-more-than-one-api-version">
+<span id="api-versioning"></span><h2>Serve more than one API version<a class="headerlink" href="#serve-more-than-one-api-version" title="Link to this heading">#</a></h2>
+<p>Give each version its own router with its own prefix, and its own tuple of
+views. A view that does not change goes in both tuples:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># app/main.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">APIRouter</span><span class="p">,</span> <span class="n">FastAPI</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.orders.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">OrderV2View</span><span class="p">,</span> <span class="n">OrderView</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">Settings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.users.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">UserView</span>
+
+<span class="n">VIEWS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;/v1&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">UserView</span><span class="p">,</span> <span class="n">OrderView</span><span class="p">),</span>
+    <span class="s2">&quot;/v2&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">UserView</span><span class="p">,</span> <span class="n">OrderV2View</span><span class="p">),</span>  <span class="c1"># OrderV2View has the new contract</span>
+<span class="p">}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">create_app</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">FastAPI</span><span class="p">:</span>
+    <span class="n">settings</span> <span class="o">=</span> <span class="n">Settings</span><span class="o">.</span><span class="n">current</span>
+    <span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">()</span>
+    <span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">async_database_url</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">database_url</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">prefix</span><span class="p">,</span> <span class="n">views</span> <span class="ow">in</span> <span class="n">VIEWS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">router</span> <span class="o">=</span> <span class="n">APIRouter</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="n">prefix</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">view</span> <span class="ow">in</span> <span class="n">views</span><span class="p">:</span>
+            <span class="n">fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">router</span><span class="p">,</span> <span class="n">view</span><span class="p">)</span>
+        <span class="n">app</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">router</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">app</span>
+</pre></div>
+</div>
+<p>A view that you register on two routers serves its routes on both. The
+default operation IDs include the full path, so the two versions get
+different IDs; see <a class="reference internal" href="openapi.html#default-route-metadata"><span class="std std-ref">The names and operation IDs of the CRUD routes</span></a>.
+A base view can also hold the version prefix for all the views that inherit
+from it; see <a class="reference internal" href="views.html#prefix-concatenation"><span class="std std-ref">Concatenate URL prefixes</span></a>.</p>
+</section>
+<section id="see-also">
+<h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="database.html"><span class="std std-doc">Database &amp; Configuration</span></a>: the engine, the sessions, and
+<code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code>.</p></li>
+<li><p><a class="reference internal" href="deploying.html"><span class="std std-doc">Deploying</span></a>: run the application, and set up Alembic.</p></li>
+<li><p><a class="reference internal" href="testing.html"><span class="std std-doc">Testing</span></a>: the <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> for this layout.</p></li>
+<li><p><a class="reference internal" href="crud_routes.html#nested-resources"><span class="std std-ref">Nest a resource under its parent</span></a> and
+<a class="reference internal" href="views.html#receive-a-webhook"><span class="std std-ref">Receive a webhook</span></a>: shapes that your existing app
+probably has.</p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="guide.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Guide</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="database.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Database &amp; Configuration</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#add-a-view-next-to-your-existing-routes">Add a view next to your existing routes</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#write-one-crud-route-by-hand">Write one CRUD route by hand</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#move-a-resource-back-to-plain-fastapi">Move a resource back to plain FastAPI</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#replace-a-hand-written-router-with-a-view">Replace a hand-written router with a view</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#keep-your-engine-and-your-models">Keep your engine and your models</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#generate-a-new-project">Generate a new project</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#start-with-one-file">Start with one file</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#organize-by-subject-then-by-type">Organize by subject, then by type</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#keep-imports-pointing-one-way">Keep imports pointing one way</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#declare-the-base-once">Declare the base once</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#share-current-from-the-package-root">Share Current from the package root</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#compose-in-one-place">Compose in one place</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#share-view-behavior-from-the-package-root">Share view behavior from the package root</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#add-modules-only-when-you-need-them">Add modules only when you need them</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#serve-more-than-one-api-version">Serve more than one API version</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+<p class="sidebar-newsletter">
+  <a href="newsletter.html">Subscribe to newsletter</a>
+</p></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, Rutger Prins.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
