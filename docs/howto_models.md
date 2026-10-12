@@ -220,7 +220,7 @@ class WorldView(fr.AsyncRestView):
 
 {class}`RestView <fastapi_restly.views.RestView>` supports these models for
 default CRUD routes and
-[auto-generated schemas](technical_details.md#auto-generated-schemas). Pass
+[auto-generated schemas](#auto-generated-schemas). Pass
 the same base wherever Restly asks for your models' tables, as in
 `fr.db.async_create_all(AppBase)` and
 `fr.testing.configure_tests(base=AppBase)`.

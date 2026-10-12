@@ -105,7 +105,7 @@ Restly step by step, from the first model to authors, drafts, and tests.
 - **[React Admin ready](howto_react_admin.md)**: `AsyncReactAdminView` speaks `ra-data-simple-rest`
 - **[SQLAlchemy 2.0 support](tutorial.md)**: async-first with modern patterns
 - **[Pydantic v2 integration](howto_custom_schema.md)**: validation and serialization for public contracts
-- **[Automatic schema generation](technical_details.md#auto-generated-schemas)**: response, create, and update schemas generated automatically
+- **[Automatic schema generation](#auto-generated-schemas)**: response, create, and update schemas generated automatically
 - **[Filtering](howto_query_modifiers.md)**: filter, sort, and paginate from a stable URL dialect generated from the view's schema
 - **[Current & ContextParam](howto_current.md)**: bind values, such as the current user, to a request-local context and read them anywhere in the request
 - **[Scopes](scopes.md)**: control what a view can return with one SQLAlchemy where clause, applied to every read and reference check
