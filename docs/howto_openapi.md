@@ -1,14 +1,31 @@
 # OpenAPI
 
-Restly registers its default CRUD routes as ordinary FastAPI path operations,
-so FastAPI's OpenAPI customization applies to them. This page maps the
-customization points.
+Restly adds each route of a view to FastAPI as a normal path operation. So
+FastAPI builds the OpenAPI spec, and FastAPI's options work on every route,
+the CRUD routes included. Restly fills in a few things for you:
 
-## Per-view metadata
+- the tag of each route: the view's `tags`, or else a tag made from the last
+  segment of the prefix, so `/order-items` gives `Order Items`;
+- the name, the summary and the operation ID of each CRUD route;
+- the request and response types of the CRUD routes: the classes that Restly
+  builds from the view's schema, named as in
+  [The names of the generated classes](#generated-class-names);
+- the filter, sort and page parameters of each list route;
+- an `x-resource-ref` on each field that points to another resource.
 
-To apply OpenAPI metadata across a whole view, set the
-{attr}`tags <fastapi_restly.views.View.tags>`, {attr}`responses <fastapi_restly.views.View.responses>`, and {attr}`dependencies <fastapi_restly.views.View.dependencies>` class attributes.
-They exist on every view and apply to all of its routes, default and custom:
+When the app builds its spec, Restly also warns when two classes have the same
+name; see [Name your schemas](#name-your-schemas).
+
+To change a default, set a view attribute or a route option. To document a
+custom route, pass keyword arguments to its decorator, as in FastAPI.
+
+(view-openapi-metadata)=
+## Set tags and responses for a whole view
+
+The class attributes
+{attr}`tags <fastapi_restly.views.View.tags>` and
+{attr}`responses <fastapi_restly.views.View.responses>` apply to every route
+of the view, the CRUD routes and the custom routes:
 
 ```python
 @fr.include_view(app)
@@ -20,10 +37,20 @@ class InvoiceView(fr.AsyncRestView):
     schema = InvoiceSchema
 ```
 
-(default-route-metadata)=
-## Default route names and operation IDs
+`tags` replaces the tag that Restly makes from the prefix. A subclass
+inherits it. `responses` adds to the responses of the base classes, and an
+entry for the same status code in a subclass wins. A CRUD view starts with
+`{404: {"description": "Not found"}}`.
 
-CRUD routes use these FastAPI route names and OpenAPI summaries:
+The view's {attr}`dependencies <fastapi_restly.views.View.dependencies>` also
+run on every route. A security dependency, such as an OAuth2 scheme, shows in
+the spec as it does in FastAPI. [Views](#share-behaviour-with-base-views)
+covers how a base view shares them.
+
+(default-route-metadata)=
+## The names and operation IDs of the CRUD routes
+
+The CRUD routes get these FastAPI route names, operation IDs and summaries:
 
 | Endpoint method | Route name | Operation ID at `/items` | Summary |
 |---|---|---|---|
@@ -34,40 +61,41 @@ CRUD routes use these FastAPI route names and OpenAPI summaries:
 | `delete_endpoint` | `delete` | `items_delete` | Delete |
 | React Admin `put` | `put` | `items_put` | Update (PUT) |
 
-Default CRUD operation IDs combine the full resource path and the action.
-They omit the final member parameter and the HTTP method suffix. Mounting a
-view under `/v1` changes `items_list` to `v1_items_list`, so mounting the same
-view under `/v1` and `/v2` gives distinct IDs. Renaming the view class or
-changing its tags does not change these IDs.
+An operation ID joins the full path of the resource and the action. It leaves
+out the final `{id}` parameter and the HTTP method. So a view mounted under
+`/v1` gets `v1_items_list` instead of `items_list`, and the same view mounted
+under `/v1` and `/v2` gets different IDs. The class name and the tags of the
+view do not change the IDs.
 
-Parent path parameters remain in the resource name as `by_<parameter>`.
-For `/projects/{project_id}/items`, the list ID is
-`projects_by_project_id_items_list`. Punctuation becomes underscores, so
-`/order-items` uses `order_items_list`. Resource spelling is preserved:
-`/people` uses `people_get`, without singularizing it. Paths that normalize
-to the same name, such as `/order-items` and `/order_items`, need explicit
-operation IDs when included in one schema.
+A path parameter of a parent stays in the ID as `by_<parameter>`. For
+`/projects/{project_id}/items`, the list ID is
+`projects_by_project_id_items_list`. Punctuation becomes an underscore, so
+`/order-items` gives `order_items_list`. Restly keeps the spelling of the
+resource: `/people` gives `people_get`, not a singular form. Two paths that
+give the same name, such as `/order-items` and `/order_items`, need explicit
+operation IDs when they are in one spec.
 
-Changing a CRUD route's `name` changes the action part of its generated ID.
-For example, `name="search"` on the list route produces `items_search`.
-Custom routes and plain {class}`View <fastapi_restly.views.View>` routes use
-FastAPI's normal operation ID rules.
+The route name is the action part of the ID. So `name="search"` on the list
+route gives `items_search`. Custom routes, and the routes of a plain
+{class}`View <fastapi_restly.views.View>`, get FastAPI's normal operation IDs.
 
-Explicit `operation_id` values take precedence. Applications can also supply
-FastAPI's
-[`generate_unique_id_function`](https://fastapi.tiangolo.com/advanced/generate-clients/#custom-generate-unique-id-function).
-Generators supplied on a route, router, router inclusion, or app replace the
-CRUD defaults using FastAPI's normal precedence. They receive the route names
-above, so a generator based on tag and name can produce IDs such as
+An explicit `operation_id` always wins. You can also give FastAPI a
+[`generate_unique_id_function`](https://fastapi.tiangolo.com/advanced/generate-clients/#custom-generate-unique-id-function)
+on a route, a router, an `include_router()` call or the app. It replaces
+Restly's IDs, with FastAPI's normal order of precedence. It receives the route
+names above, so a function based on the tag and the name can give IDs such as
 `items-get_many`.
 
-Regenerate clients when adopting these defaults. To preserve an existing
-operation ID, set `operation_id` in the route's options.
+If you generate clients from the spec, generate them again when you move to
+Restly's IDs. To keep an existing operation ID, set `operation_id` in the
+route's options; see the next section.
 
-## Per-route metadata without replacing a method
+(route-options)=
+## Change the name, summary or operation ID of a CRUD route
 
 Set {attr}`route_options <fastapi_restly.views.View.route_options>` to pass
-FastAPI route keyword arguments to an existing endpoint method:
+FastAPI route keyword arguments to an endpoint method, without replacing the
+method:
 
 ```python
 class InvoiceView(fr.AsyncRestView):
@@ -84,26 +112,28 @@ class InvoiceView(fr.AsyncRestView):
     }
 ```
 
-Keys are endpoint method names or {class}`ViewRoute
-<fastapi_restly.views.ViewRoute>` values. Use `"put"` for React Admin's PUT
-route and the method name for a custom route. Values accept the same keyword
-arguments as a route decorator, except its path. An unknown method name raises
+A key is an endpoint method name or a
+{class}`ViewRoute <fastapi_restly.views.ViewRoute>` value. Use `"put"` for the
+PUT route of React Admin, and the method name for a custom route. A value
+takes the same keyword arguments as a route decorator, except the path. An
+unknown method name raises
 {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
-at registration. Options for an excluded route are ignored.
+when the view registers. Options for an excluded route are ignored.
 
-The options override decorator metadata, which overrides the defaults. A
-subclass inherits the mapping. Declaring a new mapping on the subclass
-replaces it, without merging entries from the parent.
+The options win over the keyword arguments of the decorator, which win over
+Restly's defaults. A subclass inherits the mapping. A subclass that declares
+its own mapping replaces the parent's: Restly does not merge the two.
 
-Default route names repeat across resources. Set distinct `name` values when
-using `app.url_path_for()` to reverse routes from several views. Explicit
-`operation_id` values must be unique across the application's OpenAPI schema.
+The route names repeat across views. If you use `app.url_path_for()` to build
+the URLs of routes in several views, give them names of their own. Each
+explicit `operation_id` must be unique in the app's spec.
 
-## Per-route metadata on custom routes
+(document-custom-route)=
+## Document a custom route
 
 To document a custom route, pass keyword arguments to its route decorator.
-The decorators forward them to FastAPI's `add_api_route()`, so
-custom actions document themselves like any FastAPI endpoint:
+The decorators pass them to FastAPI's `add_api_route()`, so a custom route
+documents itself like any FastAPI route:
 
 ```python
     @fr.post(
@@ -115,40 +145,62 @@ custom actions document themselves like any FastAPI endpoint:
     async def publish(self, id: int): ...
 ```
 
-## Change a default CRUD route's documented contract
+[Endpoint decorators](#endpoint-decorators) lists the decorators and their
+default status codes.
 
-A default route's `response_model` (and therefore its documented schema) comes
-from the view's {attr}`schema <fastapi_restly.views.BaseRestView.schema>` family. OpenAPI shows the classes that
-Restly derives from it, such as `UserResponse` and `UserCreate`; see
-[Generated Class Names](#generated-class-names). To document (and return) a different
-shape on one verb, replace that endpoint method with your own decorator and
-`response_model`; see
-[Responses](howto_response_schema.md),
-[a different schema for the list endpoint](#list-schema),
-and [replacing an endpoint method](#replace-endpoint-method).
+## Document another response for a CRUD route
 
-Routes removed with {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` disappear from the schema entirely.
+The `response_model` of a CRUD route, and so its schema in the spec, comes
+from the classes that Restly builds from the view's
+{attr}`schema <fastapi_restly.views.BaseRestView.schema>`, such as
+`UserResponse` and `UserCreate`. To change the fields of every route, set
+the view's response class; see
+[Your own response class](#own-response-class). To document and return
+another shape on one route, replace its endpoint method with your own
+decorator and `response_model`; see
+[Change the shape of one route](#one-route-shape) and
+[Use a different schema for the list route](#list-schema).
 
-## Resource references (`x-resource-ref`)
+A route that the view leaves out with
+{attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` is
+not in the spec at all; see [Exclude CRUD routes](#exclude-crud-routes).
 
-Reference fields are annotated in the generated spec so clients and
-generators can see which resource a scalar id points at. Schema fields
-declared with {class}`fr.MustExist[int, Model] <fastapi_restly.schemas.MustExist>`
-(a foreign-key column) or {class}`fr.IDRef[Model] <fastapi_restly.schemas.IDRef>` /
-{class}`fr.IDSchema[Model] <fastapi_restly.schemas.IDSchema>` (a relationship)
-carry the vendor extension `x-resource-ref: "<resource-name>"`. The reference
-styles are covered in
+(x-resource-ref)=
+## See which resource an id points to
+
+Restly adds the vendor extension `x-resource-ref` to each field that points to
+another resource. A client or a code generator can read it. Its value is the
+prefix of the view that serves the target model, without the leading slash:
+
+```json
+{
+  "author_id": {"type": "integer", "title": "Author Id", "x-resource-ref": "authors"}
+}
+```
+
+Two kinds of fields get it:
+
+- a field named after a foreign key column, whatever its type, such as
+  `author_id: fr.MustExist[int, Author]` or `author_id: int`;
+- a field named after a relationship, with the type
+  {class}`fr.IDRef[Model] <fastapi_restly.schemas.IDRef>` or
+  {class}`fr.IDSchema[Model] <fastapi_restly.schemas.IDSchema>`, or a list of
+  them.
+
+A field gets it only when a view for the target model is included on the same
+app. A nested object, such as `author: AuthorSchema`, gets none. The
+reference types themselves are on
 [Relationships](howto_relationship_idschema.md).
 
-There is a known limit: views included on an `APIRouter` rather than the app
-currently lose these annotations. The check for two classes with the same
+There is a known limit: views that you include on an `APIRouter`, not on the
+app, do not get these annotations. The check for two classes with the same
 name still covers them when you pass the app to
-{func}`fr.configure(app, ...) <fastapi_restly.db.configure>`; see
-[Name your schemas](#name-your-schemas).
+{func}`fr.configure(app, ...) <fastapi_restly.db.configure>`.
 
 ## See also
 
-- [Views](class_based_views.md): where the class-level attributes
-  come from.
-- [Endpoint Decorators](#endpoint-decorators): the decorator
-  surface and pass-through keyword arguments.
+- [Views](class_based_views.md): the class attributes that every view has.
+- [Endpoint decorators](#endpoint-decorators): the decorators and the
+  keyword arguments that they pass to FastAPI.
+- [Schemas & Validation](howto_custom_schema.md): the classes that the spec
+  shows, and their names.
