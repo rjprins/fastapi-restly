@@ -86,6 +86,7 @@ redirects = {
     "getting_started": "tutorial.html",
     "api_details": "view_reference.html",
     "patterns": "user_guide.html",
+    "examples": "user_guide.html",
 }
 myst_heading_anchors = 3
 myst_enable_extensions = ["colon_fence", "substitution"]

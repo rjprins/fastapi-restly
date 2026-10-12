@@ -127,7 +127,7 @@ fr.testing.configure_tests(app=app, base=Base, create_all=True)
 
 A `.env` file is convenient in development, when the settings class enables
 one (the [production template](#production-main-template) does not; the [SaaS
-example](examples.md) does). Keep it out of the suite's way. When the conftest
+example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/saas) does). Keep it out of the suite's way. When the conftest
 installs its own settings, build them with the env file disabled (with
 pydantic-settings: `Settings(database_url=..., _env_file=None)`). Explicitly
 passed values
@@ -296,6 +296,9 @@ fr.testing.configure_tests(
     alembic_upgrade="backend/alembic.ini",
 )
 ```
+
+The SaaS example builds its test schema from its checked-in migrations
+([`tests/conftest.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/tests/conftest.py)).
 
 **Yourself**, by passing neither. Restly then leaves the schema alone, which is
 what you want when your suite already builds it or your migrations are not

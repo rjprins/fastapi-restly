@@ -138,7 +138,7 @@ reference checks, lazy loads and hand-written selects alike. Restly's reads
 and reference checks are ORM statements, so the rule reaches them. The
 [tenant row scoping](#tenant-row-scoping) recipe shows the listener, the
 column it restricts, and the statements it does not reach. The
-[SaaS example](examples.md#saas) runs that recipe.
+[SaaS example](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/models.py) runs that recipe.
 
 The explicit opt-out is `fr.clauses.UNSCOPED`: it reads past the model's
 `default_scope`, where `None` would fall back to it. Reserve it for a

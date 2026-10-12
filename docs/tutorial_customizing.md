@@ -463,14 +463,14 @@ test_main.py ..                                              [100%]
 2 passed
 ```
 
-The [blog example](#example-blog) has a test for every rule in this
+The [blog example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/blog) has a test for every rule in this
 tutorial. [Testing](howto_testing.md) covers the fixtures, and apps that
 build their configuration in a factory.
 
 ## The complete file
 
 Here is the blog with every change from this tutorial. The same file is the
-[blog example](#example-blog):
+[blog example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/blog):
 
 ```{literalinclude} ../example-projects/blog/blog/main.py
 :language: python

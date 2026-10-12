@@ -30,6 +30,13 @@ Three choices, each a flag, each asked for on a terminal when you leave it out:
 | Database | `--postgres`, with a `compose.yaml` | `--sqlite` |
 | Schema | `--alembic` | `--create-all`, built at startup and in tests |
 
+[example-projects/starter](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/starter)
+is exactly what `restly new myapp` writes with its default
+answers: async views, PostgreSQL, and Alembic. Read it to see the prescribed
+layout at its smallest; a check in CI keeps it identical to the generator's
+output. It depends on the released framework rather than this checkout, so
+local changes to Restly do not appear in it.
+
 ## Start with one file
 
 A single module is the right shape for a first resource.
@@ -244,7 +251,7 @@ only when it grows several cohesive modules.
 
 ## See also
 
-- [SaaS example](examples.md#saas), a complete application in this layout
+- [SaaS example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/saas), a complete application in this layout
 - [Deploying](deploying.md) for the factory, engine, and Alembic setup
 - [Testing](howto_testing.md) for the
   matching `conftest.py`

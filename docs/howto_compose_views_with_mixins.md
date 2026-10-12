@@ -74,7 +74,7 @@ Do not extract early. Wait until there is a second caller.
 
 ## Three structural pieces
 
-The [SaaS example](examples.md#saas) ships the model mixins in
+The [SaaS example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/saas) ships the model mixins in
 [`app/models.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/models.py)
 and the view mixin in
 [`app/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py).

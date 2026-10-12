@@ -200,7 +200,7 @@ operator and the paging settings.
 ## The complete file
 
 Here is `main.py` with everything from this tutorial. The same file is the
-first stage of the [blog example](#example-blog), and the test suite runs it.
+first stage of the [blog example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/blog), and the test suite runs it.
 
 ```{literalinclude} ../example-projects/blog/blog/part1.py
 :language: python

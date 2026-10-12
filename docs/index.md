@@ -154,6 +154,5 @@ Tutorial <tutorial>
 Guide <user_guide>
 API <api_reference>
 Blog <https://www.fastapi-restly.org/blog/>
-examples
 About <about>
 ```

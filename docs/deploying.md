@@ -264,6 +264,6 @@ Write that as an ordinary route so its checks and timeouts stay yours.
 
 - [Use Restly in an Existing Project](howto_existing_project.md): connecting
   Restly to an app that already has an engine, sessions, and models.
-- [Examples](examples.md): the production-shaped SaaS example to compare
+- The [SaaS example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/saas): the production-shaped example to compare
   against. It includes PostgreSQL Compose services, validated settings, an
   application-owned async engine, migrations, and migration-backed tests.

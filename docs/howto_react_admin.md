@@ -71,7 +71,7 @@ export default () => (
 ```
 
 `ListGuesser` infers the list columns from the response; replace it with your
-own list component as the UI takes shape. The [shop example](examples.md#shop)
+own list component as the UI takes shape. The [shop example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/shop)
 is a complete runnable version of this setup, with three resources,
 relationships, and a react-admin frontend under `ui/test-admin/`.
 
@@ -165,7 +165,7 @@ as the `id` react-admin sends, are ignored.
 `ra-data-simple-rest` expects to-many references as plain id arrays
 (`"products": [1, 2, 3]`). Declare the field as `list[fr.IDRef[Product]]`;
 [Lists of References](howto_relationship_idschema.md#lists-of-references)
-describes the full behavior. The [shop example](examples.md#shop) runs this
+describes the full behavior. The [shop example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/shop) runs this
 end to end.
 
 ## CORS setup

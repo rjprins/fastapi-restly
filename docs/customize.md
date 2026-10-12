@@ -589,6 +589,9 @@ class UserView(fr.AsyncRestView):
 
 `get_one` / `handle_get_one` return the raw ORM object, so you can access all model attributes directly.
 
+The SaaS example's `GET /users/me` is a read that is not a resource path: it
+loads the caller's own row ([`app/users/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/users/views.py)).
+
 (natural-key-route)=
 ### Look a row up by another key
 
@@ -656,6 +659,16 @@ bracket instead, deposit the new object on the yielded handle:
     return self.to_response(w.obj)
 ```
 
+The SaaS example runs these shapes. The task state transitions
+`POST /tasks/{id}/start`, `complete` and `reopen` use `write_action`
+([`app/tasks/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/tasks/views.py)).
+`POST /uploads` is a file-upload flow with its own create bracket
+([`app/uploads/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/uploads/views.py)).
+`POST /task-labels/create-and-attach` commits two rows through one
+`write_action` block ([`app/labels/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/labels/views.py)).
+`POST /users/{id}/change-password` is an account action
+([`app/users/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/users/views.py)).
+
 Internally, `write_action` and the CRUD handlers share {func}`run_write_action <fastapi_restly.views.run_write_action>`.
 
 (shared-write-action-commit)=
@@ -721,6 +734,13 @@ inner commit bracket and catch the row exception outside its savepoint:
 The savepoint contains the row's mutation and before-hook writes, so a failed
 row rolls both back. Its queued after-hook is discarded. Surviving after-hooks
 run in order after the shared commit and stop on the first exception.
+
+The SaaS example runs both forms. `POST /tasks/bulk`, `/tasks/bulk-delete` and
+`/tasks/import-csv` put a savepoint around each row inside one
+`shared_write_action_commit()` block
+([`app/tasks/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/tasks/views.py)). `POST /projects/{id}/clone`
+commits a project, its outbox event, and the copied tasks together
+([`app/projects/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py)).
 
 ### Relationship references in custom routes
 

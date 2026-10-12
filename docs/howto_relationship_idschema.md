@@ -447,6 +447,8 @@ fetch and is the standard policy seam.
 - [Relationship Loading and Async](howto_relationship_loading.md): how these
   relationship fields load for responses, and `MissingGreenlet` fixes on async.
 - [Build a Blog API](tutorial.md): reference fields in the blog build, in context.
+- The [shop example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/shop): relationships and several primary-key
+  styles, in a running app.
 - [Schemas & Validation](howto_custom_schema.md): the schema bases
   and field markers these compose with.
 - [API Reference](api_reference.md): {class}`MustExist <fastapi_restly.schemas.MustExist>` / {class}`IDRef <fastapi_restly.schemas.IDRef>` / {class}`IDSchema <fastapi_restly.schemas.IDSchema>` signatures and the

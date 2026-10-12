@@ -150,6 +150,9 @@ its write actions. Your application still controls the engine. Use a session
 *generator* (next section) only when sessions must be constructed in a custom
 way, such as scoped sessions, multi-tenant routing, or instrumentation.
 
+The SaaS example builds its own async engine from its settings and hands it to
+`fr.configure` ([`app/main.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/main.py)).
+
 ## Provide Your Own Session Generator
 
 If your project already manages its own database sessions, configure
