@@ -1,196 +1,146 @@
 # Guide
 
-These guides are task-focused: each one shows how to accomplish a specific
-goal with FastAPI-Restly. If you are new to the framework, start with the
-tutorial, [Build a Blog API](tutorial.md). Come back here when you have a
-concrete task.
+The Guide has one page for each part of Restly. Each page starts with how
+that part works, then shows how to use it. The questions below link to the
+section that answers each one. If you are new to Restly, start with the
+tutorial, [Build a Blog API](tutorial.md).
 
-## Adopting and Modeling
+## Start
 
-These guides cover bringing Restly into a codebase and defining the models and
-schemas it works from.
+Pages: [New & Existing Projects](howto_project_structure.md),
+[Database & Configuration](database.md).
 
-::::{grid} 1 2 2 2
-:gutter: 3
+- [How do I add Restly to a FastAPI app I already have?](#add-to-existing-app)
+- [How do I write one CRUD route by hand and keep the rest?](#hand-written-crud-route)
+- [How do I start a new project with `restly new`?](#restly-new)
+- [How should I lay out a growing project?](#project-layout)
+- [Where do I register my views?](#compose-in-one-place)
+- [How do I serve more than one version of my API?](#api-versioning)
+- [How do I tell Restly where its database is?](#configure-restly)
+- [How do I give Restly the engine or sessionmaker my app already has?](#reuse-existing-engine)
+- [How do I use another database, such as a read replica, on one view?](#session-dependency-one-view)
+- [How do I open a session in a script, a worker or a background task?](#session-off-request)
 
-:::{grid-item-card} New & Existing Projects
-:link: howto_project_structure
-:link-type: doc
+## Models
 
-Lay out a growing application by subject, keep imports pointing one way, and
-compose views and models from one place each.
-:::
+Page: [Models](howto_models.md).
 
-:::{grid-item-card} Models
-:link: howto_models
-:link-type: doc
+- [How do I add Restly's defaults to my own declarative base?](#model-defaults)
+- [Can I use the SQLAlchemy models I already have?](#existing-models)
+- [How do I give a model an id and timestamps?](#model-mixins)
+- [How do I record who created or last changed a row?](#server-stamped-fields)
+- [Where do I set a value that every write needs, such as a slug from the title?](#write-path-values)
+- [How do I keep the rows of each tenant apart (multi-tenancy)?](#tenant-row-scoping)
+- [How do I soft-delete rows?](#soft-delete-mixin)
 
-Give your own declarative base Restly's defaults, change one default, and add `id` and timestamp columns.
-:::
+## Routes
 
-:::{grid-item-card} Schemas & Validation
-:link: howto_custom_schema
-:link-type: doc
+Pages: [Views](class_based_views.md), [CRUD Routes](rest_views.md),
+[Request Lifecycle & Hooks](customize.md).
 
-Define schemas with field aliases, write-only fields, and read-only computed fields.
-:::
+- [Should I use `View`, `AsyncRestView`, `RestView` or a plain FastAPI function?](#choose-a-view-class)
+- [How do I declare a route, or serve several HTTP methods on one path?](#declare-a-route)
+- [How do I add a view to my app or router?](#register-a-view)
+- [How do I share behavior between several views?](#share-behaviour-with-base-views)
+- [Where do login, refresh and logout routes go?](#login-routes)
+- [How do I receive a webhook?](#receive-a-webhook)
+- [Which routes does a CRUD view serve?](#default-crud-routes)
+- [Should I use `AsyncRestView` or `RestView`?](#choose-async-or-sync)
+- [How do I leave out some CRUD routes, or make a view read-only?](#exclude-crud-routes)
+- [How do I serve a child resource under its parent, such as `/projects/{id}/tasks`?](#nested-resources)
+- [How does a CRUD route handle a request, step by step?](#view-request-steps)
+- [Which method do I override for my change?](#which-method-to-override)
+- [How do I change the status code, headers or response of one CRUD route?](#replace-endpoint-method)
+- [How do I add a custom read route, such as `GET /users/me`?](#custom-read-route)
+- [How do I look a row up by a slug or an email?](#natural-key-route)
+- [How do I add an action route, such as publish?](#custom-action-route)
+- [How do I commit several writes together, as in a bulk route?](#shared-write-action-commit)
 
-:::{grid-item-card} Relationships
-:link: howto_relationship_idschema
-:link-type: doc
+## Requests and responses
 
-Check foreign-key columns with MustExist and resolve relationships with IDRef or IDSchema, with a 404 on missing rows.
-:::
+Pages: [Schemas & Validation](howto_custom_schema.md),
+[Responses](howto_response_schema.md),
+[Relationships](howto_relationship_idschema.md),
+[Filtering & Pagination](howto_query_modifiers.md),
+[Errors](howto_error_responses.md).
 
-::::
+- [Should Restly generate the schema, or should I write it?](#write-or-generate)
+- [How do I hide a field from responses, or stop clients from setting it?](#readonly-and-writeonly)
+- [How do I validate input, and where does each kind of rule go?](#validation)
+- [How do I use other field names in the JSON, such as camelCase?](#field-aliases)
+- [How do I send other fields than the client sends?](#own-response-class)
+- [What does each CRUD route return by default?](#default-responses)
+- [How do I change the list envelope?](#change-list-envelope)
+- [How do I use a smaller schema for the list route?](#list-schema)
+- [Should my API send ids or whole objects for related rows?](#reference-styles)
+- [How do I make sure that a foreign key points to a row that exists?](#reference-exists)
+- [Which rows can a reference reach?](#visibility-and-multi-tenancy)
+- [How do I return related objects in a response?](#relationship-loading)
+- [How do I fix `MissingGreenlet`?](#missinggreenlet)
+- [Which filters can a client use on a list?](#filter-a-list)
+- [How do I filter a list on a field of a related row?](#relation-filtering)
+- [How do clients page through a list, and how do I set the page limits?](#list-pagination)
+- [How do I return every row without pagination?](#no-pagination)
+- [How do I return a 404, 403 or 409 from my own code?](#raise-http-error)
+- [How does a duplicate unique value become a 409?](#default-exception-handling)
+- [How do I change the error body for the whole app?](#error-envelope)
 
-## Shaping Requests and Responses
+## Rules
 
-These guides control what list endpoints accept and what your API returns,
-including errors.
+Pages: [Current & ContextParam](howto_current.md), [Query Clauses](clauses.md),
+[Scopes](scopes.md), [Authorization](authorization.md).
 
-::::{grid} 1 2 2 2
-:gutter: 3
+- [How do I bind the current user from my authentication dependency?](#current-request-binding)
+- [How do I bind the current user in a script or a job?](#current-manual-binding)
+- [How do I write a reusable query rule?](#declaring-clauses)
+- [How do I hide rows, such as deleted rows, from every read?](#default-scope)
+- [How do I show each user only their own rows?](#read-scope)
+- [How does one route read past the scope, such as a restore action?](#per-read-scope)
+- [I know scopes from Rails, Laravel or Phoenix. What are they in Restly?](#coming-from-rails)
+- [How do I decide who may read, create, update, delete or run an action?](#authorize-gate)
+- [Why does a hidden row give a 404, and a refused read a 403?](#read-request-steps)
+- [Where does a value go that only the request sets, such as a hashed password?](#business-methods)
+- [What commits, and when?](#what-commits)
+- [How do I run code before or after the commit, such as an outbox row or an email?](#transaction-hooks)
+- [How do I run the same logic in a script, a worker or an import?](#logic-outside-a-view)
 
-:::{grid-item-card} Responses
-:link: howto_response_schema
-:link-type: doc
+## Operate
 
-Wrap successful responses in `{data}` envelopes and add list metadata such as
-total counts, while keeping Restly's handlers and serialization.
-:::
+Pages: [Testing](howto_testing.md), [Deploying](deploying.md),
+[OpenAPI](howto_openapi.md), [React Admin](howto_react_admin.md),
+[Type Annotations](howto_typing.md).
 
-:::{grid-item-card} Relationship Loading and Async
-:link: relationship-loading
-:link-type: ref
+- [How do I set up a test suite for my app?](#test-setup)
+- [How do I build the test schema, from models or from migrations?](#test-databases-and-migrations)
+- [How do I use another user in a test?](#current-testing)
+- [Which pytest fixtures does Restly provide?](#pytest-fixture-reference)
+- [How do I run the app in production?](#running-the-app)
+- [How do I set up migrations with Alembic?](#alembic)
+- [How do I add a health check endpoint?](#health-checks)
+- [Which engine options does Restly set for me?](#engine-defaults)
+- [How do I change the name, summary or operation ID of a CRUD route?](#route-options)
+- [How do I document a custom route in OpenAPI?](#document-custom-route)
+- [How do I connect react-admin to a Restly view?](#react-admin-quick-start)
+- [How do I type the view methods that I override?](#view-generics)
 
-Load nested relationships for responses on reads and writes, extend the loaded
-set, and resolve `MissingGreenlet` on async sessions.
-:::
+## What FastAPI covers
 
-:::{grid-item-card} Filtering & Pagination
-:link: howto_query_modifiers
-:link-type: doc
+Restly runs inside a FastAPI app, and
+{func}`include_view <fastapi_restly.views.include_view>` registers plain HTTP
+routes. So these subjects are FastAPI's, and its docs explain them:
 
-Filter, sort, and paginate list endpoints using URL query parameters.
-:::
-
-:::{grid-item-card} Current & ContextParam
-:link: howto_current
-:link-type: doc
-
-Bind the current user per request. Read the value in application code,
-column defaults, and tests.
-:::
-
-:::{grid-item-card} Query Clauses
-:link: clauses
-:link-type: doc
-
-Compose reusable SQLAlchemy predicates. Supply values through context
-members when applying the clauses to a statement.
-:::
-
-:::{grid-item-card} Scopes
-:link: scopes
-:link-type: doc
-
-Impose a replaceable clause on every read and every reference to a model.
-Use a default scope for row surfaces such as live and deleted records.
-:::
-
-:::{grid-item-card} Errors
-:link: howto_error_responses
-:link-type: doc
-
-Learn the typed `fr.exc` exceptions to raise from overrides, the 422-vs-400
-split, and app-wide error envelopes (problem+json).
-:::
-
-::::
-
-## Customizing Views
-
-These guides change what CRUD views do, from overriding a single
-method to sharing behaviour across many views.
-
-::::{grid} 1 2 2 2
-:gutter: 3
-
-:::{grid-item-card} Views
-:link: class_based_views
-:link-type: doc
-
-Choose a view type, then learn how registration, dependencies, and inheritance
-work.
-:::
-
-:::{grid-item-card} CRUD Routes
-:link: rest_views
-:link-type: doc
-
-Define a model-backed CRUD resource and understand its default contract.
-:::
-
-:::{grid-item-card} Request Lifecycle & Hooks
-:link: customize
-:link-type: doc
-
-Override the business methods ({meth}`create <fastapi_restly.views.RestView.create>`, {meth}`update <fastapi_restly.views.RestView.update>`, ...), the handlers,
-or the endpoint methods, and add custom routes alongside the default CRUD
-routes.
-:::
-
-:::{grid-item-card} Type Annotations
-:link: howto_typing
-:link-type: doc
-
-Use {class}`IDRef <fastapi_restly.schemas.IDRef>`, optional view generics, and
-typed CRUD methods that your type checker understands.
-:::
-
-::::
-
-## Operating and Testing
-
-These guides connect the API to the outside world: frontends, OpenAPI
-consumers, tests, and production deployment.
-
-::::{grid} 1 2 2 2
-:gutter: 3
-
-:::{grid-item-card} React Admin
-:link: howto_react_admin
-:link-type: doc
-
-Use {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` to get a backend that `ra-data-simple-rest` connects to out of the box.
-:::
-
-:::{grid-item-card} OpenAPI
-:link: howto_openapi
-:link-type: doc
-
-Set per-view tags and responses, add metadata to custom routes, replace a
-default CRUD route's documented contract, and use `x-resource-ref`.
-:::
-
-:::{grid-item-card} Testing
-:link: howto_testing
-:link-type: doc
-
-Start from a copy-paste conftest, work with savepoint-isolated fixtures, and
-consult the full fixture reference.
-:::
-
-:::{grid-item-card} Deploying
-:link: deploying
-:link-type: doc
-
-Configure a production engine, set up Alembic migrations, and follow an ASGI
-checklist.
-:::
-
-::::
+- [Security](https://fastapi.tiangolo.com/tutorial/security/): OAuth2, API
+  keys and other security schemes. To make the caller available to your
+  views, see [Current & ContextParam](#current-request-binding).
+- [Middleware](https://fastapi.tiangolo.com/tutorial/middleware/).
+- [CORS](https://fastapi.tiangolo.com/tutorial/cors/). For a react-admin
+  frontend, see also [CORS for React Admin](#react-admin-cors).
+- [Background tasks](https://fastapi.tiangolo.com/tutorial/background-tasks/).
+  For work that must still happen after a crash, use an outbox row in a
+  [transaction hook](#after-action-commit-raises).
+- [File uploads](https://fastapi.tiangolo.com/tutorial/request-files/).
+- [WebSockets](https://fastapi.tiangolo.com/advanced/websockets/). Declare
+  them on the app or on a router, not on a view.
 
 ```{toctree}
 :maxdepth: 1
