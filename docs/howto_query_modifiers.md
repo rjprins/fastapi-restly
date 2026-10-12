@@ -20,7 +20,7 @@ so a typo or unsupported operator silently ignored could widen the result
 set. The default list endpoints therefore validate the request against the
 schema's declared parameters and reject anything else; for which
 malformed requests produce which status, see
-[422 vs 400 on list endpoints](howto_error_responses.md#422-vs-400-on-list-endpoints).
+[Why a bad list request returns 422 or 400](#list-request-errors).
 To allow extra view-specific keys, see
 [Extra query parameters](#extra-query-parameters).
 

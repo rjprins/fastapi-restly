@@ -172,7 +172,7 @@ Note four details in this template:
   [New & Existing Projects](howto_project_structure.md).
 - {func}`fr.configure(app, ...) <fastapi_restly.db.configure>` installs the default exception handlers
   (currently the translator that turns `IntegrityError` into a 409 response;
-  see [Database conflicts](howto_error_responses.md#database-conflicts-integrityerror-to-409)).
+  see [Database conflicts](#default-exception-handling)).
   Pass `install_default_exception_handlers=False` to opt out. `health="/health"`
   mounts the [liveness endpoint](#health-checks).
 - The engine belongs to the app the factory built: `engine.dispose()` in
