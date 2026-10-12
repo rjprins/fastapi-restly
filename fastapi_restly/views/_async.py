@@ -359,7 +359,7 @@ class AsyncRestView(
         """Build a new object from ``schema_obj`` and save it.
 
         Auth-free and commit-free: ``handle_create`` owns both. The usual
-        create override point (hash a password, derive a slug), written as
+        create override point (hash a password from the request), written as
         :meth:`make_new_object`, the extra step, then :meth:`save_object`.
         """
         obj = await self.make_new_object(schema_obj)
@@ -429,10 +429,11 @@ class AsyncRestView(
 
         Final: the view-bound spelling of ``fr.objects.async_make_new_object``,
         passing the view's model. ``schema_obj``'s own schema decides what is
-        written, not the view's schema. A server-stamped field (an audit id,
-        a tenant id) is a column default on the model, which covers every
-        write path; a value derived from the payload goes in a ``create``
-        override, after this call.
+        written, not the view's schema. A value that every write path must
+        set, such as an audit id, a tenant id or a slug from the title, belongs
+        on the model: a column default or a mapper event. A value that only the
+        request sets, such as a hashed password, goes in a ``create`` override,
+        after this call.
         """
         model_cls = cast(type[ModelT], self.model)
         return await object_async_make_new_object(self.session, model_cls, schema_obj)
@@ -442,8 +443,8 @@ class AsyncRestView(
         """Apply writable fields from ``schema_obj`` to ``obj``. Does not flush.
 
         Final, like :meth:`make_new_object`: an ``updated_by`` stamp is the
-        column's ``onupdate`` on the model; payload-derived values go in an
-        ``update`` override, after this call.
+        column's ``onupdate`` on the model; a value that only the request sets
+        goes in an ``update`` override, after this call.
         """
         return await object_async_update_object(self.session, obj, schema_obj)
 

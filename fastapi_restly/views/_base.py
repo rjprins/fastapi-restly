@@ -177,7 +177,9 @@ class Action:
     / ``after_action_commit``.
 
     This is a constants class, not an ``Enum``: custom actions and mixins add
-    their own names. Use constants for typo checking at import time.
+    their own names. Use the constants rather than strings: a misspelled
+    constant raises ``AttributeError`` when the line runs, and a type checker
+    reports it before that.
     """
 
     GET_MANY = "get_many"
@@ -1404,7 +1406,8 @@ class BaseRestView(
                         "final domain utility, not a seam. Stamp a "
                         "server-controlled field with a column default on the "
                         "model (it then covers every write path); put "
-                        "payload-derived logic in the create / update verb; "
+                        "logic that only the request needs in the create / "
+                        "update verb; "
                         "put a per-write side effect in before_action_commit."
                     )
         # the handlers are final: an override re-implements the load,
