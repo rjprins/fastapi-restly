@@ -52,7 +52,12 @@ class Forbidden(RestlyHTTPError):
 
 
 class Conflict(RestlyHTTPError):
-    """HTTP 409 -- the request conflicts with the current resource state."""
+    """HTTP 409 -- the request conflicts with the current resource state.
+
+    Restly raises it for a database conflict, such as a duplicate unique
+    value, in a CRUD write or a ``write_action`` block. The SQLAlchemy
+    ``IntegrityError`` is its ``__cause__``.
+    """
 
     status_code = 409
     default_detail = "Conflict"

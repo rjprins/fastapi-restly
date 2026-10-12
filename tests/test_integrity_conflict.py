@@ -11,12 +11,14 @@ PostgreSQL detail texts are in ``tests/postgres/test_dialect.py``.
 
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from sqlalchemy import ForeignKey
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -200,6 +202,181 @@ def test_a_bare_view_that_commits_itself_gets_the_raw_error(client):
         client.post("/import/?name=a")
 
 
+def _parent_child_models():
+    class Parent(fr.IDMixin, SharedBase):
+        name: Mapped[str] = mapped_column(unique=True)
+
+    class Child(fr.IDMixin, SharedBase):
+        parent_id: Mapped[int] = mapped_column(ForeignKey("parent.id"))
+
+    class ParentSchema(fr.IDSchema):
+        name: str
+
+    return Parent, Child, ParentSchema
+
+
+def test_async_update_and_delete_conflicts_are_409(client):
+    Parent, Child, ParentSchema = _parent_child_models()
+
+    @fr.include_view(client.app)
+    class ParentView(fr.AsyncRestView):
+        prefix = "/parents"
+        model = Parent
+        schema = ParentSchema
+
+    create_tables()
+    first = client.post("/parents", json={"name": "a"}).json()
+    second = client.post("/parents", json={"name": "b"}).json()
+
+    async def add_child():
+        async with fr.db.open_async_session() as session:
+            session.add(Child(parent_id=first["id"]))
+            await session.commit()
+
+    asyncio.run(add_child())
+
+    client.patch(f"/parents/{second['id']}", json={"name": "a"}, assert_status_code=409)
+    response = client.delete(f"/parents/{first['id']}", assert_status_code=409)
+    assert "foreign key" in response.json()["detail"].lower()
+
+
+def test_sync_update_and_delete_conflicts_are_409(sync_db):
+    engine, make_session = sync_db
+    Parent, Child, ParentSchema = _parent_child_models()
+    app = FastAPI()
+
+    @fr.include_view(app)
+    class ParentView(fr.RestView):
+        prefix = "/parents"
+        model = Parent
+        schema = ParentSchema
+
+    SharedBase.metadata.create_all(engine)
+    with engine.connect() as connection:  # the one StaticPool connection
+        connection.exec_driver_sql("PRAGMA foreign_keys=ON")
+    client = RestlyTestClient(app)
+    first = client.post("/parents", json={"name": "a"}).json()
+    second = client.post("/parents", json={"name": "b"}).json()
+    with make_session() as session:
+        session.add(Child(parent_id=first["id"]))
+        session.commit()
+
+    client.patch(f"/parents/{second['id']}", json={"name": "a"}, assert_status_code=409)
+    response = client.delete(f"/parents/{first['id']}", assert_status_code=409)
+    assert "foreign key" in response.json()["detail"].lower()
+
+
+@pytest.mark.parametrize("hook", ["authorize", "before_action_commit"])
+def test_a_conflict_in_a_hook_before_the_commit_is_409(client, hook):
+    Tag, TagSchema = _tag_models()
+
+    class Hooks:
+        async def authorize(self, action, obj=None, data=None):
+            if hook == "authorize" and action == "rename":
+                self.session.add(Tag(name="taken"))
+                await self.session.flush()
+
+        async def before_action_commit(self, action, new, old=None):
+            if hook == "before_action_commit" and action == "rename":
+                self.session.add(Tag(name="taken"))
+                await self.session.flush()
+
+    @fr.include_view(client.app)
+    class TagView(Hooks, fr.AsyncRestView):
+        prefix = "/tags"
+        model = Tag
+        schema = TagSchema
+
+        @fr.post("/{id}/rename", status_code=200)
+        async def rename(self, id: int, name: str):
+            tag = await self.get_one(id)
+            async with self.write_action("rename", obj=tag):
+                tag.name = name
+            return self.to_response(tag)
+
+    create_tables()
+    client.post("/tags", json={"name": "taken"})
+    tag = client.post("/tags", json={"name": "b"}).json()
+    client.post(f"/tags/{tag['id']}/rename?name=c", assert_status_code=409)
+
+
+def test_sync_after_action_commit_errors_stay_raw(sync_db):
+    engine, _ = sync_db
+    Tag, TagSchema = _tag_models()
+    app = FastAPI()
+
+    @fr.include_view(app)
+    class TagView(fr.RestView):
+        prefix = "/tags"
+        model = Tag
+        schema = TagSchema
+
+        def after_action_commit(self, action, new, old=None):
+            raise _make_integrity_error(Exception("from the hook"))
+
+    SharedBase.metadata.create_all(engine)
+    with pytest.raises(IntegrityError):
+        RestlyTestClient(app).post("/tags", json={"name": "a"})
+
+
+@pytest.mark.parametrize("outer", ["write_action", "shared_write_action_commit"])
+def test_an_after_hook_inside_another_block_stays_raw(client, outer):
+    """An after-hook runs after a commit, also when its block sits inside
+    another block. The enclosing block must not turn its error into a 409."""
+    Tag, TagSchema = _tag_models()
+
+    @fr.include_view(client.app)
+    class TagView(fr.AsyncRestView):
+        prefix = "/tags"
+        model = Tag
+        schema = TagSchema
+
+        async def after_action_commit(self, action, new, old=None):
+            if action == "create":
+                raise _make_integrity_error(Exception("from the hook"))
+
+        @fr.post("/nested", status_code=200)
+        async def nested(self):
+            if outer == "write_action":
+                async with self.write_action("outer", obj=None):
+                    await self.handle_create(self.schema_create(name="a"))
+            else:
+                async with self.shared_write_action_commit():
+                    await self.handle_create(self.schema_create(name="a"))
+            return {}
+
+    create_tables()
+    with pytest.raises(IntegrityError):
+        client.post("/tags/nested")
+
+
+def test_a_nested_shared_block_lets_the_raw_error_through(client):
+    Tag, TagSchema = _tag_models()
+    seen = []
+
+    @fr.include_view(client.app)
+    class TagView(fr.AsyncRestView):
+        prefix = "/tags"
+        model = Tag
+        schema = TagSchema
+
+        @fr.post("/nested", status_code=200)
+        async def nested(self):
+            async with self.shared_write_action_commit():
+                try:
+                    async with self.shared_write_action_commit():
+                        await self.handle_create(self.schema_create(name="a"))
+                        await self.handle_create(self.schema_create(name="a"))
+                except IntegrityError:
+                    seen.append("raw")
+                    raise
+            return {}
+
+    create_tables()
+    client.post("/tags/nested", assert_status_code=409)
+    assert seen == ["raw"]
+
+
 def test_sync_crud_and_write_action_conflicts_are_409(sync_db):
     engine, _ = sync_db
     Tag, TagSchema = _tag_models()
@@ -233,11 +410,6 @@ def test_sync_crud_and_write_action_conflicts_are_409(sync_db):
     client.post("/tags", json={"name": "a"}, assert_status_code=409)
     client.post(f"/tags/{second['id']}/rename?name=a", assert_status_code=409)
     client.post("/tags/bulk", json=["c", "c"], assert_status_code=409)
-
-
-def test_configure_with_only_an_app_is_still_a_setup_call():
-    """It attaches the OpenAPI check for two classes with the same name."""
-    fr.configure(FastAPI())
 
 
 # ---------------------------------------------------------------------------

@@ -26,7 +26,7 @@ a `fastapi.HTTPException`:
 |---|---|---|
 | {class}`fr.exc.NotFound <fastapi_restly.exc.NotFound>` | `404` | The row does not exist, or the [scope](scopes.md) hides it. Restly raises it for `/{id}` routes and for a [reference](relationships.md) to a missing row. |
 | {class}`fr.exc.Forbidden <fastapi_restly.exc.Forbidden>` | `403` | The caller may not do this action. Raise it in {meth}`authorize <fastapi_restly.views.RestView.authorize>`. |
-| {class}`fr.exc.Conflict <fastapi_restly.exc.Conflict>` | `409` | The request does not fit the current state of the row, such as publishing a post that is already published. |
+| {class}`fr.exc.Conflict <fastapi_restly.exc.Conflict>` | `409` | The request does not fit the current state of the row, such as publishing a post that is already published. Restly raises it for a [database conflict](#default-exception-handling) in a write. |
 | {class}`fr.exc.BadQueryParam <fastapi_restly.exc.BadQueryParam>` | `400` | Restly cannot apply a list parameter, such as `?sort=unknown_field`. |
 
 Raise them from your own code: a business method, a hook or a custom route.
@@ -105,15 +105,18 @@ The write block does this. Each CRUD write, and each
 {class}`fr.exc.RestlyHTTPError <fastapi_restly.exc.RestlyHTTPError>` shapes
 these conflicts too; see [Change the error body](#error-envelope).
 
-Two kinds of code get the raw `IntegrityError` instead:
+Three kinds of code get the raw `IntegrityError` instead:
 
 - A write inside a
   [`shared_write_action_commit()`](#shared-write-action-commit) block. There
   the outermost block turns what escapes it into a `409`, so a bulk route can
   still catch the error of one row.
 - Code outside a write block, such as a bare `View` route or a plain FastAPI
-  route that commits itself. It owns its commit, and it handles its own
+  route that commits itself. It owns its commit, and it must handle its own
   errors.
+- {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>`,
+  and the after-hooks that run after a shared commit. The write is already
+  saved then, so a `409` would be wrong.
 
 A custom route that catches the conflict of its own `write_action` block
 catches `fr.exc.Conflict`:
@@ -129,6 +132,9 @@ catches `fr.exc.Conflict`:
             raise fr.exc.Conflict(f"A tag named {name!r} already exists")
         return self.to_response(tag)
 ```
+
+After a conflict, the session waits for a rollback. To write again in the
+same request, call `await self.session.rollback()` first.
 
 (error-envelope)=
 ## Change the error body for the whole app

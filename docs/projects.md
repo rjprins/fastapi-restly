@@ -57,8 +57,8 @@ app.include_router(api)
 
 `fr.include_view()` also works as a class decorator;
 [Views](#register-a-view) explains both forms. Pass `app` to
-`fr.configure()`, also when the views are on a router. That call installs
-Restly's error handlers on the app and checks its OpenAPI schema, and
+`fr.configure()`, also when the views are on a router. That call checks the
+OpenAPI schema of the app for two classes with the same name, and
 `fr.include_view()` on a router cannot do this; see
 [Database & Configuration](#configure-restly).
 

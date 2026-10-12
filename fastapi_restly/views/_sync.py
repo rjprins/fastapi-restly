@@ -184,9 +184,11 @@ class RestView(
                 w.obj = self.make_new_object(req)
 
         Pass ``obj=None`` for writes with no single object. Exceptions skip the
-        commit. Inside :meth:`shared_write_action_commit`, the outermost block
-        owns the commit and the after-hooks, so this bracket returns after its
-        flush but before either one.
+        commit. An ``IntegrityError`` from ``authorize`` to the commit becomes
+        :class:`~fastapi_restly.exc.Conflict` (409). Inside
+        :meth:`shared_write_action_commit`, the outermost block owns the
+        commit and the after-hooks, so this bracket returns after its flush
+        but before either one, and an ``IntegrityError`` stays raw.
         """
         return sync_write_action(self, action, obj=obj, data=data)
 
@@ -206,7 +208,10 @@ class RestView(
         only after the block exits. Nested blocks on the same session share the
         commit. An exception escaping a deferred-commit block aborts the shared
         commit, including when an enclosing deferred-commit block catches that
-        exception. Rollback belongs to the session owner.
+        exception. Rollback belongs to the session owner. An
+        ``IntegrityError`` inside the block stays raw, so a route can catch the
+        error of one row; one that escapes the outermost block, or that its
+        commit raises, becomes :class:`~fastapi_restly.exc.Conflict` (409).
 
         After-hooks run in queue order and stop on the first exception. ``new``
         is the live object after all writes, while ``old`` is each action's

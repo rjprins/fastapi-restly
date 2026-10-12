@@ -63,7 +63,7 @@ method overrides to share behavior across resources.
 - **Row visibility as a clause**: declare `default_scope` once on the model's clause namespace, and every list, retrieve, count, and reference check applies it; see [Scopes](https://www.fastapi-restly.org/scopes.html).
 - **Field control**: `ReadOnly` / `WriteOnly` markers, plus foreign-key validation through `MustExist[...]`.
 - **React Admin ready**: `AsyncReactAdminView` / `ReactAdminView` speak `ra-data-simple-rest`.
-- **App utilities**: SQLAlchemy engine/session setup, exception handlers, and test fixtures.
+- **App utilities**: SQLAlchemy engine/session setup, a 409 for database conflicts, and test fixtures.
 
 ## Quickstart
 

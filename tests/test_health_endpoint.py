@@ -323,7 +323,7 @@ def test_health_does_not_configure_a_database():
 
 
 def test_health_composes_with_a_full_database_configuration(sync_db):
-    """The usual production shape: database, exception handlers, views, health."""
+    """The usual production shape: database, views, health."""
     engine, _ = sync_db
     app = FastAPI()
     fr.configure(app, async_database_url=ASYNC_URL, health="/health")

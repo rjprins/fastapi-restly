@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, SessionTransaction
 from sqlalchemy.orm.collections import collection_adapter
 
-from .._integrity import translate_integrity_errors
+from .._integrity import after_commit, translate_integrity_errors
 
 T = TypeVar("T")
 
@@ -120,7 +120,8 @@ async def async_write_action(
                 asynchronous=True,
             )
     if committed:
-        await host.after_action_commit(action, new=handle.obj, old=old)
+        with after_commit():
+            await host.after_action_commit(action, new=handle.obj, old=old)
 
 
 @contextlib.contextmanager
@@ -148,7 +149,8 @@ def sync_write_action(
             host.session.flush()
             owner.enqueue(host.session, host, action, handle.obj, old)
     if committed:
-        host.after_action_commit(action, new=handle.obj, old=old)
+        with after_commit():
+            host.after_action_commit(action, new=handle.obj, old=old)
 
 
 async def async_run_write_action(
@@ -203,13 +205,14 @@ async def _async_shared_write_action_commit(
             pending = tuple(owner.pending)
 
     # Drop the owner before hooks run, so no hook can join a finished commit.
-    for entry in pending:
-        if entry.asynchronous:
-            await entry.callback()
-        else:
-            # A sync action may have joined through AsyncSession.run_sync().
-            # Its hook needs that same bridge for any SQLAlchemy reads.
-            await session.run_sync(lambda _: entry.callback())
+    with after_commit():
+        for entry in pending:
+            if entry.asynchronous:
+                await entry.callback()
+            else:
+                # A sync action may have joined through AsyncSession.run_sync().
+                # Its hook needs that same bridge for any SQLAlchemy reads.
+                await session.run_sync(lambda _: entry.callback())
 
 
 @contextlib.contextmanager
@@ -227,8 +230,9 @@ def _shared_write_action_commit(session: Session) -> Iterator[None]:
             _commit_shared_write_actions(session, owner)
             pending = tuple(owner.pending)
 
-    for entry in pending:
-        entry.callback()
+    with after_commit():
+        for entry in pending:
+            entry.callback()
 
 
 _SHARED_WRITE_ACTION_COMMIT_KEY = "_fr_shared_write_action_commit"

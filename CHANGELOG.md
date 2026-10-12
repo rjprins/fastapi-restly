@@ -55,14 +55,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `class Base(fr.ModelDefaults, DeclarativeBase)`. The models, `alembic/env.py`,
   the test setup and `create_all` use that `Base` instead of
   `fr.DataclassBase`.
-
 - A database conflict in a write is now a `fr.exc.Conflict` (409), raised by
   Restly's write block instead of an exception handler on the app. A CRUD
   write or a `write_action` block in a custom route turns an
   `IntegrityError` into `Conflict`, with the `IntegrityError` as its
   `__cause__`. Inside a `shared_write_action_commit()` block the error stays
-  raw, so a bulk route can still catch the error of one row; what escapes the
-  outermost block, or its commit raises, becomes the `409`. The default body
+  raw, so a bulk route can still catch the error of one row. An
+  `IntegrityError` that escapes the outermost block, or that its commit
+  raises, becomes the `409`. The default body
   is the same as before. With a handler for `fr.exc.RestlyHTTPError`, such as
   a problem details handler, conflicts now get that handler's body. Code
   outside a write block, such as a bare `View` route that commits itself,
@@ -104,7 +104,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   installed on the app. The argument did not work: `include_view` installed
   the handler anyway. Restly no longer installs an exception handler, so
   there is nothing to turn off. To give conflicts your own body, register a
-  handler for `fr.exc.RestlyHTTPError` or `fr.exc.Conflict`.
+  handler for `fr.exc.RestlyHTTPError` or `fr.exc.Conflict`. A handler for
+  `IntegrityError` of your own, as the 0.11 docs showed, no longer runs for a
+  conflict in a CRUD write or a `write_action` block, because the block raises
+  `fr.exc.Conflict` first. Register it for `fr.exc.Conflict` instead; the
+  original error is `exc.__cause__`.
 
 ## [0.11.0] - 2026-10-09
 

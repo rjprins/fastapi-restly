@@ -665,6 +665,7 @@ yourself:
 import json
 
 from fastapi import Request
+from sqlalchemy.exc import IntegrityError
 
 
 @fr.include_view(app)
@@ -677,14 +678,20 @@ class PaymentWebhookView(fr.View):
         payload = await request.body()
         verify_signature(payload, request.headers.get("X-Signature"))
         event = json.loads(payload)
-        self.session.add(PaymentEvent(kind=event["type"], data=payload.decode()))
-        await self.session.commit()  # a plain View commits itself
+        self.session.add(
+            PaymentEvent(event_id=event["id"], kind=event["type"], data=payload.decode())
+        )
+        try:
+            await self.session.commit()  # a plain View commits itself
+        except IntegrityError:  # the same event again: event_id is unique
+            await self.session.rollback()
 ```
 
-A route that commits itself also handles its own database errors. For
-example, a sender that sends the same event twice can break a unique
-constraint. Restly does not turn that `IntegrityError` into a `409`, because
-the route is outside a Restly write; see
+A route that commits itself must also handle its own database errors.
+Senders often send the same event twice, so here a unique `event_id` column
+refuses the second copy, and the route answers `204` again. Restly does not
+turn an `IntegrityError` here into a `409`, because the route is outside a
+Restly write; see
 [Unique values and other database conflicts: 409](#default-exception-handling).
 
 To call another service after a write, use the

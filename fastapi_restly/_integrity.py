@@ -146,12 +146,17 @@ def _build_integrity_detail(exc: IntegrityError) -> str:
     return base
 
 
+#: Set on an ``IntegrityError`` that code raised after a commit.
+_AFTER_COMMIT_FLAG = "_fr_after_commit"
+
+
 @contextlib.contextmanager
 def translate_integrity_errors(outermost: bool) -> Iterator[None]:
     """Raise :class:`~fastapi_restly.exc.Conflict` for an ``IntegrityError``.
 
     Only when ``outermost`` is true: a block inside a shared commit lets the
-    raw error through, so the code around it can still catch it.
+    raw error through, so the code around it can still catch it. An error
+    that :func:`after_commit` marked stays raw too.
     """
     if not outermost:
         yield
@@ -159,4 +164,20 @@ def translate_integrity_errors(outermost: bool) -> Iterator[None]:
     try:
         yield
     except IntegrityError as exc:
+        if getattr(exc, _AFTER_COMMIT_FLAG, False):
+            raise
         raise Conflict(_build_integrity_detail(exc)) from exc
+
+
+@contextlib.contextmanager
+def after_commit() -> Iterator[None]:
+    """Mark an ``IntegrityError`` from code that runs after a commit.
+
+    The write is saved by then, so a 409 would be wrong. The mark keeps an
+    enclosing write block from turning the error into a Conflict.
+    """
+    try:
+        yield
+    except IntegrityError as exc:
+        setattr(exc, _AFTER_COMMIT_FLAG, True)
+        raise

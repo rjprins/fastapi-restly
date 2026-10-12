@@ -1851,13 +1851,10 @@ def test_the_client_runs_the_application_lifespan(tmp_path: Path):
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-def test_a_view_registered_after_the_client_still_gets_the_409_handler(tmp_path: Path):
-    """Entering the client builds Starlette's middleware stack, which caches the
-    exception handlers. A suite that registers views inside its tests installs the
-    409 handler after that, and it must not be left out of the stack.
-
-    The app is deliberately not passed to configure_tests(): doing so installs the
-    handler up front, which is the case that never had a problem.
+def test_a_view_registered_after_the_client_still_returns_409(tmp_path: Path):
+    """A suite can register views inside its tests, after the client has
+    started the app. A conflict in such a view still answers 409: the write
+    block raises Conflict, so no handler has to be on the app in time.
     """
     _write_project(
         tmp_path,
