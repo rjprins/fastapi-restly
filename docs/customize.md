@@ -203,9 +203,24 @@ The schema field and the column have the same name, because
 {meth}`make_new_object <fastapi_restly.views.RestView.make_new_object>` passes
 every writable schema field to the model's constructor. So the plain password
 goes into `password` first, and the override replaces it with the hash before
-the flush. `fr.WriteOnly` keeps the field out of every response. The
-[SaaS example](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/users/views.py)
-hashes its passwords this way.
+the flush. `fr.WriteOnly` keeps the field out of every response.
+
+The generated update body takes `password` too. Without more code,
+`PATCH /users/{id}` stores a new password as plain text. So hash it in
+`update` as well:
+
+```python
+    async def update(self, obj, schema_obj):
+        obj = await self.update_object(obj, schema_obj)
+        if "password" in schema_obj.model_fields_set:
+            obj.password = hash_password(schema_obj.password)
+        return await self.save_object(obj)
+```
+
+{meth}`update_object <fastapi_restly.views.RestView.update_object>` writes
+only the fields that the request sends, so the check uses the same set. The
+other way is an [explicit update schema](#explicit-write-schemas) without
+`password`, with a separate route that changes the password.
 
 ### Refuse a change in `update`
 
