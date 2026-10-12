@@ -199,7 +199,7 @@ name still covers them when you pass the app to
 
 ## See also
 
-- [Views](class_based_views.md): the class attributes that every view has.
+- [Views](views.md): the class attributes that every view has.
 - [Endpoint decorators](#endpoint-decorators): the decorators and the
   keyword arguments that they pass to FastAPI.
 - [Schemas & Validation](howto_custom_schema.md): the classes that the spec

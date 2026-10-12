@@ -1,4 +1,4 @@
-"""Which view class attributes FastAPI injects, as docs/class_based_views.md
+"""Which view class attributes FastAPI injects, as docs/views.md
 states the contract.
 
 A Depends (or Security) marker or a bare-injectable special type is wired. A

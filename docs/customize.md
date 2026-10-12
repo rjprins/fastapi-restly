@@ -8,7 +8,7 @@ change a route, you override the method of one step. A custom route calls the
 same methods, so it runs the same steps.
 
 [CRUD Routes](rest_views.md) lists the default routes and their settings.
-[Views](class_based_views.md) covers what every view shares: registration,
+[Views](views.md) covers what every view shares: registration,
 dependencies and inheritance.
 
 (view-request-steps)=
@@ -812,7 +812,7 @@ committing and queues the after-hook for the outermost block.
 
 - [Authorization](authorization.md): who may perform each action.
 - [Scopes](scopes.md): which rows a view can see.
-- [Views](class_based_views.md): registration, dependencies and base views.
+- [Views](views.md): registration, dependencies and base views.
 - [Models](#write-path-values): values that every write path must set.
 - [View Reference](#view-method-surface): every view method, with its
   signature.

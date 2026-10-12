@@ -29,7 +29,7 @@ default CRUD routes, query parameters, error translation, and test fixtures.
   examples and extension points say where custom behavior belongs, for your
   team.
 
-The core patterns ([class-based views](class_based_views.md), the override
+The core patterns ([class-based views](views.md), the override
 hierarchy, and schema generation) are proven by four years of internal
 production use. The public
 API surface is still settling on the way to `1.0.0` (see the

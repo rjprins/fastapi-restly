@@ -547,6 +547,6 @@ The default CRUD routes have these limits:
 - [Request Lifecycle & Hooks](customize.md): change what a route does.
 - [Schemas & Validation](howto_custom_schema.md): the fields that the routes
   accept and return.
-- [Views](class_based_views.md): registration, shared dependencies and base
+- [Views](views.md): registration, shared dependencies and base
   views.
 - [View Reference](view_reference.md): the exact signatures and defaults.

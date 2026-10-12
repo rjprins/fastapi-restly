@@ -35,7 +35,7 @@ Page: [Models](models.md).
 
 ## Routes
 
-Pages: [Views](class_based_views.md), [CRUD Routes](rest_views.md),
+Pages: [Views](views.md), [CRUD Routes](rest_views.md),
 [Request Lifecycle & Hooks](customize.md).
 
 - [Should I use `View`, `AsyncRestView`, `RestView` or a plain FastAPI function?](#choose-a-view-class)
@@ -154,7 +154,7 @@ routes. So these subjects are FastAPI's, and its docs explain them:
 projects
 database
 models
-class_based_views
+views
 rest_views
 customize
 howto_custom_schema
