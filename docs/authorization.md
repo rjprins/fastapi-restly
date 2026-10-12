@@ -51,7 +51,7 @@ author change a post or a comment:
 - Every user may create.
 - Every other action changes one row, and `obj` is that row. Only its author
   may change it. This rule also covers actions that you add later, such as
-  `publish`: a new action is refused until you allow it.
+  `publish`: only the author can run them, until you write another rule.
 
 `PostView` and `CommentView` both inherit from `AuthoredView`, so the rule is
 written once. [Views](#share-behaviour-with-base-views) shows more ways to
@@ -147,9 +147,10 @@ The business methods, such as
 {meth}`get_one <fastapi_restly.views.RestView.get_one>`, never call
 `authorize`. A custom route that only calls them checks nothing.
 
-Write `authorize` so that it refuses an action name that it does not know, as
-the blog example does. Then a new custom action stays closed until you allow
-it. [Add a custom action route](#custom-action-route) shows the routes
+Write `authorize` so that an action name it does not know gets the strictest
+rule, not no rule. The blog example does this: every action that is not a
+read or a create needs the author. Then a new custom action is never open to
+everyone. [Add a custom action route](#custom-action-route) shows the routes
 themselves.
 
 ## See also

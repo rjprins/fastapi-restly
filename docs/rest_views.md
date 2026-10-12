@@ -106,7 +106,7 @@ path as `/users/{id}`, with an integer or UUID parameter.
 A route that you declare yourself keeps the path you give it. To accept
 negative integer ids, replace each item endpoint you need with an untyped
 path such as `@fr.get("/{id}")`, and annotate its `id` parameter as `int`;
-see [Replace an endpoint method](#replace-endpoint-method).
+see [Change the status code or headers of one route](#replace-endpoint-method).
 
 An untyped item path, such as the path for string ids, also matches
 `/users/me`. Register a static route like that before the item route.
@@ -144,19 +144,12 @@ class UserView(fr.AsyncRestView):
     schema = UserSchema
 ```
 
-The four schema attributes have separate jobs:
-
-| Attribute | Used for | Default |
-|---|---|---|
-| {attr}`schema <fastapi_restly.views.BaseRestView.schema>` | The source of the other three | Generated from `model` |
-| {attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>` | Every response | `schema` without its `WriteOnly` fields |
-| {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` | The `POST` request body | `schema` without its `ReadOnly` fields |
-| {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` | The `PATCH` request body | The writable fields of `schema`, all optional |
-
-The two derived input schemas also leave out a primary key that the server
-generates: an autoincrement column, a column with a default, or a dataclass
-field with `init=False`. This holds whether the key is marked `ReadOnly` or
-not. A natural key stays writable.
+A CRUD view derives its request bodies and its response class from `schema`:
+{attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>`,
+{attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` and
+{attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>`.
+[Hide a field from requests or from responses](#readonly-and-writeonly)
+explains which fields each one takes.
 
 [Schemas & Validation](howto_custom_schema.md) explains field markers,
 aliases, validation, and when to write the schemas yourself.

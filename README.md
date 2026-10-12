@@ -28,8 +28,8 @@ class UserView(fr.AsyncRestView):
 `include_view` registers them under `/users`.
 
 Read [CRUD Routes](https://www.fastapi-restly.org/rest_views.html) for the
-full CRUD guide and [Customizing
-RestView](https://www.fastapi-restly.org/customize.html) for changing its
+full CRUD guide and [Request Lifecycle &
+Hooks](https://www.fastapi-restly.org/customize.html) for changing its
 behavior.
 
 > **Status:** public beta release ([changelog](https://github.com/rjprins/fastapi-restly/blob/main/CHANGELOG.md)).
@@ -431,10 +431,7 @@ To connect Restly to an existing app's engine, sessions, and models, see
 ## Documentation
 
 - **[Tutorial](https://www.fastapi-restly.org/tutorial.html)**: build a blog API step by step, from the first model to authors and drafts
-- **[Views](https://www.fastapi-restly.org/class_based_views.html)**: choose a view type and understand the shared class mechanics
-- **[CRUD Routes](https://www.fastapi-restly.org/rest_views.html)**: define a model-backed CRUD resource and its contract
-- **[Request Lifecycle & Hooks](https://www.fastapi-restly.org/customize.html)**: choose the right method to override or add a custom route
-- **[Guide](https://www.fastapi-restly.org/user_guide.html)**: complete individual tasks
+- **[Guide](https://www.fastapi-restly.org/user_guide.html)**: one page for each part of Restly, how it works and how to use it. Start with [Views](https://www.fastapi-restly.org/class_based_views.html), [CRUD Routes](https://www.fastapi-restly.org/rest_views.html) and [Request Lifecycle & Hooks](https://www.fastapi-restly.org/customize.html)
 - **[API Reference](https://www.fastapi-restly.org/api_reference.html)**: inspect exact signatures and defaults
 
 ## Examples

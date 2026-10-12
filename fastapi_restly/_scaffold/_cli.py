@@ -37,7 +37,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "name",
         nargs="?",
         default=None,
-        help="Project and package name, e.g. myapp. Asked for if omitted",
+        help="Project name, e.g. myapp. The package is always app. Asked for if omitted",
     )
     new.add_argument(
         "--directory",

@@ -36,7 +36,7 @@ through {data}`fr.AsyncSessionDep <fastapi_restly.db.AsyncSessionDep>`, and
 a {class}`RestView <fastapi_restly.views.RestView>` through
 {data}`fr.SessionDep <fastapi_restly.db.SessionDep>`. The source opens the
 session and closes it after the request, but it does not commit. The view
-commits its own write actions; see [Transaction hooks](#transaction-hooks).
+commits its own write actions; see [Run code before or after the commit](#transaction-hooks).
 
 (one-configuration-per-process)=
 There is one configuration for each process. Restly stores it in the process,
@@ -250,7 +250,7 @@ with fr.open_session() as session:
 ```
 
 These helpers do not commit. Code outside a request commits its own changes.
-[Domain utilities](#domain-utilities) shows how to share logic between a view
+[Build and save objects](#domain-utilities) shows how to share logic between a view
 and such code.
 
 (engine-disposal)=
@@ -316,8 +316,8 @@ the same time. If that matters to you, dispose the old engine yourself.
 A file-based SQLite database that serves several requests at the same time can
 fail with `database is locked`. WAL mode fixes this in most cases: readers can
 then run while a writer holds the database. Restly does not turn WAL on. The
-journal mode is stored in the database file, so it would change your database
-for good, for every program that opens it later. Turn it on yourself:
+journal mode is stored in the database file. So the change would stay, also
+for every program that opens the file later. Turn it on yourself:
 
 ```python
 from sqlalchemy import create_engine, event

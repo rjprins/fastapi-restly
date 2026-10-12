@@ -354,22 +354,10 @@ async def total(self, list_params) -> int:
 Do not name that route method `count`. It would hide the
 {meth}`count <fastapi_restly.views.RestView.count>` method that it calls.
 
-Pass another view to follow the rows that view shows. The parent lookup of a
-[nested view](#nested-resources) does this. So a project that
-`GET /projects/{id}` hides also returns 404 under
-`/projects/{project_id}/tasks`:
-
-```python
-async def project_from_path(project_id: int, session: fr.AsyncSessionDep) -> int:
-    query = fr.apply_clauses(
-        sa.select(Project.id).where(Project.id == project_id),
-        fr.resolve_scope(ProjectView),
-    )
-    found = await session.scalar(query)
-    if found is None:
-        raise fr.exc.NotFound(f"Project with id {project_id} was not found")
-    return found
-```
+Pass another view, as in `fr.resolve_scope(ProjectView)`, to follow the rows
+that view shows. The parent lookup of a nested view does this, so a parent
+that its own view hides is also a 404 under the child's path; see
+[Which parents a client can reach](#nested-parent-access).
 
 Pass a model class, as in `fr.resolve_scope(Task)`, for the model's
 `default_scope` only. That is the scope that every reference check applies,

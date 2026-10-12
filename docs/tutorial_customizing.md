@@ -293,7 +293,7 @@ curl -X POST -H 'X-User-ID: 1' http://127.0.0.1:8000/posts/2/publish
 A side effect that must be saved together with the post, such as an audit
 row, goes in
 {meth}`before_action_commit <fastapi_restly.views.AsyncRestView.before_action_commit>`
-instead. See [Transaction hooks](#transaction-hooks).
+instead. See [Run code before or after the commit](#transaction-hooks).
 
 ## Share the rules with comments
 

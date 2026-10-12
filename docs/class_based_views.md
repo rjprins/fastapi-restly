@@ -154,7 +154,7 @@ A route method must not have the name of a business method: `get_many`,
 for such a name, also on a plain `View`. Give the route another name. To
 replace a CRUD route, override its endpoint method, such as
 `create_endpoint`; see
-[Replace an endpoint method](#replace-endpoint-method).
+[Change the status code or headers of one route](#replace-endpoint-method).
 
 On a CRUD view, a custom route usually loads and writes through the view's
 handlers. [Add a custom read route](#custom-read-route) and
@@ -417,7 +417,7 @@ explains the binding. The SaaS example's `AuthenticatedView` uses this
 pattern
 ([`app/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py)).
 To limit every read to the rows of one tenant, see
-[Tenant row scoping](#tenant-row-scoping).
+[Keep each tenant's rows apart](#tenant-row-scoping).
 
 When a subclass sets its own `dependencies`, they run after the base's, in
 the same way as nested FastAPI routers. So a subclass cannot remove a check
@@ -433,7 +433,8 @@ up. Other class attributes, such as `tags`, replace the base's value.
 ### Share an authorization check
 
 A base view can read a dependency attribute in a method that every subclass
-runs. Here, only the owner of a row may change or delete it:
+runs. Here, every caller may read and create, and only the owner of a row may
+do anything else to it:
 
 ```python
 from typing import Annotated
@@ -447,9 +448,10 @@ class OwnedView(fr.AsyncRestView):
     current_user: Annotated[User, Depends(get_current_user)]
 
     async def authorize(self, action, obj=None, data=None):
-        if action in (fr.Action.UPDATE, fr.Action.DELETE):
-            if obj.owner_id != self.current_user.id:
-                raise fr.exc.Forbidden("Only the owner can change this")
+        if action in (fr.Action.GET_MANY, fr.Action.GET_ONE, fr.Action.CREATE):
+            return
+        if obj is None or obj.owner_id != self.current_user.id:
+            raise fr.exc.Forbidden("Only the owner can change this")
 
 
 @fr.include_view(app)
@@ -464,7 +466,9 @@ class AlbumView(OwnedView):
     model = Album
 ```
 
-`NoteView` and `AlbumView` now run the same check.
+`NoteView` and `AlbumView` now run the same check. The owner check also
+covers update, delete and every custom action, such as an `archive` route,
+so a new action is never open to every caller.
 [Authorization](#authorize-gate) explains `authorize`. The blog example's
 `AuthoredView` shares one `authorize` between posts and comments in the same
 way
@@ -473,7 +477,7 @@ way
 The view only reads the caller here. To store the caller on a row, such as
 the owner id, use a column default on the model. Then every write path sets
 it, also the ones that never pass through a view
-([Server-stamped fields](#server-stamped-fields)).
+([Stamp the fields the server owns](#server-stamped-fields)).
 
 ### Share a business method
 
@@ -487,6 +491,12 @@ class PasswordHashingView(fr.AsyncRestView):
     async def create(self, schema_obj):
         obj = await self.make_new_object(schema_obj)
         obj.password = hash_password(schema_obj.password)
+        return await self.save_object(obj)
+
+    async def update(self, obj, schema_obj):
+        obj = await self.update_object(obj, schema_obj)
+        if "password" in schema_obj.model_fields_set:
+            obj.password = hash_password(schema_obj.password)
         return await self.save_object(obj)
 
 
@@ -505,10 +515,10 @@ class ServiceAccountView(PasswordHashingView):
 ```
 
 Here, only the HTTP routes receive a plain password, so the hash belongs in
-`create`. [Hash a password](#password-hash-example) explains this override
-for one view. If the update schema accepts `password`, override `update` in
-the same way. Otherwise, a `PATCH` request stores the new password without a
-hash.
+`create` and `update`. The generated update body accepts `password` too, so
+without the `update` override a `PATCH` request would store the new password
+without a hash. [Hash a password](#password-hash-example) explains these
+overrides for one view.
 
 A subclass can override the same method again. Its version then replaces the
 base's version. To run the base's code too, call `super()`, as in any Python
@@ -529,7 +539,7 @@ Every subclass of `NotifyingView` calls `notify_created` after a create is
 committed. This is also true when a custom route groups several writes with
 {ref}`shared_write_action_commit() <shared-write-action-commit>`: the hook
 then waits until the outermost block commits.
-[Transaction hooks](#transaction-hooks) explains both hooks, and
+[Run code before or after the commit](#transaction-hooks) explains both hooks, and
 [When after_action_commit raises](#after-action-commit-raises) explains what
 happens when the hook fails.
 
@@ -711,7 +721,7 @@ Steps 1 to 5 run once for each class. A second registration on another
 parent only builds a new router. On a FastAPI app, `include_view` also
 installs Restly's handler that turns an `IntegrityError` into a `409`,
 unless the app already has a handler for it; see
-[Database conflicts](#default-exception-handling).
+[Unique values and other database conflicts: 409](#default-exception-handling).
 
 `before_include_view()` is a class method that you can override to change
 the route methods before registration. On a CRUD view, call `super()` in it.

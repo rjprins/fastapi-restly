@@ -160,8 +160,8 @@ async def problem_handler(request, exc):
 
 With this handler, a missing row returns
 `{"type": "about:blank", "title": "Doc with id 999 was not found", "status": 404}`
-with the `application/problem+json` content type. The `400` errors of the list
-endpoints get the same body.
+with the `application/problem+json` content type. The `400` errors of the
+standard list routes get the same body.
 
 Some errors are not a `RestlyHTTPError`, so this handler does not change them:
 
@@ -173,6 +173,8 @@ Some errors are not a `RestlyHTTPError`, so this handler does not change them:
   name different rows (`422`). Register a handler for
   `fastapi.HTTPException`.
 - The `409` of the database conflict handler above.
+- Most `400` errors of a react-admin list route, such as a bad `range`,
+  `filter` or `sort` value. They are a plain `fastapi.HTTPException` too.
 
 ## See also
 

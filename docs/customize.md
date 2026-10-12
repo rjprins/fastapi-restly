@@ -444,11 +444,14 @@ FastAPI's `BackgroundTasks` does not replace an outbox: a crash loses the
 task, and nothing tries it again.
 
 (replace-endpoint-method)=
-## Change the status code, headers or response of one route
+## Change the status code or headers of one route
 
 Business methods and hooks keep the HTTP contract of the CRUD route. Replace
 the endpoint method when the contract itself must change: the status code,
-the headers, the parameters or the response.
+the headers or the parameters. To change the shape of the response body, such
+as an envelope around one object, see
+[Change the shape of one route](#one-route-shape) on Responses. It replaces
+the endpoint method in the same way.
 
 Define a method with the same name, such as `delete_endpoint`, and give it a
 route decorator. Most replacements call the handler and only change the
@@ -500,13 +503,16 @@ header. Keep the `list_params` parameter to keep Restly's
 import fastapi
 import json
 
+ProductResponse = fr.schemas.derive_schema_response(ProductSchema)
+
+
 @fr.include_view(app)
 class ProductView(fr.AsyncRestView):
     prefix = "/products"
     model = Product
     schema = ProductSchema
 
-    @fr.get("/")
+    @fr.get("/", response_model=list[ProductResponse])
     async def get_many_endpoint(self, list_params):
         result = await self.handle_get_many(list_params)
         serialized = [
@@ -519,6 +525,12 @@ class ProductView(fr.AsyncRestView):
             headers={"X-Total-Count": str(result.total_count)},
         )
 ```
+
+The route sends a plain list, not the default envelope, so it names its
+`response_model`. Without it, registration documents the envelope in
+OpenAPI, and generated clients expect the wrong body.
+[Name the view's classes in a custom route](#name-the-response-classes)
+explains `derive_schema_response`.
 
 ### Share a changed route across views
 

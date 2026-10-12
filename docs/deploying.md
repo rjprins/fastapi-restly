@@ -104,7 +104,7 @@ Three details matter in production:
   [Close the engine on shutdown](#engine-disposal).
 - `fr.configure(app, ...)` also installs the handler that turns an
   `IntegrityError` into a 409 response; see
-  [Database conflicts](#default-exception-handling). `health="/health"` adds
+  [Unique values and other database conflicts: 409](#default-exception-handling). `health="/health"` adds
   the [health check](#health-checks).
 
 `VIEWS` is the one place where the application registers its views;

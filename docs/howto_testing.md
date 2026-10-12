@@ -45,8 +45,8 @@ well. The examples below use SQLite through `aiosqlite`:
 pip install aiosqlite
 ```
 
-The extra registers a `pytest11` entry point, so pytest loads the Restly
-fixtures by itself. If your project turns off plugin autoloading, register
+The package registers a `pytest11` entry point. So when the `testing` extra is
+installed, pytest loads the Restly fixtures by itself. If your project turns off plugin autoloading, register
 the plugin in `conftest.py`:
 
 ```python
@@ -113,8 +113,9 @@ after that import, and before the freeze.
 A factory that *requires* its settings, like the PostgreSQL one below, must
 not build an app when its module is imported. Keep it a factory. Otherwise
 `conftest.py` would again need the environment variable before the import, and
-the factory exists to remove that need. Only the modules that the conftest
-imports before `configure_tests()` are safe. A module imported later, such as
+the factory exists to remove that need. A module that builds an app when it
+is imported works only if the conftest imports it before `configure_tests()`.
+A module imported later, such as
 an `asgi.py` that a test file imports, calls its factory after the freeze, and
 fails with
 {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`.

@@ -136,7 +136,7 @@ class UserSchema(fr.IDSchema):
 
 The server sets such a value. Set it on the model, with a column default, so
 that every write path sets it; see
-[Server-stamped fields](#server-stamped-fields).
+[Stamp the fields the server owns](#server-stamped-fields).
 
 {data}`fr.WriteOnly[T] <fastapi_restly.schemas.WriteOnly>` marks a field that
 only comes in. The create and update bodies accept it, and no response shows
@@ -488,7 +488,7 @@ class UserView(AppView):
         result = await self.handle_get_many(list_params, where=User.active.is_(False))
         return self.to_response(result, fr.ResponseShape.LIST)
 
-    @fr.post("/{id}/activate", response_model=UserResponse)
+    @fr.post("/{id}/activate", response_model=UserResponse, status_code=200)
     async def activate(self, id: int):
         user = await self.get_one(id)
         async with self.write_action("activate", obj=user):

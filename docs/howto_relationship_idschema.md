@@ -274,8 +274,9 @@ for its customer:
 In JSON the list is an array of ids, such as `"products": [1, 2, 3]`. Each
 item of a request can also be an object, such as `{"id": 1}`. On create and update,
 Restly looks up all ids in one query, returns `404` if one is missing, and
-sets the relationship to the rows in the order the client sent them. A
-repeated id counts once. The full file is
+sets the relationship to those rows. A repeated id counts once. A list
+relationship stores no order: responses show the rows in database order,
+unless the relationship sets `order_by`. The full file is
 [`shop/main.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/shop/shop/main.py).
 
 A list cannot use `MustExist`, which is for one foreign key column. Restly

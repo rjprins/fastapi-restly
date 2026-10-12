@@ -221,11 +221,6 @@ returns cannot be used in an annotation; see
 (typing-limits)=
 ## What a type checker cannot see
 
-Restly does some work at runtime when it registers a view. It copies the
-inherited endpoint methods, and it changes their signatures for FastAPI; see
-[view registration](#view-registration-internals). Static type checkers do
-not see this.
-
 - Type checkers work well on the public API: models, schemas, reference
   types, class attributes, and the view methods such as
   {meth}`get_one <fastapi_restly.views.RestView.get_one>`,
@@ -235,7 +230,6 @@ not see this.
   [endpoint methods](#replace-endpoint-method) (`*_endpoint`), whose
   signatures Restly fills in at registration.
 
-You only need to think about this if you change Restly itself.
 
 ## Check your project
 
@@ -244,6 +238,13 @@ keeps a set of small example apps in
 [`tests/typing/`](https://github.com/rjprins/fastapi-restly/tree/main/tests/typing).
 CI checks them with Pyright and with mypy, both in strict mode. They show each typed form on this page, and they are a good
 place to look when your type checker complains.
+
+## Internals
+
+Restly does some work at runtime when it registers a view. It copies the
+inherited endpoint methods, and it changes their signatures for FastAPI; see
+[view registration](#view-registration-internals). Static type checkers do
+not see this.
 
 ## See also
 

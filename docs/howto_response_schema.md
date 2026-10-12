@@ -270,7 +270,7 @@ matching `response_model` for each route that changes; see
 {meth}`create <fastapi_restly.views.RestView.create>` from
 {meth}`get_one <fastapi_restly.views.RestView.get_one>`: both are `SINGLE`.
 To change the status code or the headers of one route, replace that endpoint
-method; see [Replace an endpoint method](#replace-endpoint-method).
+method; see [Change the status code or headers of one route](#replace-endpoint-method).
 
 (to-single-response)=
 ## Change how one object is serialized
@@ -280,8 +280,8 @@ turns one ORM object into an instance of the response class. It reads the
 attributes of the object and validates them with Pydantic. Each endpoint
 method calls it, through `to_response`, and so does each item of a list.
 
-Override it for another projection, or for a faster path when you trust the
-data:
+Override it to send other values, or to build the response faster when you
+trust the data:
 
 ```python
     def to_single_response(self, obj: User):
