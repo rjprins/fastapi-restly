@@ -139,15 +139,6 @@ work.
 Define a model-backed CRUD resource and understand its default contract.
 :::
 
-:::{grid-item-card} Nested Resources
-:link: howto_nested
-:link-type: doc
-
-Serve a child resource under its parent, such as
-`/projects/{project_id}/tasks`, with paging, filters, sort and every CRUD
-route.
-:::
-
 :::{grid-item-card} Request Lifecycle & Hooks
 :link: customize
 :link-type: doc
@@ -217,7 +208,6 @@ howto_existing_project
 howto_models
 class_based_views
 rest_views
-howto_nested
 customize
 howto_custom_schema
 howto_response_schema

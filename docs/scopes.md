@@ -327,7 +327,7 @@ Do not name that route method `count`: it would shadow the
 {meth}`count <fastapi_restly.views.RestView.count>` seam it calls.
 
 Pass another view to follow that view's visibility in code that builds its
-own query. The parent lookup of a [nested view](howto_nested.md) does this,
+own query. The parent lookup of a [nested view](#nested-resources) does this,
 so a project that `GET /projects/{id}` hides also answers `404` under
 `/projects/{project_id}/tasks`:
 

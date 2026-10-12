@@ -626,23 +626,6 @@ When a custom route constructs schemas itself (`model_construct()` skips
 validation), {class}`IDRef <fastapi_restly.schemas.IDRef>` fields need explicit wrapping; the recipe lives in
 [Relationships](#idref-custom-routes).
 
-## Exclude CRUD routes
-
-Set {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` to prevent selected CRUD endpoint methods from being registered as routes:
-
-```python
-@fr.include_view(app)
-class UserView(fr.AsyncRestView):
-    prefix = "/users"
-    model = User
-    exclude_routes = [fr.ViewRoute.DELETE, fr.ViewRoute.UPDATE]
-```
-
-Valid values are: {attr}`fr.ViewRoute.GET_MANY <fastapi_restly.views.ViewRoute.GET_MANY>`, {attr}`fr.ViewRoute.GET_ONE <fastapi_restly.views.ViewRoute.GET_ONE>`, {attr}`fr.ViewRoute.CREATE <fastapi_restly.views.ViewRoute.CREATE>`, {attr}`fr.ViewRoute.UPDATE <fastapi_restly.views.ViewRoute.UPDATE>`, {attr}`fr.ViewRoute.DELETE <fastapi_restly.views.ViewRoute.DELETE>`. Endpoint-method names such as `"delete_endpoint"` are also accepted; any other string raises `AttributeError` at startup.
-
-An exclusion may use a
-`ViewRoute` value or its endpoint-method string, such as `"delete_endpoint"`.
-
 ## What is available on `self`
 
 Inside any method or custom route, the following attributes are always available:

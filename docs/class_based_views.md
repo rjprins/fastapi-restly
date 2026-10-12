@@ -439,7 +439,7 @@ class ReportView(V2Base):
 ```
 
 A prefix can also contain a path parameter, such as `/projects/{project_id}`.
-[Nested Resources](howto_nested.md) builds child resources this way.
+[Nested Resources](#nested-resources) builds child resources this way.
 
 ### Inherit custom routes
 
@@ -544,7 +544,7 @@ attribute with a `Path()`, `Query()`, `Header()`, `Cookie()`, `Body()`,
 {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
 when the view is registered, because FastAPI would never set it. A path
 segment or header that every route of the view needs comes through a
-dependency instead; [Nested Resources](howto_nested.md) shows the pattern for
+dependency instead; [Nested Resources](#nested-resources) shows the pattern for
 a path segment.
 
 A plain annotation never replaces a dependency annotation. A mixin or

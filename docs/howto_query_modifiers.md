@@ -457,5 +457,5 @@ own query parameters beside `list_params`, such as
 
 - [List-parameters lifecycle](technical_details.md#list-parameters-lifecycle):
   how the filter grammar is generated and frozen at registration time.
-- [Nested Resources](howto_nested.md): serving a child resource under its
+- [Nested Resources](#nested-resources): serving a child resource under its
   parent, such as `/projects/{project_id}/tasks`.
