@@ -156,13 +156,7 @@ keeps its full name as the resource: `UserRead` gives `UserReadCreate`.
 
 By default the response class is the view's schema without its `WriteOnly`
 fields. Restly builds it also when the schema has no `WriteOnly` fields, so
-OpenAPI always shows `UserResponse`. It is a subclass of the view's schema, and
-{meth}`to_single_response() <fastapi_restly.views.BaseRestView.to_single_response>`
-returns an instance of it. An override may return an instance of the view's
-schema instead: the response class copies its values and does not validate
-them again. An override that returns an instance of another model gets it
-validated into the response class from its attributes, so only the fields of
-the response class go out. A view can also set its own response class; see
+OpenAPI always shows `UserResponse`. A view can also set its own response class; see
 [Your own response class](#own-response-class). The list response is the
 pagination's envelope, filled with the response class. A react-admin view has
 no list response class: its list route returns a plain JSON list.
@@ -344,11 +338,6 @@ Every CRUD route runs through an endpoint method (`<verb>_endpoint`), a
 handler (`handle_<verb>`), and a business method (`<verb>`). How the handler
 handles the steps, and the override decision table, live in
 [Request Lifecycle & Hooks](#view-request-steps).
-
-The implementation detail worth knowing here is that the endpoint method calls
-{meth}`to_response(obj, shape) <fastapi_restly.views.BaseRestView.to_response>`, the single response method, which delegates to
-{meth}`to_single_response(obj) <fastapi_restly.views.BaseRestView.to_single_response>` for the per-object serialization
-(relationship-id normalization and response-schema validation).
 
 ### Nested Response Schemas vs Write Payloads
 

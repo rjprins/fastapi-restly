@@ -472,49 +472,6 @@ Registration fills in the view's types for annotations that are missing or `Any`
 
 The default `DELETE /{id}` returns `204 No Content`; this version returns the deleted record, as `ra-data-simple-rest` expects (see [React Admin](howto_react_admin.md)).
 
-### `to_response`: the one response method
-
-The default endpoint methods return through {meth}`self.to_response(result, shape) <fastapi_restly.views.BaseRestView.to_response>`, where `shape` is {attr}`SINGLE <fastapi_restly.views.ResponseShape.SINGLE>`, {attr}`LIST <fastapi_restly.views.ResponseShape.LIST>`, or {attr}`EMPTY <fastapi_restly.views.ResponseShape.EMPTY>`. The shape tells what `result` is: one object for `SINGLE`, a {class}`ListResult <fastapi_restly.views.ListResult>` for `LIST`, and `None` for `EMPTY`. `to_response` passes them on to {meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>` and {meth}`to_list_response <fastapi_restly.views.BaseRestView.to_list_response>`. Override it for envelopes or shape-wide response behavior:
-
-```python
-    def to_response(self, result, shape=fr.ResponseShape.SINGLE):
-        if shape is fr.ResponseShape.SINGLE:
-            return {"data": self.to_single_response(result)}
-        return super().to_response(result, shape)
-```
-
-If this changes a default CRUD route's HTTP contract, also replace that endpoint
-method and set a matching `response_model`. Otherwise, FastAPI validates and
-documents the response with the original response model. See
-[Responses](howto_response_schema.md) for the full pattern.
-
-`to_response` is keyed on response shape, not action. It cannot distinguish {meth}`create <fastapi_restly.views.RestView.create>` from {meth}`get_one <fastapi_restly.views.RestView.get_one>`; both are `SINGLE`. For one verb's HTTP contract, override that endpoint method:
-
-```python
-    @fr.post("/")
-    async def create_endpoint(self, schema_obj):
-        obj = await self.handle_create(schema_obj)
-        return fastapi.Response(
-            content=self.to_single_response(obj).model_dump_json(),
-            media_type="application/json",
-            status_code=201,
-            headers={"Location": f"{self.prefix}/{obj.id}"},
-        )
-```
-
-For object serialization, {meth}`to_single_response(obj) <fastapi_restly.views.BaseRestView.to_single_response>` builds the view's response class, normalizes relationship ids, and validates through Pydantic. By default the response class is the view's schema without its `WriteOnly` fields. Override it for a different projection or a faster trusted path:
-
-```python
-    def to_single_response(self, obj: User):
-        return self.schema_response.model_construct(
-            id=obj.id,
-            name=obj.name,
-            email=obj.email,
-        )
-```
-
-`model_construct()` bypasses validators and required-field checks. Keep the payload aligned with your response contract. Build the response class, not the view's schema: Restly sends an instance of the response class as it is, and converts an instance of any other class first.
-
 ### Replace the list endpoint method
 
 Replace {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` when the list response contract changes, for example custom headers. Keep the `list_params` parameter if you want Restly's generated [filter, sort, and pagination query parameters](howto_query_modifiers.md):
