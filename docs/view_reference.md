@@ -157,7 +157,7 @@ and `fr.clauses.UNSCOPED` reads unscoped.
 
 Internal methods prefixed with `_`, such as `_reject_unknown_query_params`, are implementation details even though they are visible on instances.
 
-See [Views](class_based_views.md#the-view-hierarchy) for the class hierarchy, [Request Lifecycle & Hooks](customize.md) for examples of choosing which method to override, and [Type Annotations](howto_typing.md) for the typed signatures of these methods.
+See [Views](#the-view-hierarchy) for the class hierarchy, [Request Lifecycle & Hooks](customize.md) for examples of choosing which method to override, and [Type Annotations](howto_typing.md) for the typed signatures of these methods.
 
 (advanced-object-helpers)=
 ### The same operations outside a view
