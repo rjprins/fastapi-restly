@@ -373,6 +373,8 @@ Excluded tables are shared by every test, so a write to one does carry over.
 Naming a table that does not exist raises, since a typo would otherwise empty the
 very table you meant to protect.
 
+(test-clients)=
+
 ## Test clients
 
 {class}`RestlyTestClient <fastapi_restly.testing.RestlyTestClient>` is the
