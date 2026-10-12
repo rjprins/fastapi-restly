@@ -1,145 +1,193 @@
+(configure-restly)=
+
 # Database & Configuration
 
-
-Restly exposes one public process-wide runtime configuration. Most applications
-configure it once during startup:
+Every Restly view needs a database session. You tell Restly once, at
+startup, where its sessions come from, and every view uses that source. Call
+{func}`fr.configure() <fastapi_restly.db.configure>` before you register your
+views:
 
 ```python
-fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
+import fastapi_restly as fr
+from fastapi import FastAPI
+
+app = FastAPI()
+fr.configure(app, async_database_url="sqlite+aiosqlite:///app.db")
 ```
 
-{func}`fr.configure(...) <fastapi_restly.db.configure>` rejects no-op calls; pass at least one setup option. Its
-reference entry lists every accepted option. This page does not repeat them.
+You can give Restly one of four sources. Each has an async and a sync
+argument:
 
-Internally, Restly keeps a private context object so its own tests and fixtures
-can isolate runtime state. That context is not a public multi-engine feature.
-If an application needs multiple databases, use a custom FastAPI dependency or
-session generator for that view. Restly does not currently bind different views
-to different named contexts.
+| You pass | Async argument | Sync argument | What Restly does with it |
+|---|---|---|---|
+| A URL | `async_database_url` | `database_url` | Builds the engine and a sessionmaker |
+| An engine | `async_engine` | `engine` | Builds a sessionmaker on your engine |
+| A sessionmaker | `async_make_session` | `make_session` | Uses it as it is |
+| A session generator | `session_generator` | `sync_session_generator` | Calls it for each request |
+
+Pass a URL when Restly may own the engine. Pass your engine or your
+sessionmaker when your application already builds one. Use a generator only
+when sessions must be built in a special way. An application that has both
+async and sync views passes one async and one sync source.
+
+For each request, a view gets a session from that source. An
+{class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` receives it
+through {data}`fr.AsyncSessionDep <fastapi_restly.db.AsyncSessionDep>`, and
+a {class}`RestView <fastapi_restly.views.RestView>` through
+{data}`fr.SessionDep <fastapi_restly.db.SessionDep>`. The source opens the
+session and closes it after the request, but it does not commit. The view
+commits its own write actions; see [Transaction hooks](#transaction-hooks).
+
+(one-configuration-per-process)=
+There is one configuration for each process. Restly stores it in the process,
+not on the app. A second call to `fr.configure()` replaces the sources it
+names, and every app in the process then uses the new ones. Restly has no
+named configurations for different views. To give one view a different
+database, [change the session on that view](#session-dependency-one-view).
+
+When you pass `app`, `fr.configure()` also prepares that app. It installs the
+[handler that turns a database conflict into a 409](#default-exception-handling),
+it checks the OpenAPI schema for
+[two classes with the same name](#name-your-schemas), and with
+`health="/health"` it adds a [health check route](#health-checks). The
+{func}`reference entry <fastapi_restly.db.configure>` lists every argument.
 
 (reuse-existing-engine)=
 
-## Reuse Your Existing Engine
+## Reuse your existing engine or sessionmaker
 
-The most common integration is reusing the engine (or sessionmaker) your app
-already builds, with the pool settings and URL handling you trust. Hand exactly
-that object to {func}`fr.configure() <fastapi_restly.db.configure>`; Restly does not need to own it:
+Your application may already build an engine, with pool settings that you
+trust. Give exactly that object to `fr.configure()`. Restly does not need to
+own it:
 
 ```python
 import fastapi_restly as fr
 
-# the engine your app already creates somewhere central
+# The engine that your app already creates
 fr.configure(async_engine=existing_async_engine)
 
-# sync apps: fr.configure(engine=existing_engine)
-# or hand over a sessionmaker instead:
+# For sync views:
+#   fr.configure(engine=existing_engine)
+# Or pass your sessionmaker instead:
 #   fr.configure(async_make_session=ExistingAsyncSession)
 ```
 
-{func}`fr.configure() <fastapi_restly.db.configure>` builds the session
-factory on top. {class}`RestView <fastapi_restly.views.RestView>` commits
-its write actions. Your application still controls the engine. Use a session
-*generator* (next section) only when sessions must be constructed in a custom
-way, such as scoped sessions, multi-tenant routing, or instrumentation.
+With an engine, Restly builds a sessionmaker on top of it. With a
+sessionmaker, Restly uses it as it is. Either way, your application
+still controls the engine, and Restly applies none of its
+[engine defaults](#engine-defaults) to it.
 
-The SaaS example builds its own async engine from its settings and hands it to
-`fr.configure` ([`app/main.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/main.py)).
+If you pass an async sessionmaker, create it with `expire_on_commit=False`.
+Restly reads the response from the object after the commit, and in async code
+an expired attribute raises `MissingGreenlet`. Restly warns when it gets an
+async sessionmaker with `expire_on_commit=True`.
+[Session factory defaults](#session-factory-defaults) explains the options
+that Restly sets on its own factories.
+
+The SaaS example builds its own async engine from its settings and passes it
+to `fr.configure()`
+([`app/main.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/main.py)).
 
 (own-session-generator)=
 
-## Provide Your Own Session Generator
+## Build sessions with your own generator
 
-If your project already manages its own database sessions, configure
-FastAPI-Restly to use them instead of its built-in session factory.
+Use a session generator when your sessions need special setup, such as
+scoped sessions, routing to a database per tenant, or instrumentation. The
+generator builds a session, yields it, and cleans it up. It must not commit:
+the view commits its write actions.
 
-If you provide custom sessionmakers or generators, make sure their lifecycle and
-session options match the behavior your views rely on. Restly's built-in
-factories intentionally use different autoflush defaults for sync and async
-sessions and keep `expire_on_commit=False` for both; see
-[Session Factory Defaults](#session-factory-defaults).
-A custom generator constructs sessions your way but does *not* own the
-commit. It should construct, yield, and clean up (close or roll back on the way
-out). {class}`RestView <fastapi_restly.views.RestView>` commits its write actions.
-
-For async views ({class}`AsyncRestView <fastapi_restly.views.AsyncRestView>`), pass an async generator to
-{func}`fr.configure() <fastapi_restly.db.configure>`:
+For async views, pass an async generator:
 
 ```python
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
+
 from sqlalchemy.ext.asyncio import AsyncSession
+
 import fastapi_restly as fr
+
 
 async def my_get_db() -> AsyncIterator[AsyncSession]:
     async with MyAsyncSession() as session:
         yield session
 
-# Before registering routes or including views.
+
+# Before you register views or routes.
 fr.configure(session_generator=my_get_db)
 ```
 
-For sync views ({class}`RestView <fastapi_restly.views.RestView>`), pass a sync generator:
+For sync views, pass a sync generator:
 
 ```python
-from typing import Iterator
+from collections.abc import Iterator
+
 from sqlalchemy.orm import Session
+
 import fastapi_restly as fr
+
 
 def my_get_db() -> Iterator[Session]:
     with MySession() as session:
         yield session
 
-# Before registering routes or including views.
+
+# Before you register views or routes.
 fr.configure(sync_session_generator=my_get_db)
 ```
 
-Restly resolves the configured generator through FastAPI's dependency graph.
-An existing `Depends(my_get_db)` in an authentication dependency or route and
-the view's `self.session` receive the same session within a request. That means
-a user loaded by authentication can be assigned directly to a relationship in
-the view. The generator runs once, with one cleanup, under FastAPI's normal
-dependency caching. Custom `use_cache=False`, dependency scopes, and security
-scopes follow FastAPI's own caching rules.
+Configure the generator before you register any route that uses
+`fr.AsyncSessionDep` or `fr.SessionDep`. This includes plain FastAPI routes.
+FastAPI fixes the dependencies of a route when you register it. For this
+reason, a call that sets or replaces the generator after that raises
+{class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`.
 
-Configure the generator before registering any route that uses
-{data}`fr.SessionDep <fastapi_restly.db.SessionDep>` or
-{data}`fr.AsyncSessionDep <fastapi_restly.db.AsyncSessionDep>`, including plain
-FastAPI routes. FastAPI fixes the
-dependency graph at registration, so setting or replacing that generator later
-raises {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`.
-An explicit `session: Annotated[..., Depends(reporting_get_db)]` on a view keeps
-using `reporting_get_db`.
+Give your sessions the same options as Restly's own factories, unless you need
+other behavior: `expire_on_commit=False`, and for async sessions also
+`autoflush=False`. [Session factory defaults](#session-factory-defaults)
+explains why.
 
-Sharing also works when Restly owns session creation. Use its public aliases in
-your application's dependencies and plain routes. This example assumes your
-application supplies `User` and `current_user_id()`:
+To use the generator outside a request, with
+[`fr.open_session()`](#session-off-request), it must take no arguments. In
+tests, Restly's fixtures can replace the generator;
+[the `restly_session` fixture](#restly-session-fixture) describes when.
+
+(share-request-session)=
+
+## Use the view's session in your own dependencies
+
+A view and your own dependencies can share one session in a request. So when
+your authentication dependency loads a user, the view can assign that user
+object to a relationship directly.
+
+When Restly builds the sessions, use its aliases in your dependencies and
+plain routes. This example assumes that your application supplies `User` and
+`current_user_id()`:
 
 ```python
 fr.configure(async_engine=existing_async_engine)
+
 
 async def get_current_user(session: fr.AsyncSessionDep):
     return await session.get(User, current_user_id())
 ```
 
-Views and application dependencies using `fr.AsyncSessionDep` share one session.
-Use `fr.SessionDep` for sync code. Both aliases keep Restly's uncommitted-changes
-warning, including when used on plain routes.
+The views and every dependency that uses `fr.AsyncSessionDep` get the same
+session within a request. Use `fr.SessionDep` for sync code. On a plain
+route, both aliases also warn when the request ends with changes that were
+not committed, as they do on a view.
 
-The [test fixtures](howto_testing.md#restly_session) override the configured
-generator through `app.dependency_overrides` under rollback isolation. Native
-application dependencies and Restly then share an isolated request session.
-The generator body does not run for requests during those tests. If no factory
-is configured, setup opens the generator to discover its session's bind.
-Generators needing request arguments require an explicit test engine or
-sessionmaker as well. For your own overrides, use
-`app.dependency_overrides[my_get_db] = test_get_db`.
+When you configure your own generator, your existing `Depends(my_get_db)`
+gives the same session as the view's `self.session`. FastAPI runs the
+generator once per request, and cleans it up once. FastAPI's own caching rules
+still apply: a dependency with `use_cache=False` gets its own session.
 
 (session-dependency-one-view)=
 
-## Use a Custom Session Dependency on One View
+## Use another database on one view
 
-Use {func}`fr.configure(...) <fastapi_restly.db.configure>` when one session source should be the default for the
-application. If only one view should use a different session source, override
-the view's `session` dependency instead:
+`fr.configure()` sets the session source for the whole application. To give
+one view a different source, such as a read replica or a reporting database,
+override the view's `session` dependency:
 
 ```python
 from collections.abc import AsyncIterator
@@ -160,8 +208,8 @@ ReportingSession = async_sessionmaker(
 
 
 async def get_reporting_db() -> AsyncIterator[AsyncSession]:
-    # Construct, yield, and clean up. RestView owns the commit.
-    # The context manager rolls back and closes the session on the way out.
+    # Build, yield, and clean up. The view owns the commit.
+    # The context manager rolls back and closes the session at the end.
     async with ReportingSession() as session:
         yield session
 
@@ -177,24 +225,16 @@ class ReportView(fr.AsyncRestView):
     session: ReportingSessionDep
 ```
 
-The custom dependency owns session construction and cleanup.
-{class}`RestView <fastapi_restly.views.RestView>` still owns the commit.
-Use this for read replicas, reporting databases, or any other view that needs its own session.
-
-`AsyncSessionDep` and `SessionDep` wrap a session source as a FastAPI
-sub-dependency. The source is either Restly's built-in generator or the custom
-generator passed to {func}`configure() <fastapi_restly.db.configure>` before
-route registration. Making that source a dependency lets FastAPI share its
-cached session with the application's `Depends(get_db)`, without rewriting
-view annotations. The wrapper checks for uncommitted changes before the source
-cleans up. The built-in generators roll back and close on exit.
+Your dependency builds and cleans up the session. The view still commits its
+write actions. A generator passed to `fr.configure()` does not change this
+view: it keeps `get_reporting_db`.
 
 (session-off-request)=
 
-## Use the Configured Session Off-Request
+## Open a session outside a request
 
-Outside the request cycle (in background tasks, scripts, or workers), open a
-session from FastAPI-Restly's configured factory directly with
+Background tasks, scripts and workers run outside a request, so no view gives
+them a session. Open one from Restly's configured source with
 {func}`fr.open_async_session() <fastapi_restly.db.open_async_session>` or
 {func}`fr.open_session() <fastapi_restly.db.open_session>`:
 
@@ -204,40 +244,36 @@ import fastapi_restly as fr
 async with fr.open_async_session() as session:
     result = await session.execute(...)
 
-# sync counterpart:
+# The sync version:
 with fr.open_session() as session:
     result = session.execute(...)
 ```
 
-Off-request code owns its commit; these helpers do not commit for you.
+These helpers do not commit. Code outside a request commits its own changes.
+[Domain utilities](#domain-utilities) shows how to share logic between a view
+and such code.
 
 (engine-disposal)=
 
-## Engine Disposal
+## Close the engine on shutdown
 
-Disposing an engine closes the connections its pool is holding. Restly never
-disposes an engine, including the ones it builds, because an engine is meant to
-live as long as the process that serves requests through it. When that process
-exits, the operating system reclaims the sockets, so most applications never
-need to dispose anything.
+Disposing an engine closes the connections in its pool. Restly never disposes
+an engine, not even one that it built. An engine normally lives as long as the
+process. When the process exits, the operating system closes the connections,
+so most sync applications need to do nothing.
 
-Asynchronous applications are the exception worth handling. `AsyncEngine.dispose()`
-is a coroutine, and nothing awaits it during interpreter shutdown, so an async
-engine that is never disposed drops its connections rather than closing them.
-The database server is not what notices. The operating system closes the sockets
-as the process exits, and a backend waiting for its next command treats that as
-an ordinary end of session. The cost lands in your own shutdown output: a
-`ResourceWarning` for every connection left in the pool, and, when a request is
-still in flight, a `RuntimeError: Event loop is closed` traceback from the
-finalizer trying to terminate a connection on a loop that is already gone.
-SQLite has no server and no socket, so none of this applies to it.
+Async applications should dispose the engine. `AsyncEngine.dispose()` is a
+coroutine, and nothing awaits it when Python shuts down. The database server
+does not mind. But your shutdown output shows a `ResourceWarning` for each
+connection in the pool. If a request is still running, it also shows a
+`RuntimeError: Event loop is closed` traceback. SQLite has no server and no
+sockets, so this does not apply to it.
 
-An application that builds its own engine already holds it and disposes it in
-its lifespan, which is what [the production
-template](#production-main-template) does. When you configure from a
-URL, Restly owns the engine, and
-{func}`fr.db.get_async_engine() <fastapi_restly.db.get_async_engine>` hands it
-back:
+If your application builds its own engine, dispose it in the app's lifespan,
+as [the production template](#production-main-template) does. If you
+configure from a URL, Restly owns the engine, and
+{func}`fr.db.get_async_engine() <fastapi_restly.db.get_async_engine>` returns
+it:
 
 ```python
 from contextlib import asynccontextmanager
@@ -256,126 +292,146 @@ app = FastAPI(lifespan=lifespan)
 fr.configure(app, async_database_url="postgresql+asyncpg://localhost/app")
 ```
 
-Synchronous applications call
-{func}`fr.db.get_engine() <fastapi_restly.db.get_engine>` and `dispose()`
-without awaiting. Note that Starlette runs `on_startup` and `on_shutdown`
-handlers only when the application was built without a `lifespan` argument, so
-disposal belongs in the lifespan itself rather than in a handler appended to
-`app.router`.
+Sync applications call
+{func}`fr.db.get_engine() <fastapi_restly.db.get_engine>` and `dispose()`,
+without `await`. Put the call in the lifespan, not in an `on_shutdown`
+handler: Starlette runs those handlers only for an app built without a
+`lifespan` argument.
 
-An application that disposes its engine in the lifespan cannot be tested against
-an in-memory SQLite database. Restly's test clients run the ASGI lifespan, so the
-disposal happens at the end of every test. An in-memory database lives inside its
-connection, so closing it discards the schema and the next test finds no tables.
-Point the suite at a file database instead.
+An application that disposes its engine in the lifespan cannot use an
+in-memory SQLite database in its tests. Restly's test clients run the
+lifespan, so the engine is disposed at the end of every test. An in-memory
+database lives inside its connection, so closing the connection deletes the
+tables, and the next test finds none. Use a file database for the tests.
 
-Reconfiguring Restly in a running process abandons the previous pool rather than
-closing it. CPython reclaims it once the garbage collector reaches the cycle the
-engine sits in, which is why a test suite that reconfigures per test can hold
-several pools open at once. Suites that care dispose explicitly; Restly's own
-fixtures do.
+A second `fr.configure()` call does not close the pool of the engine it
+replaces. Python frees that pool later, when the garbage collector runs. So a
+test suite that configures again for each test can have several pools open at
+the same time. If that matters to you, dispose the old engine yourself.
 
 (sqlite-wal)=
 
 ## Turn on WAL for SQLite
 
-`PRAGMA journal_mode=WAL` is the notable omission. WAL lets readers run while a
-writer holds the database, so it is the usual answer to `database is locked` on
-a file-backed SQLite database serving concurrent requests. Restly does not set
-it, because journal mode is written into the database file and outlives every
-process that touches it: a default here would permanently change a database you
-own, and every later reader would inherit the choice. It is also a loud failure
-rather than a silent one, unlike the pragmas above. Turn it on yourself when you
-want it:
+A file-based SQLite database that serves several requests at the same time can
+fail with `database is locked`. WAL mode fixes this in most cases: readers can
+then run while a writer holds the database. Restly does not turn WAL on. The
+journal mode is stored in the database file, so it would change your database
+for good, for every program that opens it later. Turn it on yourself:
 
 ```python
 from sqlalchemy import create_engine, event
+
+import fastapi_restly as fr
 
 engine = create_engine("sqlite:///app.db")
 
 
 @event.listens_for(engine, "connect")
-def _enable_wal(dbapi_connection, connection_record):
+def _set_sqlite_pragmas(dbapi_connection, connection_record):
     dbapi_connection.execute("PRAGMA journal_mode=WAL")
+    dbapi_connection.execute("PRAGMA foreign_keys=ON")
 
 
 fr.configure(engine=engine)
 ```
 
-Note that WAL adds `-wal` and `-shm` files beside the database, which are
-removed on clean shutdown but remain after a hard kill, and that it does not
-work over network filesystems.
+Because you build the engine here, Restly does not add its
+[SQLite defaults](#engine-defaults) to it. The example sets
+`PRAGMA foreign_keys=ON` itself for that reason.
 
+WAL adds `-wal` and `-shm` files next to the database. A clean shutdown
+removes them, but they stay after the process is killed. WAL does not work on
+a network file system.
 
 ## Internals
 
 (engine-defaults)=
 
-### Engine Defaults
+### Engine defaults
 
-{func}`fr.configure() <fastapi_restly.db.configure>` builds an engine only when
-you give it a URL. To that engine, and no other, Restly applies the options a
-web application almost always wants but SQLAlchemy leaves at its library
-defaults:
+{func}`fr.configure() <fastapi_restly.db.configure>` builds an engine only
+when you give it a URL. Restly applies these options to that engine, and to no
+other engine. A web application almost always wants them, but SQLAlchemy does
+not set them by default:
 
 | Backend | Applied |
 |---|---|
-| SQLite, in-memory | `poolclass=StaticPool`, `connect_args={"check_same_thread": False}` |
+| SQLite, in memory | `poolclass=StaticPool`, `connect_args={"check_same_thread": False}` |
 | SQLite, any | `PRAGMA foreign_keys=ON`, on every connection |
 | PostgreSQL | `pool_pre_ping=True`, `pool_recycle=1800` |
 
-An in-memory SQLite database lives inside its connection, so the default pool,
-which opens one connection per thread, serves every thread but the first a
-second and empty database. FastAPI runs `def` endpoints on a thread pool, so
-`StaticPool` is what makes an in-memory URL behave as one database.
+An in-memory SQLite database lives inside its connection. The default pool
+opens one connection per thread, so each thread after the first gets a second,
+empty database. FastAPI runs `def` endpoints on a thread pool. `StaticPool`
+keeps every thread on one connection, so an in-memory URL acts as one
+database.
 
-SQLite enforces foreign keys only under `PRAGMA foreign_keys=ON`. Without it the
-`ForeignKey` constraints your models declare are parsed and then ignored, so
-`ondelete` never fires and a dangling reference is stored instead of raising the
+SQLite checks foreign keys only with `PRAGMA foreign_keys=ON`. Without it,
+SQLite ignores the `ForeignKey` constraints of your models: `ondelete` never
+runs, and a reference to a missing row is stored instead of raising the
 `IntegrityError` that becomes a 409.
 
-On PostgreSQL, `pool_pre_ping=True` tests a pooled connection before handing it
-out, turning a connection left stale by a database restart or a network blip
-into a reconnect rather than an error. `pool_recycle` then discards connections
-older than 30 minutes, because proxies such as pgbouncer drop idle connections
-without telling the client. Pool sizing stays yours: Restly sets neither
-`pool_size` nor `max_overflow`.
+On PostgreSQL, `pool_pre_ping=True` tests a connection from the pool before
+the pool hands it out. A connection that a database restart or a network problem
+broke then leads to a new connection instead of an error. `pool_recycle`
+replaces connections older than 30 minutes, because proxies such as pgbouncer
+close idle connections without telling the client. Restly does not set the
+pool size: it sets neither `pool_size` nor `max_overflow`.
 
-Each of these is connection state, and that is the line they stop at. Restly
-configures the connections it opens and does not modify the database they reach,
-so nothing here leaves a mark on your data once the process exits.
+Each of these options changes only the connection. Restly does not change the
+database itself, so these defaults leave no trace in your data after the
+process exits.
 
-All of this rides on the URL rung alone. Pass `engine=`, `make_session=` or a
-session generator and Restly leaves your object exactly as it arrived, so
-building the engine yourself is how you decline any of these defaults.
+These defaults apply only to the URL form. If you pass `engine=`,
+`make_session=` or a session generator, Restly uses your object as it is. To
+turn off any of these defaults, build the engine yourself.
 
 (session-factory-defaults)=
 
-### Session Factory Defaults
+### Session factory defaults
 
-When {func}`fr.configure() <fastapi_restly.db.configure>` creates session factories from URLs or engines, Restly
-sets a few SQLAlchemy session options intentionally:
+When {func}`fr.configure() <fastapi_restly.db.configure>` builds the session
+factory from a URL or an engine, it sets these SQLAlchemy session options:
 
 | Factory | Autoflush | Expire on commit |
 |---|---|---|
 | Async `async_sessionmaker` | `False` | `False` |
 | Sync `sessionmaker` | SQLAlchemy default (`True`) | `False` |
 
-`expire_on_commit=False` is used for both sync and async sessions so ORM
-objects remain readable after a route commits. Restly's write handlers commit
-inside the request, and the response-schema conversion reads attributes from the
-committed object afterwards (as does an `after_action_commit` hook that inspects it).
-With `expire_on_commit=True` the commit expires those attributes, so each such
-read becomes an implicit database read: in async code it raises
-`MissingGreenlet`, because the serializer -- and any such hook -- runs in plain
-async context; in sync code it quietly makes response rendering database-dependent.
+Both factories use `expire_on_commit=False`, so ORM objects can still be read
+after a route commits. Restly's write handlers commit inside the request.
+After the commit, Restly builds the response from the committed object, and an
+`after_action_commit` hook may read it too. With `expire_on_commit=True`, the
+commit expires those attributes, so each read loads them from the database
+again. In async code, that read raises `MissingGreenlet`: the response is
+built in plain async code, and SQLAlchemy cannot load from the database there
+without an `await`. In sync code, the read works, but building the response
+now needs the database.
 
-The autoflush setting is intentionally different. Async sessions disable
-autoflush because autoflush can turn a read operation into an implicit write and
-database I/O must happen at explicit awaited SQLAlchemy boundaries. Restly's
-async CRUD helpers flush explicitly when writes should hit the database. Sync
-sessions keep SQLAlchemy's default autoflush behavior, preserving the usual
-unit-of-work ergonomics where ORM queries see pending in-session changes.
+The autoflush option is different for async and sync sessions. Async sessions
+turn autoflush off, because autoflush can make a read send a write to the
+database, and async code must do database work only at an explicit `await`.
+Restly's async CRUD helpers flush when the writes must reach the database.
+Sync sessions keep SQLAlchemy's default, so queries see changes that are still
+pending in the session.
 
-Projects with custom sessionmakers or generators should preserve these defaults
-unless they need different behavior.
+### The session dependency
+
+`fr.AsyncSessionDep` and `fr.SessionDep` wrap the session source as a FastAPI
+sub-dependency. The source is Restly's built-in generator, or the generator
+that you passed to `fr.configure()` before you registered the routes. Because
+the source is a dependency, FastAPI caches its session for the request, so
+your own `Depends(get_db)` gets the same session without any change to the
+view. The wrapper checks for changes that were not committed before the source
+cleans up. The built-in generators roll back and close the session at the end.
+
+Restly keeps its configuration in a private context object. Its own tests and
+fixtures use that object to keep their state apart. It is not a public way to
+use several databases.
+
+## See also
+
+- [Deploying](deploying.md): engine settings for production, and Alembic.
+- [Testing](howto_testing.md): how the test fixtures use this configuration.
+- {func}`fr.configure() <fastapi_restly.db.configure>`: every argument.

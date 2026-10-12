@@ -502,6 +502,8 @@ and shares the event loop used by `restly_async_session` (and, under rollback,
 the same transaction). Use it whenever a test needs both HTTP and direct async
 database access.
 
+(restly-session-fixture)=
+
 ### `restly_session`
 
 **Scope:** `function`
