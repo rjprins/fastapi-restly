@@ -224,8 +224,8 @@ These pages go deeper into what this tutorial used:
   operator, sorting, and paging
 - [Testing](howto_testing.md): test the API, with a rollback after each test
 - [Deploying](deploying.md): Alembic migrations instead of `async_create_all`
-- [Views](class_based_views.md): the sync `RestView`, and views without a
-  model
+- [Views](class_based_views.md): views without a model, and
+  [the sync `RestView`](#choose-async-or-sync)
 
 ```{toctree}
 :maxdepth: 1

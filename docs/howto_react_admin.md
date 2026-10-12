@@ -202,7 +202,7 @@ example does this for the products of an order:
 :end-at: products: list[fr.IDRef[Product]]
 ```
 
-[Relationships](howto_relationship_idschema.md) describes lists of
+[Reference several rows](#reference-lists) describes lists of
 references in full.
 
 (react-admin-cors)=
