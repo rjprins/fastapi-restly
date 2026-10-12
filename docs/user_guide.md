@@ -62,7 +62,7 @@ Pages: [Schemas & Validation](schemas.md),
 [Responses](responses.md),
 [Relationships](relationships.md),
 [Filtering & Pagination](filtering.md),
-[Errors](howto_error_responses.md).
+[Errors](errors.md).
 
 - [Should Restly generate the schema, or should I write it?](#write-or-generate)
 - [How do I hide a field from responses, or stop clients from setting it?](#readonly-and-writeonly)
@@ -161,7 +161,7 @@ schemas
 responses
 relationships
 filtering
-howto_error_responses
+errors
 howto_current
 clauses
 scopes

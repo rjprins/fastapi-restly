@@ -32,7 +32,7 @@ around the fields, and where each change goes:
   [Use a different schema for the list route](#list-schema).
 
 Errors do not pass through `to_response`. To change the error shape, see
-[Errors](howto_error_responses.md).
+[Errors](errors.md).
 
 (default-responses)=
 ## What Restly returns by default
@@ -360,7 +360,7 @@ In each case only the fields of the response class go out.
   endpoint method.
 - [Filtering & Pagination](filtering.md): the page parameters
   that clients send.
-- [Errors](howto_error_responses.md): the error shape, which does not pass
+- [Errors](errors.md): the error shape, which does not pass
   through `to_response`.
 - [Return related objects in a response](#relationship-loading): how nested
   relationship fields load, and `MissingGreenlet` on async.

@@ -240,7 +240,7 @@ or the database goes here:
 A rule about who may make the change goes in
 [`authorize`](#authorize-gate). A rule about one field's value is a Pydantic
 validator on the schema: see [Validation](#validation).
-[Errors](howto_error_responses.md) lists the exceptions to raise.
+[Errors](errors.md) lists the exceptions to raise.
 
 ### Add a value to each row of a list
 

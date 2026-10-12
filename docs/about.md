@@ -19,7 +19,7 @@ default CRUD routes, query parameters, error translation, and test fixtures.
 - **Out of the box.** The common path should need no extra code: engine and
   session setup, commit handling, schema generation,
   [list filtering](filtering.md) with strict validation,
-  [error translation](howto_error_responses.md), and
+  [error translation](errors.md), and
   [savepoint-isolated test fixtures](howto_testing.md)
   all work from {func}`fr.configure() <fastapi_restly.db.configure>` onward.
 - **Customization is never off the path.** Applications are rarely just CRUD.

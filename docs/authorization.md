@@ -95,7 +95,7 @@ only when the task is assigned to them
 {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` and a plain `def`
 on {class}`RestView <fastapi_restly.views.RestView>`. To refuse, raise
 {class}`fr.exc.Forbidden <fastapi_restly.exc.Forbidden>` or any other
-`fastapi.HTTPException`. [Errors](howto_error_responses.md) lists the
+`fastapi.HTTPException`. [Errors](errors.md) lists the
 exceptions that Restly provides.
 
 (action-names)=
@@ -159,5 +159,5 @@ themselves.
 - [Request Lifecycle & Hooks](#view-request-steps): the steps of a request,
   and where `authorize` runs.
 - [Current & ContextParam](howto_current.md): who is calling.
-- [Errors](howto_error_responses.md): the exceptions to raise, and how errors
+- [Errors](errors.md): the exceptions to raise, and how errors
   look.
