@@ -117,7 +117,7 @@ a plain `pydantic.BaseModel`. Its fields can still use `ReadOnly`,
 `WriteOnly` and {class}`fr.MustExist <fastapi_restly.schemas.MustExist>`.
 
 `fr.IDSchema[User]`, with the model as a type parameter, gives the schema the
-model's type; [Type Annotations](howto_typing.md) explains when that helps.
+model's type; [Type Annotations](typing.md) explains when that helps.
 As the type of a field, `fr.IDSchema[User]` is a reference to another row;
 see [Relationships](relationships.md).
 

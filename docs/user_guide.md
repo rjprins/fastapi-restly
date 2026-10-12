@@ -112,7 +112,7 @@ Pages: [Current & ContextParam](current.md), [Query Clauses](clauses.md),
 
 Pages: [Testing](testing.md), [Deploying](deploying.md),
 [OpenAPI](openapi.md), [React Admin](react_admin.md),
-[Type Annotations](howto_typing.md).
+[Type Annotations](typing.md).
 
 - [How do I set up a test suite for my app?](#test-setup)
 - [How do I build the test schema, from models or from migrations?](#test-databases-and-migrations)
@@ -170,5 +170,5 @@ testing
 deploying
 openapi
 react_admin
-howto_typing
+typing
 ```

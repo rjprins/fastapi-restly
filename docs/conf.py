@@ -107,6 +107,7 @@ redirects = {
     "howto_testing": "testing.html",
     "howto_openapi": "openapi.html",
     "howto_react_admin": "react_admin.html",
+    "howto_typing": "typing.html",
 }
 myst_heading_anchors = 3
 myst_enable_extensions = ["colon_fence", "substitution"]
