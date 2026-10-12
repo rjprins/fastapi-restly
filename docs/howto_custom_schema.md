@@ -686,4 +686,4 @@ custom column type, write the schema yourself.
   envelopes, and [a different schema for the list route](#list-schema).
 - [Filtering & Pagination](howto_query_modifiers.md): the filters and sort
   keys that come from the response class.
-- [Models](howto_models.md): values that the server sets on every write path.
+- [Models](models.md): values that the server sets on every write path.

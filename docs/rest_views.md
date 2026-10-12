@@ -123,7 +123,7 @@ A CRUD view sets two class attributes:
 
 Normal models built on SQLAlchemy's `DeclarativeBase` work. Restly's model
 defaults, {class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>`, are
-optional; see [Models](howto_models.md).
+optional; see [Models](models.md).
 
 If the view does not declare {attr}`schema
 <fastapi_restly.views.BaseRestView.schema>`, Restly generates the view's

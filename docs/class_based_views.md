@@ -318,7 +318,7 @@ Register only the subclasses.
 A base view overrides the same methods as a single view.
 [How a view handles a request](#view-request-steps) explains which method to
 override for each change. Two shared concerns have their own recipes on
-[Models](howto_models.md): values that every write path must set, such as an
+[Models](models.md): values that every write path must set, such as an
 owner id ([Values every write path sets](#write-path-values)), and
 [soft delete](#soft-delete-mixin).
 

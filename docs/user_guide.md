@@ -23,7 +23,7 @@ Pages: [New & Existing Projects](projects.md),
 
 ## Models
 
-Page: [Models](howto_models.md).
+Page: [Models](models.md).
 
 - [How do I add Restly's defaults to my own declarative base?](#model-defaults)
 - [Can I use the SQLAlchemy models I already have?](#existing-models)
@@ -153,7 +153,7 @@ routes. So these subjects are FastAPI's, and its docs explain them:
 
 projects
 database
-howto_models
+models
 class_based_views
 rest_views
 customize
