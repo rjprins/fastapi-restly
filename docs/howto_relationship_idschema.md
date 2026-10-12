@@ -18,7 +18,7 @@ Most APIs communicate through ids. They are what forms and dropdowns submit,
 they stay cacheable, and clients like [React Admin](howto_react_admin.md) can
 dereference them for display. Embed the target object only when you
 deliberately want one larger response instead of a separate fetch; see
-[Nested Response Schemas vs Write Payloads](technical_details.md#nested-response-schemas-vs-write-payloads)
+[Nested Response Schemas vs Write Payloads](#nested-response-internals)
 for what embedding supports.
 
 | Declaration | JSON value | SQLAlchemy type |
@@ -258,6 +258,189 @@ In JSON, it looks like this:
 relationship, validate the referenced row, and use the same resolver. The
 difference is the API shape: flat id versus nested object.
 
+(relationship-loading)=
+
+## Relationship Loading and Async
+
+When an endpoint is async, response serialization cannot use the database. So
+any field backed by a relationship must be loaded beforehand; a relationship
+that is still unloaded raises `MissingGreenlet`. Restly does this for you in
+most cases, through
+{meth}`get_relationship_loader_options() <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`:
+it eager-loads the relationships the view's response class names, on both
+reads and writes. By default the response class is the view's schema without
+its `WriteOnly` fields; see [Your own response class](#own-response-class). This guide covers what loads automatically, how to add more, and what to
+do when you still hit `MissingGreenlet`.
+
+:::{note}
+FastAPI-Restly uses the term **"schema"** for Pydantic request/response models
+and **"model"** for SQLAlchemy ORM models.
+:::
+
+### What Restly loads for you
+
+A response-schema field whose name matches a model relationship is loaded
+eagerly. Take an article with an author and comments:
+
+```python
+class Article(fr.IDMixin, Base):
+    title: Mapped[str]
+    author_id: Mapped[int] = mapped_column(ForeignKey("user.id"), init=False)
+    author: Mapped[User] = relationship(init=False)
+    comments: Mapped[list["Comment"]] = relationship(default_factory=list, init=False)
+```
+
+Naming `author` and `comments` on the view's schema is all it takes. Mark
+them `fr.ReadOnly` so they stay out of the generated create and update input,
+which does not accept nested objects as write payloads (see
+[Schemas & Validation](howto_custom_schema.md)):
+
+```python
+class ArticleSchema(fr.IDSchema):
+    title: str
+    author: fr.ReadOnly[UserSchema]
+    comments: fr.ReadOnly[list[CommentSchema]]
+```
+
+Restly inspects the schema, matches `author` and `comments` against the
+mapper's relationships, and builds recursive `selectinload(...)` options from
+them. It applies those options in
+{meth}`get_one <fastapi_restly.views.RestView.get_one>` and
+{meth}`get_many <fastapi_restly.views.RestView.get_many>`, and again in
+`save_object` after a create or update, because the refresh that follows a
+flush leaves relationships unloaded. Nested schemas recurse: if `UserSchema` itself names a relationship,
+that one loads too.
+
+The reload after a write is skipped when everything the response class names
+is already loaded, and it runs without `populate_existing`, so a relationship you assigned
+in a hook keeps the value you gave it.
+
+On a **sync** view the same options apply; only the failure mode when something
+is missing differs. Sync sessions lazy-load a missing relationship with an
+extra query (slower, but it works), while async sessions raise
+`MissingGreenlet`.
+
+### Eager-load something the schema does not name
+
+Sometimes you want a relationship loaded that is not part of the response, to
+feed a `@property`, an `after_action_commit` hook, or just to avoid an N+1 in a custom
+read. Override
+{meth}`get_relationship_loader_options() <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`
+and append to it:
+
+```python
+from sqlalchemy.orm import selectinload
+
+@fr.include_view(app)
+class ArticleView(fr.AsyncRestView):
+    prefix = "/articles"
+    model = Article
+    schema = ArticleSchema
+
+    def get_relationship_loader_options(self):
+        return super().get_relationship_loader_options() + [
+            selectinload(Article.comments).selectinload(Comment.reactions)
+        ]
+```
+
+The default returns the options derived from the response class; appending
+keeps those loads and adds yours. This is the seam that feeds
+every path: the extra load applies on reads (`get_one` / `get_many`) and on the
+create and update responses alike, because the write path reloads by primary
+key through the same options. Return a fresh list to replace the strategy
+entirely, for example to swap `selectinload` for `joinedload`.
+
+For an extra load needed only by the list, add `.options(...)` in
+{meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`.
+This does not affect `get_one` or create and update responses.
+
+(eager-load-extra-relationships)=
+
+### `get_one`: eager-load extra relationships
+
+The default {meth}`get_one <fastapi_restly.views.RestView.get_one>` loads through the view scope and the loader options derived from the response class. If one endpoint needs an extra relationship, delegate to ``super()`` so the scoped load and its 404 stay intact, then load the extra attribute explicitly. An override declares the ``scope`` parameter and passes it on; the handlers always forward it:
+
+```python
+    async def get_one(self, id, *, scope=None):
+        obj = await super().get_one(id, scope=scope)   # scoped load + 404
+        await obj.awaitable_attrs.audit_log
+        return obj
+```
+
+Overriding `get_one` this way applies the extra load to reads only. To
+eager-load a relationship on the create/update response as well, override
+{meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`
+instead; see [Relationship Loading and Async](#relationship-loading).
+
+### Reach a relationship the schema does not name
+
+Loader options follow the relationships a schema *names*. Code that reaches
+past that set runs in plain async context and hits the same wall: an
+`after_action_commit` hook, a custom business method, or a `@property` that walks a
+relationship nothing else loads.
+{class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>` mixes
+SQLAlchemy's [`AsyncAttrs`](https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#sqlalchemy.ext.asyncio.AsyncAttrs)
+into your base, so any such attribute can be awaited explicitly:
+
+```python
+async def after_action_commit(self, action, new, old=None):
+    for comment in await new.awaitable_attrs.comments:
+        notify(comment)
+```
+
+`awaitable_attrs` is the right tool for a one-off read. When the same
+relationship is needed on every request, put it in the response class or in
+`get_relationship_loader_options` instead, so it loads in one batched query
+rather than one lazy load at a time.
+
+(missinggreenlet)=
+
+### When you hit `MissingGreenlet`
+
+`sqlalchemy.exc.MissingGreenlet` means SQLAlchemy attempted database IO on an
+async session from plain, non-awaited code. Its message is:
+
+> greenlet_spawn has not been called; can't call await_() here. Was IO
+> attempted in an unexpected place?
+
+and it links to [sqlalche.me/e/20/xd2s](https://sqlalche.me/e/20/xd2s). Inside a
+Restly view this is almost always response serialization reaching an unloaded
+relationship, sometimes wrapped in a Pydantic `ValidationError` when it surfaces
+in a nested model. For that case, work through these in order:
+
+1. **Is the field in the response class?** If a serialized field names a
+   relationship, that alone loads it. A `WriteOnly` field is not in the
+   response class, so its relationship does not load. A missing field is usually a name
+   mismatch (see the note below).
+2. **Is a hook or property reaching it?** Load it explicitly with
+   `await obj.awaitable_attrs.<name>`, or add it to
+   `get_relationship_loader_options` if every request needs it.
+3. **Did you add the load only in `get_one`, `get_many`, or `apply_list_params`?**
+   Write responses do not call those methods. Move the load to
+   `get_relationship_loader_options`.
+
+Restly already sets `expire_on_commit=False` on its session factories so a
+committed object stays readable during serialization. If you build your own
+session maker, keep that default (see
+[Session Factory Defaults](technical_details.md#session-factory-defaults)).
+
+The same error covers any implicit async IO, not only relationship
+serialization: a lazy-loaded deferred column, an expired attribute read in your
+own code, or a synchronous (non-async) driver behind an async engine. When it
+fires somewhere other than the response, SQLAlchemy's
+[Preventing Implicit IO when Using AsyncSession](https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#preventing-implicit-io-when-using-asyncsession)
+covers the full set of techniques.
+
+:::{note}
+A relationship response field must keep the relationship's own Python name;
+only its *JSON* name may be aliased. Eager loading matches on the Python field
+name, so an outgoing alias is safe (`Field(serialization_alias="ownerInfo")`,
+or a camelCase `alias_generator`). But renaming the field itself and bridging
+back with `alias` / `validation_alias` (`owner_info: OwnerSchema =
+Field(alias="owner")`) drops it from both the loader and the write-path reload,
+so it lazy-loads and raises `MissingGreenlet` on async.
+:::
+
 ## Dataclass relationship setup
 
 On a base with {class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>`,
@@ -442,9 +625,56 @@ where the built object carries it (for example `new.author.org_id`). Prefer
 `authorize` when the requested id is enough: it rejects before the unscoped
 fetch and is the standard policy seam.
 
+## Internals
+
+(nested-response-internals)=
+
+### Nested Response Schemas vs Write Payloads
+
+Nested schemas serve two different roles in Restly today:
+
+- **Response serialization** is supported. The CRUD views recursively build
+  `selectinload(...)` options for nested relationship fields in the response
+  schema, so related objects can be serialized efficiently and with aliases.
+  Reads apply those options in `get_one` / `get_many`; writes apply the same
+  ones in `save_object`, because the refresh that follows a flush leaves
+  relationships unloaded. Without that, serializing a create or update response
+  would reach them one lazy query at a time, which on an async session raises
+  `MissingGreenlet` rather than merely costing queries. The reload is skipped
+  when everything the response class names is already loaded, and it runs without
+  `populate_existing`, so a relationship the caller has already populated keeps
+  its value.
+
+  Loader options follow relationships the response class *names*. Code that reaches
+  past that set -- an `after_action_commit` hook, a custom business method, a
+  `@property` walking a relationship nothing else loads -- runs in plain async
+  context, where a bare attribute access raises `MissingGreenlet`.
+  {class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>` mixes in
+  SQLAlchemy's `AsyncAttrs` for exactly that case, so those reads can be
+  spelled `await obj.awaitable_attrs.items`. The
+  task-focused guide to all of this, including extending the loaded set and
+  resolving `MissingGreenlet`, is
+  [Relationship Loading and Async](#relationship-loading); this section
+  covers the mechanism behind it.
+- **Create/update payloads** are not supported in the general case. The default
+  `make_new_object()` / `update_object()` flow expects payload keys to map
+  directly to model attributes, with `*_id: fr.MustExist[int, Model]`
+  (see [MustExist](howto_custom_schema.md#mustexist)) as the FK
+  case. For a relationship-named field, after resolving an {class}`IDRef <fastapi_restly.schemas.IDRef>` / {class}`IDSchema <fastapi_restly.schemas.IDSchema>` to an ORM object, Restly chooses the FK
+  scalar, relationship object, or both based on the model constructor. If the
+  client supplies both fields, Restly checks they refer to the same row.
+
+If you declare a nested input field like `address: AddressSchema` on a write
+schema, the default CRUD implementation will pass that nested Pydantic object
+through to the SQLAlchemy model constructor or attribute setter, which usually
+does not match the ORM model shape. Use a flattened schema or override the
+{meth}`create() <fastapi_restly.views.RestView.create>` / {meth}`update() <fastapi_restly.views.RestView.update>` business methods to transform the payload first.
+[Relationships](howto_relationship_idschema.md)
+describes the supported reference-field patterns.
+
 ## See also
 
-- [Relationship Loading and Async](howto_relationship_loading.md): how these
+- [Relationship Loading and Async](#relationship-loading): how these
   relationship fields load for responses, and `MissingGreenlet` fixes on async.
 - [Build a Blog API](tutorial.md): reference fields in the blog build, in context.
 - The [shop example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/shop): relationships and several primary-key
@@ -453,3 +683,5 @@ fetch and is the standard policy seam.
   and field markers these compose with.
 - [API Reference](api_reference.md): {class}`MustExist <fastapi_restly.schemas.MustExist>` / {class}`IDRef <fastapi_restly.schemas.IDRef>` / {class}`IDSchema <fastapi_restly.schemas.IDSchema>` signatures and the
   full symbol tables.
+
+- [Session Factory Defaults](technical_details.md#session-factory-defaults): why Restly uses `expire_on_commit=False`.

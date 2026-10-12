@@ -378,4 +378,4 @@ the response class go out.
 - [Request Lifecycle & Hooks](customize.md): endpoint-method replacement mechanics, and [a different schema for the list endpoint](#list-schema).
 - [Errors](howto_error_responses.md): errors bypass `to_response`.
 - [Filtering & Pagination](howto_query_modifiers.md): the pagination inputs clients send.
-- [Relationship Loading and Async](howto_relationship_loading.md): how nested relationship fields load, and `MissingGreenlet` on async.
+- [Relationship Loading and Async](#relationship-loading): how nested relationship fields load, and `MissingGreenlet` on async.

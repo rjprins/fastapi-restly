@@ -222,24 +222,6 @@ of `create`. It also covers rows that other code creates.
 
 For reusable soft-delete that also hides rows on read, see `SoftDeleteMixin` in [Compose Views with Mixins](howto_compose_views_with_mixins.md).
 
-(eager-load-extra-relationships)=
-
-### `get_one`: eager-load extra relationships
-
-The default {meth}`get_one <fastapi_restly.views.RestView.get_one>` loads through the view scope and the loader options derived from the response class. If one endpoint needs an extra relationship, delegate to ``super()`` so the scoped load and its 404 stay intact, then load the extra attribute explicitly. An override declares the ``scope`` parameter and passes it on; the handlers always forward it:
-
-```python
-    async def get_one(self, id, *, scope=None):
-        obj = await super().get_one(id, scope=scope)   # scoped load + 404
-        await obj.awaitable_attrs.audit_log
-        return obj
-```
-
-Overriding `get_one` this way applies the extra load to reads only. To
-eager-load a relationship on the create/update response as well, override
-{meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`
-instead; see [Relationship Loading and Async](howto_relationship_loading.md).
-
 ### `get_many`: decorate results after the query
 
 For post-query decoration, override {meth}`get_many <fastapi_restly.views.RestView.get_many>` and delegate to `super()`.

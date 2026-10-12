@@ -87,6 +87,7 @@ redirects = {
     "api_details": "view_reference.html",
     "patterns": "user_guide.html",
     "examples": "user_guide.html",
+    "howto_relationship_loading": "howto_relationship_idschema.html",
 }
 myst_heading_anchors = 3
 myst_enable_extensions = ["colon_fence", "substitution"]

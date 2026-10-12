@@ -488,7 +488,7 @@ Write a test for each exercise.
    in `CommentView`, and call `super().authorize(...)` for the other cases.
    Load the post with `await self.session.get(Post, obj.post_id)`, because
    `obj.post` does not load by itself in async code.
-   [Relationship Loading and Async](howto_relationship_loading.md) explains
+   [Relationship Loading and Async](#relationship-loading) explains
    why.
 
 ## Next steps

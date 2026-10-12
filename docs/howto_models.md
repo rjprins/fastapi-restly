@@ -64,7 +64,7 @@ these defaults:
   database enum type, so a new member needs no database migration.
 - **`awaitable_attrs`.** Code outside a view can await a relationship that is
   not loaded yet, as
-  [Relationship Loading and Async](howto_relationship_loading.md) shows.
+  [Relationship Loading and Async](#relationship-loading) shows.
 
 (change-model-defaults)=
 

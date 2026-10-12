@@ -68,8 +68,8 @@ total counts, while keeping Restly's handlers and serialization.
 :::
 
 :::{grid-item-card} Relationship Loading and Async
-:link: howto_relationship_loading
-:link-type: doc
+:link: relationship-loading
+:link-type: ref
 
 Load nested relationships for responses on reads and writes, extend the loaded
 set, and resolve `MissingGreenlet` on async sessions.
@@ -240,7 +240,6 @@ customize
 howto_custom_schema
 howto_response_schema
 howto_relationship_idschema
-howto_relationship_loading
 howto_query_modifiers
 howto_error_responses
 howto_current

@@ -339,49 +339,6 @@ handler (`handle_<verb>`), and a business method (`<verb>`). How the handler
 handles the steps, and the override decision table, live in
 [Request Lifecycle & Hooks](#view-request-steps).
 
-### Nested Response Schemas vs Write Payloads
-
-Nested schemas serve two different roles in Restly today:
-
-- **Response serialization** is supported. The CRUD views recursively build
-  `selectinload(...)` options for nested relationship fields in the response
-  schema, so related objects can be serialized efficiently and with aliases.
-  Reads apply those options in `get_one` / `get_many`; writes apply the same
-  ones in `save_object`, because the refresh that follows a flush leaves
-  relationships unloaded. Without that, serializing a create or update response
-  would reach them one lazy query at a time, which on an async session raises
-  `MissingGreenlet` rather than merely costing queries. The reload is skipped
-  when everything the response class names is already loaded, and it runs without
-  `populate_existing`, so a relationship the caller has already populated keeps
-  its value.
-
-  Loader options follow relationships the response class *names*. Code that reaches
-  past that set -- an `after_action_commit` hook, a custom business method, a
-  `@property` walking a relationship nothing else loads -- runs in plain async
-  context, where a bare attribute access raises `MissingGreenlet`.
-  {class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>` mixes in
-  SQLAlchemy's `AsyncAttrs` for exactly that case, so those reads can be
-  spelled `await obj.awaitable_attrs.items`. The
-  task-focused guide to all of this, including extending the loaded set and
-  resolving `MissingGreenlet`, is
-  [Relationship Loading and Async](howto_relationship_loading.md); this section
-  covers the mechanism behind it.
-- **Create/update payloads** are not supported in the general case. The default
-  `make_new_object()` / `update_object()` flow expects payload keys to map
-  directly to model attributes, with `*_id: fr.MustExist[int, Model]`
-  (see [MustExist](howto_custom_schema.md#mustexist)) as the FK
-  case. For a relationship-named field, after resolving an {class}`IDRef <fastapi_restly.schemas.IDRef>` / {class}`IDSchema <fastapi_restly.schemas.IDSchema>` to an ORM object, Restly chooses the FK
-  scalar, relationship object, or both based on the model constructor. If the
-  client supplies both fields, Restly checks they refer to the same row.
-
-If you declare a nested input field like `address: AddressSchema` on a write
-schema, the default CRUD implementation will pass that nested Pydantic object
-through to the SQLAlchemy model constructor or attribute setter, which usually
-does not match the ORM model shape. Use a flattened schema or override the
-{meth}`create() <fastapi_restly.views.RestView.create>` / {meth}`update() <fastapi_restly.views.RestView.update>` business methods to transform the payload first.
-[Relationships](howto_relationship_idschema.md)
-describes the supported reference-field patterns.
-
 (list-parameters-lifecycle)=
 ## List Parameters Lifecycle
 
