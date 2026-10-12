@@ -2,9 +2,8 @@
 
 Restly's request errors are FastAPI `HTTPException`s. FastAPI renders each
 one through the exception handlers of the app, so by default every error has
-FastAPI's body: `{"detail": ...}`. Restly installs one handler of its own. It
-turns a database conflict, such as a duplicate unique value, into a `409`
-response.
+FastAPI's body: `{"detail": ...}`. A database conflict in a write, such as a
+duplicate unique value, becomes one of these errors too: a `409`.
 
 Your own code raises errors in the same way. Raise one in any method of a
 view, and the request stops there. If the error comes before the commit,
@@ -82,10 +81,11 @@ field only when it builds the query, so a bad filter value returns `400`, not
 (default-exception-handling)=
 ## Unique values and other database conflicts: 409
 
-Restly installs a handler that turns a SQLAlchemy `IntegrityError` into a
-`409 Conflict` response. So a duplicate value in a unique column, a foreign
-key to a row that does not exist, a `NULL` in a `NOT NULL` column, and a
-failed check constraint each return `409`, not `500`. The body has FastAPI's normal shape:
+A duplicate value in a unique column, a foreign key to a row that does not
+exist, a `NULL` in a `NOT NULL` column, and a failed check constraint make
+SQLAlchemy raise an `IntegrityError`, at a flush or at the commit. In a
+Restly write, the request then returns `409`, not `500`. The body has
+FastAPI's normal shape:
 
 ```json
 {
@@ -93,44 +93,42 @@ failed check constraint each return `409`, not `500`. The body has FastAPI's nor
 }
 ```
 
-The `detail` text depends on the database driver. The handler knows the
-common PostgreSQL error codes and SQLite error messages. For other databases,
-it uses a general conflict message.
+The `detail` text depends on the database driver. Restly knows the common
+PostgreSQL error codes and SQLite error messages. For other databases, it uses
+a general conflict message.
 
-Restly installs the handler in two places:
+The write block does this. Each CRUD write, and each
+[`write_action`](#custom-action-route) block in a custom route, turns the
+`IntegrityError` into
+{class}`fr.exc.Conflict <fastapi_restly.exc.Conflict>`, with the
+`IntegrityError` as its `__cause__`. So a handler for
+{class}`fr.exc.RestlyHTTPError <fastapi_restly.exc.RestlyHTTPError>` shapes
+these conflicts too; see [Change the error body](#error-envelope).
 
-- {func}`fr.configure(app=app, ...) <fastapi_restly.db.configure>`, unless
-  you pass `install_default_exception_handlers=False`.
-- `fr.include_view(app)`, when you register a view directly on a `FastAPI`
-  app. This covers an app that does not pass itself to `fr.configure`.
+Two kinds of code get the raw `IntegrityError` instead:
 
-Restly does not install the handler when the app already has a handler for
-`sqlalchemy.exc.IntegrityError`. A handler for `Exception` does not count.
+- A write inside a
+  [`shared_write_action_commit()`](#shared-write-action-commit) block. There
+  the outermost block turns what escapes it into a `409`, so a bulk route can
+  still catch the error of one row.
+- Code outside a write block, such as a bare `View` route or a plain FastAPI
+  route that commits itself. It owns its commit, and it handles its own
+  errors.
 
-To return your own body for these conflicts, register your own
-`IntegrityError` handler first, before `fr.configure` and before you register
-views on the app:
+A custom route that catches the conflict of its own `write_action` block
+catches `fr.exc.Conflict`:
 
 ```python
-from fastapi.responses import JSONResponse
-from sqlalchemy.exc import IntegrityError
-
-
-@app.exception_handler(IntegrityError)
-async def integrity_error_handler(request, exc):
-    return JSONResponse(
-        status_code=409,
-        content={"error": {"code": "constraint_conflict"}},
-    )
-
-
-fr.configure(app=app, async_database_url="sqlite+aiosqlite:///app.db")
+    @fr.post("/{id}/rename", status_code=200)
+    async def rename(self, id: int, name: str):
+        tag = await self.get_one(id)
+        try:
+            async with self.write_action("rename", obj=tag):
+                tag.name = name
+        except fr.exc.Conflict:
+            raise fr.exc.Conflict(f"A tag named {name!r} already exists")
+        return self.to_response(tag)
 ```
-
-`install_default_exception_handlers=False` stops only `fr.configure` from
-installing the handler. `fr.include_view(app)` still installs it. If you
-register views directly on the app and want no handler, register your own
-`IntegrityError` handler, as above.
 
 (error-envelope)=
 ## Change the error body for the whole app
@@ -138,7 +136,8 @@ register views directly on the app and want no handler, register your own
 To replace the `{"detail": ...}` body, register a handler for
 {class}`fr.exc.RestlyHTTPError <fastapi_restly.exc.RestlyHTTPError>`.
 FastAPI finds a handler through the class of the exception and its base
-classes, so this one handler covers all four errors in the table above. The
+classes, so this one handler covers all four errors in the table above,
+including the [database conflicts](#default-exception-handling). The
 handler below returns an RFC 9457 problem details body:
 
 ```python
@@ -172,7 +171,6 @@ Some errors are not a `RestlyHTTPError`, so this handler does not change them:
   parameter (`422`), and for a foreign key and its relationship field that
   name different rows (`422`). Register a handler for
   `fastapi.HTTPException`.
-- The `409` of the database conflict handler above.
 - Most `400` errors of a react-admin list route, such as a bad `range`,
   `filter` or `sort` value. They are a plain `fastapi.HTTPException` too.
 

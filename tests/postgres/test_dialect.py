@@ -32,7 +32,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Mapped, mapped_column, sessionmaker
 
 import fastapi_restly as fr
-from fastapi_restly._exception_handlers import _build_integrity_detail
+from fastapi_restly._integrity import _build_integrity_detail
 
 from .._models import SharedBase
 from .conftest import PG_URL

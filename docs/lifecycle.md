@@ -774,7 +774,10 @@ that savepoint:
 
 The savepoint holds the row's change and the rows that its
 `before_action_commit` wrote. So a failed row rolls back both, and its queued
-after-hook is dropped. After the shared commit, the after-hooks of the saved
+after-hook is dropped. Inside the shared block, the row's error stays a raw
+`IntegrityError`, so the route can catch it. An `IntegrityError` that escapes
+the shared block, or that its commit raises, becomes a `409`; see
+[Unique values and other database conflicts: 409](#default-exception-handling). After the shared commit, the after-hooks of the saved
 rows run in order. They stop at the first exception.
 
 The SaaS example runs both forms. `POST /tasks/bulk`, `/tasks/bulk-delete`

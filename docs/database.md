@@ -45,9 +45,8 @@ names, and every app in the process then uses the new ones. Restly has no
 named configurations for different views. To give one view a different
 database, [change the session on that view](#session-dependency-one-view).
 
-When you pass `app`, `fr.configure()` also prepares that app. It installs the
-[handler that turns a database conflict into a 409](#default-exception-handling),
-it checks the OpenAPI schema for
+When you pass `app`, `fr.configure()` also prepares that app. It checks the
+OpenAPI schema for
 [two classes with the same name](#name-your-schemas), and with
 `health="/health"` it adds a [health check route](#health-checks). The
 {func}`reference entry <fastapi_restly.db.configure>` lists every argument.

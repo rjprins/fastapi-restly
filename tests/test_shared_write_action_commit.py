@@ -396,10 +396,12 @@ async def test_enclosing_savepoint_rollback_discards_released_child_hooks(writes
 
 async def test_commit_failure_discards_hooks_and_allows_reuse_after_rollback(writes):
     view = writes.view
-    with pytest.raises(IntegrityError):
+    # The outermost block turns the commit's IntegrityError into a 409.
+    with pytest.raises(fr.exc.Conflict) as raised:
         async with _enter(view.shared_write_action_commit()):
             await _call(view.handle_create(writes.schema(name="duplicate")))
             writes.session.add(writes.model(name="duplicate"))
+    assert isinstance(raised.value.__cause__, IntegrityError)
     assert writes.after_calls == []
     assert ("commit", None) not in writes.events
     assert await _names(writes, writes.model) == []

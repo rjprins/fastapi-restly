@@ -681,6 +681,12 @@ class PaymentWebhookView(fr.View):
         await self.session.commit()  # a plain View commits itself
 ```
 
+A route that commits itself also handles its own database errors. For
+example, a sender that sends the same event twice can break a unique
+constraint. Restly does not turn that `IntegrityError` into a `409`, because
+the route is outside a Restly write; see
+[Unique values and other database conflicts: 409](#default-exception-handling).
+
 To call another service after a write, use the
 {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>`
 hook of a CRUD view instead. For a call that must not get lost, write an
@@ -718,10 +724,7 @@ these steps:
    its `route_options`, and then includes the router in the parent.
 
 Steps 1 to 5 run once for each class. A second registration on another
-parent only builds a new router. On a FastAPI app, `include_view` also
-installs Restly's handler that turns an `IntegrityError` into a `409`,
-unless the app already has a handler for it; see
-[Unique values and other database conflicts: 409](#default-exception-handling).
+parent only builds a new router.
 
 `before_include_view()` is a class method that you can override to change
 the route methods before registration. On a CRUD view, call `super()` in it.

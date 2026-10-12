@@ -1,10 +1,9 @@
 """Tests for IntegrityError / unique-constraint / FK violation scenarios (I2).
 
-The framework installs a default exception handler that translates
-SQLAlchemy ``IntegrityError`` into HTTP 409 Conflict (with a clean JSON
-body). These tests pin that behavior end-to-end. Users can opt out via
-``fr.configure(install_default_exception_handlers=False)`` — the
-``test_exception_handlers.py`` suite covers that path.
+The write block of a CRUD handler turns a SQLAlchemy ``IntegrityError``
+into ``fr.exc.Conflict``, a 409 with a clean JSON body. These tests pin that
+behavior end-to-end; ``test_integrity_conflict.py`` covers where the
+translation happens and where it does not.
 """
 
 from sqlalchemy import ForeignKey, UniqueConstraint
@@ -22,8 +21,8 @@ from .conftest import create_tables
 
 def test_post_duplicate_unique_column_returns_409(client):
     """POSTing two records with the same unique value: the second triggers
-    a SQLAlchemy ``IntegrityError`` which the framework's default handler
-    translates to HTTP 409 with a clean JSON body."""
+    a SQLAlchemy ``IntegrityError``, which the create handler's write block
+    turns into HTTP 409 with a clean JSON body."""
 
     class UserUnique(fr.IDMixin, SharedBase):
         username: Mapped[str] = mapped_column(unique=True)

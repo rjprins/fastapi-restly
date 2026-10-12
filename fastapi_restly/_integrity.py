@@ -1,43 +1,32 @@
-"""Default FastAPI exception handlers installed by fastapi-restly.
+"""Turn a SQLAlchemy ``IntegrityError`` into an HTTP 409 inside Restly's writes.
 
-Currently this module provides a translation layer from SQLAlchemy
-:class:`~sqlalchemy.exc.IntegrityError` (unique-constraint, foreign-key,
-not-null, and check-constraint violations) into a clean HTTP 409 Conflict
-response. Without this handler, an ``IntegrityError`` bubbles up to FastAPI
-and turns into a 500 Internal Server Error, which is misleading for clients
-(the server is fine; the request conflicts with the current state of the
-resource).
+A unique, foreign-key, not-null or check violation raises ``IntegrityError``
+at a flush or at the commit. The outermost write block (a ``write_action``
+outside any ``shared_write_action_commit()``, or the outermost shared block)
+turns it into :class:`~fastapi_restly.exc.Conflict`, so the client gets a 409
+instead of a 500. Blocks inside a shared block let the raw error through, so a
+bulk route can catch a failing row. Code outside a write block, such as a bare
+``View`` route that commits itself, gets the raw error.
 
-The handler is installed automatically by :func:`~fastapi_restly.db.configure`
-and as a fallback by :func:`~fastapi_restly.views.include_view`. Users can opt out
-by calling ``fr.configure(install_default_exception_handlers=False)`` or by
-registering their own handler for ``IntegrityError`` *before* the framework
-gets a chance to install one.
-
-The detail-message extraction is best-effort: it understands the most common
-PostgreSQL SQLSTATE codes (via ``orig.sqlstate`` / ``orig.pgcode``) and the
-SQLite error-message conventions. For unrecognised dialects/messages we fall back
-to a generic conflict message that includes a truncated version of the
-underlying error text.
+The detail text is best-effort: it knows the common PostgreSQL SQLSTATE codes
+(``orig.sqlstate`` / ``orig.pgcode``) and the SQLite messages. For other
+drivers it falls back to a general message with the start of the driver's
+text.
 """
 
 from __future__ import annotations
 
+import contextlib
+from collections.abc import Iterator
 from typing import Any
 
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
+
+from .exc import Conflict
 
 # Maximum length of original-error text we are willing to echo back. Keeps
 # response bodies sane and avoids accidentally leaking long SQL strings.
 _MAX_ORIG_TEXT_LENGTH = 500
-
-# Marker stored on ``app.state`` so we know we've already installed our
-# handlers on this FastAPI instance. Public so it is easy to inspect from
-# tests or user code.
-_HANDLERS_INSTALLED_FLAG = "_fr_default_exception_handlers_installed"
-
 
 # ---------------------------------------------------------------------------
 # Detail extraction
@@ -157,82 +146,17 @@ def _build_integrity_detail(exc: IntegrityError) -> str:
     return base
 
 
-# ---------------------------------------------------------------------------
-# The handler & registration helper
-# ---------------------------------------------------------------------------
+@contextlib.contextmanager
+def translate_integrity_errors(outermost: bool) -> Iterator[None]:
+    """Raise :class:`~fastapi_restly.exc.Conflict` for an ``IntegrityError``.
 
-
-def integrity_error_handler(request: Request, exc: Exception) -> JSONResponse:
-    """Translate a SQLAlchemy IntegrityError into HTTP 409 Conflict.
-
-    Signature accepts ``Exception`` instead of ``IntegrityError`` to satisfy
-    Starlette's exception-handler typing; runtime code narrows it.
+    Only when ``outermost`` is true: a block inside a shared commit lets the
+    raw error through, so the code around it can still catch it.
     """
-    assert isinstance(exc, IntegrityError)  # noqa: S101 - registered for IntegrityError only
-    detail = _build_integrity_detail(exc)
-    return JSONResponse(status_code=409, content={"detail": detail})
-
-
-def register_default_exception_handlers(app: FastAPI) -> None:
-    """Idempotently install fastapi-restly default exception handlers on ``app``.
-
-    * Skips if a handler for :class:`~sqlalchemy.exc.IntegrityError` is already
-      registered on ``app`` — we always defer to the user.
-    * Skips if we have already installed handlers on this ``app`` instance
-      (so calling from both :func:`~fastapi_restly.db.configure` and
-      :func:`~fastapi_restly.views.include_view` is safe).
-    """
-    if getattr(app.state, _HANDLERS_INSTALLED_FLAG, False):
+    if not outermost:
+        yield
         return
-
-    # Respect a user-registered handler if one is already in place.
-    if IntegrityError in app.exception_handlers:
-        setattr(app.state, _HANDLERS_INSTALLED_FLAG, True)
-        return
-
-    app.add_exception_handler(IntegrityError, integrity_error_handler)
-    setattr(app.state, _HANDLERS_INSTALLED_FLAG, True)
-    _register_on_built_stack(app)
-
-
-def _register_on_built_stack(app: FastAPI) -> None:
-    """Also register on an application that has already been called.
-
-    Starlette builds its middleware stack on the first call and the stack caches
-    the handler map, so a view registered after that would leave this handler out
-    and an ``IntegrityError`` would surface as a 500. Entering a test client to
-    run the lifespan is enough to build it.
-
-    Reach the ``ExceptionMiddleware`` already in the stack rather than discarding
-    the stack to force a rebuild: rebuilding constructs every user middleware
-    again, dropping whatever state the live instances hold, and it would briefly
-    disarm Starlette's own "cannot add middleware after startup" check.
-    """
-    stack = getattr(app, "middleware_stack", None)
-    if stack is None:
-        return
-
-    from starlette.middleware.exceptions import ExceptionMiddleware
-
-    node: Any = stack
-    while node is not None:
-        if isinstance(node, ExceptionMiddleware):
-            node.add_exception_handler(IntegrityError, integrity_error_handler)
-            return
-        node = getattr(node, "app", None)
-
-    import warnings
-
-    # A middleware that stores its wrapped app under another name ends the walk.
-    # Rare, but the alternative is unexplained 500s on late-registered views.
-    warnings.warn(
-        "Restly could not reach Starlette's ExceptionMiddleware on the built "
-        "middleware stack: a middleware in the chain does not expose its "
-        "wrapped app as `.app`. Views registered after the application first "
-        "ran will surface IntegrityError as a 500 rather than a 409.",
-        RuntimeWarning,
-        stacklevel=2,
-    )
-
-
-__all__ = ["integrity_error_handler", "register_default_exception_handlers"]
+    try:
+        yield
+    except IntegrityError as exc:
+        raise Conflict(_build_integrity_detail(exc)) from exc

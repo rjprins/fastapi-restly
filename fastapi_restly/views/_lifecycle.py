@@ -19,6 +19,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, SessionTransaction
 from sqlalchemy.orm.collections import collection_adapter
 
+from .._integrity import translate_integrity_errors
+
 T = TypeVar("T")
 
 #: Sentinel for "no ``obj`` was passed"; that marks create-shaped actions.
@@ -86,26 +88,39 @@ async def async_write_action(
 
     ``obj=<row>`` means an in-place write. ``obj=None`` means a no-object write.
     Omitting ``obj`` means create-shaped; the block must set ``handle.obj``.
+
+    Outside a shared block, an ``IntegrityError`` from ``authorize`` to the
+    commit becomes :class:`~fastapi_restly.exc.Conflict`. Inside one, it stays
+    raw, so a bulk route can catch a failing row.
     """
     owner = _shared_write_action_commit_owner(host.session)
     if owner is not None:
         owner.require_active(asynchronous=True)
-    passed = obj is not _UNSET
-    await host.authorize(action, obj=obj if passed else None, data=data)
-    old = host.snapshot(obj) if (passed and obj is not None) else None
-    handle = _WriteHandle(obj)
-    yield handle
-    _require_deposited_obj(action, handle)
-    await host.before_action_commit(action, new=handle.obj, old=old)
-    owner = _shared_write_action_commit_owner(host.session)
-    if owner is None:
-        await host.session.commit()
+    committed = False
+    with translate_integrity_errors(outermost=owner is None):
+        passed = obj is not _UNSET
+        await host.authorize(action, obj=obj if passed else None, data=data)
+        old = host.snapshot(obj) if (passed and obj is not None) else None
+        handle = _WriteHandle(obj)
+        yield handle
+        _require_deposited_obj(action, handle)
+        await host.before_action_commit(action, new=handle.obj, old=old)
+        owner = _shared_write_action_commit_owner(host.session)
+        if owner is None:
+            await host.session.commit()
+            committed = True
+        else:
+            await host.session.flush()
+            owner.enqueue(
+                host.session.sync_session,
+                host,
+                action,
+                handle.obj,
+                old,
+                asynchronous=True,
+            )
+    if committed:
         await host.after_action_commit(action, new=handle.obj, old=old)
-    else:
-        await host.session.flush()
-        owner.enqueue(
-            host.session.sync_session, host, action, handle.obj, old, asynchronous=True
-        )
 
 
 @contextlib.contextmanager
@@ -116,20 +131,24 @@ def sync_write_action(
     owner = _shared_write_action_commit_owner(host.session)
     if owner is not None:
         owner.require_active()
-    passed = obj is not _UNSET
-    host.authorize(action, obj=obj if passed else None, data=data)
-    old = host.snapshot(obj) if (passed and obj is not None) else None
-    handle = _WriteHandle(obj)
-    yield handle
-    _require_deposited_obj(action, handle)
-    host.before_action_commit(action, new=handle.obj, old=old)
-    owner = _shared_write_action_commit_owner(host.session)
-    if owner is None:
-        host.session.commit()
+    committed = False
+    with translate_integrity_errors(outermost=owner is None):
+        passed = obj is not _UNSET
+        host.authorize(action, obj=obj if passed else None, data=data)
+        old = host.snapshot(obj) if (passed and obj is not None) else None
+        handle = _WriteHandle(obj)
+        yield handle
+        _require_deposited_obj(action, handle)
+        host.before_action_commit(action, new=handle.obj, old=old)
+        owner = _shared_write_action_commit_owner(host.session)
+        if owner is None:
+            host.session.commit()
+            committed = True
+        else:
+            host.session.flush()
+            owner.enqueue(host.session, host, action, handle.obj, old)
+    if committed:
         host.after_action_commit(action, new=handle.obj, old=old)
-    else:
-        host.session.flush()
-        owner.enqueue(host.session, host, action, handle.obj, old)
 
 
 async def async_run_write_action(
@@ -164,11 +183,19 @@ def run_write_action(
 async def _async_shared_write_action_commit(
     session: AsyncSession,
 ) -> AsyncIterator[None]:
-    """Commit once after the outermost block, then await its surviving hooks."""
+    """Commit once after the outermost block, then await its surviving hooks.
+
+    The outermost block turns an ``IntegrityError`` that escapes it, or that
+    its commit raises, into :class:`~fastapi_restly.exc.Conflict`.
+    """
     pending: tuple[_QueuedAfterHook, ...] = ()
-    with _join_shared_write_action_commit(
-        session.sync_session, asynchronous=True
-    ) as owner:
+    outermost = _shared_write_action_commit_owner(session.sync_session) is None
+    with (
+        translate_integrity_errors(outermost=outermost),
+        _join_shared_write_action_commit(
+            session.sync_session, asynchronous=True
+        ) as owner,
+    ):
         yield
         if owner.depth == 1:
             owner.require_active()
@@ -189,7 +216,11 @@ async def _async_shared_write_action_commit(
 def _shared_write_action_commit(session: Session) -> Iterator[None]:
     """Sync counterpart of :func:`_async_shared_write_action_commit`."""
     pending: tuple[_QueuedAfterHook, ...] = ()
-    with _join_shared_write_action_commit(session) as owner:
+    outermost = _shared_write_action_commit_owner(session) is None
+    with (
+        translate_integrity_errors(outermost=outermost),
+        _join_shared_write_action_commit(session) as owner,
+    ):
         yield
         if owner.depth == 1:
             owner.require_active()

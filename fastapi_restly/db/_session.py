@@ -15,7 +15,6 @@ from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from sqlalchemy.orm import Session as SA_Session
 
-from .._exception_handlers import register_default_exception_handlers
 from .._routes import iter_routes
 from ..exc import RestlyConfigurationError, RestlyUncommittedChangesWarning
 from ._engine_defaults import apply_connect_hooks, engine_options
@@ -114,7 +113,6 @@ def configure(
     sync_session_generator: Callable[..., Iterator[SA_Session]] | None = None,
     warn_on_misuse: bool | None = None,
     warn_on_uncommitted: bool | None = None,
-    install_default_exception_handlers: bool = True,
     health: str | None = None,
 ) -> None:
     """Configure FastAPI-Restly. Call once at startup.
@@ -148,9 +146,8 @@ def configure(
     for the rest of that pytest process, so configure the application before
     enabling managed testing; changing them afterwards raises.
 
-    :param app: Application to install the default exception handlers and the
-        health route on. Restly also checks its OpenAPI spec for two classes
-        with the same name (see
+    :param app: Application to install the health route on. Restly also
+        checks its OpenAPI spec for two classes with the same name (see
         :class:`~fastapi_restly.exc.RestlyDuplicateSchemaNameWarning`).
     :param async_database_url: Async URL to build an
         :class:`~sqlalchemy.ext.asyncio.AsyncEngine` from.
@@ -176,10 +173,6 @@ def configure(
         request finishes with uncommitted changes. On by default. Suppress one
         deliberate case with ``session.info["_fr_suppress_uncommitted"] = True``
         rather than turning the check off.
-    :param install_default_exception_handlers: Install the translator that
-        turns :class:`~sqlalchemy.exc.IntegrityError` into HTTP 409. On by
-        default. Without ``app``, the first
-        :func:`~fastapi_restly.views.include_view` installs them instead.
     :param health: Path to mount a liveness endpoint on, such as ``"/health"``.
         It answers ``200`` with ``{"status": "ok"}``, appears in the OpenAPI
         schema, and makes no database round-trip. Off unless set, and requires
@@ -220,7 +213,7 @@ def configure(
             warn_on_misuse is not None,
             warn_on_uncommitted is not None,
             health is not None,
-            app is not None and install_default_exception_handlers,
+            app is not None,
         )
     ):
         raise TypeError("fr.configure() requires at least one setup argument.")
@@ -282,8 +275,6 @@ def configure(
 
         # The check for two classes with the same name in OpenAPI.
         _ensure_patched(app)
-        if install_default_exception_handlers:
-            register_default_exception_handlers(app)
         if health is not None:
             _register_health_route(app, health)
 

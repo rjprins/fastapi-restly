@@ -61,7 +61,7 @@ def engine_options(url: str | URL) -> dict[str, Any]:
 
 #: Set on every SQLite connection Restly opens. foreign_keys is off by default
 #: in SQLite, which silently drops every foreign key constraint the models
-#: declare: no ondelete, and no IntegrityError for the 409 handler to translate.
+#: declare: no ondelete, and no IntegrityError for Restly to turn into a 409.
 #:
 #: Only connection state belongs here. journal_mode=WAL was considered and
 #: deliberately left out: it is stamped into the database file and outlives the

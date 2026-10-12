@@ -62,8 +62,6 @@ from sqlalchemy.orm.attributes import del_attribute
 from starlette.datastructures import QueryParams
 from typing_extensions import TypeVar
 
-from .._exception_handlers import register_default_exception_handlers
-
 if sys.version_info >= (3, 14):
     import annotationlib
 from ..clauses import UNSCOPED, WhereClause, all_of, apply_clauses, where_clause
@@ -2292,11 +2290,6 @@ def _init_view_cls_and_add_to_router(
     # routes never made it onto the parent.
     mounted.add(view_cls)
     setattr(holder, "_fr_mounted_views", mounted)
-    # Fallback registration for users who skip ``fr.configure(app=...)``.
-    # ``register_default_exception_handlers`` is idempotent and only acts on
-    # FastAPI apps (it ignores nested APIRouter parents).
-    if isinstance(parent_router, fastapi.FastAPI):
-        register_default_exception_handlers(parent_router)
 
 
 #: Bare business-method names. A ``@route``-decorated method must not be

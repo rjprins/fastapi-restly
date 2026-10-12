@@ -102,10 +102,8 @@ Three details matter in production:
 - The engine belongs to the app that the factory built. The lifespan disposes
   it, so the connections close and the workers exit quickly; see
   [Close the engine on shutdown](#engine-disposal).
-- `fr.configure(app, ...)` also installs the handler that turns an
-  `IntegrityError` into a 409 response; see
-  [Unique values and other database conflicts: 409](#default-exception-handling). `health="/health"` adds
-  the [health check](#health-checks).
+- `fr.configure(app, ...)` with `health="/health"` adds the
+  [health check](#health-checks).
 
 `VIEWS` is the one place where the application registers its views;
 [Compose in one place](#compose-in-one-place) explains it. The SaaS example

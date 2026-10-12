@@ -7,7 +7,6 @@ import warnings
 import pytest
 from fastapi import APIRouter, FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Mapped, mapped_column
 
 import fastapi_restly as fr
@@ -263,7 +262,6 @@ def test_bad_path_does_not_partially_configure():
     from fastapi_restly.db._globals import _fr_globals
 
     assert _fr_globals.warn_on_misuse is False
-    assert IntegrityError not in app.exception_handlers
 
 
 def test_health_without_app_raises():
@@ -313,15 +311,6 @@ def test_health_alone_satisfies_the_at_least_one_argument_check():
     assert TestClient(app).get("/health").status_code == 200
 
 
-def test_health_counts_even_with_exception_handlers_opted_out():
-    app = FastAPI()
-
-    fr.configure(app, health="/health", install_default_exception_handlers=False)
-
-    assert IntegrityError not in app.exception_handlers
-    assert TestClient(app).get("/health").status_code == 200
-
-
 def test_health_does_not_configure_a_database():
     from fastapi_restly.db._globals import _fr_globals
 
@@ -361,4 +350,3 @@ def test_health_composes_with_a_full_database_configuration(sync_db):
     schema = app.openapi()
     assert "/health" in schema["paths"]
     assert "/gadgets" in schema["paths"]
-    assert IntegrityError in app.exception_handlers

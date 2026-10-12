@@ -123,14 +123,7 @@ def test_url_created_engines_use_sqlalchemy_default_json_serializer():
             assert dialect._json_deserializer is None
 
 
-def test_configure_rejects_app_only_call_when_handler_install_is_disabled():
-    with RestlyContext():
-        app = FastAPI()
-        with pytest.raises(TypeError, match="requires at least one setup argument"):
-            configure(app=app, install_default_exception_handlers=False)
-
-
-def test_configure_accepts_app_only_call_when_handler_install_is_enabled():
+def test_configure_accepts_an_app_only_call():
     with RestlyContext():
         configure(app=FastAPI())
 
