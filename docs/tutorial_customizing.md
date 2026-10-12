@@ -495,7 +495,7 @@ Write a test for each exercise.
 
 These pages cover the topics of this tutorial in more detail:
 
-- [Current & ContextParam](howto_current.md): bind values in scripts, jobs, and
+- [Current & ContextParam](current.md): bind values in scripts, jobs, and
   tests
 - [Scopes](scopes.md): the model scope, view scopes, and a scope for one route
 - [Request Lifecycle & Hooks](lifecycle.md): every method you can override, and

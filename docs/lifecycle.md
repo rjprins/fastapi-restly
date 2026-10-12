@@ -256,7 +256,7 @@ To change the rows after the query, override
 ```
 
 `Current.user_id()` is the id of the caller
-([Current & ContextParam](howto_current.md)). The view's schema declares the
+([Current & ContextParam](current.md)). The view's schema declares the
 field:
 
 ```python
@@ -579,7 +579,7 @@ The SaaS example's `GET /users/me` returns the caller's own row:
 ```
 
 `Current.user_id()` is the id of the caller
-([Current & ContextParam](howto_current.md)). `UserResponse` is the view's
+([Current & ContextParam](current.md)). `UserResponse` is the view's
 response class, so OpenAPI shows the same type as for `GET /users/{id}`. See
 [Name the view's classes in a custom route](#name-the-response-classes). The
 route `/me` works beside `/{id}`, because the item routes match only an

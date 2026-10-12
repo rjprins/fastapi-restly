@@ -91,7 +91,7 @@ Pages: [Schemas & Validation](schemas.md),
 
 ## Rules
 
-Pages: [Current & ContextParam](howto_current.md), [Query Clauses](clauses.md),
+Pages: [Current & ContextParam](current.md), [Query Clauses](clauses.md),
 [Scopes](scopes.md), [Authorization](authorization.md).
 
 - [How do I bind the current user from my authentication dependency?](#current-request-binding)
@@ -162,7 +162,7 @@ responses
 relationships
 filtering
 errors
-howto_current
+current
 clauses
 scopes
 authorization

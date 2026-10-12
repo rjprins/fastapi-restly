@@ -332,7 +332,7 @@ a filter from a statement.
 A clause takes no arguments. A value that changes per request or per call is
 a member of a
 {class}`ContextNamespace <fastapi_restly.clauses.ContextNamespace>`: the
-[Current](howto_current.md) of the application, or a small namespace next to
+[Current](current.md) of the application, or a small namespace next to
 the code that uses it. The examples use the `Current` declared at the top of
 this page.
 
@@ -523,7 +523,7 @@ inside the scope.
 
 - [Scopes](scopes.md): the clause that every read and every reference check
   of a model applies.
-- [Current & ContextParam](howto_current.md): declare context members and bind
+- [Current & ContextParam](current.md): declare context members and bind
   them.
 - [Models](#tenant-row-scoping): the tenant rule as a session rule.
 - {doc}`api/clauses`: every name with its signature.

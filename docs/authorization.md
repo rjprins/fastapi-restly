@@ -46,7 +46,7 @@ author change a post or a comment:
 - A read returns at once. The scope already decides which posts each reader
   sees.
 - A write needs a user. `Current.user_id()` is the caller, bound for each
-  request ([Current & ContextParam](howto_current.md)). Without a user, the
+  request ([Current & ContextParam](current.md)). Without a user, the
   answer is a 401, from a plain `fastapi.HTTPException`.
 - Every user may create.
 - Every other action changes one row, and `obj` is that row. Only its author
@@ -158,6 +158,6 @@ themselves.
 - [Scopes](scopes.md): which rows a caller can see, and the 404.
 - [Request Lifecycle & Hooks](#view-request-steps): the steps of a request,
   and where `authorize` runs.
-- [Current & ContextParam](howto_current.md): who is calling.
+- [Current & ContextParam](current.md): who is calling.
 - [Errors](errors.md): the exceptions to raise, and how errors
   look.

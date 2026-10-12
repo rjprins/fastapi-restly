@@ -316,7 +316,7 @@ explains these rules.
 
 The server decides some fields, such as who created a row and who changed it
 last. Make each one a column default that reads a member of your
-[`Current`](howto_current.md). This mixin stamps both fields on each model
+[`Current`](current.md). This mixin stamps both fields on each model
 that uses it:
 
 ```python
@@ -657,7 +657,7 @@ runs this view in
 
 ## See also
 
-- [Current & ContextParam](howto_current.md): bind the values that column
+- [Current & ContextParam](current.md): bind the values that column
   defaults and the tenant listener read.
 - [Scopes](scopes.md): hide rows from every read, and read past the scope on
   one route.

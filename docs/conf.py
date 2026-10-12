@@ -103,6 +103,7 @@ redirects = {
     "howto_relationship_idschema": "relationships.html",
     "howto_query_modifiers": "filtering.html",
     "howto_error_responses": "errors.html",
+    "howto_current": "current.html",
 }
 myst_heading_anchors = 3
 myst_enable_extensions = ["colon_fence", "substitution"]
