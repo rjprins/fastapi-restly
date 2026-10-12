@@ -507,6 +507,6 @@ These pages cover the topics of this tutorial in more detail:
   packages as the app grows, or generate a project with `restly new`
 - [Deploying](deploying.md): a production database, and Alembic migrations
   instead of `async_create_all`
-- [Use Restly in an Existing Project](howto_existing_project.md): add Restly
+- [New & Existing Projects](howto_project_structure.md): add Restly
   beside the routes you already have
 - [API Reference](api_reference.md)

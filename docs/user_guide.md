@@ -13,13 +13,6 @@ schemas it works from.
 ::::{grid} 1 2 2 2
 :gutter: 3
 
-:::{grid-item-card} Use Restly in an Existing Project
-:link: howto_existing_project
-:link-type: doc
-
-Adopt Restly beside existing FastAPI routes, then connect it to your sessions and models.
-:::
-
 :::{grid-item-card} New & Existing Projects
 :link: howto_project_structure
 :link-type: doc
@@ -204,7 +197,6 @@ checklist.
 :hidden:
 
 howto_project_structure
-howto_existing_project
 database
 howto_models
 class_based_views

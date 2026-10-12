@@ -202,7 +202,7 @@ Configure the class according to the contract the resource needs:
 
 [View Reference](view_reference.md) lists the exact attribute types and
 method signatures.
-[Use Restly in an Existing Project](howto_existing_project.md)
+[Database & Configuration](database.md)
 covers custom engines, session generators, and a per-view session dependency.
 
 (exclude-crud-routes)=

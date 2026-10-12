@@ -91,6 +91,7 @@ redirects = {
     "howto_inheritance": "class_based_views.html",
     "howto_compose_views_with_mixins": "howto_models.html",
     "howto_nested": "rest_views.html",
+    "howto_existing_project": "howto_project_structure.html",
 }
 myst_heading_anchors = 3
 myst_enable_extensions = ["colon_fence", "substitution"]

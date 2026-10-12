@@ -262,7 +262,7 @@ Write that as an ordinary route so its checks and timeouts stay yours.
 
 ## See also
 
-- [Use Restly in an Existing Project](howto_existing_project.md): connecting
+- [New & Existing Projects](howto_project_structure.md): connecting
   Restly to an app that already has an engine, sessions, and models.
 - The [SaaS example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/saas): the production-shaped example to compare
   against. It includes PostgreSQL Compose services, validated settings, an

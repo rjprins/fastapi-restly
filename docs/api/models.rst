@@ -25,5 +25,5 @@ object on an async session.
 .. seealso::
 
    :doc:`/howto_models` shows how to add Restly's defaults to your own
-   declarative base and how to change one. :doc:`/howto_existing_project`
+   declarative base and how to change one. :ref:`existing-models`
    shows Restly views on the models you already have.

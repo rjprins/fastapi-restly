@@ -168,7 +168,7 @@ them all.
 
 Restly's views and schemas work with any SQLAlchemy declarative model,
 dataclass or not. Models that you already have can stay on their own base, as
-[Use Restly in an Existing Project](howto_existing_project.md) shows.
+[Use Your Existing Models](#existing-models) shows.
 
 Adding `fr.ModelDefaults` to a base that already has models changes those
 models:
