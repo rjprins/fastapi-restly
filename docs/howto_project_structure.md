@@ -223,8 +223,8 @@ class UserView(SoftDeleteMixin, AuthenticatedView):
     schema = UserSchema
 ```
 
-[Share Behaviour with Base Views](howto_inheritance.md) covers the base class,
-and [Compose Views with Mixins](howto_compose_views_with_mixins.md) covers the
+[Share Behaviour with Base Views](#share-behaviour-with-base-views) covers the base class,
+and [Models](#structural-pieces) covers the
 mixins.
 
 ## Add modules when they earn them

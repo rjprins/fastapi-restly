@@ -283,40 +283,6 @@ cached session with the application's `Depends(get_db)`, without rewriting
 view annotations. The wrapper checks for uncommitted changes before the source
 cleans up. The built-in generators roll back and close on exit.
 
-[CRUD Routes](rest_views.md) owns the user-facing model, schema,
-identity, route, and list configuration. At registration,
-{meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>`
-turns that configuration into FastAPI signatures. It derives missing schemas,
-builds the list params, sets the endpoint annotations, and
-removes the route marker for each exclusion. An exclusion may use a
-`ViewRoute` value or its endpoint-method string, such as `"delete_endpoint"`.
-
-### include_view()
-
-{func}`include_view() <fastapi_restly.views.include_view>` is the registration boundary between declarative view modules
-and application composition. For larger apps, define view classes without
-side effects in subject packages, then include them from the module that builds
-your `FastAPI` app or `APIRouter`:
-
-```python
-fr.include_view(app, MyView)
-```
-
-This keeps imports predictable: importing `app.users.views` defines
-`UserView`, while `app.main` decides which app or router receives it. See
-[New & Existing Projects](howto_project_structure.md) for the layout this assumes.
-For small apps and examples, `include_view()` also works as a decorator:
-
-```python
-@fr.include_view(app)
-class MyView(fr.AsyncRestView):
-    ...
-```
-
-Both forms call {meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>` (which generates derived schemas,
-annotates endpoint signatures, and registers the {attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`), then
-attach an `APIRouter` to the parent app/router.
-
 (list-parameters-lifecycle)=
 ## List Parameters Lifecycle
 

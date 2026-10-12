@@ -271,7 +271,7 @@ class Article(fr.TimestampsMixin, fr.IDMixin, Base):
 parentheses, as [Read the current user in a column default](#current-column-defaults)
 explains.
 
-Keep the field `fr.ReadOnly` on the schema and out of any [explicit write schema](#explicit-write-schemas). With `init=False`, a payload value for it would fail in the constructor. Stamping from the view instead, in `create`, only covers that verb: a `create` override does not call `super()`, and the free `fr.objects` helpers never see the view. See [Compose Views with Mixins](howto_compose_views_with_mixins.md) for the tenant, audit, and soft-delete pieces the SaaS example ships.
+Keep the field `fr.ReadOnly` on the schema and out of any [explicit write schema](#explicit-write-schemas). With `init=False`, a payload value for it would fail in the constructor. Stamping from the view instead, in `create`, only covers that verb: a `create` override does not call `super()`, and the free `fr.objects` helpers never see the view. See [Three structural pieces](#structural-pieces) for the tenant, audit, and soft-delete pieces the SaaS example ships.
 
 A derivation that needs more than a value, a slug from the title or a denormalised counter, is a SQLAlchemy `before_insert` mapper event on the same model:
 
@@ -284,6 +284,8 @@ def _set_slug(mapper, connection, target):
 ```
 
 See SQLAlchemy's [mapper events documentation](https://docs.sqlalchemy.org/en/20/orm/events.html#mapper-events) for the full event API.
+
+(structural-pieces)=
 
 ## Three structural pieces
 
@@ -481,7 +483,7 @@ bring a flipped row back, see
         # Do not call super(); that would remove the row.
 ```
 
-For reusable soft-delete that also hides rows on read, see `SoftDeleteMixin` in [Compose Views with Mixins](howto_compose_views_with_mixins.md).
+For reusable soft-delete that also hides rows on read, see `SoftDeleteMixin` in [Soft delete](#soft-delete-mixin).
 
 (composing-on-a-view)=
 

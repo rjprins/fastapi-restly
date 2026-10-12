@@ -157,22 +157,6 @@ or the endpoint methods, and add custom routes alongside the default CRUD
 routes.
 :::
 
-:::{grid-item-card} Share Behaviour with Base Views
-:link: howto_inheritance
-:link-type: doc
-
-Use Python inheritance to share CRUD overrides, dependencies, URL prefixes, and
-access control across multiple views.
-:::
-
-:::{grid-item-card} Compose Views with Mixins
-:link: howto_compose_views_with_mixins
-:link-type: doc
-
-Put cross-cutting concerns (tenant scoping, soft delete, audit stamping)
-where they belong: structural fields on the model, verbs on view mixins.
-:::
-
 :::{grid-item-card} Type Annotations
 :link: howto_typing
 :link-type: doc
@@ -231,9 +215,7 @@ checklist.
 howto_project_structure
 howto_existing_project
 howto_models
-howto_compose_views_with_mixins
 class_based_views
-howto_inheritance
 rest_views
 howto_nested
 customize

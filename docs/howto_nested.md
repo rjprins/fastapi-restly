@@ -304,5 +304,5 @@ segments in reverse order: `/projects/{project_id}/companies/{company_id}/tasks`
 - [Current & ContextParam](howto_current.md): binding a value for each request.
 - [Scopes](scopes.md): what a view's scope covers, and how it replaces the
   model's default scope.
-- [Share Behaviour with Base Views](howto_inheritance.md): how `prefix`,
+- [Share Behaviour with Base Views](#share-behaviour-with-base-views): how `prefix`,
   `dependencies` and `responses` add up from base to subclass.

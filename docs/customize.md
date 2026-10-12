@@ -640,19 +640,8 @@ class UserView(fr.AsyncRestView):
 
 Valid values are: {attr}`fr.ViewRoute.GET_MANY <fastapi_restly.views.ViewRoute.GET_MANY>`, {attr}`fr.ViewRoute.GET_ONE <fastapi_restly.views.ViewRoute.GET_ONE>`, {attr}`fr.ViewRoute.CREATE <fastapi_restly.views.ViewRoute.CREATE>`, {attr}`fr.ViewRoute.UPDATE <fastapi_restly.views.ViewRoute.UPDATE>`, {attr}`fr.ViewRoute.DELETE <fastapi_restly.views.ViewRoute.DELETE>`. Endpoint-method names such as `"delete_endpoint"` are also accepted; any other string raises `AttributeError` at startup.
 
-## Choosing between `@fr.route` and the shorthand decorators
-
-Prefer {func}`@fr.get <fastapi_restly.views.get>`, {func}`@fr.post <fastapi_restly.views.post>`, {func}`@fr.put <fastapi_restly.views.put>`, {func}`@fr.patch <fastapi_restly.views.patch>`, and {func}`@fr.delete <fastapi_restly.views.delete>` for most endpoints. They set the HTTP method automatically and apply Restly's default status codes: `@fr.get`/`@fr.put`/`@fr.patch` use 200, `@fr.post` uses 201, and `@fr.delete` uses 204.
-
-Use {func}`@fr.route(path, methods=[...], ...) <fastapi_restly.views.route>` only when you need full manual control over route options, for example to register a single path under multiple HTTP methods or to set a non-standard response code:
-
-```python
-    @fr.route("/{id}/thumbnail", methods=["GET", "HEAD"], status_code=200)
-    async def thumbnail(self, id: int):
-        ...
-```
-
-Both `@fr.route` and the shorthand decorators pass their keyword arguments through to FastAPI's route registration. Class-based routes therefore use the same configuration surface as regular FastAPI routes, including `response_model=`, `status_code=`, `dependencies=`, `responses=`, `tags=`, and other `APIRouter.add_api_route()` options.
+An exclusion may use a
+`ViewRoute` value or its endpoint-method string, such as `"delete_endpoint"`.
 
 ## What is available on `self`
 
@@ -671,7 +660,7 @@ Any class-level `Annotated` dependency you declare on the view (for example a cu
 
 - [Views](class_based_views.md): why subclassable views make all
   of this possible.
-- [Compose Views with Mixins](howto_compose_views_with_mixins.md): structural
+- [Models](#structural-pieces): structural
   fields on the model, soft delete as a view mixin.
 - [View Method Surface](#view-method-surface): the complete
   classified method list.

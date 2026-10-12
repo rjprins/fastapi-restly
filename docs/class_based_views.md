@@ -126,6 +126,20 @@ the parent router or app.
 Routes are bound at *include-time* against the class you pass in; they are
 not bound at decoration time. This is what makes subclassing work.
 
+### Choosing between `@fr.route` and the shorthand decorators
+
+Prefer {func}`@fr.get <fastapi_restly.views.get>`, {func}`@fr.post <fastapi_restly.views.post>`, {func}`@fr.put <fastapi_restly.views.put>`, {func}`@fr.patch <fastapi_restly.views.patch>`, and {func}`@fr.delete <fastapi_restly.views.delete>` for most endpoints. They set the HTTP method automatically and apply Restly's default status codes: `@fr.get`/`@fr.put`/`@fr.patch` use 200, `@fr.post` uses 201, and `@fr.delete` uses 204.
+
+Use {func}`@fr.route(path, methods=[...], ...) <fastapi_restly.views.route>` only when you need full manual control over route options, for example to register a single path under multiple HTTP methods or to set a non-standard response code:
+
+```python
+    @fr.route("/{id}/thumbnail", methods=["GET", "HEAD"], status_code=200)
+    async def thumbnail(self, id: int):
+        ...
+```
+
+Both `@fr.route` and the shorthand decorators pass their keyword arguments through to FastAPI's route registration. Class-based routes therefore use the same configuration surface as regular FastAPI routes, including `response_model=`, `status_code=`, `dependencies=`, `responses=`, `tags=`, and other `APIRouter.add_api_route()` options.
+
 (app-wide-base-view)=
 
 ## One base view for the whole app
@@ -248,6 +262,229 @@ for replaceable surfaces such as soft deletion and role visibility. The
 [tenant row scoping](#tenant-row-scoping) recipe contains the session rule,
 column stamp, and shared view base.
 
+(share-behaviour-with-base-views)=
+
+## Share Behaviour with Base Views
+
+FastAPI-Restly views are plain Python classes. Use base classes for shared CRUD overrides, dependencies, access control, and URL namespaces.
+
+Each CRUD route runs through three methods (see [How a view handles a request](#view-request-steps) for the full picture):
+
+- The **endpoint method** ({meth}`create_endpoint <fastapi_restly.views.RestView.create_endpoint>`, {meth}`get_one_endpoint <fastapi_restly.views.RestView.get_one_endpoint>`, and so on) owns the HTTP contract. Override it only to change that contract.
+- The **handler** ({meth}`handle_create <fastapi_restly.views.RestView.handle_create>`, {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>`, and so on) handles the steps, such as {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the commit bracket. It is final: custom routes call it, and a base class cannot override it.
+- The **business method** ({meth}`create <fastapi_restly.views.RestView.create>`, {meth}`get_one <fastapi_restly.views.RestView.get_one>`, {meth}`update <fastapi_restly.views.RestView.update>`, {meth}`delete <fastapi_restly.views.RestView.delete>`, {meth}`get_many <fastapi_restly.views.RestView.get_many>`) is the auth-free, commit-free domain operation.
+
+The business method is the natural home for shared behaviour, so most of the examples below override it.
+
+### Share a CRUD override across multiple views
+
+To run the same logic on several resources, override a business method on a base class; every subclass picks it up automatically:
+
+```python
+class AuditBase(fr.RestView):
+    def create(self, schema_obj):
+        obj = super().create(schema_obj)
+        audit_log.record("created", obj)
+        return obj
+
+@fr.include_view(app)
+class UserView(AuditBase):
+    prefix = "/users"
+    model = User
+    schema = UserSchema
+
+@fr.include_view(app)
+class OrderView(AuditBase):
+    prefix = "/orders"
+    model = Order
+    schema = OrderSchema
+```
+
+`audit_log.record` now runs for both `/users` and `/orders`. Register only concrete subclasses, not the base. Because {meth}`create <fastapi_restly.views.RestView.create>` is commit-free, the handler persists the same object the base method recorded.
+
+### Call super() to layer overrides
+
+When one view needs its own logic on top of the shared behaviour, call `super()` to extend the base implementation:
+
+```python
+class AuditBase(fr.RestView):
+    def create(self, schema_obj):
+        obj = super().create(schema_obj)
+        audit_log.record("created", obj)
+        return obj
+
+@fr.include_view(app)
+class OrderView(AuditBase):
+    prefix = "/orders"
+    model = Order
+    schema = OrderSchema
+
+    def create(self, schema_obj):
+        schema_obj.created_by = current_user()
+        return super().create(schema_obj)
+```
+
+`OrderView.create` runs first and delegates to `AuditBase.create`, which in turn delegates to {meth}`RestView.create <fastapi_restly.views.RestView.create>`; all three layers run in order.
+
+### Share post-commit behavior
+
+When shared behaviour should happen only after a durable write, override the
+after-hook on the base class:
+
+```python
+class NotifyBase(fr.RestView):
+    def after_action_commit(self, action, new, old=None):
+        if action == "create":
+            notify_created(new)
+```
+
+Every subclass of `NotifyBase` now fires `notify_created` after the write is
+durable. This remains true when a custom endpoint uses
+{ref}`shared_write_action_commit() <shared-write-action-commit>`, which
+queues the hook until the outermost block commits.
+
+### Inherit a shared dependency
+
+To make a value such as the current user available in every subclass, declare the dependency as an instance annotation on the base class:
+
+```python
+from typing import Annotated
+from fastapi import Depends
+
+class AuthBase(fr.RestView):
+    current_user: Annotated[User, Depends(get_current_user)]
+
+    def create(self, schema_obj):
+        obj = super().create(schema_obj)
+        obj.owner_id = self.current_user.id
+        return obj
+
+@fr.include_view(app)
+class NoteView(AuthBase):
+    prefix = "/notes"
+    model = Note
+    schema = NoteSchema
+```
+
+`self.current_user` is available in every subclass method, and because {meth}`create <fastapi_restly.views.RestView.create>` runs before commit, stamping `owner_id` persists. The injection mechanism itself is described in [Dependency injection on class attributes](class_based_views.md#dependency-injection-on-class-attributes).
+
+### Apply router-level dependencies to all routes
+
+Setting `dependencies = [Depends(fn)]` applies `fn` to every route, and subclasses inherit it:
+
+```python
+class ProtectedBase(fr.RestView):
+    dependencies = [Depends(require_auth)]
+
+@fr.include_view(app)
+class UserView(ProtectedBase):
+    prefix = "/users"
+    model = User
+    schema = UserSchema
+
+@fr.include_view(app)
+class OrderView(ProtectedBase):
+    prefix = "/orders"
+    model = Order
+    schema = OrderSchema
+```
+
+Every route on `/users` and `/orders` now requires authentication.
+
+A subclass that sets its own `dependencies` adds them after the base's, the
+way nested FastAPI routers add up, so it cannot drop a guard the base
+declares. To run its own dependency first, it lists the base's again:
+`dependencies = [own, *ProtectedBase.dependencies]`. Each one still runs once.
+{attr}`responses <fastapi_restly.views.View.responses>` add up the
+same way, and a subclass's entry for a status code wins. Other class attributes,
+such as `tags`, replace the base's value.
+
+(prefix-concatenation)=
+
+### Concatenate URL prefixes
+
+When a base class defines {attr}`prefix <fastapi_restly.views.View.prefix>`, subclass prefixes are appended to it. This lets you declare a shared URL namespace once:
+
+```python
+class ApiV1(fr.RestView):
+    prefix = "/api/v1"
+
+@fr.include_view(app)
+class UserView(ApiV1):
+    prefix = "/users"     # becomes /api/v1/users
+    model = User
+    schema = UserSchema
+
+@fr.include_view(app)
+class OrderView(ApiV1):
+    prefix = "/orders"    # becomes /api/v1/orders
+    model = Order
+    schema = OrderSchema
+```
+
+Prefixes concatenate across as many levels as you have:
+
+```python
+class AdminBase(fr.RestView):
+    prefix = "/admin"
+
+class V2Base(AdminBase):
+    prefix = "/v2"
+
+@fr.include_view(app)
+class ReportView(V2Base):
+    prefix = "/reports"   # becomes /admin/v2/reports
+    model = Report
+    schema = ReportSchema
+```
+
+A prefix can also contain a path parameter, such as `/projects/{project_id}`.
+[Nested Resources](howto_nested.md) builds child resources this way.
+
+### Inherit custom routes
+
+Custom routes defined with {func}`@fr.get <fastapi_restly.views.get>`, {func}`@fr.post <fastapi_restly.views.post>`, and friends on a base class are inherited by all registered subclasses:
+
+```python
+class HealthBase(fr.RestView):
+    @fr.get("/health")
+    def health(self):
+        return {"ok": True}
+
+@fr.include_view(app)
+class UserView(HealthBase):
+    prefix = "/users"
+    model = User
+    schema = UserSchema
+```
+
+`GET /users/health` is registered alongside the standard CRUD endpoints.
+
+### Restrict available endpoints on a base class
+
+Set {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` on a base class to make every subclass read-only, or to apply whatever restriction you need:
+
+```python
+class ReadOnlyBase(fr.RestView):
+    exclude_routes = (fr.ViewRoute.CREATE, fr.ViewRoute.UPDATE, fr.ViewRoute.DELETE)
+
+@fr.include_view(app)
+class ProductView(ReadOnlyBase):
+    prefix = "/products"
+    model = Product
+    schema = ProductSchema
+```
+
+`ProductView` only exposes `GET /products` and `GET /products/{id}`.
+
+### Implement soft-delete once
+
+A base class can override the {meth}`delete <fastapi_restly.views.RestView.delete>`
+business method once for every subclass, exactly like the audit example above
+but with the soft-delete body. The full `deleted_at` recipe is in
+{ref}`Request Lifecycle & Hooks <soft-delete-recipe>`. The reusable mixin that also
+hides flagged rows on read is in [Models](#soft-delete-mixin).
+
 ## Override a single step
 
 {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` and {class}`RestView <fastapi_restly.views.RestView>` run every CRUD route through three methods: the
@@ -315,8 +552,36 @@ subclass can declare `current_user: User` so that type checkers know the
 attribute, and it still keeps the base's `Depends` marker. This rule makes
 mixins safe: a mixin can declare what it expects from its host without
 shadowing the host's dependencies. See
-[Composing views with mixins](howto_compose_views_with_mixins.md) for the
+[Type stubs on mixins](#type-stubs-on-mixins-must-use-if-type_checking) for the
 mixin pattern.
+
+### Type stubs on mixins must use `if TYPE_CHECKING:`
+
+A mixin often needs to declare what it requires from its host class
+(`session`, `request`, helper methods like `_current_org_id`). Declaring
+those as plain class members shadows the host's implementation via the MRO:
+
+```python
+# WRONG: this real method body shadows the host's _current_org_id.
+class SoftDeleteMixin:
+    def _current_org_id(self) -> int | None:
+        ...  # a stub body is still a real method
+```
+
+Wrap the stubs in `if TYPE_CHECKING:` so pyright sees them but Python
+does not add them to the runtime class:
+
+```python
+class SoftDeleteMixin:
+    if TYPE_CHECKING:
+        def _current_org_id(self) -> int | None: ...
+```
+
+The same applies to typed *attribute* annotations. Marker-based DI (see
+[Views](class_based_views.md#dependency-injection-on-class-attributes))
+means a plain `model: type[DeclarativeBase]` annotation no longer
+shadows a dependency, but it can still shadow inherited attribute lookups
+in some setups. `if TYPE_CHECKING:` is the safe wrapper for both.
 
 (when-to-use-view-directly)=
 ## When to use `View` directly
@@ -385,13 +650,46 @@ others, write a plain function endpoint. CBVs pay off when you have shared
 metadata, shared dependencies, or related endpoints that benefit from being
 co-located. Do not reach for them just for the sake of structure.
 
+## Internals
+
+[CRUD Routes](rest_views.md) owns the user-facing model, schema,
+identity, route, and list configuration. At registration,
+{meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>`
+turns that configuration into FastAPI signatures. It derives missing schemas,
+builds the list params, sets the endpoint annotations, and
+removes the route marker for each exclusion.
+
+### include_view()
+
+{func}`include_view() <fastapi_restly.views.include_view>` is the registration boundary between declarative view modules
+and application composition. For larger apps, define view classes without
+side effects in subject packages, then include them from the module that builds
+your `FastAPI` app or `APIRouter`:
+
+```python
+fr.include_view(app, MyView)
+```
+
+This keeps imports predictable: importing `app.users.views` defines
+`UserView`, while `app.main` decides which app or router receives it. See
+[New & Existing Projects](howto_project_structure.md) for the layout this assumes.
+For small apps and examples, `include_view()` also works as a decorator:
+
+```python
+@fr.include_view(app)
+class MyView(fr.AsyncRestView):
+    ...
+```
+
+Both forms call {meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>` (which generates derived schemas,
+annotates endpoint signatures, and registers the {attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`), then
+attach an `APIRouter` to the parent app/router.
+
 ## Next steps
 
 - [CRUD Routes](rest_views.md): the default CRUD contract, schemas, and view
   configuration.
 - [Request Lifecycle & Hooks](customize.md): how a view handles a request, the
   override decision table, and every override recipe.
-- [Share Behaviour with Base Views](howto_inheritance.md): patterns for
-  tenant isolation, role-based filtering, and shared mixins.
 - [API Reference](api_reference.md): full {class}`View <fastapi_restly.views.View>`, {class}`BaseRestView <fastapi_restly.views.BaseRestView>`,
   {class}`RestView <fastapi_restly.views.RestView>`, {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` signatures and class attributes.

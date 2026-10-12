@@ -209,7 +209,7 @@ Change the layer that owns the behavior instead of rewriting the entire route:
 | Commit several handlers or custom actions together | Wrap them in {ref}`shared_write_action_commit() <shared-write-action-commit>` |
 | Change status, headers, request parameters, or response model | Replace the endpoint method |
 | Add a path that is not part of CRUD | Add a method with `@fr.get`, `@fr.post`, or another route decorator |
-| Share behavior across resources | Use a [base view](howto_inheritance.md) or [mixins](howto_compose_views_with_mixins.md) |
+| Share behavior across resources | Use a [base view](#share-behaviour-with-base-views) or [mixins](#structural-pieces) |
 | Replace the list query grammar | Follow [Filtering & Pagination](howto_query_modifiers.md) |
 
 [Request Lifecycle & Hooks](customize.md) owns the lifecycle diagrams, complete

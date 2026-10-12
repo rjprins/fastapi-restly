@@ -353,7 +353,7 @@ class CommentView(AuthoredView):
 ```
 
 Register only the views that have a model, not the base class.
-[Share Behaviour with Base Views](howto_inheritance.md) covers inheritance in
+[Share Behaviour with Base Views](#share-behaviour-with-base-views) covers inheritance in
 more detail.
 
 The `comment` table has a new column. Stop the server, delete `blog.db`, and
@@ -500,7 +500,7 @@ These pages cover the topics of this tutorial in more detail:
 - [Scopes](scopes.md): the model scope, view scopes, and a scope for one route
 - [Request Lifecycle & Hooks](customize.md): every method you can override, and
   when to override one
-- [Share Behaviour with Base Views](howto_inheritance.md): the full
+- [Share Behaviour with Base Views](#share-behaviour-with-base-views): the full
   inheritance guide
 - [Testing](howto_testing.md): the test fixtures, and test databases
 - [New & Existing Projects](howto_project_structure.md): split the file into

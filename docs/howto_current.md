@@ -116,7 +116,7 @@ the flush finishes. Writing `Current.user_id()` would read the value
 when the model class is defined, before a request has bound anything.
 
 Use `onupdate=Current.user_id` for an update stamp.
-[Compose Views with Mixins](howto_compose_views_with_mixins.md) covers
+[Models](#structural-pieces) covers
 audit fields and their schemas. For tenancy, use the
 [SQLAlchemy session rule](#tenant-row-scoping) described there.
 

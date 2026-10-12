@@ -269,7 +269,7 @@ class ProductView(fr.AsyncReactAdminView):
 
 Put shared customizations in a project base class and inherit your views from
 it, following the pattern in
-[Share Behaviour with Base Views](howto_inheritance.md):
+[Share Behaviour with Base Views](#share-behaviour-with-base-views):
 
 ```python
 class ReactAdminBase(fr.AsyncReactAdminView):
