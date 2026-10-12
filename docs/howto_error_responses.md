@@ -66,7 +66,7 @@ Two steps check the query string of a list endpoint, and each has its own
 status code:
 
 - `422`: the query string does not match the
-  [list parameters](howto_query_modifiers.md). This covers an unknown key,
+  [list parameters](filtering.md). This covers an unknown key,
   such as `?nope=1`, and a value of the wrong type for a typed parameter,
   such as `?page_size=oops`.
 - `400`: the key is known, but Restly cannot apply the value. Restly raises
@@ -181,6 +181,6 @@ Some errors are not a `RestlyHTTPError`, so this handler does not change them:
 - [Request Lifecycle & Hooks](lifecycle.md): where
   {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the business
   methods run, and when the commit happens.
-- [Filtering & Pagination](howto_query_modifiers.md): the list parameters that
+- [Filtering & Pagination](filtering.md): the list parameters that
   the `422` and `400` errors check.
 - {doc}`api/exc`: every name in `fr.exc`.

@@ -18,7 +18,7 @@ default CRUD routes, query parameters, error translation, and test fixtures.
   can always drop one level down to plain FastAPI or SQLAlchemy.
 - **Out of the box.** The common path should need no extra code: engine and
   session setup, commit handling, schema generation,
-  [list filtering](howto_query_modifiers.md) with strict validation,
+  [list filtering](filtering.md) with strict validation,
   [error translation](howto_error_responses.md), and
   [savepoint-isolated test fixtures](howto_testing.md)
   all work from {func}`fr.configure() <fastapi_restly.db.configure>` onward.

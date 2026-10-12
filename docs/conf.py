@@ -101,6 +101,7 @@ redirects = {
     "howto_custom_schema": "schemas.html",
     "howto_response_schema": "responses.html",
     "howto_relationship_idschema": "relationships.html",
+    "howto_query_modifiers": "filtering.html",
 }
 myst_heading_anchors = 3
 myst_enable_extensions = ["colon_fence", "substitution"]

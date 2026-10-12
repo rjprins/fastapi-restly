@@ -22,7 +22,7 @@ markers decide which class keeps a field: {data}`fr.ReadOnly
 <fastapi_restly.schemas.ReadOnly>` keeps it out of the request bodies, and
 {data}`fr.WriteOnly <fastapi_restly.schemas.WriteOnly>` keeps it out of the
 responses. The filters and sort keys of the list route come from the
-response class too; [Filtering & Pagination](howto_query_modifiers.md)
+response class too; [Filtering & Pagination](filtering.md)
 covers them.
 
 You can set each class on the view yourself, as
@@ -309,7 +309,7 @@ class UserSchema(fr.IDSchema):
 A request body must use `firstName`. The responses use `firstName` too. The
 Python name stays `first_name`, and Restly writes the value to the model
 attribute with that name. List filters use the alias as well; see
-[Filtering & Pagination](howto_query_modifiers.md).
+[Filtering & Pagination](filtering.md).
 
 (own-response-class)=
 ## Set your own response class
@@ -684,6 +684,6 @@ custom column type, write the schema yourself.
   exists.
 - [Responses](responses.md): how one object becomes a response,
   envelopes, and [a different schema for the list route](#list-schema).
-- [Filtering & Pagination](howto_query_modifiers.md): the filters and sort
+- [Filtering & Pagination](filtering.md): the filters and sort
   keys that come from the response class.
 - [Models](models.md): values that the server sets on every write path.

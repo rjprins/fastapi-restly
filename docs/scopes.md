@@ -12,7 +12,7 @@ who decides which rows a request sees:
 |---|---|---|
 | **clause** | your code | a named query rule that you can reuse: `ItemClauses.visible` |
 | **scope** | the server | the clause that every read and every reference check applies |
-| **filter** | the client | what the request asks for in [query parameters](howto_query_modifiers.md) |
+| **filter** | the client | what the request asks for in [query parameters](filtering.md) |
 
 A filter narrows the rows inside the scope. It can never show a row that the
 scope hides.
@@ -280,7 +280,7 @@ class ItemView(fr.AsyncRestView):
 `handle_get_many` calls `authorize` and passes `scope=` on to `get_many`.
 The `list_params` argument gives the route the same filter, sort and page
 parameters as `GET /`, as
-[Filtering & Pagination](howto_query_modifiers.md) explains.
+[Filtering & Pagination](filtering.md) explains.
 
 The restore route loads the row with `get_one(id, scope=...)`, not with
 `handle_get_one`. A write action calls `authorize` for its own action inside

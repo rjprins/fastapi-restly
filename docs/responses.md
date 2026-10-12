@@ -58,7 +58,7 @@ The list envelope looks like this:
 A view without pagination sends only `data`; see
 [`pagination = None`](#no-pagination). How a client asks for a page, and
 the page size limits, are on
-[Filtering & Pagination](howto_query_modifiers.md).
+[Filtering & Pagination](filtering.md).
 
 The list route's `response_model` is the pagination's envelope, filled with
 the response class. By default that envelope is a
@@ -358,7 +358,7 @@ In each case only the fields of the response class go out.
   class has.
 - [Request Lifecycle & Hooks](#replace-endpoint-method): how to replace an
   endpoint method.
-- [Filtering & Pagination](howto_query_modifiers.md): the page parameters
+- [Filtering & Pagination](filtering.md): the page parameters
   that clients send.
 - [Errors](howto_error_responses.md): the error shape, which does not pass
   through `to_response`.

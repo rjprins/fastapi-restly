@@ -114,7 +114,7 @@ On a paginated view, it also counts the total
 | A value that every write path must set: a slug, the author | a column default or a mapper event on the model ([Models](#write-path-values)) |
 | Who may perform an action | {meth}`authorize <fastapi_restly.views.RestView.authorize>` ([Authorization](#authorize-gate)) |
 | Which rows a caller can see | {attr}`scope <fastapi_restly.views.BaseRestView.scope>` ([Scopes](#view-scope)) |
-| The filter, sort and page grammar | {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>` ([Filtering & Pagination](howto_query_modifiers.md)) |
+| The filter, sort and page grammar | {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>` ([Filtering & Pagination](filtering.md)) |
 | The list total | {meth}`count <fastapi_restly.views.RestView.count>` |
 | A side effect inside the commit: an outbox or audit row | {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>` ([below](#transaction-hooks)) |
 | A side effect after the commit: an email, a webhook | {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>` ([below](#transaction-hooks)) |
@@ -274,7 +274,7 @@ Other changes to a list have their own place. A [scope](#view-scope) hides
 rows.
 {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
 changes the filter, sort and page grammar
-([Filtering & Pagination](howto_query_modifiers.md)).
+([Filtering & Pagination](filtering.md)).
 {meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`
 loads more relationships ([Relationships](#eager-load-extra-relationships)).
 
@@ -497,7 +497,7 @@ Replace
 {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>`
 when the contract of the list changes, for example to send the total in a
 header. Keep the `list_params` parameter to keep Restly's
-[filter, sort and page parameters](howto_query_modifiers.md):
+[filter, sort and page parameters](filtering.md):
 
 ```python
 import fastapi

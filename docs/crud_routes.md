@@ -66,7 +66,7 @@ also accepts `/users/`, as a route that OpenAPI does not show.
 `GET /users` has a filter for each field of the response class that maps to
 a column of the model. It sorts with `?sort=field,-other_field`, and it is
 paginated by default. A query key that the list does not know returns `422`.
-[Filtering & Pagination](howto_query_modifiers.md) defines the parameters.
+[Filtering & Pagination](filtering.md) defines the parameters.
 [Responses](responses.md) shows the response bodies and how to
 change the `data` envelope.
 

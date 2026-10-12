@@ -194,7 +194,7 @@ curl 'http://127.0.0.1:8000/posts?sort=-id&page=1&page_size=10'
 
 A field name filters on equality. A suffix such as `__icontains` chooses
 another operator. `sort` takes field names, with `-` for descending order.
-[Filtering & Pagination](howto_query_modifiers.md) lists every
+[Filtering & Pagination](filtering.md) lists every
 operator and the paging settings.
 
 ## The complete file
@@ -220,7 +220,7 @@ These pages go deeper into what this tutorial used:
   Restly generates from a model, and when to write a schema
 - [Relationships](relationships.md):
   checked references and nested objects
-- [Filtering & Pagination](howto_query_modifiers.md): every filter
+- [Filtering & Pagination](filtering.md): every filter
   operator, sorting, and paging
 - [Testing](howto_testing.md): test the API, with a rollback after each test
 - [Deploying](deploying.md): Alembic migrations instead of `async_create_all`

@@ -265,7 +265,7 @@ class UserView(fr.AsyncRestView):
     pagination = fr.NumberedPagination(default_page_size=25, max_page_size=200)
 ```
 
-See [Filtering & Pagination](https://www.fastapi-restly.org/howto_query_modifiers.html) for the full operator surface, alias rules, and pagination guidance.
+See [Filtering & Pagination](https://www.fastapi-restly.org/filtering.html) for the full operator surface, alias rules, and pagination guidance.
 
 ### Read-only and write-only fields
 

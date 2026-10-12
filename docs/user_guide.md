@@ -61,7 +61,7 @@ Pages: [Views](views.md), [CRUD Routes](crud_routes.md),
 Pages: [Schemas & Validation](schemas.md),
 [Responses](responses.md),
 [Relationships](relationships.md),
-[Filtering & Pagination](howto_query_modifiers.md),
+[Filtering & Pagination](filtering.md),
 [Errors](howto_error_responses.md).
 
 - [Should Restly generate the schema, or should I write it?](#write-or-generate)
@@ -160,7 +160,7 @@ lifecycle
 schemas
 responses
 relationships
-howto_query_modifiers
+filtering
 howto_error_responses
 howto_current
 clauses

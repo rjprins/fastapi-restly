@@ -22,5 +22,5 @@ follow the response class.
 
 .. seealso::
 
-   :doc:`/howto_query_modifiers` documents the URL filter, sort, and
+   :doc:`/filtering` documents the URL filter, sort, and
    pagination grammar that these helpers implement.
