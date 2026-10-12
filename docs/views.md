@@ -82,7 +82,7 @@ plain FastAPI function is simpler.
 |---|---|
 | One endpoint that shares nothing with others | A plain FastAPI function, with no Restly view |
 | A group of endpoints that are not CRUD: login, webhooks, RPC-style actions, resources with a composite key | {class}`fr.View <fastapi_restly.views.View>` ([Group endpoints that are not CRUD](#when-to-use-view-directly)) |
-| CRUD routes for a database model | {class}`fr.AsyncRestView <fastapi_restly.views.AsyncRestView>` or {class}`fr.RestView <fastapi_restly.views.RestView>` ([CRUD Routes](rest_views.md)) |
+| CRUD routes for a database model | {class}`fr.AsyncRestView <fastapi_restly.views.AsyncRestView>` or {class}`fr.RestView <fastapi_restly.views.RestView>` ([CRUD Routes](crud_routes.md)) |
 | CRUD routes plus actions such as publish | `AsyncRestView` or `RestView` with extra {func}`@fr.get <fastapi_restly.views.get>` or {func}`@fr.post <fastapi_restly.views.post>` methods ([Add a custom action route](#custom-action-route)) |
 
 [Choose async or sync](#choose-async-or-sync) explains the choice between
@@ -111,7 +111,7 @@ View                     ← routes, prefix, dependencies; no CRUD
   Import it from `fastapi_restly.views`; it is not in the `fr` namespace.
 - {class}`RestView <fastapi_restly.views.RestView>` and
   {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` add the sync and
-  async CRUD routes. [CRUD Routes](rest_views.md) describes them.
+  async CRUD routes. [CRUD Routes](crud_routes.md) describes them.
 - {class}`ReactAdminView <fastapi_restly.views.ReactAdminView>` and
   {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>`
   serve the contract that React Admin expects; see
@@ -728,7 +728,7 @@ the route methods before registration. On a CRUD view, call `super()` in it.
 
 ## See also
 
-- [CRUD Routes](rest_views.md): the default CRUD routes and their
+- [CRUD Routes](crud_routes.md): the default CRUD routes and their
   configuration.
 - [Request Lifecycle & Hooks](customize.md): how a view handles a request,
   and which method to override.

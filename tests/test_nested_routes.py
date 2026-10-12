@@ -1,4 +1,4 @@
-"""Nested resources, as docs/rest_views.md builds them.
+"""Nested resources, as docs/crud_routes.md builds them.
 
 A path parameter in the prefix, a lookup dependency that binds the parent id
 to a context member, and a view scope that reads it. Sync and async, one level

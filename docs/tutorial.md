@@ -88,7 +88,7 @@ curl http://127.0.0.1:8000/posts
 ```
 
 This is what Restly adds to FastAPI: a model and a four-line view class give
-a complete, documented resource. [CRUD Routes](rest_views.md) describes
+a complete, documented resource. [CRUD Routes](crud_routes.md) describes
 the full contract of these routes.
 
 ## Comment on posts
@@ -214,7 +214,7 @@ action, and rules for who may change a post.
 
 These pages go deeper into what this tutorial used:
 
-- [CRUD Routes](rest_views.md): the default CRUD contract and the view
+- [CRUD Routes](crud_routes.md): the default CRUD contract and the view
   settings
 - [How Restly generates a schema](#auto-generated-schemas): what
   Restly generates from a model, and when to write a schema

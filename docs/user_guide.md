@@ -35,7 +35,7 @@ Page: [Models](models.md).
 
 ## Routes
 
-Pages: [Views](views.md), [CRUD Routes](rest_views.md),
+Pages: [Views](views.md), [CRUD Routes](crud_routes.md),
 [Request Lifecycle & Hooks](customize.md).
 
 - [Should I use `View`, `AsyncRestView`, `RestView` or a plain FastAPI function?](#choose-a-view-class)
@@ -155,7 +155,7 @@ projects
 database
 models
 views
-rest_views
+crud_routes
 customize
 howto_custom_schema
 howto_response_schema

@@ -7,7 +7,7 @@ commits it and builds the response. Each step is a method on the view. To
 change a route, you override the method of one step. A custom route calls the
 same methods, so it runs the same steps.
 
-[CRUD Routes](rest_views.md) lists the default routes and their settings.
+[CRUD Routes](crud_routes.md) lists the default routes and their settings.
 [Views](views.md) covers what every view shares: registration,
 dependencies and inheritance.
 

@@ -1,7 +1,7 @@
 # View Reference
 
 This page lists everything you can set, override, or call on a view.
-[CRUD Routes](rest_views.md) explains the default HTTP contract, and
+[CRUD Routes](crud_routes.md) explains the default HTTP contract, and
 [Request Lifecycle & Hooks](customize.md) explains which method to override.
 [Modules](api/index.rst) documents the complete signatures.
 
