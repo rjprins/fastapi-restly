@@ -71,4 +71,4 @@ before it passes. Its database is separate from the development one.
 
 - [New & Existing Projects](https://www.fastapi-restly.org/projects.html)
 - [Deploying](https://www.fastapi-restly.org/deploying.html)
-- [Testing](https://www.fastapi-restly.org/howto_testing.html)
+- [Testing](https://www.fastapi-restly.org/testing.html)

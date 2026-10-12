@@ -110,7 +110,7 @@ Restly step by step, from the first model to authors, drafts, and tests.
 - **[Current & ContextParam](current.md)**: bind values, such as the current user, to a request-local context and read them anywhere in the request
 - **[Scopes](scopes.md)**: control what a view can return with one SQLAlchemy where clause, applied to every read and reference check
 - **[Relationship support](relationships.md)**: handle foreign keys and nested objects
-- **[Testing utilities](howto_testing.md)**: built-in test helpers with savepoint isolation
+- **[Testing utilities](testing.md)**: built-in test helpers with savepoint isolation
 
 ## Documentation
 

@@ -42,7 +42,7 @@ is imported. So importing your package never needs a configured environment.
 `Settings.current` reads `DATABASE_URL` and the pool fields the first time
 that code asks for them. `Settings.use(...)` installs an instance instead;
 a test suite does this to give the application its test settings, as
-[Testing](howto_testing.md) shows.
+[Testing](testing.md) shows.
 
 Restly does not choose a pool size, so set it yourself. To do that, build the
 engine yourself and pass it to `fr.configure()`, as the template below does.

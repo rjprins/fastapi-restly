@@ -232,7 +232,7 @@ finally:
 A test that calls application code directly, without a request, binds the
 values with `Current.bind(...)` around the call. That does not test the
 request dependency, so keep a test that goes through a request too.
-[Testing](howto_testing.md) covers the test setup.
+[Testing](testing.md) covers the test setup.
 
 (current-members)=
 ## Declare and share context members

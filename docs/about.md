@@ -20,7 +20,7 @@ default CRUD routes, query parameters, error translation, and test fixtures.
   session setup, commit handling, schema generation,
   [list filtering](filtering.md) with strict validation,
   [error translation](errors.md), and
-  [savepoint-isolated test fixtures](howto_testing.md)
+  [savepoint-isolated test fixtures](testing.md)
   all work from {func}`fr.configure() <fastapi_restly.db.configure>` onward.
 - **Customization is never off the path.** Applications are rarely just CRUD.
   Every CRUD operation has explicit override points, so the default behavior

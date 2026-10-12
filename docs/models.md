@@ -175,7 +175,7 @@ Everything that asks for your models' tables takes the base:
   creates the tables during development.
 - `fr.testing.configure_tests(base=Base)` tells the test setup which tables
   to clean between tests, and to create with `create_all=True`.
-  [Testing](howto_testing.md) shows it.
+  [Testing](testing.md) shows it.
 - Alembic's `env.py` sets `target_metadata = Base.metadata`, as
   [Deploying](deploying.md) shows.
 

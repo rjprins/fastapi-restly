@@ -110,7 +110,7 @@ Pages: [Current & ContextParam](current.md), [Query Clauses](clauses.md),
 
 ## Operate
 
-Pages: [Testing](howto_testing.md), [Deploying](deploying.md),
+Pages: [Testing](testing.md), [Deploying](deploying.md),
 [OpenAPI](howto_openapi.md), [React Admin](howto_react_admin.md),
 [Type Annotations](howto_typing.md).
 
@@ -166,7 +166,7 @@ current
 clauses
 scopes
 authorization
-howto_testing
+testing
 deploying
 howto_openapi
 howto_react_admin

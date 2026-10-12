@@ -79,7 +79,7 @@ intersphinx_timeout = 30
 
 # Old published URLs -> their post-restructure homes.
 redirects = {
-    "pytest_fixtures": "howto_testing.html",
+    "pytest_fixtures": "testing.html",
     "the_handle_design": "lifecycle.html",
     "howto_override_endpoints": "lifecycle.html",
     "tutorial_overview": "tutorial.html",
@@ -104,6 +104,7 @@ redirects = {
     "howto_query_modifiers": "filtering.html",
     "howto_error_responses": "errors.html",
     "howto_current": "current.html",
+    "howto_testing": "testing.html",
 }
 myst_heading_anchors = 3
 myst_enable_extensions = ["colon_fence", "substitution"]

@@ -177,7 +177,7 @@ The install command at the top is the whole story: the `standard` extra brings
 the `fastapi dev` toolchain, and `aiosqlite` is the async SQLite driver used in
 the examples (Restly is driver-agnostic — use `asyncpg`/`psycopg` for
 PostgreSQL). The `[testing]` extra adds the test tools; see
-[Testing](https://www.fastapi-restly.org/howto_testing.html).
+[Testing](https://www.fastapi-restly.org/testing.html).
 
 ## Start a project
 

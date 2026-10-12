@@ -222,7 +222,7 @@ These pages go deeper into what this tutorial used:
   checked references and nested objects
 - [Filtering & Pagination](filtering.md): every filter
   operator, sorting, and paging
-- [Testing](howto_testing.md): test the API, with a rollback after each test
+- [Testing](testing.md): test the API, with a rollback after each test
 - [Deploying](deploying.md): Alembic migrations instead of `async_create_all`
 - [Views](views.md): views without a model, and
   [the sync `RestView`](#choose-async-or-sync)

@@ -433,5 +433,5 @@ use several databases.
 ## See also
 
 - [Deploying](deploying.md): engine settings for production, and Alembic.
-- [Testing](howto_testing.md): how the test fixtures use this configuration.
+- [Testing](testing.md): how the test fixtures use this configuration.
 - {func}`fr.configure() <fastapi_restly.db.configure>`: every argument.

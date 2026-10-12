@@ -200,7 +200,7 @@ compatibility alias, but OpenAPI records only `/tasks`.
 ## Further reading
 
 - [Deployment guide](../../docs/deploying.md)
-- [Testing guide](../../docs/howto_testing.md)
+- [Testing guide](../../docs/testing.md)
 - [Guide](../../docs/user_guide.md)
 - [Main framework documentation](../../docs/index.md)
 - [Alembic asyncio recipe](https://alembic.sqlalchemy.org/en/latest/cookbook.html#using-asyncio-with-alembic)

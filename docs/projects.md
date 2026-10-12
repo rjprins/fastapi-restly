@@ -424,7 +424,7 @@ from it; see [Concatenate URL prefixes](#prefix-concatenation).
 - [Database & Configuration](database.md): the engine, the sessions, and
   `fr.configure()`.
 - [Deploying](deploying.md): run the application, and set up Alembic.
-- [Testing](howto_testing.md): the `conftest.py` for this layout.
+- [Testing](testing.md): the `conftest.py` for this layout.
 - [Nest a resource under its parent](#nested-resources) and
   [Receive a webhook](#receive-a-webhook): shapes that your existing app
   probably has.

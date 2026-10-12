@@ -464,7 +464,7 @@ test_main.py ..                                              [100%]
 ```
 
 The [blog example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/blog) has a test for every rule in this
-tutorial. [Testing](howto_testing.md) covers the fixtures, and apps that
+tutorial. [Testing](testing.md) covers the fixtures, and apps that
 build their configuration in a factory.
 
 ## The complete file
@@ -502,7 +502,7 @@ These pages cover the topics of this tutorial in more detail:
   when to override one
 - [Share behavior with base views](#share-behaviour-with-base-views): the full
   inheritance guide
-- [Testing](howto_testing.md): the test fixtures, and test databases
+- [Testing](testing.md): the test fixtures, and test databases
 - [New & Existing Projects](projects.md): split the file into
   packages as the app grows, or generate a project with `restly new`
 - [Deploying](deploying.md): a production database, and Alembic migrations
