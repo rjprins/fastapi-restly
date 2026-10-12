@@ -354,7 +354,7 @@ In each case only the fields of the response class go out.
 
 ## See also
 
-- [Schemas & Validation](howto_custom_schema.md): which fields the response
+- [Schemas & Validation](schemas.md): which fields the response
   class has.
 - [Request Lifecycle & Hooks](#replace-endpoint-method): how to replace an
   endpoint method.

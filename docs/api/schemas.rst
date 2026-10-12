@@ -9,7 +9,7 @@ reference types, and schema generation from SQLAlchemy models.
 
    :doc:`/howto_relationship_idschema` covers ``MustExist`` checked foreign
    keys and the JSON format of ``IDRef`` / ``IDSchema`` relationship fields.
-   :doc:`/howto_custom_schema` describes schema bases, field markers, and
+   :doc:`/schemas` describes schema bases, field markers, and
    aliases in prose.
 
 .. py:data:: fastapi_restly.schemas.ReadOnly

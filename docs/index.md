@@ -72,7 +72,7 @@ class UserView(fr.AsyncRestView):
 
 That view exposes the routes below. Their Pydantic schemas are
 [generated from the model](#auto-generated-schemas), and you can
-[customize them](howto_custom_schema.md).
+[customize them](schemas.md).
 
 ```text
 GET    /users       # list users: filter, sort, paginate via URL params
@@ -104,7 +104,7 @@ Restly step by step, from the first model to authors, drafts, and tests.
 - **[Explicit override points](lifecycle.md)**: every CRUD verb split into an endpoint method and a business method you override
 - **[React Admin ready](howto_react_admin.md)**: `AsyncReactAdminView` speaks `ra-data-simple-rest`
 - **[SQLAlchemy 2.0 support](tutorial.md)**: async-first with modern patterns
-- **[Pydantic v2 integration](howto_custom_schema.md)**: validation and serialization for public contracts
+- **[Pydantic v2 integration](schemas.md)**: validation and serialization for public contracts
 - **[Automatic schema generation](#auto-generated-schemas)**: response, create, and update schemas generated automatically
 - **[Filtering](howto_query_modifiers.md)**: filter, sort, and paginate from a stable URL dialect generated from the view's schema
 - **[Current & ContextParam](howto_current.md)**: bind values, such as the current user, to a request-local context and read them anywhere in the request

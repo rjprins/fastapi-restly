@@ -92,12 +92,13 @@ redirects = {
     "howto_compose_views_with_mixins": "models.html",
     "howto_nested": "crud_routes.html",
     "howto_existing_project": "projects.html",
-    "technical_details": "howto_custom_schema.html",
+    "technical_details": "schemas.html",
     "howto_project_structure": "projects.html",
     "howto_models": "models.html",
     "class_based_views": "views.html",
     "rest_views": "crud_routes.html",
     "customize": "lifecycle.html",
+    "howto_custom_schema": "schemas.html",
 }
 myst_heading_anchors = 3
 myst_enable_extensions = ["colon_fence", "substitution"]

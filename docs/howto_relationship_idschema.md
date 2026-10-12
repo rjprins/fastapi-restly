@@ -255,7 +255,7 @@ In your code, `data.author` is a reference object, not the row. Read the
 requested id as `data.author.id`. Restly looks the row up when it writes.
 
 `IDSchema` is also the usual base class of a schema. As a base class, it only
-adds a read-only `id` field; [Schemas & Validation](howto_custom_schema.md)
+adds a read-only `id` field; [Schemas & Validation](schemas.md)
 covers that use.
 
 (reference-lists)=
@@ -642,7 +642,7 @@ it, and is set on the object after the constructor otherwise.
 
 ## See also
 
-- [Schemas & Validation](howto_custom_schema.md): the schema bases and field
+- [Schemas & Validation](schemas.md): the schema bases and field
   markers that these types work with.
 - [Filtering & Pagination](howto_query_modifiers.md): filters on references
   and on related fields.

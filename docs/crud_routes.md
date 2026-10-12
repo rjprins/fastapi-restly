@@ -151,7 +151,7 @@ A CRUD view derives its request bodies and its response class from `schema`:
 [Hide a field from requests or from responses](#readonly-and-writeonly)
 explains which fields each one takes.
 
-[Schemas & Validation](howto_custom_schema.md) explains field markers,
+[Schemas & Validation](schemas.md) explains field markers,
 aliases, validation, and when to write the schemas yourself.
 
 (configure-a-crud-view)=
@@ -545,7 +545,7 @@ The default CRUD routes have these limits:
 
 - [Build a Blog API](tutorial.md): build and run a first resource.
 - [Request Lifecycle & Hooks](lifecycle.md): change what a route does.
-- [Schemas & Validation](howto_custom_schema.md): the fields that the routes
+- [Schemas & Validation](schemas.md): the fields that the routes
   accept and return.
 - [Views](views.md): registration, shared dependencies and base
   views.

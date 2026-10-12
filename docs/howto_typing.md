@@ -257,5 +257,5 @@ not see this.
   {class}`fr.IDRef <fastapi_restly.schemas.IDRef>` and
   {class}`fr.IDSchema[Model] <fastapi_restly.schemas.IDSchema>` do at
   runtime.
-- [Schemas & Validation](howto_custom_schema.md): the schema base classes and
+- [Schemas & Validation](schemas.md): the schema base classes and
   the response class.

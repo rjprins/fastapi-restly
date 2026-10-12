@@ -202,5 +202,5 @@ name still covers them when you pass the app to
 - [Views](views.md): the class attributes that every view has.
 - [Endpoint decorators](#endpoint-decorators): the decorators and the
   keyword arguments that they pass to FastAPI.
-- [Schemas & Validation](howto_custom_schema.md): the classes that the spec
+- [Schemas & Validation](schemas.md): the classes that the spec
   shows, and their names.
