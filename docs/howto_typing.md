@@ -209,7 +209,7 @@ The practical takeaway is:
   on).
 - Type checkers are less useful for the internal signature-rewriting machinery
   that produces the
-  [endpoint methods](customize.md#replace-an-endpoint-method-to-change-the-http-contract)
+  [endpoint methods](#replace-endpoint-method)
   (`*_endpoint`).
 
 You usually do not need to care about that distinction unless you are

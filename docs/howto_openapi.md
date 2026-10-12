@@ -125,7 +125,7 @@ shape on one verb, replace that endpoint method with your own decorator and
 `response_model`; see
 [Responses](howto_response_schema.md),
 [a different schema for the list endpoint](#list-schema),
-and [replacing an endpoint method](customize.md#replace-an-endpoint-method-to-change-the-http-contract).
+and [replacing an endpoint method](#replace-endpoint-method).
 
 Routes removed with {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` disappear from the schema entirely.
 

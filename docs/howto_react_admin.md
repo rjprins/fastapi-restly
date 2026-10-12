@@ -292,7 +292,7 @@ class CustomerView(ReactAdminBase):
 ## Under the hood
 
 {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` is a thin subclass of {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` built with the
-[route replacement](customize.md#replace-an-endpoint-method-to-change-the-http-contract)
+[route replacement](#replace-endpoint-method)
 pattern. It replaces {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` to parse the
 react-admin query string, then delegates to the standard {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>` /
 {meth}`get_many <fastapi_restly.views.RestView.get_many>` flow. The react-admin dialect itself lives in {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`

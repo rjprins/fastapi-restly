@@ -53,7 +53,7 @@ It owns the HTTP contract: the {func}`@route <fastapi_restly.views.route>`
 decorator, the FastAPI signature, `response_model`, and the final
 {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>` call.
 Override it to change the contract, such as the status code. See
-[Replace an endpoint method](#replace-an-endpoint-method-to-change-the-http-contract).
+[Replace an endpoint method](#replace-endpoint-method).
 
 The **handler**, `handle_<verb>`, handles the steps between. It runs
 {meth}`authorize <fastapi_restly.views.RestView.authorize>` and calls the

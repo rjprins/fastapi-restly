@@ -207,7 +207,7 @@ class TagView(fr.AsyncRestView):
 
 An envelope around a single object, or a list shape no envelope model can
 express, such as a header, is a change to the HTTP contract. So
-[replace the endpoint method](customize.md#replace-an-endpoint-method-to-change-the-http-contract)
+[replace the endpoint method](#replace-endpoint-method)
 and set `response_model` on the replacement.
 
 In the replacement endpoint method, call
@@ -355,7 +355,7 @@ class UserView(fr.AsyncRestView):
 ```
 
 Replacing an endpoint method is the outermost override; see
-[Replace an endpoint method to change the HTTP contract](customize.md#replace-an-endpoint-method-to-change-the-http-contract).
+[Replace an endpoint method to change the HTTP contract](#replace-endpoint-method).
 
 ## Internals
 
