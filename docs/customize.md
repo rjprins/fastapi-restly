@@ -748,21 +748,6 @@ When a custom route constructs schemas itself (`model_construct()` skips
 validation), {class}`IDRef <fastapi_restly.schemas.IDRef>` fields need explicit wrapping; the recipe lives in
 [Relationships](#idref-custom-routes).
 
-## Raise HTTP errors from any method
-
-Every method runs inside a request context, so you can raise `fastapi.HTTPException` (or {class}`fr.exc.Forbidden <fastapi_restly.exc.Forbidden>` / {class}`fr.exc.NotFound <fastapi_restly.exc.NotFound>`) at any point:
-
-```python
-import fastapi
-
-    async def create(self, schema_obj):
-        if not self.current_user.is_admin:
-            raise fastapi.HTTPException(403, "Admin access required")
-        return await super().create(schema_obj)
-```
-
-For permission gating specifically, prefer [`authorize`](#authorize-gate-the-action); it runs at the right phase of the handler and keeps the business method auth-free.
-
 ## Exclude CRUD routes
 
 Set {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` to prevent selected CRUD endpoint methods from being registered as routes:

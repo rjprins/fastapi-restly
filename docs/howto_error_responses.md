@@ -46,6 +46,21 @@ are setup-time framework errors, and the warnings
 {class}`RestlyDuplicateSchemaNameWarning <fastapi_restly.exc.RestlyDuplicateSchemaNameWarning>`
 also live there.
 
+## Raise HTTP errors from any method
+
+Every method runs inside a request context, so you can raise `fastapi.HTTPException` (or {class}`fr.exc.Forbidden <fastapi_restly.exc.Forbidden>` / {class}`fr.exc.NotFound <fastapi_restly.exc.NotFound>`) at any point:
+
+```python
+import fastapi
+
+    async def create(self, schema_obj):
+        if not self.current_user.is_admin:
+            raise fastapi.HTTPException(403, "Admin access required")
+        return await super().create(schema_obj)
+```
+
+For permission gating specifically, prefer [`authorize`](#authorize-gate); it runs at the right phase of the handler and keeps the business method auth-free.
+
 ## 422 vs 400 on list endpoints
 
 Two layers reject bad query strings on list endpoints, each with its own
