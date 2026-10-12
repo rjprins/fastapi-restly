@@ -224,7 +224,7 @@ class ItemView(fr.AsyncRestView):
 
 `handle_get_many` runs `authorize` and forwards `scope=` to `get_many`;
 declaring `list_params` gives the route the list params of `GET /`
-([Filter, Sort, and Paginate Lists](howto_query_modifiers.md)). The restore
+([Filtering & Pagination](howto_query_modifiers.md)). The restore
 loads with `get_one(id, scope=...)` rather than `handle_get_one`, because
 a write action gates its own action inside
 {meth}`write_action <fastapi_restly.views.RestView.write_action>`; a live
@@ -405,7 +405,7 @@ inflate `total_count`.
 Scopes are clauses, so their values come from context members:
 [Query Clauses, Supplying values](#binding-values). Bind request-wide
 values with a generated dependency, which
-[Current context](#current-request-binding) describes:
+[Current & ContextParam](#current-request-binding) describes:
 
 ```python
 app = FastAPI(dependencies=[

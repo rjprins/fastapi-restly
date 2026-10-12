@@ -1,5 +1,5 @@
 (current)=
-# Current context
+# Current & ContextParam
 
 `Current` makes values such as the authenticated user's id available to
 code throughout a request. Bind the value once, then read it wherever it

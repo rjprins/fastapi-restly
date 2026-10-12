@@ -1,4 +1,4 @@
-# Custom Schemas and Field Types
+# Schemas & Validation
 
 :::{note}
 FastAPI-Restly uses **schema** for Pydantic request/response models and

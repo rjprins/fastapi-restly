@@ -1,4 +1,4 @@
-# Use Type Annotations
+# Type Annotations
 
 FastAPI-Restly supports two typing styles. In the low-friction style, you keep
 your view classes simple and let the framework do the work; in the stronger
@@ -67,7 +67,7 @@ id and adds an existence check. For a field named after a relationship, use
 {class}`IDRef[RelatedModel] <fastapi_restly.schemas.IDRef>`, which tells
 Restly (and the type checker) which model resolves from the scalar id payload.
 The runtime semantics are covered in
-[Work with Foreign Keys and Relationships](howto_relationship_idschema.md).
+[Relationships](howto_relationship_idschema.md).
 
 ## When view generics are useful
 
@@ -250,9 +250,9 @@ projects that want it.
 
 - [View Method Surface](#view-method-surface): the typed
   methods this page parameterizes, sorted by kind.
-- [Customizing RestView](customize.md): the override recipes
+- [Request Lifecycle & Hooks](customize.md): the override recipes
   these signatures apply to.
-- [Work with Foreign Keys and Relationships](howto_relationship_idschema.md):
+- [Relationships](howto_relationship_idschema.md):
   runtime semantics of
   {class}`fr.MustExist[int, Model] <fastapi_restly.schemas.MustExist>` and
   {class}`IDRef <fastapi_restly.schemas.IDRef>` /

@@ -216,7 +216,7 @@ class ProductView(ReadOnlyBase):
 A base class can override the {meth}`delete <fastapi_restly.views.RestView.delete>`
 business method once for every subclass, exactly like the audit example above
 but with the soft-delete body. The full `deleted_at` recipe is in
-{ref}`Customizing RestView <soft-delete-recipe>`. The reusable mixin that also
+{ref}`Request Lifecycle & Hooks <soft-delete-recipe>`. The reusable mixin that also
 hides flagged rows on read is in [Compose Views with
 Mixins](howto_compose_views_with_mixins.md).
 
@@ -224,5 +224,5 @@ Mixins](howto_compose_views_with_mixins.md).
 
 The patterns above build on two neighbouring pages:
 
-- [Customizing RestView](customize.md) covers how a view handles a request and the call chain.
+- [Request Lifecycle & Hooks](customize.md) covers how a view handles a request and the call chain.
 - [Compose Views with Mixins](howto_compose_views_with_mixins.md) covers structural concerns on the model and verb mixins on the view; it is the richer cousin to single-base inheritance.

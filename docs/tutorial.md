@@ -88,7 +88,7 @@ curl http://127.0.0.1:8000/posts
 ```
 
 This is what Restly adds to FastAPI: a model and a four-line view class give
-a complete, documented resource. [Using RestView](rest_views.md) describes
+a complete, documented resource. [CRUD Routes](rest_views.md) describes
 the full contract of these routes.
 
 ## Comment on posts
@@ -164,7 +164,7 @@ curl -X POST http://127.0.0.1:8000/comments \
 {"id": 1, "content": "Nice post", "post_id": 1}
 ```
 
-[Work with Foreign Keys and Relationships](howto_relationship_idschema.md)
+[Relationships](howto_relationship_idschema.md)
 covers references in more detail, including nested objects in responses.
 
 ## Find posts
@@ -194,7 +194,7 @@ curl 'http://127.0.0.1:8000/posts?sort=-id&page=1&page_size=10'
 
 A field name filters on equality. A suffix such as `__icontains` chooses
 another operator. `sort` takes field names, with `-` for descending order.
-[Filter, Sort, and Paginate Lists](howto_query_modifiers.md) lists every
+[Filtering & Pagination](howto_query_modifiers.md) lists every
 operator and the paging settings.
 
 ## The complete file
@@ -214,13 +214,13 @@ action, and rules for who may change a post.
 
 These pages go deeper into what this tutorial used:
 
-- [Using RestView](rest_views.md): the default CRUD contract and the view
+- [CRUD Routes](rest_views.md): the default CRUD contract and the view
   settings
 - [Auto-Generated Schemas](#auto-generated-schemas): what
   Restly generates from a model, and when to write a schema
-- [Work with Foreign Keys and Relationships](howto_relationship_idschema.md):
+- [Relationships](howto_relationship_idschema.md):
   checked references and nested objects
-- [Filter, Sort, and Paginate Lists](howto_query_modifiers.md): every filter
+- [Filtering & Pagination](howto_query_modifiers.md): every filter
   operator, sorting, and paging
 - [Testing](howto_testing.md): test the API, with a rollback after each test
 - [Deploying](deploying.md): Alembic migrations instead of `async_create_all`

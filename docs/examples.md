@@ -31,8 +31,8 @@ tests check each rule of that tutorial. It uses async views and SQLite.
 shows relationships, multiple primary-key styles, async sessions, and
 React-Admin-compatible endpoints through {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>`. It also includes
 a small React Admin frontend that uses the API. These patterns are
-covered in [React Admin Integration](howto_react_admin.md) and
-[Work with Foreign Keys and Relationships](howto_relationship_idschema.md).
+covered in [React Admin](howto_react_admin.md) and
+[Relationships](howto_relationship_idschema.md).
 
 ## SaaS
 
@@ -47,7 +47,7 @@ engine. Compose provides separate development and test databases, and the
 Restly test fixtures build their schema from the checked-in migrations. It also
 builds a substantial non-CRUD surface on the same views. Each view lives beside
 its model and schemas in a subject package under `example-projects/saas/app/`,
-the layout [Project structure](howto_project_structure.md) describes.
+the layout [New & Existing Projects](howto_project_structure.md) describes.
 The routes below highlight the patterns involved:
 
 | Route | Pattern it demonstrates |
@@ -62,7 +62,7 @@ The routes below highlight the patterns involved:
 These patterns are covered in
 [Compose Views with Mixins](howto_compose_views_with_mixins.md),
 [Share Behaviour with Base Views](howto_inheritance.md),
-[Customizing RestView](customize.md), and
+[Request Lifecycle & Hooks](customize.md), and
 [Patterns](patterns.md).
 
 ## Running them

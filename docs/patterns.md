@@ -42,9 +42,9 @@ children, and deeper nesting.
 
 The filter grammar, including
 [foreign-key filtering](#foreign-key-filtering), is
-documented in [Filter, Sort, and Paginate Lists](howto_query_modifiers.md);
+documented in [Filtering & Pagination](howto_query_modifiers.md);
 custom routes are covered in
-[Customizing RestView](customize.md).
+[Request Lifecycle & Hooks](customize.md).
 
 ## A different schema for the list endpoint
 
@@ -117,7 +117,7 @@ session level ([Tenant scoping](#tenant-scoping)). [A route names its own
 scope](scopes.md#a-route-names-its-own-scope) owns the details.
 
 Soft delete itself is covered as a one-off override in
-[Customizing RestView](customize.md#delete-soft-delete-instead-of-removing-the-row)
+[Request Lifecycle & Hooks](customize.md#delete-soft-delete-instead-of-removing-the-row)
 and as a reusable mixin in
 [Compose Views with Mixins](#soft-delete-mixin),
 which also discusses the admin bypass.

@@ -1,9 +1,9 @@
 # View Reference
 
 This page lists everything you can set, override, or call on a view.
-[Using RestView](rest_views.md) explains the default HTTP contract, and
-[Customizing RestView](customize.md) explains which method to override.
-[API Modules](api/index.rst) documents the complete signatures.
+[CRUD Routes](rest_views.md) explains the default HTTP contract, and
+[Request Lifecycle & Hooks](customize.md) explains which method to override.
+[Modules](api/index.rst) documents the complete signatures.
 
 ## View classes
 
@@ -16,7 +16,7 @@ Each class below is a registration entry point:
 | {class}`fr.AsyncRestView <fastapi_restly.views.AsyncRestView>` | Async CRUD view. Use with async SQLAlchemy sessions. |
 | {class}`fr.RestView <fastapi_restly.views.RestView>` | Sync CRUD view. Use with sync SQLAlchemy sessions. |
 | {class}`fr.ListResult <fastapi_restly.views.ListResult>` | Value object returned by `get_many` (and `handle_get_many`), with `.objects`, `.total_count`, and `.list_params`, before `to_list_response` formats the HTTP response. |
-| {class}`fr.AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` | Async CRUD view that follows the `ra-data-simple-rest` HTTP contract used by [react-admin](https://marmelab.com/react-admin/). See [React Admin Integration](howto_react_admin.md). |
+| {class}`fr.AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` | Async CRUD view that follows the `ra-data-simple-rest` HTTP contract used by [react-admin](https://marmelab.com/react-admin/). See [React Admin](howto_react_admin.md). |
 | {class}`fr.ReactAdminView <fastapi_restly.views.ReactAdminView>` | Sync variant of `AsyncReactAdminView`. |
 
 (view-class-attributes)=
@@ -68,7 +68,7 @@ checked copy:
 default, filled from `data` and `total_count`, the number of rows.
 
 The envelope's shape and custom alternatives are covered in
-[Response Envelopes and List Metadata](howto_response_schema.md).
+[Responses](howto_response_schema.md).
 
 (endpoint-decorators)=
 ## Endpoint decorators
@@ -99,7 +99,7 @@ the endpoint method (`<verb>_endpoint`), the handler (`handle_<verb>`), and
 the business method (`<verb>`). The handler handles the steps and is final.
 You override the endpoint method or the business method, whichever owns your
 change. The steps and the decision table live in
-[Customizing RestView](#view-request-steps).
+[Request Lifecycle & Hooks](#view-request-steps).
 
 Alongside these three are the declared read [scope](scopes.md) (the
 `scope` class attribute) and cross-cutting **override points**
@@ -157,7 +157,7 @@ and `fr.clauses.UNSCOPED` reads unscoped.
 
 Internal methods prefixed with `_`, such as `_reject_unknown_query_params`, are implementation details even though they are visible on instances.
 
-See [Views](class_based_views.md#the-view-hierarchy) for the class hierarchy, [Customizing RestView](customize.md) for examples of choosing which method to override, and [Use Type Annotations](howto_typing.md) for the typed signatures of these methods.
+See [Views](class_based_views.md#the-view-hierarchy) for the class hierarchy, [Request Lifecycle & Hooks](customize.md) for examples of choosing which method to override, and [Type Annotations](howto_typing.md) for the typed signatures of these methods.
 
 (advanced-object-helpers)=
 ### The same operations outside a view

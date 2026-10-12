@@ -82,7 +82,7 @@ uses your ordinary FastAPI implementation. For smaller changes that keep the
 same HTTP contract, prefer overriding the business method ({meth}`get_many <fastapi_restly.views.RestView.get_many>`, {meth}`get_one <fastapi_restly.views.RestView.get_one>`,
 {meth}`create <fastapi_restly.views.RestView.create>`, {meth}`update <fastapi_restly.views.RestView.update>`, {meth}`delete <fastapi_restly.views.RestView.delete>`); for a
 different status code, response shape, or query interface, see
-[Customizing RestView](customize.md).
+[Request Lifecycle & Hooks](customize.md).
 
 ## Step Out for a Whole Resource
 
@@ -339,12 +339,12 @@ the same base wherever Restly asks for your models' tables, as in
 `fr.testing.configure_tests(base=AppBase)`.
 
 Restly's model defaults, such as dataclass constructors and datetimes with a
-time zone, are optional. [Declare Your Models](howto_models.md) explains them,
+time zone, are optional. [Models](howto_models.md) explains them,
 and what changes when you add them to a base that already has models.
 
 ## See also
 
-- [Test APIs with RestlyTestClient and Fixtures](howto_testing.md): pin the
+- [Testing](howto_testing.md): pin the
   HTTP contract while migrating; savepoint-isolated tests against your DB.
 - [Deploying](deploying.md): engine configuration from environment values,
   Alembic, and a production `main.py`.

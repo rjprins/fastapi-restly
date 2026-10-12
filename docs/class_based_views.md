@@ -1,4 +1,4 @@
-# Views & CRUD
+# Views
 
 Views group related FastAPI endpoints in Python classes. A view declares shared
 route configuration and dependencies once. Subclasses inherit or override its
@@ -16,7 +16,7 @@ endpoint methods.
 Use {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` for new
 applications unless the application already uses synchronous SQLAlchemy. [Using
 RestView](rest_views.md) defines its CRUD routes, schemas, and configuration.
-[Customizing RestView](customize.md) shows how to override those routes or add
+[Request Lifecycle & Hooks](customize.md) shows how to override those routes or add
 custom actions. All three classes use the same registration, dependency
 injection, and inheritance mechanics.
 
@@ -203,11 +203,11 @@ View                   ← class-based view primitive (no CRUD)
   an abstract scaffold with no endpoints of its own.
 - {class}`RestView <fastapi_restly.views.RestView>` and
   {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` define the sync
-  and async CRUD endpoint methods. [Using RestView](rest_views.md) owns their
+  and async CRUD endpoint methods. [CRUD Routes](rest_views.md) owns their
   default contract, configuration, and limits.
 
 The [API reference](#view-method-surface) classifies the public
-method surface. [Customizing RestView](customize.md) explains how a view handles a
+method surface. [Request Lifecycle & Hooks](customize.md) explains how a view handles a
 request and where to override it.
 
 ## A shared base view for tenant routes
@@ -256,7 +256,7 @@ logic, auth-free and commit-free). The handler handles the steps, such as
 authorization and the commit, and it is final. One behavior change therefore
 means one override of a step, while routing, authorization, and the commit
 stay framework-owned. The steps of a request, the override decision table,
-and task-shaped recipes live in [Customizing RestView](#view-request-steps).
+and task-shaped recipes live in [Request Lifecycle & Hooks](#view-request-steps).
 
 (dependency-injection-on-class-attributes)=
 ## Dependency injection on class attributes
@@ -354,19 +354,11 @@ co-located. Do not reach for them just for the sake of structure.
 
 ## Next steps
 
-- [Using RestView](rest_views.md): the default CRUD contract, schemas, and view
+- [CRUD Routes](rest_views.md): the default CRUD contract, schemas, and view
   configuration.
-- [Customizing RestView](customize.md): how a view handles a request, the
+- [Request Lifecycle & Hooks](customize.md): how a view handles a request, the
   override decision table, and every override recipe.
 - [Share Behaviour with Base Views](howto_inheritance.md): patterns for
   tenant isolation, role-based filtering, and shared mixins.
 - [API Reference](api_reference.md): full {class}`View <fastapi_restly.views.View>`, {class}`BaseRestView <fastapi_restly.views.BaseRestView>`,
   {class}`RestView <fastapi_restly.views.RestView>`, {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` signatures and class attributes.
-
-```{toctree}
-:maxdepth: 1
-:hidden:
-
-Using RestView <rest_views>
-Customizing RestView <customize>
-```

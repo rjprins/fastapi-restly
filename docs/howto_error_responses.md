@@ -1,4 +1,4 @@
-# Shape Error Responses
+# Errors
 
 Restly's request-time errors are ordinary FastAPI `HTTPException`s, so by
 default every error renders as FastAPI's standard `{"detail": ...}` body.
@@ -8,7 +8,7 @@ change the error envelope app-wide.
 One rule applies throughout: errors bypass
 {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>`. The
 response boundary on a view shapes *successful* payloads (see
-[Response Envelopes and List Metadata](howto_response_schema.md)); error
+[Responses](howto_response_schema.md)); error
 shaping happens at FastAPI's exception-handler layer, app-wide, exactly as in
 a plain FastAPI app.
 
@@ -151,7 +151,7 @@ fr.configure(app=app, async_database_url="sqlite+aiosqlite:///app.db")
 
 ## See also
 
-- [Customizing RestView](customize.md): where {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the
+- [Request Lifecycle & Hooks](customize.md): where {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the
   business methods sit; a raised exception skips the commit bracket.
-- [Filter, Sort, and Paginate Lists](howto_query_modifiers.md): the
+- [Filtering & Pagination](howto_query_modifiers.md): the
   parameter grammar whose violations produce the 422/400 split.

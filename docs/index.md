@@ -18,8 +18,8 @@ class UserView(fr.AsyncRestView):
     model = User  # SQLAlchemy model
 ```
 
-See [Using RestView](rest_views.md) for the full guide and [Customizing
-RestView](customize.md) for how you can change it.
+The [Guide](user_guide.md) explains each part of a view and how you can change
+it.
 
 ## Quick Start
 
@@ -107,60 +107,31 @@ Restly step by step, from the first model to authors, drafts, and tests.
 - **[Pydantic v2 integration](howto_custom_schema.md)**: validation and serialization for public contracts
 - **[Automatic schema generation](technical_details.md#auto-generated-schemas)**: response, create, and update schemas generated automatically
 - **[Filtering](howto_query_modifiers.md)**: filter, sort, and paginate from a stable URL dialect generated from the view's schema
-- **[Current context](howto_current.md)**: bind values, such as the current user, to a request-local context and read them anywhere in the request
+- **[Current & ContextParam](howto_current.md)**: bind values, such as the current user, to a request-local context and read them anywhere in the request
 - **[Scopes](scopes.md)**: control what a view can return with one SQLAlchemy where clause, applied to every read and reference check
 - **[Relationship support](howto_relationship_idschema.md)**: handle foreign keys and nested objects
 - **[Testing utilities](howto_testing.md)**: built-in test helpers with savepoint isolation
 
 ## Documentation
 
-::::{grid} 1 2 2 3
+::::{grid} 1 2 2 2
 :gutter: 3
 
-:::{grid-item-card} Getting Started
+:::{grid-item-card} Tutorial
 :link: tutorial
 :link-type: doc
 
 Build a blog API step by step: posts and comments, then authors and drafts.
 :::
 
-:::{grid-item-card} Views
-:link: class_based_views
-:link-type: doc
-
-Choose a view type, then learn how registration, dependencies, and inheritance
-work.
-:::
-
-:::{grid-item-card} Using RestView
-:link: rest_views
-:link-type: doc
-
-Define a model-backed CRUD resource and understand its default contract.
-:::
-
-:::{grid-item-card} Customizing RestView
-:link: customize
-:link-type: doc
-
-How a view handles each request, with recipes for every override point.
-:::
-
-:::{grid-item-card} How-To Guides
+:::{grid-item-card} Guide
 :link: user_guide
 :link-type: doc
 
-Task-focused guides, from adoption in an existing app to deployment.
+One page for each part of Restly: how it works, and how to use it.
 :::
 
-:::{grid-item-card} Examples
-:link: examples
-:link-type: doc
-
-Complete sample applications from a tiny API to a production-shaped service.
-:::
-
-:::{grid-item-card} API Reference
+:::{grid-item-card} API
 :link: api_reference
 :link-type: doc
 
@@ -173,22 +144,14 @@ Public Python API by module, with signatures and default behavior.
 
 History, design goals, and why this framework exists.
 :::
-
-:::{grid-item-card} Deploying
-:link: deploying
-:link-type: doc
-
-Production engine config, Alembic migrations, and an ASGI checklist.
-:::
 ::::
 
 ```{toctree}
 :maxdepth: 2
 :hidden:
 
-Getting Started <tutorial>
-CRUD Views <class_based_views>
-How-To <user_guide>
+Tutorial <tutorial>
+Guide <user_guide>
 API <api_reference>
 Blog <https://www.fastapi-restly.org/blog/>
 examples

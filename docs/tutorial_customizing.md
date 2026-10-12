@@ -495,15 +495,15 @@ Write a test for each exercise.
 
 These pages cover the topics of this tutorial in more detail:
 
-- [Current context](howto_current.md): bind values in scripts, jobs, and
+- [Current & ContextParam](howto_current.md): bind values in scripts, jobs, and
   tests
 - [Scopes](scopes.md): the model scope, view scopes, and a scope for one route
-- [Customizing RestView](customize.md): every method you can override, and
+- [Request Lifecycle & Hooks](customize.md): every method you can override, and
   when to override one
 - [Share Behaviour with Base Views](howto_inheritance.md): the full
   inheritance guide
 - [Testing](howto_testing.md): the test fixtures, and test databases
-- [Project structure](howto_project_structure.md): split the file into
+- [New & Existing Projects](howto_project_structure.md): split the file into
   packages as the app grows, or generate a project with `restly new`
 - [Deploying](deploying.md): a production database, and Alembic migrations
   instead of `async_create_all`

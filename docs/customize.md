@@ -1,4 +1,4 @@
-# Customizing RestView
+# Request Lifecycle & Hooks
 
 {class}`RestView <fastapi_restly.views.RestView>` and {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` define complete CRUD
 endpoints. Because views are class-based, a subclass changes an endpoint's
@@ -7,7 +7,7 @@ archive instead of delete, or hide soft-deleted rows. This page first explains
 how each view handles a request, then works through the override points and
 recipes that follow from that structure.
 
-[Using RestView](rest_views.md) covers the default CRUD contract
+[CRUD Routes](rest_views.md) covers the default CRUD contract
 and its class configuration. This page starts where those defaults stop. A
 plain {class}`View <fastapi_restly.views.View>` defines no CRUD endpoints.
 [Views](class_based_views.md) covers the class mechanics shared by
@@ -470,7 +470,7 @@ At view registration, a directly defined endpoint method replaces the inherited 
 
 Registration fills in the view's types for annotations that are missing or `Any`. `id` gets {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>`, `schema_obj` gets {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` or {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>`, and the return annotation gets the route's default response model. An annotation you write is kept, so `schema_obj: ProductReplace` validates the request body against `ProductReplace`. `list_params` is the exception: it always gets the view's {attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`.
 
-The default `DELETE /{id}` returns `204 No Content`; this version returns the deleted record, as `ra-data-simple-rest` expects (see [React Admin Integration](howto_react_admin.md)).
+The default `DELETE /{id}` returns `204 No Content`; this version returns the deleted record, as `ra-data-simple-rest` expects (see [React Admin](howto_react_admin.md)).
 
 ### `to_response`: the one response method
 
@@ -486,7 +486,7 @@ The default endpoint methods return through {meth}`self.to_response(result, shap
 If this changes a default CRUD route's HTTP contract, also replace that endpoint
 method and set a matching `response_model`. Otherwise, FastAPI validates and
 documents the response with the original response model. See
-[Response Envelopes and List Metadata](howto_response_schema.md) for the full pattern.
+[Responses](howto_response_schema.md) for the full pattern.
 
 `to_response` is keyed on response shape, not action. It cannot distinguish {meth}`create <fastapi_restly.views.RestView.create>` from {meth}`get_one <fastapi_restly.views.RestView.get_one>`; both are `SINGLE`. For one verb's HTTP contract, override that endpoint method:
 
@@ -726,7 +726,7 @@ run in order after the shared commit and stop on the first exception.
 
 When a custom route constructs schemas itself (`model_construct()` skips
 validation), {class}`IDRef <fastapi_restly.schemas.IDRef>` fields need explicit wrapping; the recipe lives in
-[Work with Foreign Keys and Relationships](#idref-custom-routes).
+[Relationships](#idref-custom-routes).
 
 ## Raise HTTP errors from any method
 

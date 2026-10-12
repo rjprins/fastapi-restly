@@ -1,4 +1,4 @@
-# Test APIs with RestlyTestClient and Fixtures
+# Testing
 
 FastAPI-Restly ships a test client with sensible status-code assertions and a
 small pytest plugin that gives every test a clean database. You configure the

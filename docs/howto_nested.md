@@ -104,7 +104,7 @@ class ProjectTaskView(fr.AsyncRestView):
 - {meth}`Parent.depends <fastapi_restly.clauses.ContextNamespace.depends>`
   binds the project id for the request. `Parent` is a
   {class}`fr.ContextNamespace <fastapi_restly.clauses.ContextNamespace>`, like
-  `Current` in [Current context](#current-request-binding). One `Parent`
+  `Current` in [Current & ContextParam](#current-request-binding). One `Parent`
   serves every nested view in the app.
 - `scope` limits every read to the tasks of that project: the list, its
   total count, get one, update and delete. A task of another project answers
@@ -301,7 +301,7 @@ segments in reverse order: `/projects/{project_id}/companies/{company_id}/tasks`
 
 ## See also
 
-- [Current context](howto_current.md): binding a value for each request.
+- [Current & ContextParam](howto_current.md): binding a value for each request.
 - [Scopes](scopes.md): what a view's scope covers, and how it replaces the
   model's default scope.
 - [Share Behaviour with Base Views](howto_inheritance.md): how `prefix`,

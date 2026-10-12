@@ -207,7 +207,7 @@ behind them already have one. Three of its behaviours are worth noting:
 - **Relationship fields**: Never included. A foreign key column, such as
   `customer_id`, is an ordinary field. To show a related row in a response,
   write the schema yourself, for example with an `IDRef[Customer]` field; see
-  [Work with Foreign Keys and Relationships](howto_relationship_idschema.md).
+  [Relationships](howto_relationship_idschema.md).
 
 When a {class}`RestView <fastapi_restly.views.RestView>` / {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` omits {attr}`schema <fastapi_restly.views.BaseRestView.schema>`, the view setup calls
 `derive_schema(model)`, so the view and a direct call get the same schema.
@@ -304,7 +304,7 @@ changes, Restly warns with {class}`RestlyUncommittedChangesWarning <fastapi_rest
 [Custom session generators](howto_existing_project.md#provide-your-own-session-generator)
 control construction and cleanup, not commit ownership.
 
-[Using RestView](rest_views.md) owns the user-facing model, schema,
+[CRUD Routes](rest_views.md) owns the user-facing model, schema,
 identity, route, and list configuration. At registration,
 {meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>`
 turns that configuration into FastAPI signatures. It derives missing schemas,
@@ -325,7 +325,7 @@ fr.include_view(app, MyView)
 
 This keeps imports predictable: importing `app.users.views` defines
 `UserView`, while `app.main` decides which app or router receives it. See
-[Project structure](howto_project_structure.md) for the layout this assumes.
+[New & Existing Projects](howto_project_structure.md) for the layout this assumes.
 For small apps and examples, `include_view()` also works as a decorator:
 
 ```python
@@ -343,7 +343,7 @@ attach an `APIRouter` to the parent app/router.
 Every CRUD route runs through an endpoint method (`<verb>_endpoint`), a
 handler (`handle_<verb>`), and a business method (`<verb>`). How the handler
 handles the steps, and the override decision table, live in
-[Customizing RestView](#view-request-steps).
+[Request Lifecycle & Hooks](#view-request-steps).
 
 The implementation detail worth knowing here is that the endpoint method calls
 {meth}`to_response(obj, shape) <fastapi_restly.views.BaseRestView.to_response>`, the single response method, which delegates to
@@ -390,7 +390,7 @@ schema, the default CRUD implementation will pass that nested Pydantic object
 through to the SQLAlchemy model constructor or attribute setter, which usually
 does not match the ORM model shape. Use a flattened schema or override the
 {meth}`create() <fastapi_restly.views.RestView.create>` / {meth}`update() <fastapi_restly.views.RestView.update>` business methods to transform the payload first.
-[Work with Foreign Keys and Relationships](howto_relationship_idschema.md)
+[Relationships](howto_relationship_idschema.md)
 describes the supported reference-field patterns.
 
 (list-parameters-lifecycle)=
@@ -400,7 +400,7 @@ List endpoints accept URL query parameters of the form
 ``name=John``, ``age__gte=18``, ``sort=-created_at``, and
 ``page=2&page_size=50``. The full operator surface (`__ne`, `__isnull`,
 `__contains`, `__icontains`, and more) is documented in
-[Filter, Sort, and Paginate Lists](howto_query_modifiers.md).
+[Filtering & Pagination](howto_query_modifiers.md).
 
 During {meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>`, the framework freezes a single class-level
 attribute, {attr}`cls.schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`: the list params, a Pydantic model generated
@@ -598,5 +598,5 @@ unless they need different behavior.
 
 ## See Also
 
-- [Filter, Sort, and Paginate Lists](howto_query_modifiers.md): the full
+- [Filtering & Pagination](howto_query_modifiers.md): the full
   filter, sort, and pagination reference.

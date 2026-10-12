@@ -1,4 +1,4 @@
-# Project structure
+# New & Existing Projects
 
 Restly does not impose a project layout. Views are ordinary Python classes and
 {func}`include_view() <fastapi_restly.views.include_view>` is an ordinary function call, so any arrangement of
@@ -111,7 +111,7 @@ class User(fr.IDMixin, Base):
 ```
 
 Model mixins that several subjects share, such as a tenant column, belong in
-`app/models.py` too. [Declare Your Models](howto_models.md) explains what goes
+`app/models.py` too. [Models](howto_models.md) explains what goes
 in the base.
 
 (project-current)=
@@ -193,7 +193,7 @@ graph. Import it at module level wherever the application uses it, or in
 Getting it wrong is not silent: `alembic check` compares metadata against the
 database and reports a missing model as a dropped table, so run it in CI. See
 [Migrations with Alembic](deploying.md#migrations-with-alembic) and
-[Test APIs with RestlyTestClient and Fixtures](howto_testing.md).
+[Testing](howto_testing.md).
 
 ## Share view behavior from the package root
 
@@ -246,7 +246,7 @@ only when it grows several cohesive modules.
 
 - [SaaS example](examples.md#saas), a complete application in this layout
 - [Deploying](deploying.md) for the factory, engine, and Alembic setup
-- [Test APIs with RestlyTestClient and Fixtures](howto_testing.md) for the
+- [Testing](howto_testing.md) for the
   matching `conftest.py`
 - [Use Restly in an Existing Project](howto_existing_project.md) when the
   layout is already decided

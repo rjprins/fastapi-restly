@@ -1,4 +1,4 @@
-# Filter, Sort, and Paginate Lists
+# Filtering & Pagination
 
 List endpoints (`GET /{prefix}`) support filtering, sorting, and
 pagination through URL query parameters out of the box. Filter parameters
@@ -233,7 +233,7 @@ class UserView(fr.AsyncRestView):
 `None` is short for `fr.NoPagination()`. The pagination's `envelope` setting
 replaces the envelope model: rename its fields, drop some, or nest them.
 `fr.NoPagination(envelope=...)` does the same for a view without pagination.
-[Response Envelopes and List Metadata](#change-list-envelope) describes how
+[Responses](#change-list-envelope) describes how
 to change the envelope.
 
 (fastapi-pagination-migration)=
@@ -438,7 +438,7 @@ For a different URL **grammar**, such as another dialect's filter syntax, the
 seam is
 {meth}`apply_list_params(query, list_params) <fastapi_restly.views.RestView.apply_list_params>`,
 which owns translating URL parameters into the query;
-[React Admin Integration](howto_react_admin.md) is the shipped worked
+[React Admin](howto_react_admin.md) is the shipped worked
 example of a view family overriding it. Reserve overriding `get_many()`
 itself for a genuinely different *result* shape, where you construct the
 query explicitly inside the method.

@@ -1,4 +1,4 @@
-# React Admin Integration
+# React Admin
 
 [React-admin](https://marmelab.com/react-admin/) with
 [`ra-data-simple-rest`](https://github.com/marmelab/react-admin/tree/master/packages/ra-data-simple-rest)

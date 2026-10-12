@@ -1,11 +1,11 @@
-# Response Envelopes and List Metadata
+# Responses
 
 Restly returns bare objects and a `data` envelope for lists; this page covers
 changing the *container* around the data, not the fields inside it.
 
-- To change which fields an object exposes, see [Custom Schemas and Field Types](howto_custom_schema.md).
-- For a different schema per route (list vs detail), see [Customizing RestView](customize.md).
-- To change the error shape, see [Shape Error Responses](howto_error_responses.md).
+- To change which fields an object exposes, see [Schemas & Validation](howto_custom_schema.md).
+- For a different schema per route (list vs detail), see [Request Lifecycle & Hooks](customize.md).
+- To change the error shape, see [Errors](howto_error_responses.md).
 
 ## What Restly returns by default
 
@@ -264,7 +264,7 @@ boundary keyed on the response shape:
 {attr}`LIST <fastapi_restly.views.ResponseShape.LIST>`, or
 {attr}`EMPTY <fastapi_restly.views.ResponseShape.EMPTY>`. Its place among the
 override points is covered in
-[Customizing RestView](customize.md#to_response-the-one-response-method).
+[Request Lifecycle & Hooks](customize.md#to_response-the-one-response-method).
 
 ```python
     def to_response(self, result, shape=fr.ResponseShape.SINGLE):
@@ -282,8 +282,8 @@ override for the runtime shape, and a replacement endpoint method with a matchin
 
 ## See also
 
-- [Custom Schemas and Field Types](howto_custom_schema.md): which fields an object exposes.
-- [Customizing RestView](customize.md): endpoint-method replacement mechanics, and [a different schema for the list endpoint](patterns.md#a-different-schema-for-the-list-endpoint).
-- [Shape Error Responses](howto_error_responses.md): errors bypass `to_response`.
-- [Filter, Sort, and Paginate Lists](howto_query_modifiers.md): the pagination inputs clients send.
+- [Schemas & Validation](howto_custom_schema.md): which fields an object exposes.
+- [Request Lifecycle & Hooks](customize.md): endpoint-method replacement mechanics, and [a different schema for the list endpoint](patterns.md#a-different-schema-for-the-list-endpoint).
+- [Errors](howto_error_responses.md): errors bypass `to_response`.
+- [Filtering & Pagination](howto_query_modifiers.md): the pagination inputs clients send.
 - [Relationship Loading and Async](howto_relationship_loading.md): how nested relationship fields load, and `MissingGreenlet` on async.

@@ -1,4 +1,4 @@
-# Customize the OpenAPI Schema
+# OpenAPI
 
 Restly registers its default CRUD routes as ordinary FastAPI path operations,
 so FastAPI's OpenAPI customization applies to them. This page maps the
@@ -123,7 +123,7 @@ Restly derives from it, such as `UserResponse` and `UserCreate`; see
 [Generated Class Names](#generated-class-names). To document (and return) a different
 shape on one verb, replace that endpoint method with your own decorator and
 `response_model`; see
-[Response Envelopes and List Metadata](howto_response_schema.md),
+[Responses](howto_response_schema.md),
 [a different schema for the list endpoint](patterns.md#a-different-schema-for-the-list-endpoint),
 and [replacing an endpoint method](customize.md#replace-an-endpoint-method-to-change-the-http-contract).
 
@@ -138,7 +138,7 @@ declared with {class}`fr.MustExist[int, Model] <fastapi_restly.schemas.MustExist
 {class}`fr.IDSchema[Model] <fastapi_restly.schemas.IDSchema>` (a relationship)
 carry the vendor extension `x-resource-ref: "<resource-name>"`. The reference
 styles are covered in
-[Work with Foreign Keys and Relationships](howto_relationship_idschema.md).
+[Relationships](howto_relationship_idschema.md).
 
 There is a known limit: views included on an `APIRouter` rather than the app
 currently lose these annotations. The check for two classes with the same

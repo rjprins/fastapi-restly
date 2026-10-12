@@ -1,4 +1,4 @@
-# Declare Your Models
+# Models
 
 Restly works with SQLAlchemy models on a declarative base of your own. The
 base is your class, with its own registry and `MetaData`, as in any
@@ -156,12 +156,12 @@ Everything that asks for your models' tables takes the base:
 - {func}`fr.db.async_create_all(Base) <fastapi_restly.db.async_create_all>`
   creates the tables during development.
 - `fr.testing.configure_tests(base=Base)` builds and cleans the test tables,
-  as [Test APIs with RestlyTestClient and Fixtures](howto_testing.md) shows.
+  as [Testing](howto_testing.md) shows.
 - Alembic's `env.py` sets `target_metadata = Base.metadata`, as
   [Deploying](deploying.md) shows.
 
 A base only knows the models that have been imported.
-[Project structure](howto_project_structure.md) shows how one module imports
+[New & Existing Projects](howto_project_structure.md) shows how one module imports
 them all.
 
 ## Models without Restly's defaults

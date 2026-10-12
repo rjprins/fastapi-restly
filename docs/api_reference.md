@@ -28,7 +28,7 @@ import fastapi_restly as fr
 
 ## Reference pages
 
-- [API Modules](api/index.rst) documents every module, with complete
+- [Modules](api/index.rst) documents every module, with complete
   signatures.
 - [View Reference](view_reference.md) lists everything you can set, override,
   or call on a view, on one page.

@@ -118,9 +118,9 @@ html_theme_options = {
     "show_toc_level": 2,
     "navigation_depth": 3,
     "icon_links": [],
-    # Keep the learning path, primary references, and Blog visible. Examples
-    # and About remain available from the "More" dropdown.
-    "header_links_before_dropdown": 6,
+    # Keep the three sections (Tutorial, Guide, API) and Blog visible. About
+    # stays in the "More" dropdown.
+    "header_links_before_dropdown": 4,
     # Version dropdown. json_url is absolute so frozen snapshots read the same
     # canonical list and surface versions published after they were built.
     "switcher": {"json_url": f"{SITE_URL}switcher.json", "version_match": DOCS_VERSION},

@@ -1,4 +1,4 @@
-# Work with Foreign Keys and Relationships
+# Relationships
 
 Use {class}`fr.MustExist[int, Model] <fastapi_restly.schemas.MustExist>` for
 foreign-key columns. The API will have the common scalar-id shape while
@@ -228,7 +228,7 @@ already send one form, but the public API contract should keep the other.
 Most examples inherit from {class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>`,
 which is {class}`BaseSchema <fastapi_restly.schemas.BaseSchema>` plus a
 read-only `id` field. The schema bases, `ReadOnly` / `WriteOnly` markers, and
-aliases are owned by [Custom Schemas and Field Types](howto_custom_schema.md);
+aliases are owned by [Schemas & Validation](howto_custom_schema.md);
 inherit from `fr.BaseSchema` instead if you want every field, including `id`,
 explicit. When used as a field type (`author: fr.IDSchema[User]`), it is a
 nested relationship reference (covered next), separate from its use as a base
@@ -413,7 +413,7 @@ checks are then your responsibility. Gate them in
 {meth}`authorize <fastapi_restly.views.RestView.authorize>` /
 {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>` like any
 other write-path authorization; both hooks are described in
-[Customizing RestView](customize.md#authorize-gate-the-action).
+[Request Lifecycle & Hooks](customize.md#authorize-gate-the-action).
 
 Gate in `authorize`, where `data` carries the write-side value before
 resolution. For a {class}`MustExist <fastapi_restly.schemas.MustExist>` field,
@@ -447,7 +447,7 @@ fetch and is the standard policy seam.
 - [Relationship Loading and Async](howto_relationship_loading.md): how these
   relationship fields load for responses, and `MissingGreenlet` fixes on async.
 - [Build a Blog API](tutorial.md): reference fields in the blog build, in context.
-- [Custom Schemas and Field Types](howto_custom_schema.md): the schema bases
+- [Schemas & Validation](howto_custom_schema.md): the schema bases
   and field markers these compose with.
 - [API Reference](api_reference.md): {class}`MustExist <fastapi_restly.schemas.MustExist>` / {class}`IDRef <fastapi_restly.schemas.IDRef>` / {class}`IDSchema <fastapi_restly.schemas.IDSchema>` signatures and the
   full symbol tables.

@@ -1,4 +1,4 @@
-# How-To Guides
+# Guide
 
 These guides are task-focused: each one shows how to accomplish a specific
 goal with FastAPI-Restly. If you are new to the framework, start with the
@@ -20,7 +20,7 @@ schemas it works from.
 Adopt Restly beside existing FastAPI routes, then connect it to your sessions and models.
 :::
 
-:::{grid-item-card} Project structure
+:::{grid-item-card} New & Existing Projects
 :link: howto_project_structure
 :link-type: doc
 
@@ -28,21 +28,21 @@ Lay out a growing application by subject, keep imports pointing one way, and
 compose views and models from one place each.
 :::
 
-:::{grid-item-card} Declare Your Models
+:::{grid-item-card} Models
 :link: howto_models
 :link-type: doc
 
 Give your own declarative base Restly's defaults, change one default, and add `id` and timestamp columns.
 :::
 
-:::{grid-item-card} Custom Schemas and Field Types
+:::{grid-item-card} Schemas & Validation
 :link: howto_custom_schema
 :link-type: doc
 
 Define schemas with field aliases, write-only fields, and read-only computed fields.
 :::
 
-:::{grid-item-card} Work with Foreign Keys and Relationships
+:::{grid-item-card} Relationships
 :link: howto_relationship_idschema
 :link-type: doc
 
@@ -59,7 +59,7 @@ including errors.
 ::::{grid} 1 2 2 2
 :gutter: 3
 
-:::{grid-item-card} Response Envelopes and List Metadata
+:::{grid-item-card} Responses
 :link: howto_response_schema
 :link-type: doc
 
@@ -75,14 +75,14 @@ Load nested relationships for responses on reads and writes, extend the loaded
 set, and resolve `MissingGreenlet` on async sessions.
 :::
 
-:::{grid-item-card} Filter, Sort, and Paginate Lists
+:::{grid-item-card} Filtering & Pagination
 :link: howto_query_modifiers
 :link-type: doc
 
 Filter, sort, and paginate list endpoints using URL query parameters.
 :::
 
-:::{grid-item-card} Current context
+:::{grid-item-card} Current & ContextParam
 :link: howto_current
 :link-type: doc
 
@@ -106,7 +106,7 @@ Impose a replaceable clause on every read and every reference to a model.
 Use a default scope for row surfaces such as live and deleted records.
 :::
 
-:::{grid-item-card} Shape Error Responses
+:::{grid-item-card} Errors
 :link: howto_error_responses
 :link-type: doc
 
@@ -123,6 +123,21 @@ method to sharing behaviour across many views.
 
 ::::{grid} 1 2 2 2
 :gutter: 3
+
+:::{grid-item-card} Views
+:link: class_based_views
+:link-type: doc
+
+Choose a view type, then learn how registration, dependencies, and inheritance
+work.
+:::
+
+:::{grid-item-card} CRUD Routes
+:link: rest_views
+:link-type: doc
+
+Define a model-backed CRUD resource and understand its default contract.
+:::
 
 :::{grid-item-card} Patterns
 :link: patterns
@@ -142,7 +157,7 @@ Serve a child resource under its parent, such as
 route.
 :::
 
-:::{grid-item-card} Customizing RestView
+:::{grid-item-card} Request Lifecycle & Hooks
 :link: customize
 :link-type: doc
 
@@ -167,7 +182,7 @@ Put cross-cutting concerns (tenant scoping, soft delete, audit stamping)
 where they belong: structural fields on the model, verbs on view mixins.
 :::
 
-:::{grid-item-card} Use Type Annotations
+:::{grid-item-card} Type Annotations
 :link: howto_typing
 :link-type: doc
 
@@ -185,14 +200,14 @@ consumers, tests, and production deployment.
 ::::{grid} 1 2 2 2
 :gutter: 3
 
-:::{grid-item-card} React Admin Integration
+:::{grid-item-card} React Admin
 :link: howto_react_admin
 :link-type: doc
 
 Use {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` to get a backend that `ra-data-simple-rest` connects to out of the box.
 :::
 
-:::{grid-item-card} Customize the OpenAPI Schema
+:::{grid-item-card} OpenAPI
 :link: howto_openapi
 :link-type: doc
 
@@ -200,7 +215,7 @@ Set per-view tags and responses, add metadata to custom routes, replace a
 default CRUD route's documented contract, and use `x-resource-ref`.
 :::
 
-:::{grid-item-card} Test APIs with RestlyTestClient and Fixtures
+:::{grid-item-card} Testing
 :link: howto_testing
 :link-type: doc
 
@@ -222,25 +237,28 @@ checklist.
 :maxdepth: 1
 :hidden:
 
-howto_existing_project
 howto_project_structure
+howto_existing_project
 howto_models
+howto_compose_views_with_mixins
+class_based_views
+howto_inheritance
+rest_views
+howto_nested
+customize
 howto_custom_schema
-howto_relationship_idschema
 howto_response_schema
+patterns
+howto_relationship_idschema
 howto_relationship_loading
 howto_query_modifiers
+howto_error_responses
 howto_current
 clauses
 scopes
-howto_error_responses
-patterns
-howto_nested
-howto_inheritance
-howto_compose_views_with_mixins
-howto_typing
-howto_react_admin
-howto_openapi
 howto_testing
 deploying
+howto_openapi
+howto_react_admin
+howto_typing
 ```

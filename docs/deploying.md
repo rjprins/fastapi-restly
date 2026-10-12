@@ -31,7 +31,7 @@ production template below](#production-main-template) reads it inside
 {func}`fr.configure() <fastapi_restly.db.configure>` through an explicit
 engine, which is what lets you size the pool. `Settings.use(...)` installs an
 instance instead, which is how a test suite hands over settings it built
-itself; see [Test APIs with RestlyTestClient and Fixtures](howto_testing.md).
+itself; see [Testing](howto_testing.md).
 
 Sizing is the part Restly leaves to you. Given a PostgreSQL URL it already sets
 `pool_pre_ping=True` and `pool_recycle=1800`, so the template below repeats
@@ -165,10 +165,10 @@ Note four details in this template:
 - The factory keeps configuration out of module import: settings are read and
   the engine is built when `create_app()` runs, so a test suite can install its
   own settings first and call the same factory. See
-  [Test APIs with RestlyTestClient and Fixtures](howto_testing.md).
+  [Testing](howto_testing.md).
 - The `VIEWS` tuple keeps view definitions free of registration side effects
   and makes `main.py` the one application composition boundary; see
-  [Project structure](howto_project_structure.md).
+  [New & Existing Projects](howto_project_structure.md).
 - {func}`fr.configure(app, ...) <fastapi_restly.db.configure>` installs the default exception handlers
   (currently the translator that turns `IntegrityError` into a 409 response;
   see [Database conflicts](howto_error_responses.md#database-conflicts-integrityerror-to-409)).

@@ -458,7 +458,7 @@ class IDRef(IDSchema[SQLAlchemyModel], Generic[SQLAlchemyModel]):
     without a ``default_scope`` resolves by bare primary key; gate visibility
     there in ``authorize`` (``data.<field>.id`` is the requested id, before
     resolution) or ``before_action_commit`` (the resolved row is on the built
-    object). See the Foreign Keys and Relationships how-to, "Visibility and
+    object). See the Relationships guide page, "Visibility and
     Multi-Tenancy".
     """
 

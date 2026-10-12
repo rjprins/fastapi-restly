@@ -1,4 +1,4 @@
-# Using RestView
+# CRUD Routes
 
 {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` and
 {class}`RestView <fastapi_restly.views.RestView>` define five CRUD endpoint
@@ -41,7 +41,7 @@ Every CRUD view needs two class attributes:
 
 Ordinary models based on SQLAlchemy's `DeclarativeBase` work. Restly's
 model defaults, {class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>`,
-are optional; see [Declare Your Models](howto_models.md).
+are optional; see [Models](howto_models.md).
 
 If the view does not declare {attr}`schema
 <fastapi_restly.views.BaseRestView.schema>`, Restly generates the view's schema
@@ -76,7 +76,7 @@ Both derived schemas also leave out a primary key the server generates
 (autoincrement, a column default, or a dataclass field with `init=False`),
 marked `ReadOnly` or not. A natural key stays writable.
 
-[Custom Schemas and Field Types](howto_custom_schema.md) owns field markers,
+[Schemas & Validation](howto_custom_schema.md) owns field markers,
 aliases, validation, and the choice between explicit and constructed schemas.
 
 For larger applications, define the class without registration side effects
@@ -93,7 +93,7 @@ fr.include_view(app, UserView)
 ```
 
 Both registration forms produce the same routes.
-[Project structure](howto_project_structure.md) shows where the direct call belongs in a
+[New & Existing Projects](howto_project_structure.md) shows where the direct call belongs in a
 multi-package application.
 
 (default-crud-routes)=
@@ -130,7 +130,7 @@ of 50, a maximum accepted page size of 1000, and a response shaped like:
 
 Unknown list query keys return `422` instead of being ignored. [Filter, Sort,
 and Paginate Lists](howto_query_modifiers.md) defines the complete query
-grammar. [Response Envelopes and List Metadata](howto_response_schema.md)
+grammar. [Responses](howto_response_schema.md)
 defines the default containers and how to replace them.
 
 Missing or hidden rows return `404`. On the default endpoints, the create,
@@ -170,7 +170,7 @@ integer IDs do not match, even if the row exists. OpenAPI still shows
 Custom endpoint declarations keep their paths. To accept negative integer
 IDs, replace each needed item endpoint with an untyped path such as
 `@fr.get("/{id}")` and annotate its `id` parameter as `int`. See
-[Customizing RestView](customize.md) for endpoint replacements. Register
+[Request Lifecycle & Hooks](customize.md) for endpoint replacements. Register
 static routes before untyped item routes, including views with string IDs.
 
 ## Configure a view
@@ -202,7 +202,7 @@ Change the layer that owns the behavior instead of rewriting the entire route:
 
 | Change | Use |
 |---|---|
-| Stamp or transform data during create or update | Override the business method in [Customizing RestView](customize.md); a server-stamped field is a column default on the model |
+| Stamp or transform data during create or update | Override the business method in [Request Lifecycle & Hooks](customize.md); a server-stamped field is a column default on the model |
 | Hide rows from every read | Declare a [scope](scopes.md): `default_scope` on the model, or `scope` on the view |
 | Permit or reject an action | Override {meth}`authorize() <fastapi_restly.views.AsyncRestView.authorize>` |
 | Run an atomic side effect or a post-commit action | Override `before_action_commit()` or `after_action_commit()` |
@@ -210,9 +210,9 @@ Change the layer that owns the behavior instead of rewriting the entire route:
 | Change status, headers, request parameters, or response model | Replace the endpoint method |
 | Add a path that is not part of CRUD | Add a method with `@fr.get`, `@fr.post`, or another route decorator |
 | Share behavior across resources | Use a [base view](howto_inheritance.md) or [mixins](howto_compose_views_with_mixins.md) |
-| Replace the list query grammar | Follow [Filter, Sort, and Paginate Lists](howto_query_modifiers.md) |
+| Replace the list query grammar | Follow [Filtering & Pagination](howto_query_modifiers.md) |
 
-[Customizing RestView](customize.md) owns the lifecycle diagrams, complete
+[Request Lifecycle & Hooks](customize.md) owns the lifecycle diagrams, complete
 override decision table, and worked recipes.
 
 ## Limits and alternatives
@@ -240,11 +240,11 @@ The default CRUD contract has these boundaries:
 ## Next steps
 
 - [Build a Blog API](tutorial.md) builds and runs a first resource.
-- [Customizing RestView](customize.md) changes behavior at the correct layer.
-- [Custom Schemas and Field Types](howto_custom_schema.md) defines stable request
+- [Request Lifecycle & Hooks](customize.md) changes behavior at the correct layer.
+- [Schemas & Validation](howto_custom_schema.md) defines stable request
   and response fields.
 - [Views](class_based_views.md) explains registration, shared
   dependencies, and the inheritance model.
-- [How-To Guides](user_guide.md) covers individual tasks.
+- [Guide](user_guide.md) covers individual tasks.
 - [View Reference](view_reference.md) lists exact signatures
   and defaults.

@@ -27,7 +27,7 @@ class UserView(fr.AsyncRestView):
 `UserView` inherits five CRUD endpoint methods from `AsyncRestView`.
 `include_view` registers them under `/users`.
 
-Read [Using RestView](https://www.fastapi-restly.org/rest_views.html) for the
+Read [CRUD Routes](https://www.fastapi-restly.org/rest_views.html) for the
 full CRUD guide and [Customizing
 RestView](https://www.fastapi-restly.org/customize.html) for changing its
 behavior.
@@ -191,7 +191,7 @@ restly new myapp
 It asks three questions, each also available as a flag: `--async`/`--sync`,
 `--postgres`/`--sqlite`, and `--alembic`/`--create-all`. Add `--yes` to take
 the defaults. See
-[Project structure](https://www.fastapi-restly.org/howto_project_structure.html).
+[New & Existing Projects](https://www.fastapi-restly.org/howto_project_structure.html).
 
 ## Main features
 
@@ -265,7 +265,7 @@ class UserView(fr.AsyncRestView):
     pagination = fr.NumberedPagination(default_page_size=25, max_page_size=200)
 ```
 
-See [Filter, Sort, and Paginate Lists](https://www.fastapi-restly.org/howto_query_modifiers.html) for the full operator surface, alias rules, and pagination guidance.
+See [Filtering & Pagination](https://www.fastapi-restly.org/howto_query_modifiers.html) for the full operator surface, alias rules, and pagination guidance.
 
 ### Read-only and write-only fields
 
@@ -338,7 +338,7 @@ class ProductView(fr.AsyncReactAdminView):
 
 The view follows the `ra-data-simple-rest` HTTP contract.
 
-See [React Admin Integration](https://www.fastapi-restly.org/howto_react_admin.html) in the docs for CORS setup and customization.
+See [React Admin](https://www.fastapi-restly.org/howto_react_admin.html) in the docs for CORS setup and customization.
 
 ### Excluding built-in routes
 
@@ -372,7 +372,7 @@ class TagView(fr.AsyncRestView):
 
 For a different response shape, set the pagination's `envelope` to your own
 Pydantic model: rename the fields, drop some, nest them, or return a bare
-array. See [Response Envelopes and List Metadata](https://www.fastapi-restly.org/howto_response_schema.html).
+array. See [Responses](https://www.fastapi-restly.org/howto_response_schema.html).
 
 ## Testing
 
@@ -432,9 +432,9 @@ To connect Restly to an existing app's engine, sessions, and models, see
 
 - **[Tutorial](https://www.fastapi-restly.org/tutorial.html)**: build a blog API step by step, from the first model to authors and drafts
 - **[Views](https://www.fastapi-restly.org/class_based_views.html)**: choose a view type and understand the shared class mechanics
-- **[Using RestView](https://www.fastapi-restly.org/rest_views.html)**: define a model-backed CRUD resource and its contract
-- **[Customizing RestView](https://www.fastapi-restly.org/customize.html)**: choose the right method to override or add a custom route
-- **[How-To Guides](https://www.fastapi-restly.org/user_guide.html)**: complete individual tasks
+- **[CRUD Routes](https://www.fastapi-restly.org/rest_views.html)**: define a model-backed CRUD resource and its contract
+- **[Request Lifecycle & Hooks](https://www.fastapi-restly.org/customize.html)**: choose the right method to override or add a custom route
+- **[Guide](https://www.fastapi-restly.org/user_guide.html)**: complete individual tasks
 - **[API Reference](https://www.fastapi-restly.org/api_reference.html)**: inspect exact signatures and defaults
 
 ## Examples

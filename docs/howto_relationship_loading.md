@@ -31,7 +31,7 @@ class Article(fr.IDMixin, Base):
 Naming `author` and `comments` on the view's schema is all it takes. Mark
 them `fr.ReadOnly` so they stay out of the generated create and update input,
 which does not accept nested objects as write payloads (see
-[Custom Schemas and Field Types](howto_custom_schema.md)):
+[Schemas & Validation](howto_custom_schema.md)):
 
 ```python
 class ArticleSchema(fr.IDSchema):
@@ -164,6 +164,6 @@ so it lazy-loads and raises `MissingGreenlet` on async.
 ## See also
 
 - [How Restly serializes nested responses](technical_details.md#nested-response-schemas-vs-write-payloads): the loader mechanism in depth.
-- [Work with Foreign Keys and Relationships](howto_relationship_idschema.md): declaring reference fields (`MustExist`, `IDRef`, `IDSchema`).
-- {ref}`Customizing RestView <eager-load-extra-relationships>`: read-side eager-loading and `get_one` recipes.
+- [Relationships](howto_relationship_idschema.md): declaring reference fields (`MustExist`, `IDRef`, `IDSchema`).
+- {ref}`Request Lifecycle & Hooks <eager-load-extra-relationships>`: read-side eager-loading and `get_one` recipes.
 - [Session Factory Defaults](technical_details.md#session-factory-defaults): why Restly uses `expire_on_commit=False`.
