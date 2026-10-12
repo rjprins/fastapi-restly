@@ -130,7 +130,7 @@ The table below maps the change you want to make to the method that owns it:
 | Filter / sort / pagination grammar      | {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>` |
 | The list total                          | {meth}`count <fastapi_restly.views.RestView.count>` |
 | Authorization / policy                  | {meth}`authorize <fastapi_restly.views.RestView.authorize>` (override to gate) |
-| Server-stamped fields (audit/tenant)    | a column default on the model ([below](#server-stamped-fields-column-defaults-on-the-model)) |
+| Server-stamped fields (audit/tenant)    | a column default on the model ([below](#server-stamped-fields)) |
 | A side effect inside the commit (outbox/audit) | {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>` |
 | A side effect after the commit (email/webhook) | {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>` |
 | The response shape                      | {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>` |
@@ -192,7 +192,7 @@ the hash before the flush. `fr.WriteOnly` keeps the field out of every
 response.
 
 To set a field that the server owns, such as the author, use a
-[column default](#server-stamped-fields-column-defaults-on-the-model) instead
+[column default](#server-stamped-fields) instead
 of `create`. It also covers rows that other code creates.
 
 ### `update`: run validation before saving
@@ -206,21 +206,6 @@ of `create`. It also covers rows that other code creates.
         obj = await self.update_object(obj, schema_obj)
         return await self.save_object(obj)
 ```
-
-(soft-delete-recipe)=
-
-### `delete`: soft-delete instead of removing the row
-
-{meth}`delete <fastapi_restly.views.RestView.delete>` also receives the loaded object. Flip a timestamp instead of deleting:
-
-```python
-    async def delete(self, obj):
-        obj.deleted_at = datetime.now(timezone.utc)
-        await self.session.flush()
-        # Do not call super(); that would remove the row.
-```
-
-For reusable soft-delete that also hides rows on read, see `SoftDeleteMixin` in [Compose Views with Mixins](howto_compose_views_with_mixins.md).
 
 ### `get_many`: decorate results after the query
 
@@ -366,42 +351,11 @@ An effect that must happen belongs in an outbox row written in
 idempotent, since a retry can repeat it. FastAPI's `BackgroundTasks` is no
 substitute: a crash loses the task, and nothing retries it.
 
-## Server-stamped fields: column defaults on the model
-
-A field the server owns (an audit id, a tenant id) is a column default that reads a bound {class}`fr.ContextNamespace <fastapi_restly.clauses.ContextNamespace>` member. It fires on every write path, whichever view or helper built the row, so nothing on the view has to run:
-
-```python
-class Article(fr.TimestampsMixin, fr.IDMixin, Base):
-    title: Mapped[str]
-    created_by_id: Mapped[int | None] = mapped_column(
-        ForeignKey("user.id"), init=False, insert_default=Current.user_id
-    )
-```
-
-`init=False` leaves the field out of the constructor. SQLAlchemy calls
-`Current.user_id` when it inserts the row. Pass the member without
-parentheses, as [Read the current user in a column default](#current-column-defaults)
-explains.
-
-Keep the field `fr.ReadOnly` on the schema and out of any [explicit write schema](#explicit-write-schemas). With `init=False`, a payload value for it would fail in the constructor. Stamping from the view instead, in `create`, only covers that verb: a `create` override does not call `super()`, and the free `fr.objects` helpers never see the view. See [Compose Views with Mixins](howto_compose_views_with_mixins.md) for the tenant, audit, and soft-delete pieces the SaaS example ships.
-
-A derivation that needs more than a value, a slug from the title or a denormalised counter, is a SQLAlchemy `before_insert` mapper event on the same model:
-
-```python
-from sqlalchemy import event
-
-@event.listens_for(Article, "before_insert")
-def _set_slug(mapper, connection, target):
-    target.slug = slugify(target.title)
-```
-
-See SQLAlchemy's [mapper events documentation](https://docs.sqlalchemy.org/en/20/orm/events.html#mapper-events) for the full event API.
-
 (domain-utilities)=
 
 ## Domain utilities: call, don't override
 
-The business methods are built from three utilities. Call them from your {meth}`create <fastapi_restly.views.RestView.create>` / {meth}`update <fastapi_restly.views.RestView.update>` overrides; they are final, and a view class that defines one, itself or through a mixin, fails at class definition. A server-stamped field is a [column default on the model](#server-stamped-fields-column-defaults-on-the-model); a per-write side effect is a [transaction hook](#transaction-hooks-before_action_commit--after_action_commit).
+The business methods are built from three utilities. Call them from your {meth}`create <fastapi_restly.views.RestView.create>` / {meth}`update <fastapi_restly.views.RestView.update>` overrides; they are final, and a view class that defines one, itself or through a mixin, fails at class definition. A server-stamped field is a [column default on the model](#server-stamped-fields); a per-write side effect is a [transaction hook](#transaction-hooks-before_action_commit--after_action_commit).
 
 | Method | What it does |
 |---|---|
