@@ -358,7 +358,7 @@ Name the class `<Resource>Response`, as in `AccountResponse`. Restly names the
 list response and the list params after it: `AccountListResponse` and
 `AccountListParams`. For type checkers, put the class in the second type
 parameter of the view, as in `fr.AsyncRestView[Account, AccountResponse]`; see
-[Type Annotations](howto_typing.md).
+[Type Annotations](#view-generics).
 
 To change how one object becomes a response, or to send another shape, see
 [Responses](howto_response_schema.md).

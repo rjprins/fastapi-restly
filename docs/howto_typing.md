@@ -1,17 +1,28 @@
 # Type Annotations
 
-FastAPI-Restly supports two typing styles. In the low-friction style, you keep
-your view classes simple and let the framework do the work; in the stronger
-typing style, you add explicit type parameters when you want better editor
-help for the methods you override. This guide focuses on practical usage with
-Pyright and VS Code with Pylance.
+Restly is typed for Pyright, VS Code with Pylance, and mypy. Its views and
+its reference types are generic classes, and they take type parameters in two
+places:
 
-## Start simple
+- **Reference fields** name the model they point to, as in
+  `fr.MustExist[int, User]`, `fr.IDRef[User]` and `fr.IDSchema[User]`. Restly
+  also reads this parameter at runtime, to find the row. A type checker sees
+  the type of the value that your code gets.
+- **Views** take optional type parameters, as in
+  `fr.AsyncRestView[User, UserSchema, UserCreate, UserUpdate, int]`. They
+  change nothing at runtime. They give exact types to the methods that you
+  override and call.
 
-For normal CRUD usage, you do not need to parameterize
-{class}`RestView <fastapi_restly.views.RestView>` or
-{class}`AsyncRestView <fastapi_restly.views.AsyncRestView>`. A bare view class
-is the recommended starting point:
+A view without type parameters works, and it is the best place to start. Add
+parameters where you want your editor to know the model and the schemas.
+
+Restly also rewrites the signatures of the endpoint methods when it registers
+a view. Type checkers do not see that step; see
+[What a type checker cannot see](#typing-limits).
+
+## Start without type parameters
+
+For normal CRUD, a bare view class is enough:
 
 ```python
 import fastapi_restly as fr
@@ -36,20 +47,13 @@ class UserView(fr.AsyncRestView):
     model = User
 ```
 
-## Use `IDSchema` for the view's schema
+(typing-schemas)=
+## Type the schema and its reference fields
 
-{class}`IDSchema <fastapi_restly.schemas.IDSchema>` is the usual base for
-the view's schema because it adds the resource's own read-only `id` field. You
-can subclass it directly:
-
-```python
-class UserSchema(fr.IDSchema):
-    name: str
-    email: str
-```
-
-You can also parameterize it when you want the schema class itself to carry
-the SQLAlchemy model type:
+The view's schema usually subclasses
+{class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>`; see
+[Choose a base class](#schema-base-classes). You can also give the base class
+the model, as in `fr.IDSchema[User]`:
 
 ```python
 class UserSchema(fr.IDSchema[User]):
@@ -57,39 +61,55 @@ class UserSchema(fr.IDSchema[User]):
     email: str
 ```
 
-For the view's schema, either form is fine; the bare form is the
-recommended starting point.
+This form records the model for type checkers. It has no effect at runtime,
+and the bare `fr.IDSchema` works just as well.
 
-For a `*_id` foreign-key column, use
-{class}`fr.MustExist[int, Model] <fastapi_restly.schemas.MustExist>`, which
-takes the primary-key type first and then the model; it keeps the plain scalar
-id and adds an existence check. For a field named after a relationship, use
-{class}`IDRef[RelatedModel] <fastapi_restly.schemas.IDRef>`, which tells
-Restly (and the type checker) which model resolves from the scalar id payload.
-The runtime semantics are covered in
+A reference field has the model as a type parameter. The type checker then
+knows what your code receives in `data.<field>`, for example in a business
+method:
+
+| Field | What the type checker sees |
+|---|---|
+| `author_id: fr.MustExist[int, User]` | `int`: the plain id |
+| `author: fr.IDRef[User]` | `IDRef[User]`: a reference; read `.id` |
+| `author: fr.IDSchema[User]` | `IDSchema[User]`: a reference; read `.id` |
+| `products: list[fr.IDRef[Product]]` | a list of `IDRef[Product]` |
+
+{class}`fr.MustExist <fastapi_restly.schemas.MustExist>` takes the type of
+the primary key first, then the model: `fr.MustExist[UUID, Account]` for a
+UUID key. When to use which form, and what each one does at runtime, is on
 [Relationships](howto_relationship_idschema.md).
 
-## When view generics are useful
+(view-generics)=
+## Type the methods that you override
 
-Schemas are one half of the picture;
 {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` and
-{class}`RestView <fastapi_restly.views.RestView>` can be parameterized too,
-but this is optional.
+{class}`RestView <fastapi_restly.views.RestView>` take five type parameters,
+in this order:
 
-The generic form is useful when you override
-[view methods](#view-request-steps). Most overrides land on
-the business methods, so those benefit most:
+| Parameter | What it types | Default |
+|---|---|---|
+| the model | the objects that the methods load, build and return | `Any` |
+| the response type | the return value of {meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>` | `BaseSchema` |
+| the create body | `schema_obj` in {meth}`create <fastapi_restly.views.RestView.create>` | `pydantic.BaseModel` |
+| the update body | `schema_obj` in {meth}`update <fastapi_restly.views.RestView.update>` | `pydantic.BaseModel` |
+| the id type | `id` in {meth}`get_one <fastapi_restly.views.RestView.get_one>` and the handlers | `int` |
 
-- {meth}`get_one <fastapi_restly.views.RestView.get_one>`
-- {meth}`create <fastapi_restly.views.RestView.create>`
-- {meth}`update <fastapi_restly.views.RestView.update>`
-- {meth}`delete <fastapi_restly.views.RestView.delete>`
-- {meth}`get_many <fastapi_restly.views.RestView.get_many>`
+Each parameter has a default, so you can stop after the ones you need. The
+starter project names the model and the schema
+([`app/users/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/starter/app/users/views.py)):
 
-Without view generics, these methods still work, but their types are broader.
-With view generics, your editor can infer the concrete model, schema, and id
-types. Here is a fully parameterized view with typed overrides on the business
-verbs:
+```python
+class UserView(fr.AsyncRestView[User, UserSchema]):
+    prefix = "/users"
+    model = User
+    schema = UserSchema
+```
+
+The parameters help most where you override
+[a view method](#view-request-steps), usually a business method:
+`get_many`, `get_one`, `create`, `update` or `delete`. Here is a view with all
+five parameters and typed overrides:
 
 ```python
 from sqlalchemy import ColumnElement
@@ -132,42 +152,49 @@ class UserView(
         return await super().update(obj, schema_obj)
 ```
 
-The type parameters are, in order: the model, the response type, the create
-schema, the update schema, and the id type. With them in place, `schema_obj`
-in `create` is a `UserCreate`, `obj` in `update` is a `User`, and the return
-types are checked too.
+With these parameters, `schema_obj` in `create` is a `UserCreate`, `obj` in
+`update` is a `User`, and the type checker checks the return types too. Note
+these points:
 
-The response type is what
-{meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>`
-returns. Put the view's schema there: the response class that Restly builds
-is a subclass of it. A view that sets its own
-{attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>`
-puts that class there instead, as in
-`fr.AsyncRestView[User, UserResponse]`.
+- `create` takes the create body and returns the model. `update` takes the
+  loaded `obj` and the update body. The handler
+  {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` loads
+  the row, and returns 404 if it does not exist, before `update` runs.
+- The `id` of `get_one` is `int | ColumnElement[bool]`, because a SQLAlchemy
+  expression can take the place of the primary key, as in
+  [Look a row up by another key](#natural-key-route). If you annotate it as
+  `id: int`, the type checker rejects the override, because it accepts less
+  than the base method.
+- `get_one` and `get_many` take a keyword argument `scope`, which the
+  handlers always pass. An override must declare it and pass it on.
+- For the response type, give the view's schema: the response class that
+  Restly builds is a subclass of it. A view that sets its own
+  {attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>`
+  gives that class instead, as in `fr.AsyncRestView[User, UserResponse]`.
 
-Note the signatures: `create` takes the create schema and returns the model;
-`update` takes the already-loaded `obj` plus the update schema. The final
-{meth}`handle_update <fastapi_restly.views.RestView.handle_update>` handler
-loads the row and raises the 404 before `update` runs.
-The `get_one` id parameter is `int | ColumnElement[bool]` (`ColumnElement`
-from `sqlalchemy`) because a SQLAlchemy predicate may take the primary key's
-place, as in [Look a row up by another key](#natural-key-route). Annotating
-it `id: int` narrows the base signature, which the type checker rejects.
+A project base view can stay generic in the model, so each view that
+subclasses it names its own model. The SaaS example does this
+([`app/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py)):
 
-This looks heavier because it is more explicit. Use it when that extra
-precision is valuable to you.
+```python
+from typing import TypeVar
 
-{class}`fr.BaseSchema <fastapi_restly.schemas.BaseSchema>` is a convenient
-default, not a hard requirement for input schemas. Explicit
-{attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` and
-{attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>`
-classes may inherit directly from `pydantic.BaseModel` when you do not need
-Restly's schema helpers.
+ModelT = TypeVar("ModelT")
 
-## Do custom routes need generics?
 
-Custom route methods do not need view generics unless they depend on strongly
-typed handler interactions. Consider a small extra endpoint:
+class AuthenticatedView(fr.AsyncRestView[ModelT]):
+    ...
+
+
+class ProjectView(AuthenticatedView[Project]):
+    prefix = "/projects"
+    model = Project
+```
+
+## Type a custom route
+
+A custom route needs no view type parameters. Normal Python annotations are
+enough:
 
 ```python
 @fr.include_view(app)
@@ -180,80 +207,54 @@ class UserView(fr.AsyncRestView):
         return {"status": "ok"}
 ```
 
-For extra endpoints like this, normal Python return annotations are usually
-enough.
+When a custom route calls the view's methods, the parameters type those
+calls too: {meth}`get_one(id) <fastapi_restly.views.RestView.get_one>`
+returns the model, and
+{meth}`handle_update(id, schema_obj) <fastapi_restly.views.RestView.handle_update>`
+takes the update body.
 
-When a custom action reuses the standard machinery, for example loading the
-target with {meth}`get_one(id) <fastapi_restly.views.RestView.get_one>` and
-running a write through {meth}`handle_update(id, schema) <fastapi_restly.views.RestView.handle_update>`,
-parameterizing the view gives those calls precise types too.
+The classes that
+{func}`derive_schema_response() <fastapi_restly.schemas.derive_schema_response>`
+returns cannot be used in an annotation; see
+[Name the view's classes in a custom route](#name-the-response-classes).
 
-## What the type checker cannot fully model
+(typing-limits)=
+## What a type checker cannot see
 
-FastAPI-Restly does some runtime work to register and annotate view methods
-for FastAPI. This includes copying inherited endpoints and adjusting
-signatures during
-[view registration](#view-registration-internals).
-That runtime behavior is part of how the framework works, but static type
-checkers do not understand every detail of that process.
+Restly does some work at runtime when it registers a view. It copies the
+inherited endpoint methods, and it changes their signatures for FastAPI; see
+[view registration](#view-registration-internals). Static type checkers do
+not see this.
 
-The practical takeaway is:
+- Type checkers work well on the public API: models, schemas, reference
+  types, class attributes, and the view methods such as
+  {meth}`get_one <fastapi_restly.views.RestView.get_one>`,
+  {meth}`create <fastapi_restly.views.RestView.create>` and
+  {meth}`handle_update <fastapi_restly.views.RestView.handle_update>`.
+- They help less with the
+  [endpoint methods](#replace-endpoint-method) (`*_endpoint`), whose
+  signatures Restly fills in at registration.
 
-- Type checkers are best at the public contract: models, schemas,
-  {class}`IDSchema[...] <fastapi_restly.schemas.IDSchema>`,
-  {class}`IDRef[...] <fastapi_restly.schemas.IDRef>`, class attributes, and
-  the view methods
-  ({meth}`get_one <fastapi_restly.views.RestView.get_one>`,
-  {meth}`create <fastapi_restly.views.RestView.create>`,
-  {meth}`handle_update <fastapi_restly.views.RestView.handle_update>`, and so
-  on).
-- Type checkers are less useful for the internal signature-rewriting machinery
-  that produces the
-  [endpoint methods](#replace-endpoint-method)
-  (`*_endpoint`).
+You only need to think about this if you change Restly itself.
 
-You usually do not need to care about that distinction unless you are
-modifying the framework itself.
+## Check your project
 
-## Check your project with Pyright
-
-If typing quality matters in your project, we recommend checking your Restly
-usage with Pyright. The repository keeps a dedicated set of consumer typing
-fixtures under `tests/typing/`, and those examples are checked in strict mode.
-
-## Which form should I use?
-
-With both styles in hand, the rule of thumb is to use the simplest form that
-gives you the typing help you want:
-
-- For normal CRUD views, use no generics at all: bare
-  {class}`RestView <fastapi_restly.views.RestView>` and
-  {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` are the default.
-- Use {class}`fr.MustExist[int, Model] <fastapi_restly.schemas.MustExist>` for
-  `*_id` foreign-key columns and
-  {class}`IDRef[RelatedModel] <fastapi_restly.schemas.IDRef>` for
-  relationship-named reference fields.
-- Use {class}`IDSchema[Model] <fastapi_restly.schemas.IDSchema>` as a field
-  annotation only when you intentionally want a nested relationship-object
-  field. Parameterizing your top-level schema's *base class*, as in
-  `class UserSchema(IDSchema[User])`, is a separate, optional choice: the bare
-  base is supported, and the parameterized base carries the model type.
-- Use view generics only when you want precise typing on the methods you
-  override; they mainly help on the business methods and the endpoint
-  methods.
-- Custom route methods work well with ordinary Python annotations.
-
-That keeps everyday usage clean while still allowing stricter typing for
-projects that want it.
+To check your use of Restly, run Pyright or mypy on your project. Restly
+keeps a set of small example apps in
+[`tests/typing/`](https://github.com/rjprins/fastapi-restly/tree/main/tests/typing).
+CI checks them with Pyright and with mypy, both in strict mode. They show each typed form on this page, and they are a good
+place to look when your type checker complains.
 
 ## See also
 
-- [View Method Surface](#view-method-surface): the typed
-  methods this page parameterizes, sorted by kind.
-- [Request Lifecycle & Hooks](customize.md): the override recipes
-  these signatures apply to.
-- [Relationships](howto_relationship_idschema.md):
-  runtime semantics of
-  {class}`fr.MustExist[int, Model] <fastapi_restly.schemas.MustExist>` and
-  {class}`IDRef <fastapi_restly.schemas.IDRef>` /
-  {class}`IDSchema[Model] <fastapi_restly.schemas.IDSchema>` fields.
+- [View Reference](#view-method-surface): the methods that the type
+  parameters type, sorted by kind.
+- [Request Lifecycle & Hooks](customize.md): which method to override for
+  each change.
+- [Relationships](howto_relationship_idschema.md): what
+  {class}`fr.MustExist <fastapi_restly.schemas.MustExist>`,
+  {class}`fr.IDRef <fastapi_restly.schemas.IDRef>` and
+  {class}`fr.IDSchema[Model] <fastapi_restly.schemas.IDSchema>` do at
+  runtime.
+- [Schemas & Validation](howto_custom_schema.md): the schema base classes and
+  the response class.
