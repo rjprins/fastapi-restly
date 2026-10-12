@@ -56,7 +56,7 @@ method overrides to share behavior across resources.
 
 - **Class-based views**: group endpoints on Python classes with inheritance and method overrides.
 - **REST endpoints in minutes**: use `View` for custom endpoint groups, or `AsyncRestView` / `RestView` for default CRUD routes.
-- **Incremental adoption**: use Restly per resource; drop to ordinary FastAPI when needed — see [New & Existing Projects](https://www.fastapi-restly.org/howto_project_structure.html).
+- **Incremental adoption**: use Restly per resource; drop to ordinary FastAPI when needed — see [New & Existing Projects](https://www.fastapi-restly.org/projects.html).
 - **Class-level dependencies**: declare shared dependencies once and read their values from `self`.
 - **Explicit override points**: replace the endpoint method for the HTTP contract, override the business method for domain logic, and call the final handler from custom routes.
 - **Filtering, pagination, sorting**: get schema-derived list parameters.
@@ -191,7 +191,7 @@ restly new myapp
 It asks three questions, each also available as a flag: `--async`/`--sync`,
 `--postgres`/`--sqlite`, and `--alembic`/`--create-all`. Add `--yes` to take
 the defaults. See
-[New & Existing Projects](https://www.fastapi-restly.org/howto_project_structure.html).
+[New & Existing Projects](https://www.fastapi-restly.org/projects.html).
 
 ## Main features
 
@@ -426,7 +426,7 @@ replicas, or custom sessions, use a normal FastAPI dependency on that view.
 One rule to know up front: **Restly owns the commit on its views** — custom
 session generators construct and clean up, but never commit.
 To connect Restly to an existing app's engine, sessions, and models, see
-[New & Existing Projects](https://www.fastapi-restly.org/howto_project_structure.html).
+[New & Existing Projects](https://www.fastapi-restly.org/projects.html).
 
 ## Documentation
 

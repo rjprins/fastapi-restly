@@ -7,7 +7,7 @@ tutorial, [Build a Blog API](tutorial.md).
 
 ## Start
 
-Pages: [New & Existing Projects](howto_project_structure.md),
+Pages: [New & Existing Projects](projects.md),
 [Database & Configuration](database.md).
 
 - [How do I add Restly to a FastAPI app I already have?](#add-to-existing-app)
@@ -151,7 +151,7 @@ routes. So these subjects are FastAPI's, and its docs explain them:
 :maxdepth: 1
 :hidden:
 
-howto_project_structure
+projects
 database
 howto_models
 class_based_views

@@ -275,7 +275,7 @@ ordinary route, so that you control its checks and its timeouts.
 
 - [Database & Configuration](database.md): engines, sessions and
   `fr.configure()`.
-- [New & Existing Projects](howto_project_structure.md): the project layout,
+- [New & Existing Projects](projects.md): the project layout,
   and Restly next to an existing app.
 - The [SaaS example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/saas):
   an example in production shape. It has PostgreSQL services in Compose,
