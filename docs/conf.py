@@ -105,6 +105,7 @@ redirects = {
     "howto_error_responses": "errors.html",
     "howto_current": "current.html",
     "howto_testing": "testing.html",
+    "howto_openapi": "openapi.html",
 }
 myst_heading_anchors = 3
 myst_enable_extensions = ["colon_fence", "substitution"]
