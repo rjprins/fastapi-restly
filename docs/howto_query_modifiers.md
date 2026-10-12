@@ -292,7 +292,7 @@ class UserView(fr.AsyncRestView):
 ## Alias support
 
 Query parameter keys follow the Pydantic schema field's **public name**:
-the [alias](howto_custom_schema.md#aliases) when one is declared, the
+the [alias](#field-aliases) when one is declared, the
 Python field name otherwise. The public name is the only name the URL
 surface accepts. `populate_by_name` controls how Pydantic parses request
 bodies; it does **not** extend the list-params URL contract with extra

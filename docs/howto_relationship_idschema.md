@@ -661,7 +661,7 @@ Nested schemas serve two different roles in Restly today:
 - **Create/update payloads** are not supported in the general case. The default
   `make_new_object()` / `update_object()` flow expects payload keys to map
   directly to model attributes, with `*_id: fr.MustExist[int, Model]`
-  (see [MustExist](howto_custom_schema.md#mustexist)) as the FK
+  (see [MustExist](#reference-exists)) as the FK
   case. For a relationship-named field, after resolving an {class}`IDRef <fastapi_restly.schemas.IDRef>` / {class}`IDSchema <fastapi_restly.schemas.IDSchema>` to an ORM object, Restly chooses the FK
   scalar, relationship object, or both based on the model constructor. If the
   client supplies both fields, Restly checks they refer to the same row.
