@@ -616,7 +616,7 @@ mixin has no `hasattr` check and no fallback to `super()`. It goes on views of
 loads the row through the scope, calls `authorize` and commits. The mixin only
 changes what "delete" does. A query parameter can never widen a scope, so a
 client cannot ask for deleted rows. To list the deleted rows or restore one,
-add a route that [names its own scope](#per-read-scope).
+add a route that [reads other rows](#per-read-scope).
 
 (composing-on-a-view)=
 
