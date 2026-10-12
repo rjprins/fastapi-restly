@@ -164,7 +164,7 @@ as the `id` react-admin sends, are ignored.
 
 `ra-data-simple-rest` expects to-many references as plain id arrays
 (`"products": [1, 2, 3]`). Declare the field as `list[fr.IDRef[Product]]`;
-[Lists of References](howto_relationship_idschema.md#lists-of-references)
+[Reference several rows](#reference-lists)
 describes the full behavior. The [shop example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/shop) runs this
 end to end.
 

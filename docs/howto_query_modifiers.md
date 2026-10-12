@@ -326,7 +326,7 @@ GET /orders?user.name__contains=ali
 
 The relation must be defined on both the SQLAlchemy model (as a
 `relationship`) and the Pydantic schema (as a
-[nested schema field](howto_relationship_idschema.md#nested-relationship-objects)).
+[nested schema field](#relationship-loading)).
 Optional nested schemas (`UserSchema | None`) and deep nesting
 (`?blog.author.name=Alice`) are supported. Lists of nested schemas
 (`list[UserSchema]`) are not.
@@ -393,7 +393,7 @@ family (UUIDs are not orderable; see the range-operator note under
 family. A relationship reference (`IDRef` / `IDSchema`), by contrast,
 keeps its id opaque and supports only equality, `__in`, `__ne`, and
 `__isnull`;
-[Choosing a Reference Style](howto_relationship_idschema.md#choosing-a-reference-style)
+[Choose a reference style](#reference-styles)
 compares the two reference styles.
 
 ## Quick reference

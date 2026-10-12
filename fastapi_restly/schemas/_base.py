@@ -453,13 +453,13 @@ class IDRef(IDSchema[SQLAlchemyModel], Generic[SQLAlchemyModel]):
         products: list[IDRef[Product]]  # serializes as [1, 2, 3]
 
     Resolution applies the referenced model's ``default_scope``: a
-    reference to a row the scope hides raises ``NotFound``, so a
-    tenant scope declared once covers every reference to the model. A model
-    without a ``default_scope`` resolves by bare primary key; gate visibility
-    there in ``authorize`` (``data.<field>.id`` is the requested id, before
-    resolution) or ``before_action_commit`` (the resolved row is on the built
-    object). See the Relationships guide page, "Visibility and
-    Multi-Tenancy".
+    reference to a row the scope hides raises ``NotFound``, as a missing row
+    does. A model without a ``default_scope`` resolves by primary key alone.
+    A session rule, such as a tenant rule added with
+    ``with_loader_criteria``, reaches the lookup too, except for an object
+    that is already in the session. A rule that is neither goes in
+    ``authorize``, where ``data.<field>.id`` is the requested id. See "Which
+    rows can a reference reach?" on the Relationships guide page.
     """
 
     def __init__(self, value: Any = _IDREF_UNSET, **data: Any) -> None:

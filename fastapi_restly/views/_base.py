@@ -1454,8 +1454,8 @@ class BaseRestView(
         Override to eager-load relationships the response class does not
         name on both paths; append to
         ``super().get_relationship_loader_options()`` to keep the derived
-        loads. See "Relationship Loading and Async" on the Relationships
-        guide page.
+        loads. See "Return related objects in a response" on the
+        Relationships guide page.
         """
         return _build_relationship_loader_options(
             self.model, _schema_response(type(self))
