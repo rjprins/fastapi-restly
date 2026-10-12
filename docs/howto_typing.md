@@ -193,7 +193,7 @@ parameterizing the view gives those calls precise types too.
 FastAPI-Restly does some runtime work to register and annotate view methods
 for FastAPI. This includes copying inherited endpoints and adjusting
 signatures during
-[view registration](technical_details.md#view-classes-and-registration).
+[view registration](#view-registration-internals).
 That runtime behavior is part of how the framework works, but static type
 checkers do not understand every detail of that process.
 

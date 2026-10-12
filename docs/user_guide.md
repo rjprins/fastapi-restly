@@ -205,6 +205,7 @@ checklist.
 
 howto_project_structure
 howto_existing_project
+database
 howto_models
 class_based_views
 rest_views

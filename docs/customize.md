@@ -280,7 +280,7 @@ Custom write routes can use the same bracket with
 with [shared_write_action_commit()](#shared-write-action-commit).
 If a request ends with uncommitted
 changes, Restly warns with {class}`RestlyUncommittedChangesWarning <fastapi_restly.exc.RestlyUncommittedChangesWarning>` by default.
-[Custom session generators](howto_existing_project.md#provide-your-own-session-generator)
+[Custom session generators](#own-session-generator)
 control construction and cleanup, not commit ownership.
 
 (after-action-commit-raises)=

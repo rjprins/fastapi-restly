@@ -36,10 +36,10 @@ itself; see [Testing](howto_testing.md).
 Sizing is the part Restly leaves to you. Given a PostgreSQL URL it already sets
 `pool_pre_ping=True` and `pool_recycle=1800`, so the template below repeats
 `pool_pre_ping` only to keep it visible next to the settings it belongs with;
-see [Engine Defaults](technical_details.md#engine-defaults) for the full list
+see [Engine Defaults](#engine-defaults) for the full list
 and for how to decline it. If your app already has an engine, pass that one
 instead; see
-[Reuse Your Existing Engine](howto_existing_project.md#reuse-your-existing-engine).
+[Reuse Your Existing Engine](#reuse-existing-engine).
 
 ## Migrations with Alembic
 
@@ -179,7 +179,7 @@ Note four details in this template:
   promptly. Restly never disposes an engine itself, so an application that
   configures from a URL instead reaches its engine through
   {func}`fr.db.get_async_engine() <fastapi_restly.db.get_async_engine>`; see
-  [Engine Disposal](technical_details.md#engine-disposal).
+  [Engine Disposal](#engine-disposal).
 
 (running-the-app)=
 

@@ -36,7 +36,7 @@ as `fr.*`). The choice between them is determined by which class you subclass:
 `AsyncRestView` declares `session: AsyncSessionDep` and `RestView` declares
 `session: SessionDep`. A subclass can override that `session` annotation with
 its own `Annotated[..., Depends(...)]` dependency to
-[use another session on one view](howto_existing_project.md#use-a-custom-session-dependency-on-one-view).
+[use another session on one view](#session-dependency-one-view).
 The async and sync variants have identical endpoint signatures; the only
 difference is that the async variant uses `await` in its process methods.
 

@@ -422,7 +422,7 @@ in a nested model. For that case, work through these in order:
 Restly already sets `expire_on_commit=False` on its session factories so a
 committed object stays readable during serialization. If you build your own
 session maker, keep that default (see
-[Session Factory Defaults](technical_details.md#session-factory-defaults)).
+[Session Factory Defaults](#session-factory-defaults)).
 
 The same error covers any implicit async IO, not only relationship
 serialization: a lazy-loaded deferred column, an expired attribute read in your
@@ -684,4 +684,4 @@ describes the supported reference-field patterns.
 - [API Reference](api_reference.md): {class}`MustExist <fastapi_restly.schemas.MustExist>` / {class}`IDRef <fastapi_restly.schemas.IDRef>` / {class}`IDSchema <fastapi_restly.schemas.IDSchema>` signatures and the
   full symbol tables.
 
-- [Session Factory Defaults](technical_details.md#session-factory-defaults): why Restly uses `expire_on_commit=False`.
+- [Session Factory Defaults](#session-factory-defaults): why Restly uses `expire_on_commit=False`.

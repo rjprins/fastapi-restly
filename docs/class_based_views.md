@@ -650,6 +650,8 @@ others, write a plain function endpoint. CBVs pay off when you have shared
 metadata, shared dependencies, or related endpoints that benefit from being
 co-located. Do not reach for them just for the sake of structure.
 
+(view-registration-internals)=
+
 ## Internals
 
 [CRUD Routes](rest_views.md) owns the user-facing model, schema,
