@@ -85,8 +85,8 @@ redirects = {
     "tutorial_overview": "tutorial.html",
     "getting_started": "tutorial.html",
     "api_details": "view_reference.html",
-    "patterns": "user_guide.html",
-    "examples": "user_guide.html",
+    "patterns": "guide.html",
+    "examples": "guide.html",
     "howto_relationship_loading": "relationships.html",
     "howto_inheritance": "views.html",
     "howto_compose_views_with_mixins": "models.html",
@@ -108,6 +108,7 @@ redirects = {
     "howto_openapi": "openapi.html",
     "howto_react_admin": "react_admin.html",
     "howto_typing": "typing.html",
+    "user_guide": "guide.html",
 }
 myst_heading_anchors = 3
 myst_enable_extensions = ["colon_fence", "substitution"]

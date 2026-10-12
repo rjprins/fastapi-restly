@@ -201,7 +201,7 @@ compatibility alias, but OpenAPI records only `/tasks`.
 
 - [Deployment guide](../../docs/deploying.md)
 - [Testing guide](../../docs/testing.md)
-- [Guide](../../docs/user_guide.md)
+- [Guide](../../docs/guide.md)
 - [Main framework documentation](../../docs/index.md)
 - [Alembic asyncio recipe](https://alembic.sqlalchemy.org/en/latest/cookbook.html#using-asyncio-with-alembic)
 - [Pydantic settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/)

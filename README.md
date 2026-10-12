@@ -431,7 +431,7 @@ To connect Restly to an existing app's engine, sessions, and models, see
 ## Documentation
 
 - **[Tutorial](https://www.fastapi-restly.org/tutorial.html)**: build a blog API step by step, from the first model to authors and drafts
-- **[Guide](https://www.fastapi-restly.org/user_guide.html)**: one page for each part of Restly, how it works and how to use it. Start with [Views](https://www.fastapi-restly.org/views.html), [CRUD Routes](https://www.fastapi-restly.org/crud_routes.html) and [Request Lifecycle & Hooks](https://www.fastapi-restly.org/lifecycle.html)
+- **[Guide](https://www.fastapi-restly.org/guide.html)**: one page for each part of Restly, how it works and how to use it. Start with [Views](https://www.fastapi-restly.org/views.html), [CRUD Routes](https://www.fastapi-restly.org/crud_routes.html) and [Request Lifecycle & Hooks](https://www.fastapi-restly.org/lifecycle.html)
 - **[API Reference](https://www.fastapi-restly.org/api_reference.html)**: inspect exact signatures and defaults
 
 ## Examples

@@ -18,7 +18,7 @@ class UserView(fr.AsyncRestView):
     model = User  # SQLAlchemy model
 ```
 
-The [Guide](user_guide.md) explains each part of a view and how you can change
+The [Guide](guide.md) explains each part of a view and how you can change
 it.
 
 ## Quick Start
@@ -125,7 +125,7 @@ Build a blog API step by step: posts and comments, then authors and drafts.
 :::
 
 :::{grid-item-card} Guide
-:link: user_guide
+:link: guide
 :link-type: doc
 
 One page for each part of Restly: how it works, and how to use it.
@@ -151,7 +151,7 @@ History, design goals, and why this framework exists.
 :hidden:
 
 Tutorial <tutorial>
-Guide <user_guide>
+Guide <guide>
 API <api_reference>
 Blog <https://www.fastapi-restly.org/blog/>
 About <about>

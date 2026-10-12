@@ -73,7 +73,7 @@ make docs-serve
 - Update relevant docs when user-facing behaviour changes; the docs build is
   warning-clean and CI enforces it (`make docs` runs Sphinx with `-W`).
 - One page owns each topic; other pages link to it instead of restating.
-  The Guide front page (`docs/user_guide.md`) names the page that owns each
+  The Guide front page (`docs/guide.md`) names the page that owns each
   topic.
 - Link API symbols to their autodoc entry with MyST roles:
   ``{class}`fr.AsyncRestView <fastapi_restly.views.AsyncRestView>` `` —
