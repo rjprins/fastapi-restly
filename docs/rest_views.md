@@ -1,11 +1,10 @@
 # CRUD Routes
 
 {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` and
-{class}`RestView <fastapi_restly.views.RestView>` define five CRUD endpoint
-methods for one SQLAlchemy model. A subclass supplies the URL prefix, model,
-and optional Pydantic schemas. {func}`include_view()
-<fastapi_restly.views.include_view>` registers the inherited endpoint methods
-as FastAPI routes:
+{class}`RestView <fastapi_restly.views.RestView>` give one SQLAlchemy model
+five CRUD routes. A subclass sets the URL prefix and the model, and it can
+also set the schemas. {func}`include_view()
+<fastapi_restly.views.include_view>` registers the routes:
 
 ```python
 @fr.include_view(app)
@@ -14,52 +13,123 @@ class UserView(fr.AsyncRestView):
     model = User
 ```
 
-`UserView` now serves list, create, retrieve, update, and delete requests under
-`/users`. [Build a Blog API](tutorial.md) shows the surrounding app, database
-configuration, and model in one runnable file.
+`UserView` now serves requests to list, create, get, update and delete users
+under `/users`. [Build a Blog API](tutorial.md) shows the app, the database
+configuration and the model around such a view, in one file that runs.
+`include_view` also works as a direct call; see
+[Register a view](#register-a-view).
+
+Each route runs three methods: an endpoint method for the HTTP contract, a
+handler for steps such as authorization and the commit, and a business method
+for the change in the database. To change what a route does, you override one
+of these methods. [Which method do I override](#which-method-to-override)
+maps each change to its method.
 
 (choose-async-or-sync)=
 ## Choose async or sync
 
-Use {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` for new
-applications unless the application already uses synchronous SQLAlchemy. It
-receives an `AsyncSession` through `fr.AsyncSessionDep`, and methods you
-override are normally `async def` methods.
+Use {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` for a new
+application, unless the application already uses synchronous SQLAlchemy. It
+gets an `AsyncSession` through
+{data}`fr.AsyncSessionDep <fastapi_restly.db.AsyncSessionDep>`, and the
+methods you override are `async def` methods.
 
 Use {class}`RestView <fastapi_restly.views.RestView>` with synchronous
-SQLAlchemy sessions or sync-only libraries. It receives a `Session` through
-`fr.SessionDep`. Both classes expose the same routes, configuration, and
-override points. Mixed applications can choose per view.
+SQLAlchemy sessions, or with libraries that only work synchronously. It gets
+a `Session` through {data}`fr.SessionDep <fastapi_restly.db.SessionDep>`,
+and the methods you override are plain `def` methods.
 
-Both {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` (async) and {class}`RestView <fastapi_restly.views.RestView>` (sync) are public API and
-share the same CRUD structure via an internal abstract base class (not exposed
-as `fr.*`). The choice between them is determined by which class you subclass:
-`AsyncRestView` declares `session: AsyncSessionDep` and `RestView` declares
-`session: SessionDep`. A subclass can override that `session` annotation with
-its own `Annotated[..., Depends(...)]` dependency to
-[use another session on one view](#session-dependency-one-view).
-The async and sync variants have identical endpoint signatures; the only
-difference is that the async variant uses `await` in its process methods.
+Apart from this, the two classes are the same: the same routes, the same
+configuration and the same methods to override. You choose for each view, so
+one application can use both. [Database & Configuration](database.md) shows
+how to configure the sessions. To give one view another session, see
+[Use a custom session dependency on one view](#session-dependency-one-view).
+The examples on this page use `AsyncRestView`.
 
-## Define the resource
+(default-crud-routes)=
+(default-crud-behavior)=
+## The default routes
 
-Every CRUD view needs two class attributes:
+For `prefix = "/users"`, `include_view` registers these routes:
 
-- {attr}`prefix <fastapi_restly.views.View.prefix>` is the URL prefix shared by
-  every route in the view.
-- {attr}`model <fastapi_restly.views.BaseRestView.model>` is the SQLAlchemy
+| Request | Endpoint method | Input | Response | Status |
+|---|---|---|---|---|
+| `GET /users` | {meth}`get_many_endpoint <fastapi_restly.views.AsyncRestView.get_many_endpoint>` | Filter, sort and page parameters | A page of objects in a `data` envelope | `200` |
+| `POST /users` | {meth}`create_endpoint <fastapi_restly.views.AsyncRestView.create_endpoint>` | `schema_create` | `schema_response` | `201` |
+| `GET /users/{id}` | {meth}`get_one_endpoint <fastapi_restly.views.AsyncRestView.get_one_endpoint>` | The id in the path | `schema_response` | `200` |
+| `PATCH /users/{id}` | {meth}`update_endpoint <fastapi_restly.views.AsyncRestView.update_endpoint>` | `schema_update` | `schema_response` | `200` |
+| `DELETE /users/{id}` | {meth}`delete_endpoint <fastapi_restly.views.AsyncRestView.delete_endpoint>` | The id in the path | Empty body | `204` |
+
+The main path of the list is `/users`, without a slash at the end. Restly
+also accepts `/users/`, as a route that OpenAPI does not show.
+
+`GET /users` has a filter for each field of the response class that maps to
+a column of the model. It sorts with `?sort=field,-other_field`, and it is
+paginated by default. A query key that the list does not know returns `422`.
+[Filtering & Pagination](howto_query_modifiers.md) defines the parameters.
+[Responses](howto_response_schema.md) shows the response bodies and how to
+change the `data` envelope.
+
+A row that does not exist returns `404`, and so does a row that the view's
+[scope](scopes.md) hides. Each write commits before Restly builds the
+response. Reads do not commit.
+
+:::{important}
+Restly does not authenticate requests, and by default it allows every action
+on every route. Add authentication with FastAPI dependencies; see
+[Run a dependency on every route](#run-a-dependency-on-every-route). Then
+decide per action who may do what in
+{meth}`authorize() <fastapi_restly.views.AsyncRestView.authorize>`; see
+[Authorization](#authorize-gate).
+:::
+
+(item-route-matching)=
+### Item paths and static routes
+
+The paths of the built-in `GET`, `PATCH` and `DELETE` routes for one row
+follow {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>`. By
+default, Restly takes it from the model's primary key. The `PUT` route of a
+React Admin view uses the same path.
+
+| ID type | Registered item path | Matching values |
+|---|---|---|
+| `int` | `/{id:int}` | Digits only, including `0`; no minus sign |
+| `uuid.UUID` | `/{id:uuid}` | UUIDs that Starlette's converter accepts |
+| Any other type | `/{id}` | Any single path segment, then FastAPI validation |
+
+With an integer or UUID item path, a static route such as `/users/me` still
+works when you register it after the view. A value that does not match the
+converter returns `404`, unless another route matches it. So a negative
+integer id does not match, even when the row exists. OpenAPI still shows the
+path as `/users/{id}`, with an integer or UUID parameter.
+
+A route that you declare yourself keeps the path you give it. To accept
+negative integer ids, replace each item endpoint you need with an untyped
+path such as `@fr.get("/{id}")`, and annotate its `id` parameter as `int`;
+see [Replace an endpoint method](#replace-endpoint-method).
+
+An untyped item path, such as the path for string ids, also matches
+`/users/me`. Register a static route like that before the item route.
+
+(crud-model-and-schemas)=
+## Set the model and the schemas
+
+A CRUD view sets two class attributes:
+
+- {attr}`prefix <fastapi_restly.views.View.prefix>`: the URL prefix of every
+  route of the view.
+- {attr}`model <fastapi_restly.views.BaseRestView.model>`: the SQLAlchemy
   mapped class that the routes read and write.
 
-Ordinary models based on SQLAlchemy's `DeclarativeBase` work. Restly's
-model defaults, {class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>`,
-are optional; see [Models](howto_models.md).
+Normal models built on SQLAlchemy's `DeclarativeBase` work. Restly's model
+defaults, {class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>`, are
+optional; see [Models](howto_models.md).
 
 If the view does not declare {attr}`schema
-<fastapi_restly.views.BaseRestView.schema>`, Restly generates the view's schema
-from `model` when the view is registered. It then derives the create and update
-schemas from it. Write the view's schema yourself when the
-HTTP contract needs stable field names, validation, aliases, or fields that do
-not match the table directly:
+<fastapi_restly.views.BaseRestView.schema>`, Restly generates the view's
+schema from `model` when you register the view. It then derives the other
+schemas from it. Write the view's schema yourself when the API needs stable
+field names, validation, aliases, or fields that differ from the table:
 
 ```python
 class UserSchema(fr.IDSchema):
@@ -78,139 +148,46 @@ The four schema attributes have separate jobs:
 
 | Attribute | Used for | Default |
 |---|---|---|
-| {attr}`schema <fastapi_restly.views.BaseRestView.schema>` | The source that Restly derives the other three from | Constructed from `model` when omitted |
-| {attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>` | `GET` responses and successful write responses | `schema` without `WriteOnly` fields |
-| {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` | `POST` request body | `schema` without `ReadOnly` fields |
-| {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` | `PATCH` request body | Writable fields from `schema`, made optional |
+| {attr}`schema <fastapi_restly.views.BaseRestView.schema>` | The source of the other three | Generated from `model` |
+| {attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>` | Every response | `schema` without its `WriteOnly` fields |
+| {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` | The `POST` request body | `schema` without its `ReadOnly` fields |
+| {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` | The `PATCH` request body | The writable fields of `schema`, all optional |
 
-Both derived schemas also leave out a primary key the server generates
-(autoincrement, a column default, or a dataclass field with `init=False`),
-marked `ReadOnly` or not. A natural key stays writable.
+The two derived input schemas also leave out a primary key that the server
+generates: an autoincrement column, a column with a default, or a dataclass
+field with `init=False`. This holds whether the key is marked `ReadOnly` or
+not. A natural key stays writable.
 
-[Schemas & Validation](howto_custom_schema.md) owns field markers,
-aliases, validation, and the choice between explicit and constructed schemas.
+[Schemas & Validation](howto_custom_schema.md) explains field markers,
+aliases, validation, and when to write the schemas yourself.
 
-For larger applications, define the class without registration side effects
-and include it where the app or router is assembled:
+(configure-a-crud-view)=
+## Configure a CRUD view
 
-```python
-class UserView(fr.AsyncRestView):
-    prefix = "/users"
-    model = User
-    schema = UserSchema
+This table maps each need to its setting:
 
-
-fr.include_view(app, UserView)
-```
-
-Both registration forms produce the same routes.
-[New & Existing Projects](howto_project_structure.md) shows where the direct call belongs in a
-multi-package application.
-
-(default-crud-routes)=
-(default-crud-behavior)=
-## Default CRUD behavior
-
-For `prefix = "/users"`, `include_view` registers the inherited endpoint
-methods as this HTTP contract:
-
-| Request | Endpoint method | Input | Response | Status |
-|---|---|---|---|---|
-| `GET /users` | {meth}`get_many_endpoint <fastapi_restly.views.AsyncRestView.get_many_endpoint>` | List query parameters | Paginated `data` envelope | `200` |
-| `POST /users` | {meth}`create_endpoint <fastapi_restly.views.AsyncRestView.create_endpoint>` | `schema_create` | `schema` | `201` |
-| `GET /users/{id}` | {meth}`get_one_endpoint <fastapi_restly.views.AsyncRestView.get_one_endpoint>` | Scalar path ID | `schema` | `200` |
-| `PATCH /users/{id}` | {meth}`update_endpoint <fastapi_restly.views.AsyncRestView.update_endpoint>` | `schema_update` | `schema` | `200` |
-| `DELETE /users/{id}` | {meth}`delete_endpoint <fastapi_restly.views.AsyncRestView.delete_endpoint>` | Scalar path ID | Empty body | `204` |
-
-The collection path without a trailing slash is canonical. Restly also
-accepts the trailing-slash form as a hidden compatibility route.
-
-List filters are derived from fields shared by `schema` and `model`. Sorting
-uses `?sort=field,-other_field`. Pagination is on by default with a page size
-of 50, a maximum accepted page size of 1000, and a response shaped like:
-
-```json
-{
-  "data": [{"id": 1, "name": "Jane", "email": "jane@example.com"}],
-  "total_count": 1,
-  "page": 1,
-  "page_size": 50,
-  "total_pages": 1
-}
-```
-
-Unknown list query keys return `422` instead of being ignored. [Filter, Sort,
-and Paginate Lists](howto_query_modifiers.md) defines the complete query
-grammar. [Responses](howto_response_schema.md)
-defines the default containers and how to replace them.
-
-Missing or hidden rows return `404`. On the default endpoints, the create,
-update, and delete handlers run authorization, call the business method, run
-the commit hooks, and commit before the response is built. A custom endpoint
-can group several handlers under one
-{meth}`shared_write_action_commit() <fastapi_restly.views.AsyncRestView.shared_write_action_commit>`
-block. The outermost block then owns the commit and after-hooks. Reads do not
-commit.
-
-:::{important}
-Restly does not authenticate requests or impose an authorization policy.
-{meth}`authorize() <fastapi_restly.views.AsyncRestView.authorize>` permits every
-action unless a subclass overrides it. Add authentication through FastAPI
-dependencies, then enforce per-action policy in `authorize()` where needed.
-:::
-
-(item-route-matching)=
-### Item paths and static routes
-
-The built-in `GET`, `PATCH`, and `DELETE` item paths follow
-{attr}`id_type <fastapi_restly.views.BaseRestView.id_type>`. By default, it is
-inferred from the model's primary key. React Admin's `PUT` uses the same path.
-
-| ID type | Registered item path | Matching values |
-|---|---|---|
-| `int` | `/{id:int}` | Non-negative digits, including `0` |
-| `uuid.UUID` | `/{id:uuid}` | UUIDs accepted by Starlette's converter |
-| Any other type | `/{id}` | Any single path segment, then FastAPI validation |
-
-An integer or UUID item route leaves `/users/me` available to a static route
-registered after the view. A value that does not match the converter returns
-`404` instead of the previous `422`, unless another route handles it. Negative
-integer IDs do not match, even if the row exists. OpenAPI still shows
-`/users/{id}` with the integer or UUID parameter schema.
-
-Custom endpoint declarations keep their paths. To accept negative integer
-IDs, replace each needed item endpoint with an untyped path such as
-`@fr.get("/{id}")` and annotate its `id` parameter as `int`. See
-[Request Lifecycle & Hooks](customize.md) for endpoint replacements. Register
-static routes before untyped item routes, including views with string IDs.
-
-## Configure a view
-
-Configure the class according to the contract the resource needs:
-
-| Requirement | Configuration |
+| You need | Configuration |
 |---|---|
 | Stable response fields | Declare {attr}`schema <fastapi_restly.views.BaseRestView.schema>` |
-| Different create or update validation | Declare {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` or {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` |
-| A different type for the `{id}` path parameter | Set {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` |
-| Read-only or otherwise restricted routes | Set {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` with `fr.ViewRoute` values |
-| Disable pagination | Set {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` to `None`, or to a {class}`NoPagination <fastapi_restly.views.NoPagination>` to choose its envelope |
-| Change page limits, parameter names, or the list envelope | Set {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` to a {class}`NumberedPagination <fastapi_restly.views.NumberedPagination>` |
-| Accept a view-specific list query key | Declare it on the endpoint method or in a dependency, or add it to {attr}`extra_query_params <fastapi_restly.views.BaseRestView.extra_query_params>` when code reads it from the request |
-| Apply FastAPI metadata or dependencies to every route | Set {attr}`tags <fastapi_restly.views.View.tags>`, {attr}`responses <fastapi_restly.views.View.responses>`, or {attr}`dependencies <fastapi_restly.views.View.dependencies>` |
-| Set a route name, summary, or operation ID | Set {attr}`route_options <fastapi_restly.views.View.route_options>` as shown in [OpenAPI customization](#default-route-metadata) |
-| Use another session dependency | Override the `session` annotation with `Annotated[..., Depends(...)]` |
+| Other fields or validation on create or update | Declare {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` or {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` ([Explicit write schemas](#explicit-write-schemas)) |
+| Another type for the `{id}` path parameter | Set {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` ([Item paths](#item-route-matching)) |
+| Fewer routes, such as a read-only view | Set {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` ([Exclude CRUD routes](#exclude-crud-routes)) |
+| Hide rows from every read | Set {attr}`scope <fastapi_restly.views.BaseRestView.scope>`, or `default_scope` on the model ([Scopes](#view-scope)) |
+| No pagination | Set {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` to `None`, or to a {class}`NoPagination <fastapi_restly.views.NoPagination>` to choose its envelope ([Filtering & Pagination](#no-pagination)) |
+| Other page limits, parameter names or list envelope | Set {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` to a {class}`NumberedPagination <fastapi_restly.views.NumberedPagination>` ([Pagination settings](#pagination-settings)) |
+| A list query key of your own | Declare it on the endpoint method or in a dependency. When code reads it from the request, add it to {attr}`extra_query_params <fastapi_restly.views.BaseRestView.extra_query_params>` |
+| OpenAPI metadata or dependencies on every route | Set {attr}`tags <fastapi_restly.views.View.tags>`, {attr}`responses <fastapi_restly.views.View.responses>` or {attr}`dependencies <fastapi_restly.views.View.dependencies>` ([Share behavior with base views](#share-behaviour-with-base-views)) |
+| A route name, summary or operation ID | Set {attr}`route_options <fastapi_restly.views.View.route_options>` ([OpenAPI](#default-route-metadata)) |
+| Another session for one view | Override the `session` annotation ([Database & Configuration](#session-dependency-one-view)) |
 
-[View Reference](view_reference.md) lists the exact attribute types and
-method signatures.
-[Database & Configuration](database.md)
-covers custom engines, session generators, and a per-view session dependency.
+[View Reference](#view-class-attributes) lists the type and the default of
+each attribute.
 
 (exclude-crud-routes)=
-
 ## Exclude CRUD routes
 
-Set {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` to prevent selected CRUD endpoint methods from being registered as routes:
+Set {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>`
+to leave out some of the CRUD routes:
 
 ```python
 @fr.include_view(app)
@@ -220,30 +197,46 @@ class UserView(fr.AsyncRestView):
     exclude_routes = [fr.ViewRoute.DELETE, fr.ViewRoute.UPDATE]
 ```
 
-Valid values are: {attr}`fr.ViewRoute.GET_MANY <fastapi_restly.views.ViewRoute.GET_MANY>`, {attr}`fr.ViewRoute.GET_ONE <fastapi_restly.views.ViewRoute.GET_ONE>`, {attr}`fr.ViewRoute.CREATE <fastapi_restly.views.ViewRoute.CREATE>`, {attr}`fr.ViewRoute.UPDATE <fastapi_restly.views.ViewRoute.UPDATE>`, {attr}`fr.ViewRoute.DELETE <fastapi_restly.views.ViewRoute.DELETE>`. Endpoint-method names such as `"delete_endpoint"` are also accepted; any other string raises `AttributeError` at startup.
+`UserView` now serves only `GET /users`, `POST /users` and `GET /users/{id}`.
 
-An exclusion may use a
-`ViewRoute` value or its endpoint-method string, such as `"delete_endpoint"`.
+Each entry is a {class}`fr.ViewRoute <fastapi_restly.views.ViewRoute>` value,
+`GET_MANY`, `GET_ONE`, `CREATE`, `UPDATE` or `DELETE`, or the name of a route
+method, such as `"delete_endpoint"`. A name that is not a route of the view
+raises `AttributeError` when you register the view.
+
+Subclasses inherit `exclude_routes`. To make several views read-only, set it
+on a base view:
+
+```python
+class ReadOnlyView(fr.AsyncRestView):
+    exclude_routes = (fr.ViewRoute.CREATE, fr.ViewRoute.UPDATE, fr.ViewRoute.DELETE)
+
+
+@fr.include_view(app)
+class ProductView(ReadOnlyView):
+    prefix = "/products"
+    model = Product
+```
+
+`ProductView` only serves `GET /products` and `GET /products/{id}`.
 
 (nested-resources)=
+## Nest a resource under its parent
 
-## Nested Resources
-
-
-A nested resource is a child resource served under its parent in the URL,
-such as `/projects/{project_id}/tasks`. In Restly it is an ordinary
+A nested resource is a child resource that the URL places under its parent,
+such as `/projects/{project_id}/tasks`. In Restly, it is a normal
 {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` with three
 additions: a path parameter in its `prefix`, a dependency that looks up the
 parent, and a {attr}`scope <fastapi_restly.views.BaseRestView.scope>` that
 limits the rows to that parent. Every CRUD route keeps working, including
-paging, filters and sort.
+pages, filters and sorting.
 
-A flat view filtered by the foreign key, `GET /tasks?project_id=17`, needs no
-extra code; see [Foreign-key filtering](#foreign-key-filtering). Nest the
-view when the nested URL is part of your API.
+A flat view that filters on the foreign key, `GET /tasks?project_id=17`,
+needs no extra code; see [Foreign-key filtering](#foreign-key-filtering).
+Nest the view when the nested URL is part of your API.
 
 (nested-one-level)=
-### One level
+### Nest one level
 
 This example serves the tasks of a project at
 `/projects/{project_id}/tasks`:
@@ -325,20 +318,23 @@ class ProjectTaskView(fr.AsyncRestView):
 
 `ProjectTaskView` differs from a flat view in these places:
 
-- `prefix` contains `{project_id}`, so every route of the view sits under a
-  project.
+- `prefix` contains `{project_id}`, so every route of the view is under a
+  project. Name the path parameter after the parent, as here. The item routes
+  already use `{id}`, and FastAPI raises an error for a second `{id}` when you
+  register the view.
 - `project_from_path` reads `project_id` from the path. FastAPI checks that it
-  is an integer and lists it in OpenAPI on every route. The function answers
-  `404` when the project does not exist or `ProjectView` hides it.
+  is an integer, and OpenAPI lists it on every route. The function returns
+  `404` when the project does not exist or when `ProjectView` hides it.
 - {meth}`Parent.depends <fastapi_restly.clauses.ContextNamespace.depends>`
   binds the project id for the request. `Parent` is a
   {class}`fr.ContextNamespace <fastapi_restly.clauses.ContextNamespace>`, like
   `Current` in [Current & ContextParam](#current-request-binding). One `Parent`
   serves every nested view in the app.
 - `scope` limits every read to the tasks of that project: the list, its
-  total count, get one, update and delete. A task of another project answers
+  total count, get one, update and delete. A task of another project returns
   `404`. A view's scope replaces the model's default scope
-  ([View scopes](#view-scope)), so `fr.resolve_scope(Task)` adds it back.
+  ([Views: replacing the scope](#view-scope)), so `fr.resolve_scope(Task)`
+  adds the default scope back.
 - `create` sets the project id; see [Create a child](#nested-create).
 
 The routes then answer like this:
@@ -351,6 +347,11 @@ GET    /projects/99/tasks              404 when project 99 does not exist
 GET    /projects/x/tasks               422, x is not an integer
 ```
 
+A sync {class}`fr.RestView <fastapi_restly.views.RestView>` works in the same
+way. Write the lookups as plain functions that take
+{data}`fr.SessionDep <fastapi_restly.db.SessionDep>`, and write the `create`
+override as a plain `def` without `await`.
+
 (nested-create)=
 ### Create a child
 
@@ -362,27 +363,30 @@ override sets it from `Parent` after
 builds the task.
 
 Declare the foreign key with `init=False`. `make_new_object` builds the task
-from the request body, which has no `project_id`. Without `init=False` the
-model requires it there, and the create answers `500`.
+from the request body, which has no `project_id`. Without `init=False`, the
+model requires `project_id` in its constructor, and the create returns `500`.
 
 Keep the parent id out of every write schema of the nested view. If
-`TaskSchema` declared a writable `project_id`, the generated update schema would
-include it. An [explicit write schema](#explicit-write-schemas) writes every
-field it declares. Either way, a `PATCH` could move the task to a project the
-URL never named, past the lookup.
+`TaskSchema` declared a writable `project_id`, the generated update schema
+would include it. An [explicit write schema](#explicit-write-schemas) writes
+every field it declares. In both cases, a `PATCH` request could move the task
+to a project that the URL never named, and the lookup would not check it.
 
 Set the parent id in the view, not in a column default that reads
-`Parent.project_id`. With such a default, creating a task anywhere else fails,
-for example in a flat view or a script, because nothing binds `Parent` there.
+`Parent.project_id`. Only the nested route knows the parent, so the value
+belongs in `create`; see [Values every write path sets](#write-path-values)
+for the difference. With such a default, creating a task anywhere else
+fails, for example in a flat view or a script, because nothing binds
+`Parent` there.
 
 (nested-parent-access)=
 ### Which parents a client can reach
 
 The lookup decides which parents a client can reach. `project_from_path`
 applies the scope of `ProjectView` through
-{func}`fr.resolve_scope <fastapi_restly.views.resolve_scope>`, so a project
-that `GET /projects/{id}` hides also answers `404` here, with all of its tasks.
-In the example, that is an archived project.
+{func}`fr.resolve_scope <fastapi_restly.views.resolve_scope>`. So a project
+that `GET /projects/{id}` hides also returns `404` here, with all of its
+tasks. In the example, that is an archived project.
 
 Without this check, `POST /projects/{project_id}/tasks` creates a task in any
 project whose id a client can guess.
@@ -394,14 +398,15 @@ both views apply them. The nested view still runs its own `authorize` on each
 of its routes.
 
 (nested-deeper)=
-### Deeper nesting
+### Nest more than one level
 
-For more levels, build a chain of base views, one per level. Each base adds
-its segment to `prefix` and its lookup to `dependencies`. Both add up from
-base to subclass; see [Concatenate URL prefixes](#prefix-concatenation). This
-example serves tasks at `/companies/{company_id}/projects/{project_id}/tasks`.
-It is a separate app. It uses the imports, `app`, `Base`, `Task` and
-`TaskSchema` of the first example, and its own `Project`, `Parent` and lookups:
+For more levels, build a chain of base views, one for each level. Each base
+adds its segment to `prefix` and its lookup to `dependencies`. Both add up
+from base to subclass; see [Concatenate URL prefixes](#prefix-concatenation).
+This example serves tasks at
+`/companies/{company_id}/projects/{project_id}/tasks`. It is a separate app.
+It uses the imports, `app`, `Base`, `Task` and `TaskSchema` of the first
+example, and its own `Project`, `Parent` and lookups:
 
 ```python
 from typing import Annotated
@@ -479,19 +484,19 @@ class ProjectTaskView(ProjectScoped):
 
 `project_from_path` gets the company id from `company_from_path` as a FastAPI
 sub-dependency. FastAPI runs the company lookup first, once per request, and
-answers `404` for an unknown company. The project query also checks that the
-project belongs to that company, so `/companies/2/projects/1/tasks` answers
+returns `404` for an unknown company. The project query also checks that the
+project belongs to that company. So `/companies/2/projects/1/tasks` returns
 `404` when project 1 is in company 1.
 
 Each lookup applies the scope of its parent, as in
 [Which parents a client can reach](#nested-parent-access). This example has
 no views for companies or projects, so it passes the models. When a view
-serves the parent, such as a `ProjectView`, pass the view instead, so the
-nested routes hide what that view hides.
+serves the parent, such as a `ProjectView`, pass the view instead. The nested
+routes then hide what that view hides.
 
 Do not read `Parent.company_id()` in `project_from_path` instead. When the
 company id in the path is not an integer, FastAPI still runs the project
-lookup, `Parent.company_id` is not bound, and the request answers `500`
+lookup. `Parent.company_id` is then not bound, and the request returns `500`
 instead of `422`.
 
 Let each base inherit the one above it, as `ProjectScoped` inherits
@@ -499,85 +504,56 @@ Let each base inherit the one above it, as `ProjectScoped` inherits
 `class ProjectTaskView(CompanyMixin, ProjectMixin, fr.AsyncRestView)`, add their
 segments in reverse order: `/projects/{project_id}/companies/{company_id}/tasks`.
 
-### Things to know
+Each level adds one query to every request.
 
-- Name the path segment after the parent, such as `{project_id}`. The item
-  routes already use `{id}`, and FastAPI raises an error for the duplicate
-  when you include the view.
-- A model can have a flat view and nested views at the same time, such as a
-  `TaskView` at `/tasks` next to `ProjectTaskView`. Both appear under the
-  "Tasks" tag in OpenAPI unless you set
-  {attr}`tags <fastapi_restly.views.View.tags>`. Watch two things:
-  - Each view applies its own scope. Rows that the scope of `TaskView` hides,
-    such as another user's tasks, still show under the nested URL. To hide
-    them there too, use `fr.resolve_scope(TaskView)` instead of
-    `fr.resolve_scope(Task)` in the scope of `ProjectTaskView`.
-  - `TaskView` cannot create tasks with `TaskSchema`, because `project_id` is
-    read-only there. Give `TaskView` its own `schema_create`, a
-    `fr.BaseSchema` with `project_id: fr.MustExist[int, Project]`. Keep
-    `project_id` read-only in `TaskSchema`; see [Create a child](#nested-create).
+(nested-and-flat-views)=
+### A flat view next to the nested one
+
+A model can have a flat view and nested views at the same time, such as a
+`TaskView` at `/tasks` next to `ProjectTaskView`. Watch these points:
+
+- Each view applies its own scope. Rows that the scope of `TaskView` hides,
+  such as the tasks of other users, still show under the nested URL. To hide
+  them there too, use `fr.resolve_scope(TaskView)` instead of
+  `fr.resolve_scope(Task)` in the scope of `ProjectTaskView`.
+- `TaskView` cannot create tasks with `TaskSchema`, because `project_id` is
+  read-only there. Give `TaskView` its own `schema_create`, a
+  `fr.BaseSchema` with `project_id: fr.MustExist[int, Project]`. Keep
+  `project_id` read-only in `TaskSchema`; see [Create a child](#nested-create).
+- Both views appear under the "Tasks" tag in OpenAPI, unless you set
+  {attr}`tags <fastapi_restly.views.View.tags>`.
 - OpenAPI marks a field that refers to a task, such as
   `fr.MustExist[int, Task]`, with `x-resource-ref`. Its value comes from the
-  prefix of the last view of `Task` that you include. Include the flat view
+  prefix of the last view of `Task` that you register. Register the flat view
   after the nested one, so the value is `tasks`. With only a nested view, the
   value is `projects/{project_id}/tasks`, which a client cannot use as a
   resource name.
-- A sync {class}`fr.RestView <fastapi_restly.views.RestView>` works the same
-  way. Write the lookups as plain functions that take
-  {data}`fr.SessionDep <fastapi_restly.db.SessionDep>`, and the `create`
-  override as a plain `def` without `await`.
-- Each level adds one query to every request.
 
-## Change behavior
+(crud-limits)=
+## What the default routes do not do
 
-A request passes through an endpoint method, a handler, and a business method.
-Change the layer that owns the behavior instead of rewriting the entire route:
+The default CRUD routes have these limits:
 
-| Change | Use |
-|---|---|
-| Stamp or transform data during create or update | Override the business method in [Request Lifecycle & Hooks](customize.md); a server-stamped field is a column default on the model |
-| Hide rows from every read | Declare a [scope](scopes.md): `default_scope` on the model, or `scope` on the view |
-| Permit or reject an action | Override {meth}`authorize() <fastapi_restly.views.AsyncRestView.authorize>` |
-| Run an atomic side effect or a post-commit action | Override `before_action_commit()` or `after_action_commit()` |
-| Commit several handlers or custom actions together | Wrap them in {ref}`shared_write_action_commit() <shared-write-action-commit>` |
-| Change status, headers, request parameters, or response model | Replace the endpoint method |
-| Add a path that is not part of CRUD | Add a method with `@fr.get`, `@fr.post`, or another route decorator |
-| Share behavior across resources | Use a [base view](#share-behaviour-with-base-views) or [mixins](#structural-pieces) |
-| Replace the list query grammar | Follow [Filtering & Pagination](howto_query_modifiers.md) |
+- A row is identified by one primary key column. The `{id}` path parameter
+  takes the Python type of the key, so a UUID or string key needs no
+  configuration. Reference fields such as `fr.MustExist[UUID, Model]` accept
+  these keys too. For a composite key, write a custom route that loads the
+  row by a condition ([Look a row up by another key](#natural-key-route)), or
+  use a {class}`View <fastapi_restly.views.View>` with explicit paths.
+- Responses can contain nested objects, and lists can filter on
+  relationships. Request bodies with nested objects are not supported in
+  general. Use `MustExist`, `IDRef` or `IDSchema` to refer to other rows, or
+  change the payload in a business method; see
+  [Relationships](howto_relationship_idschema.md).
+- The update route uses `PATCH`, not `PUT`. Add a `PUT` route only when the
+  client needs one.
 
-[Request Lifecycle & Hooks](customize.md) owns the lifecycle diagrams, complete
-override decision table, and worked recipes.
+## See also
 
-## Limits and alternatives
-
-The default CRUD contract has these boundaries:
-
-- Resource identity is one scalar primary key on the generated routes. The
-  `{id}` path parameter takes the key's Python type, so a UUID or string key
-  needs no configuration. Reference fields such as `fr.MustExist[UUID, Model]`
-  accept these keys too. A composite key is reached from
-  a custom route that loads with a predicate
-  ([Look a row up by another key](#natural-key-route)), or from
-  {class}`View <fastapi_restly.views.View>` with explicit route paths.
-- Nested response schemas and relationship filtering are supported. General
-  nested create and update payloads are not. Use `MustExist`, `IDRef`, or
-  `IDSchema` for model-aware references, or transform the payload in a business
-  method. See [Work with Foreign Keys and
-  Relationships](howto_relationship_idschema.md).
-- The default update route uses `PATCH`, not `PUT`. Add an explicit `PUT` route
-  only when the client contract requires one.
-- A {class}`View <fastapi_restly.views.View>` groups non-CRUD endpoints without
-  adding CRUD methods. A plain FastAPI route remains the clearest choice for a
-  single endpoint that shares no view configuration.
-
-## Next steps
-
-- [Build a Blog API](tutorial.md) builds and runs a first resource.
-- [Request Lifecycle & Hooks](customize.md) changes behavior at the correct layer.
-- [Schemas & Validation](howto_custom_schema.md) defines stable request
-  and response fields.
-- [Views](class_based_views.md) explains registration, shared
-  dependencies, and the inheritance model.
-- [Guide](user_guide.md) covers individual tasks.
-- [View Reference](view_reference.md) lists exact signatures
-  and defaults.
+- [Build a Blog API](tutorial.md): build and run a first resource.
+- [Request Lifecycle & Hooks](customize.md): change what a route does.
+- [Schemas & Validation](howto_custom_schema.md): the fields that the routes
+  accept and return.
+- [Views](class_based_views.md): registration, shared dependencies and base
+  views.
+- [View Reference](view_reference.md): the exact signatures and defaults.
