@@ -91,11 +91,40 @@ dependency, in one declaration.
 (current-column-defaults)=
 ## Read the current user in a column default
 
-Pass `Current.user_id` as a SQLAlchemy column default to record who
-created a row:
+A SQLAlchemy column default can read `Current`. Pass the member itself,
+without parentheses:
 
 ```python
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+created_by_id: Mapped[int] = mapped_column(
+    init=False, insert_default=Current.user_id
+)
+```
+
+SQLAlchemy calls the member when it inserts the row, usually during a flush.
+So keep the binding active until the flush finishes. `Current.user_id()` with
+parentheses would read the value once, when Python defines the model class.
+No request has bound a value then, so the import fails with `LookupError`.
+
+[Stamp the fields the server owns](#server-stamped-fields) shows the whole
+recipe, with `onupdate` and `fr.ReadOnly` on the schema.
+
+(current-manual-binding)=
+## Bind in a script or job
+
+Outside FastAPI, use
+{meth}`Current.bind <fastapi_restly.clauses.ContextNamespace.bind>` around
+the code that reads the values. This standalone example writes a row with a
+column default that reads `Current.user_id`:
+
+```python
+from sqlalchemy import create_engine
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
+
+import fastapi_restly as fr
+
+
+class Current(fr.ContextNamespace):
+    user_id: fr.ContextParam[int]
 
 
 class Base(fr.ModelDefaults, DeclarativeBase):
@@ -105,35 +134,12 @@ class Base(fr.ModelDefaults, DeclarativeBase):
 class Note(fr.IDMixin, Base):
     title: Mapped[str]
     created_by_id: Mapped[int] = mapped_column(
-        init=False,
-        insert_default=Current.user_id,
+        init=False, insert_default=Current.user_id
     )
-```
 
-Pass `Current.user_id` without parentheses. SQLAlchemy calls it when
-inserting the row, usually during a flush. Keep the binding active until
-the flush finishes. Writing `Current.user_id()` would read the value
-when the model class is defined, before a request has bound anything.
-
-Use `onupdate=Current.user_id` for an update stamp.
-[Models](#structural-pieces) covers
-audit fields and their schemas. For tenancy, use the
-[SQLAlchemy session rule](#tenant-row-scoping) described there.
-
-(current-manual-binding)=
-## Bind in a script or job
-
-Outside FastAPI, use
-{meth}`Current.bind <fastapi_restly.clauses.ContextNamespace.bind>` around
-the code that reads the values. This standalone database example uses
-the `Note` model above:
-
-```python
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
 
 engine = create_engine("sqlite://")
-Note.metadata.create_all(engine)
+Base.metadata.create_all(engine)
 
 with Current.bind(user_id=42), Session(engine) as session:
     note = Note(title="Meeting notes")

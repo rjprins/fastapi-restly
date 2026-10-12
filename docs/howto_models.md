@@ -2,7 +2,8 @@
 
 Restly works with SQLAlchemy models on a declarative base of your own. The
 base is your class, with its own registry and `MetaData`, as in any
-SQLAlchemy project. Restly does not own it. It gives you two kinds of help:
+SQLAlchemy project. Restly does not own it. Restly's views and schemas work
+with any declarative model, and Restly gives two kinds of optional help:
 
 - {class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>` adds
   Restly's defaults to your base.
@@ -10,7 +11,19 @@ SQLAlchemy project. Restly does not own it. It gives you two kinds of help:
   {class}`fr.TimestampsMixin <fastapi_restly.models.TimestampsMixin>` add
   common columns to a model.
 
-All of it is optional. Restly's views also work with plain SQLAlchemy models.
+The model is also the place for the rules that every write must follow. A
+view is only one way to write a row. Scripts, jobs, imports and the
+{mod}`fr.objects <fastapi_restly.objects>` helpers write rows too, and they
+never run a view. SQLAlchemy runs a column default or a mapper event when it
+writes the row, whatever code built the row. So the model sets each value
+that every write path needs, such as the author or the tenant. A value that
+only the HTTP API sets belongs in the view's
+[`create` or `update`](#business-methods).
+
+[Where tenant, audit and soft-delete rules go](#structural-pieces) lists
+these rules. The
+[SaaS example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/saas)
+runs all of them.
 
 (model-defaults)=
 
@@ -149,14 +162,20 @@ The two mixins are SQLAlchemy dataclass mixins. On a base without
 The constructor of that model then takes keyword arguments only, and requires
 every field without a default.
 
+Your own mixins with columns, for a base with `fr.ModelDefaults`, must be
+dataclass mixins too. Subclass `MappedAsDataclass` and pass `kw_only=True`, as
+`AuditStamped` [below](#server-stamped-fields) does. SQLAlchemy warns about a
+mixin that is not a dataclass, and SQLAlchemy 2.1 rejects it.
+
 ## Use the base in your app
 
 Everything that asks for your models' tables takes the base:
 
 - {func}`fr.db.async_create_all(Base) <fastapi_restly.db.async_create_all>`
   creates the tables during development.
-- `fr.testing.configure_tests(base=Base)` builds and cleans the test tables,
-  as [Testing](howto_testing.md) shows.
+- `fr.testing.configure_tests(base=Base)` tells the test setup which tables
+  to clean between tests, and to create with `create_all=True`.
+  [Testing](howto_testing.md) shows it.
 - Alembic's `env.py` sets `target_metadata = Base.metadata`, as
   [Deploying](deploying.md) shows.
 
@@ -164,38 +183,12 @@ A base only knows the models that have been imported.
 [New & Existing Projects](howto_project_structure.md) shows how one module imports
 them all.
 
-## Models without Restly's defaults
-
-Restly's views and schemas work with any SQLAlchemy declarative model,
-dataclass or not. Models that you already have can stay on their own base, as
-[Use Your Existing Models](#existing-models) shows.
-
-Adding `fr.ModelDefaults` to a base that already has models changes those
-models:
-
-- Their constructors take keyword arguments only, and require every field
-  without a default.
-- `Mapped[datetime]` columns get a time zone. On PostgreSQL, `TIMESTAMP`
-  becomes `TIMESTAMP WITH TIME ZONE`. The migration must say how to read the
-  stored values, as [Deploying](#timezone-migration) shows.
-- Enum columns become strings. On PostgreSQL, a native `ENUM` becomes
-  `VARCHAR(64)`, so that needs a migration too.
-
-Alembic shows these column changes when it generates the migration. Review
-the migration before you run it.
-
-Put `fr.ModelDefaults` on the base itself. On a class below another
-declarative base, it raises
-{class}`fr.exc.RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`,
-because Restly's defaults change the registry of the whole base.
-
 (existing-models)=
 
-## Use Your Existing Models
+## Use your existing models
 
-If your project already has SQLAlchemy models on its own `DeclarativeBase`,
-you can use those models directly in a
-{class}`RestView <fastapi_restly.views.RestView>`:
+Models that you already have can stay on their own base. Restly's views and
+schemas work with any SQLAlchemy declarative model, dataclass or not:
 
 ```python
 import fastapi_restly as fr
@@ -218,101 +211,222 @@ class WorldView(fr.AsyncRestView):
     model = World
 ```
 
-{class}`RestView <fastapi_restly.views.RestView>` supports these models for
-default CRUD routes and
-[auto-generated schemas](#auto-generated-schemas). Pass
-the same base wherever Restly asks for your models' tables, as in
+The view gives `World` the default CRUD routes and
+[schemas generated from the model](#auto-generated-schemas). Pass the same
+base wherever Restly asks for your models' tables, as in
 `fr.db.async_create_all(AppBase)` and
 `fr.testing.configure_tests(base=AppBase)`.
 
-Restly's model defaults, such as dataclass constructors and datetimes with a
-time zone, are optional. [Models](howto_models.md) explains them,
-and what changes when you add them to a base that already has models.
+You can add `fr.ModelDefaults` to such a base later. It changes the models
+that the base already has:
 
-## Where structural concerns live
+- Their constructors take keyword arguments only, and require every field
+  without a default.
+- `Mapped[datetime]` columns get a time zone. On PostgreSQL, `TIMESTAMP`
+  becomes `TIMESTAMP WITH TIME ZONE`. The migration must say how to read the
+  stored values, as [Deploying](#timezone-migration) shows.
+- Enum columns become strings. On PostgreSQL, a native `ENUM` becomes
+  `VARCHAR(64)`, so that needs a migration too.
 
-- **Tenant filters** belong in SQLAlchemy session listeners. They apply
-  independently of the scope selected by a view or reference check.
-- **Read scopes** are clauses. The model namespace's
-  [default scope](#default-scope) covers RestView reads and reference
-  check, and a view {attr}`scope <fastapi_restly.views.BaseRestView.scope>`
-  replaces it for that view. Clauses compose with
-  {func}`fr.all_of <fastapi_restly.clauses.all_of>`.
-- **Server-stamped fields** are column defaults on the model, reading a
-  `fr.ContextNamespace` member when the row is written. A default fires on every
-  write path: the view verbs, a custom route that builds the object by hand,
-  the free `fr.objects` helpers, a bulk route. Nothing on the view has to run.
-- **Soft delete** is a verb, so it is a view mixin overriding
-  {meth}`delete <fastapi_restly.views.RestView.delete>`.
+Alembic shows these column changes when it generates the migration. Review
+the migration before you run it.
 
-Why not stamp from a view mixin? `create` and `update` are overridden from
-scratch: a `create` that hashes a password does not call `super()`, so a
-stamp hooked on the verb is silently skipped by every view that overrides it.
-The object utilities under the verbs (`make_new_object`, `update_object`,
-`save_object`) are not override points either, and a stamp there would still
-miss a hand-built object and the free helpers. The column covers all of them.
-
-(server-stamped-fields)=
-
-(write-path-values)=
-## Server-stamped fields: column defaults on the model
-
-A field the server owns (an audit id, a tenant id) is a column default that reads a bound {class}`fr.ContextNamespace <fastapi_restly.clauses.ContextNamespace>` member. It fires on every write path, whichever view or helper built the row, so nothing on the view has to run:
-
-```python
-class Article(fr.TimestampsMixin, fr.IDMixin, Base):
-    title: Mapped[str]
-    created_by_id: Mapped[int | None] = mapped_column(
-        ForeignKey("user.id"), init=False, insert_default=Current.user_id
-    )
-```
-
-`init=False` leaves the field out of the constructor. SQLAlchemy calls
-`Current.user_id` when it inserts the row. Pass the member without
-parentheses, as [Read the current user in a column default](#current-column-defaults)
-explains.
-
-Keep the field `fr.ReadOnly` on the schema and out of any [explicit write schema](#explicit-write-schemas). With `init=False`, a payload value for it would fail in the constructor. Stamping from the view instead, in `create`, only covers that verb: a `create` override does not call `super()`, and the free `fr.objects` helpers never see the view. See [Three structural pieces](#structural-pieces) for the tenant, audit, and soft-delete pieces the SaaS example ships.
-
-A derivation that needs more than a value, a slug from the title or a denormalised counter, is a SQLAlchemy `before_insert` mapper event on the same model:
-
-```python
-from sqlalchemy import event
-
-@event.listens_for(Article, "before_insert")
-def _set_slug(mapper, connection, target):
-    target.slug = slugify(target.title)
-```
-
-See SQLAlchemy's [mapper events documentation](https://docs.sqlalchemy.org/en/20/orm/events.html#mapper-events) for the full event API.
+Put `fr.ModelDefaults` on the base itself. On a class below another
+declarative base, it raises
+{class}`fr.exc.RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`,
+because Restly's defaults change the registry of the whole base.
 
 (structural-pieces)=
 
-## Three structural pieces
+## Where tenant, audit and soft-delete rules go
 
-The [SaaS example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/saas) ships the model mixins in
-[`app/models.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/models.py)
-and the view mixin in
+Each rule goes where it reaches every write or every read:
+
+| Rule | Where it goes |
+|---|---|
+| A value that every write path must set, such as a slug from the title | A column default or a mapper event on the model: [Set a value on every write path](#write-path-values) |
+| A value that the server owns, such as the author | A column default that reads `Current`: [Stamp the fields the server owns](#server-stamped-fields) |
+| Each tenant reads and writes only its own rows | A session listener and a stamped column: [Keep each tenant's rows apart](#tenant-row-scoping) |
+| Deleted rows are hidden from every read | The model's [default scope](#default-scope) |
+| `DELETE` marks the row instead of removing it | A view mixin that overrides `delete`: [Soft-delete rows](#soft-delete-mixin) |
+
+The SaaS example has these rules as mixins. The model mixins `TenantOwned`,
+`AuditStamped` and `SoftDeletable` are in
+[`app/models.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/models.py),
+and the view mixin `SoftDeleteMixin` is in
 [`app/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py).
 Copy them into your project as a starting point.
 
-(tenant-row-scoping)=
-### Tenant row scoping: a session rule plus a stamped column
+(write-path-values)=
 
-The tenant rule is not a scope. It must hold under every scope a view or a
-route can name, and for every reference check, so it lives at the session
-level, where SQLAlchemy already provides it: a `do_orm_execute` listener
-adds a
+## Set a value on every write path
+
+To decide where a value is set, ask which write paths must set it:
+
+- **Every write path**: the views, scripts, jobs, imports and the
+  `fr.objects` helpers. Put the value on the model, as a column default or a
+  mapper event.
+- **Only the HTTP API**: put the value in the view's
+  [`create` or `update`](#business-methods), such as a password hash from the
+  request body.
+
+A view cannot set a value for every write path. A `create` override often
+builds the row itself, without `super()`. Then a value that a view mixin sets
+in `create` is lost. The [domain utilities](#domain-utilities)
+`make_new_object`, `update_object` and `save_object` are final, so a view
+cannot change them either. And a script that builds a row, or calls the
+`fr.objects` helpers, never runs a view.
+
+A value from `Current`, such as the author, is a column default:
+[Stamp the fields the server owns](#server-stamped-fields) shows how. A value
+computed from other columns, such as a slug from the title, is a SQLAlchemy
+`before_insert` mapper event on the model:
+
+```python
+from sqlalchemy import event
+from sqlalchemy.orm import Mapped, mapped_column
+
+import fastapi_restly as fr
+
+
+class Article(fr.IDMixin, Base):
+    title: Mapped[str]
+    slug: Mapped[str] = mapped_column(init=False)
+
+
+@event.listens_for(Article, "before_insert")
+def _set_slug(mapper, connection, target):
+    target.slug = slugify(target.title)  # slugify is your own function
+```
+
+SQLAlchemy runs the event during the flush, just before it inserts the row.
+If the slug must change when the title changes, listen to `before_update`
+too. Mark `slug` as {data}`fr.ReadOnly <fastapi_restly.schemas.ReadOnly>` on
+the schema, so the request body cannot send it.
+
+A mapper event may change only the row that it receives, and it may run SQL
+on `connection`. To change other rows in the same flush, use the session's
+`before_flush` event. SQLAlchemy's
+[mapper events documentation](https://docs.sqlalchemy.org/en/20/orm/events.html#mapper-events)
+explains these rules.
+
+(server-stamped-fields)=
+
+## Stamp the fields the server owns
+
+The server decides some fields, such as who created a row and who changed it
+last. Make each one a column default that reads a member of your
+[`Current`](howto_current.md). This mixin stamps both fields on each model
+that uses it:
+
+```python
+from sqlalchemy import ForeignKey, orm
+
+import fastapi_restly as fr
+
+from app.current import Current
+
+
+class AuditStamped(orm.MappedAsDataclass, kw_only=True):
+    created_by_id: orm.Mapped[int | None] = orm.mapped_column(
+        ForeignKey("user.id"), init=False, insert_default=Current.user_id
+    )
+    updated_by_id: orm.Mapped[int | None] = orm.mapped_column(
+        ForeignKey("user.id"),
+        init=False,
+        insert_default=Current.user_id,
+        onupdate=Current.user_id,
+    )
+
+
+class Document(AuditStamped, fr.TimestampsMixin, fr.IDMixin, Base):
+    title: orm.Mapped[str]
+```
+
+Each argument has one job:
+
+- `insert_default` gives the value for a new row. On a base with
+  `fr.ModelDefaults`, `default` is the default of the constructor, so the
+  value for the `INSERT` goes in `insert_default`.
+- `onupdate` gives the value for each `UPDATE` of the row. SQLAlchemy sends
+  an `UPDATE` only when a column of the row has changed.
+- `init=False` keeps the field out of the constructor.
+- `Current.user_id` has no parentheses. SQLAlchemy calls it when it writes
+  the row, as
+  [Read the current user in a column default](#current-column-defaults)
+  explains.
+
+Then mark each field
+{data}`fr.ReadOnly <fastapi_restly.schemas.ReadOnly>` on the view's schema,
+and leave it out of any [explicit write schema](#explicit-write-schemas):
+
+```python
+class DocumentSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
+    title: str
+    created_by_id: fr.ReadOnly[int | None] = None
+    updated_by_id: fr.ReadOnly[int | None] = None
+```
+
+`init=False` does not protect the field from the request body. Restly sets
+each writable field that the constructor does not take after it builds the
+object. So without `fr.ReadOnly`, a client could choose the author, and the
+column default would not run. With `fr.ReadOnly`, the value always comes from
+`Current`.
+
+A column default runs on every write path: a view's `create`, a custom route
+that builds the row itself, the `fr.objects` helpers, a bulk route, a script.
+Each of them must have `Current` bound when it flushes. If the member is not
+bound, the flush raises SQLAlchemy's `StatementError` around a `LookupError`.
+It never writes `None` instead. A script or a job binds the values around its
+writes, as [Bind in a script or job](#current-manual-binding) shows:
+
+```python
+with Current.bind(user_id=1):
+    session.add(Document(title="Imported"))
+    await session.flush()
+```
+
+Make the columns nullable if some rows have no author. In the SaaS example,
+the first admin comes from a migration. A migration writes through its own
+table objects and runs no ORM default, so that row has no creator. The SaaS
+example runs these stamps as `AuditStamped` in
+[`app/models.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/models.py).
+
+### Two foreign keys to the same table
+
+`created_by_id` and `updated_by_id` both point at `user.id`. A model can
+already have a relationship to `User`, such as `assignee` on `Task`. Then
+SQLAlchemy cannot tell which foreign key that relationship uses, and it raises
+`AmbiguousForeignKeysError`. Name the foreign key on the relationship:
+
+```python
+class Task(AuditStamped, fr.TimestampsMixin, fr.IDMixin, Base):
+    assignee_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("user.id"))
+    assignee: orm.Mapped[User] = orm.relationship(foreign_keys="Task.assignee_id")
+
+    # AuditStamped adds two more foreign keys to user.id.
+    # Without foreign_keys="...", the assignee relationship is ambiguous.
+```
+
+(tenant-row-scoping)=
+
+## Keep each tenant's rows apart
+
+In a multi-tenant app, each organization reads and writes only its own rows.
+The rule has two halves: a filter on every read, and a column that every write
+stamps. Both read the tenant from `Current`.
+
+The tenant rule is not a [scope](#default-scope). A view or a route can
+replace its scope, but the tenant rule must hold under every scope and for
+every reference check. So it lives on the SQLAlchemy session. A
+`do_orm_execute` listener adds a
 [`with_loader_criteria`](https://docs.sqlalchemy.org/en/20/orm/queryguide/api.html#sqlalchemy.orm.with_loader_criteria)
-option to ORM entity and relationship reads. The values
-it reads come from a generated dependency (`Current.depends(...)`, see the
-SaaS example) that binds them once per request, and they are never `None`:
-a request without an authenticated identity is refused by the dependency's
-sources (401), and the admin is a conditional, not an absent value.
+option to every ORM read of an entity or a relationship:
 
 ```python
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey, orm
+
 import fastapi_restly as fr
 
 
@@ -371,88 +485,120 @@ class Project(TenantOwned, fr.TimestampsMixin, fr.IDMixin, Base):
     name: orm.Mapped[str]
 ```
 
-The column is the write half. The tenant is not a constructor argument and
-not a payload field: `init=False` keeps it out of the constructor,
-`fr.ReadOnly` on the schema keeps it out of the body, and the insert
-default stamps it at flush from the same member the listener reads. A row
-lands in the organization the request acts in, whoever builds it; an admin
-writing into another tenant acts as that tenant, and the stamp follows. A
-verb that needs the value before the flush reads `Current.org_id()`
-itself, as the example's slug probe does.
+The column is the write half. `init=False` keeps the tenant out of the
+constructor, and `fr.ReadOnly` on the schema keeps it out of the request body.
+The insert default stamps it during the flush, from the same member that the
+listener reads. So a row lands in the organization that the request acts in,
+whatever code builds it. An admin who writes into another tenant acts as that
+tenant, and the stamp follows. Code that needs the tenant before the flush,
+such as a mapper event or a check for a unique name, reads `Current.org_id()`
+itself, because the insert default has not run yet.
 
-Attach the option even when the query starts from an unrestricted model:
-`select(Organization).options(joinedload(Organization.users))` must filter
-the users. Relationship queries also receive the option, including when
-their parent was inserted rather than loaded by a query. Keep the default
-`propagate_to_loaders=True` so joined eager loads receive the criteria.
+Bind the values once per request with a generated dependency,
+`Current.depends(...)`, as
+[Bind from a FastAPI dependency](#current-request-binding) shows. The SaaS
+example binds them in
+[`app/current.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/current.py).
+Its sources answer 401 to a request without an identity, so the values are
+never `None`. An admin is a flag, `Current.is_admin`, not a missing value.
 
-A relationship load inherits the options of the statement that loaded its
-parent. Without the `TenantCriteria` marker the listener adds a second copy of
-each criterion to that load, and a chain of loads, such as a task's subtasks,
-gains one more copy at every level. The marker travels with the criteria, so
-the listener skips a statement that has it.
+### What the listener covers
 
-[`bindparam(callable_=...)`](https://docs.sqlalchemy.org/en/20/core/sqlelement.html#sqlalchemy.sql.expression.bindparam)
-reads the identity only when the generated SQL uses that parameter. A plain
-lookup query needs no identity. A protected read without one fails with a
-context `LookupError`, wrapped in SQLAlchemy's `StatementError`. The lambdas
-are needed here because `bindparam` tests the callable's truth value, which
-`ContextParam` rejects.
-
-Keep `Current.bind(...)` active for the session's lifetime. Use a new session
-for a different identity: criteria do not remove objects already loaded into
-the session, and `session.get()` returns such an object without a query.
+- The listener adds the option also to a query that starts from a model
+  without a tenant, because that query can load tenant rows through a
+  relationship. `select(Organization).options(joinedload(Organization.users))`
+  must filter the users.
+- Relationship loads get the option too, also when their parent was inserted
+  and not loaded by a query. Keep the default `propagate_to_loaders=True`, so
+  that joined eager loads get the criteria.
+- A relationship load receives the options of the statement that loaded its
+  parent. Without the `TenantCriteria` marker, the listener would add a second
+  copy of each criterion to that load. A chain of loads, such as the subtasks
+  of a task, would add one more copy at each level. The marker goes with the
+  criteria, so the listener skips a statement that has it.
+- [`bindparam(callable_=...)`](https://docs.sqlalchemy.org/en/20/core/sqlelement.html#sqlalchemy.sql.expression.bindparam)
+  reads the identity only when the SQL uses that parameter. So a query that
+  reads no tenant rows needs no identity. A read of tenant rows without an
+  identity fails with a `LookupError`, wrapped in SQLAlchemy's
+  `StatementError`. The lambdas are needed because `bindparam` tests whether
+  its callable is true, and a `ContextParam` raises on that test.
+- Keep `Current.bind(...)` active as long as the session lives. Use a new
+  session for a different identity. The criteria do not remove objects that
+  the session has already loaded, and `session.get()` returns such an object
+  without a query.
 
 A model that reaches its tenant through a relationship needs its own
-criterion. The SaaS example registers one for `Task` through its project, for
-`TaskLabel` through both its task and its label, and for `UploadLine` through
-its upload. Write each criterion as a lambda. SQLAlchemy analyses a lambda
-once and caches it. It processes a plain expression again for every
-statement, including statements that never read the model.
+criterion. The SaaS example has one for `Task` through its project, for
+`TaskLabel` through its task and its label, and for `UploadLine` through its
+upload. Write each criterion as a lambda. SQLAlchemy analyses a lambda once
+and caches it. It processes a plain expression again for every statement,
+also for statements that never read the model.
 
-This is an ORM read filter, not database-level access control. Raw SQL, Core
-table queries, and arbitrary writes need their own checks. The criteria reach
-a statement only through an entity it selects or joins.
-`select(func.count()).where(Task.project_id == id)` names `Task` only in its
-`WHERE` clause, so it counts every tenant's tasks. Add `.select_from(Task)`.
-Relationship predicates built with `.any()` or `.has()` do not automatically
-receive the criteria inside their `EXISTS` subquery. Include the tenant
-predicate there, as the SaaS criteria do.
+### What the listener does not cover
 
-#### Admin bypass: runtime flag, not a parallel view tree
+The listener filters ORM reads. It is not access control in the database.
+Raw SQL, Core table queries and writes need their own checks. The criteria
+reach a statement only through an entity that the statement selects or joins:
 
-The ``is_admin`` conditional in the tenant listener points at a broader
-decision. Admin endpoints often do not need a parallel view hierarchy; a
-bound per-request flag lets a rule skip its filter, and a missing binding
-fails loudly. This keeps the route tree simple, but every rule that should
-widen for an admin must consult the flag. A parallel admin view tree (a
-second view with its own ``scope``) gives class-time guarantees at the
-cost of more classes.
+- `select(func.count()).where(Task.project_id == id)` names `Task` only in
+  its `WHERE` clause, so it counts the tasks of every tenant. Add
+  `.select_from(Task)`.
+- A relationship condition built with `.any()` or `.has()` does not get the
+  criteria inside its `EXISTS` subquery. Add the tenant condition there
+  yourself, as the SaaS criteria do.
+
+### Let an admin read every tenant
+
+The listener checks `tenant_is_admin`, so an admin reads across tenants
+through the same views. A flag that each request binds lets a rule skip its
+filter. If the flag is not bound, the read fails with an error. This keeps one
+set of routes, but every rule that an admin may skip must check the flag. For the rules in a scope, the other choice is a second admin view with
+[its own scope](#view-scope). That needs more classes, but each view shows in
+its class what it can read. A second view does not change the tenant rule,
+because the rule lives on the session.
 
 (soft-delete-mixin)=
-### Soft delete: a scope clause plus a delete mixin
 
-The read half is one unconditional predicate in the model's namespace,
-`is_deleted`, declared with the composed model under
-[Composing on a view](#composing-on-a-view): the default scope hides
-deleted rows for every read and every reference check, and the trash is
-reachable only through an explicit surface, a view declaring
-`scope = ProjectClauses.trashed` (see [Scopes](#view-scope)). A query
-parameter can never widen a scope. The write half turns `delete` into a
-timestamp flip:
+## Soft-delete rows
+
+A soft delete marks a row as deleted and keeps it in the table. It has three
+parts:
+
+- The model has a `deleted_at` column.
+- The model's [default scope](#default-scope) hides deleted rows from every
+  read and every reference check.
+- A view mixin overrides `delete`, so `DELETE` sets `deleted_at` instead of
+  removing the row.
+
+The column comes from a model mixin:
 
 ```python
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime
+
+from sqlalchemy import orm
 
 
 class SoftDeletable(orm.MappedAsDataclass, kw_only=True):
     deleted_at: orm.Mapped[datetime | None] = orm.mapped_column(default=None)
+```
+
+(soft-delete-recipe)=
+
+### Make `DELETE` set a timestamp
+
+Override the {meth}`delete <fastapi_restly.views.RestView.delete>` business
+method. It receives the loaded row. Set the timestamp, flush, and do not call
+`super()`, because that would remove the row:
+
+```python
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Any
+
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class SoftDeleteMixin:
-    """``delete`` flips ``deleted_at`` instead of removing the row."""
+    """``delete`` sets ``deleted_at`` instead of removing the row."""
 
     if TYPE_CHECKING:
         session: AsyncSession
@@ -462,36 +608,22 @@ class SoftDeleteMixin:
         await self.session.flush()
 ```
 
-No `hasattr` guard and no fallback to `super()`: the mixin goes on views of
-`SoftDeletable` models, and the column is there because the model said so.
-The flip overrides the {meth}`delete <fastapi_restly.views.RestView.delete>`
-business method, not the handler.
+If only one view needs it, put the same `delete` method on that view. The
+mixin has no `hasattr` check and no fallback to `super()`. It goes on views of
+`SoftDeletable` models, so the column is always there.
+
 {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` still
-loads, authorizes, and commits; the mixin only changes what "delete" does. To
-bring a flipped row back, see
-[A route names its own scope](#per-read-scope).
-
-(soft-delete-recipe)=
-
-#### `delete`: soft-delete instead of removing the row
-
-{meth}`delete <fastapi_restly.views.RestView.delete>` also receives the loaded object. Flip a timestamp instead of deleting:
-
-```python
-    async def delete(self, obj):
-        obj.deleted_at = datetime.now(timezone.utc)
-        await self.session.flush()
-        # Do not call super(); that would remove the row.
-```
-
-For reusable soft-delete that also hides rows on read, see `SoftDeleteMixin` in [Soft delete](#soft-delete-mixin).
+loads the row through the scope, calls `authorize` and commits. The mixin only
+changes what "delete" does. A query parameter can never widen a scope, so a
+client cannot ask for deleted rows. To list the deleted rows or restore one,
+add a route that [names its own scope](#per-read-scope).
 
 (composing-on-a-view)=
 
-#### Composing on a view
+### Put the parts together
 
-The model declares what it is, the namespace declares the read half
-against it, and a view stacks only the verb mixin:
+The model declares its columns, and the model's clause namespace declares the
+read rule. A view adds only the `delete` mixin:
 
 ```python
 class Project(TenantOwned, AuditStamped, SoftDeletable, fr.TimestampsMixin, fr.IDMixin, Base):
@@ -502,8 +634,7 @@ class ProjectClauses(fr.ClauseNamespace):
     model = Project
 
     is_deleted = fr.where_clause(Project.deleted_at.is_not(None))
-    default_scope = fr.none_of(is_deleted)  # the tenant rule is the session's
-    trashed = is_deleted
+    default_scope = fr.none_of(is_deleted)  # the session has the tenant rule
 
 
 @fr.include_view(app)
@@ -515,65 +646,20 @@ class ProjectView(SoftDeleteMixin, fr.AsyncRestView):
 ```
 
 {meth}`get_many <fastapi_restly.views.RestView.get_many>`,
-{meth}`count <fastapi_restly.views.RestView.count>`, and
-{meth}`get_one <fastapi_restly.views.RestView.get_one>` all apply the
-default scope. The session listener also applies the tenant predicate to those
-reads and to every reference check. Together they cover lists, totals,
-single-row reads, updates, and deletes. The columns stamp themselves on every
-write.
+{meth}`count <fastapi_restly.views.RestView.count>` and
+{meth}`get_one <fastapi_restly.views.RestView.get_one>` apply the default
+scope. So lists, totals and single reads hide deleted rows. Updates and
+deletes load the row through `get_one`, so they return 404 for a deleted row.
+The session listener adds the tenant rule to these reads and to every
+reference check. The columns stamp themselves on every write. The SaaS example
+runs this view in
+[`app/projects/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py).
 
-### Audit stamps: two column defaults
+## See also
 
-`created_by_id` and `updated_by_id` are the plain case, a default per column:
-
-```python
-class AuditStamped(orm.MappedAsDataclass, kw_only=True):
-    created_by_id: orm.Mapped[int | None] = orm.mapped_column(
-        ForeignKey("user.id"), init=False, insert_default=Current.user_id
-    )
-    updated_by_id: orm.Mapped[int | None] = orm.mapped_column(
-        ForeignKey("user.id"),
-        init=False,
-        insert_default=Current.user_id,
-        onupdate=Current.user_id,
-    )
-```
-
-On a dataclass base `default` is the constructor default, so the insert-time
-callable goes in `insert_default`; `onupdate` fires on every UPDATE that
-changes the row. Keep these fields `fr.ReadOnly` on the schema: with
-`init=False` a body value would otherwise reach the constructor and fail
-loudly there.
-
-SQLAlchemy calls the member when it writes the row, and an unbound member
-raises an error rather than stamping `None`. The columns stay
-nullable for one row: the first user has no creator and comes from a
-migration, which writes through its own table objects and fires no ORM
-default. A worker or a seed script binds context around its writes:
-
-```python
-with Current.bind(org_id=7, user_id=1, is_admin=False):
-    session.add(Project(name="Imported"))
-    await session.flush()
-```
-
-#### Multiple FK columns to the same table need explicit `foreign_keys=`
-
-`AuditStamped` adds `created_by_id` and `updated_by_id` columns,
-both pointing at `User`. If the model already has another FK to `User`
-(say, `assignee_id` on `Task`), SQLAlchemy cannot disambiguate the
-existing relationship and raises `AmbiguousForeignKeysError`. Pin the
-relationship explicitly:
-
-```python
-class Task(AuditStamped, fr.TimestampsMixin, fr.IDMixin, Base):
-    assignee_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
-    assignee: Mapped[User] = relationship(foreign_keys="Task.assignee_id")
-
-    # Audit columns from AuditStamped add two more FKs to user.id.
-    # Without foreign_keys="...", the assignee relationship is ambiguous.
-```
-
-This is the cost of opting into audit stamping on an already-related
-model. Document it locally so the next reader does not have to rediscover
-it.
+- [Current & ContextParam](howto_current.md): bind the values that column
+  defaults and the tenant listener read.
+- [Scopes](scopes.md): hide rows from every read, and read past the scope on
+  one route.
+- [Request Lifecycle & Hooks](#business-methods): values that only the HTTP
+  API sets, in `create` and `update`.
