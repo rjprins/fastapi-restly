@@ -32,8 +32,6 @@ import fastapi_restly as fr
   signatures.
 - [View Reference](view_reference.md) lists everything you can set, override,
   or call on a view, on one page.
-- [Technical Details](technical_details.md) explains how Restly works inside,
-  such as schema generation and engine defaults.
 - [Changelog](changelog.md) lists the changes in each release.
 
 ```{toctree}
@@ -42,6 +40,5 @@ import fastapi_restly as fr
 
 api/index
 view_reference
-technical_details
 changelog
 ```
