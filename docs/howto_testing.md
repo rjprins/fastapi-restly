@@ -249,6 +249,8 @@ API, ask for a session fixture, or use `fr.open_session()` /
 to the test, not to the client fixture, so either form receives the same
 cleanup; see [the fixture reference](#pytest-fixture-reference).
 
+(test-databases-and-migrations)=
+
 ## Test databases and migrations
 
 `base=` names your models. It is what `configure_tests()` cleans between
@@ -306,7 +308,7 @@ Alembic. Build it once per session rather than per test. Under the default
 rollback mode, a table created inside a test belongs to that test's transaction
 and is discarded with it.
 
-See [Migrations with Alembic](deploying.md#migrations-with-alembic) for
+See [Set up migrations with Alembic](#alembic) for
 production migration setup.
 
 ## Cleaning up between tests

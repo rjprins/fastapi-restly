@@ -317,11 +317,11 @@ the application factory registers after it calls
 Add each new view to `VIEWS`. Each view imports its own models, so importing
 `main.py` imports every model, and `Base.metadata` then holds the whole
 schema. Alembic's `env.py` imports `main.py` for this reason; see
-[Migrations with Alembic](#alembic). A model that no view imports, such as an
+[Set up migrations with Alembic](#alembic). A model that no view imports, such as an
 outbox table, needs its own import, which that section also explains.
 
 Importing `main.py` must not build the application. `create_app()` builds it,
-and only the server calls it. [Running the app](#running-the-app) shows how,
+and only the server calls it. [Run the app](#running-the-app) shows how,
 and why the application object does not belong in `main.py`. The lifespan in
 this file closes the engine on shutdown; see
 [Close the engine on shutdown](#engine-disposal).

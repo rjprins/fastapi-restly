@@ -1,15 +1,29 @@
 # Deploying
 
-This page covers the parts of a production deployment that are specific to
-FastAPI-Restly. Everything else (uvicorn workers, gunicorn, TLS, reverse
-proxies, Docker, behind-a-proxy headers) is already covered well in
-[FastAPI's deployment docs](https://fastapi.tiangolo.com/deployment/) and is
-not duplicated here.
+A Restly application is a FastAPI application, so
+[FastAPI's deployment docs](https://fastapi.tiangolo.com/deployment/) cover
+most of a deployment: workers, TLS, reverse proxies and Docker. This page
+covers only what Restly adds.
 
-## Database configuration
+In production, the server calls an application factory, `create_app()`, once
+in each worker process. The factory reads the settings, builds the engine,
+gives it to {func}`fr.configure() <fastapi_restly.db.configure>`, and
+registers the views. Importing a module builds nothing, so Alembic and the
+test suite can import your code without a configured environment. In
+production, Alembic creates and changes the tables, not the application. Its
+`env.py` imports `main.py`, which imports every model.
 
-In production, drive the engine from environment variables. A small
-`pydantic-settings` shim keeps the setup easy to read and 12-factor friendly:
+The sections below follow that order: the settings, the factory, the command
+that runs it, the migrations, and a health check.
+[New & Existing Projects](#compose-in-one-place) shows where these files sit
+in the project.
+
+(production-settings)=
+
+## Read the database settings from the environment
+
+In production, take the database URL and the pool size from environment
+variables. A small `pydantic-settings` class holds them:
 
 ```python
 import fastapi_restly as fr
@@ -22,107 +36,26 @@ class Settings(fr.utils.CurrentSettingsMixin, BaseSettings):
     db_max_overflow: int = 10
 ```
 
-{class}`CurrentSettingsMixin <fastapi_restly.utils.CurrentSettingsMixin>` gives
-the class one shared instance without building it at import, so importing your
-package never requires a configured environment. `Settings.current` reads
-`DATABASE_URL` and the pool fields the first time something asks. [The
-production template below](#production-main-template) reads it inside
-`create_app()` and passes the values into
-{func}`fr.configure() <fastapi_restly.db.configure>` through an explicit
-engine, which is what lets you size the pool. `Settings.use(...)` installs an
-instance instead, which is how a test suite hands over settings it built
-itself; see [Testing](howto_testing.md).
+{class}`CurrentSettingsMixin <fastapi_restly.utils.CurrentSettingsMixin>`
+gives the class one shared instance, but it does not build it when the module
+is imported. So importing your package never needs a configured environment.
+`Settings.current` reads `DATABASE_URL` and the pool fields the first time
+that code asks for them. `Settings.use(...)` installs an instance instead;
+a test suite does this to give the application its test settings, as
+[Testing](howto_testing.md) shows.
 
-Sizing is the part Restly leaves to you. Given a PostgreSQL URL it already sets
-`pool_pre_ping=True` and `pool_recycle=1800`, so the template below repeats
-`pool_pre_ping` only to keep it visible next to the settings it belongs with;
-see [Engine Defaults](#engine-defaults) for the full list
-and for how to decline it. If your app already has an engine, pass that one
-instead; see
-[Reuse Your Existing Engine](#reuse-existing-engine).
-
-(alembic)=
-## Migrations with Alembic
-
-In production, never call `metadata.create_all()`; use Alembic instead.
-For the recommended `postgresql+asyncpg` setup, initialise Alembic with its
-async template once in your project root:
-
-```bash
-alembic init -t async alembic
-```
-
-The generic template created by `alembic init alembic` builds a synchronous
-engine and cannot open an async URL. Use it only when Alembic receives a
-separate synchronous database URL. Alembic's
-[asyncio recipe](https://alembic.sqlalchemy.org/en/latest/cookbook.html#using-asyncio-with-alembic)
-shows the same template and how to adapt an existing environment.
-
-Point `alembic/env.py` at the metadata of your declarative base, the `Base`
-that your models inherit from.
-Metadata covers the models that have been imported, so `env.py` needs a module
-that has seen all of them. That is `main.py`: it reaches view registration,
-which reaches every view, and each view imports its model. Because the factory
-builds nothing at import time, this costs the imports and nothing else:
-
-```python
-# alembic/env.py
-import app.main  # noqa: F401  (imports every view, and each view its model)
-from app.models import Base
-
-target_metadata = Base.metadata
-```
-
-Models that no view reaches, such as an outbox or audit table, need importing
-wherever they are used, at module level rather than inside a function. Run
-`alembic check` in CI to catch one that is missed: it reports the absent model
-as a dropped table rather than failing quietly.
-
-(timezone-migration)=
-
-### Give an existing datetime column a time zone
-
-A base with
-{class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>` maps plain
-`Mapped[datetime]` columns to `DateTime(timezone=True)`. On PostgreSQL,
-upgrading an existing naive timestamp column requires an explicit
-interpretation of the stored values. If they
-represent UTC, use a reviewed migration such as:
-
-```python
-import sqlalchemy as sa
-from alembic import op
-
-op.alter_column(
-    "event",
-    "occurred_at",
-    type_=sa.DateTime(timezone=True),
-    postgresql_using="occurred_at AT TIME ZONE 'UTC'",
-)
-```
-
-A bare type change can reinterpret values in the server's local timezone. Use
-`mapped_column(DateTime())` on the model only when the column intentionally
-stores a timezone-free wall-clock value.
-
-Run migrations as part of your release or startup pipeline:
-
-```bash
-alembic upgrade head
-```
-
-To have tests exercise the same migration path, pass `alembic_upgrade=True` to
-{func}`fr.testing.configure_tests() <fastapi_restly.testing.configure_tests>`.
-Restly then runs `alembic upgrade head` against the test database before the
-first test. See
-[Test databases and migrations](howto_testing.md#test-databases-and-migrations).
+Restly does not choose a pool size, so set it yourself. To do that, build the
+engine yourself and pass it to `fr.configure()`, as the template below does.
+Restly's [engine defaults](#engine-defaults) apply only to an engine that
+Restly builds from a URL. For this reason, the template also sets
+`pool_pre_ping=True` itself. If your application already builds an engine,
+pass that one; see [Reuse your existing engine](#reuse-existing-engine).
 
 (production-main-template)=
 
 ## A production `main.py` template
 
-With settings and migrations in place, the pieces combine into one small
-application factory:
+With these settings, the application factory looks like this:
 
 ```python
 from contextlib import asynccontextmanager
@@ -161,45 +94,37 @@ def create_app() -> FastAPI:
     return app
 ```
 
-Note four details in this template:
+Three details matter in production:
 
-- The factory keeps configuration out of module import: settings are read and
-  the engine is built when `create_app()` runs, so a test suite can install its
-  own settings first and call the same factory. See
-  [Testing](howto_testing.md).
-- The `VIEWS` tuple keeps view definitions free of registration side effects
-  and makes `main.py` the one application composition boundary; see
-  [New & Existing Projects](howto_project_structure.md).
-- {func}`fr.configure(app, ...) <fastapi_restly.db.configure>` installs the default exception handlers
-  (currently the translator that turns `IntegrityError` into a 409 response;
-  see [Database conflicts](#default-exception-handling)).
-  Pass `install_default_exception_handlers=False` to opt out. `health="/health"`
-  mounts the [liveness endpoint](#health-checks).
-- The engine belongs to the app the factory built: `engine.dispose()` in
-  `lifespan` cleans up the connection pool on shutdown so workers exit
-  promptly. Restly never disposes an engine itself, so an application that
-  configures from a URL instead reaches its engine through
-  {func}`fr.db.get_async_engine() <fastapi_restly.db.get_async_engine>`; see
-  [Engine Disposal](#engine-disposal).
+- The factory reads the settings and builds the engine only when it runs. So
+  a test suite can install its own settings first, and then call the same
+  factory.
+- The engine belongs to the app that the factory built. The lifespan disposes
+  it, so the connections close and the workers exit quickly; see
+  [Close the engine on shutdown](#engine-disposal).
+- `fr.configure(app, ...)` also installs the handler that turns an
+  `IntegrityError` into a 409 response; see
+  [Database conflicts](#default-exception-handling). `health="/health"` adds
+  the [health check](#health-checks).
+
+`VIEWS` is the one place where the application registers its views;
+[Compose in one place](#compose-in-one-place) explains it. The SaaS example
+builds its application this way
+([`app/main.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/main.py)).
 
 (running-the-app)=
 
-## Running the app
+## Run the app
 
-Use any production ASGI runner. The most common options are
-[uvicorn](https://www.uvicorn.org/) and
-[gunicorn with uvicorn workers](https://www.uvicorn.org/deployment/#gunicorn).
-See [FastAPI's deployment docs](https://fastapi.tiangolo.com/deployment/)
-for the full picture, including TLS, reverse proxies, and Docker.
-
-A minimal invocation runs the factory directly:
+Use any production ASGI server. [Uvicorn](https://www.uvicorn.org/) is the
+most common one. It can call the factory itself:
 
 ```bash
 uvicorn "app.main:create_app" --factory --host 0.0.0.0 --port 8000 --workers 4
 ```
 
-When your platform expects an application object rather than a factory, put it
-in its own module and leave `main.py` alone:
+Some platforms and tools need an application object, not a factory. Put that
+object in its own module, and leave `main.py` alone:
 
 ```python
 # app/asgi.py
@@ -208,47 +133,132 @@ from .main import create_app
 app = create_app()
 ```
 
-`uvicorn app.asgi:app` then works, while `main.py` stays free to import. The
-FastAPI CLI cannot call a factory, so name that module for it and
-`fastapi dev` and `fastapi run` work too:
+Then `uvicorn app.asgi:app` works, and `main.py` can still be imported
+without building anything. The FastAPI CLI cannot call a factory, so name
+this module in `pyproject.toml`. Then `fastapi dev` and `fastapi run` work
+too:
 
 ```toml
 [tool.fastapi]
 entrypoint = "app.asgi:app"
 ```
 
-Do not put `app = create_app()` at the bottom of `main.py` instead: with
-required settings that makes importing the module require `DATABASE_URL`
-everywhere, including `conftest.py` and `alembic/env.py`. Nothing inside the
-package should import `asgi.py`; only the server does. Either way, build the
-application once per process: Restly's session configuration is process-wide,
-so a later factory call re-points every earlier app's requests at the new
-database too. See [how a factory's apps share one
-configuration](#factory-apps-share-one-configuration).
+Do not put `app = create_app()` at the end of `main.py` instead. With
+required settings, importing `main.py` would then need `DATABASE_URL`
+everywhere, also in `conftest.py` and in `alembic/env.py`. Nothing in the
+package should import `asgi.py`; only the server does.
 
-Sync {class}`RestView <fastapi_restly.views.RestView>` endpoints run on FastAPI's threadpool, so worker count
-still has the usual effect; async {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` endpoints share the
-event loop within a worker. Do not use `--reload` in production.
+Build the application only once in each process. Restly's database
+configuration belongs to the process, so a second call to the factory points
+the requests of every earlier app at the new database too; see
+[one configuration per process](#one-configuration-per-process).
+
+Sync {class}`RestView <fastapi_restly.views.RestView>` endpoints run on
+FastAPI's thread pool. Async
+{class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` endpoints share
+the event loop of their worker. In both cases, more workers serve more
+requests at the same time. Do not use `--reload` in production.
+
+(alembic)=
+
+## Set up migrations with Alembic
+
+In production, do not call `metadata.create_all()`. Use Alembic. For the
+recommended `postgresql+asyncpg` setup, create the Alembic environment once,
+with Alembic's async template, in the root of your project:
+
+```bash
+alembic init -t async alembic
+```
+
+The generic template that `alembic init alembic` creates builds a sync engine,
+and it cannot open an async URL. Use it only when Alembic gets a separate
+sync database URL. Alembic's
+[asyncio recipe](https://alembic.sqlalchemy.org/en/latest/cookbook.html#using-asyncio-with-alembic)
+shows the same template, and how to change an existing environment.
+
+Then point `alembic/env.py` at the metadata of your declarative base, the
+`Base` that your models inherit from. The metadata knows only the models that
+have been imported. So `env.py` imports `main.py`: `main.py` imports every
+view, and each view imports its models. Because the factory builds nothing
+at import time, this import costs nothing else:
+
+```python
+# alembic/env.py
+import app.main  # noqa: F401  (imports every view, and each view its model)
+from app.models import Base
+
+target_metadata = Base.metadata
+```
+
+A model that no view imports, such as an outbox table or an audit table, is
+not in the metadata after that import. Import it at module level in the code
+that uses it, not inside a function. If only a worker or a script uses it,
+import it in `main.py` next to `VIEWS`. Run `alembic check` in CI: it reports
+a missing model as a dropped table, so you see the mistake.
+
+The `env.py` files of the
+[starter](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/starter/alembic/env.py)
+and the
+[SaaS example](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/alembic/env.py)
+are complete versions of this setup. They read the database URL from the
+application's settings when Alembic gets none.
+
+Run the migrations when you release, or when the application starts:
+
+```bash
+alembic upgrade head
+```
+
+Tests can run the same migrations: pass `alembic_upgrade=True` to
+{func}`fr.testing.configure_tests() <fastapi_restly.testing.configure_tests>`;
+see [Build the test schema](#test-databases-and-migrations).
+
+(timezone-migration)=
+
+### Give an existing datetime column a time zone
+
+A base with {class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>`
+maps a plain `Mapped[datetime]` column to `DateTime(timezone=True)`. On
+PostgreSQL, you must say how to read the stored values when you change an
+existing column without a time zone. If the values are in UTC, use a
+migration such as this one, and review it:
+
+```python
+import sqlalchemy as sa
+from alembic import op
+
+op.alter_column(
+    "event",
+    "occurred_at",
+    type_=sa.DateTime(timezone=True),
+    postgresql_using="occurred_at AT TIME ZONE 'UTC'",
+)
+```
+
+A type change without `postgresql_using` can read the values in the local
+time zone of the server. Use `mapped_column(DateTime())` on the model only for
+a column that stores a time without a time zone on purpose.
 
 (health-checks)=
 
-## Health checks
+## Add a health check
 
-Naming a path in {func}`fr.configure() <fastapi_restly.db.configure>` mounts an
-endpoint there:
+When you name a path in {func}`fr.configure() <fastapi_restly.db.configure>`,
+Restly adds an endpoint there:
 
 ```python
 fr.configure(app, async_engine=engine, health="/health")
 ```
 
-`GET /health` then answers `200` with `{"status": "ok"}`, and appears in `/docs`
-like any other route. The path is yours to choose; `/healthz` and `/up` are
-common alternatives. Omit the argument and there is no such route, and if your
-application already has one at that path, Restly leaves it alone.
+`GET /health` then answers `200` with `{"status": "ok"}`, and it shows in
+`/docs` like any other route. You choose the path; `/healthz` and `/up` are
+also common. Without the argument, Restly adds no route. If your application
+already has a route at that path, Restly leaves it alone.
 
-This is a liveness check: it reports that the process is up and answering, and
-makes no database round-trip. It suits a probe that restarts the container on
-failure:
+This is a liveness check: it shows that the process is up and answers. It
+does not query the database. It fits a probe that restarts the container
+when the check fails:
 
 ```yaml
 livenessProbe:
@@ -257,14 +267,17 @@ livenessProbe:
     port: 8000
 ```
 
-A readiness probe, which takes the instance out of rotation rather than
-restarting it, is the place to check the database and other dependencies.
-Write that as an ordinary route so its checks and timeouts stay yours.
+A readiness probe takes the instance out of service instead of restarting it.
+That is the place to check the database and other services. Write it as an
+ordinary route, so that you control its checks and its timeouts.
 
 ## See also
 
-- [New & Existing Projects](howto_project_structure.md): connecting
-  Restly to an app that already has an engine, sessions, and models.
-- The [SaaS example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/saas): the production-shaped example to compare
-  against. It includes PostgreSQL Compose services, validated settings, an
-  application-owned async engine, migrations, and migration-backed tests.
+- [Database & Configuration](database.md): engines, sessions and
+  `fr.configure()`.
+- [New & Existing Projects](howto_project_structure.md): the project layout,
+  and Restly next to an existing app.
+- The [SaaS example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/saas):
+  an example in production shape. It has PostgreSQL services in Compose,
+  validated settings, an async engine that the application owns, migrations,
+  and tests that run the migrations.
