@@ -235,7 +235,7 @@ Whether the caller may run the action at all is not validation. It is a
 policy, and it goes in
 [`authorize`](#authorize-gate), which answers with 403.
 
-### Check the shape of a value
+### Value validation
 
 Put a validator or a `Field` constraint on the view's schema. The create
 body, the update body and the response class are subclasses of the view's
@@ -293,7 +293,7 @@ other fields are `None`. Check such a rule in `update`, where you have the
 stored row too.
 :::
 
-### Check what the schema cannot see
+### Database validation
 
 A schema sees one request. It does not see other rows, the stored row or the
 caller:
