@@ -5,16 +5,7 @@ import functools
 import uuid as _uuid
 import weakref
 from collections import defaultdict
-from typing import (
-    Annotated,
-    Any,
-    Callable,
-    Iterator,
-    Optional,
-    cast,
-    get_args,
-    get_origin,
-)
+from typing import Annotated, Any, Callable, Iterator, Optional, cast, get_origin
 
 import pydantic
 import sqlalchemy
@@ -35,12 +26,7 @@ from .._pagination import (
     NumberedPagination,
 )
 from ..exc import BadQueryParam
-from ..schemas._base import (
-    IDRef,
-    IDSchema,
-    _schema_role_name,
-    _unwrap_optional_annotation,
-)
+from ..schemas._base import IDRef, IDSchema, _schema_role_name, _unwrap_type
 from ._shared import _append_pk_tiebreak, _escape_like_value
 
 SchemaType = type[pydantic.BaseModel]
@@ -122,28 +108,8 @@ _ORDERABLE_TYPES: tuple[type, ...] = (
 )
 
 
-def _field_type(field: FieldInfo) -> tuple[Any, list[Any]]:
-    """Return the type of a field without ``Optional`` and ``Annotated``, and
-    the metadata of each ``Annotated`` layer that it removed.
-
-    Pydantic moves the metadata of an outer ``Annotated`` to
-    ``field.metadata``, but it keeps an ``Annotated`` inside ``Optional``. So
-    ``Annotated[bool, Field(...)] | None`` and ``constr(...) | None`` keep
-    both layers, and every check of the type must remove both.
-    """
-    annotation = field.annotation
-    metadata: list[Any] = list(field.metadata)
-    while True:
-        annotation = _unwrap_optional_annotation(annotation)
-        if get_origin(annotation) is Annotated:
-            annotation, *extra = get_args(annotation)
-            metadata.extend(extra)
-            continue
-        return annotation, metadata
-
-
 def _is_string_field(field: FieldInfo) -> bool:
-    annotation, _ = _field_type(field)
+    annotation, _ = _unwrap_type(field.annotation)
     return annotation is str
 
 
@@ -163,7 +129,7 @@ def _is_idref_field(field: FieldInfo) -> bool:
     traversal. ``list[IDRef[T]]`` (to-many) is unaffected -- its annotation is a
     list, so it is never a nested schema here.
     """
-    annotation, _ = _field_type(field)
+    annotation, _ = _unwrap_type(field.annotation)
     return isinstance(annotation, type) and issubclass(annotation, IDRef)
 
 
@@ -180,7 +146,8 @@ def _supports_scalar_operators(field: FieldInfo) -> bool:
     work. ``str``/``bytes`` are collections in the abc sense but coerce fine,
     so they stay scalar.
     """
-    annotation, metadata = _field_type(field)
+    annotation, metadata = _unwrap_type(field.annotation)
+    metadata = [*field.metadata, *metadata]
     # ``pydantic.Json`` is a real class at runtime; the type stubs model it as
     # an ``Annotated`` factory, hence the cast.
     json_marker = cast(type, pydantic.Json)
@@ -195,7 +162,7 @@ def _supports_scalar_operators(field: FieldInfo) -> bool:
 
 
 def _supports_range_operators(field: FieldInfo) -> bool:
-    annotation, _ = _field_type(field)
+    annotation, _ = _unwrap_type(field.annotation)
     if annotation is bool:
         return False
     if not isinstance(annotation, type):
@@ -889,7 +856,7 @@ def _field_validator(schema_cls: SchemaType, field_name: str) -> SchemaValidator
 def _get_nested_schema(field: FieldInfo | None) -> SchemaType | None:
     if field is None:
         return None
-    annotation, _ = _field_type(field)
+    annotation, _ = _unwrap_type(field.annotation)
     if isinstance(annotation, type) and issubclass(annotation, pydantic.BaseModel):
         return annotation
     return None

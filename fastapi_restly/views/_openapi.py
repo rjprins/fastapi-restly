@@ -23,6 +23,7 @@ from sqlalchemy import inspect as sa_inspect
 
 from .._mapping import is_mapped_class
 from ..schemas import IDSchema
+from ..schemas._base import _unwrap_type
 from ._openapi_names import _warn_on_name_clashes
 
 _PATCHED_ATTR = "_fr_resource_refs_patched"
@@ -146,6 +147,7 @@ def _is_id_ref_annotation(annotation: Any) -> bool:
     only parametrized generics like ``IDSchema[Author]`` or ``IDRef[Author]``
     return True, since those represent model ID references.
     """
+    annotation, _ = _unwrap_type(annotation)
     origin = get_origin(annotation)
 
     # Unwrap Optional / Union  (X | None, Optional[X], Union[X, Y])

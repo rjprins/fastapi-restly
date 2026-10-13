@@ -102,7 +102,7 @@ from ..schemas._base import (
     _model_id_type,
     _reject_buried_markers,
     _response_adapter,
-    _unwrap_optional_annotation,
+    _unwrap_type,
     create_model_with_optional_fields,
     create_model_without_read_only_fields,
     get_writable_inputs,
@@ -767,7 +767,7 @@ def apply_update_to_object(
 
 
 def _get_nested_schema_annotation(annotation: Any) -> type[pydantic.BaseModel] | None:
-    annotation = _unwrap_optional_annotation(annotation)
+    annotation, _ = _unwrap_type(annotation)
 
     try:
         if inspect.isclass(annotation) and issubclass(annotation, pydantic.BaseModel):

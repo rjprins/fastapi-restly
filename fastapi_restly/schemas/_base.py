@@ -534,16 +534,36 @@ def _unwrap_optional_annotation(annotation: Any) -> Any:
     return annotation
 
 
+def _unwrap_type(annotation: Any) -> tuple[Any, list[Any]]:
+    """Return ``annotation`` without its ``Optional`` and ``Annotated`` layers,
+    and the metadata of each ``Annotated`` layer that it removed.
+
+    Pydantic moves the metadata of an outer ``Annotated`` to
+    ``field.metadata``, but it keeps an ``Annotated`` inside ``Optional``. So
+    ``Annotated[IDRef[User], Field(...)] | None`` and ``constr(...) | None``
+    keep both layers, and every check of a field's type must remove both.
+    """
+    metadata: list[Any] = []
+    while True:
+        annotation = _unwrap_optional_annotation(annotation)
+        if get_origin(annotation) is Annotated:
+            annotation, *extra = get_args(annotation)
+            metadata.extend(extra)
+            continue
+        return annotation, metadata
+
+
 def is_reference_annotation(annotation: Any) -> bool:
     """True if ``annotation`` is an ``IDRef``/``IDSchema`` reference type.
 
-    The canonical reference-type check, kept beside the types so callers (views,
-    query) don't re-introspect Pydantic generics themselves. Unwraps ``Optional``
-    first, then matches the bare types or a parametrization whose generic origin
-    is ``IDSchema``/``IDRef`` (``IDRef[Post]``, ``IDSchema[Post]``) -- not a user
-    subclass that merely inherits from them.
+    The one check for a reference type, kept beside the types so callers
+    (views, query) don't inspect Pydantic generics themselves. Removes
+    ``Optional`` and ``Annotated`` first, then matches the bare types or a
+    parametrization whose generic origin is ``IDSchema``/``IDRef``
+    (``IDRef[Post]``, ``IDSchema[Post]``) -- not a user subclass that merely
+    inherits from them.
     """
-    annotation = _unwrap_optional_annotation(annotation)
+    annotation, _ = _unwrap_type(annotation)
     if annotation in (IDSchema, IDRef):
         return True
     if not inspect.isclass(annotation):
@@ -566,13 +586,14 @@ def is_reference_field(schema_cls: type[pydantic.BaseModel], field_name: str) ->
 
 
 def reference_origin_and_target(annotation: Any) -> tuple[type, type | None] | None:
-    """For an ``IDRef``/``IDSchema`` field annotation (``Optional`` unwrapped),
-    return ``(origin, target)``: the ``IDRef``/``IDSchema`` class and the
-    referenced model (``None`` for a bare, unparametrized reference), or ``None``
-    when the annotation is not a reference type. Lets the scalar-named-reference
+    """For an ``IDRef``/``IDSchema`` field annotation (``Optional`` and
+    ``Annotated`` removed), return ``(origin, target)``: the
+    ``IDRef``/``IDSchema`` class and the referenced model (``None`` for a bare,
+    unparametrized reference), or ``None`` when the annotation is not a
+    reference type. Lets the scalar-named-reference
     lint name both the type and its target in the ``MustExist`` hint.
     """
-    annotation = _unwrap_optional_annotation(annotation)
+    annotation, _ = _unwrap_type(annotation)
     if annotation in (IDSchema, IDRef):
         return (annotation, None)
     if not inspect.isclass(annotation):
@@ -746,11 +767,8 @@ def _ref_exists_marker(field_info: FieldInfo) -> RefExists | None:
     annotation rather than ``field_info.metadata`` -- so an optional checked FK
     is checked like the plain form (parity with ``Optional[IDRef]``).
     """
-    for m in field_info.metadata:
-        if isinstance(m, RefExists):
-            return m
-    unwrapped = _unwrap_optional_annotation(field_info.annotation)
-    for m in getattr(unwrapped, "__metadata__", ()):
+    _, metadata = _unwrap_type(field_info.annotation)
+    for m in (*field_info.metadata, *metadata):
         if isinstance(m, RefExists):
             return m
     return None

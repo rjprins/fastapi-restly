@@ -118,14 +118,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   field, so they do not run the validator. The response class has the field
   and runs it.
 - A field type with `Annotated` inside `Optional`, such as
-  `Annotated[bool, Field(...)] | None`, `constr(...) | None` or
-  `fr.MustExist[UUID, Team] | None`, gets the same list filters as the plain
-  type. Before, such a field got the range filters (`__gte` and the others)
-  for every type. On a bool they returned `500`. A UUID, a plain `Enum` or
-  an `IDRef` no longer gets them, as with the plain type, so a client that
-  sends one now gets `422`. Such a string now gets `__contains` and
-  `__icontains`. Such a nested schema now gets the dotted filters and sort
-  keys, such as `?author.name=Alice`.
+  `Annotated[fr.IDRef[User], Field(...)] | None`, `constr(...) | None` or
+  `fr.MustExist[UUID, Team] | None`, now works like the plain type. Before,
+  Restly did not look inside the `Annotated`:
+  - The list filters gave such a field the range filters (`__gte` and the
+    others) for every type. On a bool they returned `500`. A UUID, a plain
+    `Enum` or an `IDRef` no longer gets them, as with the plain type, so a
+    client that sends one now gets `422`. Such a string now gets `__contains`
+    and `__icontains`. Such a nested schema now gets the dotted filters and
+    sort keys, such as `?author.name=Alice`.
+  - Restly did not see such an `IDRef` or `IDSchema` as a reference. A field
+    named after a foreign key column returned `500` on every create or update
+    that sent it. A field named after a relationship returned `500` on create
+    when the foreign key is a required argument of the model. A foreign key
+    and its relationship that name different rows were saved, instead of
+    returning `422` ("Conflicting references"). OpenAPI did not name the
+    referenced resource of a field named after a relationship, and
+    `warn_on_misuse` did not warn about an `IDRef` on a foreign key column.
+  - An async view returned `500` when such a nested schema had a nested
+    schema of its own, because Restly did not load the second level.
 - A schema that names itself in a to-one field, such as
   `parent: CategorySchema | None` inside `CategorySchema`, no longer makes
   the view fail with `RecursionError` when it registers. The list filters
