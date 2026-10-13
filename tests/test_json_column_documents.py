@@ -551,3 +551,37 @@ def test_scalar_enums_in_documents_keep_pydantic_serialization(sync_db):
                 "label": "public",
                 "priority": 1,
             }
+
+
+@pytest.mark.parametrize("asynchronous", [True, False], ids=["async", "sync"])
+def test_a_left_out_json_field_gets_the_column_default(request, asynchronous):
+    """A field that the client leaves out is not written, so the model's
+    default applies. Before, Restly passed ``None`` to the constructor, and a
+    JSON column stored it as JSON ``null`` instead of the default. With a
+    generated schema, whose field is typed ``dict``, the response then
+    failed, and so did each later read of the row."""
+    client = request.getfixturevalue("client" if asynchronous else "sync_client")
+
+    class Sheet(fr.IDMixin, SharedBase):
+        title: Mapped[str]
+        data: Mapped[dict[str, Any]] = mapped_column(
+            sqlalchemy.JSON, default_factory=dict
+        )
+        # No default for the constructor, so __init__ requires the argument.
+        tags: Mapped[list[str]] = mapped_column(
+            sqlalchemy.JSON, server_default=sqlalchemy.text("'[]'")
+        )
+
+    @fr.include_view(client.app)
+    class SheetView(fr.AsyncRestView if asynchronous else fr.RestView):
+        prefix = "/sheets"
+        model = Sheet
+
+    if asynchronous:
+        create_tables()
+    else:
+        SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    created = client.post("/sheets/", json={"title": "a"}).json()
+    assert (created["data"], created["tags"]) == ({}, [])
+    assert client.get(f"/sheets/{created['id']}").json() == created
+    assert client.get("/sheets/").json()["data"] == [created]

@@ -62,6 +62,9 @@ def test_a_generated_field_with_a_default_allows_null_only_when_nullable(client)
         count: Mapped[int] = mapped_column(default=3)
         label: Mapped[str] = mapped_column(server_default="x")
         note: Mapped[str | None] = mapped_column(default="n")
+        # As in SQLAlchemy, nullable= wins over the annotation.
+        strict: Mapped[int | None] = mapped_column(nullable=False, default=5)
+        loose: Mapped[int] = mapped_column(nullable=True, default=6)
 
     @fr.include_view(client.app)
     class CounterView(fr.AsyncRestView):
@@ -71,17 +74,23 @@ def test_a_generated_field_with_a_default_allows_null_only_when_nullable(client)
     fields = CounterView.schema_create.model_fields
     assert fields["count"].annotation is int
     assert fields["label"].annotation is str
-    assert type(None) in get_args(fields["note"].annotation)
+    assert fields["strict"].annotation is int
+    for name in ("note", "loose"):
+        assert type(None) in get_args(fields[name].annotation), name
     assert not any(field.is_required() for field in fields.values())
 
     create_tables()
     created = client.post("/counters/", json={}).json()
-    assert (created["count"], created["label"], created["note"]) == (3, "x", "n")
+    defaults = {"count": 3, "label": "x", "note": "n", "strict": 5, "loose": 6}
+    assert created == {"id": created["id"], **defaults}
     url = f"/counters/{created['id']}"
-    for name in ("count", "label"):
+    for name in ("count", "label", "strict"):
         client.post("/counters/", json={name: None}, assert_status_code=422)
         client.patch(url, json={name: None}, assert_status_code=422)
-    assert client.patch(url, json={"note": None}).json()["note"] is None
+    for name in ("note", "loose"):
+        assert client.patch(url, json={name: None}).json()[name] is None
+    # A NULL row of a nullable column reads back.
+    assert client.get(url).json()["loose"] is None
 
 
 def test_the_update_body_has_no_defaults_and_no_required_fields(client):

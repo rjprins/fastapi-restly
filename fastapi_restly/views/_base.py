@@ -220,6 +220,9 @@ class _CreatePlan:
     post_assignments: dict[str, Any]
     # Many-to-one relationships the input did not supply.
     unsupplied_relationships: list[str] = dataclasses.field(default_factory=list)
+    # Columns the input left out that ``__init__`` still requires: the plan
+    # passes None, and the None is unset after construction.
+    unsupplied_columns: list[str] = dataclasses.field(default_factory=list)
 
 
 class _HasID(Protocol):
@@ -681,6 +684,13 @@ def build_create_plan(
         if is_mapped_instance(value) and is_reference_field(schema_cls, field_name):
             _add_resolved_reference_to_create_plan(plan, model_cls, field_name, value)
             continue
+        if value is None and field_name not in schema_obj.model_fields_set:
+            # Left out: the model's own default applies. A None would replace
+            # it, and a JSON column would store it as JSON null.
+            if _requires_init_kwarg(model_cls, field_name):
+                plan.kwargs[field_name] = None
+                plan.unsupplied_columns.append(field_name)
+            continue
 
         value = _json_ready(model_cls, field_name, value)
         if _accepts_init_kwarg(model_cls, field_name):
@@ -712,11 +722,15 @@ def apply_create_assignments(obj: Any, plan: _CreatePlan) -> None:
     flush would copy it over the foreign key, discarding an id the input did
     supply. Unset, the relationship takes no part in the flush, as SQLAlchemy
     2.1 treats dataclass defaults. A ``null`` the client sent stays.
+
+    It also unsets each column the input left out that ``__init__``
+    required, so the ``INSERT`` leaves it out and the column default or the
+    server default applies.
     """
     for field_name, value in plan.post_assignments.items():
         setattr(obj, field_name, value)
     loaded = sa_inspect(obj).dict
-    for name in plan.unsupplied_relationships:
+    for name in (*plan.unsupplied_relationships, *plan.unsupplied_columns):
         if name in loaded and loaded[name] is None:
             del_attribute(obj, name)
 

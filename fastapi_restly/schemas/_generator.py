@@ -159,11 +159,17 @@ def get_model_fields(model_cls: type[Any]) -> dict[str, Any]:
     mapper = sa_inspect(model_cls)
     props = {prop.key: prop for prop in mapper.attrs}
     annotations = _model_annotations(model_cls, props.keys())
-    not_in_init = (
-        {f.name for f in dataclasses.fields(model_cls) if not f.init}
-        if dataclasses.is_dataclass(model_cls)
-        else set()
+    dc_fields = (
+        dataclasses.fields(model_cls) if dataclasses.is_dataclass(model_cls) else ()
     )
+    not_in_init = {f.name for f in dc_fields if not f.init}
+    # A default of the constructor is a default of the model too.
+    init_defaults = {
+        f.name
+        for f in dc_fields
+        if f.default is not dataclasses.MISSING
+        or f.default_factory is not dataclasses.MISSING
+    }
     names = list(annotations)
     names += [name for name in props if name not in annotations]
 
@@ -210,14 +216,21 @@ def get_model_fields(model_cls: type[Any]) -> dict[str, Any]:
                 ) from None
             is_nullable = bool(getattr(column, "nullable", False))
 
-        # A column with a default may be left out, but it allows ``null``
-        # only when it is nullable.
+        # The client may leave out a field whose annotation or column allows
+        # None, or whose column has a default.
         is_optional = is_nullable
+        if isinstance(column, Column):
+            # As in SQLAlchemy, mapped_column(nullable=...) wins over the
+            # annotation. The field allows None only when the column does.
+            is_nullable = bool(column.nullable)
+            is_optional = is_optional or is_nullable
         default = None
         column_default = getattr(column, "default", None)
         server_default = getattr(column, "server_default", None)
         if column_default is not None or server_default is not None:
             default = column_default or server_default
+            is_optional = True
+        if name in init_defaults:
             is_optional = True
 
         fields[name] = {
@@ -246,9 +259,10 @@ def derive_schema(model: type[Any], *, name: str | None = None) -> type[BaseSche
     ``updated_at``, a ``column_property`` over a SQL expression, and a column
     that the constructor does not take (``init=False``).
 
-    A field allows ``None`` only for a nullable column. A column with a
-    default gets a field that the client may leave out, with the default
-    ``None``, which Pydantic does not validate.
+    A field allows ``None`` only when its column is nullable. The client may
+    leave out the field of a nullable column and of a column with a default.
+    Such a field has the default ``None``, which Pydantic does not validate,
+    and Restly does not write it: the column's default applies.
 
     :param model: The SQLAlchemy model class.
     :param name: Name for the generated schema class. Defaults to the

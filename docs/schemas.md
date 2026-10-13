@@ -631,10 +631,14 @@ SQLModel table. Under `from __future__ import annotations`, Restly evaluates
 the annotation string in the model's module. When no annotation resolves, the
 column type's `python_type` is used. A column with neither raises `TypeError`
 that names the attribute. Synonyms and composites get no field of their own:
-the columns behind them already have one. A nullable column gets a field
-that allows `None`. A column with a default gets a field that the client may
-leave out, and then the column's default applies. That field allows `null`
-only when the column is nullable.
+the columns behind them already have one. A field allows `null` (`None` in
+Python) only when its column is nullable. `mapped_column(nullable=...)`
+decides this, as it does for SQLAlchemy, even when the `Mapped[...]`
+annotation says otherwise. The client may leave out the field of a nullable
+column and of a column with a default. A default can be on the column, such
+as `insert_default` or `server_default`, or on the constructor, such as
+`default` or `default_factory`. When the client leaves the field out, Restly
+does not write it, so that default applies.
 
 Three rules decide the rest:
 

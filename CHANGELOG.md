@@ -85,13 +85,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on a nullable column can no longer be set to `null` with `PATCH`; type it
   `str | None` for that. In OpenAPI, `title` in the update body is `string`
   instead of `string | null`.
-- In a schema that Restly generates, for a view without `schema`, a column
-  with a default allows `null` only when the column is nullable. Before,
+- In a schema that Restly generates, for a view without `schema`, a field
+  allows `null` only when its column is nullable. Before,
   `count: Mapped[int] = mapped_column(default=3)` got the field
   `int | None`. Then `POST {"count": null}` stored the default, and
   `PATCH {"count": null}` returned `409` from the database. Both now return
   `422`. The client may still leave the field out, and then the default
   applies. In OpenAPI, the field is `integer` instead of `integer | null`.
+  `mapped_column(nullable=...)` now wins over the annotation, as in
+  SQLAlchemy: `Mapped[int]` with `nullable=True` allows `null`. A default of
+  the constructor, such as `default_factory=dict`, now also lets the client
+  leave the field out.
 - The `400` answers of a list request say what is wrong. Before, the
   standard dialect answered "Invalid attribute in URL query: age" both for a
   sort or filter field that does not exist and for a bad filter value. Now
@@ -148,6 +152,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A field that the client leaves out of a create no longer replaces the
+  model's default. Before, Restly passed `None` to the constructor for it.
+  Most columns then still got their column default, but a JSON column stored
+  JSON `null`, and a `default` or `default_factory` of the constructor was
+  lost. Now Restly leaves such a field out. When the dataclass constructor
+  requires the argument, Restly passes `None` and removes it again before
+  the `INSERT`, so the column default or the server default applies.
 - A validator or serializer for a `ReadOnly` field, or for a primary key that
   the server generates, no longer makes the view fail when it registers.
   Before, it needed `check_fields=False`. The request bodies do not have the
