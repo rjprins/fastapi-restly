@@ -106,6 +106,17 @@ class UserView(fr.AsyncRestView):
     pagination = fr.NumberedPagination(envelope=DataCount)
 ```
 
+To give every list the same envelope, set the pagination on a project base
+view; see [Set the pagination once for every view](#set-pagination-once). A custom list
+route can then name the view's list response class, so OpenAPI shows the same
+type as for `GET /`; see
+[Name the view's classes in a custom route](#name-the-response-classes).
+[Coming from fastapi-pagination](#fastapi-pagination-migration) shows the
+envelope that keeps fastapi-pagination's field names.
+
+:::{admonition} Details
+:class: details
+
 camelCase field names, `totalCount`, `pageSize` and `totalPages`:
 
 ```python
@@ -150,14 +161,7 @@ settings. So a required field that Restly cannot fill, such as a misspelled
 `totl_count`, fails at startup and not on a request. Leave the envelope's
 `extra` setting at its default: Restly passes it every page value, and it
 keeps the fields that it declares.
-
-To give every list the same envelope, set the pagination on a project base
-view; see [Set the pagination once for every view](#set-pagination-once). A custom list
-route can then name the view's list response class, so OpenAPI shows the same
-type as for `GET /`; see
-[Name the view's classes in a custom route](#name-the-response-classes).
-[Coming from fastapi-pagination](#fastapi-pagination-migration) shows the
-envelope that keeps fastapi-pagination's field names.
+:::
 
 ### Change the envelope of a view without pagination
 
@@ -231,8 +235,12 @@ class UserView(fr.AsyncRestView):
         return {"data": self.to_single_response(obj)}
 ```
 
-Call `to_single_response(obj)` before you put the object in the envelope. It
-turns the ORM object into an instance of the response class, which has no
+Call `to_single_response(obj)` before you put the object in the envelope.
+
+:::{admonition} Details
+:class: details
+
+It turns the ORM object into an instance of the response class, which has no
 `WriteOnly` fields. The ORM object often has no value for those fields, such
 as a plain `password`, so it may not validate as the view's schema.
 
@@ -244,6 +252,7 @@ and page query parameters. To reuse the page numbers, pass the result of
 {meth}`to_list_response(result) <fastapi_restly.views.BaseRestView.to_list_response>`.
 It returns an instance of the view's envelope model, so read its attributes:
 `page.data` and `page.total_count` with the default envelope.
+:::
 
 (to-response)=
 ## Change the shape of every route
@@ -297,9 +306,13 @@ So make sure that the values match the response class. Build an instance of
 the response class, not of the view's schema: Restly sends an instance of the
 response class as it is, and converts an instance of any other class first.
 
+:::{admonition} Details
+:class: details
+
 An override may return an instance of another model, such as the view's
 schema. Only the fields of the response class go out; see
 [Internals](#response-conversion) for how Restly converts it.
+:::
 
 (list-schema)=
 ## Use a different schema for the list route
