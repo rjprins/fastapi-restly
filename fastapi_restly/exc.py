@@ -94,8 +94,8 @@ class RestlyMisuseWarning(UserWarning):
     view method, hand-rolling a CRUD route set on a bare ``View`` instead of
     subclassing ``RestView`` / ``AsyncRestView``, typing a scalar
     foreign-key column (``post_id``) as an ``IDRef`` / ``IDSchema`` reference
-    instead of ``fr.MustExist[int, Model]``, and a writable field on a column
-    that the model sets (``init=False`` with a default) instead of
+    instead of ``fr.MustExist[int, Model]``, and a writable field that sets
+    a column that the model sets (``init=False`` with a default) instead of
     ``fr.ReadOnly``.
     """
 

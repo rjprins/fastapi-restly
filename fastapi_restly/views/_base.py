@@ -2462,37 +2462,55 @@ def _warn_scalar_named_reference_fields(view_cls: type[View]) -> None:
         )
 
 
-def _model_set_columns(model: type[Any]) -> set[str]:
-    """The columns that the model sets: outside the constructor
-    (``init=False``), with a column default or a server default. A primary
-    key that the server generates is left out, because Restly already leaves
-    it out of the request bodies."""
+def _model_set_fields(model: type[Any]) -> dict[str, str]:
+    """Map each attribute whose write sets a column that the model sets to
+    that column.
+
+    The model sets a column that the constructor does not take
+    (``init=False``) and that has a default: ``default`` or
+    ``default_factory`` on the field, or ``insert_default`` or
+    ``server_default`` on the column. A many-to-one relationship maps to its
+    foreign key column, because a write to the relationship sets it. A
+    primary key that the server generates is left out, because Restly already
+    leaves it out of the request bodies.
+    """
     if not dataclasses.is_dataclass(model):
-        return set()
+        return {}
     mapper = sa_inspect(model)
     generated_keys = _generated_primary_key_fields(model)
-    names = set()
+    columns: dict[str, str] = {}
     for field in dataclasses.fields(model):
         if field.init or field.name in generated_keys:
             continue
         column = mapper.columns.get(field.name)
-        if column is not None and (
-            column.default is not None or column.server_default is not None
+        if column is None:
+            continue
+        if (
+            field.default is not dataclasses.MISSING
+            or field.default_factory is not dataclasses.MISSING
+            or column.default is not None
+            or column.server_default is not None
         ):
-            names.add(field.name)
-    return names
+            columns[field.name] = field.name
+    for relationship in mapper.relationships:
+        for column in relationship.local_columns:
+            key = mapper.get_property_by_column(column).key
+            if key in columns:
+                columns[relationship.key] = key
+    return columns
 
 
 def _warn_writable_model_set_fields(view_cls: type[View]) -> None:
-    """Flag a writable field on a column that the model sets.
+    """Flag a writable field that sets a column that the model sets.
 
     A column with ``init=False`` and a default, such as a tenant column with
     ``insert_default=Current.org_id``, gets its value from the model. Restly
     sets each writable field that the constructor does not take after it
     builds the object, so a value in the request body replaces the default:
-    a client can pick the tenant. Lints the write classes that the view
-    declares, and the declared ``schema`` when Restly derives a write class
-    from it. A generated ``schema`` already marks these columns ReadOnly.
+    a client can pick the tenant. Lints the write classes of the routes that
+    the view has: each class that the view declares, and the declared
+    ``schema`` when Restly derives a write class from it. A generated
+    ``schema`` already marks these columns ReadOnly.
     """
     if not issubclass(view_cls, BaseRestView):
         return
@@ -2500,34 +2518,49 @@ def _warn_writable_model_set_fields(view_cls: type[View]) -> None:
     if model is None:
         return
     try:
-        model_set = _model_set_columns(model)
+        model_set = _model_set_fields(model)
     except Exception:
         return
     if not model_set:
         return
-    write_classes: list[type[pydantic.BaseModel]] = []
-    for attr in ("schema_create", "schema_update"):
-        if not _needs_generating(view_cls, attr):
-            cls = getattr(view_cls, attr)
-        elif _declared_at(view_cls, "schema") is not None:
-            # A derived write class has the writable fields of ``schema``.
-            cls = view_cls.schema
-        else:
+    excluded = {
+        route.value if isinstance(route, ViewRoute) else route
+        for route in view_cls.exclude_routes
+    }
+    # Each write class, and whether Restly derives it from ``schema``.
+    write_classes: dict[type[pydantic.BaseModel], bool] = {}
+    for attr, route in (
+        ("schema_create", ViewRoute.CREATE),
+        ("schema_update", ViewRoute.UPDATE),
+    ):
+        if route.value in excluded:
             continue
-        if cls not in write_classes:
-            write_classes.append(cls)
-    for cls in write_classes:
+        if not _needs_generating(view_cls, attr):
+            write_classes.setdefault(getattr(view_cls, attr), False)
+        elif _declared_at(view_cls, "schema") is not None:
+            write_classes.setdefault(view_cls.schema, True)
+    for cls, derived in write_classes.items():
         for field_name, field_info in cls.model_fields.items():
-            if field_name not in model_set or _is_readonly(field_info):
+            column = model_set.get(field_name)
+            if column is None or _is_readonly(field_info):
                 continue
+            through = (
+                ""
+                if column == field_name
+                else f" and sets `{model.__name__}.{column}` through the relationship"
+            )
+            fix = (
+                "Mark the field `fr.ReadOnly[...]`"
+                if derived
+                else f"Leave the field out of {cls.__name__}"
+            )
             warnings.warn(
-                f"{cls.__name__}.{field_name} is writable, but "
-                f"`{model.__name__}.{field_name}` has `init=False` and a "
-                f"default, so the model sets it. A value in the request body "
-                f"replaces the default. Mark the field "
-                f"`fr.ReadOnly[...]` on the schema, so the value always comes "
-                f"from the model. If the client may set it, remove "
-                f"`init=False` and give the column a `default`.",
+                f"{cls.__name__}.{field_name} is writable{through}, but "
+                f"`{model.__name__}.{column}` has `init=False` and a default, "
+                f"so the model sets it. A value in the request body replaces "
+                f"the default. {fix}, so the value always comes from the "
+                f"model. If the client may set it, remove `init=False` from "
+                f"the column, so that the constructor takes it.",
                 RestlyMisuseWarning,
                 stacklevel=6,
             )

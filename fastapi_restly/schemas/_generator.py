@@ -236,10 +236,10 @@ def derive_schema(model: type[Any], *, name: str | None = None) -> type[BaseSche
 
     This is the same schema that a view generates when it has no ``schema``:
     one field per column, and no relationship fields. A foreign key column,
-    such as ``author_id``, is an ordinary field. These fields are marked
-    ``ReadOnly``: ``id``, ``created_at`` and ``updated_at``, a
-    ``column_property`` over a SQL expression, and a column that the
-    constructor does not take (``init=False``).
+    such as ``author_id``, is an ordinary field unless it has ``init=False``.
+    These fields are marked ``ReadOnly``: ``id``, ``created_at`` and
+    ``updated_at``, a ``column_property`` over a SQL expression, and a column
+    that the constructor does not take (``init=False``).
 
     :param model: The SQLAlchemy model class.
     :param name: Name for the generated schema class. Defaults to the

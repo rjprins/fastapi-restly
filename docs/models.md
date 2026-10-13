@@ -374,7 +374,8 @@ choose the author, and the column default would not run. With `fr.ReadOnly`,
 the value always comes from `Current`. A view without a schema is safe: the
 [schema that Restly generates](#auto-generated-schemas) marks each column with
 `init=False` as `ReadOnly`. With `fr.configure(warn_on_misuse=True)`, Restly
-warns about a writable field on a column with `init=False` and a default.
+warns about a writable field on a column with `init=False` and a default, and
+about a writable relationship field whose foreign key is such a column.
 
 A column default runs on every write path: a view's `create`, a custom route
 that builds the row itself, the `fr.objects` helpers, a bulk route, a script.

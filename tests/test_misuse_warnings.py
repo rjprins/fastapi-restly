@@ -307,12 +307,21 @@ def test_scalar_named_reference_off_by_default():
     assert _register(QuietRefView, warn_on_misuse=None) == []
 
 
+class StampOrg(fr.IDMixin, SharedBase):
+    name: orm.Mapped[str]
+
+
 class StampedNote(fr.IDMixin, SharedBase):
     body: orm.Mapped[str]
-    # The model sets both: the tenant from a column default, the slug from a
-    # mapper event.
+    # The model sets each of these: from a column default, a mapper event, a
+    # default factory, and a column default on a foreign key.
     tenant_id: orm.Mapped[int] = orm.mapped_column(init=False, insert_default=lambda: 1)
     slug: orm.Mapped[str] = orm.mapped_column(init=False)
+    token: orm.Mapped[str] = orm.mapped_column(init=False, default_factory=lambda: "t")
+    org_id: orm.Mapped[int] = orm.mapped_column(
+        ForeignKey(StampOrg.id), init=False, insert_default=lambda: 1
+    )
+    org: orm.Mapped[StampOrg] = orm.relationship(init=False)
 
 
 def test_writable_field_on_a_model_set_column_warns():
@@ -363,6 +372,8 @@ def test_declared_write_class_with_a_model_set_column_warns():
     # create class warns.
     assert len(messages) == 1
     assert "StampCreate.tenant_id is writable" in messages[0]
+    assert "Leave the field out of StampCreate" in messages[0]
+    assert "fr.ReadOnly" not in messages[0]
 
 
 def test_writable_model_set_field_off_by_default():
@@ -376,3 +387,78 @@ def test_writable_model_set_field_off_by_default():
         schema = QuietStampSchema
 
     assert _register(QuietStampView, warn_on_misuse=None) == []
+
+
+def test_writes_through_a_relationship_or_over_a_factory_warn():
+    class OrgTokenSchema(fr.IDSchema):
+        body: str
+        org: fr.IDRef[StampOrg] | None = None
+        token: str | None = None
+
+    class OrgTokenView(fr.AsyncRestView):
+        prefix = "/org-token-stamps"
+        model = StampedNote
+        schema = OrgTokenSchema
+
+    messages = _register(OrgTokenView)
+    assert len(messages) == 2
+    assert (
+        "OrgTokenSchema.org is writable and sets `StampedNote.org_id` "
+        "through the relationship" in messages[0]
+    )
+    assert "OrgTokenSchema.token is writable" in messages[1]
+
+
+def test_only_the_write_routes_of_the_view_are_linted():
+    class RouteStampSchema(fr.IDSchema):
+        body: str
+        tenant_id: int | None = None
+
+    class ReadOnlyStampView(fr.AsyncRestView):
+        prefix = "/read-only-stamps"
+        model = StampedNote
+        schema = RouteStampSchema
+        exclude_routes = (fr.ViewRoute.CREATE, fr.ViewRoute.UPDATE)
+
+    assert _register(ReadOnlyStampView) == []
+
+    class UpdateOnlyStampView(fr.AsyncRestView):
+        prefix = "/update-only-stamps"
+        model = StampedNote
+        schema = RouteStampSchema
+        exclude_routes = (fr.ViewRoute.CREATE,)
+
+    assert len(_register(UpdateOnlyStampView)) == 1
+
+
+def test_an_inherited_schema_and_a_declared_update_class_are_linted():
+    class BaseStampSchema(fr.IDSchema):
+        body: str
+        tenant_id: int | None = None
+
+    class StampUpdate(fr.BaseSchema):
+        body: str | None = None
+        tenant_id: int | None = None
+
+    class BaseStampView(fr.AsyncRestView):
+        model = StampedNote
+        schema = BaseStampSchema
+
+    class ChildStampView(BaseStampView):
+        prefix = "/child-stamps"
+        schema_update = StampUpdate
+
+    app = fastapi.FastAPI()
+    with RestlyContext():
+        fr.configure(warn_on_misuse=True)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            fr.include_view(app, ChildStampView)
+    caught = [w for w in caught if issubclass(w.category, RestlyMisuseWarning)]
+    # The create class comes from the inherited schema.
+    assert [str(w.message).split(" is ")[0] for w in caught] == [
+        "BaseStampSchema.tenant_id",
+        "StampUpdate.tenant_id",
+    ]
+    # The warning points at the include_view call.
+    assert {w.filename for w in caught} == {__file__}

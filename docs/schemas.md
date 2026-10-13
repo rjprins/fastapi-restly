@@ -642,11 +642,13 @@ Three rules decide the rest:
   always `ReadOnly`. So is a `column_property` over a SQL expression, which
   cannot be written. So is a column that the constructor does not take
   (`init=False`), such as a tenant column with an `insert_default`: the model
-  sets it, so the client must not. To let the client write such a column,
-  remove `init=False` and give the column a `default`. Any other column that
-  the server fills, for example with a server default, is **not** `ReadOnly`.
+  or the server sets it, so the client must not. To let the client write such
+  a column, remove `init=False`, so that the constructor takes it. Any other
+  column that the server fills, for example with a server default, is
+  **not** `ReadOnly`.
 - **Relationships**: never included. A foreign key column, such as
-  `customer_id`, is an ordinary field. To show a related row in a response,
+  `customer_id`, is an ordinary field. With `init=False`, it is `ReadOnly`,
+  as the rule above says. To show a related row in a response,
   write the schema yourself, for example with an `IDRef[Customer]` field; see
   [Relationships](relationships.md).
 

@@ -12,6 +12,7 @@ from sqlalchemy import Column, ForeignKey, Integer, String, func
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
+    MappedAsDataclass,
     column_property,
     mapped_column,
     registry,
@@ -103,6 +104,37 @@ def test_a_column_outside_the_constructor_is_read_only(client):
     assert (created["tenant_id"], created["status"]) == (1, "draft")
     patched = client.patch(f"/ledgers/{created['id']}", json=body).json()
     assert (patched["tenant_id"], patched["status"]) == (1, "draft")
+
+
+def test_a_foreign_key_outside_the_constructor_is_read_only(client):
+    """The rule covers a foreign key with ``init=False``, also when it comes
+    from a ``MappedAsDataclass`` mixin. A client that sends it gets no error:
+    Restly ignores the value, as for every ReadOnly field."""
+
+    class Org(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    class OrgOwned(MappedAsDataclass, kw_only=True):
+        org_id: Mapped[int | None] = mapped_column(
+            ForeignKey("org.id"), init=False, default=None
+        )
+
+    class Page(OrgOwned, fr.IDMixin, SharedBase):
+        title: Mapped[str]
+
+    @fr.include_view(client.app)
+    class PageView(fr.AsyncRestView):
+        prefix = "/pages"
+        model = Page
+
+    assert PageView.schema.model_fields["org_id"].json_schema_extra["readOnly"]
+    assert set(PageView.schema_create.model_fields) == {"title"}
+
+    create_tables()
+    created = client.post("/pages/", json={"title": "a", "org_id": 1}).json()
+    assert created["org_id"] is None
+    patched = client.patch(f"/pages/{created['id']}", json={"org_id": 1}).json()
+    assert patched["org_id"] is None
 
 
 def test_untypeable_column_raises_naming_the_attribute(client):

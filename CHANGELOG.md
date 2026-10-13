@@ -30,7 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - With `fr.configure(warn_on_misuse=True)`, Restly warns about a writable
   field on a column with `init=False` and a default, in a schema that you
   write. The model sets such a column, as with a tenant or an audit column,
-  so the field must be `fr.ReadOnly`.
+  so the field must be `fr.ReadOnly`. A writable relationship field warns too
+  when its foreign key is such a column.
 
 ### Changed
 
@@ -152,10 +153,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   each column with `init=False` as `ReadOnly`. Before, the client could write
   such a column. For a tenant column with `insert_default=Current.org_id`, a
   create could put the row in another organization, and a PATCH could move
-  it there. The model sets these columns, with a column default, a mapper
-  event or the view's `create`, so the request bodies no longer have them.
-  To let the client write such a column, remove `init=False` and give the
-  column a `default`, or write the schema yourself.
+  it there. A column that the constructor does not take is set by the model
+  or by the server: with a column default, a mapper event or the view's
+  `create`. So the request bodies no longer have these columns.
+
+  This also applies to a foreign key with `init=False`, such as `author_id`
+  next to an `author` relationship. A generated schema no longer lets the
+  client set it. A client that still sends it gets no error: Restly ignores
+  the value, as for every `ReadOnly` field. To let the client write such a
+  column, remove `init=False`, so that the constructor takes it.
 
 ## [0.11.0] - 2026-10-09
 
