@@ -135,6 +135,13 @@ The path is relative to the view's prefix. With `prefix = "/users"`,
 `@fr.get("/{id}/summary")` serves `/users/{id}/summary`, and `@fr.get("")`
 serves `/users` itself.
 
+On a CRUD view, a custom route usually loads and writes through the view's
+handlers. [Add a custom read route](#custom-read-route) and
+[Add a custom action route](#custom-action-route) show how.
+
+:::{admonition} Details
+:class: details
+
 Every other keyword argument goes to FastAPI's `APIRouter.add_api_route()`,
 such as `response_model=`, `dependencies=`, `responses=` and `tags=`. So a
 route on a view has the same options as a FastAPI route.
@@ -155,10 +162,7 @@ for such a name, also on a plain `View`. Give the route another name. To
 replace a CRUD route, override its endpoint method, such as
 `create_endpoint`; see
 [Change the status code or headers of one route](#replace-endpoint-method).
-
-On a CRUD view, a custom route usually loads and writes through the view's
-handlers. [Add a custom read route](#custom-read-route) and
-[Add a custom action route](#custom-action-route) show how.
+:::
 
 (register-a-view)=
 ## Register a view
@@ -186,6 +190,9 @@ class UserView(fr.View):
 
 Both forms register the same routes.
 
+:::{admonition} Details
+:class: details
+
 The routes bind when you register the view, not when you declare the
 methods. `include_view` reads the class at that moment: its own route
 methods and the ones it inherits, and the prefix and dependencies of every
@@ -208,6 +215,7 @@ Some rules for registration:
 - FastAPI tries the routes in the order you added them. For a route such as
   `/users/me` next to the CRUD routes, see
   [Item paths and static routes](#item-route-matching).
+:::
 
 (dependency-injection-on-class-attributes)=
 ## Declare dependencies as class attributes
@@ -249,6 +257,9 @@ commit hooks can all read `self.current_user`. An attribute that is not a
 dependency is never set from the request: reading `self.reviewer` raises
 `AttributeError`.
 
+:::{admonition} Details
+:class: details
+
 {data}`fr.AsyncSessionDep <fastapi_restly.db.AsyncSessionDep>` and
 {data}`fr.SessionDep <fastapi_restly.db.SessionDep>` carry a `Depends`
 marker. The `request` attribute of
@@ -268,6 +279,7 @@ A plain annotation never replaces a dependency annotation. A mixin or a
 subclass can declare `current_user: User` for type checkers, and the
 attribute keeps the `Depends` marker of the base. So a mixin can declare what
 it needs from its view without breaking the view's dependencies.
+:::
 
 (mixin-type-stubs)=
 ### Declare what a mixin needs from its view
