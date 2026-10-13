@@ -60,6 +60,9 @@ A suffix on the name chooses another comparison:
 
 `__isnull` takes `true` or `false`, not the text `null`.
 
+:::{admonition} Details
+:class: details
+
 Not every field gets every suffix:
 
 - The range suffixes (`__gte`, `__lte`, `__gt`, `__lt`) exist only for types
@@ -78,6 +81,7 @@ time zone. On a base with
 {class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>`,
 `Mapped[datetime]` stores one by default. A column declared `DateTime()`
 compares the value as it is.
+:::
 
 (filter-value-validation)=
 ### Filter values go through the field's validation
@@ -86,6 +90,9 @@ Equality, `__ne`, `__in` and the range filters validate each value with the
 field's Pydantic validation, so the field validators of the schema run on
 filter values too. A value that fails returns `400` (see
 [Why a bad list request returns 422 or 400](#list-request-errors)).
+
+:::{admonition} Details
+:class: details
 
 Restly validates one value at a time, without the other fields. So:
 
@@ -96,6 +103,7 @@ Restly validates one value at a time, without the other fields. So:
 
 `__contains` and `__icontains` use the text as it is, and `__isnull` reads a
 boolean.
+:::
 
 ### Match one of several values
 
@@ -138,12 +146,16 @@ GET /users?name__icontains=john&name__icontains=doe
 `__contains` gives `WHERE name LIKE '%john%' AND name LIKE '%doe%'`.
 `__icontains` uses `ILIKE`.
 
+:::{admonition} Details
+:class: details
+
 Restly also splits one `__contains` or `__icontains` value at each space, so
 `?name__contains=john%20doe` gives the same result. Prefer the repeated
 parameter when you build the URL yourself: it has only one meaning.
 
 Restly escapes `%`, `_` and `\` before it builds the `LIKE` condition. A
 search finds the text as written; these characters are not wildcards.
+:::
 
 ### Combine filters on one field
 
@@ -171,6 +183,15 @@ schema on the response class, as in
 that can be `None` (`UserSchema | None`) works, and so do several steps
 (`?blog.author.name=Alice`). A list of nested schemas (`list[UserSchema]`)
 does not.
+
+A dotted filter joins the related table without that model's default scope;
+see [Scopes](#default-scope). Restly joins through SQL aliases. If you add a
+session rule with {func}`sqlalchemy.orm.with_loader_criteria`, set
+`include_aliases=True`, so the rule also covers these joins. See
+[Multi-Tenancy](#tenant-row-scoping).
+
+:::{admonition} Details
+:class: details
 
 A path can follow a relationship of a model to the same model, such as
 `?manager.name=Alice` or `?manager.manager.name=Alice`. Each step must be a
@@ -203,12 +224,6 @@ Sorting accepts the same paths. A filter and a sort on the same relationship
 share one join. The joins are inner joins: a row without the related row is
 left out, also for a dotted `__isnull` filter.
 
-A dotted filter joins the related table without that model's default scope;
-see [Scopes](#default-scope). Restly joins through SQL aliases. If you add a
-session rule with {func}`sqlalchemy.orm.with_loader_criteria`, set
-`include_aliases=True`, so the rule also covers these joins. See
-[Multi-Tenancy](#tenant-row-scoping).
-
 Aliases apply to every part of the path, the relationship and the field,
 because the list parameters always use the public names of the response
 class:
@@ -231,6 +246,7 @@ The URL must then use the aliases:
 GET /articles?writer.authorName=Alice    # accepted
 GET /articles?author.name=Alice          # rejected: use the aliases
 ```
+:::
 
 (foreign-key-filtering)=
 ## Filter by a foreign key
@@ -248,6 +264,9 @@ GET /comments?post_id__gte=10      # range suffixes work on int ids
 GET /comments?post_id__isnull=true
 ```
 
+:::{admonition} Details
+:class: details
+
 A `MustExist[pk, ...]` field gets the filters of its `pk` type. An `int` id
 gets equality, `__in`, `__ne`, `__isnull` and the range suffixes. A `UUID` id
 gets no range suffixes, as the [list of suffixes](#filter-a-list) says. Only a
@@ -262,6 +281,7 @@ A relationship reference filters differently (see
 - A flat {class}`IDRef[Model] <fastapi_restly.schemas.IDRef>` field on a
   relationship gets no filter. To filter by it, also put the foreign key
   column in the response class, for example as `author_id: fr.ReadOnly[int]`.
+:::
 
 (public-names)=
 ## Use aliases in the URL
@@ -399,13 +419,17 @@ The list has no `page` and `page_size` parameters, and Restly runs no count
 query. Filters and `sort` still work. The response keeps the `data` envelope,
 without the count and page fields.
 
+Use this only for a table that stays small, such as tags or countries. A list
+without pagination returns the whole table in one response.
+
+:::{admonition} Details
+:class: details
+
 `None` is short for
 {class}`fr.NoPagination() <fastapi_restly.views.NoPagination>`. Use
 `fr.NoPagination(envelope=...)` to choose the envelope of a list without
 pagination; see [Change the list envelope](#change-list-envelope).
-
-Use this only for a table that stays small, such as tags or countries. A list
-without pagination returns the whole table in one response.
+:::
 
 (fastapi-pagination-migration)=
 ### Coming from fastapi-pagination
@@ -467,6 +491,9 @@ declare its {attr}`scope <fastapi_restly.views.BaseRestView.scope>`, as
 [Give one view other rows](#view-scope) shows. `get_many` takes no `query`
 argument, so put base query changes in the scope.
 
+:::{admonition} Details
+:class: details
+
 For another URL grammar, such as the filter syntax of another client
 library, override
 {meth}`apply_list_params(query, list_params) <fastapi_restly.views.RestView.apply_list_params>`.
@@ -484,6 +511,7 @@ route, passes them on with `self.handle_get_many(list_params, scope=...)`; see
 [Read other rows on one route](#per-read-scope). The route can take its own
 query parameters next to `list_params`, as in
 `def search(self, list_params, mode: SearchMode)`.
+:::
 
 ## Internals
 
