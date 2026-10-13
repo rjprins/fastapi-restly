@@ -97,18 +97,24 @@ React Admin view uses the same path.
 | Any other type | `/{id}` | Any single path segment, then FastAPI validation |
 
 With an integer or UUID item path, a static route such as `/users/me` still
-works when you register it after the view. A value that does not match the
-converter returns `404`, unless another route matches it. So a negative
-integer id does not match, even when the row exists. OpenAPI still shows the
-path as `/users/{id}`, with an integer or UUID parameter.
+works when you register it after the view.
+
+An untyped item path, such as the path for string ids, also matches
+`/users/me`. Register a static route like that before the item route.
+
+:::{admonition} Details
+:class: details
+
+A value that does not match the converter returns `404`, unless another
+route matches it. So a negative integer id does not match, even when the row
+exists. OpenAPI still shows the path as `/users/{id}`, with an integer or UUID
+parameter.
 
 A route that you declare yourself keeps the path you give it. To accept
 negative integer ids, replace each item endpoint you need with an untyped
 path such as `@fr.get("/{id}")`, and annotate its `id` parameter as `int`;
 see [Change the status code or headers of one route](#replace-endpoint-method).
-
-An untyped item path, such as the path for string ids, also matches
-`/users/me`. Register a static route like that before the item route.
+:::
 
 (crud-model-and-schemas)=
 ## Set the model and the schemas
@@ -174,6 +180,9 @@ class UserView(fr.AsyncRestView):
 
 `UserView` now serves only `GET /users`, `POST /users` and `GET /users/{id}`.
 
+:::{admonition} Details
+:class: details
+
 Each entry is a {class}`fr.ViewRoute <fastapi_restly.views.ViewRoute>` value,
 `GET_MANY`, `GET_ONE`, `CREATE`, `UPDATE` or `DELETE`, or the name of a route
 method, such as `"delete_endpoint"`. A name that is not a route of the view
@@ -194,6 +203,7 @@ class ProductView(ReadOnlyView):
 ```
 
 `ProductView` only serves `GET /products` and `GET /products/{id}`.
+:::
 
 (nested-resources)=
 ## Nest a resource under its parent
@@ -322,10 +332,14 @@ GET    /projects/99/tasks              404 when project 99 does not exist
 GET    /projects/x/tasks               422, x is not an integer
 ```
 
+:::{admonition} Details
+:class: details
+
 A sync {class}`fr.RestView <fastapi_restly.views.RestView>` works in the same
 way. Write the lookups as plain functions that take
 {data}`fr.SessionDep <fastapi_restly.db.SessionDep>`, and write the `create`
 override as a plain `def` without `await`.
+:::
 
 (nested-create)=
 ### Create a child
@@ -347,12 +361,16 @@ would include it. An [explicit write schema](#explicit-write-schemas) writes
 every field it declares. In both cases, a `PATCH` request could move the task
 to a project that the URL never named, and the lookup would not check it.
 
+:::{admonition} Details
+:class: details
+
 Set the parent id in the view, not in a column default that reads
 `Parent.project_id`. Only the nested route knows the parent, so the value
 belongs in `create`; see [Values every write path sets](#write-path-values)
 for the difference. With such a default, creating a task anywhere else
 fails, for example in a flat view or a script, because nothing binds
 `Parent` there.
+:::
 
 (nested-parent-access)=
 ### Which parents a client can reach
@@ -469,6 +487,9 @@ no views for companies or projects, so it passes the models. When a view
 serves the parent, such as a `ProjectView`, pass the view instead. The nested
 routes then hide what that view hides.
 
+:::{admonition} Details
+:class: details
+
 Do not read `Parent.company_id()` in `project_from_path` instead. When the
 company id in the path is not an integer, FastAPI still runs the project
 lookup. `Parent.company_id` is then not bound, and the request returns `500`
@@ -480,6 +501,7 @@ Let each base inherit the one above it, as `ProjectScoped` inherits
 segments in reverse order: `/projects/{project_id}/companies/{company_id}/tasks`.
 
 Each level adds one query to every request.
+:::
 
 (nested-and-flat-views)=
 ### A flat view next to the nested one
