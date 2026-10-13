@@ -69,11 +69,6 @@ clause with that name is the scope of the model. The one line
   at the model checks that the row exists inside the scope. So a write that
   references a deleted row returns 404.
 
-`default_scope` is a {class}`WhereClause <fastapi_restly.clauses.WhereClause>`.
-A rule that depends on a related table uses `EXISTS`, with `.any()` or
-`.has()`. A raw SQLAlchemy expression raises `TypeError` when the class is
-defined.
-
 A model without a `default_scope` has
 {data}`fr.clauses.UNSCOPED <fastapi_restly.clauses.UNSCOPED>`. Its views read
 every row, and its reference checks only look up the primary key.
@@ -91,6 +86,15 @@ for `UNSCOPED` to find where code reads past a scope. A variable or a
 composed clause can also pass `UNSCOPED` on, so follow those too.
 [Combine with `UNSCOPED`](#unscoped-composition) shows what `fr.all_of`,
 `fr.any_of` and `fr.none_of` do with it.
+
+:::{admonition} Details
+:class: details
+
+`default_scope` is a {class}`WhereClause <fastapi_restly.clauses.WhereClause>`.
+A rule that depends on a related table uses `EXISTS`, with `.any()` or
+`.has()`. A raw SQLAlchemy expression raises `TypeError` when the class is
+defined.
+:::
 
 ### Rows that a scope does not reach
 
@@ -159,12 +163,16 @@ class AdminItemView(fr.AsyncRestView):
 still applies. [Let an admin read every tenant](#tenant-admin-bypass) shows
 how an admin can read every tenant.
 
+:::{admonition} Details
+:class: details
+
 A `scope` that is not a clause raises
 {class}`fr.exc.RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
 when the view class is defined. Restly applies the scope to every read itself,
 and a view has no method to change how it is applied. A route that builds
 its own query gets the scope from
 [`fr.resolve_scope`](#reading-the-scope).
+:::
 
 (read-scope)=
 ## Show each caller only their own rows
@@ -190,6 +198,9 @@ Like every scope, it covers every read of the view: the list, the total and
 does a custom route that calls `get_one(id)`. Declare the rule as the model's
 `default_scope` instead when every view and every reference check must
 follow it.
+
+:::{admonition} Details
+:class: details
 
 A view has no hook that picks a scope per request, and it needs none. To
 choose per request, write a clause function that reads a bound value:
@@ -219,6 +230,7 @@ that view. The model's namespace holds the rules for every read of the model:
 facts such as `is_deleted`, and rules such as "a draft is visible only to its
 author". A rule in the namespace may read a request value, such as
 `Current.user_id`.
+:::
 
 (binding-scope-values)=
 ### Bind the values that a scope reads
@@ -275,6 +287,13 @@ class ItemView(fr.AsyncRestView):
         return self.to_response(item)
 ```
 
+The argument replaces the scope. It does not narrow it. So a rule that must
+never be replaced belongs on the session, like the
+[tenant rule](#tenant-row-scoping).
+
+:::{admonition} Details
+:class: details
+
 `handle_get_many` calls `authorize` and passes `scope=` on to `get_many`.
 The `list_params` argument gives the route the same filter, sort and page
 parameters as `GET /`, as
@@ -295,14 +314,12 @@ with other pagination passes it, as in
 [Name the view's classes in a custom route](#name-the-response-classes) explains
 this.
 
-The argument replaces the scope. It does not narrow it. So a rule that must
-never be replaced belongs on the session, like the
-[tenant rule](#tenant-row-scoping). An override
-of `get_one` or `get_many` declares the `scope` parameter and passes it on to
-`super()`. The handlers always pass it, so an override without the parameter
-fails on its first call, instead of returning the wrong rows. The SaaS example
-runs a trash and a restore route in
+An override of `get_one` or `get_many` declares the `scope` parameter and
+passes it on to `super()`. The handlers always pass it, so an override without
+the parameter fails on its first call, instead of returning the wrong rows.
+The SaaS example runs a trash and a restore route in
 [`app/projects/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py).
+:::
 
 (per-read-where)=
 ### List a subset inside the scope
@@ -320,14 +337,17 @@ async def in_collection(self, collection_id: int, list_params):
     return self.to_response(result, fr.ResponseShape.LIST)
 ```
 
+If you pass the same expression as `scope=fr.where_clause(...)`, it replaces
+the scope, so the list would include deleted items.
+
+:::{admonition} Details
+:class: details
+
 `where=` takes a SQLAlchemy boolean expression or a clause. Restly combines
 it with the scope, as {func}`fr.all_of <fastapi_restly.clauses.all_of>`
 would: with the view's scope, or with the `scope=` argument when you pass
 both. The page and `total_count` both apply it, and the client's filters,
 sort and page apply on top.
-
-If you pass the same expression as `scope=fr.where_clause(...)`, it replaces
-the scope, so the list would include deleted items.
 
 The handler combines `where=` into the `scope` that it passes on. So a
 `get_many` override receives one combined clause, and it declares no `where`
@@ -335,6 +355,7 @@ parameter. `get_many` itself does not take `where=`. A route that calls
 `get_many` directly combines the clauses itself, with
 `fr.all_of(fr.resolve_scope(self), ...)`. A Python `bool`, such as a
 comparison on a loaded object, raises `TypeError`.
+:::
 
 (reading-the-scope)=
 ## Use the scope in your own query
@@ -366,8 +387,12 @@ and that every view without its own scope uses. The two results differ
 wherever a view declares a scope. So code outside a request that must see
 what the API shows passes the view.
 
+:::{admonition} Details
+:class: details
+
 The result is a clause or `fr.clauses.UNSCOPED`, never `None`. So it goes
 straight into `fr.apply_clauses` or into a composition, without an `if`.
+:::
 
 (reference-scopes)=
 ## Check a reference against another scope
