@@ -72,6 +72,22 @@ make docs-serve
   applies to the docs, docstrings, error messages and the changelog.
 - Update relevant docs when user-facing behaviour changes; the docs build is
   warning-clean and CI enforces it (`make docs` runs Sphinx with `-W`).
+- A Guide section opens with its lesson: the common case, done the
+  recommended way. That is usually one or two short paragraphs and one code
+  block. Less common cases, other ways to do it, and reasons that a reader
+  does not need in order to act come after the lesson, in one Details block
+  at the end of the section:
+
+  ```text
+  :::{admonition} Details
+  :class: details
+
+  ...
+  :::
+  ```
+
+  A warning about a security bug or lost data never goes in Details. A short
+  section has no Details block.
 - One page owns each topic; other pages link to it instead of restating.
   The Guide front page (`docs/guide.md`) lists each page in its group, with
   one line that names the main topics of that page. The docs build writes

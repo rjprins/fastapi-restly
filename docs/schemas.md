@@ -110,6 +110,9 @@ class UserSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     email: str
 ```
 
+:::{admonition} Details
+:class: details
+
 `BaseSchema` is a Pydantic `BaseModel` with `from_attributes=True`, so it can
 read the attributes of an ORM object. It also checks that the markers are
 used in the right place; see [the next section](#readonly-and-writeonly).
@@ -122,6 +125,7 @@ a plain `pydantic.BaseModel`. Its fields can still use `ReadOnly`,
 model's type; [Type Annotations](typing.md) explains when that helps.
 As the type of a field, `fr.IDSchema[User]` is a reference to another row;
 see [Relationships](relationships.md).
+:::
 
 (readonly-and-writeonly)=
 ## Hide a field from requests or from responses
@@ -150,6 +154,9 @@ class UserSchema(fr.IDSchema):
     password: fr.WriteOnly[str]
 ```
 
+:::{admonition} Details
+:class: details
+
 The two markers work in different places. This matters when you use a
 schema outside a view:
 
@@ -172,6 +179,7 @@ For an optional write-only field, write `WriteOnly[Optional[str]]`.
 
 A JSON column has its own rules for `WriteOnly` fields; see
 [Validate the document in a JSON column](#json-document-columns).
+:::
 
 (explicit-write-schemas)=
 ## Write the request body yourself
@@ -251,8 +259,12 @@ class OrganizationSchema(fr.IDSchema):
         return value
 ```
 
-A value that fails returns 422, with Pydantic's list of errors. The
-validator also runs in these places:
+A value that fails returns 422, with Pydantic's list of errors.
+
+:::{admonition} Details
+:class: details
+
+The validator also runs in these places:
 
 - In the update body, the client may leave out each field. Pydantic does not
   validate a field that the client leaves out, so the validator does not
@@ -279,6 +291,7 @@ A rule that compares two fields, in a `model_validator`, works on the create
 body. The update body holds only the fields that the client sends, and the
 other fields are `None`. Check such a rule in `update`, where you have the
 stored row too.
+:::
 
 ### Check what the schema cannot see
 
@@ -362,14 +375,18 @@ class AccountView(fr.AsyncRestView):
 a filter, because a client does not see `email`. Restly uses the class as you
 wrote it: it does not remove `WriteOnly` fields from it.
 
+To change how one object becomes a response, or to send another shape, see
+[Responses](responses.md).
+
+:::{admonition} Details
+:class: details
+
 Name the class `<Resource>Response`, as in `AccountResponse`. Restly names the
 list response and the list params after it: `AccountListResponse` and
 `AccountListParams`. For type checkers, put the class in the second type
 parameter of the view, as in `fr.AsyncRestView[Account, AccountResponse]`; see
 [Type Annotations](#view-generics).
-
-To change how one object becomes a response, or to send another shape, see
-[Responses](responses.md).
+:::
 
 (generated-class-names)=
 ## The names of the generated classes
@@ -391,6 +408,9 @@ unless another schema nests it or a custom route names it. The list params
 are not a class in OpenAPI either: OpenAPI shows them as separate query
 parameters.
 
+:::{admonition} Details
+:class: details
+
 The list response has no view attribute, because it has nothing of its own
 to set. It is the envelope of the view's
 {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>`, filled with
@@ -401,6 +421,7 @@ list response class: its list route returns a plain JSON list.
 A view without a schema gets a generated one. For a model named `User` it is
 `UserSchema`, so the names above stay the same. A schema with another name
 keeps its full name as the resource: `UserRead` gives `UserReadCreate`.
+:::
 
 (name-your-schemas)=
 ## Name your schemas
@@ -448,6 +469,9 @@ rules for the classes that you write:
   views set the same `schema_response`, give one view a response class of
   its own in the same way.
 
+:::{admonition} Details
+:class: details
+
 Two different classes can still get the same name. For example, two views
 share a schema but only one is paginated, or you wrote a `UserCreate` that is
 not the same as the generated one. OpenAPI then shows both classes under long
@@ -464,6 +488,7 @@ that names the classes and the views. Restly checks an app that you pass to
 that you include a view on. Two classes with the same name are not a problem
 when their JSON schemas are the same, docstrings and defaults included:
 OpenAPI then shows them as one.
+:::
 
 (name-the-response-classes)=
 ## Name the view's classes in a custom route
@@ -508,6 +533,9 @@ OpenAPI then shows `UserListResponse` and `UserResponse` for these routes,
 as for the CRUD routes. The SaaS example names its classes this way in
 [`app/projects/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py).
 
+:::{admonition} Details
+:class: details
+
 A view with its own `schema_response` passes that class to
 `derive_schema_list_response` instead.
 
@@ -522,6 +550,7 @@ passes a pagination with another envelope than the view's gets a list
 response of another shape, for example `data` without `total_count`. There
 are then two classes named `UserListResponse`, and Restly warns; see
 [Name your schemas](#name-your-schemas).
+:::
 
 (json-document-columns)=
 ## Validate the document in a JSON column
