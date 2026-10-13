@@ -173,6 +173,9 @@ these points:
   {attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>`
   gives that class instead, as in `fr.AsyncRestView[User, UserResponse]`.
 
+:::{admonition} Details
+:class: details
+
 A project base view can stay generic in the model, so each view that
 subclasses it names its own model. The SaaS example does this
 ([`app/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py)):
@@ -191,6 +194,7 @@ class ProjectView(AuthenticatedView[Project]):
     prefix = "/projects"
     model = Project
 ```
+:::
 
 ## Type a custom route
 
