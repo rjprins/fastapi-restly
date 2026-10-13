@@ -93,9 +93,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `422`. The client may still leave the field out, and then the default
   applies. In OpenAPI, the field is `integer` instead of `integer | null`.
   `mapped_column(nullable=...)` now wins over the annotation, as in
-  SQLAlchemy: `Mapped[int]` with `nullable=True` allows `null`. A default of
-  the constructor, such as `default_factory=dict` or a `default` other than
-  `None`, now also lets the client leave the field out.
+  SQLAlchemy: `Mapped[int]` with `nullable=True` allows `null`.
+- The create body of a generated schema follows the model's constructor, as
+  SQLAlchemy does. The client may leave out a field when its column is
+  nullable, or when the constructor does not require it and the model then
+  still gives the column a value. On a dataclass model, a column with only a
+  `server_default` is a required argument of the constructor, so its field
+  is now required too. Add `default=None` to let the client leave it out:
+  `mapped_column(server_default="x", default=None)`. A `default_factory`, or
+  a `default` other than `None`, also lets the client leave the field out.
 - The `400` answers of a list request say what is wrong. Before, the
   standard dialect answered "Invalid attribute in URL query: age" both for a
   sort or filter field that does not exist and for a bad filter value. Now
@@ -162,14 +168,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- A field that the client leaves out of a create, with the value `None`, no
-  longer replaces the model's default. Before, Restly passed `None` to the
-  constructor for it. Most columns then still got their column default, but
-  a JSON column stored JSON `null`, and a `default_factory` of the
-  constructor was lost. Now Restly leaves such a field out. When the
-  constructor requires the argument, Restly passes `None`, and for a column
-  it removes the `None` again before the `INSERT`, so the column default or
-  the server default applies. This also holds for a reference field, such as
+- Restly calls the model's constructor with the fields that the client sent,
+  as code that builds the object itself would. A field that the client
+  leaves out, with the value `None`, is no longer passed, unless the
+  constructor requires it. So the model's default applies. Before, Restly
+  passed `None`: most columns still got their column default, but a JSON
+  column stored JSON `null`, and a `default_factory` of the constructor was
+  lost. This also holds for a reference field, such as
   `author_id: fr.IDRef[User] | None = None`, on a foreign key column.
 - A validator or serializer for a `ReadOnly` field, or for a primary key that
   the server generates, no longer makes the view fail when it registers.

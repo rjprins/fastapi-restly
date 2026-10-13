@@ -555,11 +555,12 @@ def test_scalar_enums_in_documents_keep_pydantic_serialization(sync_db):
 
 @pytest.mark.parametrize("asynchronous", [True, False], ids=["async", "sync"])
 def test_a_left_out_json_field_gets_the_column_default(request, asynchronous):
-    """A field that the client leaves out is not written, so the model's
-    default applies. Before, Restly passed ``None`` to the constructor, and a
-    JSON column stored it as JSON ``null`` instead of the default. With a
-    generated schema, whose field is typed ``dict``, the response then
-    failed, and so did each later read of the row."""
+    """Restly calls the constructor with the fields that the client sent, as
+    user code would, so the model's default applies to a field the client
+    leaves out. Before, Restly passed ``None``, and a JSON column stored it
+    as JSON ``null`` instead of the default. With a generated schema, whose
+    field is typed ``dict``, the response then failed, and so did each later
+    read of the row."""
     client = request.getfixturevalue("client" if asynchronous else "sync_client")
 
     class Sheet(fr.IDMixin, SharedBase):
@@ -567,7 +568,7 @@ def test_a_left_out_json_field_gets_the_column_default(request, asynchronous):
         data: Mapped[dict[str, Any]] = mapped_column(
             sqlalchemy.JSON, default_factory=dict
         )
-        # No default for the constructor, so __init__ requires the argument.
+        # The constructor requires it, so the create body requires it too.
         tags: Mapped[list[str]] = mapped_column(
             sqlalchemy.JSON, server_default=sqlalchemy.text("'[]'")
         )
@@ -581,7 +582,9 @@ def test_a_left_out_json_field_gets_the_column_default(request, asynchronous):
         create_tables()
     else:
         SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
-    created = client.post("/sheets/", json={"title": "a"}).json()
-    assert (created["data"], created["tags"]) == ({}, [])
+    response = client.post("/sheets/", json={"title": "a"}, assert_status_code=422)
+    assert [error["loc"] for error in response.json()["detail"]] == [["body", "tags"]]
+    created = client.post("/sheets/", json={"title": "a", "tags": ["x"]}).json()
+    assert (created["data"], created["tags"]) == ({}, ["x"])
     assert client.get(f"/sheets/{created['id']}").json() == created
     assert client.get("/sheets/").json()["data"] == [created]

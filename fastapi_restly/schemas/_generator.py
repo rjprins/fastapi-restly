@@ -4,6 +4,8 @@ Schema generation utilities for auto-generating Pydantic schemas from SQLAlchemy
 
 import dataclasses
 import enum
+import functools
+import inspect
 import sys
 import types
 from collections.abc import Collection
@@ -132,6 +134,26 @@ def _model_annotations(model_cls: type, keys: Collection[str]) -> dict[str, Any]
     return annotations
 
 
+@functools.cache
+def _required_init_params(model_cls: type) -> frozenset[str]:
+    """The keyword parameters of ``model_cls(...)`` that have no default.
+
+    Reads the real signature, so it also sees a hand-written ``__init__`` and
+    a dataclass ``InitVar``, which ``dataclasses.fields()`` leaves out. The
+    default constructor of a declarative model requires nothing.
+    """
+    try:
+        parameters = inspect.signature(model_cls).parameters.values()
+    except (TypeError, ValueError):
+        return frozenset()
+    keyword = (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY)
+    return frozenset(
+        p.name
+        for p in parameters
+        if p.kind in keyword and p.default is inspect.Parameter.empty
+    )
+
+
 def _split_optional(annotation: Any) -> tuple[Any, bool]:
     """Return ``(type, is_optional)`` with ``None`` removed from a union."""
     if isinstance(annotation, types.UnionType) or get_origin(annotation) is Union:
@@ -160,21 +182,12 @@ def get_model_fields(model_cls: type[Any]) -> dict[str, Any]:
     props = {prop.key: prop for prop in mapper.attrs}
     annotations = _model_annotations(model_cls, props.keys())
     dc_fields = (
-        dataclasses.fields(model_cls) if dataclasses.is_dataclass(model_cls) else ()
+        {f.name: f for f in dataclasses.fields(model_cls)}
+        if dataclasses.is_dataclass(model_cls)
+        else {}
     )
-    not_in_init = {f.name for f in dc_fields if not f.init}
-    # A default of the constructor is a default of the model too, for a field
-    # that the client can send. A None default gives a NOT NULL column no
-    # value, and a nullable column is optional already.
-    init_defaults = {
-        f.name
-        for f in dc_fields
-        if f.init
-        and (
-            (f.default is not dataclasses.MISSING and f.default is not None)
-            or f.default_factory is not dataclasses.MISSING
-        )
-    }
+    not_in_init = {name for name, f in dc_fields.items() if not f.init}
+    required_params = _required_init_params(model_cls)
     names = list(annotations)
     names += [name for name in props if name not in annotations]
 
@@ -221,22 +234,38 @@ def get_model_fields(model_cls: type[Any]) -> dict[str, Any]:
                 ) from None
             is_nullable = bool(getattr(column, "nullable", False))
 
-        # The client may leave out a field whose annotation or column allows
-        # None, or whose column has a default.
-        is_optional = is_nullable
         if isinstance(column, Column):
             # As in SQLAlchemy, mapped_column(nullable=...) wins over the
             # annotation. The field allows None only when the column does.
             is_nullable = bool(column.nullable)
-            is_optional = is_optional or is_nullable
         default = None
         column_default = getattr(column, "default", None)
         server_default = getattr(column, "server_default", None)
         if column_default is not None or server_default is not None:
             default = column_default or server_default
-            is_optional = True
-        if name in init_defaults:
-            is_optional = True
+
+        # A column_property over an expression cannot be written. The model
+        # or the server sets a column outside the constructor.
+        is_read_only = not isinstance(column, Column) or name in not_in_init
+        if is_read_only:
+            # Only a response has the field, and the row has a value.
+            is_optional = is_nullable
+        else:
+            # The create body follows the constructor: the client may leave
+            # out a field that the constructor may leave out, when the model
+            # then still gives the column a value. A None default gives a
+            # NOT NULL column no value.
+            dc_field = dc_fields.get(name)
+            init_default = dc_field is not None and (
+                dc_field.default_factory is not dataclasses.MISSING
+                or (
+                    dc_field.default is not dataclasses.MISSING
+                    and dc_field.default is not None
+                )
+            )
+            is_optional = is_nullable or (
+                name not in required_params and (default is not None or init_default)
+            )
 
         fields[name] = {
             "type": field_type,
@@ -244,9 +273,7 @@ def get_model_fields(model_cls: type[Any]) -> dict[str, Any]:
             "target_model": None,
             "is_optional": is_optional,
             "is_nullable": is_nullable,
-            # A column_property over an expression cannot be written. The
-            # model or the server sets a column outside the constructor.
-            "is_read_only": not isinstance(column, Column) or name in not_in_init,
+            "is_read_only": is_read_only,
             "default": default,
         }
 
@@ -264,13 +291,14 @@ def derive_schema(model: type[Any], *, name: str | None = None) -> type[BaseSche
     ``updated_at``, a ``column_property`` over a SQL expression, and a column
     that the constructor does not take (``init=False``).
 
-    A field allows ``None`` only when its column is nullable. The client may
-    leave out a field when its column is nullable, when its annotation allows
-    ``None``, or when the model has a default for it: on the column
-    (``insert_default``, ``server_default``) or on the constructor (a
-    ``default`` other than ``None``, or a ``default_factory``). Such a field
-    has the default ``None``, which Pydantic does not validate. Restly does
-    not write it, so the model's default applies.
+    A field allows ``None`` only when its column is nullable. The create body
+    follows the constructor: the client may leave out a field when its
+    column is nullable, or when the constructor does not require it and the
+    model then still gives the column a value. That value comes from the
+    column (``insert_default``, ``server_default``) or from the constructor
+    (a ``default`` other than ``None``, or a ``default_factory``). Such a
+    field has the default ``None``, which Pydantic does not validate. Restly
+    does not pass it to the constructor, so the model's default applies.
 
     :param model: The SQLAlchemy model class.
     :param name: Name for the generated schema class. Defaults to the

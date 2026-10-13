@@ -634,15 +634,23 @@ that names the attribute. Synonyms and composites get no field of their own:
 the columns behind them already have one. A field allows `null` (`None` in
 Python) only when its column is nullable. `mapped_column(nullable=...)`
 decides this, as it does for SQLAlchemy, even when the `Mapped[...]`
-annotation says otherwise. The client may leave out a field when its column
-is nullable, when its `Mapped[...]` annotation allows `None`, or when the
-model has a default for it. A default can be on the column, such as
-`insert_default` or `server_default`, or on the constructor: a `default`
-other than `None`, or a `default_factory`. When the client leaves the field
-out, Restly does not write it, so that default applies. For
-`Mapped[int | None]` with `nullable=False`, the field does not allow `null`,
-but the client may leave it out, so that an event can set the value before
-the flush.
+annotation says otherwise.
+
+The create body follows the model's constructor, as SQLAlchemy does. The
+client may leave out a field when its column is nullable, or when the
+constructor does not require it and the model then still gives the column a
+value. That value comes from the column, such as `insert_default` or
+`server_default`, or from the constructor: a `default` other than `None`, or
+a `default_factory`. Restly calls the constructor with the fields that the
+client sent, so that value applies.
+
+On a dataclass model, a column with only a `server_default` is a required
+argument of the constructor, so its field is required. To let the client
+leave it out, add `default=None`, as SQLAlchemy does for a value that the
+database fills: `mapped_column(server_default="x", default=None)`. On
+SQLAlchemy 2.0, a JSON column then stores the `None` as JSON `null` instead
+of its default. Use `default_factory=list`, or
+`JSON(none_as_null=True)`, for a JSON column.
 
 Three rules decide the rest:
 

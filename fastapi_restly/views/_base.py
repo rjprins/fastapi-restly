@@ -111,7 +111,7 @@ from ..schemas._base import (
     is_reference_field,
     reference_origin_and_target,
 )
-from ..schemas._generator import derive_schema
+from ..schemas._generator import _required_init_params, derive_schema
 from ._openapi import _register_for_resource_ref
 
 # Unbound: a mapped class need not subclass DeclarativeBase (a SQLModel table,
@@ -201,25 +201,6 @@ def _accepts_init_kwarg(model_cls: type, attr_name: str) -> bool:
     return attr_name not in dc_fields or dc_fields[attr_name].init
 
 
-@functools.cache
-def _required_init_params(model_cls: type) -> frozenset[str]:
-    """The keyword parameters of ``model_cls(...)`` that have no default.
-
-    Reads the real signature, so it also sees a hand-written ``__init__`` and
-    a dataclass ``InitVar``, which ``dataclasses.fields()`` leaves out.
-    """
-    try:
-        parameters = inspect.signature(model_cls).parameters.values()
-    except (TypeError, ValueError):
-        return frozenset()
-    keyword = (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY)
-    return frozenset(
-        p.name
-        for p in parameters
-        if p.kind in keyword and p.default is inspect.Parameter.empty
-    )
-
-
 def _requires_init_kwarg(model_cls: type, attr_name: str) -> bool:
     if not dataclasses.is_dataclass(model_cls):
         return False
@@ -239,9 +220,6 @@ class _CreatePlan:
     post_assignments: dict[str, Any]
     # Many-to-one relationships the input did not supply.
     unsupplied_relationships: list[str] = dataclasses.field(default_factory=list)
-    # Columns the input left out that ``__init__`` still requires: the plan
-    # passes None, and the None is unset after construction.
-    unsupplied_columns: list[str] = dataclasses.field(default_factory=list)
 
 
 class _HasID(Protocol):
@@ -533,8 +511,8 @@ def iter_creatable_fields(schema_obj: pydantic.BaseModel) -> Iterator[tuple[str,
     Fields marked as ``ReadOnly`` are skipped. Unlike :func:`get_writable_inputs`,
     this also includes fields that were not explicitly provided, so that
     schema-level defaults end up on the new object. :func:`build_create_plan`
-    leaves out a field that the client left out with the value ``None``, so
-    the model's default applies to it.
+    does not pass a field that the client left out with the value ``None``,
+    unless the constructor requires it, so the model's default applies.
     """
     schema_cls = type(schema_obj)
     for field_name, value in schema_obj:
@@ -711,13 +689,9 @@ def build_create_plan(
         if is_mapped_instance(value) and is_reference_field(schema_cls, field_name):
             _add_resolved_reference_to_create_plan(plan, model_cls, field_name, value)
             continue
-        if left_out:
-            # The model's own default applies. A None would replace it, and a
-            # JSON column would store it as JSON null.
-            if field_name in _required_init_params(model_cls):
-                plan.kwargs[field_name] = None
-                if _is_mapped_column(model_cls, field_name):
-                    plan.unsupplied_columns.append(field_name)
+        if left_out and field_name not in _required_init_params(model_cls):
+            # Not passed, as user code would not pass it: the model's own
+            # default applies. A JSON column would store a None as JSON null.
             continue
 
         value = _json_ready(model_cls, field_name, value)
@@ -750,15 +724,11 @@ def apply_create_assignments(obj: Any, plan: _CreatePlan) -> None:
     flush would copy it over the foreign key, discarding an id the input did
     supply. Unset, the relationship takes no part in the flush, as SQLAlchemy
     2.1 treats dataclass defaults. A ``null`` the client sent stays.
-
-    It also unsets each column the input left out that ``__init__``
-    required, so the ``INSERT`` leaves it out and the column default or the
-    server default applies.
     """
     for field_name, value in plan.post_assignments.items():
         setattr(obj, field_name, value)
     loaded = sa_inspect(obj).dict
-    for name in (*plan.unsupplied_relationships, *plan.unsupplied_columns):
+    for name in plan.unsupplied_relationships:
         if name in loaded and loaded[name] is None:
             del_attribute(obj, name)
 

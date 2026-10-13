@@ -60,7 +60,10 @@ def test_a_generated_field_with_a_default_allows_null_only_when_nullable(client)
 
     class Counter(fr.IDMixin, SharedBase):
         count: Mapped[int] = mapped_column(default=3)
-        label: Mapped[str] = mapped_column(server_default="x")
+        # SQLAlchemy's way to say that the database fills a column.
+        label: Mapped[str] = mapped_column(server_default="x", default=None)
+        # The constructor requires it, so the create body requires it too.
+        stamp: Mapped[str] = mapped_column(server_default="s")
         note: Mapped[str | None] = mapped_column(default="n")
         # As in SQLAlchemy, nullable= wins over the annotation.
         strict: Mapped[int | None] = mapped_column(nullable=False, default=5)
@@ -77,15 +80,18 @@ def test_a_generated_field_with_a_default_allows_null_only_when_nullable(client)
     assert fields["strict"].annotation is int
     for name in ("note", "loose"):
         assert type(None) in get_args(fields[name].annotation), name
-    assert not any(field.is_required() for field in fields.values())
+    assert [name for name, field in fields.items() if field.is_required()] == ["stamp"]
 
     create_tables()
-    created = client.post("/counters/", json={}).json()
+    created = client.post("/counters/", json={"stamp": "s"}).json()
     defaults = {"count": 3, "label": "x", "note": "n", "strict": 5, "loose": 6}
+    defaults["stamp"] = "s"
     assert created == {"id": created["id"], **defaults}
     url = f"/counters/{created['id']}"
     for name in ("count", "label", "strict"):
-        client.post("/counters/", json={name: None}, assert_status_code=422)
+        client.post(
+            "/counters/", json={"stamp": "s", name: None}, assert_status_code=422
+        )
         client.patch(url, json={name: None}, assert_status_code=422)
     for name in ("note", "loose"):
         assert client.patch(url, json={name: None}).json()[name] is None
