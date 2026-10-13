@@ -110,6 +110,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `fr.exc.Conflict` first. Register it for `fr.exc.Conflict` instead; the
   original error is `exc.__cause__`.
 
+### Fixed
+
+- A validator or serializer for a `ReadOnly` field, or for a primary key that
+  the server generates, no longer makes the view fail when it registers.
+  Before, it needed `check_fields=False`. The request bodies do not have the
+  field, so they do not run the validator. The response class has the field
+  and runs it.
+
 ## [0.11.0] - 2026-10-09
 
 This release has many breaking changes. Before, we said to expect small

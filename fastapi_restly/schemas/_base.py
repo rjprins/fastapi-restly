@@ -394,7 +394,7 @@ class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
             return None
         return _model_id_type(sql_model)
 
-    @pydantic.field_validator("id", mode="before", check_fields=False)
+    @pydantic.field_validator("id", mode="before")
     @classmethod
     def _coerce_id_to_model_primary_key_type(cls, value: Any) -> Any:
         id_type = cls._get_sql_model_id_type()
@@ -994,6 +994,7 @@ class OmitReadOnlyMixin(pydantic.BaseModel):
         # Delete readonly fields after iteration is complete
         for name in readonly_fields:
             del cls.model_fields[name]
+        _skip_field_checks(cls, set(readonly_fields))
 
         cls.model_rebuild(force=True)
 
@@ -1061,8 +1062,9 @@ def _skip_field_checks(cls: type[pydantic.BaseModel], removed: set[str]) -> None
 
     Pydantic checks that each field validator and serializer names a field of
     the class. A ``@field_validator("password")`` on the view's schema would
-    then fail the response class, which has no ``password``. Without the
-    check, pydantic does not use it there.
+    then fail the response class, which has no ``password``, and a
+    ``@field_validator("slug")`` on a ``ReadOnly`` slug would fail the request
+    bodies. Without the check, pydantic does not use it there.
     """
     decorators = cls.__pydantic_decorators__
     for group in (

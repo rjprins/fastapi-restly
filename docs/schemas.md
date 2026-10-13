@@ -263,6 +263,10 @@ validator also runs in these places:
 - List filters run it on each filter value; see
   [Filter values go through the field's validation](#filter-value-validation).
 
+A class without the field does not run its validator. The request bodies
+have no `ReadOnly` fields and no primary key that the server generates. The
+response class has no `WriteOnly` fields.
+
 To check only what comes in, put the validator on a request body that you set
 on the view. The SaaS example does this for organizations
 ([`app/organizations/schemas.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/organizations/schemas.py)).
@@ -588,12 +592,11 @@ autoincrement column, a column with a default, or a dataclass field outside
 `__init__`. A primary key without any of these is a natural key, and the
 client sends it.
 
-The classes are subclasses, so they keep the validators of `UserSchema`. The
-response class keeps the validator of a `WriteOnly` field that it deletes, and
-Pydantic does not run it there. The request bodies do not do this for the
-`ReadOnly` fields that they delete. So a validator for a `ReadOnly` field
-makes the view fail when it registers, unless the validator has
-`check_fields=False`.
+The classes are subclasses, so they keep the validators and serializers of
+`UserSchema`. When a class deletes a field, it keeps the validators and
+serializers of that field too, and Pydantic does not run them there. So a
+validator for a `ReadOnly` field, a `WriteOnly` field or a generated primary
+key does not need `check_fields=False`.
 
 Restly stores the classes on the view when it registers the view. Declare
 `schema_response`, `schema_create` or `schema_update` on the view class to use

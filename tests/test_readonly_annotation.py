@@ -2,8 +2,10 @@ from datetime import datetime
 from typing import Annotated, get_args, get_origin
 
 import pytest
-from pydantic import Field
+from pydantic import Field, field_serializer, field_validator
+from sqlalchemy.orm import Mapped, mapped_column
 
+import fastapi_restly as fr
 from fastapi_restly.schemas import BaseSchema, ReadOnly, WriteOnly
 from fastapi_restly.schemas._base import (
     create_model_with_optional_fields,
@@ -15,6 +17,9 @@ from fastapi_restly.schemas._base import (
     readonly_marker,
     writeonly_marker,
 )
+
+from ._models import SharedBase
+from .conftest import create_tables
 
 
 @pytest.mark.parametrize("marker", [ReadOnly, WriteOnly])
@@ -404,6 +409,44 @@ def test_readonly_field_validation():
         TestSchema(id="not_an_int", name="Test")
 
 
+def test_a_validator_on_a_removed_field_does_not_fail_the_request_bodies():
+    """The request bodies have no ``slug`` and no ``code``, and pydantic
+    rejects a validator or serializer for a field that a class does not have.
+    Restly lets the request bodies build anyway. A validator that also names
+    a kept field still runs for that field."""
+
+    class PostSchema(BaseSchema):
+        code: str
+        title: str
+        slug: ReadOnly[str]
+
+        @field_validator("title", "slug")
+        @classmethod
+        def _strip(cls, value: str) -> str:
+            return value.strip()
+
+        @field_validator("code")
+        @classmethod
+        def _upper(cls, value: str) -> str:
+            return value.upper()
+
+        @field_serializer("slug")
+        def _hidden(self, value: str) -> str:
+            return "***"
+
+    post_create = create_model_without_read_only_fields(PostSchema, omit={"code"})
+    post_update = create_model_with_optional_fields(PostSchema, omit={"code"})
+
+    for body in (post_create, post_update):
+        assert set(body.model_fields) == {"title"}
+        assert body.model_validate({"title": " Hello "}).model_dump() == {
+            "title": "Hello"
+        }
+
+    post = PostSchema(code="a1", title=" Hello ", slug=" hello ")
+    assert post.model_dump() == {"code": "A1", "title": "Hello", "slug": "***"}
+
+
 def test_writeonly_field_validation():
     """Test that WriteOnly fields are properly validated."""
 
@@ -489,3 +532,34 @@ def test_mixed_readonly_writeonly_fields():
     assert schema.password == "secret123"
     assert isinstance(schema.created_at, datetime)
     assert schema.secret_token == "abc123"
+
+
+def test_a_view_with_a_validator_on_a_readonly_field_registers(client):
+    """The request bodies have no ``slug``. The response has it, so the
+    validator runs there."""
+
+    class Article(fr.IDMixin, SharedBase):
+        title: Mapped[str]
+        slug: Mapped[str] = mapped_column(default="New-Article")
+
+    class ArticleSchema(fr.IDSchema):
+        title: str
+        slug: fr.ReadOnly[str]
+
+        @field_validator("slug")
+        @classmethod
+        def _lower(cls, value: str) -> str:
+            return value.lower()
+
+    @fr.include_view(client.app)
+    class ArticleView(fr.AsyncRestView):
+        prefix = "/articles"
+        model = Article
+        schema = ArticleSchema
+
+    create_tables()
+
+    created = client.post("/articles/", json={"title": "Hello"})
+    assert created.json() == {"id": 1, "title": "Hello", "slug": "new-article"}
+    updated = client.patch("/articles/1", json={"title": "Bye"})
+    assert updated.json() == {"id": 1, "title": "Bye", "slug": "new-article"}
