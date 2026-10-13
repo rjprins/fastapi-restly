@@ -117,7 +117,8 @@ envelope that keeps fastapi-pagination's field names.
 :::{admonition} Details
 :class: details
 
-camelCase field names, `totalCount`, `pageSize` and `totalPages`:
+An envelope with camelCase field names, `totalCount`, `pageSize` and
+`totalPages`:
 
 ```python
 from pydantic.alias_generators import to_camel

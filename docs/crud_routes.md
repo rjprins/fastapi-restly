@@ -180,14 +180,6 @@ class UserView(fr.AsyncRestView):
 
 `UserView` now serves only `GET /users`, `POST /users` and `GET /users/{id}`.
 
-:::{admonition} Details
-:class: details
-
-Each entry is a {class}`fr.ViewRoute <fastapi_restly.views.ViewRoute>` value,
-`GET_MANY`, `GET_ONE`, `CREATE`, `UPDATE` or `DELETE`, or the name of a route
-method, such as `"delete_endpoint"`. A name that is not a route of the view
-raises `AttributeError` when you register the view.
-
 Subclasses inherit `exclude_routes`. To make several views read-only, set it
 on a base view:
 
@@ -203,6 +195,19 @@ class ProductView(ReadOnlyView):
 ```
 
 `ProductView` only serves `GET /products` and `GET /products/{id}`.
+
+A subclass that sets its own `exclude_routes` replaces the list of its base. It
+does not add to it. So repeat the entries of the base, or the subclass serves
+the write routes again:
+`exclude_routes = (*ReadOnlyView.exclude_routes, fr.ViewRoute.GET_ONE)`.
+
+:::{admonition} Details
+:class: details
+
+Each entry is a {class}`fr.ViewRoute <fastapi_restly.views.ViewRoute>` value,
+`GET_MANY`, `GET_ONE`, `CREATE`, `UPDATE` or `DELETE`, or the name of a route
+method, such as `"delete_endpoint"`. A name that is not a route of the view
+raises `AttributeError` when you register the view.
 :::
 
 (nested-resources)=

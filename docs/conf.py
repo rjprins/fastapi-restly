@@ -272,7 +272,12 @@ def _llms_markdown(app, text):
 
     def link(m):
         url = _llms_link_url(app, m.group(2))
-        return f"[{m.group(1)}]({url})" if url else m.group(1)
+        if url is None:
+            sphinx_logging.getLogger(__name__).warning(
+                "llms.txt: cannot resolve the link target %r", m.group(2)
+            )
+            return m.group(1)
+        return f"[{m.group(1)}]({url})"
 
     return _LINK.sub(link, text).strip()
 

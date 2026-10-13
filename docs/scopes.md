@@ -241,10 +241,7 @@ request with a generated dependency, as
 [Bind from a FastAPI dependency](#current-request-binding) shows:
 
 ```python
-app = FastAPI(dependencies=[
-    Current.depends(user_id=get_user_id),
-    RoleContext.depends(include_deleted=get_include_deleted),
-])
+app = FastAPI(dependencies=[Current.depends(user_id=get_user_id)])
 ```
 
 A read without a bound value fails, and never returns the rows without the
@@ -287,6 +284,9 @@ class ItemView(fr.AsyncRestView):
         return self.to_response(item)
 ```
 
+The `list_params` argument gives the route the same filter, sort and page
+parameters as `GET /`, as [Filtering & Pagination](filtering.md) explains.
+
 The argument replaces the scope. It does not narrow it. So a rule that must
 never be replaced belongs on the session, like the
 [tenant rule](#tenant-row-scoping).
@@ -295,17 +295,13 @@ never be replaced belongs on the session, like the
 :class: details
 
 `handle_get_many` calls `authorize` and passes `scope=` on to `get_many`.
-The `list_params` argument gives the route the same filter, sort and page
-parameters as `GET /`, as
-[Filtering & Pagination](filtering.md) explains.
 
 The restore route loads the row with `get_one(id, scope=...)`, not with
 `handle_get_one`, because
 {meth}`write_action <fastapi_restly.views.RestView.write_action>` authorizes
 the action itself; see [Add a custom action route](#custom-action-route). The
-route
-reads only the trash, so a row that is not deleted returns 404 here. To read
-without any scope on one route, pass `scope=fr.clauses.UNSCOPED`.
+route reads only the trash, so a row that is not deleted returns 404 here. To
+read without any scope on one route, pass `scope=fr.clauses.UNSCOPED`.
 
 The two routes use the view's response classes, `ItemListResponse` and
 `ItemResponse`, so OpenAPI shows the same types as for the CRUD routes. A view

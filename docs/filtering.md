@@ -500,7 +500,9 @@ library, override
 It turns the URL parameters into the query. The
 [React Admin](react_admin.md) views override it for the react-admin
 grammar. Override `get_many()` itself only for a list that has another
-*result*, and build the query in the method.
+*result*, and build the query in the method. The override gets the scope as
+its `scope` argument: apply it to the query with `fr.apply_clauses`, as
+[Use the scope in your own query](#reading-the-scope) shows.
 
 A route method with a `list_params` parameter takes the same list parameters
 as `GET /`. Restly gives it the view's

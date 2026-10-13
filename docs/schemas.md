@@ -261,6 +261,14 @@ class OrganizationSchema(fr.IDSchema):
 
 A value that fails returns 422, with Pydantic's list of errors.
 
+A rule that compares two fields, in a `model_validator`, works on the create
+body. The update body holds only the fields that the client sends, and the
+other fields are `None`. Check such a rule in `update`, where you have the
+stored row too. Otherwise a `PATCH` that sends one of the two fields can save
+a row that breaks the rule. The response class runs the validator too, so
+every read of that row, and every list that holds it, then fails with a
+server error.
+
 :::{admonition} Details
 :class: details
 
@@ -286,11 +294,6 @@ response class has no `WriteOnly` fields.
 To check only what comes in, put the validator on a request body that you set
 on the view. The SaaS example does this for organizations
 ([`app/organizations/schemas.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/organizations/schemas.py)).
-
-A rule that compares two fields, in a `model_validator`, works on the create
-body. The update body holds only the fields that the client sends, and the
-other fields are `None`. Check such a rule in `update`, where you have the
-stored row too.
 :::
 
 ### Database validation

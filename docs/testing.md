@@ -158,13 +158,12 @@ test needs to be async.
 :::{admonition} Details
 :class: details
 
-This works because Restly has
+The `conftest.py` above works because Restly has
 [one configuration per process](#one-configuration-per-process), and the last
-`fr.configure()` call wins. The factory call in `conftest.py` points the
-process at the test database. Then `configure_tests()` records that
-configuration and freezes it. This also works when a module that the
-conftest imports has already built an app: the conftest's factory call runs
-after that import, and before the freeze.
+`fr.configure()` call wins. The factory call in `conftest.py` points the process at the test
+database. Then `configure_tests()` records that configuration and freezes it.
+This also works when a module that the conftest imports has already built an
+app: the conftest's factory call runs after that import, and before the freeze.
 
 A factory that *requires* its settings, like the PostgreSQL one below, must
 not build an app when its module is imported. Keep it a factory. Otherwise
@@ -280,7 +279,7 @@ every view, and each view imports its model. A conftest that uses `Base`
 without building the app should also import `app.main`, as `alembic/env.py`
 does; see [Compose in one place](#compose-in-one-place).
 
-Pass a path if the config is somewhere else:
+Pass a path if `alembic.ini` is somewhere else:
 
 ```python
 fr.testing.configure_tests(

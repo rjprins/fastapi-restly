@@ -112,9 +112,6 @@ recently_created = fr.where_clause(
 )
 ```
 
-:::{admonition} Details
-:class: details
-
 A clause is a condition and never joins. For a condition on a related table,
 use the relationship's `any()` or `has()`, which generate `EXISTS`. A join
 for this purpose repeats rows on a one-to-many relationship. `EXISTS` cannot.
@@ -142,7 +139,6 @@ def owned_unless_admin() -> ColumnElement[bool]:
 A function with parameters raises `TypeError` when you declare the clause.
 The values that a condition needs come from context members; see
 [Give a clause its values](#binding-values).
-:::
 
 (clause-namespaces)=
 ## Group the clauses of a model

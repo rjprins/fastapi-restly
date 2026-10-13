@@ -149,10 +149,10 @@ the requests of every earlier app at the new database too; see
 :::{admonition} Details
 :class: details
 
-Do not put `app = create_app()` at the end of `main.py` instead. With
-required settings, importing `main.py` would then need `DATABASE_URL`
-everywhere, also in `conftest.py` and in `alembic/env.py`. Nothing in the
-package should import `asgi.py`; only the server does.
+Do not put `app = create_app()` at the end of `main.py` instead of in
+`app/asgi.py`. With required settings, importing `main.py` would then need
+`DATABASE_URL` everywhere, also in `conftest.py` and in `alembic/env.py`.
+Nothing in the package should import `asgi.py`; only the server does.
 
 Sync {class}`RestView <fastapi_restly.views.RestView>` endpoints run on
 FastAPI's thread pool. Async

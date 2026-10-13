@@ -47,9 +47,10 @@ These are the parts, and the page that explains each one:
   such as `update`. To change the HTTP contract, such as the status code,
   replace the endpoint method. A handler is final. See
   [Request Lifecycle & Hooks](lifecycle.md).
-- **Commit**: a write route commits after the business method, and
-  `before_action_commit` and `after_action_commit` run on each side of the
-  commit. A read does not commit. See [What commits, and when](#what-commits).
+- **Commit**: a write route commits after the business method.
+  `before_action_commit` runs just before the commit, and
+  `after_action_commit` just after it. A read does not commit. See
+  [What commits, and when](#what-commits).
 - **Scope**: the rows of a model that exist for a request. Restly applies it
   to every read of the model and to every reference to the model, so a hidden
   row is a 404. A scope is made of clauses, which are named query rules. See
@@ -101,8 +102,9 @@ set, override or call on a view.
 - [Request Lifecycle & Hooks](lifecycle.md): the steps of a request, which
   method to override for each change, custom routes, what commits when,
   several writes in one commit, and the same logic in a script or a worker.
-- [React Admin](react_admin.md): views that speak the REST dialect of
-  react-admin.
+- [React Admin](react_admin.md): connect react-admin to a view, the list
+  format and the routes that react-admin expects, to-many id arrays, CORS,
+  and a list that shows no rows.
 - [Type Annotations](typing.md): type the schema, the methods that you
   override and your custom routes.
 
@@ -129,8 +131,8 @@ route adds filter, sort and page parameters to the URL.
 
 ## Access
 
-These pages make the caller available to your code, and decide what the
-caller may do and which rows the caller sees. [`Current`](context.md) holds
+These pages cover how your code gets the caller, what the caller may do,
+and which rows the caller sees. [`Current`](context.md) holds
 the caller during a request.
 {meth}`authorize <fastapi_restly.views.RestView.authorize>` decides whether
 the caller may do an action, so a refusal gives 403. A scope decides which

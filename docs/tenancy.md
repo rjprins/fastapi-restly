@@ -109,10 +109,6 @@ never `None`. An admin is a flag, `Current.is_admin`, not a missing value.
 - Relationship loads get the option too, also when their parent was inserted
   and not loaded by a query. Keep the default `propagate_to_loaders=True`, so
   that joined eager loads get the criteria.
-- Keep `Current.bind(...)` active as long as the session lives. Use a new
-  session for a different identity. The criteria do not remove objects that
-  the session has already loaded, and `session.get()` returns such an object
-  without a query.
 
 A model that reaches its tenant through a relationship needs its own
 criterion. The SaaS example has one for `Task` through its project, for
@@ -155,6 +151,11 @@ reach a statement only through an entity that the statement selects or joins:
 - A relationship condition built with `.any()` or `.has()` does not get the
   criteria inside its `EXISTS` subquery. Add the tenant condition there
   yourself, as the SaaS criteria do.
+
+The criteria also do not remove objects that the session has already loaded,
+and `session.get()` returns such an object without a query. So keep
+`Current.bind(...)` active as long as the session lives, and use a new session
+for a different identity.
 
 (tenant-admin-bypass)=
 

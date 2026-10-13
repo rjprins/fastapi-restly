@@ -142,9 +142,10 @@ handlers. [Add a custom read route](#custom-read-route) and
 :::{admonition} Details
 :class: details
 
-Every other keyword argument goes to FastAPI's `APIRouter.add_api_route()`,
-such as `response_model=`, `dependencies=`, `responses=` and `tags=`. So a
-route on a view has the same options as a FastAPI route.
+Every keyword argument other than `status_code=` goes to FastAPI's
+`APIRouter.add_api_route()`, such as `response_model=`, `dependencies=`,
+`responses=` and `tags=`. So a route on a view has the same options as a
+FastAPI route.
 
 To serve one path with more than one HTTP method, use
 {func}`@fr.route <fastapi_restly.views.route>` and list the methods. It sets

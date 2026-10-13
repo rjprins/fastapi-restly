@@ -220,16 +220,12 @@ The generated update body takes `password` too. Without more code,
         return await self.save_object(obj)
 ```
 
-:::{admonition} Details
-:class: details
-
 {meth}`update_object <fastapi_restly.views.RestView.update_object>` writes
 only the fields that the request sends, so the check uses the same set. The
 other way is an [explicit update schema](#explicit-write-schemas) without
 `password`, with a separate route that changes the password. The SaaS example
 does this: its change-password route checks the current password first
 ([`app/users/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/users/views.py)).
-:::
 
 ### Refuse a change in `update`
 
@@ -286,7 +282,7 @@ loads more relationships ([Relationships](#eager-load-extra-relationships)).
 :::{admonition} Details
 :class: details
 
-The handlers always pass `scope=`, so the override declares it and
+The handlers always pass `scope=`, so the `get_many` override declares it and
 passes it on. To change the single-row read too, override
 {meth}`get_one <fastapi_restly.views.RestView.get_one>` the same way, as the
 [SaaS example](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py)
