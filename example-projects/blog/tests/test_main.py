@@ -3,11 +3,13 @@
 Anna (user 1) and Ben (user 2) play the two writers, as in the tutorial.
 """
 
+import asyncio
 import warnings
 
 import pytest
-from blog.main import app
+from blog.main import Current, PostView, app
 
+import fastapi_restly as fr
 from fastapi_restly.exc import RestlyDuplicateSchemaNameWarning
 from fastapi_restly.testing import RestlyTestClient
 
@@ -124,6 +126,14 @@ def test_only_the_author_changes_a_published_post(
         f"/posts/{post_id}", json={"title": "Edited"}, headers=ANNA
     ).json()
     assert edited["title"] == "Edited"
+
+
+def test_a_write_without_a_post_fails() -> None:
+    """A new write action that changes no single post, such as one that
+    archives all posts, has no `obj`. authorize refuses it until you allow it."""
+    view = PostView(request=None, session=None)  # authorize uses neither
+    with Current.bind(user_id=1), pytest.raises(fr.exc.Forbidden):
+        asyncio.run(view.authorize("archive_all"))
 
 
 def test_comments_follow_the_same_rules(restly_client: RestlyTestClient) -> None:
