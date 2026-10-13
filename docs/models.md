@@ -110,6 +110,9 @@ class Base(fr.ModelDefaults, DeclarativeBase):
     type_annotation_map = {Decimal: Numeric(12, 2)}
 ```
 
+:::{admonition} Details
+:class: details
+
 Your `type_annotation_map` entries win over Restly's. Restly's entries still
 apply to the types you leave out. So `{datetime: DateTime()}` stores the
 datetimes on this base without a time zone, and enums are still strings. The
@@ -126,6 +129,7 @@ their fields are equal. SQLAlchemy takes the options from the first dataclass
 class in the bases of a model, and that is often a mixin. So options on the
 base would apply to some models only, and the base raises
 {class}`fr.exc.RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`.
+:::
 
 (model-mixins)=
 
@@ -157,6 +161,9 @@ class Product(Base):
     name: Mapped[str]
 ```
 
+:::{admonition} Details
+:class: details
+
 The two mixins are SQLAlchemy dataclass mixins. On a base without
 `fr.ModelDefaults`, SQLAlchemy makes each model that uses them a dataclass.
 The constructor of that model then takes keyword arguments only, and requires
@@ -183,6 +190,7 @@ set, not the options of `Base`:
   for such a model, unless the model passes `eq=True` or writes its own
   `__eq__`. A model below another model, also an `__abstract__` one, takes
   that model's choice.
+:::
 
 ## Use the base in your app
 
@@ -248,10 +256,14 @@ that the base already has:
 Alembic shows these column changes when it generates the migration. Review
 the migration before you run it.
 
+:::{admonition} Details
+:class: details
+
 Put `fr.ModelDefaults` on the base itself. On a class below another
 declarative base, it raises
 {class}`fr.exc.RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`,
 because Restly's defaults change the registry of the whole base.
+:::
 
 (structural-pieces)=
 
@@ -323,11 +335,15 @@ If the slug must change when the title changes, listen to `before_update`
 too. Mark `slug` as {data}`fr.ReadOnly <fastapi_restly.schemas.ReadOnly>` on
 the schema, so the request body cannot send it.
 
+:::{admonition} Details
+:class: details
+
 A mapper event may change only the row that it receives, and it may run SQL
 on `connection`. To change other rows in the same flush, use the session's
 `before_flush` event. SQLAlchemy's
 [mapper events documentation](https://docs.sqlalchemy.org/en/20/orm/events.html#mapper-events)
 explains these rules.
+:::
 
 The SaaS example does both. A project's slug comes from mapper events, with a
 query on `connection` that keeps the slug unique, in
@@ -403,6 +419,9 @@ the value always comes from `Current`. A view without a schema is safe: the
 warns about a writable field on a column with `init=False` and a default, and
 about a writable relationship field whose foreign key is such a column.
 
+:::{admonition} Details
+:class: details
+
 A column default runs on every write path: a view's `create`, a custom route
 that builds the row itself, the `fr.objects` helpers, a bulk route, a script.
 Each of them must have `Current` bound when it flushes. If the member is not
@@ -421,6 +440,7 @@ the first admin comes from a migration. A migration writes through its own
 table objects and runs no ORM default, so that row has no creator. The SaaS
 example runs these stamps as `AuditStamped` in
 [`app/models.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/models.py).
+:::
 
 ### Two foreign keys to the same table
 
