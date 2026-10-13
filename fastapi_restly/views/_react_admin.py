@@ -9,10 +9,11 @@ Implements the ra-data-simple-rest HTTP contract for list:
 - Content-Range: items 0-24/315
 """
 
+import functools
 import json
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, ClassVar, Protocol, Sequence, cast
+from typing import Annotated, Any, ClassVar, Protocol, Sequence, cast
 
 import fastapi
 import pydantic
@@ -21,6 +22,7 @@ from sqlalchemy.orm import RelationshipProperty
 
 from .._pagination import _DEFAULT_PAGINATION, NoPagination, NumberedPagination
 from ..exc import BadQueryParam, RestlyConfigurationError
+from ..query._impl import _MAX_PAGINATION_OFFSET
 from ..query._shared import _append_pk_tiebreak
 from ._async import AsyncRestView
 from ._base import (
@@ -166,22 +168,48 @@ def _resolve_column(
     return col
 
 
-def _coerce_value(col: Any, value: Any) -> Any:
-    """Coerce a filter value to the column's Python type if needed.
+def _coerce_value(col: Any, value: Any, name: str) -> Any:
+    """Validate a filter value as the column's Python type.
 
-    Handles cases such as UUID strings that must be converted to uuid.UUID
-    objects before being passed to SQLAlchemy's type processor.
+    The value comes from the JSON of ``filter``, so a date or a UUID arrives
+    as a string. Pydantic turns it into the column's type, as the standard
+    dialect does.
+
+    :param name: The public name that the client used, for the message.
+    :raises BadQueryParam: when the value is not valid for the column.
     """
     try:
         py_type = col.type.python_type
     except NotImplementedError:
         return value
-    if not isinstance(value, py_type):
-        try:
-            return py_type(value)
-        except (ValueError, TypeError):
-            raise BadQueryParam(f"Invalid filter value for {col.key!r}: {value!r}")
-    return value
+    if isinstance(value, py_type):
+        return value
+    try:
+        return _filter_value_adapter(py_type).validate_python(value)
+    except pydantic.ValidationError as exc:
+        reason = exc.errors()[0]["msg"]
+        raise BadQueryParam(
+            f"Invalid filter value for {name!r}: {value!r}. {reason}"
+        ) from exc
+
+
+@functools.cache
+def _filter_value_adapter(py_type: type) -> pydantic.TypeAdapter[Any]:
+    if py_type is str:
+        # A number filters a text column, as ``str(5)`` did.
+        config = pydantic.ConfigDict(coerce_numbers_to_str=True)
+        return pydantic.TypeAdapter(str, config=config)
+    try:
+        return pydantic.TypeAdapter(py_type)
+    except pydantic.PydanticSchemaGenerationError:
+        # A type that Pydantic does not know: call it with the value.
+        def construct(value: Any) -> Any:
+            try:
+                return py_type(value)
+            except (TypeError, ArithmeticError) as exc:
+                raise ValueError(str(exc)) from exc
+
+        return pydantic.TypeAdapter(Annotated[Any, pydantic.AfterValidator(construct)])
 
 
 def _apply_react_admin_filters(
@@ -191,10 +219,10 @@ def _apply_react_admin_filters(
     for key, value in filters.items():
         col = _resolve_column(model, schema_cls, key)
         if isinstance(value, list):
-            coerced = [_coerce_value(col, v) for v in value]
+            coerced = [_coerce_value(col, v, key) for v in value]
             query = query.where(col.in_(coerced))
         else:
-            query = query.where(col == _coerce_value(col, value))
+            query = query.where(col == _coerce_value(col, value, key))
     return query
 
 
@@ -360,6 +388,10 @@ class _ReactAdminMixin:
         if start < 0 or end < start:
             raise BadQueryParam(
                 "Invalid range parameter: must be [start, end] with 0 <= start <= end"
+            )
+        if end > _MAX_PAGINATION_OFFSET:
+            raise BadQueryParam(
+                f"Invalid range parameter: end must be at most {_MAX_PAGINATION_OFFSET}"
             )
         if end - start + 1 > pagination.max_page_size:
             raise BadQueryParam(

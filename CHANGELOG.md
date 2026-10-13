@@ -100,15 +100,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   standard dialect answered "Invalid attribute in URL query: age" both for a
   sort or filter field that does not exist and for a bad filter value. Now
   it is `Unknown sort field: 'nope'`, `Unknown filter field: 'nope'`, or
-  `Invalid filter value for 'age': 'old'. Input should be a valid integer`,
-  with Pydantic's reason. An exception from a field validator that is not a
-  validation error is now a `500`, as for a request body, instead of a
-  `400`. Code or tests that compare the old texts must change.
+  `Invalid filter value for 'age': 'old'.` followed by Pydantic's reason,
+  such as `Input should be a valid integer, unable to parse string as an
+  integer`. An exception from a field validator that is not a validation
+  error is now a `500`, as for a request body, instead of a `400`. Code or
+  tests that compare the old texts must change. The texts for a bad `page`
+  or `page_size` changed too.
 - A react-admin view raises `fr.exc.BadQueryParam` for each bad `sort`,
   `range` or `filter` parameter. Before, most of them were a plain
   `HTTPException`, so a handler for `fr.exc.RestlyHTTPError` did not shape
   them. The status stays `400`, and the default body is the same. An unknown
   sort field now says `Unknown sort field` instead of `Unknown filter field`.
+- A react-admin view checks a filter value against the column's type with
+  Pydantic, as the standard dialect does. Before, it called the type on the
+  value. So `{"active": "false"}` matched the rows where `active` is true,
+  a date such as `"2020-01-01"` returned `400`, and a bad decimal or UUID
+  returned `500`. A bad value now returns `400` with Pydantic's reason, and
+  names the field as the client wrote it, also with an alias. A `range`
+  past the largest offset that the database takes returns `400` instead of
+  `500`.
 
 ### Removed
 

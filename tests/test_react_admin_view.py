@@ -11,11 +11,15 @@ Both the async and sync variants are exercised. The sync tests reuse the same
 HTTP-level assertions as the async ones to guarantee parity.
 """
 
+import datetime
+import decimal
 import json
+import uuid
 from collections.abc import Iterator
 
 import pydantic
 import pytest
+import sqlalchemy
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy import ForeignKey
@@ -304,7 +308,12 @@ def test_react_admin_invalid_filter_json_returns_400(client):
         ({"range": "[5,1]"}, None),
         ({"filter": "notjson"}, "Invalid filter parameter: must be a JSON object"),
         ({"filter": '{"nope":1}'}, "Unknown filter field: 'nope'"),
-        ({"filter": '{"price":"cheap"}'}, "Invalid filter value for 'price': 'cheap'"),
+        (
+            {"filter": '{"price":"cheap"}'},
+            "Invalid filter value for 'price': 'cheap'. "
+            "Input should be a valid number, unable to parse string as a number",
+        ),
+        ({"range": f"[{2**63},{2**63}]"}, None),
     ],
 )
 def test_react_admin_query_errors_are_bad_query_params(client, params, detail):
@@ -327,6 +336,58 @@ def test_react_admin_query_errors_are_bad_query_params(client, params, detail):
     assert body["type"] == "BadQueryParam"
     if detail is not None:
         assert body["detail"] == detail
+
+
+def test_react_admin_filter_values_are_validated_as_the_column_type(client):
+    """A filter value comes from JSON, so a date or a UUID arrives as a
+    string. Before, Restly called the column's Python type on it: a valid
+    date returned 400, ``"false"`` matched the true rows, and a bad decimal
+    or UUID returned 500."""
+
+    class Ware(fr.IDMixin, SharedBase):
+        day: Mapped[datetime.date]
+        active: Mapped[bool]
+        stock: Mapped[int]
+        cost: Mapped[decimal.Decimal | None] = mapped_column(
+            sqlalchemy.Numeric(10, 2), default=None
+        )
+        code: Mapped[uuid.UUID | None] = mapped_column(default=None)
+
+    class WareSchema(fr.IDSchema):
+        model_config = pydantic.ConfigDict(populate_by_name=True)
+        day: datetime.date
+        active: bool
+        stock: int = pydantic.Field(alias="inStock")
+        cost: decimal.Decimal | None = None
+        code: uuid.UUID | None = None
+
+    @fr.include_view(client.app)
+    class WareView(fr.AsyncReactAdminView):
+        prefix = "/wares"
+        model = Ware
+        schema = WareSchema
+
+    create_tables()
+    client.post("/wares/", json={"day": "2020-01-01", "active": True, "inStock": 1})
+    client.post("/wares/", json={"day": "2020-01-02", "active": False, "inStock": 2})
+
+    def matches(filter_: dict) -> list[int]:
+        rows = client.get("/wares/", params={"filter": json.dumps(filter_)}).json()
+        return [row["inStock"] for row in rows]
+
+    assert matches({"day": "2020-01-01"}) == [1]
+    assert matches({"active": "false"}) == [2]
+    assert matches({"inStock": ["1", 2]}) == [1, 2]
+
+    for filter_, start in [
+        ({"cost": "cheap"}, "Invalid filter value for 'cost': 'cheap'. "),
+        ({"code": 5}, "Invalid filter value for 'code': 5. "),
+        ({"inStock": "many"}, "Invalid filter value for 'inStock': 'many'. "),
+    ]:
+        response = client.get(
+            "/wares/", params={"filter": json.dumps(filter_)}, assert_status_code=400
+        )
+        assert response.json()["detail"].startswith(start), filter_
 
 
 def test_react_admin_unknown_filter_field_returns_400(client):

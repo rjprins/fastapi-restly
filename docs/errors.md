@@ -81,13 +81,16 @@ Unknown sort field: 'nope'
 Invalid filter value for 'age': 'old'. Input should be a valid integer, unable to parse string as an integer
 ```
 
-The second part of a bad filter value is Pydantic's reason. For a field
-validator of your own, it is the text of your `ValueError`. An exception
-that is not a validation error, such as an `AttributeError` in your
-validator, is a bug and returns `500`, as it does for a request body.
+The text after the value is Pydantic's reason. For a field validator of
+your own, it is Pydantic's text for your error, such as
+`Value error, value is too long`. An exception that is not a validation
+error, such as an `AttributeError` in your validator, is a bug and returns
+`500`, as it does for a request body.
 
 A react-admin view raises `BadQueryParam` for each bad `sort`, `range` or
-`filter` parameter too. So a handler for
+`filter` parameter too. It checks a filter value against the type of the
+column, with Pydantic, so `"2020-01-01"` filters a date column and `"false"`
+a boolean column. A handler for
 {class}`RestlyHTTPError <fastapi_restly.exc.RestlyHTTPError>` shapes all
 these `400` answers; see [Change the error body](#error-envelope).
 
@@ -187,7 +190,7 @@ async def problem_handler(request, exc):
 With this handler, a missing row returns
 `{"type": "about:blank", "title": "Doc with id 999 was not found", "status": 404}`
 with the `application/problem+json` content type. The `400` errors of the
-standard list routes get the same body.
+list routes get the same body, in the standard dialect and in react-admin.
 
 Some errors are not a `RestlyHTTPError`, so this handler does not change them:
 
@@ -198,8 +201,6 @@ Some errors are not a `RestlyHTTPError`, so this handler does not change them:
   parameter (`422`), and for a foreign key and its relationship field that
   name different rows (`422`). Register a handler for
   `fastapi.HTTPException`.
-- Most `400` errors of a react-admin list route, such as a bad `range`,
-  `filter` or `sort` value. They are a plain `fastapi.HTTPException` too.
 
 ## See also
 
