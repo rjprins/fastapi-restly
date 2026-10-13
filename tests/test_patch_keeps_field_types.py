@@ -7,6 +7,7 @@ database rejected the ``NULL``: 409 instead of 422.
 """
 
 import warnings
+from typing import get_args
 
 import pydantic
 import pytest
@@ -49,6 +50,38 @@ def test_null_for_a_field_that_does_not_allow_it_is_a_422(client, declared):
     # A field whose type allows None can be cleared.
     cleared = client.patch(url, json={"note": None}).json()
     assert cleared == {**memo, "note": None}
+
+
+def test_a_generated_field_with_a_default_allows_null_only_when_nullable(client):
+    """In a view without a schema, a column with a default may be left out,
+    but it allows ``null`` only when it is nullable. Before, its field was
+    ``int | None``: POST stored the default for a ``null``, and PATCH got 409
+    from the database."""
+
+    class Counter(fr.IDMixin, SharedBase):
+        count: Mapped[int] = mapped_column(default=3)
+        label: Mapped[str] = mapped_column(server_default="x")
+        note: Mapped[str | None] = mapped_column(default="n")
+
+    @fr.include_view(client.app)
+    class CounterView(fr.AsyncRestView):
+        prefix = "/counters"
+        model = Counter
+
+    fields = CounterView.schema_create.model_fields
+    assert fields["count"].annotation is int
+    assert fields["label"].annotation is str
+    assert type(None) in get_args(fields["note"].annotation)
+    assert not any(field.is_required() for field in fields.values())
+
+    create_tables()
+    created = client.post("/counters/", json={}).json()
+    assert (created["count"], created["label"], created["note"]) == (3, "x", "n")
+    url = f"/counters/{created['id']}"
+    for name in ("count", "label"):
+        client.post("/counters/", json={name: None}, assert_status_code=422)
+        client.patch(url, json={name: None}, assert_status_code=422)
+    assert client.patch(url, json={"note": None}).json()["note"] is None
 
 
 def test_the_update_body_has_no_defaults_and_no_required_fields(client):

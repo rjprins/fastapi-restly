@@ -631,8 +631,10 @@ SQLModel table. Under `from __future__ import annotations`, Restly evaluates
 the annotation string in the model's module. When no annotation resolves, the
 column type's `python_type` is used. A column with neither raises `TypeError`
 that names the attribute. Synonyms and composites get no field of their own:
-the columns behind them already have one. A column with a default, or a
-nullable column, gets an optional field.
+the columns behind them already have one. A nullable column gets a field
+that allows `None`. A column with a default gets a field that the client may
+leave out, and then the column's default applies. That field allows `null`
+only when the column is nullable.
 
 Three rules decide the rest:
 

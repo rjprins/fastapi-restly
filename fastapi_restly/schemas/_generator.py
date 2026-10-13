@@ -181,6 +181,7 @@ def get_model_fields(model_cls: type[Any]) -> dict[str, Any]:
                 "is_relationship": True,
                 "target_model": target_model,
                 "is_optional": True,
+                "is_nullable": True,
                 "is_read_only": False,
                 "default": None,
             }
@@ -193,7 +194,7 @@ def get_model_fields(model_cls: type[Any]) -> dict[str, Any]:
         column = prop.columns[0]
         annotation = annotations.get(name)
         if annotation is not None:
-            field_type, is_optional = _split_optional(annotation)
+            field_type, is_nullable = _split_optional(annotation)
         else:
             try:
                 field_type = column.type.python_type
@@ -207,8 +208,11 @@ def get_model_fields(model_cls: type[Any]) -> dict[str, Any]:
                     f"column type {column.type!r} has no concrete python_type. Annotate "
                     f"it as Mapped[...] or set schema= on the view."
                 ) from None
-            is_optional = bool(getattr(column, "nullable", False))
+            is_nullable = bool(getattr(column, "nullable", False))
 
+        # A column with a default may be left out, but it allows ``null``
+        # only when it is nullable.
+        is_optional = is_nullable
         default = None
         column_default = getattr(column, "default", None)
         server_default = getattr(column, "server_default", None)
@@ -221,6 +225,7 @@ def get_model_fields(model_cls: type[Any]) -> dict[str, Any]:
             "is_relationship": False,
             "target_model": None,
             "is_optional": is_optional,
+            "is_nullable": is_nullable,
             # A column_property over an expression cannot be written. The
             # model or the server sets a column outside the constructor.
             "is_read_only": not isinstance(column, Column) or name in not_in_init,
@@ -240,6 +245,10 @@ def derive_schema(model: type[Any], *, name: str | None = None) -> type[BaseSche
     These fields are marked ``ReadOnly``: ``id``, ``created_at`` and
     ``updated_at``, a ``column_property`` over a SQL expression, and a column
     that the constructor does not take (``init=False``).
+
+    A field allows ``None`` only for a nullable column. A column with a
+    default gets a field that the client may leave out, with the default
+    ``None``, which Pydantic does not validate.
 
     :param model: The SQLAlchemy model class.
     :param name: Name for the generated schema class. Defaults to the
@@ -283,11 +292,13 @@ def derive_schema(model: type[Any], *, name: str | None = None) -> type[BaseSche
             read_only_fields.append(field_name)
 
         pydantic_type = convert_sqlalchemy_type_to_pydantic(
-            field_info["type"], field_info["is_optional"]
+            field_info["type"], field_info["is_nullable"]
         )
 
-        # Add field to definitions - use proper Pydantic field format
-        # Don't include SQLAlchemy defaults as they're not JSON-serializable
+        # A field that the client may leave out gets the default None. Pydantic
+        # does not validate it, so a field typed ``int`` keeps rejecting
+        # ``null``. The SQLAlchemy default is not JSON-serializable, and the
+        # model applies it when the client leaves the field out.
         if field_info["is_optional"]:
             field_definitions[field_name] = (pydantic_type, Field(default=None))
         else:

@@ -85,6 +85,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on a nullable column can no longer be set to `null` with `PATCH`; type it
   `str | None` for that. In OpenAPI, `title` in the update body is `string`
   instead of `string | null`.
+- In a schema that Restly generates, for a view without `schema`, a column
+  with a default allows `null` only when the column is nullable. Before,
+  `count: Mapped[int] = mapped_column(default=3)` got the field
+  `int | None`. Then `POST {"count": null}` stored the default, and
+  `PATCH {"count": null}` returned `409` from the database. Both now return
+  `422`. The client may still leave the field out, and then the default
+  applies. In OpenAPI, the field is `integer` instead of `integer | null`.
 
 ### Removed
 
