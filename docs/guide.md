@@ -4,6 +4,68 @@ The Guide has one page for each part of Restly, in five groups. Each page
 starts with how that part works, then shows how to use it. If you are new to
 Restly, start with the tutorial, [Build a Blog API](tutorial.md).
 
+(how-restly-works)=
+
+## How Restly works
+
+You write a SQLAlchemy model and a view class, and Restly turns the view into
+FastAPI routes. This is what happens when a client sends `PATCH /projects/1`.
+FastAPI first checks the request body against the update body,
+`ProjectUpdate`:
+
+```
+PATCH /projects/1
+  └─ update_endpoint(id, schema_obj)      # endpoint method: HTTP contract
+       ├─ handle_update(id, schema_obj)   # handler: runs the steps
+       │    ├─ get_one(id)                # loads through the scope, or 404
+       │    ├─ authorize("update", ...)   # may the caller do this? Or 403
+       │    ├─ update(obj, schema_obj)    # business method: the change
+       │    ├─ before_action_commit(...)
+       │    ├─ commit
+       │    └─ after_action_commit(...)
+       └─ to_response(obj)                # the response class, as JSON
+```
+
+These are the parts, and the page that explains each one:
+
+- **Model**: your SQLAlchemy model, on a declarative base of your own.
+  Restly works with it, but does not own it. See [Models](models.md).
+- **View**: a class that groups related endpoints under a `prefix`.
+  {func}`fr.include_view() <fastapi_restly.views.include_view>` registers its
+  routes on an app or a router. A CRUD view,
+  {class}`fr.AsyncRestView <fastapi_restly.views.AsyncRestView>` or
+  {class}`fr.RestView <fastapi_restly.views.RestView>`, also names a `model`,
+  and serves five routes for it. See [Views](views.md) and
+  [CRUD Routes](crud_routes.md).
+- **The view's schema**: a Pydantic class that lists the fields of the
+  resource. Restly builds the request bodies, such as `ProjectUpdate`, and the
+  response class, `ProjectResponse`, from it. A view without a schema gets one
+  that Restly generates from the model. See
+  [Schemas & Validation](schemas.md).
+- **Endpoint method, handler and business method**: the three layers of each
+  CRUD route. To change what an action does, override the business method,
+  such as `update`. To change the HTTP contract, such as the status code,
+  replace the endpoint method. A handler is final. See
+  [Request Lifecycle & Hooks](lifecycle.md).
+- **Commit**: a write route commits after the business method, and
+  `before_action_commit` and `after_action_commit` run on each side of the
+  commit. A read does not commit. See [What commits, and when](#what-commits).
+- **Scope**: the rows of a model that exist for a request. Restly applies it
+  to every read of the model and to every reference to the model, so a hidden
+  row is a 404. A scope is made of clauses, which are named query rules. See
+  [Scopes](scopes.md) and [Query Clauses](clauses.md).
+- **`authorize`**: decides whether the caller may do the action. A refusal
+  is a 403. See [Authorization](authorization.md).
+- **`Current`**: the request context. It holds the caller and other values
+  for the request. Scopes, column defaults and your `authorize` can read it.
+  See [Request Context](context.md).
+- **List params**: the filter, sort and page parameters of the list route.
+  Restly builds them from the response class. See
+  [Filtering & Pagination](filtering.md).
+- **Session**: each request gets a database session from the source that
+  {func}`fr.configure() <fastapi_restly.db.configure>` sets. See
+  [Database & Configuration](database.md).
+
 ## Setup
 
 Restly adds views to a FastAPI app, a new one or one that you already have.
@@ -27,7 +89,8 @@ ordinary SQLAlchemy models on a declarative base of your own.
 A view is a class that groups related endpoints. A CRUD view serves five
 routes for one model by default. Each route runs a fixed list of steps, such
 as `authorize` and `create`. To change a route, you override the method of
-one step.
+one step. [View Reference](view_reference.md) lists everything that you can
+set, override or call on a view.
 
 - [Views](views.md): the view classes, how to declare routes and register a
   view, routes that are not CRUD, such as login and webhooks, and how views

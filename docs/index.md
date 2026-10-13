@@ -18,8 +18,8 @@ class UserView(fr.AsyncRestView):
     model = User  # SQLAlchemy model
 ```
 
-The [Guide](guide.md) explains each part of a view and how you can change
-it.
+[How Restly works](#how-restly-works) shows all the parts on one screen, and
+the [Guide](guide.md) explains each part and how you can change it.
 
 ## Quick Start
 
