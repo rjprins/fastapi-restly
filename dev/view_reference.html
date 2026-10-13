@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -706,12 +706,10 @@ uses <code class="docutils literal notranslate"><span class="pre">PATCH</span></
 </section>
 <section id="methods">
 <span id="view-method-surface"></span><h2>Methods<a class="headerlink" href="#methods" title="Link to this heading">#</a></h2>
-<p>Each CRUD route on <code class="docutils literal notranslate"><span class="pre">RestView</span></code> / <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code> runs through three methods:
-the endpoint method (<code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code>), the handler (<code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code>), and
-the business method (<code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;</span></code>). The handler handles the steps and is final.
-You override the endpoint method or the business method, whichever owns your
-change. The steps and the decision table live in
-<a class="reference internal" href="lifecycle.html#view-request-steps"><span class="std std-ref">Request Lifecycle &amp; Hooks</span></a>.</p>
+<p>Each CRUD route on <code class="docutils literal notranslate"><span class="pre">RestView</span></code> / <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code> runs an endpoint method
+(<code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code>), a final handler (<code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code>) and a business method
+(<code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;</span></code>). <a class="reference internal" href="lifecycle.html#view-request-steps"><span class="std std-ref">Request Lifecycle &amp; Hooks</span></a> shows the steps,
+and which method to override for each change.</p>
 <p>Alongside these three are the declared read <a class="reference internal" href="scopes.html"><span class="std std-doc">scope</span></a> (the
 <code class="docutils literal notranslate"><span class="pre">scope</span></code> class attribute) and cross-cutting <strong>override points</strong>
 (<code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code>, <code class="docutils literal notranslate"><span class="pre">count</span></code>, <code class="docutils literal notranslate"><span class="pre">authorize</span></code>,

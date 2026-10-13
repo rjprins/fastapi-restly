@@ -135,9 +135,17 @@ The path is relative to the view's prefix. With `prefix = "/users"`,
 `@fr.get("/{id}/summary")` serves `/users/{id}/summary`, and `@fr.get("")`
 serves `/users` itself.
 
-Every other keyword argument goes to FastAPI's `APIRouter.add_api_route()`,
-such as `response_model=`, `dependencies=`, `responses=` and `tags=`. So a
-route on a view has the same options as a FastAPI route.
+On a CRUD view, a custom route usually loads and writes through the view's
+handlers. [Add a custom read route](#custom-read-route) and
+[Add a custom action route](#custom-action-route) show how.
+
+:::{admonition} Details
+:class: details
+
+Every keyword argument other than `status_code=` goes to FastAPI's
+`APIRouter.add_api_route()`, such as `response_model=`, `dependencies=`,
+`responses=` and `tags=`. So a route on a view has the same options as a
+FastAPI route.
 
 To serve one path with more than one HTTP method, use
 {func}`@fr.route <fastapi_restly.views.route>` and list the methods. It sets
@@ -155,10 +163,7 @@ for such a name, also on a plain `View`. Give the route another name. To
 replace a CRUD route, override its endpoint method, such as
 `create_endpoint`; see
 [Change the status code or headers of one route](#replace-endpoint-method).
-
-On a CRUD view, a custom route usually loads and writes through the view's
-handlers. [Add a custom read route](#custom-read-route) and
-[Add a custom action route](#custom-action-route) show how.
+:::
 
 (register-a-view)=
 ## Register a view
@@ -186,6 +191,9 @@ class UserView(fr.View):
 
 Both forms register the same routes.
 
+:::{admonition} Details
+:class: details
+
 The routes bind when you register the view, not when you declare the
 methods. `include_view` reads the class at that moment: its own route
 methods and the ones it inherits, and the prefix and dependencies of every
@@ -208,6 +216,7 @@ Some rules for registration:
 - FastAPI tries the routes in the order you added them. For a route such as
   `/users/me` next to the CRUD routes, see
   [Item paths and static routes](#item-route-matching).
+:::
 
 (dependency-injection-on-class-attributes)=
 ## Declare dependencies as class attributes
@@ -249,6 +258,9 @@ commit hooks can all read `self.current_user`. An attribute that is not a
 dependency is never set from the request: reading `self.reviewer` raises
 `AttributeError`.
 
+:::{admonition} Details
+:class: details
+
 {data}`fr.AsyncSessionDep <fastapi_restly.db.AsyncSessionDep>` and
 {data}`fr.SessionDep <fastapi_restly.db.SessionDep>` carry a `Depends`
 marker. The `request` attribute of
@@ -268,6 +280,7 @@ A plain annotation never replaces a dependency annotation. A mixin or a
 subclass can declare `current_user: User` for type checkers, and the
 attribute keeps the `Depends` marker of the base. So a mixin can declare what
 it needs from its view without breaking the view's dependencies.
+:::
 
 (mixin-type-stubs)=
 ### Declare what a mixin needs from its view
@@ -317,10 +330,9 @@ Register only the subclasses.
 
 A base view overrides the same methods as a single view.
 [How a view handles a request](#view-request-steps) explains which method to
-override for each change. Two shared concerns have their own recipes on
-[Models](models.md): values that every write path must set, such as an
-owner id ([Values every write path sets](#write-path-values)), and
-[soft delete](#soft-delete-mixin).
+override for each change. Two shared concerns have their own sections:
+[values that every write path must set](#write-path-values), such as an
+owner id, on Models, and [soft delete](#soft-delete-mixin) on Scopes.
 
 (app-wide-base-view)=
 ### One base view for the whole app
@@ -417,7 +429,7 @@ explains the binding. The SaaS example's `AuthenticatedView` uses this
 pattern
 ([`app/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py)).
 To limit every read to the rows of one tenant, see
-[Keep each tenant's rows apart](#tenant-row-scoping).
+[Multi-Tenancy](#tenant-row-scoping).
 
 When a subclass sets its own `dependencies`, they run after the base's, in
 the same way as nested FastAPI routers. So a subclass cannot remove a check
@@ -475,9 +487,8 @@ way
 ([`blog/main.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/blog/blog/main.py)).
 
 The view only reads the caller here. To store the caller on a row, such as
-the owner id, use a column default on the model. Then every write path sets
-it, also the ones that never pass through a view
-([Stamp the fields the server owns](#server-stamped-fields)).
+the owner id, use a column default on the model, as
+[Stamp the fields the server owns](#server-stamped-fields) shows.
 
 ### Share a business method
 
@@ -620,10 +631,8 @@ not fit the CRUD shape: login routes, webhook receivers, RPC-style actions. A
 `View` has no model, no schema and no CRUD routes. It gives the endpoints one
 prefix, one tag and one place for shared dependencies.
 
-A `View` route that writes to the database must commit. Only the CRUD views
-commit for you. When a request ends with changes that were not committed,
-Restly warns with a
-{class}`RestlyUncommittedChangesWarning <fastapi_restly.exc.RestlyUncommittedChangesWarning>`.
+A `View` route that writes to the database must commit, because only the
+CRUD views commit for you; see [What commits, and when](#what-commits).
 
 (login-routes)=
 ### Login, refresh and logout routes
@@ -665,6 +674,7 @@ yourself:
 import json
 
 from fastapi import Request
+from sqlalchemy.exc import IntegrityError
 
 
 @fr.include_view(app)
@@ -677,9 +687,21 @@ class PaymentWebhookView(fr.View):
         payload = await request.body()
         verify_signature(payload, request.headers.get("X-Signature"))
         event = json.loads(payload)
-        self.session.add(PaymentEvent(kind=event["type"], data=payload.decode()))
-        await self.session.commit()  # a plain View commits itself
+        self.session.add(
+            PaymentEvent(event_id=event["id"], kind=event["type"], data=payload.decode())
+        )
+        try:
+            await self.session.commit()  # a plain View commits itself
+        except IntegrityError:  # the same event again: event_id is unique
+            await self.session.rollback()
 ```
+
+A route that commits itself must also handle its own database errors.
+Senders often send the same event twice, so here a unique `event_id` column
+refuses the second copy, and the route answers `204` again. Restly does not
+turn an `IntegrityError` here into a `409`, because the route is outside a
+Restly write; see
+[Unique values and other database conflicts: 409](#default-exception-handling).
 
 To call another service after a write, use the
 {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>`
@@ -718,10 +740,7 @@ these steps:
    its `route_options`, and then includes the router in the parent.
 
 Steps 1 to 5 run once for each class. A second registration on another
-parent only builds a new router. On a FastAPI app, `include_view` also
-installs Restly's handler that turns an `IntegrityError` into a `409`,
-unless the app already has a handler for it; see
-[Unique values and other database conflicts: 409](#default-exception-handling).
+parent only builds a new router.
 
 `before_include_view()` is a class method that you can override to change
 the route methods before registration. On a CRUD view, call `super()` in it.

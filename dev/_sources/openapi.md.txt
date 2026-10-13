@@ -67,6 +67,9 @@ out the final `{id}` parameter and the HTTP method. So a view mounted under
 under `/v1` and `/v2` gets different IDs. The class name and the tags of the
 view do not change the IDs.
 
+:::{admonition} Details
+:class: details
+
 A path parameter of a parent stays in the ID as `by_<parameter>`. For
 `/projects/{project_id}/items`, the list ID is
 `projects_by_project_id_items_list`. Punctuation becomes an underscore, so
@@ -89,6 +92,7 @@ names above, so a function based on the tag and the name can give IDs such as
 If you generate clients from the spec, generate them again when you move to
 Restly's IDs. To keep an existing operation ID, set `operation_id` in the
 route's options; see the next section.
+:::
 
 (route-options)=
 ## Change the name, summary or operation ID of a CRUD route
@@ -120,6 +124,9 @@ unknown method name raises
 {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
 when the view registers. Options for an excluded route are ignored.
 
+:::{admonition} Details
+:class: details
+
 The options win over the keyword arguments of the decorator, which win over
 Restly's defaults. A subclass inherits the mapping. A subclass that declares
 its own mapping replaces the parent's: Restly does not merge the two.
@@ -127,6 +134,7 @@ its own mapping replaces the parent's: Restly does not merge the two.
 The route names repeat across views. If you use `app.url_path_for()` to build
 the URLs of routes in several views, give them names of their own. Each
 explicit `operation_id` must be unique in the app's spec.
+:::
 
 (document-custom-route)=
 ## Document a custom route
@@ -187,6 +195,9 @@ Two kinds of fields get it:
   {class}`fr.IDSchema[Model] <fastapi_restly.schemas.IDSchema>`, or a list of
   them.
 
+:::{admonition} Details
+:class: details
+
 A field gets it only when a view for the target model is included on the same
 app. A nested object, such as `author: AuthorSchema`, gets none. The
 reference types themselves are on
@@ -196,6 +207,7 @@ There is a known limit: views that you include on an `APIRouter`, not on the
 app, do not get these annotations. The check for two classes with the same
 name still covers them when you pass the app to
 {func}`fr.configure(app, ...) <fastapi_restly.db.configure>`.
+:::
 
 ## See also
 

@@ -102,36 +102,6 @@ fr.testing.configure_tests(
 )
 ```
 
-This works because Restly has
-[one configuration per process](#one-configuration-per-process), and the last
-`fr.configure()` call wins. The factory call in `conftest.py` points the
-process at the test database. Then `configure_tests()` records that
-configuration and freezes it. This also works when a module that the
-conftest imports has already built an app: the conftest's factory call runs
-after that import, and before the freeze.
-
-A factory that *requires* its settings, like the PostgreSQL one below, must
-not build an app when its module is imported. Keep it a factory. Otherwise
-`conftest.py` would again need the environment variable before the import, and
-the factory exists to remove that need. A module that builds an app when it
-is imported works only if the conftest imports it before `configure_tests()`.
-A module imported later, such as
-an `asgi.py` that a test file imports, calls its factory after the freeze, and
-fails with
-{class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`.
-This is one more reason why only the server should import `asgi.py`.
-
-(factory-apps-share-one-configuration)=
-For the same reason, the apps that a factory builds are not independent. Each
-call changes the one configuration of the process, so only the app that was
-built last should serve requests. An app built earlier would use the newer
-database, but still own its old engine. In this suite, the app of the
-conftest is the one that serves. A fixture that calls `create_app(...)` for
-each test does not fit a managed suite: after `configure_tests()` has
-recorded the configuration, each later factory call that configures the
-database raises `RestlyConfigurationError`. Build the app once, in
-`conftest.py`.
-
 An application that calls `fr.configure()` when its module is imported can
 still be tested. Choose the database before you import the module, and keep
 the import order:
@@ -184,6 +154,39 @@ still work, but they do not isolate the database: see
 Your tests can stay sync, even when your application and its only database
 driver are async. [Write async tests](#writing-async-tests) explains when a
 test needs to be async.
+
+:::{admonition} Details
+:class: details
+
+The `conftest.py` above works because Restly has
+[one configuration per process](#one-configuration-per-process), and the last
+`fr.configure()` call wins. The factory call in `conftest.py` points the process at the test
+database. Then `configure_tests()` records that configuration and freezes it.
+This also works when a module that the conftest imports has already built an
+app: the conftest's factory call runs after that import, and before the freeze.
+
+A factory that *requires* its settings, like the PostgreSQL one below, must
+not build an app when its module is imported. Keep it a factory. Otherwise
+`conftest.py` would again need the environment variable before the import, and
+the factory exists to remove that need. A module that builds an app when it
+is imported works only if the conftest imports it before `configure_tests()`.
+A module imported later, such as
+an `asgi.py` that a test file imports, calls its factory after the freeze, and
+fails with
+{class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`.
+This is one more reason why only the server should import `asgi.py`.
+
+(factory-apps-share-one-configuration)=
+For the same reason, the apps that a factory builds are not independent. Each
+call changes the one configuration of the process, so only the app that was
+built last should serve requests. An app built earlier would use the newer
+database, but still own its old engine. In this suite, the app of the
+conftest is the one that serves. A fixture that calls `create_app(...)` for
+each test does not fit a managed suite: after `configure_tests()` has
+recorded the configuration, each later factory call that configures the
+database raises `RestlyConfigurationError`. Build the app once, in
+`conftest.py`.
+:::
 
 (async-postgresql-tests)=
 
@@ -239,12 +242,6 @@ the test, not to the client fixture, so both ways get the same cleanup; see
 models between tests, and builds the schema from them if you ask it to. Pass
 your declarative base, or its `MetaData`.
 
-A base knows only the models that have been imported when the suite freezes
-the configuration. Building the app imports them, because the app imports
-every view, and each view imports its model. A conftest that uses `Base`
-without building the app should also import `app.main`, as `alembic/env.py`
-does; see [Compose in one place](#compose-in-one-place).
-
 Who builds the schema is a separate choice, with three answers.
 
 **From your models**, with `create_all=True`. It builds the tables as
@@ -264,16 +261,6 @@ Alembic's async template, as
 [Set up migrations with Alembic](#alembic) shows. When the application
 configures both a sync and an async database, Restly passes the sync URL.
 
-Pass a path if the config is somewhere else:
-
-```python
-fr.testing.configure_tests(
-    app=app,
-    base=Base,
-    alembic_upgrade="backend/alembic.ini",
-)
-```
-
 The SaaS example builds its test schema from its migrations
 ([`tests/conftest.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/tests/conftest.py)).
 
@@ -282,6 +269,26 @@ Choose this when your suite already builds it, or when your migrations do not
 use Alembic. Build the schema once per session, not once per test. Under the
 default rollback mode, a table that a test creates belongs to the
 transaction of that test, and the rollback removes it.
+
+:::{admonition} Details
+:class: details
+
+A base knows only the models that have been imported when the suite freezes
+the configuration. Building the app imports them, because the app imports
+every view, and each view imports its model. A conftest that uses `Base`
+without building the app should also import `app.main`, as `alembic/env.py`
+does; see [Compose in one place](#compose-in-one-place).
+
+Pass a path if `alembic.ini` is somewhere else:
+
+```python
+fr.testing.configure_tests(
+    app=app,
+    base=Base,
+    alembic_upgrade="backend/alembic.ini",
+)
+```
+:::
 
 (cleaning-up-between-tests)=
 
@@ -307,6 +314,9 @@ that drives a browser or another process. Such a process cannot see data
 that is not committed, and parallel workers that share one database would
 delete each other's rows.
 
+:::{admonition} Details
+:class: details
+
 To change the mode for one run without editing the suite:
 
 ```bash
@@ -318,6 +328,7 @@ The flag wins over the environment variable, and the variable wins over the
 argument. Each mode other than the default shows in pytest's header, so a
 flag left from a debugging session cannot change the suite without notice.
 pytest prints that header only at normal verbosity, so `-q` hides it.
+:::
 
 (reference-data-cleanup)=
 
@@ -346,28 +357,6 @@ excludes its `country` table, which a migration fills.
 
 ## Use the test clients
 
-{class}`RestlyTestClient <fastapi_restly.testing.RestlyTestClient>` is the
-sync client behind the `restly_client` fixture. The fixture creates it and
-enters it for you. Use the client directly when you test without the
-fixtures:
-
-```python
-from fastapi_restly.testing import RestlyTestClient
-
-with RestlyTestClient(app) as client:
-    response = client.get("/users")
-```
-
-Use it in a `with` block. Starlette runs the `lifespan` of an application
-only inside that block, so a client used outside one skips what `lifespan=`
-sets up.
-
-Although it is sync, `RestlyTestClient` also tests async FastAPI routes and
-{class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` endpoints.
-{class}`AsyncRestlyTestClient <fastapi_restly.testing.AsyncRestlyTestClient>`
-has the same request methods and checks for async tests. The
-`restly_async_client` fixture creates it and runs the app's lifespan for you.
-
 Both clients check the status code of every response. When the status does
 not match, they raise an `AssertionError` that includes the response body.
 The `assert_status_code` argument of each request method sets the check:
@@ -390,7 +379,33 @@ The default does not check which success status a route returns. To test
 that a create returns `201`, pass `assert_status_code=201`.
 
 To test a request as a different user, override the dependency that gives
-the user; [Current & ContextParam](#current-testing) shows how.
+the user; [Request Context](#current-testing) shows how.
+
+:::{admonition} Details
+:class: details
+
+{class}`RestlyTestClient <fastapi_restly.testing.RestlyTestClient>` is the
+sync client behind the `restly_client` fixture. The fixture creates it and
+enters it for you. Use the client directly when you test without the
+fixtures:
+
+```python
+from fastapi_restly.testing import RestlyTestClient
+
+with RestlyTestClient(app) as client:
+    response = client.get("/users")
+```
+
+Use it in a `with` block. Starlette runs the `lifespan` of an application
+only inside that block, so a client used outside one skips what `lifespan=`
+sets up.
+
+Although it is sync, `RestlyTestClient` also tests async FastAPI routes and
+{class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` endpoints.
+{class}`AsyncRestlyTestClient <fastapi_restly.testing.AsyncRestlyTestClient>`
+has the same request methods and checks for async tests. The
+`restly_async_client` fixture creates it and runs the app's lifespan for you.
+:::
 
 (writing-async-tests)=
 
@@ -407,16 +422,6 @@ Write an async test when the test must await something itself:
 `restly_async_session` or `fr.open_async_session()` to add rows directly, or
 one of your own coroutines. Use `restly_async_client` for HTTP in the same
 test.
-
-The sync client runs the application on its own event loop, and the async
-fixtures run on pytest's loop. So in an application that has only an async
-database, a rollback test that uses `restly_client` together with
-`restly_async_session` stops while pytest sets up the fixtures, with a
-`RestlyConfigurationError`. The error tells you to use
-`restly_async_client`, and `fr.open_async_session()` fails with the same
-advice when it opens the session. Under `"delete"` and `"none"`, drivers
-such as asyncpg, which tie pooled connections to one event loop, need the
-same split.
 
 ```python
 async def test_direct_setup_and_request(restly_async_client, restly_async_session):
@@ -443,6 +448,20 @@ the same, async tests are not collected or give confusing errors. Sync tests
 keep working next to them. The
 [pytest-asyncio reference](https://pytest-asyncio.readthedocs.io/en/latest/reference/configuration.html)
 covers its other settings.
+
+:::{admonition} Details
+:class: details
+
+The sync client runs the application on its own event loop, and the async
+fixtures run on pytest's loop. So in an application that has only an async
+database, a rollback test that uses `restly_client` together with
+`restly_async_session` stops while pytest sets up the fixtures, with a
+`RestlyConfigurationError`. The error tells you to use
+`restly_async_client`, and `fr.open_async_session()` fails with the same
+advice when it opens the session. Under `"delete"` and `"none"`, drivers
+such as asyncpg, which tie pooled connections to one event loop, need the
+same split.
+:::
 
 (inspecting-the-database)=
 
@@ -668,7 +687,7 @@ after the test.
 
 ## See also
 
-- [Current & ContextParam](#current-testing): test a request as a different
+- [Request Context](#current-testing): test a request as a different
   user.
 - [Database & Configuration](database.md): the session sources that the
   fixtures record.

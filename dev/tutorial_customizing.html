@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -511,7 +511,7 @@ imports. Then put this code above the <code class="docutils literal notranslate"
 <p><code class="docutils literal notranslate"><span class="pre">get_user_id</span></code> takes the user id from an <code class="docutils literal notranslate"><span class="pre">X-User-ID</span></code> header, so you can try
 the API with <code class="docutils literal notranslate"><span class="pre">curl</span></code>. Any client can send this header, so use it only for
 trying things out. In a real app, this function checks a session cookie or
-a token. <a class="reference internal" href="current.html#current-request-binding"><span class="std std-ref">Bind from a FastAPI dependency</span></a> shows
+a token. <a class="reference internal" href="context.html#current-request-binding"><span class="std std-ref">Bind from a FastAPI dependency</span></a> shows
 where your own authentication goes.</p>
 <p><a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.ContextNamespace.depends" title="fastapi_restly.clauses.ContextNamespace.depends"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Current.depends(...)</span></code></a>
 turns <code class="docutils literal notranslate"><span class="pre">get_user_id</span></code> into a FastAPI dependency. For each request, it calls
@@ -541,7 +541,7 @@ model reads <code class="docutils literal notranslate"><span class="pre">Current
 row. Write <code class="docutils literal notranslate"><span class="pre">Current.user_id</span></code> without parentheses. With them, Python would
 read the value when it defines the class. No request has set a value then,
 so that fails.
-<a class="reference internal" href="current.html#current-column-defaults"><span class="std std-ref">Read the current user in a column default</span></a>
+<a class="reference internal" href="context.html#current-column-defaults"><span class="std std-ref">Read the current user in a column default</span></a>
 explains this. The default runs on every insert, from any view or script.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">post</span></code> table has a new column now.
 <a class="reference internal" href="api/db.html#fastapi_restly.db.async_create_all" title="fastapi_restly.db.async_create_all"><code class="xref py py-func docutils literal notranslate"><span class="pre">async_create_all</span></code></a> creates missing
@@ -1087,7 +1087,7 @@ why.</p></li>
 <h2>Next steps<a class="headerlink" href="#next-steps" title="Link to this heading">#</a></h2>
 <p>These pages cover the topics of this tutorial in more detail:</p>
 <ul class="simple">
-<li><p><a class="reference internal" href="current.html"><span class="std std-doc">Current &amp; ContextParam</span></a>: bind values in scripts, jobs, and
+<li><p><a class="reference internal" href="context.html"><span class="std std-doc">Request Context</span></a>: bind values in scripts, jobs, and
 tests</p></li>
 <li><p><a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a>: the model scope, view scopes, and a scope for one route</p></li>
 <li><p><a class="reference internal" href="lifecycle.html"><span class="std std-doc">Request Lifecycle &amp; Hooks</span></a>: every method you can override, and
@@ -1095,12 +1095,11 @@ when to override one</p></li>
 <li><p><a class="reference internal" href="views.html#share-behaviour-with-base-views"><span class="std std-ref">Share behavior with base views</span></a>: the full
 inheritance guide</p></li>
 <li><p><a class="reference internal" href="testing.html"><span class="std std-doc">Testing</span></a>: the test fixtures, and test databases</p></li>
-<li><p><a class="reference internal" href="projects.html"><span class="std std-doc">New &amp; Existing Projects</span></a>: split the file into
-packages as the app grows, or generate a project with <code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code></p></li>
+<li><p><a class="reference internal" href="projects.html"><span class="std std-doc">New &amp; Existing Projects</span></a>: split the file into packages as
+the app grows, generate a project with <code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code>, or add Restly beside
+the routes you already have</p></li>
 <li><p><a class="reference internal" href="deploying.html"><span class="std std-doc">Deploying</span></a>: a production database, and Alembic migrations
 instead of <code class="docutils literal notranslate"><span class="pre">async_create_all</span></code></p></li>
-<li><p><a class="reference internal" href="projects.html"><span class="std std-doc">New &amp; Existing Projects</span></a>: add Restly
-beside the routes you already have</p></li>
 <li><p><a class="reference internal" href="api_reference.html"><span class="std std-doc">API Reference</span></a></p></li>
 </ul>
 </section>

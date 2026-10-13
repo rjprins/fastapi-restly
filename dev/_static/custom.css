@@ -166,3 +166,35 @@ html[data-theme="dark"] .bd-article h1 > img[src$="fr-monogram.svg"] {
     font-size: 0.75em;
     margin-left: 0.3em;
 }
+
+/* "Details" blocks: the less common cases of a section, after its lesson.
+   Visible, but quiet, so that a reader can see what they may skip. The same
+   rule works in light and dark mode, because it only uses theme colors. */
+.bd-article div.admonition.details {
+    background-color: transparent;
+    border-left: 2px solid var(--pst-color-border);
+    border-radius: 0;
+    box-shadow: none !important;
+    margin: 1.25em 0;
+    padding: 0 0 0 1rem;
+    font-size: 0.92em;
+}
+
+.bd-article div.admonition.details > .admonition-title {
+    background-color: transparent;
+    margin: 0 0 0.4em;
+    padding: 0;
+    color: var(--pst-color-text-muted);
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.bd-article div.admonition.details > .admonition-title::after {
+    content: none;
+}
+
+.bd-article div.admonition.details p.admonition-title ~ * {
+    margin-left: 0;
+    margin-right: 0;
+}

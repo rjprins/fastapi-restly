@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -63,7 +63,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Errors" href="errors.html" />
-    <link rel="prev" title="Relationships" href="relationships.html" />
+    <link rel="prev" title="Responses" href="responses.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -410,27 +410,41 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="projects.html">New &amp; Existing Projects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="database.html">Database &amp; Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
-<li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
-<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Filtering &amp; Pagination</a></li>
-<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
-<li class="toctree-l1"><a class="reference internal" href="current.html">Current &amp; ContextParam</a></li>
-<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
-<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
-<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
 <li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
 <li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Filtering &amp; Pagination</a></li>
+<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Access</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="context.html">Request Context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tenancy.html">Multi-Tenancy</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Testing &amp; Deploying</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
 </ul>
 </div>
 </nav></div>
@@ -580,6 +594,8 @@ name of the field:</p>
 </table>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">__isnull</span></code> takes <code class="docutils literal notranslate"><span class="pre">true</span></code> or <code class="docutils literal notranslate"><span class="pre">false</span></code>, not the text <code class="docutils literal notranslate"><span class="pre">null</span></code>.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
 <p>Not every field gets every suffix:</p>
 <ul class="simple">
 <li><p>The range suffixes (<code class="docutils literal notranslate"><span class="pre">__gte</span></code>, <code class="docutils literal notranslate"><span class="pre">__lte</span></code>, <code class="docutils literal notranslate"><span class="pre">__gt</span></code>, <code class="docutils literal notranslate"><span class="pre">__lt</span></code>) exist only for types
@@ -598,12 +614,15 @@ time zone. On a base with
 <a class="reference internal" href="api/models.html#fastapi_restly.models.ModelDefaults" title="fastapi_restly.models.ModelDefaults"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code></a>,
 <code class="docutils literal notranslate"><span class="pre">Mapped[datetime]</span></code> stores one by default. A column declared <code class="docutils literal notranslate"><span class="pre">DateTime()</span></code>
 compares the value as it is.</p>
+</div>
 <section id="filter-values-go-through-the-field-s-validation">
 <span id="filter-value-validation"></span><h3>Filter values go through the field’s validation<a class="headerlink" href="#filter-values-go-through-the-field-s-validation" title="Link to this heading">#</a></h3>
 <p>Equality, <code class="docutils literal notranslate"><span class="pre">__ne</span></code>, <code class="docutils literal notranslate"><span class="pre">__in</span></code> and the range filters validate each value with the
 field’s Pydantic validation, so the field validators of the schema run on
 filter values too. A value that fails returns <code class="docutils literal notranslate"><span class="pre">400</span></code> (see
 <a class="reference internal" href="errors.html#list-request-errors"><span class="std std-ref">Why a bad list request returns 422 or 400</span></a>).</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
 <p>Restly validates one value at a time, without the other fields. So:</p>
 <ul class="simple">
 <li><p>Model validators do not run.</p></li>
@@ -613,6 +632,7 @@ also when the URL uses an alias.</p></li>
 </ul>
 <p><code class="docutils literal notranslate"><span class="pre">__contains</span></code> and <code class="docutils literal notranslate"><span class="pre">__icontains</span></code> use the text as it is, and <code class="docutils literal notranslate"><span class="pre">__isnull</span></code> reads a
 boolean.</p>
+</div>
 </section>
 <section id="match-one-of-several-values">
 <h3>Match one of several values<a class="headerlink" href="#match-one-of-several-values" title="Link to this heading">#</a></h3>
@@ -647,11 +667,14 @@ GET /users?name__icontains=john&amp;name__icontains=doe
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">__contains</span></code> gives <code class="docutils literal notranslate"><span class="pre">WHERE</span> <span class="pre">name</span> <span class="pre">LIKE</span> <span class="pre">'%john%'</span> <span class="pre">AND</span> <span class="pre">name</span> <span class="pre">LIKE</span> <span class="pre">'%doe%'</span></code>.
 <code class="docutils literal notranslate"><span class="pre">__icontains</span></code> uses <code class="docutils literal notranslate"><span class="pre">ILIKE</span></code>.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
 <p>Restly also splits one <code class="docutils literal notranslate"><span class="pre">__contains</span></code> or <code class="docutils literal notranslate"><span class="pre">__icontains</span></code> value at each space, so
 <code class="docutils literal notranslate"><span class="pre">?name__contains=john%20doe</span></code> gives the same result. Prefer the repeated
 parameter when you build the URL yourself: it has only one meaning.</p>
 <p>Restly escapes <code class="docutils literal notranslate"><span class="pre">%</span></code>, <code class="docutils literal notranslate"><span class="pre">_</span></code> and <code class="docutils literal notranslate"><span class="pre">\</span></code> before it builds the <code class="docutils literal notranslate"><span class="pre">LIKE</span></code> condition. A
 search finds the text as written; these characters are not wildcards.</p>
+</div>
 </section>
 <section id="combine-filters-on-one-field">
 <h3>Combine filters on one field<a class="headerlink" href="#combine-filters-on-one-field" title="Link to this heading">#</a></h3>
@@ -675,9 +698,32 @@ schema on the response class, as in
 that can be <code class="docutils literal notranslate"><span class="pre">None</span></code> (<code class="docutils literal notranslate"><span class="pre">UserSchema</span> <span class="pre">|</span> <span class="pre">None</span></code>) works, and so do several steps
 (<code class="docutils literal notranslate"><span class="pre">?blog.author.name=Alice</span></code>). A list of nested schemas (<code class="docutils literal notranslate"><span class="pre">list[UserSchema]</span></code>)
 does not.</p>
+<p>A dotted filter joins the related table without that model’s default scope;
+see <a class="reference internal" href="scopes.html#default-scope"><span class="std std-ref">Scopes</span></a>. Restly joins through SQL aliases. If you add a
+session rule with <a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/queryguide/api.html#sqlalchemy.orm.with_loader_criteria" title="(in SQLAlchemy v2.0)"><code class="xref py py-func docutils literal notranslate"><span class="pre">sqlalchemy.orm.with_loader_criteria()</span></code></a>, set
+<code class="docutils literal notranslate"><span class="pre">include_aliases=True</span></code>, so the rule also covers these joins. See
+<a class="reference internal" href="tenancy.html#tenant-row-scoping"><span class="std std-ref">Multi-Tenancy</span></a>.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
 <p>A path can follow a relationship of a model to the same model, such as
 <code class="docutils literal notranslate"><span class="pre">?manager.name=Alice</span></code> or <code class="docutils literal notranslate"><span class="pre">?manager.manager.name=Alice</span></code>. Each step must be a
-nested schema. Two relationships to the same model can be filtered together:</p>
+nested schema, and Restly follows each schema class only once in a path. So
+a schema that names itself, such as <code class="docutils literal notranslate"><span class="pre">manager:</span> <span class="pre">EmployeeSchema</span> <span class="pre">|</span> <span class="pre">None</span></code> inside
+<code class="docutils literal notranslate"><span class="pre">EmployeeSchema</span></code>, gives <code class="docutils literal notranslate"><span class="pre">?manager.name=</span></code> but not <code class="docutils literal notranslate"><span class="pre">?manager.manager.name=</span></code>.
+For two steps, use another class for the second step:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">EmployeeName</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ManagerSchema</span><span class="p">(</span><span class="n">EmployeeName</span><span class="p">):</span>
+    <span class="n">manager</span><span class="p">:</span> <span class="n">EmployeeName</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">EmployeeSchema</span><span class="p">(</span><span class="n">EmployeeName</span><span class="p">):</span>
+    <span class="n">manager</span><span class="p">:</span> <span class="n">ManagerSchema</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</pre></div>
+</div>
+<p>Two relationships to the same model can be filtered together:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /people?home_city.name=Amsterdam&amp;work_city.name=Berlin
 GET /people?home_city.country.code=NL&amp;work_city.country.code=DE
 </pre></div>
@@ -685,11 +731,6 @@ GET /people?home_city.country.code=NL&amp;work_city.country.code=DE
 <p>Sorting accepts the same paths. A filter and a sort on the same relationship
 share one join. The joins are inner joins: a row without the related row is
 left out, also for a dotted <code class="docutils literal notranslate"><span class="pre">__isnull</span></code> filter.</p>
-<p>A dotted filter joins the related table without that model’s default scope;
-see <a class="reference internal" href="scopes.html#default-scope"><span class="std std-ref">Scopes</span></a>. Restly joins through SQL aliases. If you add a
-session rule with <a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/queryguide/api.html#sqlalchemy.orm.with_loader_criteria" title="(in SQLAlchemy v2.0)"><code class="xref py py-func docutils literal notranslate"><span class="pre">sqlalchemy.orm.with_loader_criteria()</span></code></a>, set
-<code class="docutils literal notranslate"><span class="pre">include_aliases=True</span></code>, so the rule also covers these joins. See
-<a class="reference internal" href="models.html#tenant-row-scoping"><span class="std std-ref">Keep each tenant’s rows apart</span></a>.</p>
 <p>Aliases apply to every part of the path, the relationship and the field,
 because the list parameters always use the public names of the response
 class:</p>
@@ -709,6 +750,7 @@ class:</p>
 GET /articles?author.name=Alice          # rejected: use the aliases
 </pre></div>
 </div>
+</div>
 </section>
 <section id="filter-by-a-foreign-key">
 <span id="foreign-key-filtering"></span><h2>Filter by a foreign key<a class="headerlink" href="#filter-by-a-foreign-key" title="Link to this heading">#</a></h2>
@@ -723,10 +765,12 @@ GET /comments?post_id__gte=10      # range suffixes work on int ids
 GET /comments?post_id__isnull=true
 </pre></div>
 </div>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
 <p>A <code class="docutils literal notranslate"><span class="pre">MustExist[pk,</span> <span class="pre">...]</span></code> field gets the filters of its <code class="docutils literal notranslate"><span class="pre">pk</span></code> type. An <code class="docutils literal notranslate"><span class="pre">int</span></code> id
 gets equality, <code class="docutils literal notranslate"><span class="pre">__in</span></code>, <code class="docutils literal notranslate"><span class="pre">__ne</span></code>, <code class="docutils literal notranslate"><span class="pre">__isnull</span></code> and the range suffixes. A <code class="docutils literal notranslate"><span class="pre">UUID</span></code> id
-gets no range suffixes, as the <a class="reference internal" href="#filter-a-list">list of suffixes</a> says. No id
-gets <code class="docutils literal notranslate"><span class="pre">__contains</span></code>.</p>
+gets no range suffixes, as the <a class="reference internal" href="#filter-a-list">list of suffixes</a> says. Only a
+<code class="docutils literal notranslate"><span class="pre">str</span></code> id gets <code class="docutils literal notranslate"><span class="pre">__contains</span></code> and <code class="docutils literal notranslate"><span class="pre">__icontains</span></code>.</p>
 <p>A relationship reference filters differently (see
 <a class="reference internal" href="relationships.html#reference-styles"><span class="std std-ref">Choose a reference style</span></a>):</p>
 <ul class="simple">
@@ -737,6 +781,7 @@ by its id, as in <code class="docutils literal notranslate"><span class="pre">?a
 relationship gets no filter. To filter by it, also put the foreign key
 column in the response class, for example as <code class="docutils literal notranslate"><span class="pre">author_id:</span> <span class="pre">fr.ReadOnly[int]</span></code>.</p></li>
 </ul>
+</div>
 </section>
 <section id="use-aliases-in-the-url">
 <span id="public-names"></span><h2>Use aliases in the URL<a class="headerlink" href="#use-aliases-in-the-url" title="Link to this heading">#</a></h2>
@@ -849,12 +894,15 @@ differs changes one setting with <code class="docutils literal notranslate"><spa
 <p>The list has no <code class="docutils literal notranslate"><span class="pre">page</span></code> and <code class="docutils literal notranslate"><span class="pre">page_size</span></code> parameters, and Restly runs no count
 query. Filters and <code class="docutils literal notranslate"><span class="pre">sort</span></code> still work. The response keeps the <code class="docutils literal notranslate"><span class="pre">data</span></code> envelope,
 without the count and page fields.</p>
+<p>Use this only for a table that stays small, such as tags or countries. A list
+without pagination returns the whole table in one response.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
 <p><code class="docutils literal notranslate"><span class="pre">None</span></code> is short for
 <a class="reference internal" href="api/views.html#fastapi_restly.views.NoPagination" title="fastapi_restly.views.NoPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.NoPagination()</span></code></a>. Use
 <code class="docutils literal notranslate"><span class="pre">fr.NoPagination(envelope=...)</span></code> to choose the envelope of a list without
 pagination; see <a class="reference internal" href="responses.html#change-list-envelope"><span class="std std-ref">Change the list envelope</span></a>.</p>
-<p>Use this only for a table that stays small, such as tags or countries. A list
-without pagination returns the whole table in one response.</p>
+</div>
 </section>
 <section id="coming-from-fastapi-pagination">
 <span id="fastapi-pagination-migration"></span><h3>Coming from fastapi-pagination<a class="headerlink" href="#coming-from-fastapi-pagination" title="Link to this heading">#</a></h3>
@@ -905,27 +953,21 @@ override, must name it. Otherwise the unknown-key check rejects it with
 </section>
 <section id="change-the-list-query-of-a-view">
 <span id="change-list-query"></span><h2>Change the list query of a view<a class="headerlink" href="#change-the-list-query-of-a-view" title="Link to this heading">#</a></h2>
-<p>The filters apply to a query that the view’s scope builds first. To limit
-the rows of a view, declare its
-<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.scope" title="fastapi_restly.views.BaseRestView.scope"><code class="xref py py-attr docutils literal notranslate"><span class="pre">scope</span></code></a>.
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a>,
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.count" title="fastapi_restly.views.RestView.count"><code class="xref py py-meth docutils literal notranslate"><span class="pre">count</span></code></a> and
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> all apply it, so the
-list, the total and the single-row reads agree:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
-    <span class="o">...</span>
-    <span class="n">scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span><span class="n">User</span><span class="o">.</span><span class="n">active</span><span class="o">.</span><span class="n">is_</span><span class="p">(</span><span class="kc">True</span><span class="p">))</span>
-</pre></div>
-</div>
-<p><a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a> owns this topic, including the <code class="docutils literal notranslate"><span class="pre">default_scope</span></code> of a model.
-<code class="docutils literal notranslate"><span class="pre">get_many</span></code> takes no <code class="docutils literal notranslate"><span class="pre">query</span></code> argument, so put base query changes in the scope.</p>
+<p>The filters apply inside the view’s scope. To limit the rows of a view,
+declare its <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.scope" title="fastapi_restly.views.BaseRestView.scope"><code class="xref py py-attr docutils literal notranslate"><span class="pre">scope</span></code></a>, as
+<a class="reference internal" href="scopes.html#view-scope"><span class="std std-ref">Give one view other rows</span></a> shows. <code class="docutils literal notranslate"><span class="pre">get_many</span></code> takes no <code class="docutils literal notranslate"><span class="pre">query</span></code>
+argument, so put base query changes in the scope.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
 <p>For another URL grammar, such as the filter syntax of another client
 library, override
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_list_params" title="fastapi_restly.views.RestView.apply_list_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_list_params(query,</span> <span class="pre">list_params)</span></code></a>.
 It turns the URL parameters into the query. The
 <a class="reference internal" href="react_admin.html"><span class="std std-doc">React Admin</span></a> views override it for the react-admin
 grammar. Override <code class="docutils literal notranslate"><span class="pre">get_many()</span></code> itself only for a list that has another
-<em>result</em>, and build the query in the method.</p>
+<em>result</em>, and build the query in the method. The override gets the scope as
+its <code class="docutils literal notranslate"><span class="pre">scope</span></code> argument: apply it to the query with <code class="docutils literal notranslate"><span class="pre">fr.apply_clauses</span></code>, as
+<a class="reference internal" href="scopes.html#reading-the-scope"><span class="std std-ref">Use the scope in your own query</span></a> shows.</p>
 <p>A route method with a <code class="docutils literal notranslate"><span class="pre">list_params</span></code> parameter takes the same list parameters
 as <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>. Restly gives it the view’s
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_list_params" title="fastapi_restly.views.BaseRestView.schema_list_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_list_params</span></code></a>,
@@ -935,6 +977,7 @@ route, passes them on with <code class="docutils literal notranslate"><span clas
 <a class="reference internal" href="scopes.html#per-read-scope"><span class="std std-ref">Read other rows on one route</span></a>. The route can take its own
 query parameters next to <code class="docutils literal notranslate"><span class="pre">list_params</span></code>, as in
 <code class="docutils literal notranslate"><span class="pre">def</span> <span class="pre">search(self,</span> <span class="pre">list_params,</span> <span class="pre">mode:</span> <span class="pre">SearchMode)</span></code>.</p>
+</div>
 </section>
 <section id="internals">
 <h2>Internals<a class="headerlink" href="#internals" title="Link to this heading">#</a></h2>
@@ -985,12 +1028,12 @@ such as <code class="docutils literal notranslate"><span class="pre">/projects/{
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="relationships.html"
+       href="responses.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Relationships</p>
+        <p class="prev-next-title">Responses</p>
       </div>
     </a>
     <a class="right-next"

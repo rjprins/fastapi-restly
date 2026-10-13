@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -410,27 +410,41 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+<ul class="current nav bd-sidenav">
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">New &amp; Existing Projects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="database.html">Database &amp; Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
-<li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
-<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
-<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering &amp; Pagination</a></li>
-<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
-<li class="toctree-l1"><a class="reference internal" href="current.html">Current &amp; ContextParam</a></li>
-<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
-<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
-<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
 <li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
 <li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering &amp; Pagination</a></li>
+<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Access</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="context.html">Request Context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tenancy.html">Multi-Tenancy</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Testing &amp; Deploying</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
 </ul>
 </div>
 </nav></div>
@@ -542,21 +556,24 @@ existing routers and the new views can share the same app or router:</p>
 <span class="n">app</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">api</span><span class="p">)</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">fr.include_view()</span></code> also works as a class decorator;
-<a class="reference internal" href="views.html#register-a-view"><span class="std std-ref">Views</span></a> explains both forms. Pass <code class="docutils literal notranslate"><span class="pre">app</span></code> to
-<code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code>, also when the views are on a router. That call installs
-Restly’s error handlers on the app and checks its OpenAPI schema, and
-<code class="docutils literal notranslate"><span class="pre">fr.include_view()</span></code> on a router cannot do this; see
-<a class="reference internal" href="database.html#configure-restly"><span class="std std-ref">Database &amp; Configuration</span></a>.</p>
 <p>You adopt Restly one resource at a time. In the example, the orders routes
 stay hand-written, and the users routes come from <code class="docutils literal notranslate"><span class="pre">UserView</span></code>. If you add a
 <code class="docutils literal notranslate"><span class="pre">ProductView</span></code> later, the orders router does not change.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p><code class="docutils literal notranslate"><span class="pre">fr.include_view()</span></code> also works as a class decorator;
+<a class="reference internal" href="views.html#register-a-view"><span class="std std-ref">Views</span></a> explains both forms. Pass <code class="docutils literal notranslate"><span class="pre">app</span></code> to
+<code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code>, also when the views are on a router. That call checks the
+OpenAPI schema of the app for two classes with the same name, and
+<code class="docutils literal notranslate"><span class="pre">fr.include_view()</span></code> on a router cannot do this; see
+<a class="reference internal" href="database.html#configure-restly"><span class="std std-ref">Database &amp; Configuration</span></a>.</p>
 <p>A plain FastAPI route can also sit next to a view, for an endpoint that is not
 part of the CRUD routes:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users/</span><span class="si">{id}</span><span class="s2">/export&quot;</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">export_user</span><span class="p">(</span><span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
     <span class="o">...</span>
 </pre></div>
+</div>
 </div>
 </section>
 <section id="write-one-crud-route-by-hand">
@@ -760,7 +777,7 @@ not a module that re-exports a whole subject.</p>
 <section id="share-current-from-the-package-root">
 <span id="project-current"></span><h2>Share Current from the package root<a class="headerlink" href="#share-current-from-the-package-root" title="Link to this heading">#</a></h2>
 <p>When several modules need values from the request, declare
-<a class="reference internal" href="current.html"><span class="std std-doc">Current</span></a> in <code class="docutils literal notranslate"><span class="pre">app/current.py</span></code>. Import it from there
+<a class="reference internal" href="context.html"><span class="std std-doc">Current</span></a> in <code class="docutils literal notranslate"><span class="pre">app/current.py</span></code>. Import it from there
 wherever you use it:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">app.current</span><span class="w"> </span><span class="kn">import</span> <span class="n">Current</span>
 </pre></div>
@@ -856,7 +873,8 @@ that layer. Your logic goes in business methods such as
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a>. A layer that only
 passes calls on to them adds code but no new place to change behavior. Write
 a <code class="docutils literal notranslate"><span class="pre">service.py</span></code> when logic also runs outside a request, such as work that a
-background worker shares; see <a class="reference internal" href="lifecycle.html#domain-utilities"><span class="std std-ref">Build and save objects</span></a>.</p>
+background worker shares; see
+<a class="reference internal" href="lifecycle.html#logic-outside-a-view"><span class="std std-ref">Run the same logic in a script or a worker</span></a>.</p>
 <p>The same holds for <code class="docutils literal notranslate"><span class="pre">dependencies.py</span></code>, <code class="docutils literal notranslate"><span class="pre">constants.py</span></code> and <code class="docutils literal notranslate"><span class="pre">exceptions.py</span></code> in a
 subject. Add one when it holds more than one item.</p>
 <p>When <code class="docutils literal notranslate"><span class="pre">main.py</span></code> grows long, move <code class="docutils literal notranslate"><span class="pre">VIEWS</span></code> and the registration loop to an

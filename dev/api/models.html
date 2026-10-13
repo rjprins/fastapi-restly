@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=e2851362" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=643d5ecc" />
   
   <!-- So that users can add custom icons -->
   <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -527,6 +527,9 @@ accept a required field after a field with a default.</p></li>
 <li><p>Equality by identity, as for any SQLAlchemy model: two objects are equal
 only when they are the same object. So a model object can go in a
 <code class="docutils literal notranslate"><span class="pre">set</span></code>, and comparing objects never loads a relationship.</p></li>
+<li><p>A repr that shows the loaded columns and never loads anything, so it
+works in async code. Pass <code class="docutils literal notranslate"><span class="pre">repr=True</span></code> on a model for the dataclass
+repr, which reads every field.</p></li>
 <li><p>A table name in snake_case from the class name: <code class="docutils literal notranslate"><span class="pre">BlogPost</span></code> gets
 <code class="docutils literal notranslate"><span class="pre">blog_post</span></code>. Set <code class="docutils literal notranslate"><span class="pre">__tablename__</span></code> on a model to choose another name.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">Mapped[datetime]</span></code> as <code class="docutils literal notranslate"><span class="pre">DateTime(timezone=True)</span></code>. Use
@@ -548,6 +551,14 @@ SQLAlchemy takes the options from the first dataclass class in a model’s
 bases, which is often <a class="reference internal" href="#fastapi_restly.models.IDMixin" title="fastapi_restly.models.IDMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDMixin</span></code></a>, so options on <code class="docutils literal notranslate"><span class="pre">Base</span></code> would apply
 to some models only. <code class="docutils literal notranslate"><span class="pre">Base</span></code> with options raises
 <a class="reference internal" href="exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>.</p>
+<p>For the same reason, a dataclass mixin of your own declares the options
+of <code class="docutils literal notranslate"><span class="pre">fr.IDMixin</span></code>: <code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">Stamped(MappedAsDataclass,</span> <span class="pre">kw_only=True,</span>
+<span class="pre">eq=False,</span> <span class="pre">repr=False)</span></code>. Without <code class="docutils literal notranslate"><span class="pre">eq=False</span></code>, a model with the mixin
+compares fields, and comparing two objects can load a relationship. Such
+a model raises <a class="reference internal" href="exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>
+unless it asks for <code class="docutils literal notranslate"><span class="pre">eq=True</span></code> itself or writes its own <code class="docutils literal notranslate"><span class="pre">__eq__</span></code>.
+Without <code class="docutils literal notranslate"><span class="pre">repr=False</span></code>, the model gets a dataclass repr instead of this
+one.</p>
 </dd></dl>
 
 <dl class="py class">

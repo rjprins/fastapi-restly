@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -62,7 +62,7 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="API Reference" href="api_reference.html" />
+    <link rel="next" title="Schemas &amp; Validation" href="schemas.html" />
     <link rel="prev" title="React Admin" href="react_admin.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -410,27 +410,41 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="projects.html">New &amp; Existing Projects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="database.html">Database &amp; Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
+<ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
-<li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
-<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
-<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering &amp; Pagination</a></li>
-<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
-<li class="toctree-l1"><a class="reference internal" href="current.html">Current &amp; ContextParam</a></li>
-<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
-<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
-<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
 <li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering &amp; Pagination</a></li>
+<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Access</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="context.html">Request Context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tenancy.html">Multi-Tenancy</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Testing &amp; Deploying</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
 </ul>
 </div>
 </nav></div>
@@ -683,12 +697,15 @@ expression can take the place of the primary key, as in
 <code class="docutils literal notranslate"><span class="pre">id:</span> <span class="pre">int</span></code>, the type checker rejects the override, because it accepts less
 than the base method.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">get_one</span></code> and <code class="docutils literal notranslate"><span class="pre">get_many</span></code> take a keyword argument <code class="docutils literal notranslate"><span class="pre">scope</span></code>, which the
-handlers always pass. An override must declare it and pass it on.</p></li>
+handlers always pass. An override must declare it and pass it on; see
+<a class="reference internal" href="scopes.html#per-read-scope"><span class="std std-ref">Read other rows on one route</span></a>.</p></li>
 <li><p>For the response type, give the view’s schema: the response class that
 Restly builds is a subclass of it. A view that sets its own
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_response" title="fastapi_restly.views.BaseRestView.schema_response"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_response</span></code></a>
 gives that class instead, as in <code class="docutils literal notranslate"><span class="pre">fr.AsyncRestView[User,</span> <span class="pre">UserResponse]</span></code>.</p></li>
 </ul>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
 <p>A project base view can stay generic in the model, so each view that
 subclasses it names its own model. The SaaS example does this
 (<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py"><code class="docutils literal notranslate"><span class="pre">app/views.py</span></code></a>):</p>
@@ -705,6 +722,7 @@ subclasses it names its own model. The SaaS example does this
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/projects&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Project</span>
 </pre></div>
+</div>
 </div>
 </section>
 <section id="type-a-custom-route">
@@ -797,11 +815,11 @@ the response class.</p></li>
       </div>
     </a>
     <a class="right-next"
-       href="api_reference.html"
+       href="schemas.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">API Reference</p>
+        <p class="prev-next-title">Schemas &amp; Validation</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>

@@ -62,12 +62,14 @@ class UserView(fr.AsyncRestView):
 ```
 
 The generated schema has one field for each column, and no relationships.
-Restly marks `id`, `created_at` and `updated_at` as `ReadOnly`; see
+Restly marks `id`, `created_at`, `updated_at` and each column with
+`init=False` as `ReadOnly`; see
 [How Restly generates a schema](#auto-generated-schemas) for the details.
 
 Write the schema yourself when the API differs from the table: other field
 names, fields that only go one way, references to other rows, or rules for
-the values. Set it on the view:
+the values. Write it also when the field names must stay the same while the
+table changes. Set it on the view:
 
 ```python
 class UserSchema(fr.IDSchema):
@@ -108,6 +110,9 @@ class UserSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     email: str
 ```
 
+:::{admonition} Details
+:class: details
+
 `BaseSchema` is a Pydantic `BaseModel` with `from_attributes=True`, so it can
 read the attributes of an ORM object. It also checks that the markers are
 used in the right place; see [the next section](#readonly-and-writeonly).
@@ -120,6 +125,7 @@ a plain `pydantic.BaseModel`. Its fields can still use `ReadOnly`,
 model's type; [Type Annotations](typing.md) explains when that helps.
 As the type of a field, `fr.IDSchema[User]` is a reference to another row;
 see [Relationships](relationships.md).
+:::
 
 (readonly-and-writeonly)=
 ## Hide a field from requests or from responses
@@ -148,6 +154,9 @@ class UserSchema(fr.IDSchema):
     password: fr.WriteOnly[str]
 ```
 
+:::{admonition} Details
+:class: details
+
 The two markers work in different places. This matters when you use a
 schema outside a view:
 
@@ -170,6 +179,7 @@ For an optional write-only field, write `WriteOnly[Optional[str]]`.
 
 A JSON column has its own rules for `WriteOnly` fields; see
 [Validate the document in a JSON column](#json-document-columns).
+:::
 
 (explicit-write-schemas)=
 ## Write the request body yourself
@@ -225,7 +235,7 @@ Whether the caller may run the action at all is not validation. It is a
 policy, and it goes in
 [`authorize`](#authorize-gate), which answers with 403.
 
-### Check the shape of a value
+### Value validation
 
 Put a validator or a `Field` constraint on the view's schema. The create
 body, the update body and the response class are subclasses of the view's
@@ -243,36 +253,50 @@ class OrganizationSchema(fr.IDSchema):
 
     @pydantic.field_validator("slug")
     @classmethod
-    def check_slug(cls, value: str | None) -> str | None:
-        if value is not None and not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", value):
+    def check_slug(cls, value: str) -> str:
+        if not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", value):
             raise ValueError("use lowercase letters, digits and hyphens")
         return value
 ```
 
-A value that fails returns 422, with Pydantic's list of errors. The
-validator also runs in these places:
+A value that fails returns 422, with Pydantic's list of errors.
 
-- In the update body, every field is optional and accepts `null`. So a
-  validator there can get `None`. Check for it, as above. Without the check,
-  `{"slug": null}` breaks the validator, and the client gets a 500 instead of
-  a 422. A `null` for a column that must have a value reaches the database,
-  which rejects it with a 409.
+A rule that compares two fields, in a `model_validator`, works on the create
+body. The update body holds only the fields that the client sends, and the
+other fields are `None`. Check such a rule in `update`, where you have the
+stored row too. Otherwise a `PATCH` that sends one of the two fields can save
+a row that breaks the rule. The response class runs the validator too, so
+every read of that row, and every list that holds it, then fails with a
+server error.
+
+:::{admonition} Details
+:class: details
+
+The validator also runs in these places:
+
+- In the update body, the client may leave out each field. Pydantic does not
+  validate a field that the client leaves out, so the validator does not
+  run for it. Each field keeps its type, so `null` is valid only where the
+  type allows `None`, as in the create body. `{"slug": null}` returns 422
+  before the validator runs, so the validator above never gets `None`. A
+  validator with `mode="before"` runs before that check, so it still gets
+  the client's `null`.
 - The response class runs the validator when Restly builds a response from a
   row. A row that breaks the rule, for example one that a script wrote, then
   fails with a server error.
 - List filters run it on each filter value; see
   [Filter values go through the field's validation](#filter-value-validation).
 
+A class without the field does not run its validator. The request bodies
+have no `ReadOnly` fields and no primary key that the server generates. The
+response class has no `WriteOnly` fields.
+
 To check only what comes in, put the validator on a request body that you set
 on the view. The SaaS example does this for organizations
 ([`app/organizations/schemas.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/organizations/schemas.py)).
+:::
 
-A rule that compares two fields, in a `model_validator`, works on the create
-body. The update body holds only the fields that the client sends, and the
-other fields are `None`. Check such a rule in `update`, where you have the
-stored row too.
-
-### Check what the schema cannot see
+### Database validation
 
 A schema sees one request. It does not see other rows, the stored row or the
 caller:
@@ -354,14 +378,18 @@ class AccountView(fr.AsyncRestView):
 a filter, because a client does not see `email`. Restly uses the class as you
 wrote it: it does not remove `WriteOnly` fields from it.
 
+To change how one object becomes a response, or to send another shape, see
+[Responses](responses.md).
+
+:::{admonition} Details
+:class: details
+
 Name the class `<Resource>Response`, as in `AccountResponse`. Restly names the
 list response and the list params after it: `AccountListResponse` and
 `AccountListParams`. For type checkers, put the class in the second type
 parameter of the view, as in `fr.AsyncRestView[Account, AccountResponse]`; see
 [Type Annotations](#view-generics).
-
-To change how one object becomes a response, or to send another shape, see
-[Responses](responses.md).
+:::
 
 (generated-class-names)=
 ## The names of the generated classes
@@ -383,6 +411,9 @@ unless another schema nests it or a custom route names it. The list params
 are not a class in OpenAPI either: OpenAPI shows them as separate query
 parameters.
 
+:::{admonition} Details
+:class: details
+
 The list response has no view attribute, because it has nothing of its own
 to set. It is the envelope of the view's
 {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>`, filled with
@@ -393,6 +424,7 @@ list response class: its list route returns a plain JSON list.
 A view without a schema gets a generated one. For a model named `User` it is
 `UserSchema`, so the names above stay the same. A schema with another name
 keeps its full name as the resource: `UserRead` gives `UserReadCreate`.
+:::
 
 (name-your-schemas)=
 ## Name your schemas
@@ -440,6 +472,9 @@ rules for the classes that you write:
   views set the same `schema_response`, give one view a response class of
   its own in the same way.
 
+:::{admonition} Details
+:class: details
+
 Two different classes can still get the same name. For example, two views
 share a schema but only one is paginated, or you wrote a `UserCreate` that is
 not the same as the generated one. OpenAPI then shows both classes under long
@@ -456,6 +491,7 @@ that names the classes and the views. Restly checks an app that you pass to
 that you include a view on. Two classes with the same name are not a problem
 when their JSON schemas are the same, docstrings and defaults included:
 OpenAPI then shows them as one.
+:::
 
 (name-the-response-classes)=
 ## Name the view's classes in a custom route
@@ -500,6 +536,9 @@ OpenAPI then shows `UserListResponse` and `UserResponse` for these routes,
 as for the CRUD routes. The SaaS example names its classes this way in
 [`app/projects/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py).
 
+:::{admonition} Details
+:class: details
+
 A view with its own `schema_response` passes that class to
 `derive_schema_list_response` instead.
 
@@ -514,6 +553,7 @@ passes a pagination with another envelope than the view's gets a list
 response of another shape, for example `data` without `total_count`. There
 are then two classes named `UserListResponse`, and Restly warns; see
 [Name your schemas](#name-your-schemas).
+:::
 
 (json-document-columns)=
 ## Validate the document in a JSON column
@@ -577,10 +617,13 @@ builds the classes. For the view's schema `UserSchema`:
   class with `model_rebuild(force=True)`.
 - {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>`
   adds `PatchMixin` as well. After the `ReadOnly` fields are gone, it sets the
-  default of every field to `None` and makes its type `Optional[...]`. The
-  defaults of `UserSchema` are **replaced** by `None`, not kept. A field that
-  the client does not send is not written: Restly writes only the fields in
-  `model_fields_set`.
+  default of every field to `None`, so the client may leave out each field.
+  The defaults of `UserSchema` are **replaced** by `None`, not kept. Each
+  field keeps its type, and Pydantic does not validate the `None` default,
+  also when the class sets `validate_default=True` or a validator sets
+  `always=True`. A field that the client does not send is not written:
+  Restly writes only the fields in `model_fields_set`. In OpenAPI, no field
+  of the update body is required.
 
 Both request bodies also leave out a primary key that the server generates,
 even when the schema does not mark it `ReadOnly`. Generated means an
@@ -588,12 +631,11 @@ autoincrement column, a column with a default, or a dataclass field outside
 `__init__`. A primary key without any of these is a natural key, and the
 client sends it.
 
-The classes are subclasses, so they keep the validators of `UserSchema`. The
-response class keeps the validator of a `WriteOnly` field that it deletes, and
-Pydantic does not run it there. The request bodies do not do this for the
-`ReadOnly` fields that they delete. So a validator for a `ReadOnly` field
-makes the view fail when it registers, unless the validator has
-`check_fields=False`.
+The classes are subclasses, so they keep the validators and serializers of
+`UserSchema`. When a class deletes a field, it keeps the validators and
+serializers of that field too, and Pydantic does not run them there. So a
+validator for a `ReadOnly` field, a `WriteOnly` field or a generated primary
+key does not need `check_fields=False`.
 
 Restly stores the classes on the view when it registers the view. Declare
 `schema_response`, `schema_create` or `schema_update` on the view class to use
@@ -622,8 +664,26 @@ SQLModel table. Under `from __future__ import annotations`, Restly evaluates
 the annotation string in the model's module. When no annotation resolves, the
 column type's `python_type` is used. A column with neither raises `TypeError`
 that names the attribute. Synonyms and composites get no field of their own:
-the columns behind them already have one. A column with a default, or a
-nullable column, gets an optional field.
+the columns behind them already have one. A field allows `null` (`None` in
+Python) only when its column is nullable. `mapped_column(nullable=...)`
+decides this, as it does for SQLAlchemy, even when the `Mapped[...]`
+annotation says otherwise.
+
+The create body follows the model's constructor, as SQLAlchemy does. The
+client may leave out a field when its column is nullable, or when the
+constructor does not require it and the model then still gives the column a
+value. That value comes from the column, such as `insert_default` or
+`server_default`, or from the constructor: a `default` other than `None`, or
+a `default_factory`. Restly calls the constructor with the fields that the
+client sent, so that value applies.
+
+On a dataclass model, a column with only a `server_default` is a required
+argument of the constructor, so its field is required. To let the client
+leave it out, add `default=None`, as SQLAlchemy does for a value that the
+database fills: `mapped_column(server_default="x", default=None)`. On
+SQLAlchemy 2.0, a JSON column then stores the `None` as JSON `null` instead
+of its default. Use `default_factory=list`, or
+`JSON(none_as_null=True)`, for a JSON column.
 
 Three rules decide the rest:
 
@@ -636,10 +696,15 @@ Three rules decide the rest:
   named `id` for another reason also gets `IDSchema`.
 - **ReadOnly fields**: the fields `id`, `created_at` and `updated_at` are
   always `ReadOnly`. So is a `column_property` over a SQL expression, which
-  cannot be written. Any other column that the server fills, for example with
-  a server default, is **not** `ReadOnly`.
+  cannot be written. So is a column that the constructor does not take
+  (`init=False`), such as a tenant column with an `insert_default`: the model
+  or the server sets it, so the client must not. To let the client write such
+  a column, remove `init=False`, so that the constructor takes it. Any other
+  column that the server fills, for example with a server default, is
+  **not** `ReadOnly`.
 - **Relationships**: never included. A foreign key column, such as
-  `customer_id`, is an ordinary field. To show a related row in a response,
+  `customer_id`, is an ordinary field. With `init=False`, it is `ReadOnly`,
+  as the rule above says. To show a related row in a response,
   write the schema yourself, for example with an `IDRef[Customer]` field; see
   [Relationships](relationships.md).
 

@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -62,8 +62,8 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Responses" href="responses.html" />
-    <link rel="prev" title="Request Lifecycle &amp; Hooks" href="lifecycle.html" />
+    <link rel="next" title="Relationships" href="relationships.html" />
+    <link rel="prev" title="Type Annotations" href="typing.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -410,27 +410,41 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="projects.html">New &amp; Existing Projects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="database.html">Database &amp; Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Schemas &amp; Validation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
-<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
-<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering &amp; Pagination</a></li>
-<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
-<li class="toctree-l1"><a class="reference internal" href="current.html">Current &amp; ContextParam</a></li>
-<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
-<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
-<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
 <li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
 <li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Schemas &amp; Validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering &amp; Pagination</a></li>
+<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Access</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="context.html">Request Context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tenancy.html">Multi-Tenancy</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Testing &amp; Deploying</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
 </ul>
 </div>
 </nav></div>
@@ -591,11 +605,13 @@ enough when the table is already the API you want:</p>
 </pre></div>
 </div>
 <p>The generated schema has one field for each column, and no relationships.
-Restly marks <code class="docutils literal notranslate"><span class="pre">id</span></code>, <code class="docutils literal notranslate"><span class="pre">created_at</span></code> and <code class="docutils literal notranslate"><span class="pre">updated_at</span></code> as <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>; see
+Restly marks <code class="docutils literal notranslate"><span class="pre">id</span></code>, <code class="docutils literal notranslate"><span class="pre">created_at</span></code>, <code class="docutils literal notranslate"><span class="pre">updated_at</span></code> and each column with
+<code class="docutils literal notranslate"><span class="pre">init=False</span></code> as <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>; see
 <a class="reference internal" href="#auto-generated-schemas">How Restly generates a schema</a> for the details.</p>
 <p>Write the schema yourself when the API differs from the table: other field
 names, fields that only go one way, references to other rows, or rules for
-the values. Set it on the view:</p>
+the values. Write it also when the field names must stay the same while the
+table changes. Set it on the view:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
@@ -632,6 +648,8 @@ base class.</p></li>
     <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
 </pre></div>
 </div>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
 <p><code class="docutils literal notranslate"><span class="pre">BaseSchema</span></code> is a Pydantic <code class="docutils literal notranslate"><span class="pre">BaseModel</span></code> with <code class="docutils literal notranslate"><span class="pre">from_attributes=True</span></code>, so it can
 read the attributes of an ORM object. It also checks that the markers are
 used in the right place; see <a class="reference internal" href="#readonly-and-writeonly">the next section</a>.</p>
@@ -642,6 +660,7 @@ a plain <code class="docutils literal notranslate"><span class="pre">pydantic.Ba
 model’s type; <a class="reference internal" href="typing.html"><span class="std std-doc">Type Annotations</span></a> explains when that helps.
 As the type of a field, <code class="docutils literal notranslate"><span class="pre">fr.IDSchema[User]</span></code> is a reference to another row;
 see <a class="reference internal" href="relationships.html"><span class="std std-doc">Relationships</span></a>.</p>
+</div>
 </section>
 <section id="hide-a-field-from-requests-or-from-responses">
 <span id="readonly-and-writeonly"></span><h2>Hide a field from requests or from responses<a class="headerlink" href="#hide-a-field-from-requests-or-from-responses" title="Link to this heading">#</a></h2>
@@ -664,6 +683,8 @@ it:</p>
     <span class="n">password</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">WriteOnly</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
 </pre></div>
 </div>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
 <p>The two markers work in different places. This matters when you use a
 schema outside a view:</p>
 <ul class="simple">
@@ -685,6 +706,7 @@ field with a
 For an optional write-only field, write <code class="docutils literal notranslate"><span class="pre">WriteOnly[Optional[str]]</span></code>.</p>
 <p>A JSON column has its own rules for <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields; see
 <a class="reference internal" href="#json-document-columns">Validate the document in a JSON column</a>.</p>
+</div>
 </section>
 <section id="write-the-request-body-yourself">
 <span id="explicit-write-schemas"></span><h2>Write the request body yourself<a class="headerlink" href="#write-the-request-body-yourself" title="Link to this heading">#</a></h2>
@@ -755,8 +777,8 @@ request body that you write. Otherwise a client can set it.</p>
 <p>Whether the caller may run the action at all is not validation. It is a
 policy, and it goes in
 <a class="reference internal" href="authorization.html#authorize-gate"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">authorize</span></code></span></a>, which answers with 403.</p>
-<section id="check-the-shape-of-a-value">
-<h3>Check the shape of a value<a class="headerlink" href="#check-the-shape-of-a-value" title="Link to this heading">#</a></h3>
+<section id="value-validation">
+<h3>Value validation<a class="headerlink" href="#value-validation" title="Link to this heading">#</a></h3>
 <p>Put a validator or a <code class="docutils literal notranslate"><span class="pre">Field</span></code> constraint on the view’s schema. The create
 body, the update body and the response class are subclasses of the view’s
 schema, so all three run it:</p>
@@ -771,36 +793,47 @@ schema, so all three run it:</p>
 
     <span class="nd">@pydantic</span><span class="o">.</span><span class="n">field_validator</span><span class="p">(</span><span class="s2">&quot;slug&quot;</span><span class="p">)</span>
     <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">check_slug</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;[a-z0-9]+(-[a-z0-9]+)*&quot;</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check_slug</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;[a-z0-9]+(-[a-z0-9]+)*&quot;</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;use lowercase letters, digits and hyphens&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">value</span>
 </pre></div>
 </div>
-<p>A value that fails returns 422, with Pydantic’s list of errors. The
-validator also runs in these places:</p>
+<p>A value that fails returns 422, with Pydantic’s list of errors.</p>
+<p>A rule that compares two fields, in a <code class="docutils literal notranslate"><span class="pre">model_validator</span></code>, works on the create
+body. The update body holds only the fields that the client sends, and the
+other fields are <code class="docutils literal notranslate"><span class="pre">None</span></code>. Check such a rule in <code class="docutils literal notranslate"><span class="pre">update</span></code>, where you have the
+stored row too. Otherwise a <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> that sends one of the two fields can save
+a row that breaks the rule. The response class runs the validator too, so
+every read of that row, and every list that holds it, then fails with a
+server error.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>The validator also runs in these places:</p>
 <ul class="simple">
-<li><p>In the update body, every field is optional and accepts <code class="docutils literal notranslate"><span class="pre">null</span></code>. So a
-validator there can get <code class="docutils literal notranslate"><span class="pre">None</span></code>. Check for it, as above. Without the check,
-<code class="docutils literal notranslate"><span class="pre">{&quot;slug&quot;:</span> <span class="pre">null}</span></code> breaks the validator, and the client gets a 500 instead of
-a 422. A <code class="docutils literal notranslate"><span class="pre">null</span></code> for a column that must have a value reaches the database,
-which rejects it with a 409.</p></li>
+<li><p>In the update body, the client may leave out each field. Pydantic does not
+validate a field that the client leaves out, so the validator does not
+run for it. Each field keeps its type, so <code class="docutils literal notranslate"><span class="pre">null</span></code> is valid only where the
+type allows <code class="docutils literal notranslate"><span class="pre">None</span></code>, as in the create body. <code class="docutils literal notranslate"><span class="pre">{&quot;slug&quot;:</span> <span class="pre">null}</span></code> returns 422
+before the validator runs, so the validator above never gets <code class="docutils literal notranslate"><span class="pre">None</span></code>. A
+validator with <code class="docutils literal notranslate"><span class="pre">mode=&quot;before&quot;</span></code> runs before that check, so it still gets
+the client’s <code class="docutils literal notranslate"><span class="pre">null</span></code>.</p></li>
 <li><p>The response class runs the validator when Restly builds a response from a
 row. A row that breaks the rule, for example one that a script wrote, then
 fails with a server error.</p></li>
 <li><p>List filters run it on each filter value; see
 <a class="reference internal" href="filtering.html#filter-value-validation"><span class="std std-ref">Filter values go through the field’s validation</span></a>.</p></li>
 </ul>
+<p>A class without the field does not run its validator. The request bodies
+have no <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> fields and no primary key that the server generates. The
+response class has no <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields.</p>
 <p>To check only what comes in, put the validator on a request body that you set
 on the view. The SaaS example does this for organizations
 (<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/organizations/schemas.py"><code class="docutils literal notranslate"><span class="pre">app/organizations/schemas.py</span></code></a>).</p>
-<p>A rule that compares two fields, in a <code class="docutils literal notranslate"><span class="pre">model_validator</span></code>, works on the create
-body. The update body holds only the fields that the client sends, and the
-other fields are <code class="docutils literal notranslate"><span class="pre">None</span></code>. Check such a rule in <code class="docutils literal notranslate"><span class="pre">update</span></code>, where you have the
-stored row too.</p>
+</div>
 </section>
-<section id="check-what-the-schema-cannot-see">
-<h3>Check what the schema cannot see<a class="headerlink" href="#check-what-the-schema-cannot-see" title="Link to this heading">#</a></h3>
+<section id="database-validation">
+<h3>Database validation<a class="headerlink" href="#database-validation" title="Link to this heading">#</a></h3>
 <p>A schema sees one request. It does not see other rows, the stored row or the
 caller:</p>
 <ul class="simple">
@@ -874,13 +907,16 @@ Restly derives from <code class="docutils literal notranslate"><span class="pre"
 <code class="docutils literal notranslate"><span class="pre">id</span></code>, <code class="docutils literal notranslate"><span class="pre">name</span></code> and the nested <code class="docutils literal notranslate"><span class="pre">team</span></code>, which the view loads. <code class="docutils literal notranslate"><span class="pre">?email=...</span></code> is not
 a filter, because a client does not see <code class="docutils literal notranslate"><span class="pre">email</span></code>. Restly uses the class as you
 wrote it: it does not remove <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields from it.</p>
+<p>To change how one object becomes a response, or to send another shape, see
+<a class="reference internal" href="responses.html"><span class="std std-doc">Responses</span></a>.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
 <p>Name the class <code class="docutils literal notranslate"><span class="pre">&lt;Resource&gt;Response</span></code>, as in <code class="docutils literal notranslate"><span class="pre">AccountResponse</span></code>. Restly names the
 list response and the list params after it: <code class="docutils literal notranslate"><span class="pre">AccountListResponse</span></code> and
 <code class="docutils literal notranslate"><span class="pre">AccountListParams</span></code>. For type checkers, put the class in the second type
 parameter of the view, as in <code class="docutils literal notranslate"><span class="pre">fr.AsyncRestView[Account,</span> <span class="pre">AccountResponse]</span></code>; see
 <a class="reference internal" href="typing.html#view-generics"><span class="std std-ref">Type Annotations</span></a>.</p>
-<p>To change how one object becomes a response, or to send another shape, see
-<a class="reference internal" href="responses.html"><span class="std std-doc">Responses</span></a>.</p>
+</div>
 </section>
 <section id="the-names-of-the-generated-classes">
 <span id="generated-class-names"></span><h2>The names of the generated classes<a class="headerlink" href="#the-names-of-the-generated-classes" title="Link to this heading">#</a></h2>
@@ -922,6 +958,8 @@ the view’s schema <code class="docutils literal notranslate"><span class="pre"
 unless another schema nests it or a custom route names it. The list params
 are not a class in OpenAPI either: OpenAPI shows them as separate query
 parameters.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
 <p>The list response has no view attribute, because it has nothing of its own
 to set. It is the envelope of the view’s
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.pagination" title="fastapi_restly.views.BaseRestView.pagination"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pagination</span></code></a>, filled with
@@ -931,6 +969,7 @@ list response class: its list route returns a plain JSON list.</p>
 <p>A view without a schema gets a generated one. For a model named <code class="docutils literal notranslate"><span class="pre">User</span></code> it is
 <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code>, so the names above stay the same. A schema with another name
 keeps its full name as the resource: <code class="docutils literal notranslate"><span class="pre">UserRead</span></code> gives <code class="docutils literal notranslate"><span class="pre">UserReadCreate</span></code>.</p>
+</div>
 </section>
 <section id="name-your-schemas">
 <span id="id1"></span><h2>Name your schemas<a class="headerlink" href="#name-your-schemas" title="Link to this heading">#</a></h2>
@@ -974,6 +1013,8 @@ views set the same <code class="docutils literal notranslate"><span class="pre">
 its own in the same way.</p>
 </li>
 </ul>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
 <p>Two different classes can still get the same name. For example, two views
 share a schema but only one is paginated, or you wrote a <code class="docutils literal notranslate"><span class="pre">UserCreate</span></code> that is
 not the same as the generated one. OpenAPI then shows both classes under long
@@ -989,6 +1030,7 @@ that names the classes and the views. Restly checks an app that you pass to
 that you include a view on. Two classes with the same name are not a problem
 when their JSON schemas are the same, docstrings and defaults included:
 OpenAPI then shows them as one.</p>
+</div>
 </section>
 <section id="name-the-view-s-classes-in-a-custom-route">
 <span id="name-the-response-classes"></span><h2>Name the view’s classes in a custom route<a class="headerlink" href="#name-the-view-s-classes-in-a-custom-route" title="Link to this heading">#</a></h2>
@@ -1029,6 +1071,8 @@ Pass the view’s pagination as it is, also when it is <code class="docutils lit
 <p>OpenAPI then shows <code class="docutils literal notranslate"><span class="pre">UserListResponse</span></code> and <code class="docutils literal notranslate"><span class="pre">UserResponse</span></code> for these routes,
 as for the CRUD routes. The SaaS example names its classes this way in
 <a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py"><code class="docutils literal notranslate"><span class="pre">app/projects/views.py</span></code></a>.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
 <p>A view with its own <code class="docutils literal notranslate"><span class="pre">schema_response</span></code> passes that class to
 <code class="docutils literal notranslate"><span class="pre">derive_schema_list_response</span></code> instead.</p>
 <p>A function builds these classes, so type checkers do not accept them in an
@@ -1041,6 +1085,7 @@ passes a pagination with another envelope than the view’s gets a list
 response of another shape, for example <code class="docutils literal notranslate"><span class="pre">data</span></code> without <code class="docutils literal notranslate"><span class="pre">total_count</span></code>. There
 are then two classes named <code class="docutils literal notranslate"><span class="pre">UserListResponse</span></code>, and Restly warns; see
 <a class="reference internal" href="#name-your-schemas">Name your schemas</a>.</p>
+</div>
 </section>
 <section id="validate-the-document-in-a-json-column">
 <span id="json-document-columns"></span><h2>Validate the document in a JSON column<a class="headerlink" href="#validate-the-document-in-a-json-column" title="Link to this heading">#</a></h2>
@@ -1100,22 +1145,24 @@ mixin deletes the <code class="docutils literal notranslate"><span class="pre">R
 class with <code class="docutils literal notranslate"><span class="pre">model_rebuild(force=True)</span></code>.</p></li>
 <li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a>
 adds <code class="docutils literal notranslate"><span class="pre">PatchMixin</span></code> as well. After the <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> fields are gone, it sets the
-default of every field to <code class="docutils literal notranslate"><span class="pre">None</span></code> and makes its type <code class="docutils literal notranslate"><span class="pre">Optional[...]</span></code>. The
-defaults of <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code> are <strong>replaced</strong> by <code class="docutils literal notranslate"><span class="pre">None</span></code>, not kept. A field that
-the client does not send is not written: Restly writes only the fields in
-<code class="docutils literal notranslate"><span class="pre">model_fields_set</span></code>.</p></li>
+default of every field to <code class="docutils literal notranslate"><span class="pre">None</span></code>, so the client may leave out each field.
+The defaults of <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code> are <strong>replaced</strong> by <code class="docutils literal notranslate"><span class="pre">None</span></code>, not kept. Each
+field keeps its type, and Pydantic does not validate the <code class="docutils literal notranslate"><span class="pre">None</span></code> default,
+also when the class sets <code class="docutils literal notranslate"><span class="pre">validate_default=True</span></code> or a validator sets
+<code class="docutils literal notranslate"><span class="pre">always=True</span></code>. A field that the client does not send is not written:
+Restly writes only the fields in <code class="docutils literal notranslate"><span class="pre">model_fields_set</span></code>. In OpenAPI, no field
+of the update body is required.</p></li>
 </ul>
 <p>Both request bodies also leave out a primary key that the server generates,
 even when the schema does not mark it <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>. Generated means an
 autoincrement column, a column with a default, or a dataclass field outside
 <code class="docutils literal notranslate"><span class="pre">__init__</span></code>. A primary key without any of these is a natural key, and the
 client sends it.</p>
-<p>The classes are subclasses, so they keep the validators of <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code>. The
-response class keeps the validator of a <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> field that it deletes, and
-Pydantic does not run it there. The request bodies do not do this for the
-<code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> fields that they delete. So a validator for a <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> field
-makes the view fail when it registers, unless the validator has
-<code class="docutils literal notranslate"><span class="pre">check_fields=False</span></code>.</p>
+<p>The classes are subclasses, so they keep the validators and serializers of
+<code class="docutils literal notranslate"><span class="pre">UserSchema</span></code>. When a class deletes a field, it keeps the validators and
+serializers of that field too, and Pydantic does not run them there. So a
+validator for a <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> field, a <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> field or a generated primary
+key does not need <code class="docutils literal notranslate"><span class="pre">check_fields=False</span></code>.</p>
 <p>Restly stores the classes on the view when it registers the view. Declare
 <code class="docutils literal notranslate"><span class="pre">schema_response</span></code>, <code class="docutils literal notranslate"><span class="pre">schema_create</span></code> or <code class="docutils literal notranslate"><span class="pre">schema_update</span></code> on the view class to use
 your own class instead.</p>
@@ -1142,8 +1189,24 @@ SQLModel table. Under <code class="docutils literal notranslate"><span class="pr
 the annotation string in the model’s module. When no annotation resolves, the
 column type’s <code class="docutils literal notranslate"><span class="pre">python_type</span></code> is used. A column with neither raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code>
 that names the attribute. Synonyms and composites get no field of their own:
-the columns behind them already have one. A column with a default, or a
-nullable column, gets an optional field.</p>
+the columns behind them already have one. A field allows <code class="docutils literal notranslate"><span class="pre">null</span></code> (<code class="docutils literal notranslate"><span class="pre">None</span></code> in
+Python) only when its column is nullable. <code class="docutils literal notranslate"><span class="pre">mapped_column(nullable=...)</span></code>
+decides this, as it does for SQLAlchemy, even when the <code class="docutils literal notranslate"><span class="pre">Mapped[...]</span></code>
+annotation says otherwise.</p>
+<p>The create body follows the model’s constructor, as SQLAlchemy does. The
+client may leave out a field when its column is nullable, or when the
+constructor does not require it and the model then still gives the column a
+value. That value comes from the column, such as <code class="docutils literal notranslate"><span class="pre">insert_default</span></code> or
+<code class="docutils literal notranslate"><span class="pre">server_default</span></code>, or from the constructor: a <code class="docutils literal notranslate"><span class="pre">default</span></code> other than <code class="docutils literal notranslate"><span class="pre">None</span></code>, or
+a <code class="docutils literal notranslate"><span class="pre">default_factory</span></code>. Restly calls the constructor with the fields that the
+client sent, so that value applies.</p>
+<p>On a dataclass model, a column with only a <code class="docutils literal notranslate"><span class="pre">server_default</span></code> is a required
+argument of the constructor, so its field is required. To let the client
+leave it out, add <code class="docutils literal notranslate"><span class="pre">default=None</span></code>, as SQLAlchemy does for a value that the
+database fills: <code class="docutils literal notranslate"><span class="pre">mapped_column(server_default=&quot;x&quot;,</span> <span class="pre">default=None)</span></code>. On
+SQLAlchemy 2.0, a JSON column then stores the <code class="docutils literal notranslate"><span class="pre">None</span></code> as JSON <code class="docutils literal notranslate"><span class="pre">null</span></code> instead
+of its default. Use <code class="docutils literal notranslate"><span class="pre">default_factory=list</span></code>, or
+<code class="docutils literal notranslate"><span class="pre">JSON(none_as_null=True)</span></code>, for a JSON column.</p>
 <p>Three rules decide the rest:</p>
 <ul class="simple">
 <li><p><strong>Base classes</strong>: Restly checks whether the model has fields <em>named</em>
@@ -1155,10 +1218,15 @@ does <strong>not</strong> look at the model’s Python base classes. A model wit
 named <code class="docutils literal notranslate"><span class="pre">id</span></code> for another reason also gets <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code>.</p></li>
 <li><p><strong>ReadOnly fields</strong>: the fields <code class="docutils literal notranslate"><span class="pre">id</span></code>, <code class="docutils literal notranslate"><span class="pre">created_at</span></code> and <code class="docutils literal notranslate"><span class="pre">updated_at</span></code> are
 always <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>. So is a <code class="docutils literal notranslate"><span class="pre">column_property</span></code> over a SQL expression, which
-cannot be written. Any other column that the server fills, for example with
-a server default, is <strong>not</strong> <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>.</p></li>
+cannot be written. So is a column that the constructor does not take
+(<code class="docutils literal notranslate"><span class="pre">init=False</span></code>), such as a tenant column with an <code class="docutils literal notranslate"><span class="pre">insert_default</span></code>: the model
+or the server sets it, so the client must not. To let the client write such
+a column, remove <code class="docutils literal notranslate"><span class="pre">init=False</span></code>, so that the constructor takes it. Any other
+column that the server fills, for example with a server default, is
+<strong>not</strong> <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>.</p></li>
 <li><p><strong>Relationships</strong>: never included. A foreign key column, such as
-<code class="docutils literal notranslate"><span class="pre">customer_id</span></code>, is an ordinary field. To show a related row in a response,
+<code class="docutils literal notranslate"><span class="pre">customer_id</span></code>, is an ordinary field. With <code class="docutils literal notranslate"><span class="pre">init=False</span></code>, it is <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>,
+as the rule above says. To show a related row in a response,
 write the schema yourself, for example with an <code class="docutils literal notranslate"><span class="pre">IDRef[Customer]</span></code> field; see
 <a class="reference internal" href="relationships.html"><span class="std std-doc">Relationships</span></a>.</p></li>
 </ul>
@@ -1267,20 +1335,20 @@ keys that come from the response class.</p></li>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="lifecycle.html"
+       href="typing.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Request Lifecycle &amp; Hooks</p>
+        <p class="prev-next-title">Type Annotations</p>
       </div>
     </a>
     <a class="right-next"
-       href="responses.html"
+       href="relationships.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Responses</p>
+        <p class="prev-next-title">Relationships</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -1308,8 +1376,8 @@ keys that come from the response class.</p></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#hide-a-field-from-requests-or-from-responses">Hide a field from requests or from responses</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#write-the-request-body-yourself">Write the request body yourself</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#validate-input">Validate input</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#check-the-shape-of-a-value">Check the shape of a value</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#check-what-the-schema-cannot-see">Check what the schema cannot see</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#value-validation">Value validation</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#database-validation">Database validation</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-other-field-names-in-json">Use other field names in JSON</a></li>

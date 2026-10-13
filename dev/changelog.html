@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -520,6 +520,11 @@ they raise <code class="docutils literal notranslate"><span class="pre">RestlyCo
 to some models only. <code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code> on a class below another
 declarative base also raises.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">fr.IDMixin</span></code> at the top level. Before, it was only in <code class="docutils literal notranslate"><span class="pre">fr.models</span></code>.</p></li>
+<li><p>With <code class="docutils literal notranslate"><span class="pre">fr.configure(warn_on_misuse=True)</span></code>, Restly warns about a writable
+field on a column with <code class="docutils literal notranslate"><span class="pre">init=False</span></code> and a default, in a schema that you
+write. The model sets such a column, as with a tenant or an audit column,
+so the field must be <code class="docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code>. A writable relationship field warns too
+when its foreign key is such a column.</p></li>
 </ul>
 </section>
 <section id="changed">
@@ -545,11 +550,89 @@ two objects are equal only when they are the same object. This holds for
 <code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code>, <code class="docutils literal notranslate"><span class="pre">fr.IDMixin</span></code> and <code class="docutils literal notranslate"><span class="pre">fr.TimestampsMixin</span></code>. Before, two
 objects of a model on <code class="docutils literal notranslate"><span class="pre">fr.DataclassBase</span></code> were equal when their fields were
 equal, and a model object could not go in a <code class="docutils literal notranslate"><span class="pre">set</span></code>. To compare a model by
-its fields again, pass <code class="docutils literal notranslate"><span class="pre">eq=True</span></code> on it: <code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">Post(fr.IDMixin,</span> <span class="pre">Base,</span> <span class="pre">eq=True)</span></code>.</p></li>
+its fields again, pass <code class="docutils literal notranslate"><span class="pre">eq=True</span></code> on it: <code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">Post(fr.IDMixin,</span> <span class="pre">Base,</span> <span class="pre">eq=True)</span></code>.
+A dataclass mixin of your own declares the same options as <code class="docutils literal notranslate"><span class="pre">fr.IDMixin</span></code>:
+<code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">Stamped(MappedAsDataclass,</span> <span class="pre">kw_only=True,</span> <span class="pre">eq=False,</span> <span class="pre">repr=False)</span></code>. A
+mixin without <code class="docutils literal notranslate"><span class="pre">eq=False</span></code> makes each model that uses it compare fields, so
+<code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code> raises <code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code> for such a model,
+unless the model passes <code class="docutils literal notranslate"><span class="pre">eq=True</span></code> or writes its own <code class="docutils literal notranslate"><span class="pre">__eq__</span></code>.</p></li>
+<li><p>The repr of a model on <code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code> no longer loads anything. It shows
+the primary key and the other columns that are loaded, such as
+<code class="docutils literal notranslate"><span class="pre">Post(id=1,</span> <span class="pre">title='Hello')</span></code>. <code class="docutils literal notranslate"><span class="pre">...</span></code> stands for columns that are not loaded,
+and relationships are left out. Before, the dataclass repr read every field,
+so in async code it raised <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code> for a relationship or a column
+that was not loaded. Pass <code class="docutils literal notranslate"><span class="pre">repr=True</span></code> on a model for the dataclass repr. A
+dataclass mixin of your own adds <code class="docutils literal notranslate"><span class="pre">repr=False</span></code>, or the model gets a dataclass
+repr instead. A model that uses <code class="docutils literal notranslate"><span class="pre">fr.IDMixin</span></code> or <code class="docutils literal notranslate"><span class="pre">fr.TimestampsMixin</span></code> on a
+base without <code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code> gets Python’s default repr.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> generates <code class="docutils literal notranslate"><span class="pre">app/models.py</span></code> with the project’s own
 <code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">Base(fr.ModelDefaults,</span> <span class="pre">DeclarativeBase)</span></code>. The models, <code class="docutils literal notranslate"><span class="pre">alembic/env.py</span></code>,
 the test setup and <code class="docutils literal notranslate"><span class="pre">create_all</span></code> use that <code class="docutils literal notranslate"><span class="pre">Base</span></code> instead of
 <code class="docutils literal notranslate"><span class="pre">fr.DataclassBase</span></code>.</p></li>
+<li><p>A database conflict in a write is now a <code class="docutils literal notranslate"><span class="pre">fr.exc.Conflict</span></code> (409), raised by
+Restly’s write block instead of an exception handler on the app. A CRUD
+write or a <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block in a custom route turns an
+<code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> into <code class="docutils literal notranslate"><span class="pre">Conflict</span></code>, with the <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> as its
+<code class="docutils literal notranslate"><span class="pre">__cause__</span></code>. Inside a <code class="docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code> block the error stays
+raw, so a bulk route can still catch the error of one row. An
+<code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> that escapes the outermost block, or that its commit
+raises, becomes the <code class="docutils literal notranslate"><span class="pre">409</span></code>. The default body
+is the same as before. With a handler for <code class="docutils literal notranslate"><span class="pre">fr.exc.RestlyHTTPError</span></code>, such as
+a problem details handler, conflicts now get that handler’s body. Code
+outside a write block, such as a bare <code class="docutils literal notranslate"><span class="pre">View</span></code> route that commits itself,
+now gets the raw <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> instead of a <code class="docutils literal notranslate"><span class="pre">409</span></code>. A route that caught
+<code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> around its own <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block catches
+<code class="docutils literal notranslate"><span class="pre">fr.exc.Conflict</span></code> instead.</p></li>
+<li><p>Each field of the update body keeps the type that it has in the view’s
+schema. The client may still leave out every field, but <code class="docutils literal notranslate"><span class="pre">null</span></code> is valid
+only where the type allows <code class="docutils literal notranslate"><span class="pre">None</span></code>, as in the create body. Before, the
+update body made each type <code class="docutils literal notranslate"><span class="pre">Optional</span></code>. So <code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">{&quot;title&quot;:</span> <span class="pre">null}</span></code> for a
+field <code class="docutils literal notranslate"><span class="pre">title:</span> <span class="pre">str</span></code> passed validation, and the database rejected it with
+<code class="docutils literal notranslate"><span class="pre">409</span></code>. Now it returns <code class="docutils literal notranslate"><span class="pre">422</span></code>. A field validator in the default <code class="docutils literal notranslate"><span class="pre">after</span></code> mode
+no longer gets <code class="docutils literal notranslate"><span class="pre">None</span></code> for such a field. A <code class="docutils literal notranslate"><span class="pre">before</span></code> or <code class="docutils literal notranslate"><span class="pre">wrap</span></code> validator
+still gets the client’s <code class="docutils literal notranslate"><span class="pre">null</span></code>, as in the create body. A field typed <code class="docutils literal notranslate"><span class="pre">str</span></code>
+on a nullable column can no longer be set to <code class="docutils literal notranslate"><span class="pre">null</span></code> with <code class="docutils literal notranslate"><span class="pre">PATCH</span></code>; type it
+<code class="docutils literal notranslate"><span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span></code> for that. In OpenAPI, <code class="docutils literal notranslate"><span class="pre">title</span></code> in the update body is <code class="docutils literal notranslate"><span class="pre">string</span></code>
+instead of <code class="docutils literal notranslate"><span class="pre">string</span> <span class="pre">|</span> <span class="pre">null</span></code>.</p></li>
+<li><p>In a schema that Restly generates, for a view without <code class="docutils literal notranslate"><span class="pre">schema</span></code>, a field
+allows <code class="docutils literal notranslate"><span class="pre">null</span></code> only when its column is nullable. Before,
+<code class="docutils literal notranslate"><span class="pre">count:</span> <span class="pre">Mapped[int]</span> <span class="pre">=</span> <span class="pre">mapped_column(default=3)</span></code> got the field
+<code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">|</span> <span class="pre">None</span></code>. Then <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">{&quot;count&quot;:</span> <span class="pre">null}</span></code> stored the default, and
+<code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">{&quot;count&quot;:</span> <span class="pre">null}</span></code> returned <code class="docutils literal notranslate"><span class="pre">409</span></code> from the database. Both now return
+<code class="docutils literal notranslate"><span class="pre">422</span></code>. The client may still leave the field out, and then the default
+applies. In OpenAPI, the field is <code class="docutils literal notranslate"><span class="pre">integer</span></code> instead of <code class="docutils literal notranslate"><span class="pre">integer</span> <span class="pre">|</span> <span class="pre">null</span></code>.
+<code class="docutils literal notranslate"><span class="pre">mapped_column(nullable=...)</span></code> now wins over the annotation, as in
+SQLAlchemy: <code class="docutils literal notranslate"><span class="pre">Mapped[int]</span></code> with <code class="docutils literal notranslate"><span class="pre">nullable=True</span></code> allows <code class="docutils literal notranslate"><span class="pre">null</span></code>.</p></li>
+<li><p>The create body of a generated schema follows the model’s constructor, as
+SQLAlchemy does. The client may leave out a field when its column is
+nullable, or when the constructor does not require it and the model then
+still gives the column a value. On a dataclass model, a column with only a
+<code class="docutils literal notranslate"><span class="pre">server_default</span></code> is a required argument of the constructor, so its field
+is now required too. Add <code class="docutils literal notranslate"><span class="pre">default=None</span></code> to let the client leave it out:
+<code class="docutils literal notranslate"><span class="pre">mapped_column(server_default=&quot;x&quot;,</span> <span class="pre">default=None)</span></code>. A <code class="docutils literal notranslate"><span class="pre">default_factory</span></code>, or
+a <code class="docutils literal notranslate"><span class="pre">default</span></code> other than <code class="docutils literal notranslate"><span class="pre">None</span></code>, also lets the client leave the field out.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">400</span></code> answers of a list request say what is wrong. Before, the
+standard dialect answered “Invalid attribute in URL query: age” both for a
+sort or filter field that does not exist and for a bad filter value. Now
+it is <code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">sort</span> <span class="pre">field:</span> <span class="pre">'nope'</span></code>, <code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">filter</span> <span class="pre">field:</span> <span class="pre">'nope'</span></code>, or
+<code class="docutils literal notranslate"><span class="pre">Invalid</span> <span class="pre">filter</span> <span class="pre">value</span> <span class="pre">for</span> <span class="pre">'age':</span> <span class="pre">'old'.</span></code> followed by Pydantic’s reason,
+such as <code class="docutils literal notranslate"><span class="pre">Input</span> <span class="pre">should</span> <span class="pre">be</span> <span class="pre">a</span> <span class="pre">valid</span> <span class="pre">integer,</span> <span class="pre">unable</span> <span class="pre">to</span> <span class="pre">parse</span> <span class="pre">string</span> <span class="pre">as</span> <span class="pre">an</span> <span class="pre">integer</span></code>. An exception from a field validator that is not a validation
+error is now a <code class="docutils literal notranslate"><span class="pre">500</span></code>, as for a request body, instead of a <code class="docutils literal notranslate"><span class="pre">400</span></code>. Code or
+tests that compare the old texts must change. The texts for a bad <code class="docutils literal notranslate"><span class="pre">page</span></code>
+or <code class="docutils literal notranslate"><span class="pre">page_size</span></code> changed too.</p></li>
+<li><p>A react-admin view raises <code class="docutils literal notranslate"><span class="pre">fr.exc.BadQueryParam</span></code> for each bad <code class="docutils literal notranslate"><span class="pre">sort</span></code>,
+<code class="docutils literal notranslate"><span class="pre">range</span></code> or <code class="docutils literal notranslate"><span class="pre">filter</span></code> parameter. Before, most of them were a plain
+<code class="docutils literal notranslate"><span class="pre">HTTPException</span></code>, so a handler for <code class="docutils literal notranslate"><span class="pre">fr.exc.RestlyHTTPError</span></code> did not shape
+them. The status stays <code class="docutils literal notranslate"><span class="pre">400</span></code>, and the default body is the same. An unknown
+sort field now says <code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">sort</span> <span class="pre">field</span></code> instead of <code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">filter</span> <span class="pre">field</span></code>.</p></li>
+<li><p>A react-admin view checks a filter value against the column’s type with
+Pydantic, as the standard dialect does. Before, it called the type on the
+value. So <code class="docutils literal notranslate"><span class="pre">{&quot;active&quot;:</span> <span class="pre">&quot;false&quot;}</span></code> matched the rows where <code class="docutils literal notranslate"><span class="pre">active</span></code> is true,
+a date such as <code class="docutils literal notranslate"><span class="pre">&quot;2020-01-01&quot;</span></code> returned <code class="docutils literal notranslate"><span class="pre">400</span></code>, and a bad decimal or UUID
+returned <code class="docutils literal notranslate"><span class="pre">500</span></code>. A bad value now returns <code class="docutils literal notranslate"><span class="pre">400</span></code> with Pydantic’s reason, and
+names the field as the client wrote it, also with an alias. A <code class="docutils literal notranslate"><span class="pre">range</span></code>
+past the largest offset that the database takes returns <code class="docutils literal notranslate"><span class="pre">400</span></code> instead of
+<code class="docutils literal notranslate"><span class="pre">500</span></code>.</p></li>
 </ul>
 </section>
 <section id="removed">
@@ -581,6 +664,79 @@ difference:</p>
 <code class="docutils literal notranslate"><span class="pre">async_create_all(Base)</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">target_metadata</span> <span class="pre">=</span> <span class="pre">Base.metadata</span></code> in <code class="docutils literal notranslate"><span class="pre">alembic/env.py</span></code>.</p></li>
 </ul>
+</li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">install_default_exception_handlers</span></code> argument of <code class="docutils literal notranslate"><span class="pre">fr.configure</span></code>, and the
+<code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> handler that <code class="docutils literal notranslate"><span class="pre">fr.configure(app)</span></code> and <code class="docutils literal notranslate"><span class="pre">fr.include_view</span></code>
+installed on the app. The argument did not work: <code class="docutils literal notranslate"><span class="pre">include_view</span></code> installed
+the handler anyway. Restly no longer installs an exception handler, so
+there is nothing to turn off. To give conflicts your own body, register a
+handler for <code class="docutils literal notranslate"><span class="pre">fr.exc.RestlyHTTPError</span></code> or <code class="docutils literal notranslate"><span class="pre">fr.exc.Conflict</span></code>. A handler for
+<code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> of your own, as the 0.11 docs showed, no longer runs for a
+conflict in a CRUD write or a <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block, because the block raises
+<code class="docutils literal notranslate"><span class="pre">fr.exc.Conflict</span></code> first. Register it for <code class="docutils literal notranslate"><span class="pre">fr.exc.Conflict</span></code> instead; the
+original error is <code class="docutils literal notranslate"><span class="pre">exc.__cause__</span></code>.</p></li>
+</ul>
+</section>
+<section id="fixed">
+<h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Restly calls the model’s constructor with the fields that the client sent,
+as code that builds the object itself would. A field that the client
+leaves out, with the value <code class="docutils literal notranslate"><span class="pre">None</span></code>, is no longer passed, unless the
+constructor requires it. So the model’s default applies. Before, Restly
+passed <code class="docutils literal notranslate"><span class="pre">None</span></code>: most columns still got their column default, but a JSON
+column stored JSON <code class="docutils literal notranslate"><span class="pre">null</span></code>, and a <code class="docutils literal notranslate"><span class="pre">default_factory</span></code> of the constructor was
+lost. This also holds for a reference field, such as
+<code class="docutils literal notranslate"><span class="pre">author_id:</span> <span class="pre">fr.IDRef[User]</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></code>, on a foreign key column.</p></li>
+<li><p>A validator or serializer for a <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> field, or for a primary key that
+the server generates, no longer makes the view fail when it registers.
+Before, it needed <code class="docutils literal notranslate"><span class="pre">check_fields=False</span></code>. The request bodies do not have the
+field, so they do not run the validator. The response class has the field
+and runs it.</p></li>
+<li><p>A field type with <code class="docutils literal notranslate"><span class="pre">Annotated</span></code> inside <code class="docutils literal notranslate"><span class="pre">Optional</span></code>, such as
+<code class="docutils literal notranslate"><span class="pre">Annotated[fr.IDRef[User],</span> <span class="pre">Field(...)]</span> <span class="pre">|</span> <span class="pre">None</span></code>, <code class="docutils literal notranslate"><span class="pre">constr(...)</span> <span class="pre">|</span> <span class="pre">None</span></code> or
+<code class="docutils literal notranslate"><span class="pre">fr.MustExist[UUID,</span> <span class="pre">Team]</span> <span class="pre">|</span> <span class="pre">None</span></code>, now works like the plain type. Before,
+Restly did not look inside the <code class="docutils literal notranslate"><span class="pre">Annotated</span></code>:</p>
+<ul>
+<li><p>The list filters gave such a field the range filters (<code class="docutils literal notranslate"><span class="pre">__gte</span></code> and the
+others) for every type. On a bool they returned <code class="docutils literal notranslate"><span class="pre">500</span></code>. A UUID, a plain
+<code class="docutils literal notranslate"><span class="pre">Enum</span></code> or an <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> no longer gets them, as with the plain type, so a
+client that sends one now gets <code class="docutils literal notranslate"><span class="pre">422</span></code>. Such a string now gets <code class="docutils literal notranslate"><span class="pre">__contains</span></code>
+and <code class="docutils literal notranslate"><span class="pre">__icontains</span></code>. Such a nested schema now gets the dotted filters and
+sort keys, such as <code class="docutils literal notranslate"><span class="pre">?author.name=Alice</span></code>.</p></li>
+<li><p>Restly did not see such an <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> or <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> as a reference. A field
+named after a foreign key column returned <code class="docutils literal notranslate"><span class="pre">500</span></code> on every create or update
+that sent it. A field named after a relationship returned <code class="docutils literal notranslate"><span class="pre">500</span></code> on create
+when the foreign key is a required argument of the model. A foreign key
+and its relationship that name different rows were saved, instead of
+returning <code class="docutils literal notranslate"><span class="pre">422</span></code> (“Conflicting references”). OpenAPI did not name the
+referenced resource of a field named after a relationship, and
+<code class="docutils literal notranslate"><span class="pre">warn_on_misuse</span></code> did not warn about an <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> on a foreign key column.</p></li>
+<li><p>An async view returned <code class="docutils literal notranslate"><span class="pre">500</span></code> when such a nested schema had a nested
+schema of its own, because Restly did not load the second level.</p></li>
+</ul>
+</li>
+<li><p>A schema that names itself in a to-one field, such as
+<code class="docutils literal notranslate"><span class="pre">parent:</span> <span class="pre">CategorySchema</span> <span class="pre">|</span> <span class="pre">None</span></code> inside <code class="docutils literal notranslate"><span class="pre">CategorySchema</span></code>, no longer makes
+the view fail with <code class="docutils literal notranslate"><span class="pre">RecursionError</span></code> when it registers. The list filters
+follow it one step: <code class="docutils literal notranslate"><span class="pre">?parent.name=</span></code> works, <code class="docutils literal notranslate"><span class="pre">?parent.parent.name=</span></code> does not.</p></li>
+</ul>
+</section>
+<section id="security">
+<h3>Security<a class="headerlink" href="#security" title="Link to this heading">#</a></h3>
+<ul>
+<li><p>A schema that Restly generates, for a view without <code class="docutils literal notranslate"><span class="pre">schema</span></code>, now marks
+each column with <code class="docutils literal notranslate"><span class="pre">init=False</span></code> as <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>. Before, the client could write
+such a column. For a tenant column with <code class="docutils literal notranslate"><span class="pre">insert_default=Current.org_id</span></code>, a
+create could put the row in another organization, and a PATCH could move
+it there. A column that the constructor does not take is set by the model
+or by the server: with a column default, a mapper event or the view’s
+<code class="docutils literal notranslate"><span class="pre">create</span></code>. So the request bodies no longer have these columns.</p>
+<p>This also applies to a foreign key with <code class="docutils literal notranslate"><span class="pre">init=False</span></code>, such as <code class="docutils literal notranslate"><span class="pre">author_id</span></code>
+next to an <code class="docutils literal notranslate"><span class="pre">author</span></code> relationship. A generated schema no longer lets the
+client set it. A client that still sends it gets no error: Restly ignores
+the value, as for every <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> field. To let the client write such a
+column, remove <code class="docutils literal notranslate"><span class="pre">init=False</span></code>, so that the constructor takes it.</p>
 </li>
 </ul>
 </section>
@@ -676,8 +832,8 @@ raises <code class="docutils literal notranslate"><span class="pre">RestlyConfig
 method instead.</p></li>
 </ul>
 </section>
-<section id="fixed">
-<h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
+<section id="id4">
+<h3>Fixed<a class="headerlink" href="#id4" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Restly works with FastAPI 0.137 and later.</p></li>
 <li><p>A field with a <code class="docutils literal notranslate"><span class="pre">default_factory</span></code> no longer makes <code class="docutils literal notranslate"><span class="pre">/openapi.json</span></code> answer
@@ -706,8 +862,8 @@ that are not dataclasses.</p></li>
 <li><p>Fixes for SQLAlchemy 2.1, Python 3.10, Python 3.14, mypy and pyright.</p></li>
 </ul>
 </section>
-<section id="security">
-<h3>Security<a class="headerlink" href="#security" title="Link to this heading">#</a></h3>
+<section id="id5">
+<h3>Security<a class="headerlink" href="#id5" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>List endpoints no longer filter or sort on <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields or on fields
 with <code class="docutils literal notranslate"><span class="pre">Field(exclude=True)</span></code>, which let a client read a hidden value back. A
@@ -716,10 +872,10 @@ response with <code class="docutils literal notranslate"><span class="pre">extra
 </ul>
 </section>
 </section>
-<section id="id4">
-<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.9.0...v0.10.0">0.10.0</a> - 2026-09-23<a class="headerlink" href="#id4" title="Link to this heading">#</a></h2>
-<section id="id5">
-<h3>Added<a class="headerlink" href="#id5" title="Link to this heading">#</a></h3>
+<section id="id6">
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.9.0...v0.10.0">0.10.0</a> - 2026-09-23<a class="headerlink" href="#id6" title="Link to this heading">#</a></h2>
+<section id="id7">
+<h3>Added<a class="headerlink" href="#id7" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">fr.ContextNamespace</span></code> and <code class="docutils literal notranslate"><span class="pre">fr.ContextParam</span></code> support an application-defined
 <code class="docutils literal notranslate"><span class="pre">Current</span></code> context, with manual and FastAPI dependency binding.</p></li>
@@ -738,8 +894,8 @@ identify rows by natural or composite keys.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">fr.utils.CurrentSettingsMixin</span></code> provides a shared <code class="docutils literal notranslate"><span class="pre">Settings.current</span></code> instance.</p></li>
 </ul>
 </section>
-<section id="id6">
-<h3>Changed<a class="headerlink" href="#id6" title="Link to this heading">#</a></h3>
+<section id="id8">
+<h3>Changed<a class="headerlink" href="#id8" title="Link to this heading">#</a></h3>
 <ul>
 <li><p><code class="docutils literal notranslate"><span class="pre">Mapped[datetime]</span></code> and <code class="docutils literal notranslate"><span class="pre">TimestampsMixin</span></code> now use <code class="docutils literal notranslate"><span class="pre">DateTime(timezone=True)</span></code>.
 Datetime filters without an offset use UTC for these columns.</p>
@@ -768,8 +924,8 @@ Allow custom keys with <code class="docutils literal notranslate"><span class="p
 <li><p>Pydantic 2.11.7 or newer is required.</p></li>
 </ul>
 </section>
-<section id="id7">
-<h3>Removed<a class="headerlink" href="#id7" title="Link to this heading">#</a></h3>
+<section id="id9">
+<h3>Removed<a class="headerlink" href="#id9" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">build_query</span></code>. Move visibility rules to <code class="docutils literal notranslate"><span class="pre">default_scope</span></code> or the view’s
 <code class="docutils literal notranslate"><span class="pre">scope</span></code>, listing joins and ordering to <code class="docutils literal notranslate"><span class="pre">apply_query_params</span></code>, and eager loading
@@ -778,8 +934,8 @@ to <code class="docutils literal notranslate"><span class="pre">get_relationship
 for soft deletion. The <code class="docutils literal notranslate"><span class="pre">fr.objects</span></code> deletion helpers remain available.</p></li>
 </ul>
 </section>
-<section id="id8">
-<h3>Fixed<a class="headerlink" href="#id8" title="Link to this heading">#</a></h3>
+<section id="id10">
+<h3>Fixed<a class="headerlink" href="#id10" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Query filters support recursive and frozen schemas without running
 cross-field validators. Field validators receive the correct field name.</p></li>
@@ -792,10 +948,10 @@ unsupported document shapes require an explicit <code class="docutils literal no
 </ul>
 </section>
 </section>
-<section id="id9">
-<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.8.0...v0.9.0">0.9.0</a> - 2026-08-13<a class="headerlink" href="#id9" title="Link to this heading">#</a></h2>
-<section id="id10">
-<h3>Added<a class="headerlink" href="#id10" title="Link to this heading">#</a></h3>
+<section id="id11">
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.8.0...v0.9.0">0.9.0</a> - 2026-08-13<a class="headerlink" href="#id11" title="Link to this heading">#</a></h2>
+<section id="id12">
+<h3>Added<a class="headerlink" href="#id12" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">fr.testing.configure_tests()</span></code> for schema setup and per-test database isolation.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">db_cleanup=</span></code> modes (<code class="docutils literal notranslate"><span class="pre">rollback</span></code>, <code class="docutils literal notranslate"><span class="pre">delete</span></code>, and <code class="docutils literal notranslate"><span class="pre">none</span></code>) with per-run
@@ -810,8 +966,8 @@ engine is required.</p></li>
 <li><p>Public <code class="docutils literal notranslate"><span class="pre">Envelope</span></code> and <code class="docutils literal notranslate"><span class="pre">PaginatedEnvelope</span></code> response models.</p></li>
 </ul>
 </section>
-<section id="id11">
-<h3>Changed<a class="headerlink" href="#id11" title="Link to this heading">#</a></h3>
+<section id="id13">
+<h3>Changed<a class="headerlink" href="#id13" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>List endpoints now paginate by default. <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/things</span></code> changes from an
 unbounded bare array to
@@ -846,8 +1002,8 @@ of skipping. Configure the corresponding database URL, engine, or
 sessionmaker as well so Restly can build the isolated session.</p></li>
 </ul>
 </section>
-<section id="id12">
-<h3>Fixed<a class="headerlink" href="#id12" title="Link to this heading">#</a></h3>
+<section id="id14">
+<h3>Fixed<a class="headerlink" href="#id14" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">restly_client</span></code> now runs application lifespan startup and shutdown once per
 test. A view registered through <code class="docutils literal notranslate"><span class="pre">restly_client.app</span></code> after the fixture has
@@ -866,8 +1022,8 @@ test.</p></li>
 <li><p>Engine and schema helpers now work inside session fixtures.</p></li>
 </ul>
 </section>
-<section id="id13">
-<h3>Removed<a class="headerlink" href="#id13" title="Link to this heading">#</a></h3>
+<section id="id15">
+<h3>Removed<a class="headerlink" href="#id15" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">activate_savepoint_only_mode()</span></code> and <code class="docutils literal notranslate"><span class="pre">deactivate_savepoint_only_mode()</span></code> are
 removed. They isolated each session separately rather than the whole test, so
@@ -878,10 +1034,10 @@ the whole test.</p></li>
 </ul>
 </section>
 </section>
-<section id="id14">
-<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.7.0...v0.8.0">0.8.0</a> - 2026-07-22<a class="headerlink" href="#id14" title="Link to this heading">#</a></h2>
-<section id="id15">
-<h3>Added<a class="headerlink" href="#id15" title="Link to this heading">#</a></h3>
+<section id="id16">
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.7.0...v0.8.0">0.8.0</a> - 2026-07-22<a class="headerlink" href="#id16" title="Link to this heading">#</a></h2>
+<section id="id17">
+<h3>Added<a class="headerlink" href="#id17" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Post]</span></code> — an existence-checked scalar foreign key.
 <code class="docutils literal notranslate"><span class="pre">post_id:</span> <span class="pre">fr.MustExist[int,</span> <span class="pre">Post]</span></code> validates that the referenced row exists (a
@@ -900,8 +1056,8 @@ now documented as relationship-named types, with <code class="docutils literal n
 <code class="docutils literal notranslate"><span class="pre">MustExist</span></code>.</p></li>
 </ul>
 </section>
-<section id="id16">
-<h3>Changed<a class="headerlink" href="#id16" title="Link to this heading">#</a></h3>
+<section id="id18">
+<h3>Changed<a class="headerlink" href="#id18" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>The tier vocabulary in docstrings and error messages now matches the docs:
 <em>endpoint method</em> (was “route shell”), <em>handler</em> (was “request handler”), and
@@ -924,8 +1080,8 @@ Starlette, which signals the absence as <code class="docutils literal notranslat
 rather than a missing <code class="docutils literal notranslate"><span class="pre">httpx</span></code>.</p></li>
 </ul>
 </section>
-<section id="id17">
-<h3>Removed<a class="headerlink" href="#id17" title="Link to this heading">#</a></h3>
+<section id="id19">
+<h3>Removed<a class="headerlink" href="#id19" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>The <code class="docutils literal notranslate"><span class="pre">orjson</span></code> dependency and the orjson serializer on URL-created engines.
 <code class="docutils literal notranslate"><span class="pre">JSON</span></code> columns now use SQLAlchemy’s default encoder (the standard library
@@ -936,8 +1092,8 @@ own engine with <code class="docutils literal notranslate"><span class="pre">jso
 <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code>.</p></li>
 </ul>
 </section>
-<section id="id18">
-<h3>Fixed<a class="headerlink" href="#id18" title="Link to this heading">#</a></h3>
+<section id="id20">
+<h3>Fixed<a class="headerlink" href="#id20" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Filtering on a dotted path deeper than one relationship hop
 (<code class="docutils literal notranslate"><span class="pre">?city.country.code=NL</span></code>) no longer fails with a 500. Deep paths were
@@ -1009,10 +1165,10 @@ scalar id along a single path. Response output is unchanged.</p></li>
 </ul>
 </section>
 </section>
-<section id="id19">
-<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.6.1...v0.7.0">0.7.0</a> - 2026-06-11<a class="headerlink" href="#id19" title="Link to this heading">#</a></h2>
-<section id="id20">
-<h3>Added<a class="headerlink" href="#id20" title="Link to this heading">#</a></h3>
+<section id="id21">
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.6.1...v0.7.0">0.7.0</a> - 2026-06-11<a class="headerlink" href="#id21" title="Link to this heading">#</a></h2>
+<section id="id22">
+<h3>Added<a class="headerlink" href="#id22" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>The generated route shells (<code class="docutils literal notranslate"><span class="pre">get_many_endpoint</span></code>, <code class="docutils literal notranslate"><span class="pre">create_endpoint</span></code>, …)
 now carry one-line override-redirect docstrings, so <code class="docutils literal notranslate"><span class="pre">help(RestView)</span></code>, source
@@ -1048,8 +1204,8 @@ hand-rolling a CRUD route set on a bare <code class="docutils literal notranslat
 default; intended for development, project templates, and CI.</p></li>
 </ul>
 </section>
-<section id="id21">
-<h3>Changed<a class="headerlink" href="#id21" title="Link to this heading">#</a></h3>
+<section id="id23">
+<h3>Changed<a class="headerlink" href="#id23" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>The <code class="docutils literal notranslate"><span class="pre">RestlyUncommittedChangesWarning</span></code> message now leads with the fix
 (bracket the mutation with <code class="docutils literal notranslate"><span class="pre">write_action(...)</span></code> or reuse a <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code>)
@@ -1075,8 +1231,8 @@ helpers/dependencies, and the view support types (<code class="docutils literal 
 <code class="docutils literal notranslate"><span class="pre">fr.get_async_engine</span></code> → <code class="docutils literal notranslate"><span class="pre">fr.db.get_async_engine</span></code>.</p></li>
 </ul>
 </section>
-<section id="id22">
-<h3>Fixed<a class="headerlink" href="#id22" title="Link to this heading">#</a></h3>
+<section id="id24">
+<h3>Fixed<a class="headerlink" href="#id24" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">fr.open_session()</span></code> / <code class="docutils literal notranslate"><span class="pre">fr.open_async_session()</span></code> now resolve the same session
 source as <code class="docutils literal notranslate"><span class="pre">SessionDep</span></code> / <code class="docutils literal notranslate"><span class="pre">AsyncSessionDep</span></code>: a custom session generator passed
@@ -1089,10 +1245,10 @@ session entry points are now consistent.</p></li>
 </ul>
 </section>
 </section>
-<section id="id23">
-<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.6.0...v0.6.1">0.6.1</a> - 2026-06-02<a class="headerlink" href="#id23" title="Link to this heading">#</a></h2>
-<section id="id24">
-<h3>Changed<a class="headerlink" href="#id24" title="Link to this heading">#</a></h3>
+<section id="id25">
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.6.0...v0.6.1">0.6.1</a> - 2026-06-02<a class="headerlink" href="#id25" title="Link to this heading">#</a></h2>
+<section id="id26">
+<h3>Changed<a class="headerlink" href="#id26" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Reference resolution (<code class="docutils literal notranslate"><span class="pre">IDRef</span></code>/<code class="docutils literal notranslate"><span class="pre">IDSchema</span></code>) no longer mutates the validated
 request model in place. The resolver now returns a <code class="docutils literal notranslate"><span class="pre">{field:</span> <span class="pre">resolved}</span></code> mapping
@@ -1119,8 +1275,8 @@ those dependencies remain in the <code class="docutils literal notranslate"><spa
 are now <code class="docutils literal notranslate"><span class="pre">standard</span></code> and <code class="docutils literal notranslate"><span class="pre">testing</span></code>.</p></li>
 </ul>
 </section>
-<section id="id25">
-<h3>Fixed<a class="headerlink" href="#id25" title="Link to this heading">#</a></h3>
+<section id="id27">
+<h3>Fixed<a class="headerlink" href="#id27" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">RestlyUncommittedChangesWarning</span></code> no longer false-positives on every write run
 under the savepoint test fixtures: the patched <code class="docutils literal notranslate"><span class="pre">commit</span></code> clears the
@@ -1151,8 +1307,8 @@ required argument.)</p></li>
 </ul>
 </section>
 </section>
-<section id="id26">
-<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.5.1...v0.6.0">0.6.0</a> - 2026-06-01<a class="headerlink" href="#id26" title="Link to this heading">#</a></h2>
+<section id="id28">
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.5.1...v0.6.0">0.6.0</a> - 2026-06-01<a class="headerlink" href="#id28" title="Link to this heading">#</a></h2>
 <p>Reworks the class-based view API around a three-tier “handle” design. This is a
 breaking change; views written for 0.5.x need updating.</p>
 <section id="changed-breaking">
@@ -1176,8 +1332,8 @@ and clean up sessions but do not own commits.</p></li>
 <code class="docutils literal notranslate"><span class="pre">ViewRoute.LIST</span></code>/<code class="docutils literal notranslate"><span class="pre">GET</span></code> → <code class="docutils literal notranslate"><span class="pre">ViewRoute.GET_MANY</span></code>/<code class="docutils literal notranslate"><span class="pre">GET_ONE</span></code>.</p></li>
 </ul>
 </section>
-<section id="id27">
-<h3>Added<a class="headerlink" href="#id27" title="Link to this heading">#</a></h3>
+<section id="id29">
+<h3>Added<a class="headerlink" href="#id29" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">authorize(action,</span> <span class="pre">obj,</span> <span class="pre">data)</span></code> override — an empty override by default; raise
 <code class="docutils literal notranslate"><span class="pre">fr.Forbidden</span></code> / <code class="docutils literal notranslate"><span class="pre">fr.NotFound</span></code> to gate a verb (row visibility goes in
@@ -1198,8 +1354,8 @@ disable) when a request finishes with uncommitted changes — the tell of a
 write route that forgot to commit.</p></li>
 </ul>
 </section>
-<section id="id28">
-<h3>Fixed<a class="headerlink" href="#id28" title="Link to this heading">#</a></h3>
+<section id="id30">
+<h3>Fixed<a class="headerlink" href="#id30" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>A <code class="docutils literal notranslate"><span class="pre">&#64;route</span></code> method named like a bare verb (<code class="docutils literal notranslate"><span class="pre">create</span></code>/<code class="docutils literal notranslate"><span class="pre">update</span></code>/<code class="docutils literal notranslate"><span class="pre">delete</span></code>/
 <code class="docutils literal notranslate"><span class="pre">get_one</span></code>/<code class="docutils literal notranslate"><span class="pre">get_many</span></code>) is now rejected at registration: it shadowed the verb
@@ -1225,20 +1381,20 @@ not excluded.</p></li>
 </ul>
 </section>
 </section>
-<section id="id29">
-<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.5.0...v0.5.1">0.5.1</a> - 2026-05-11<a class="headerlink" href="#id29" title="Link to this heading">#</a></h2>
-<section id="id30">
-<h3>Fixed<a class="headerlink" href="#id30" title="Link to this heading">#</a></h3>
+<section id="id31">
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.5.0...v0.5.1">0.5.1</a> - 2026-05-11<a class="headerlink" href="#id31" title="Link to this heading">#</a></h2>
+<section id="id32">
+<h3>Fixed<a class="headerlink" href="#id32" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fixed <code class="docutils literal notranslate"><span class="pre">fr.include_view(...)</span></code> registration on <code class="docutils literal notranslate"><span class="pre">fastapi.APIRouter</span></code> parents.</p></li>
 </ul>
 </section>
 </section>
-<section id="id31">
-<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/releases/tag/v0.5.0">0.5.0</a> - 2026-05-06<a class="headerlink" href="#id31" title="Link to this heading">#</a></h2>
+<section id="id33">
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/releases/tag/v0.5.0">0.5.0</a> - 2026-05-06<a class="headerlink" href="#id33" title="Link to this heading">#</a></h2>
 <p>First public beta release.</p>
-<section id="id32">
-<h3>Added<a class="headerlink" href="#id32" title="Link to this heading">#</a></h3>
+<section id="id34">
+<h3>Added<a class="headerlink" href="#id34" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Class-based CRUD views for async and sync SQLAlchemy sessions with generated
 list, get, create, update, and delete routes.</p></li>
@@ -1253,8 +1409,8 @@ aliases, and pagination metadata.</p></li>
 and the <code class="docutils literal notranslate"><span class="pre">fastapi_restly.pytest_fixtures</span></code> pytest plugin.</p></li>
 </ul>
 </section>
-<section id="id33">
-<h3>Changed<a class="headerlink" href="#id33" title="Link to this heading">#</a></h3>
+<section id="id35">
+<h3>Changed<a class="headerlink" href="#id35" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Consolidated framework setup on <code class="docutils literal notranslate"><span class="pre">fr.configure(...)</span></code>, including async/sync
 engine configuration and response-session commit policy.</p></li>
@@ -1283,8 +1439,8 @@ with async equivalents. The view methods use the same names for the mapping
 hooks and keep persistence at the <code class="docutils literal notranslate"><span class="pre">save_object</span></code> / <code class="docutils literal notranslate"><span class="pre">delete_object</span></code> boundary.</p></li>
 </ul>
 </section>
-<section id="id34">
-<h3>Removed<a class="headerlink" href="#id34" title="Link to this heading">#</a></h3>
+<section id="id36">
+<h3>Removed<a class="headerlink" href="#id36" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Removed the pre-stable <code class="docutils literal notranslate"><span class="pre">query=</span></code> argument from <code class="docutils literal notranslate"><span class="pre">perform_listing</span></code>. Override
 <code class="docutils literal notranslate"><span class="pre">build_query()</span></code> for SQL-level base query changes so listing, pagination
@@ -1353,61 +1509,63 @@ the pytest plugin path is <code class="docutils literal notranslate"><span class
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#added">Added</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#changed">Changed</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#removed">Removed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fixed">Fixed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#security">Security</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">0.11.0 - 2026-10-09</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">Added</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id3">Changed</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fixed">Fixed</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#security">Security</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id4">Fixed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id5">Security</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id4">0.10.0 - 2026-09-23</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id5">Added</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id6">Changed</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id7">Removed</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id8">Fixed</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id6">0.10.0 - 2026-09-23</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id7">Added</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id8">Changed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id9">Removed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id10">Fixed</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id9">0.9.0 - 2026-08-13</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id10">Added</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id11">Changed</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id12">Fixed</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id13">Removed</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id11">0.9.0 - 2026-08-13</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id12">Added</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id13">Changed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id14">Fixed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id15">Removed</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id14">0.8.0 - 2026-07-22</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id15">Added</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id16">Changed</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id17">Removed</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id18">Fixed</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id16">0.8.0 - 2026-07-22</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id17">Added</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id18">Changed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id19">Removed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id20">Fixed</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id19">0.7.0 - 2026-06-11</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id20">Added</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id21">Changed</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id22">Fixed</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id21">0.7.0 - 2026-06-11</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id22">Added</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id23">Changed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id24">Fixed</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id23">0.6.1 - 2026-06-02</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id24">Changed</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id25">Fixed</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id25">0.6.1 - 2026-06-02</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id26">Changed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id27">Fixed</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id26">0.6.0 - 2026-06-01</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id28">0.6.0 - 2026-06-01</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#changed-breaking">Changed (breaking)</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id27">Added</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id28">Fixed</a></li>
-</ul>
-</li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id29">0.5.1 - 2026-05-11</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id29">Added</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id30">Fixed</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id31">0.5.0 - 2026-05-06</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id32">Added</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id33">Changed</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id34">Removed</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id31">0.5.1 - 2026-05-11</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id32">Fixed</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id33">0.5.0 - 2026-05-06</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id34">Added</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id35">Changed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id36">Removed</a></li>
 </ul>
 </li>
 </ul>

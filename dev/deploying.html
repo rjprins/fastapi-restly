@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -62,7 +62,7 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="OpenAPI" href="openapi.html" />
+    <link rel="next" title="API Reference" href="api_reference.html" />
     <link rel="prev" title="Testing" href="testing.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -410,27 +410,41 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="projects.html">New &amp; Existing Projects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="database.html">Database &amp; Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
-<li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
-<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
-<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering &amp; Pagination</a></li>
-<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
-<li class="toctree-l1"><a class="reference internal" href="current.html">Current &amp; ContextParam</a></li>
-<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
-<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Deploying</a></li>
-<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
 <li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
 <li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering &amp; Pagination</a></li>
+<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Access</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="context.html">Request Context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tenancy.html">Multi-Tenancy</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Testing &amp; Deploying</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Deploying</a></li>
 </ul>
 </div>
 </nav></div>
@@ -583,10 +597,8 @@ factory.</p></li>
 <li><p>The engine belongs to the app that the factory built. The lifespan disposes
 it, so the connections close and the workers exit quickly; see
 <a class="reference internal" href="database.html#engine-disposal"><span class="std std-ref">Close the engine on shutdown</span></a>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.configure(app,</span> <span class="pre">...)</span></code> also installs the handler that turns an
-<code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> into a 409 response; see
-<a class="reference internal" href="errors.html#default-exception-handling"><span class="std std-ref">Unique values and other database conflicts: 409</span></a>. <code class="docutils literal notranslate"><span class="pre">health=&quot;/health&quot;</span></code> adds
-the <a class="reference internal" href="#health-checks">health check</a>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.configure(app,</span> <span class="pre">...)</span></code> with <code class="docutils literal notranslate"><span class="pre">health=&quot;/health&quot;</span></code> adds the
+<a class="reference internal" href="#health-checks">health check</a>.</p></li>
 </ul>
 <p><code class="docutils literal notranslate"><span class="pre">VIEWS</span></code> is the one place where the application registers its views;
 <a class="reference internal" href="projects.html#compose-in-one-place"><span class="std std-ref">Compose in one place</span></a> explains it. The SaaS example
@@ -616,19 +628,22 @@ too:</p>
 <span class="n">entrypoint</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;app.asgi:app&quot;</span>
 </pre></div>
 </div>
-<p>Do not put <code class="docutils literal notranslate"><span class="pre">app</span> <span class="pre">=</span> <span class="pre">create_app()</span></code> at the end of <code class="docutils literal notranslate"><span class="pre">main.py</span></code> instead. With
-required settings, importing <code class="docutils literal notranslate"><span class="pre">main.py</span></code> would then need <code class="docutils literal notranslate"><span class="pre">DATABASE_URL</span></code>
-everywhere, also in <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> and in <code class="docutils literal notranslate"><span class="pre">alembic/env.py</span></code>. Nothing in the
-package should import <code class="docutils literal notranslate"><span class="pre">asgi.py</span></code>; only the server does.</p>
 <p>Build the application only once in each process. Restly’s database
 configuration belongs to the process, so a second call to the factory points
 the requests of every earlier app at the new database too; see
 <a class="reference internal" href="database.html#one-configuration-per-process"><span class="std std-ref">one configuration per process</span></a>.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>Do not put <code class="docutils literal notranslate"><span class="pre">app</span> <span class="pre">=</span> <span class="pre">create_app()</span></code> at the end of <code class="docutils literal notranslate"><span class="pre">main.py</span></code> instead of in
+<code class="docutils literal notranslate"><span class="pre">app/asgi.py</span></code>. With required settings, importing <code class="docutils literal notranslate"><span class="pre">main.py</span></code> would then need
+<code class="docutils literal notranslate"><span class="pre">DATABASE_URL</span></code> everywhere, also in <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> and in <code class="docutils literal notranslate"><span class="pre">alembic/env.py</span></code>.
+Nothing in the package should import <code class="docutils literal notranslate"><span class="pre">asgi.py</span></code>; only the server does.</p>
 <p>Sync <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> endpoints run on
 FastAPI’s thread pool. Async
 <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> endpoints share
 the event loop of their worker. In both cases, more workers serve more
 requests at the same time. Do not use <code class="docutils literal notranslate"><span class="pre">--reload</span></code> in production.</p>
+</div>
 </section>
 <section id="set-up-migrations-with-alembic">
 <span id="alembic"></span><h2>Set up migrations with Alembic<a class="headerlink" href="#set-up-migrations-with-alembic" title="Link to this heading">#</a></h2>
@@ -638,11 +653,6 @@ with Alembic’s async template, in the root of your project:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>alembic<span class="w"> </span>init<span class="w"> </span>-t<span class="w"> </span>async<span class="w"> </span>alembic
 </pre></div>
 </div>
-<p>The generic template that <code class="docutils literal notranslate"><span class="pre">alembic</span> <span class="pre">init</span> <span class="pre">alembic</span></code> creates builds a sync engine,
-and it cannot open an async URL. Use it only when Alembic gets a separate
-sync database URL. Alembic’s
-<a class="reference external" href="https://alembic.sqlalchemy.org/en/latest/cookbook.html#using-asyncio-with-alembic">asyncio recipe</a>
-shows the same template, and how to change an existing environment.</p>
 <p>Then point <code class="docutils literal notranslate"><span class="pre">alembic/env.py</span></code> at the metadata of your declarative base, the
 <code class="docutils literal notranslate"><span class="pre">Base</span></code> that your models inherit from. The metadata knows only the models that
 have been imported. So <code class="docutils literal notranslate"><span class="pre">env.py</span></code> imports <code class="docutils literal notranslate"><span class="pre">main.py</span></code>: <code class="docutils literal notranslate"><span class="pre">main.py</span></code> imports every
@@ -670,9 +680,17 @@ application’s settings when Alembic gets none.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>alembic<span class="w"> </span>upgrade<span class="w"> </span>head
 </pre></div>
 </div>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>The generic template that <code class="docutils literal notranslate"><span class="pre">alembic</span> <span class="pre">init</span> <span class="pre">alembic</span></code> creates builds a sync engine,
+and it cannot open an async URL. Use it only when Alembic gets a separate
+sync database URL. Alembic’s
+<a class="reference external" href="https://alembic.sqlalchemy.org/en/latest/cookbook.html#using-asyncio-with-alembic">asyncio recipe</a>
+shows the same template, and how to change an existing environment.</p>
 <p>Tests can run the same migrations: pass <code class="docutils literal notranslate"><span class="pre">alembic_upgrade=True</span></code> to
 <a class="reference internal" href="api/testing.html#fastapi_restly.testing.configure_tests" title="fastapi_restly.testing.configure_tests"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.testing.configure_tests()</span></code></a>;
 see <a class="reference internal" href="testing.html#test-databases-and-migrations"><span class="std std-ref">Build the test schema</span></a>.</p>
+</div>
 <section id="give-an-existing-datetime-column-a-time-zone">
 <span id="timezone-migration"></span><h3>Give an existing datetime column a time zone<a class="headerlink" href="#give-an-existing-datetime-column-a-time-zone" title="Link to this heading">#</a></h3>
 <p>A base with <a class="reference internal" href="api/models.html#fastapi_restly.models.ModelDefaults" title="fastapi_restly.models.ModelDefaults"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code></a>
@@ -755,11 +773,11 @@ and tests that run the migrations.</p></li>
       </div>
     </a>
     <a class="right-next"
-       href="openapi.html"
+       href="api_reference.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">OpenAPI</p>
+        <p class="prev-next-title">API Reference</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>

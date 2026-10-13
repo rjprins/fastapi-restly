@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=e2851362" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=643d5ecc" />
   
   <!-- So that users can add custom icons -->
   <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -529,6 +529,9 @@ distinctly (e.g. into RFC 7807 problem+json).</p></li>
 <em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.exc.</span></span><span class="sig-name descname"><span class="pre">Conflict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.15)"><span class="pre">object</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.15)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.exc.Conflict" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#fastapi_restly.exc.RestlyHTTPError" title="fastapi_restly.exc.RestlyHTTPError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyHTTPError</span></code></a></p>
 <p>HTTP 409 – the request conflicts with the current resource state.</p>
+<p>Restly raises it for a database conflict, such as a duplicate unique
+value, in a CRUD write or a <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block. The SQLAlchemy
+<code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> is its <code class="docutils literal notranslate"><span class="pre">__cause__</span></code>.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.exc.Conflict.default_detail">
 <span class="sig-name descname"><span class="pre">default_detail</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Conflict'</span></em><a class="headerlink" href="#fastapi_restly.exc.Conflict.default_detail" title="Link to this definition">#</a></dt>
@@ -634,9 +637,11 @@ class is registered via <code class="docutils literal notranslate"><span class="
 dominant misuses – overriding an endpoint method (<code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code>) where
 a business-method override was meant, calling <code class="docutils literal notranslate"><span class="pre">session.commit()</span></code> directly in a
 view method, hand-rolling a CRUD route set on a bare <code class="docutils literal notranslate"><span class="pre">View</span></code> instead of
-subclassing <code class="docutils literal notranslate"><span class="pre">RestView</span></code> / <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code>, and typing a scalar
+subclassing <code class="docutils literal notranslate"><span class="pre">RestView</span></code> / <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code>, typing a scalar
 foreign-key column (<code class="docutils literal notranslate"><span class="pre">post_id</span></code>) as an <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> / <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> reference
-instead of <code class="docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code>.</p>
+instead of <code class="docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code>, and a writable field that sets
+a column that the model sets (<code class="docutils literal notranslate"><span class="pre">init=False</span></code> with a default) instead of
+<code class="docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code>.</p>
 </dd></dl>
 
 <dl class="py exception">

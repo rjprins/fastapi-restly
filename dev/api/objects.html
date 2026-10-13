@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=e2851362" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=643d5ecc" />
   
   <!-- So that users can add custom icons -->
   <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -531,7 +531,8 @@ deleting them, and snapshotting loaded column values.</p>
 <dd><p>Build <code class="docutils literal notranslate"><span class="pre">model_cls</span></code> from <code class="docutils literal notranslate"><span class="pre">schema_obj</span></code> and add it to <code class="docutils literal notranslate"><span class="pre">session</span></code>.</p>
 <p>This is the schema-to-ORM mapping primitive. It resolves Restly reference
 fields, skips read-only inputs, applies schema defaults, and stages the
-object in the session. It does not flush and does not run a view’s
+object in the session. A field that the client left out with the value
+<code class="docutils literal notranslate"><span class="pre">None</span></code> is not passed, so the model’s default applies to it. It does not flush and does not run a view’s
 <code class="docutils literal notranslate"><span class="pre">create</span></code> business logic.</p>
 <p><code class="docutils literal notranslate"><span class="pre">schema_obj</span></code>’s own schema decides what is written: every field it
 declares, except those it marks <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>.</p>

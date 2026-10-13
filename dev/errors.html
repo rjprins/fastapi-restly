@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -62,7 +62,7 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Current &amp; ContextParam" href="current.html" />
+    <link rel="next" title="OpenAPI" href="openapi.html" />
     <link rel="prev" title="Filtering &amp; Pagination" href="filtering.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -410,27 +410,41 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="projects.html">New &amp; Existing Projects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="database.html">Database &amp; Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
-<li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
-<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
-<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering &amp; Pagination</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Errors</a></li>
-<li class="toctree-l1"><a class="reference internal" href="current.html">Current &amp; ContextParam</a></li>
-<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
-<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
-<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
 <li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
 <li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering &amp; Pagination</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Access</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="context.html">Request Context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tenancy.html">Multi-Tenancy</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Testing &amp; Deploying</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
 </ul>
 </div>
 </nav></div>
@@ -495,9 +509,8 @@
 <h1>Errors<a class="headerlink" href="#errors" title="Link to this heading">#</a></h1>
 <p>Restly’s request errors are FastAPI <code class="docutils literal notranslate"><span class="pre">HTTPException</span></code>s. FastAPI renders each
 one through the exception handlers of the app, so by default every error has
-FastAPI’s body: <code class="docutils literal notranslate"><span class="pre">{&quot;detail&quot;:</span> <span class="pre">...}</span></code>. Restly installs one handler of its own. It
-turns a database conflict, such as a duplicate unique value, into a <code class="docutils literal notranslate"><span class="pre">409</span></code>
-response.</p>
+FastAPI’s body: <code class="docutils literal notranslate"><span class="pre">{&quot;detail&quot;:</span> <span class="pre">...}</span></code>. A database conflict in a write, such as a
+duplicate unique value, becomes one of these errors too: a <code class="docutils literal notranslate"><span class="pre">409</span></code>.</p>
 <p>Your own code raises errors in the same way. Raise one in any method of a
 view, and the request stops there. If the error comes before the commit,
 Restly does not commit the write.</p>
@@ -529,7 +542,7 @@ a <code class="docutils literal notranslate"><span class="pre">fastapi.HTTPExcep
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/exc.html#fastapi_restly.exc.Conflict" title="fastapi_restly.exc.Conflict"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.Conflict</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">409</span></code></p></td>
-<td><p>The request does not fit the current state of the row, such as publishing a post that is already published.</p></td>
+<td><p>The request does not fit the current state of the row, such as publishing a post that is already published. Restly raises it for a <a class="reference internal" href="#default-exception-handling">database conflict</a> in a write.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/exc.html#fastapi_restly.exc.BadQueryParam" title="fastapi_restly.exc.BadQueryParam"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.BadQueryParam</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">400</span></code></p></td>
@@ -558,6 +571,8 @@ that has no class in <code class="docutils literal notranslate"><span class="pre
 <p>To check whether the caller may do an action, raise <code class="docutils literal notranslate"><span class="pre">Forbidden</span></code> from
 <a class="reference internal" href="authorization.html#authorize-gate"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">authorize</span></code></span></a>. Restly calls it at the right moment, so the
 business methods stay free of permission checks.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
 <p>The other names in <code class="docutils literal notranslate"><span class="pre">fr.exc</span></code> are not HTTP errors.
 <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyError" title="fastapi_restly.exc.RestlyError"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.RestlyError</span></code></a> and
 <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>
@@ -566,6 +581,7 @@ report a setup mistake. The warnings
 <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyMisuseWarning" title="fastapi_restly.exc.RestlyMisuseWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyMisuseWarning</span></code></a> and
 <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyDuplicateSchemaNameWarning" title="fastapi_restly.exc.RestlyDuplicateSchemaNameWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyDuplicateSchemaNameWarning</span></code></a>
 are there too.</p>
+</div>
 </section>
 <section id="why-a-bad-list-request-returns-422-or-400">
 <span id="list-request-errors"></span><h2>Why a bad list request returns 422 or 400<a class="headerlink" href="#why-a-bad-list-request-returns-422-or-400" title="Link to this heading">#</a></h2>
@@ -582,62 +598,93 @@ that does not exist, and for a filter value that fails the field’s
 <a class="reference internal" href="filtering.html#filter-value-validation"><span class="std std-ref">validation</span></a>, such as <code class="docutils literal notranslate"><span class="pre">?age=old</span></code> on an <code class="docutils literal notranslate"><span class="pre">int</span></code>
 field.</p></li>
 </ul>
+<p>The <code class="docutils literal notranslate"><span class="pre">detail</span></code> of a <code class="docutils literal notranslate"><span class="pre">400</span></code> names the parameter and says what is wrong:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Unknown sort field: &#39;nope&#39;
+Invalid filter value for &#39;age&#39;: &#39;old&#39;. Input should be a valid integer, unable to parse string as an integer
+</pre></div>
+</div>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>The text after the value is Pydantic’s reason. For a field validator of
+your own, it is Pydantic’s text for your error, such as
+<code class="docutils literal notranslate"><span class="pre">Value</span> <span class="pre">error,</span> <span class="pre">value</span> <span class="pre">is</span> <span class="pre">too</span> <span class="pre">long</span></code>. An exception that is not a validation
+error, such as an <code class="docutils literal notranslate"><span class="pre">AttributeError</span></code> in your validator, is a bug and returns
+<code class="docutils literal notranslate"><span class="pre">500</span></code>, as it does for a request body.</p>
+<p>A react-admin view raises <code class="docutils literal notranslate"><span class="pre">BadQueryParam</span></code> for each bad <code class="docutils literal notranslate"><span class="pre">sort</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code> or
+<code class="docutils literal notranslate"><span class="pre">filter</span></code> parameter too. It checks a filter value against the type of the
+column, with Pydantic, so <code class="docutils literal notranslate"><span class="pre">&quot;2020-01-01&quot;</span></code> filters a date column and <code class="docutils literal notranslate"><span class="pre">&quot;false&quot;</span></code>
+a boolean column. A handler for
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyHTTPError" title="fastapi_restly.exc.RestlyHTTPError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyHTTPError</span></code></a> shapes all
+these <code class="docutils literal notranslate"><span class="pre">400</span></code> answers; see <a class="reference internal" href="#error-envelope">Change the error body</a>.</p>
 <p>A filter value passes the first step as text. Restly checks it against the
 field only when it builds the query, so a bad filter value returns <code class="docutils literal notranslate"><span class="pre">400</span></code>, not
 <code class="docutils literal notranslate"><span class="pre">422</span></code>.</p>
+</div>
 </section>
 <section id="unique-values-and-other-database-conflicts-409">
 <span id="default-exception-handling"></span><h2>Unique values and other database conflicts: 409<a class="headerlink" href="#unique-values-and-other-database-conflicts-409" title="Link to this heading">#</a></h2>
-<p>Restly installs a handler that turns a SQLAlchemy <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> into a
-<code class="docutils literal notranslate"><span class="pre">409</span> <span class="pre">Conflict</span></code> response. So a duplicate value in a unique column, a foreign
-key to a row that does not exist, a <code class="docutils literal notranslate"><span class="pre">NULL</span></code> in a <code class="docutils literal notranslate"><span class="pre">NOT</span> <span class="pre">NULL</span></code> column, and a
-failed check constraint each return <code class="docutils literal notranslate"><span class="pre">409</span></code>, not <code class="docutils literal notranslate"><span class="pre">500</span></code>. The body has FastAPI’s normal shape:</p>
+<p>A duplicate value in a unique column, a foreign key to a row that does not
+exist, a <code class="docutils literal notranslate"><span class="pre">NULL</span></code> in a <code class="docutils literal notranslate"><span class="pre">NOT</span> <span class="pre">NULL</span></code> column, and a failed check constraint make
+SQLAlchemy raise an <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code>, at a flush or at the commit. In a
+Restly write, the request then returns <code class="docutils literal notranslate"><span class="pre">409</span></code>, not <code class="docutils literal notranslate"><span class="pre">500</span></code>. The response has
+FastAPI’s normal shape:</p>
 <div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;detail&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Unique constraint violated on user.email&quot;</span>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>The <code class="docutils literal notranslate"><span class="pre">detail</span></code> text depends on the database driver. The handler knows the
-common PostgreSQL error codes and SQLite error messages. For other databases,
-it uses a general conflict message.</p>
-<p>Restly installs the handler in two places:</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">detail</span></code> text depends on the database driver. Restly knows the common
+PostgreSQL error codes and SQLite error messages. For other databases, it uses
+a general conflict message.</p>
+<p>The write block makes the <code class="docutils literal notranslate"><span class="pre">409</span></code>. Each CRUD write, and each
+<a class="reference internal" href="lifecycle.html#custom-action-route"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">write_action</span></code></span></a> block in a custom route, turns the
+<code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> into
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.Conflict" title="fastapi_restly.exc.Conflict"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.Conflict</span></code></a>, with the
+<code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> as its <code class="docutils literal notranslate"><span class="pre">__cause__</span></code>. So a handler for
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyHTTPError" title="fastapi_restly.exc.RestlyHTTPError"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.RestlyHTTPError</span></code></a> shapes
+these conflicts too; see <a class="reference internal" href="#error-envelope">Change the error body</a>.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>Three kinds of code get the raw <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> instead:</p>
 <ul class="simple">
-<li><p><a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure(app=app,</span> <span class="pre">...)</span></code></a>, unless
-you pass <code class="docutils literal notranslate"><span class="pre">install_default_exception_handlers=False</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.include_view(app)</span></code>, when you register a view directly on a <code class="docutils literal notranslate"><span class="pre">FastAPI</span></code>
-app. This covers an app that does not pass itself to <code class="docutils literal notranslate"><span class="pre">fr.configure</span></code>.</p></li>
+<li><p>A write inside a
+<a class="reference internal" href="lifecycle.html#shared-write-action-commit"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code></span></a> block. There
+the outermost block turns what escapes it into a <code class="docutils literal notranslate"><span class="pre">409</span></code>, so a bulk route can
+still catch the error of one row.</p></li>
+<li><p>Code outside a write block, such as a bare <code class="docutils literal notranslate"><span class="pre">View</span></code> route or a plain FastAPI
+route that commits itself. It owns its commit, and it must handle its own
+errors.</p></li>
+<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_action_commit" title="fastapi_restly.views.RestView.after_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_action_commit</span></code></a>,
+and the after-hooks that run after a shared commit. The write is already
+saved then, so a <code class="docutils literal notranslate"><span class="pre">409</span></code> would be wrong.</p></li>
 </ul>
-<p>Restly does not install the handler when the app already has a handler for
-<code class="docutils literal notranslate"><span class="pre">sqlalchemy.exc.IntegrityError</span></code>. A handler for <code class="docutils literal notranslate"><span class="pre">Exception</span></code> does not count.</p>
-<p>To return your own body for these conflicts, register your own
-<code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> handler first, before <code class="docutils literal notranslate"><span class="pre">fr.configure</span></code> and before you register
-views on the app:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.responses</span><span class="w"> </span><span class="kn">import</span> <span class="n">JSONResponse</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.exc</span><span class="w"> </span><span class="kn">import</span> <span class="n">IntegrityError</span>
-
-
-<span class="nd">@app</span><span class="o">.</span><span class="n">exception_handler</span><span class="p">(</span><span class="n">IntegrityError</span><span class="p">)</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">integrity_error_handler</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
-    <span class="k">return</span> <span class="n">JSONResponse</span><span class="p">(</span>
-        <span class="n">status_code</span><span class="o">=</span><span class="mi">409</span><span class="p">,</span>
-        <span class="n">content</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;code&quot;</span><span class="p">:</span> <span class="s2">&quot;constraint_conflict&quot;</span><span class="p">}},</span>
-    <span class="p">)</span>
-
-
-<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">,</span> <span class="n">async_database_url</span><span class="o">=</span><span class="s2">&quot;sqlite+aiosqlite:///app.db&quot;</span><span class="p">)</span>
+<p>A custom route that catches the conflict of its own <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block
+catches <code class="docutils literal notranslate"><span class="pre">fr.exc.Conflict</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/rename&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">rename</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">tag</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="s2">&quot;rename&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">tag</span><span class="p">):</span>
+                <span class="n">tag</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="k">except</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">Conflict</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">Conflict</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;A tag named </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> already exists&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">install_default_exception_handlers=False</span></code> stops only <code class="docutils literal notranslate"><span class="pre">fr.configure</span></code> from
-installing the handler. <code class="docutils literal notranslate"><span class="pre">fr.include_view(app)</span></code> still installs it. If you
-register views directly on the app and want no handler, register your own
-<code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> handler, as above.</p>
+<p>After a conflict, the session waits for a rollback. To write again in the
+same request, call <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">self.session.rollback()</span></code> first.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">null</span></code> reaches the database only when the type of the schema field allows
+<code class="docutils literal notranslate"><span class="pre">None</span></code>. Otherwise validation rejects it first, with <code class="docutils literal notranslate"><span class="pre">422</span></code>, in the create body
+and in the update body; see <a class="reference internal" href="schemas.html#validation"><span class="std std-ref">Validation</span></a>.</p>
+</div>
 </section>
 <section id="change-the-error-body-for-the-whole-app">
 <span id="error-envelope"></span><h2>Change the error body for the whole app<a class="headerlink" href="#change-the-error-body-for-the-whole-app" title="Link to this heading">#</a></h2>
 <p>To replace the <code class="docutils literal notranslate"><span class="pre">{&quot;detail&quot;:</span> <span class="pre">...}</span></code> body, register a handler for
 <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyHTTPError" title="fastapi_restly.exc.RestlyHTTPError"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.RestlyHTTPError</span></code></a>.
 FastAPI finds a handler through the class of the exception and its base
-classes, so this one handler covers all four errors in the table above. The
+classes, so this one handler covers all four errors in the table above,
+including the <a class="reference internal" href="#default-exception-handling">database conflicts</a>. The
 handler below returns an RFC 9457 problem details body:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.responses</span><span class="w"> </span><span class="kn">import</span> <span class="n">JSONResponse</span>
 
@@ -658,7 +705,7 @@ handler below returns an RFC 9457 problem details body:</p>
 <p>With this handler, a missing row returns
 <code class="docutils literal notranslate"><span class="pre">{&quot;type&quot;:</span> <span class="pre">&quot;about:blank&quot;,</span> <span class="pre">&quot;title&quot;:</span> <span class="pre">&quot;Doc</span> <span class="pre">with</span> <span class="pre">id</span> <span class="pre">999</span> <span class="pre">was</span> <span class="pre">not</span> <span class="pre">found&quot;,</span> <span class="pre">&quot;status&quot;:</span> <span class="pre">404}</span></code>
 with the <code class="docutils literal notranslate"><span class="pre">application/problem+json</span></code> content type. The <code class="docutils literal notranslate"><span class="pre">400</span></code> errors of the
-standard list routes get the same body.</p>
+list routes get the same body, in the standard dialect and in react-admin.</p>
 <p>Some errors are not a <code class="docutils literal notranslate"><span class="pre">RestlyHTTPError</span></code>, so this handler does not change them:</p>
 <ul class="simple">
 <li><p>A <code class="docutils literal notranslate"><span class="pre">422</span></code> for a request body or a parameter that fails validation, such as
@@ -668,9 +715,6 @@ Register a handler for it.</p></li>
 parameter (<code class="docutils literal notranslate"><span class="pre">422</span></code>), and for a foreign key and its relationship field that
 name different rows (<code class="docutils literal notranslate"><span class="pre">422</span></code>). Register a handler for
 <code class="docutils literal notranslate"><span class="pre">fastapi.HTTPException</span></code>.</p></li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">409</span></code> of the database conflict handler above.</p></li>
-<li><p>Most <code class="docutils literal notranslate"><span class="pre">400</span></code> errors of a react-admin list route, such as a bad <code class="docutils literal notranslate"><span class="pre">range</span></code>,
-<code class="docutils literal notranslate"><span class="pre">filter</span></code> or <code class="docutils literal notranslate"><span class="pre">sort</span></code> value. They are a plain <code class="docutils literal notranslate"><span class="pre">fastapi.HTTPException</span></code> too.</p></li>
 </ul>
 </section>
 <section id="see-also">
@@ -706,11 +750,11 @@ the <code class="docutils literal notranslate"><span class="pre">422</span></cod
       </div>
     </a>
     <a class="right-next"
-       href="current.html"
+       href="openapi.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Current &amp; ContextParam</p>
+        <p class="prev-next-title">OpenAPI</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>

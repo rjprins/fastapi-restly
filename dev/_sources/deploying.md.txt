@@ -102,10 +102,8 @@ Three details matter in production:
 - The engine belongs to the app that the factory built. The lifespan disposes
   it, so the connections close and the workers exit quickly; see
   [Close the engine on shutdown](#engine-disposal).
-- `fr.configure(app, ...)` also installs the handler that turns an
-  `IntegrityError` into a 409 response; see
-  [Unique values and other database conflicts: 409](#default-exception-handling). `health="/health"` adds
-  the [health check](#health-checks).
+- `fr.configure(app, ...)` with `health="/health"` adds the
+  [health check](#health-checks).
 
 `VIEWS` is the one place where the application registers its views;
 [Compose in one place](#compose-in-one-place) explains it. The SaaS example
@@ -143,21 +141,25 @@ too:
 entrypoint = "app.asgi:app"
 ```
 
-Do not put `app = create_app()` at the end of `main.py` instead. With
-required settings, importing `main.py` would then need `DATABASE_URL`
-everywhere, also in `conftest.py` and in `alembic/env.py`. Nothing in the
-package should import `asgi.py`; only the server does.
-
 Build the application only once in each process. Restly's database
 configuration belongs to the process, so a second call to the factory points
 the requests of every earlier app at the new database too; see
 [one configuration per process](#one-configuration-per-process).
+
+:::{admonition} Details
+:class: details
+
+Do not put `app = create_app()` at the end of `main.py` instead of in
+`app/asgi.py`. With required settings, importing `main.py` would then need
+`DATABASE_URL` everywhere, also in `conftest.py` and in `alembic/env.py`.
+Nothing in the package should import `asgi.py`; only the server does.
 
 Sync {class}`RestView <fastapi_restly.views.RestView>` endpoints run on
 FastAPI's thread pool. Async
 {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` endpoints share
 the event loop of their worker. In both cases, more workers serve more
 requests at the same time. Do not use `--reload` in production.
+:::
 
 (alembic)=
 
@@ -170,12 +172,6 @@ with Alembic's async template, in the root of your project:
 ```bash
 alembic init -t async alembic
 ```
-
-The generic template that `alembic init alembic` creates builds a sync engine,
-and it cannot open an async URL. Use it only when Alembic gets a separate
-sync database URL. Alembic's
-[asyncio recipe](https://alembic.sqlalchemy.org/en/latest/cookbook.html#using-asyncio-with-alembic)
-shows the same template, and how to change an existing environment.
 
 Then point `alembic/env.py` at the metadata of your declarative base, the
 `Base` that your models inherit from. The metadata knows only the models that
@@ -210,9 +206,19 @@ Run the migrations when you release, or when the application starts:
 alembic upgrade head
 ```
 
+:::{admonition} Details
+:class: details
+
+The generic template that `alembic init alembic` creates builds a sync engine,
+and it cannot open an async URL. Use it only when Alembic gets a separate
+sync database URL. Alembic's
+[asyncio recipe](https://alembic.sqlalchemy.org/en/latest/cookbook.html#using-asyncio-with-alembic)
+shows the same template, and how to change an existing environment.
+
 Tests can run the same migrations: pass `alembic_upgrade=True` to
 {func}`fr.testing.configure_tests() <fastapi_restly.testing.configure_tests>`;
 see [Build the test schema](#test-databases-and-migrations).
+:::
 
 (timezone-migration)=
 

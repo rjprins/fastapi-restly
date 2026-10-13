@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -62,8 +62,8 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="React Admin" href="react_admin.html" />
-    <link rel="prev" title="Deploying" href="deploying.html" />
+    <link rel="next" title="Request Context" href="context.html" />
+    <link rel="prev" title="Errors" href="errors.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -410,27 +410,41 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="projects.html">New &amp; Existing Projects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="database.html">Database &amp; Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
-<li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
-<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
-<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering &amp; Pagination</a></li>
-<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
-<li class="toctree-l1"><a class="reference internal" href="current.html">Current &amp; ContextParam</a></li>
-<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
-<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">OpenAPI</a></li>
 <li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
 <li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering &amp; Pagination</a></li>
+<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">OpenAPI</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Access</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="context.html">Request Context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tenancy.html">Multi-Tenancy</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Testing &amp; Deploying</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
 </ul>
 </div>
 </nav></div>
@@ -584,6 +598,8 @@ out the final <code class="docutils literal notranslate"><span class="pre">{id}<
 <code class="docutils literal notranslate"><span class="pre">/v1</span></code> gets <code class="docutils literal notranslate"><span class="pre">v1_items_list</span></code> instead of <code class="docutils literal notranslate"><span class="pre">items_list</span></code>, and the same view mounted
 under <code class="docutils literal notranslate"><span class="pre">/v1</span></code> and <code class="docutils literal notranslate"><span class="pre">/v2</span></code> gets different IDs. The class name and the tags of the
 view do not change the IDs.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
 <p>A path parameter of a parent stays in the ID as <code class="docutils literal notranslate"><span class="pre">by_&lt;parameter&gt;</span></code>. For
 <code class="docutils literal notranslate"><span class="pre">/projects/{project_id}/items</span></code>, the list ID is
 <code class="docutils literal notranslate"><span class="pre">projects_by_project_id_items_list</span></code>. Punctuation becomes an underscore, so
@@ -603,6 +619,7 @@ names above, so a function based on the tag and the name can give IDs such as
 <p>If you generate clients from the spec, generate them again when you move to
 Restly’s IDs. To keep an existing operation ID, set <code class="docutils literal notranslate"><span class="pre">operation_id</span></code> in the
 route’s options; see the next section.</p>
+</div>
 </section>
 <section id="change-the-name-summary-or-operation-id-of-a-crud-route">
 <span id="route-options"></span><h2>Change the name, summary or operation ID of a CRUD route<a class="headerlink" href="#change-the-name-summary-or-operation-id-of-a-crud-route" title="Link to this heading">#</a></h2>
@@ -630,12 +647,15 @@ takes the same keyword arguments as a route decorator, except the path. An
 unknown method name raises
 <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>
 when the view registers. Options for an excluded route are ignored.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
 <p>The options win over the keyword arguments of the decorator, which win over
 Restly’s defaults. A subclass inherits the mapping. A subclass that declares
 its own mapping replaces the parent’s: Restly does not merge the two.</p>
 <p>The route names repeat across views. If you use <code class="docutils literal notranslate"><span class="pre">app.url_path_for()</span></code> to build
 the URLs of routes in several views, give them names of their own. Each
 explicit <code class="docutils literal notranslate"><span class="pre">operation_id</span></code> must be unique in the app’s spec.</p>
+</div>
 </section>
 <section id="document-a-custom-route">
 <span id="document-custom-route"></span><h2>Document a custom route<a class="headerlink" href="#document-a-custom-route" title="Link to this heading">#</a></h2>
@@ -689,6 +709,8 @@ prefix of the view that serves the target model, without the leading slash:</p>
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDSchema[Model]</span></code></a>, or a list of
 them.</p></li>
 </ul>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
 <p>A field gets it only when a view for the target model is included on the same
 app. A nested object, such as <code class="docutils literal notranslate"><span class="pre">author:</span> <span class="pre">AuthorSchema</span></code>, gets none. The
 reference types themselves are on
@@ -697,6 +719,7 @@ reference types themselves are on
 app, do not get these annotations. The check for two classes with the same
 name still covers them when you pass the app to
 <a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure(app,</span> <span class="pre">...)</span></code></a>.</p>
+</div>
 </section>
 <section id="see-also">
 <h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
@@ -721,20 +744,20 @@ shows, and their names.</p></li>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="deploying.html"
+       href="errors.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Deploying</p>
+        <p class="prev-next-title">Errors</p>
       </div>
     </a>
     <a class="right-next"
-       href="react_admin.html"
+       href="context.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">React Admin</p>
+        <p class="prev-next-title">Request Context</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>

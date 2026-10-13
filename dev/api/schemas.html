@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=e2851362" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=643d5ecc" />
   
   <!-- So that users can add custom icons -->
   <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -677,9 +677,18 @@ from the marked column’s <code class="docutils literal notranslate"><span clas
 <dd><p>Generate a Pydantic schema from a SQLAlchemy model.</p>
 <p>This is the same schema that a view generates when it has no <code class="docutils literal notranslate"><span class="pre">schema</span></code>:
 one field per column, and no relationship fields. A foreign key column,
-such as <code class="docutils literal notranslate"><span class="pre">author_id</span></code>, is an ordinary field. The fields <code class="docutils literal notranslate"><span class="pre">id</span></code>,
-<code class="docutils literal notranslate"><span class="pre">created_at</span></code> and <code class="docutils literal notranslate"><span class="pre">updated_at</span></code>, and read-only columns such as a
-<code class="docutils literal notranslate"><span class="pre">column_property</span></code>, are marked <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>.</p>
+such as <code class="docutils literal notranslate"><span class="pre">author_id</span></code>, is an ordinary field unless it has <code class="docutils literal notranslate"><span class="pre">init=False</span></code>.
+These fields are marked <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>: <code class="docutils literal notranslate"><span class="pre">id</span></code>, <code class="docutils literal notranslate"><span class="pre">created_at</span></code> and
+<code class="docutils literal notranslate"><span class="pre">updated_at</span></code>, a <code class="docutils literal notranslate"><span class="pre">column_property</span></code> over a SQL expression, and a column
+that the constructor does not take (<code class="docutils literal notranslate"><span class="pre">init=False</span></code>).</p>
+<p>A field allows <code class="docutils literal notranslate"><span class="pre">None</span></code> only when its column is nullable. The create body
+follows the constructor: the client may leave out a field when its
+column is nullable, or when the constructor does not require it and the
+model then still gives the column a value. That value comes from the
+column (<code class="docutils literal notranslate"><span class="pre">insert_default</span></code>, <code class="docutils literal notranslate"><span class="pre">server_default</span></code>) or from the constructor
+(a <code class="docutils literal notranslate"><span class="pre">default</span></code> other than <code class="docutils literal notranslate"><span class="pre">None</span></code>, or a <code class="docutils literal notranslate"><span class="pre">default_factory</span></code>). Such a
+field has the default <code class="docutils literal notranslate"><span class="pre">None</span></code>, which Pydantic does not validate. Restly
+does not pass it to the constructor, so the model’s default applies.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">

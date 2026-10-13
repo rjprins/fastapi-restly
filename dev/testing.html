@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -63,7 +63,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Deploying" href="deploying.html" />
-    <link rel="prev" title="Authorization" href="authorization.html" />
+    <link rel="prev" title="Multi-Tenancy" href="tenancy.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -410,27 +410,41 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="projects.html">New &amp; Existing Projects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="database.html">Database &amp; Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
-<li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
-<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
-<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering &amp; Pagination</a></li>
-<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
-<li class="toctree-l1"><a class="reference internal" href="current.html">Current &amp; ContextParam</a></li>
-<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Testing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
-<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
 <li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
 <li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering &amp; Pagination</a></li>
+<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Access</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="context.html">Request Context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tenancy.html">Multi-Tenancy</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Testing &amp; Deploying</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
 </ul>
 </div>
 </nav></div>
@@ -583,32 +597,6 @@ to <code class="docutils literal notranslate"><span class="pre">configure_tests(
 <span class="p">)</span>
 </pre></div>
 </div>
-<p>This works because Restly has
-<a class="reference internal" href="database.html#one-configuration-per-process"><span class="std std-ref">one configuration per process</span></a>, and the last
-<code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code> call wins. The factory call in <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> points the
-process at the test database. Then <code class="docutils literal notranslate"><span class="pre">configure_tests()</span></code> records that
-configuration and freezes it. This also works when a module that the
-conftest imports has already built an app: the conftest’s factory call runs
-after that import, and before the freeze.</p>
-<p>A factory that <em>requires</em> its settings, like the PostgreSQL one below, must
-not build an app when its module is imported. Keep it a factory. Otherwise
-<code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> would again need the environment variable before the import, and
-the factory exists to remove that need. A module that builds an app when it
-is imported works only if the conftest imports it before <code class="docutils literal notranslate"><span class="pre">configure_tests()</span></code>.
-A module imported later, such as
-an <code class="docutils literal notranslate"><span class="pre">asgi.py</span></code> that a test file imports, calls its factory after the freeze, and
-fails with
-<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>.
-This is one more reason why only the server should import <code class="docutils literal notranslate"><span class="pre">asgi.py</span></code>.</p>
-<p id="factory-apps-share-one-configuration">For the same reason, the apps that a factory builds are not independent. Each
-call changes the one configuration of the process, so only the app that was
-built last should serve requests. An app built earlier would use the newer
-database, but still own its old engine. In this suite, the app of the
-conftest is the one that serves. A fixture that calls <code class="docutils literal notranslate"><span class="pre">create_app(...)</span></code> for
-each test does not fit a managed suite: after <code class="docutils literal notranslate"><span class="pre">configure_tests()</span></code> has
-recorded the configuration, each later factory call that configures the
-database raises <code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code>. Build the app once, in
-<code class="docutils literal notranslate"><span class="pre">conftest.py</span></code>.</p>
 <p>An application that calls <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code> when its module is imported can
 still be tested. Choose the database before you import the module, and keep
 the import order:</p>
@@ -655,6 +643,34 @@ still work, but they do not isolate the database: see
 <p>Your tests can stay sync, even when your application and its only database
 driver are async. <a class="reference internal" href="#writing-async-tests">Write async tests</a> explains when a
 test needs to be async.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> above works because Restly has
+<a class="reference internal" href="database.html#one-configuration-per-process"><span class="std std-ref">one configuration per process</span></a>, and the last
+<code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code> call wins. The factory call in <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> points the process at the test
+database. Then <code class="docutils literal notranslate"><span class="pre">configure_tests()</span></code> records that configuration and freezes it.
+This also works when a module that the conftest imports has already built an
+app: the conftest’s factory call runs after that import, and before the freeze.</p>
+<p>A factory that <em>requires</em> its settings, like the PostgreSQL one below, must
+not build an app when its module is imported. Keep it a factory. Otherwise
+<code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> would again need the environment variable before the import, and
+the factory exists to remove that need. A module that builds an app when it
+is imported works only if the conftest imports it before <code class="docutils literal notranslate"><span class="pre">configure_tests()</span></code>.
+A module imported later, such as
+an <code class="docutils literal notranslate"><span class="pre">asgi.py</span></code> that a test file imports, calls its factory after the freeze, and
+fails with
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>.
+This is one more reason why only the server should import <code class="docutils literal notranslate"><span class="pre">asgi.py</span></code>.</p>
+<p id="factory-apps-share-one-configuration">For the same reason, the apps that a factory builds are not independent. Each
+call changes the one configuration of the process, so only the app that was
+built last should serve requests. An app built earlier would use the newer
+database, but still own its old engine. In this suite, the app of the
+conftest is the one that serves. A fixture that calls <code class="docutils literal notranslate"><span class="pre">create_app(...)</span></code> for
+each test does not fit a managed suite: after <code class="docutils literal notranslate"><span class="pre">configure_tests()</span></code> has
+recorded the configuration, each later factory call that configures the
+database raises <code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code>. Build the app once, in
+<code class="docutils literal notranslate"><span class="pre">conftest.py</span></code>.</p>
+</div>
 <section id="test-an-async-only-postgresql-app">
 <span id="async-postgresql-tests"></span><h3>Test an async-only PostgreSQL app<a class="headerlink" href="#test-an-async-only-postgresql-app" title="Link to this heading">#</a></h3>
 <p>An application that uses only async PostgreSQL can keep its normal pooled
@@ -718,11 +734,6 @@ the test, not to the client fixture, so both ways get the same cleanup; see
 <p><code class="docutils literal notranslate"><span class="pre">base=</span></code> names your models. <code class="docutils literal notranslate"><span class="pre">configure_tests()</span></code> cleans the tables of these
 models between tests, and builds the schema from them if you ask it to. Pass
 your declarative base, or its <code class="docutils literal notranslate"><span class="pre">MetaData</span></code>.</p>
-<p>A base knows only the models that have been imported when the suite freezes
-the configuration. Building the app imports them, because the app imports
-every view, and each view imports its model. A conftest that uses <code class="docutils literal notranslate"><span class="pre">Base</span></code>
-without building the app should also import <code class="docutils literal notranslate"><span class="pre">app.main</span></code>, as <code class="docutils literal notranslate"><span class="pre">alembic/env.py</span></code>
-does; see <a class="reference internal" href="projects.html#compose-in-one-place"><span class="std std-ref">Compose in one place</span></a>.</p>
 <p>Who builds the schema is a separate choice, with three answers.</p>
 <p><strong>From your models</strong>, with <code class="docutils literal notranslate"><span class="pre">create_all=True</span></code>. It builds the tables as
 <a class="reference internal" href="api/db.html#fastapi_restly.db.create_all" title="fastapi_restly.db.create_all"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.db.create_all()</span></code></a> does. This is the
@@ -739,14 +750,6 @@ of this URL, so an async-only application needs an <code class="docutils literal
 Alembic’s async template, as
 <a class="reference internal" href="deploying.html#alembic"><span class="std std-ref">Set up migrations with Alembic</span></a> shows. When the application
 configures both a sync and an async database, Restly passes the sync URL.</p>
-<p>Pass a path if the config is somewhere else:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fr</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">configure_tests</span><span class="p">(</span>
-    <span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">,</span>
-    <span class="n">base</span><span class="o">=</span><span class="n">Base</span><span class="p">,</span>
-    <span class="n">alembic_upgrade</span><span class="o">=</span><span class="s2">&quot;backend/alembic.ini&quot;</span><span class="p">,</span>
-<span class="p">)</span>
-</pre></div>
-</div>
 <p>The SaaS example builds its test schema from its migrations
 (<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/tests/conftest.py"><code class="docutils literal notranslate"><span class="pre">tests/conftest.py</span></code></a>).</p>
 <p><strong>Yourself</strong>, when you pass neither. Restly then does not touch the schema.
@@ -754,6 +757,22 @@ Choose this when your suite already builds it, or when your migrations do not
 use Alembic. Build the schema once per session, not once per test. Under the
 default rollback mode, a table that a test creates belongs to the
 transaction of that test, and the rollback removes it.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>A base knows only the models that have been imported when the suite freezes
+the configuration. Building the app imports them, because the app imports
+every view, and each view imports its model. A conftest that uses <code class="docutils literal notranslate"><span class="pre">Base</span></code>
+without building the app should also import <code class="docutils literal notranslate"><span class="pre">app.main</span></code>, as <code class="docutils literal notranslate"><span class="pre">alembic/env.py</span></code>
+does; see <a class="reference internal" href="projects.html#compose-in-one-place"><span class="std std-ref">Compose in one place</span></a>.</p>
+<p>Pass a path if <code class="docutils literal notranslate"><span class="pre">alembic.ini</span></code> is somewhere else:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fr</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">configure_tests</span><span class="p">(</span>
+    <span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">,</span>
+    <span class="n">base</span><span class="o">=</span><span class="n">Base</span><span class="p">,</span>
+    <span class="n">alembic_upgrade</span><span class="o">=</span><span class="s2">&quot;backend/alembic.ini&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
 </section>
 <section id="choose-how-tests-clean-up">
 <span id="cleaning-up-between-tests"></span><h2>Choose how tests clean up<a class="headerlink" href="#choose-how-tests-clean-up" title="Link to this heading">#</a></h2>
@@ -773,6 +792,8 @@ them.</p>
 that drives a browser or another process. Such a process cannot see data
 that is not committed, and parallel workers that share one database would
 delete each other’s rows.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
 <p>To change the mode for one run without editing the suite:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pytest<span class="w"> </span>--restly-db-cleanup<span class="o">=</span>delete
 <span class="nv">RESTLY_DB_CLEANUP</span><span class="o">=</span>delete<span class="w"> </span>pytest
@@ -782,6 +803,7 @@ delete each other’s rows.</p>
 argument. Each mode other than the default shows in pytest’s header, so a
 flag left from a debugging session cannot change the suite without notice.
 pytest prints that header only at normal verbosity, so <code class="docutils literal notranslate"><span class="pre">-q</span></code> hides it.</p>
+</div>
 <section id="keep-reference-data-in-delete-mode">
 <span id="reference-data-cleanup"></span><h3>Keep reference data in delete mode<a class="headerlink" href="#keep-reference-data-in-delete-mode" title="Link to this heading">#</a></h3>
 <p>Delete mode empties all tables that <code class="docutils literal notranslate"><span class="pre">base=</span></code> declares. This includes the
@@ -804,24 +826,6 @@ excludes its <code class="docutils literal notranslate"><span class="pre">countr
 </section>
 <section id="use-the-test-clients">
 <span id="test-clients"></span><h2>Use the test clients<a class="headerlink" href="#use-the-test-clients" title="Link to this heading">#</a></h2>
-<p><a class="reference internal" href="api/testing.html#fastapi_restly.testing.RestlyTestClient" title="fastapi_restly.testing.RestlyTestClient"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyTestClient</span></code></a> is the
-sync client behind the <code class="docutils literal notranslate"><span class="pre">restly_client</span></code> fixture. The fixture creates it and
-enters it for you. Use the client directly when you test without the
-fixtures:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">RestlyTestClient</span>
-
-<span class="k">with</span> <span class="n">RestlyTestClient</span><span class="p">(</span><span class="n">app</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
-    <span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>Use it in a <code class="docutils literal notranslate"><span class="pre">with</span></code> block. Starlette runs the <code class="docutils literal notranslate"><span class="pre">lifespan</span></code> of an application
-only inside that block, so a client used outside one skips what <code class="docutils literal notranslate"><span class="pre">lifespan=</span></code>
-sets up.</p>
-<p>Although it is sync, <code class="docutils literal notranslate"><span class="pre">RestlyTestClient</span></code> also tests async FastAPI routes and
-<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> endpoints.
-<a class="reference internal" href="api/testing.html#fastapi_restly.testing.AsyncRestlyTestClient" title="fastapi_restly.testing.AsyncRestlyTestClient"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestlyTestClient</span></code></a>
-has the same request methods and checks for async tests. The
-<code class="docutils literal notranslate"><span class="pre">restly_async_client</span></code> fixture creates it and runs the app’s lifespan for you.</p>
 <p>Both clients check the status code of every response. When the status does
 not match, they raise an <code class="docutils literal notranslate"><span class="pre">AssertionError</span></code> that includes the response body.
 The <code class="docutils literal notranslate"><span class="pre">assert_status_code</span></code> argument of each request method sets the check:</p>
@@ -853,7 +857,28 @@ error:</p>
 <p>The default does not check which success status a route returns. To test
 that a create returns <code class="docutils literal notranslate"><span class="pre">201</span></code>, pass <code class="docutils literal notranslate"><span class="pre">assert_status_code=201</span></code>.</p>
 <p>To test a request as a different user, override the dependency that gives
-the user; <a class="reference internal" href="current.html#current-testing"><span class="std std-ref">Current &amp; ContextParam</span></a> shows how.</p>
+the user; <a class="reference internal" href="context.html#current-testing"><span class="std std-ref">Request Context</span></a> shows how.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p><a class="reference internal" href="api/testing.html#fastapi_restly.testing.RestlyTestClient" title="fastapi_restly.testing.RestlyTestClient"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyTestClient</span></code></a> is the
+sync client behind the <code class="docutils literal notranslate"><span class="pre">restly_client</span></code> fixture. The fixture creates it and
+enters it for you. Use the client directly when you test without the
+fixtures:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">RestlyTestClient</span>
+
+<span class="k">with</span> <span class="n">RestlyTestClient</span><span class="p">(</span><span class="n">app</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Use it in a <code class="docutils literal notranslate"><span class="pre">with</span></code> block. Starlette runs the <code class="docutils literal notranslate"><span class="pre">lifespan</span></code> of an application
+only inside that block, so a client used outside one skips what <code class="docutils literal notranslate"><span class="pre">lifespan=</span></code>
+sets up.</p>
+<p>Although it is sync, <code class="docutils literal notranslate"><span class="pre">RestlyTestClient</span></code> also tests async FastAPI routes and
+<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> endpoints.
+<a class="reference internal" href="api/testing.html#fastapi_restly.testing.AsyncRestlyTestClient" title="fastapi_restly.testing.AsyncRestlyTestClient"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestlyTestClient</span></code></a>
+has the same request methods and checks for async tests. The
+<code class="docutils literal notranslate"><span class="pre">restly_async_client</span></code> fixture creates it and runs the app’s lifespan for you.</p>
+</div>
 </section>
 <section id="write-async-tests">
 <span id="writing-async-tests"></span><h2>Write async tests<a class="headerlink" href="#write-async-tests" title="Link to this heading">#</a></h2>
@@ -867,15 +892,6 @@ the database in <code class="docutils literal notranslate"><span class="pre">pdb
 <code class="docutils literal notranslate"><span class="pre">restly_async_session</span></code> or <code class="docutils literal notranslate"><span class="pre">fr.open_async_session()</span></code> to add rows directly, or
 one of your own coroutines. Use <code class="docutils literal notranslate"><span class="pre">restly_async_client</span></code> for HTTP in the same
 test.</p>
-<p>The sync client runs the application on its own event loop, and the async
-fixtures run on pytest’s loop. So in an application that has only an async
-database, a rollback test that uses <code class="docutils literal notranslate"><span class="pre">restly_client</span></code> together with
-<code class="docutils literal notranslate"><span class="pre">restly_async_session</span></code> stops while pytest sets up the fixtures, with a
-<code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code>. The error tells you to use
-<code class="docutils literal notranslate"><span class="pre">restly_async_client</span></code>, and <code class="docutils literal notranslate"><span class="pre">fr.open_async_session()</span></code> fails with the same
-advice when it opens the session. Under <code class="docutils literal notranslate"><span class="pre">&quot;delete&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;none&quot;</span></code>, drivers
-such as asyncpg, which tie pooled connections to one event loop, need the
-same split.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">test_direct_setup_and_request</span><span class="p">(</span><span class="n">restly_async_client</span><span class="p">,</span> <span class="n">restly_async_session</span><span class="p">):</span>
     <span class="n">restly_async_session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">User</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Alice&quot;</span><span class="p">))</span>
     <span class="k">await</span> <span class="n">restly_async_session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
@@ -898,6 +914,18 @@ the same, async tests are not collected or give confusing errors. Sync tests
 keep working next to them. The
 <a class="reference external" href="https://pytest-asyncio.readthedocs.io/en/latest/reference/configuration.html">pytest-asyncio reference</a>
 covers its other settings.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>The sync client runs the application on its own event loop, and the async
+fixtures run on pytest’s loop. So in an application that has only an async
+database, a rollback test that uses <code class="docutils literal notranslate"><span class="pre">restly_client</span></code> together with
+<code class="docutils literal notranslate"><span class="pre">restly_async_session</span></code> stops while pytest sets up the fixtures, with a
+<code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code>. The error tells you to use
+<code class="docutils literal notranslate"><span class="pre">restly_async_client</span></code>, and <code class="docutils literal notranslate"><span class="pre">fr.open_async_session()</span></code> fails with the same
+advice when it opens the session. Under <code class="docutils literal notranslate"><span class="pre">&quot;delete&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;none&quot;</span></code>, drivers
+such as asyncpg, which tie pooled connections to one event loop, need the
+same split.</p>
+</div>
 </section>
 <section id="look-at-the-database-during-a-test">
 <span id="inspecting-the-database"></span><h2>Look at the database during a test<a class="headerlink" href="#look-at-the-database-during-a-test" title="Link to this heading">#</a></h2>
@@ -1101,7 +1129,7 @@ after the test.</p>
 <section id="see-also">
 <h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><a class="reference internal" href="current.html#current-testing"><span class="std std-ref">Current &amp; ContextParam</span></a>: test a request as a different
+<li><p><a class="reference internal" href="context.html#current-testing"><span class="std std-ref">Request Context</span></a>: test a request as a different
 user.</p></li>
 <li><p><a class="reference internal" href="database.html"><span class="std std-doc">Database &amp; Configuration</span></a>: the session sources that the
 fixtures record.</p></li>
@@ -1122,12 +1150,12 @@ every argument.</p></li>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="authorization.html"
+       href="tenancy.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Authorization</p>
+        <p class="prev-next-title">Multi-Tenancy</p>
       </div>
     </a>
     <a class="right-next"

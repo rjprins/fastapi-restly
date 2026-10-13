@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=e2851362" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=643d5ecc" />
   
   <!-- So that users can add custom icons -->
   <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -889,7 +889,7 @@ the same options in <code class="docutils literal notranslate"><span class="pre"
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.AsyncRestView.session">
-<span class="sig-name descname"><span class="pre">session</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">_AsyncSessionDependency</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x7f85d9d38cb0&gt;,</span> <span class="pre">use_cache=True,</span> <span class="pre">scope=function)]</span></em><a class="headerlink" href="#fastapi_restly.views.AsyncRestView.session" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">session</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">_AsyncSessionDependency</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x7f9a48138da0&gt;,</span> <span class="pre">use_cache=True,</span> <span class="pre">scope=function)]</span></em><a class="headerlink" href="#fastapi_restly.views.AsyncRestView.session" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -909,7 +909,10 @@ flush. They return uncommitted objects inside the block:</p>
 only after the block exits. Nested blocks on the same session share the
 commit. An exception escaping a deferred-commit block aborts the shared
 commit, including when an enclosing deferred-commit block catches that
-exception. Rollback belongs to the session owner.</p>
+exception. Rollback belongs to the session owner. An
+<code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> inside the block stays raw, so a route can catch the
+error of one row; one that escapes the outermost block, or that its
+commit raises, becomes <a class="reference internal" href="exc.html#fastapi_restly.exc.Conflict" title="fastapi_restly.exc.Conflict"><code class="xref py py-class docutils literal notranslate"><span class="pre">Conflict</span></code></a> (409).</p>
 <p>After-hooks run in queue order and stop on the first exception. <code class="docutils literal notranslate"><span class="pre">new</span></code>
 is the live object after all writes, while <code class="docutils literal notranslate"><span class="pre">old</span></code> is each action’s
 snapshot. Direct <code class="docutils literal notranslate"><span class="pre">session.commit()</span></code> calls raise <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code>.
@@ -959,9 +962,11 @@ goes in an <code class="docutils literal notranslate"><span class="pre">update</
 </pre></div>
 </div>
 <p>Pass <code class="docutils literal notranslate"><span class="pre">obj=None</span></code> for writes with no single object. Exceptions skip the
-commit. Inside <a class="reference internal" href="#fastapi_restly.views.AsyncRestView.shared_write_action_commit" title="fastapi_restly.views.AsyncRestView.shared_write_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code></a>, the outermost block
-owns the commit and the after-hooks, so this bracket returns after its
-flush but before either one.</p>
+commit. An <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> from <code class="docutils literal notranslate"><span class="pre">authorize</span></code> to the commit becomes
+<a class="reference internal" href="exc.html#fastapi_restly.exc.Conflict" title="fastapi_restly.exc.Conflict"><code class="xref py py-class docutils literal notranslate"><span class="pre">Conflict</span></code></a> (409). Inside
+<a class="reference internal" href="#fastapi_restly.views.AsyncRestView.shared_write_action_commit" title="fastapi_restly.views.AsyncRestView.shared_write_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code></a>, the outermost block owns the
+commit and the after-hooks, so this bracket returns after its flush
+but before either one, and an <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> stays raw.</p>
 </dd></dl>
 
 </dd></dl>
@@ -1108,7 +1113,8 @@ unscoped despite that default. Declaring a scope replaces the default,
 it does not stack on it; compose the replacement from the same leaves
 (<code class="docutils literal notranslate"><span class="pre">ItemClauses.trashed</span></code> containing the tenant clause <code class="docutils literal notranslate"><span class="pre">visible</span></code>
 contains). A rule that must hold under every scope is a session-level
-<code class="docutils literal notranslate"><span class="pre">with_loader_criteria</span></code>, not a view concern. See the Scopes guide.</p>
+<code class="docutils literal notranslate"><span class="pre">with_loader_criteria</span></code>, not a view concern (see the Multi-Tenancy
+guide). See the Scopes guide for scopes.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -1715,7 +1721,7 @@ same options in <code class="docutils literal notranslate"><span class="pre">get
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.RestView.session">
-<span class="sig-name descname"><span class="pre">session</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">_SyncSessionDependency</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x7f85d9d38c20&gt;,</span> <span class="pre">use_cache=True,</span> <span class="pre">scope=function)]</span></em><a class="headerlink" href="#fastapi_restly.views.RestView.session" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">session</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">_SyncSessionDependency</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x7f9a48138ce0&gt;,</span> <span class="pre">use_cache=True,</span> <span class="pre">scope=function)]</span></em><a class="headerlink" href="#fastapi_restly.views.RestView.session" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -1735,7 +1741,10 @@ flush. They return uncommitted objects inside the block:</p>
 only after the block exits. Nested blocks on the same session share the
 commit. An exception escaping a deferred-commit block aborts the shared
 commit, including when an enclosing deferred-commit block catches that
-exception. Rollback belongs to the session owner.</p>
+exception. Rollback belongs to the session owner. An
+<code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> inside the block stays raw, so a route can catch the
+error of one row; one that escapes the outermost block, or that its
+commit raises, becomes <a class="reference internal" href="exc.html#fastapi_restly.exc.Conflict" title="fastapi_restly.exc.Conflict"><code class="xref py py-class docutils literal notranslate"><span class="pre">Conflict</span></code></a> (409).</p>
 <p>After-hooks run in queue order and stop on the first exception. <code class="docutils literal notranslate"><span class="pre">new</span></code>
 is the live object after all writes, while <code class="docutils literal notranslate"><span class="pre">old</span></code> is each action’s
 snapshot. Direct <code class="docutils literal notranslate"><span class="pre">session.commit()</span></code> calls raise <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code>.
@@ -1785,9 +1794,11 @@ goes in an <code class="docutils literal notranslate"><span class="pre">update</
 </pre></div>
 </div>
 <p>Pass <code class="docutils literal notranslate"><span class="pre">obj=None</span></code> for writes with no single object. Exceptions skip the
-commit. Inside <a class="reference internal" href="#fastapi_restly.views.RestView.shared_write_action_commit" title="fastapi_restly.views.RestView.shared_write_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code></a>, the outermost block
-owns the commit and the after-hooks, so this bracket returns after its
-flush but before either one.</p>
+commit. An <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> from <code class="docutils literal notranslate"><span class="pre">authorize</span></code> to the commit becomes
+<a class="reference internal" href="exc.html#fastapi_restly.exc.Conflict" title="fastapi_restly.exc.Conflict"><code class="xref py py-class docutils literal notranslate"><span class="pre">Conflict</span></code></a> (409). Inside
+<a class="reference internal" href="#fastapi_restly.views.RestView.shared_write_action_commit" title="fastapi_restly.views.RestView.shared_write_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code></a>, the outermost block owns the
+commit and the after-hooks, so this bracket returns after its flush
+but before either one, and an <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> stays raw.</p>
 </dd></dl>
 
 </dd></dl>

@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -410,27 +410,41 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="projects.html">New &amp; Existing Projects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="database.html">Database &amp; Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
+<ul class="current nav bd-sidenav">
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
-<li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
-<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
-<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering &amp; Pagination</a></li>
-<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
-<li class="toctree-l1"><a class="reference internal" href="current.html">Current &amp; ContextParam</a></li>
-<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
-<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
-<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
 <li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
 <li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering &amp; Pagination</a></li>
+<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Access</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="context.html">Request Context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tenancy.html">Multi-Tenancy</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Testing &amp; Deploying</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
 </ul>
 </div>
 </nav></div>
@@ -630,9 +644,15 @@ lists the status codes. Pass <code class="docutils literal notranslate"><span cl
 <p>The path is relative to the view’s prefix. With <code class="docutils literal notranslate"><span class="pre">prefix</span> <span class="pre">=</span> <span class="pre">&quot;/users&quot;</span></code>,
 <code class="docutils literal notranslate"><span class="pre">&#64;fr.get(&quot;/{id}/summary&quot;)</span></code> serves <code class="docutils literal notranslate"><span class="pre">/users/{id}/summary</span></code>, and <code class="docutils literal notranslate"><span class="pre">&#64;fr.get(&quot;&quot;)</span></code>
 serves <code class="docutils literal notranslate"><span class="pre">/users</span></code> itself.</p>
-<p>Every other keyword argument goes to FastAPI’s <code class="docutils literal notranslate"><span class="pre">APIRouter.add_api_route()</span></code>,
-such as <code class="docutils literal notranslate"><span class="pre">response_model=</span></code>, <code class="docutils literal notranslate"><span class="pre">dependencies=</span></code>, <code class="docutils literal notranslate"><span class="pre">responses=</span></code> and <code class="docutils literal notranslate"><span class="pre">tags=</span></code>. So a
-route on a view has the same options as a FastAPI route.</p>
+<p>On a CRUD view, a custom route usually loads and writes through the view’s
+handlers. <a class="reference internal" href="lifecycle.html#custom-read-route"><span class="std std-ref">Add a custom read route</span></a> and
+<a class="reference internal" href="lifecycle.html#custom-action-route"><span class="std std-ref">Add a custom action route</span></a> show how.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>Every keyword argument other than <code class="docutils literal notranslate"><span class="pre">status_code=</span></code> goes to FastAPI’s
+<code class="docutils literal notranslate"><span class="pre">APIRouter.add_api_route()</span></code>, such as <code class="docutils literal notranslate"><span class="pre">response_model=</span></code>, <code class="docutils literal notranslate"><span class="pre">dependencies=</span></code>,
+<code class="docutils literal notranslate"><span class="pre">responses=</span></code> and <code class="docutils literal notranslate"><span class="pre">tags=</span></code>. So a route on a view has the same options as a
+FastAPI route.</p>
 <p>To serve one path with more than one HTTP method, use
 <a class="reference internal" href="api/views.html#fastapi_restly.views.route" title="fastapi_restly.views.route"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.route</span></code></a> and list the methods. It sets
 no method and no status code for you:</p>
@@ -647,9 +667,7 @@ for such a name, also on a plain <code class="docutils literal notranslate"><spa
 replace a CRUD route, override its endpoint method, such as
 <code class="docutils literal notranslate"><span class="pre">create_endpoint</span></code>; see
 <a class="reference internal" href="lifecycle.html#replace-endpoint-method"><span class="std std-ref">Change the status code or headers of one route</span></a>.</p>
-<p>On a CRUD view, a custom route usually loads and writes through the view’s
-handlers. <a class="reference internal" href="lifecycle.html#custom-read-route"><span class="std std-ref">Add a custom read route</span></a> and
-<a class="reference internal" href="lifecycle.html#custom-action-route"><span class="std std-ref">Add a custom action route</span></a> show how.</p>
+</div>
 </section>
 <section id="register-a-view">
 <span id="id2"></span><h2>Register a view<a class="headerlink" href="#register-a-view" title="Link to this heading">#</a></h2>
@@ -670,6 +688,8 @@ registers the class when Python defines it:</p>
 </pre></div>
 </div>
 <p>Both forms register the same routes.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
 <p>The routes bind when you register the view, not when you declare the
 methods. <code class="docutils literal notranslate"><span class="pre">include_view</span></code> reads the class at that moment: its own route
 methods and the ones it inherits, and the prefix and dependencies of every
@@ -692,6 +712,7 @@ direct call both registered the view.</p></li>
 <code class="docutils literal notranslate"><span class="pre">/users/me</span></code> next to the CRUD routes, see
 <a class="reference internal" href="crud_routes.html#item-route-matching"><span class="std std-ref">Item paths and static routes</span></a>.</p></li>
 </ul>
+</div>
 </section>
 <section id="declare-dependencies-as-class-attributes">
 <span id="dependency-injection-on-class-attributes"></span><h2>Declare dependencies as class attributes<a class="headerlink" href="#declare-dependencies-as-class-attributes" title="Link to this heading">#</a></h2>
@@ -729,6 +750,8 @@ So endpoint methods, business methods, <code class="docutils literal notranslate
 commit hooks can all read <code class="docutils literal notranslate"><span class="pre">self.current_user</span></code>. An attribute that is not a
 dependency is never set from the request: reading <code class="docutils literal notranslate"><span class="pre">self.reviewer</span></code> raises
 <code class="docutils literal notranslate"><span class="pre">AttributeError</span></code>.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
 <p><a class="reference internal" href="api/db.html#fastapi_restly.db.AsyncSessionDep" title="fastapi_restly.db.AsyncSessionDep"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.AsyncSessionDep</span></code></a> and
 <a class="reference internal" href="api/db.html#fastapi_restly.db.SessionDep" title="fastapi_restly.db.SessionDep"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.SessionDep</span></code></a> carry a <code class="docutils literal notranslate"><span class="pre">Depends</span></code>
 marker. The <code class="docutils literal notranslate"><span class="pre">request</span></code> attribute of
@@ -746,6 +769,7 @@ for a path segment.</p>
 subclass can declare <code class="docutils literal notranslate"><span class="pre">current_user:</span> <span class="pre">User</span></code> for type checkers, and the
 attribute keeps the <code class="docutils literal notranslate"><span class="pre">Depends</span></code> marker of the base. So a mixin can declare what
 it needs from its view without breaking the view’s dependencies.</p>
+</div>
 <section id="declare-what-a-mixin-needs-from-its-view">
 <span id="mixin-type-stubs"></span><h3>Declare what a mixin needs from its view<a class="headerlink" href="#declare-what-a-mixin-needs-from-its-view" title="Link to this heading">#</a></h3>
 <p>A mixin is a class that you list before the view class in the bases, as in
@@ -788,10 +812,9 @@ subclass inherits what the base declares: dependency attributes,
 Register only the subclasses.</p>
 <p>A base view overrides the same methods as a single view.
 <a class="reference internal" href="lifecycle.html#view-request-steps"><span class="std std-ref">How a view handles a request</span></a> explains which method to
-override for each change. Two shared concerns have their own recipes on
-<a class="reference internal" href="models.html"><span class="std std-doc">Models</span></a>: values that every write path must set, such as an
-owner id (<a class="reference internal" href="models.html#write-path-values"><span class="std std-ref">Values every write path sets</span></a>), and
-<a class="reference internal" href="models.html#soft-delete-mixin"><span class="std std-ref">soft delete</span></a>.</p>
+override for each change. Two shared concerns have their own sections:
+<a class="reference internal" href="models.html#write-path-values"><span class="std std-ref">values that every write path must set</span></a>, such as an
+owner id, on Models, and <a class="reference internal" href="scopes.html#soft-delete-mixin"><span class="std std-ref">soft delete</span></a> on Scopes.</p>
 <section id="one-base-view-for-the-whole-app">
 <span id="app-wide-base-view"></span><h3>One base view for the whole app<a class="headerlink" href="#one-base-view-for-the-whole-app" title="Link to this heading">#</a></h3>
 <p>A base view for the whole app declares the request context once. Every view
@@ -874,12 +897,12 @@ as <code class="docutils literal notranslate"><span class="pre">Current</span></
 </pre></div>
 </div>
 <p>Every route of <code class="docutils literal notranslate"><span class="pre">/invoices</span></code> and <code class="docutils literal notranslate"><span class="pre">/customers</span></code> now requires a login and binds
-<code class="docutils literal notranslate"><span class="pre">Current.user_id</span></code>. <a class="reference internal" href="current.html#current-request-binding"><span class="std std-ref">Bind from a FastAPI dependency</span></a>
+<code class="docutils literal notranslate"><span class="pre">Current.user_id</span></code>. <a class="reference internal" href="context.html#current-request-binding"><span class="std std-ref">Bind from a FastAPI dependency</span></a>
 explains the binding. The SaaS example’s <code class="docutils literal notranslate"><span class="pre">AuthenticatedView</span></code> uses this
 pattern
 (<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py"><code class="docutils literal notranslate"><span class="pre">app/views.py</span></code></a>).
 To limit every read to the rows of one tenant, see
-<a class="reference internal" href="models.html#tenant-row-scoping"><span class="std std-ref">Keep each tenant’s rows apart</span></a>.</p>
+<a class="reference internal" href="tenancy.html#tenant-row-scoping"><span class="std std-ref">Multi-Tenancy</span></a>.</p>
 <p>When a subclass sets its own <code class="docutils literal notranslate"><span class="pre">dependencies</span></code>, they run after the base’s, in
 the same way as nested FastAPI routers. So a subclass cannot remove a check
 that its base declares. To run its own dependency first, a subclass lists the
@@ -933,9 +956,8 @@ so a new action is never open to every caller.
 way
 (<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/blog/blog/main.py"><code class="docutils literal notranslate"><span class="pre">blog/main.py</span></code></a>).</p>
 <p>The view only reads the caller here. To store the caller on a row, such as
-the owner id, use a column default on the model. Then every write path sets
-it, also the ones that never pass through a view
-(<a class="reference internal" href="models.html#server-stamped-fields"><span class="std std-ref">Stamp the fields the server owns</span></a>).</p>
+the owner id, use a column default on the model, as
+<a class="reference internal" href="models.html#server-stamped-fields"><span class="std std-ref">Stamp the fields the server owns</span></a> shows.</p>
 </section>
 <section id="share-a-business-method">
 <h3>Share a business method<a class="headerlink" href="#share-a-business-method" title="Link to this heading">#</a></h3>
@@ -1065,10 +1087,8 @@ in this way.</p>
 not fit the CRUD shape: login routes, webhook receivers, RPC-style actions. A
 <code class="docutils literal notranslate"><span class="pre">View</span></code> has no model, no schema and no CRUD routes. It gives the endpoints one
 prefix, one tag and one place for shared dependencies.</p>
-<p>A <code class="docutils literal notranslate"><span class="pre">View</span></code> route that writes to the database must commit. Only the CRUD views
-commit for you. When a request ends with changes that were not committed,
-Restly warns with a
-<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyUncommittedChangesWarning" title="fastapi_restly.exc.RestlyUncommittedChangesWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyUncommittedChangesWarning</span></code></a>.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">View</span></code> route that writes to the database must commit, because only the
+CRUD views commit for you; see <a class="reference internal" href="lifecycle.html#what-commits"><span class="std std-ref">What commits, and when</span></a>.</p>
 <section id="login-refresh-and-logout-routes">
 <span id="login-routes"></span><h3>Login, refresh and logout routes<a class="headerlink" href="#login-refresh-and-logout-routes" title="Link to this heading">#</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
@@ -1094,7 +1114,7 @@ Restly warns with a
 routes set their own status code. The methods are FastAPI endpoints, so they
 can use FastAPI’s security tools like any other endpoint. To make the
 logged-in user available to other views, bind it for each request; see
-<a class="reference internal" href="current.html#current-request-binding"><span class="std std-ref">Bind from a FastAPI dependency</span></a>.</p>
+<a class="reference internal" href="context.html#current-request-binding"><span class="std std-ref">Bind from a FastAPI dependency</span></a>.</p>
 </section>
 <section id="receive-a-webhook">
 <span id="id4"></span><h3>Receive a webhook<a class="headerlink" href="#receive-a-webhook" title="Link to this heading">#</a></h3>
@@ -1104,6 +1124,7 @@ yourself:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">Request</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.exc</span><span class="w"> </span><span class="kn">import</span> <span class="n">IntegrityError</span>
 
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
@@ -1116,10 +1137,21 @@ yourself:</p>
         <span class="n">payload</span> <span class="o">=</span> <span class="k">await</span> <span class="n">request</span><span class="o">.</span><span class="n">body</span><span class="p">()</span>
         <span class="n">verify_signature</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;X-Signature&quot;</span><span class="p">))</span>
         <span class="n">event</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">PaymentEvent</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">],</span> <span class="n">data</span><span class="o">=</span><span class="n">payload</span><span class="o">.</span><span class="n">decode</span><span class="p">()))</span>
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>  <span class="c1"># a plain View commits itself</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+            <span class="n">PaymentEvent</span><span class="p">(</span><span class="n">event_id</span><span class="o">=</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">],</span> <span class="n">kind</span><span class="o">=</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">],</span> <span class="n">data</span><span class="o">=</span><span class="n">payload</span><span class="o">.</span><span class="n">decode</span><span class="p">())</span>
+        <span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>  <span class="c1"># a plain View commits itself</span>
+        <span class="k">except</span> <span class="n">IntegrityError</span><span class="p">:</span>  <span class="c1"># the same event again: event_id is unique</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">rollback</span><span class="p">()</span>
 </pre></div>
 </div>
+<p>A route that commits itself must also handle its own database errors.
+Senders often send the same event twice, so here a unique <code class="docutils literal notranslate"><span class="pre">event_id</span></code> column
+refuses the second copy, and the route answers <code class="docutils literal notranslate"><span class="pre">204</span></code> again. Restly does not
+turn an <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> here into a <code class="docutils literal notranslate"><span class="pre">409</span></code>, because the route is outside a
+Restly write; see
+<a class="reference internal" href="errors.html#default-exception-handling"><span class="std std-ref">Unique values and other database conflicts: 409</span></a>.</p>
 <p>To call another service after a write, use the
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_action_commit" title="fastapi_restly.views.RestView.after_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_action_commit</span></code></a>
 hook of a CRUD view instead. For a call that must not get lost, write an
@@ -1157,10 +1189,7 @@ the same order. It adds each route method with its decorator arguments and
 its <code class="docutils literal notranslate"><span class="pre">route_options</span></code>, and then includes the router in the parent.</p></li>
 </ol>
 <p>Steps 1 to 5 run once for each class. A second registration on another
-parent only builds a new router. On a FastAPI app, <code class="docutils literal notranslate"><span class="pre">include_view</span></code> also
-installs Restly’s handler that turns an <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> into a <code class="docutils literal notranslate"><span class="pre">409</span></code>,
-unless the app already has a handler for it; see
-<a class="reference internal" href="errors.html#default-exception-handling"><span class="std std-ref">Unique values and other database conflicts: 409</span></a>.</p>
+parent only builds a new router.</p>
 <p><code class="docutils literal notranslate"><span class="pre">before_include_view()</span></code> is a class method that you can override to change
 the route methods before registration. On a CRUD view, call <code class="docutils literal notranslate"><span class="pre">super()</span></code> in it.</p>
 </section>

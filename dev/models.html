@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -410,27 +410,41 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+<ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="projects.html">New &amp; Existing Projects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="database.html">Database &amp; Configuration</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Models</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
-<li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
-<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
-<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering &amp; Pagination</a></li>
-<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
-<li class="toctree-l1"><a class="reference internal" href="current.html">Current &amp; ContextParam</a></li>
-<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
-<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
-<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
 <li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
 <li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering &amp; Pagination</a></li>
+<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Access</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="context.html">Request Context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tenancy.html">Multi-Tenancy</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Testing &amp; Deploying</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
 </ul>
 </div>
 </nav></div>
@@ -552,6 +566,12 @@ take.</p></li>
 <li><p><strong>Equality by identity.</strong> Two model objects are equal only when they are
 the same object, as for any SQLAlchemy model. So a model object can go in a
 <code class="docutils literal notranslate"><span class="pre">set</span></code>, and comparing objects never loads a relationship.</p></li>
+<li><p><strong>A repr that never loads.</strong> <code class="docutils literal notranslate"><span class="pre">repr(post)</span></code> shows the primary key and the
+other columns that are loaded, such as <code class="docutils literal notranslate"><span class="pre">BlogPost(id=1,</span> <span class="pre">title='Hello')</span></code>.
+<code class="docutils literal notranslate"><span class="pre">...</span></code> stands for columns that are not loaded, and relationships are left
+out. So the repr works in async code, for example in a log message or in
+the output of a failed test. Pass <code class="docutils literal notranslate"><span class="pre">repr=True</span></code> on a model for the dataclass
+repr, which reads every field.</p></li>
 <li><p><strong>A table name.</strong> The table name is the class name in snake_case:
 <code class="docutils literal notranslate"><span class="pre">BlogPost</span></code> gets <code class="docutils literal notranslate"><span class="pre">blog_post</span></code>. That is why <code class="docutils literal notranslate"><span class="pre">ForeignKey(&quot;blog_post.id&quot;)</span></code> works.
 Set <code class="docutils literal notranslate"><span class="pre">__tablename__</span></code> on a model to choose another name.</p></li>
@@ -594,6 +614,8 @@ constraints predictable names, which Alembic needs to drop them later, set
     <span class="n">type_annotation_map</span> <span class="o">=</span> <span class="p">{</span><span class="n">Decimal</span><span class="p">:</span> <span class="n">Numeric</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">2</span><span class="p">)}</span>
 </pre></div>
 </div>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
 <p>Your <code class="docutils literal notranslate"><span class="pre">type_annotation_map</span></code> entries win over Restly’s. Restly’s entries still
 apply to the types you leave out. So <code class="docutils literal notranslate"><span class="pre">{datetime:</span> <span class="pre">DateTime()}</span></code> stores the
 datetimes on this base without a time zone, and enums are still strings. The
@@ -608,6 +630,7 @@ their fields are equal. SQLAlchemy takes the options from the first dataclass
 class in the bases of a model, and that is often a mixin. So options on the
 base would apply to some models only, and the base raises
 <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.RestlyConfigurationError</span></code></a>.</p>
+</div>
 </section>
 <section id="add-common-columns">
 <span id="model-mixins"></span><h2>Add common columns<a class="headerlink" href="#add-common-columns" title="Link to this heading">#</a></h2>
@@ -633,14 +656,37 @@ The constructor sets both to the current time, and SQLAlchemy sets
     <span class="n">name</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
 </pre></div>
 </div>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
 <p>The two mixins are SQLAlchemy dataclass mixins. On a base without
 <code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code>, SQLAlchemy makes each model that uses them a dataclass.
 The constructor of that model then takes keyword arguments only, and requires
 every field without a default.</p>
 <p>Your own mixins with columns, for a base with <code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code>, must be
-dataclass mixins too. Subclass <code class="docutils literal notranslate"><span class="pre">MappedAsDataclass</span></code> and pass <code class="docutils literal notranslate"><span class="pre">kw_only=True</span></code>, as
-<code class="docutils literal notranslate"><span class="pre">AuditStamped</span></code> <a class="reference internal" href="#server-stamped-fields">below</a> does. SQLAlchemy warns about a
-mixin that is not a dataclass, and SQLAlchemy 2.1 rejects it.</p>
+dataclass mixins too. Subclass <code class="docutils literal notranslate"><span class="pre">MappedAsDataclass</span></code> and pass the options of
+<code class="docutils literal notranslate"><span class="pre">fr.IDMixin</span></code>, <code class="docutils literal notranslate"><span class="pre">kw_only=True</span></code>, <code class="docutils literal notranslate"><span class="pre">eq=False</span></code> and <code class="docutils literal notranslate"><span class="pre">repr=False</span></code>, as <code class="docutils literal notranslate"><span class="pre">AuditStamped</span></code>
+<a class="reference internal" href="#server-stamped-fields">below</a> does. SQLAlchemy warns about a mixin that is
+not a dataclass, and SQLAlchemy 2.1 rejects it.</p>
+<p>A dataclass mixin gets Python’s defaults for each option that it does not
+set, not the options of <code class="docutils literal notranslate"><span class="pre">Base</span></code>:</p>
+<ul class="simple">
+<li><p>Without <code class="docutils literal notranslate"><span class="pre">kw_only=True</span></code>, a model that lists the mixin first fails when
+Python reads it, with “non-default argument follows default argument”.
+SQLAlchemy takes a model’s options from the first dataclass class in its
+bases.</p></li>
+<li><p>Without <code class="docutils literal notranslate"><span class="pre">eq=False</span></code>, a model with the mixin compares its objects field by
+field, wherever the mixin is in the bases. Comparing two objects can then
+load a relationship, and an async session raises <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. Restly
+raises
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>
+for such a model, unless the model passes <code class="docutils literal notranslate"><span class="pre">eq=True</span></code> or writes its own
+<code class="docutils literal notranslate"><span class="pre">__eq__</span></code>. A model below another model, also an <code class="docutils literal notranslate"><span class="pre">__abstract__</span></code> one, takes
+that model’s choice.</p></li>
+<li><p>Without <code class="docutils literal notranslate"><span class="pre">repr=False</span></code>, a model with the mixin gets a dataclass repr instead
+of the repr of <code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code>. A dataclass repr reads every field, so in
+async code it can raise <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>.</p></li>
+</ul>
+</div>
 </section>
 <section id="use-the-base-in-your-app">
 <h2>Use the base in your app<a class="headerlink" href="#use-the-base-in-your-app" title="Link to this heading">#</a></h2>
@@ -700,10 +746,13 @@ stored values, as <a class="reference internal" href="deploying.html#timezone-mi
 </ul>
 <p>Alembic shows these column changes when it generates the migration. Review
 the migration before you run it.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
 <p>Put <code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code> on the base itself. On a class below another
 declarative base, it raises
 <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.RestlyConfigurationError</span></code></a>,
 because Restly’s defaults change the registry of the whole base.</p>
+</div>
 </section>
 <section id="where-tenant-audit-and-soft-delete-rules-go">
 <span id="structural-pieces"></span><h2>Where tenant, audit and soft-delete rules go<a class="headerlink" href="#where-tenant-audit-and-soft-delete-rules-go" title="Link to this heading">#</a></h2>
@@ -722,13 +771,13 @@ because Restly’s defaults change the registry of the whole base.</p>
 <td><p>A column default that reads <code class="docutils literal notranslate"><span class="pre">Current</span></code>: <a class="reference internal" href="#server-stamped-fields">Stamp the fields the server owns</a></p></td>
 </tr>
 <tr class="row-even"><td><p>Each tenant reads and writes only its own rows</p></td>
-<td><p>A session listener and a stamped column: <a class="reference internal" href="#tenant-row-scoping">Keep each tenant’s rows apart</a></p></td>
+<td><p>A session listener and a stamped column: <a class="reference internal" href="tenancy.html#tenant-row-scoping"><span class="std std-ref">Multi-Tenancy</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p>Deleted rows are hidden from every read</p></td>
 <td><p>The model’s <a class="reference internal" href="scopes.html#default-scope"><span class="std std-ref">default scope</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">DELETE</span></code> marks the row instead of removing it</p></td>
-<td><p>A view mixin that overrides <code class="docutils literal notranslate"><span class="pre">delete</span></code>: <a class="reference internal" href="#soft-delete-mixin">Soft-delete rows</a></p></td>
+<td><p>A view mixin that overrides <code class="docutils literal notranslate"><span class="pre">delete</span></code>: <a class="reference internal" href="scopes.html#soft-delete-mixin"><span class="std std-ref">Soft-delete rows</span></a></p></td>
 </tr>
 </tbody>
 </table>
@@ -738,7 +787,9 @@ because Restly’s defaults change the registry of the whole base.</p>
 <a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/models.py"><code class="docutils literal notranslate"><span class="pre">app/models.py</span></code></a>,
 and the view mixin <code class="docutils literal notranslate"><span class="pre">SoftDeleteMixin</span></code> is in
 <a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py"><code class="docutils literal notranslate"><span class="pre">app/views.py</span></code></a>.
-Copy them into your project as a starting point.</p>
+Copy them into your project as a starting point.
+<a class="reference internal" href="tenancy.html#composing-on-a-view"><span class="std std-ref">Put the parts together</span></a> shows a model and a view that
+use all of them.</p>
 </section>
 <section id="set-a-value-on-every-write-path">
 <span id="write-path-values"></span><h2>Set a value on every write path<a class="headerlink" href="#set-a-value-on-every-write-path" title="Link to this heading">#</a></h2>
@@ -781,17 +832,26 @@ computed from other columns, such as a slug from the title, is a SQLAlchemy
 If the slug must change when the title changes, listen to <code class="docutils literal notranslate"><span class="pre">before_update</span></code>
 too. Mark <code class="docutils literal notranslate"><span class="pre">slug</span></code> as <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code></a> on
 the schema, so the request body cannot send it.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
 <p>A mapper event may change only the row that it receives, and it may run SQL
 on <code class="docutils literal notranslate"><span class="pre">connection</span></code>. To change other rows in the same flush, use the session’s
 <code class="docutils literal notranslate"><span class="pre">before_flush</span></code> event. SQLAlchemy’s
 <a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/events.html#mapper-events">mapper events documentation</a>
 explains these rules.</p>
+<p>The SaaS example does both. A project’s slug comes from mapper events, with a
+query on <code class="docutils literal notranslate"><span class="pre">connection</span></code> that keeps the slug unique, in
+<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/models.py"><code class="docutils literal notranslate"><span class="pre">app/projects/models.py</span></code></a>.
+The story-point total of a project comes from a <code class="docutils literal notranslate"><span class="pre">before_flush</span></code> event that
+reads the changes of each task, in
+<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/tasks/models.py"><code class="docutils literal notranslate"><span class="pre">app/tasks/models.py</span></code></a>.</p>
+</div>
 </section>
 <section id="stamp-the-fields-the-server-owns">
 <span id="server-stamped-fields"></span><h2>Stamp the fields the server owns<a class="headerlink" href="#stamp-the-fields-the-server-owns" title="Link to this heading">#</a></h2>
 <p>The server decides some fields, such as who created a row and who changed it
 last. Make each one a column default that reads a member of your
-<a class="reference internal" href="current.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">Current</span></code></span></a>. This mixin stamps both fields on each model
+<a class="reference internal" href="context.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">Current</span></code></span></a>. This mixin stamps both fields on each model
 that uses it:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">ForeignKey</span><span class="p">,</span> <span class="n">orm</span>
 
@@ -800,7 +860,7 @@ that uses it:</p>
 <span class="kn">from</span><span class="w"> </span><span class="nn">app.current</span><span class="w"> </span><span class="kn">import</span> <span class="n">Current</span>
 
 
-<span class="k">class</span><span class="w"> </span><span class="nc">AuditStamped</span><span class="p">(</span><span class="n">orm</span><span class="o">.</span><span class="n">MappedAsDataclass</span><span class="p">,</span> <span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">AuditStamped</span><span class="p">(</span><span class="n">orm</span><span class="o">.</span><span class="n">MappedAsDataclass</span><span class="p">,</span> <span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">eq</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="nb">repr</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="n">created_by_id</span><span class="p">:</span> <span class="n">orm</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="n">orm</span><span class="o">.</span><span class="n">mapped_column</span><span class="p">(</span>
         <span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;user.id&quot;</span><span class="p">),</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">insert_default</span><span class="o">=</span><span class="n">Current</span><span class="o">.</span><span class="n">user_id</span>
     <span class="p">)</span>
@@ -826,7 +886,7 @@ an <code class="docutils literal notranslate"><span class="pre">UPDATE</span></c
 <li><p><code class="docutils literal notranslate"><span class="pre">init=False</span></code> keeps the field out of the constructor.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">Current.user_id</span></code> has no parentheses. SQLAlchemy calls it when it writes
 the row, as
-<a class="reference internal" href="current.html#current-column-defaults"><span class="std std-ref">Read the current user in a column default</span></a>
+<a class="reference internal" href="context.html#current-column-defaults"><span class="std std-ref">Read the current user in a column default</span></a>
 explains.</p></li>
 </ul>
 <p>Then mark each field
@@ -838,17 +898,23 @@ and leave it out of any <a class="reference internal" href="schemas.html#explici
     <span class="n">updated_by_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">init=False</span></code> does not protect the field from the request body. Restly sets
-each writable field that the constructor does not take after it builds the
-object. So without <code class="docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code>, a client could choose the author, and the
-column default would not run. With <code class="docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code>, the value always comes from
-<code class="docutils literal notranslate"><span class="pre">Current</span></code>.</p>
+<p>In a schema that you write, <code class="docutils literal notranslate"><span class="pre">init=False</span></code> does not protect the field from the
+request body. Restly sets each writable field that the constructor does not
+take after it builds the object. So without <code class="docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code>, a client could
+choose the author, and the column default would not run. With <code class="docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code>,
+the value always comes from <code class="docutils literal notranslate"><span class="pre">Current</span></code>. A view without a schema is safe: the
+<a class="reference internal" href="schemas.html#auto-generated-schemas"><span class="std std-ref">schema that Restly generates</span></a> marks each column with
+<code class="docutils literal notranslate"><span class="pre">init=False</span></code> as <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>. With <code class="docutils literal notranslate"><span class="pre">fr.configure(warn_on_misuse=True)</span></code>, Restly
+warns about a writable field on a column with <code class="docutils literal notranslate"><span class="pre">init=False</span></code> and a default, and
+about a writable relationship field whose foreign key is such a column.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
 <p>A column default runs on every write path: a view’s <code class="docutils literal notranslate"><span class="pre">create</span></code>, a custom route
 that builds the row itself, the <code class="docutils literal notranslate"><span class="pre">fr.objects</span></code> helpers, a bulk route, a script.
 Each of them must have <code class="docutils literal notranslate"><span class="pre">Current</span></code> bound when it flushes. If the member is not
 bound, the flush raises SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">StatementError</span></code> around a <code class="docutils literal notranslate"><span class="pre">LookupError</span></code>.
 It never writes <code class="docutils literal notranslate"><span class="pre">None</span></code> instead. A script or a job binds the values around its
-writes, as <a class="reference internal" href="current.html#current-manual-binding"><span class="std std-ref">Bind in a script or job</span></a> shows:</p>
+writes, as <a class="reference internal" href="context.html#current-manual-binding"><span class="std std-ref">Bind in a script or job</span></a> shows:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">Current</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">user_id</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
     <span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Document</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">&quot;Imported&quot;</span><span class="p">))</span>
     <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
@@ -859,6 +925,7 @@ the first admin comes from a migration. A migration writes through its own
 table objects and runs no ORM default, so that row has no creator. The SaaS
 example runs these stamps as <code class="docutils literal notranslate"><span class="pre">AuditStamped</span></code> in
 <a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/models.py"><code class="docutils literal notranslate"><span class="pre">app/models.py</span></code></a>.</p>
+</div>
 <section id="two-foreign-keys-to-the-same-table">
 <h3>Two foreign keys to the same table<a class="headerlink" href="#two-foreign-keys-to-the-same-table" title="Link to this heading">#</a></h3>
 <p><code class="docutils literal notranslate"><span class="pre">created_by_id</span></code> and <code class="docutils literal notranslate"><span class="pre">updated_by_id</span></code> both point at <code class="docutils literal notranslate"><span class="pre">user.id</span></code>. A model can
@@ -875,244 +942,15 @@ SQLAlchemy cannot tell which foreign key that relationship uses, and it raises
 </div>
 </section>
 </section>
-<section id="keep-each-tenant-s-rows-apart">
-<span id="tenant-row-scoping"></span><h2>Keep each tenant’s rows apart<a class="headerlink" href="#keep-each-tenant-s-rows-apart" title="Link to this heading">#</a></h2>
-<p>In a multi-tenant app, each organization reads and writes only its own rows.
-The rule has two halves: a filter on every read, and a column that every write
-stamps. Both read the tenant from <code class="docutils literal notranslate"><span class="pre">Current</span></code>.</p>
-<p>The tenant rule is not a <a class="reference internal" href="scopes.html#default-scope"><span class="std std-ref">scope</span></a>. A view or a route can
-replace its scope, but the tenant rule must hold under every scope and for
-every reference check. So it lives on the SQLAlchemy session. A
-<code class="docutils literal notranslate"><span class="pre">do_orm_execute</span></code> listener adds a
-<a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/queryguide/api.html#sqlalchemy.orm.with_loader_criteria"><code class="docutils literal notranslate"><span class="pre">with_loader_criteria</span></code></a>
-option to every ORM read of an entity or a relationship:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sa</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">ForeignKey</span><span class="p">,</span> <span class="n">orm</span>
-
-<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">Current</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ContextNamespace</span><span class="p">):</span>
-    <span class="n">org_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ContextParam</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
-    <span class="n">user_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ContextParam</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
-    <span class="n">is_admin</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ContextParam</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">Base</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ModelDefaults</span><span class="p">,</span> <span class="n">orm</span><span class="o">.</span><span class="n">DeclarativeBase</span><span class="p">):</span>
-    <span class="k">pass</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">TenantOwned</span><span class="p">(</span><span class="n">orm</span><span class="o">.</span><span class="n">MappedAsDataclass</span><span class="p">,</span> <span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;The tenant column: the organization the request acts in.&quot;&quot;&quot;</span>
-
-    <span class="n">organization_id</span><span class="p">:</span> <span class="n">orm</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">orm</span><span class="o">.</span><span class="n">mapped_column</span><span class="p">(</span>
-        <span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;organization.id&quot;</span><span class="p">),</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">insert_default</span><span class="o">=</span><span class="n">Current</span><span class="o">.</span><span class="n">org_id</span>
-    <span class="p">)</span>
-
-
-<span class="c1"># Read identity when the SQL executes, not when the option is attached.</span>
-<span class="c1"># bindparam tests its callable&#39;s truth value, which a Current member rejects,</span>
-<span class="c1"># so these two wrap the member in a lambda.</span>
-<span class="n">tenant_org_id</span> <span class="o">=</span> <span class="n">sa</span><span class="o">.</span><span class="n">bindparam</span><span class="p">(</span>
-    <span class="s2">&quot;tenant_org_id&quot;</span><span class="p">,</span> <span class="n">callable_</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">Current</span><span class="o">.</span><span class="n">org_id</span><span class="p">(),</span> <span class="n">type_</span><span class="o">=</span><span class="n">sa</span><span class="o">.</span><span class="n">Integer</span>
-<span class="p">)</span>
-<span class="n">tenant_is_admin</span> <span class="o">=</span> <span class="n">sa</span><span class="o">.</span><span class="n">bindparam</span><span class="p">(</span>
-    <span class="s2">&quot;tenant_is_admin&quot;</span><span class="p">,</span> <span class="n">callable_</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">Current</span><span class="o">.</span><span class="n">is_admin</span><span class="p">(),</span> <span class="n">type_</span><span class="o">=</span><span class="n">sa</span><span class="o">.</span><span class="n">Boolean</span>
-<span class="p">)</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">TenantCriteria</span><span class="p">(</span><span class="n">orm</span><span class="o">.</span><span class="n">UserDefinedOption</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Marks a statement that already carries the tenant criteria.&quot;&quot;&quot;</span>
-
-    <span class="n">propagate_to_loaders</span> <span class="o">=</span> <span class="kc">True</span>
-
-
-<span class="nd">@sa</span><span class="o">.</span><span class="n">event</span><span class="o">.</span><span class="n">listens_for</span><span class="p">(</span><span class="n">orm</span><span class="o">.</span><span class="n">Session</span><span class="p">,</span> <span class="s2">&quot;do_orm_execute&quot;</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">_restrict_tenant_rows</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">orm</span><span class="o">.</span><span class="n">ORMExecuteState</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">state</span><span class="o">.</span><span class="n">is_select</span> <span class="ow">or</span> <span class="n">state</span><span class="o">.</span><span class="n">is_column_load</span><span class="p">:</span>
-        <span class="k">return</span>
-    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">TenantCriteria</span><span class="p">)</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">state</span><span class="o">.</span><span class="n">user_defined_options</span><span class="p">):</span>
-        <span class="k">return</span>
-    <span class="n">state</span><span class="o">.</span><span class="n">statement</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">statement</span><span class="o">.</span><span class="n">options</span><span class="p">(</span>
-        <span class="n">TenantCriteria</span><span class="p">(),</span>
-        <span class="n">orm</span><span class="o">.</span><span class="n">with_loader_criteria</span><span class="p">(</span>
-            <span class="n">TenantOwned</span><span class="p">,</span>
-            <span class="k">lambda</span> <span class="bp">cls</span><span class="p">:</span> <span class="n">sa</span><span class="o">.</span><span class="n">or_</span><span class="p">(</span><span class="n">tenant_is_admin</span><span class="p">,</span> <span class="bp">cls</span><span class="o">.</span><span class="n">organization_id</span> <span class="o">==</span> <span class="n">tenant_org_id</span><span class="p">),</span>
-            <span class="n">include_aliases</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-        <span class="p">),</span>
-    <span class="p">)</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">Project</span><span class="p">(</span><span class="n">TenantOwned</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">TimestampsMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDMixin</span><span class="p">,</span> <span class="n">Base</span><span class="p">):</span>
-    <span class="n">name</span><span class="p">:</span> <span class="n">orm</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
-</pre></div>
-</div>
-<p>The column is the write half. <code class="docutils literal notranslate"><span class="pre">init=False</span></code> keeps the tenant out of the
-constructor, and <code class="docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code> on the schema keeps it out of the request body.
-The insert default stamps it during the flush, from the same member that the
-listener reads. So a row lands in the organization that the request acts in,
-whatever code builds it. An admin who writes into another tenant acts as that
-tenant, and the stamp follows. Code that needs the tenant before the flush,
-such as a mapper event or a check for a unique name, reads <code class="docutils literal notranslate"><span class="pre">Current.org_id()</span></code>
-itself, because the insert default has not run yet.</p>
-<p>Bind the values once per request with a generated dependency,
-<code class="docutils literal notranslate"><span class="pre">Current.depends(...)</span></code>, as
-<a class="reference internal" href="current.html#current-request-binding"><span class="std std-ref">Bind from a FastAPI dependency</span></a> shows. The SaaS
-example binds them in
-<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/current.py"><code class="docutils literal notranslate"><span class="pre">app/current.py</span></code></a>.
-Its sources answer 401 to a request without an identity, so the values are
-never <code class="docutils literal notranslate"><span class="pre">None</span></code>. An admin is a flag, <code class="docutils literal notranslate"><span class="pre">Current.is_admin</span></code>, not a missing value.</p>
-<section id="what-the-listener-covers">
-<h3>What the listener covers<a class="headerlink" href="#what-the-listener-covers" title="Link to this heading">#</a></h3>
-<ul class="simple">
-<li><p>The listener adds the option also to a query that starts from a model
-without a tenant, because that query can load tenant rows through a
-relationship. <code class="docutils literal notranslate"><span class="pre">select(Organization).options(joinedload(Organization.users))</span></code>
-must filter the users.</p></li>
-<li><p>Relationship loads get the option too, also when their parent was inserted
-and not loaded by a query. Keep the default <code class="docutils literal notranslate"><span class="pre">propagate_to_loaders=True</span></code>, so
-that joined eager loads get the criteria.</p></li>
-<li><p>A relationship load receives the options of the statement that loaded its
-parent. Without the <code class="docutils literal notranslate"><span class="pre">TenantCriteria</span></code> marker, the listener would add a second
-copy of each criterion to that load. A chain of loads, such as the subtasks
-of a task, would add one more copy at each level. The marker goes with the
-criteria, so the listener skips a statement that has it.</p></li>
-<li><p><a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/sqlelement.html#sqlalchemy.sql.expression.bindparam"><code class="docutils literal notranslate"><span class="pre">bindparam(callable_=...)</span></code></a>
-reads the identity only when the SQL uses that parameter. So a query that
-reads no tenant rows needs no identity. A read of tenant rows without an
-identity fails with a <code class="docutils literal notranslate"><span class="pre">LookupError</span></code>, wrapped in SQLAlchemy’s
-<code class="docutils literal notranslate"><span class="pre">StatementError</span></code>. The lambdas are needed because <code class="docutils literal notranslate"><span class="pre">bindparam</span></code> tests whether
-its callable is true, and a <code class="docutils literal notranslate"><span class="pre">ContextParam</span></code> raises on that test.</p></li>
-<li><p>Keep <code class="docutils literal notranslate"><span class="pre">Current.bind(...)</span></code> active as long as the session lives. Use a new
-session for a different identity. The criteria do not remove objects that
-the session has already loaded, and <code class="docutils literal notranslate"><span class="pre">session.get()</span></code> returns such an object
-without a query.</p></li>
-</ul>
-<p>A model that reaches its tenant through a relationship needs its own
-criterion. The SaaS example has one for <code class="docutils literal notranslate"><span class="pre">Task</span></code> through its project, for
-<code class="docutils literal notranslate"><span class="pre">TaskLabel</span></code> through its task and its label, and for <code class="docutils literal notranslate"><span class="pre">UploadLine</span></code> through its
-upload. Write each criterion as a lambda. SQLAlchemy analyses a lambda once
-and caches it. It processes a plain expression again for every statement,
-also for statements that never read the model.</p>
-</section>
-<section id="what-the-listener-does-not-cover">
-<h3>What the listener does not cover<a class="headerlink" href="#what-the-listener-does-not-cover" title="Link to this heading">#</a></h3>
-<p>The listener filters ORM reads. It is not access control in the database.
-Raw SQL, Core table queries and writes need their own checks. The criteria
-reach a statement only through an entity that the statement selects or joins:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">select(func.count()).where(Task.project_id</span> <span class="pre">==</span> <span class="pre">id)</span></code> names <code class="docutils literal notranslate"><span class="pre">Task</span></code> only in
-its <code class="docutils literal notranslate"><span class="pre">WHERE</span></code> clause, so it counts the tasks of every tenant. Add
-<code class="docutils literal notranslate"><span class="pre">.select_from(Task)</span></code>.</p></li>
-<li><p>A relationship condition built with <code class="docutils literal notranslate"><span class="pre">.any()</span></code> or <code class="docutils literal notranslate"><span class="pre">.has()</span></code> does not get the
-criteria inside its <code class="docutils literal notranslate"><span class="pre">EXISTS</span></code> subquery. Add the tenant condition there
-yourself, as the SaaS criteria do.</p></li>
-</ul>
-</section>
-<section id="let-an-admin-read-every-tenant">
-<h3>Let an admin read every tenant<a class="headerlink" href="#let-an-admin-read-every-tenant" title="Link to this heading">#</a></h3>
-<p>The listener checks <code class="docutils literal notranslate"><span class="pre">tenant_is_admin</span></code>, so an admin reads across tenants
-through the same views. A flag that each request binds lets a rule skip its
-filter. If the flag is not bound, the read fails with an error. This keeps one
-set of routes, but every rule that an admin may skip must check the flag. For the rules in a scope, the other choice is a second admin view with
-<a class="reference internal" href="scopes.html#view-scope"><span class="std std-ref">its own scope</span></a>. That needs more classes, but each view shows in
-its class what it can read. A second view does not change the tenant rule,
-because the rule lives on the session.</p>
-</section>
-</section>
-<section id="soft-delete-rows">
-<span id="soft-delete-mixin"></span><h2>Soft-delete rows<a class="headerlink" href="#soft-delete-rows" title="Link to this heading">#</a></h2>
-<p>A soft delete marks a row as deleted and keeps it in the table. It has three
-parts:</p>
-<ul class="simple">
-<li><p>The model has a <code class="docutils literal notranslate"><span class="pre">deleted_at</span></code> column.</p></li>
-<li><p>The model’s <a class="reference internal" href="scopes.html#default-scope"><span class="std std-ref">default scope</span></a> hides deleted rows from every
-read and every reference check.</p></li>
-<li><p>A view mixin overrides <code class="docutils literal notranslate"><span class="pre">delete</span></code>, so <code class="docutils literal notranslate"><span class="pre">DELETE</span></code> sets <code class="docutils literal notranslate"><span class="pre">deleted_at</span></code> instead of
-removing the row.</p></li>
-</ul>
-<p>The column comes from a model mixin:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
-
-<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">orm</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">SoftDeletable</span><span class="p">(</span><span class="n">orm</span><span class="o">.</span><span class="n">MappedAsDataclass</span><span class="p">,</span> <span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-    <span class="n">deleted_at</span><span class="p">:</span> <span class="n">orm</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="n">datetime</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="n">orm</span><span class="o">.</span><span class="n">mapped_column</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
-</pre></div>
-</div>
-<section id="make-delete-set-a-timestamp">
-<span id="soft-delete-recipe"></span><h3>Make <code class="docutils literal notranslate"><span class="pre">DELETE</span></code> set a timestamp<a class="headerlink" href="#make-delete-set-a-timestamp" title="Link to this heading">#</a></h3>
-<p>Override the <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete" title="fastapi_restly.views.RestView.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a> business
-method. It receives the loaded row. Set the timestamp, flush, and do not call
-<code class="docutils literal notranslate"><span class="pre">super()</span></code>, because that would remove the row:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span>
-
-<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.ext.asyncio</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncSession</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">SoftDeleteMixin</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;``delete`` sets ``deleted_at`` instead of removing the row.&quot;&quot;&quot;</span>
-
-    <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
-        <span class="n">session</span><span class="p">:</span> <span class="n">AsyncSession</span>
-
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">obj</span><span class="o">.</span><span class="n">deleted_at</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
-</pre></div>
-</div>
-<p>If only one view needs it, put the same <code class="docutils literal notranslate"><span class="pre">delete</span></code> method on that view. The
-mixin has no <code class="docutils literal notranslate"><span class="pre">hasattr</span></code> check and no fallback to <code class="docutils literal notranslate"><span class="pre">super()</span></code>. It goes on views of
-<code class="docutils literal notranslate"><span class="pre">SoftDeletable</span></code> models, so the column is always there.</p>
-<p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_delete" title="fastapi_restly.views.RestView.handle_delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_delete</span></code></a> still
-loads the row through the scope, calls <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and commits. The mixin only
-changes what “delete” does. A query parameter can never widen a scope, so a
-client cannot ask for deleted rows. To list the deleted rows or restore one,
-add a route that <a class="reference internal" href="scopes.html#per-read-scope"><span class="std std-ref">reads other rows</span></a>.</p>
-</section>
-<section id="put-the-parts-together">
-<span id="composing-on-a-view"></span><h3>Put the parts together<a class="headerlink" href="#put-the-parts-together" title="Link to this heading">#</a></h3>
-<p>The model declares its columns, and the model’s clause namespace declares the
-read rule. A view adds only the <code class="docutils literal notranslate"><span class="pre">delete</span></code> mixin:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Project</span><span class="p">(</span><span class="n">TenantOwned</span><span class="p">,</span> <span class="n">AuditStamped</span><span class="p">,</span> <span class="n">SoftDeletable</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">TimestampsMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDMixin</span><span class="p">,</span> <span class="n">Base</span><span class="p">):</span>
-    <span class="n">name</span><span class="p">:</span> <span class="n">orm</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">ProjectClauses</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ClauseNamespace</span><span class="p">):</span>
-    <span class="n">model</span> <span class="o">=</span> <span class="n">Project</span>
-
-    <span class="n">is_deleted</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span><span class="n">Project</span><span class="o">.</span><span class="n">deleted_at</span><span class="o">.</span><span class="n">is_not</span><span class="p">(</span><span class="kc">None</span><span class="p">))</span>
-    <span class="n">default_scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">none_of</span><span class="p">(</span><span class="n">is_deleted</span><span class="p">)</span>  <span class="c1"># the session has the tenant rule</span>
-
-
-<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">ProjectView</span><span class="p">(</span><span class="n">SoftDeleteMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/projects&quot;</span>
-    <span class="n">model</span> <span class="o">=</span> <span class="n">Project</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">ProjectSchema</span>
-    <span class="c1"># no scope declared: reads apply ProjectClauses.default_scope</span>
-</pre></div>
-</div>
-<p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a>,
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.count" title="fastapi_restly.views.RestView.count"><code class="xref py py-meth docutils literal notranslate"><span class="pre">count</span></code></a> and
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> apply the default
-scope. So lists, totals and single reads hide deleted rows. Updates and
-deletes load the row through <code class="docutils literal notranslate"><span class="pre">get_one</span></code>, so they return 404 for a deleted row.
-The session listener adds the tenant rule to these reads and to every
-reference check. The columns stamp themselves on every write. The SaaS example
-runs this view in
-<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py"><code class="docutils literal notranslate"><span class="pre">app/projects/views.py</span></code></a>.</p>
-</section>
-</section>
 <section id="see-also">
 <h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><a class="reference internal" href="current.html"><span class="std std-doc">Current &amp; ContextParam</span></a>: bind the values that column
-defaults and the tenant listener read.</p></li>
-<li><p><a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a>: hide rows from every read, and read past the scope on
-one route.</p></li>
+<li><p><a class="reference internal" href="context.html"><span class="std std-doc">Request Context</span></a>: bind the values that column defaults
+read.</p></li>
+<li><p><a class="reference internal" href="tenancy.html"><span class="std std-doc">Multi-Tenancy</span></a>: the tenant column, and the session rule that
+filters every read.</p></li>
+<li><p><a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a>: hide rows from every read, and
+<a class="reference internal" href="scopes.html#soft-delete-mixin"><span class="std std-ref">soft-delete rows</span></a>.</p></li>
 <li><p><a class="reference internal" href="lifecycle.html#business-methods"><span class="std std-ref">Request Lifecycle &amp; Hooks</span></a>: values that only the HTTP
 API sets, in <code class="docutils literal notranslate"><span class="pre">create</span></code> and <code class="docutils literal notranslate"><span class="pre">update</span></code>.</p></li>
 </ul>
@@ -1175,17 +1013,6 @@ API sets, in <code class="docutils literal notranslate"><span class="pre">create
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#set-a-value-on-every-write-path">Set a value on every write path</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#stamp-the-fields-the-server-owns">Stamp the fields the server owns</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#two-foreign-keys-to-the-same-table">Two foreign keys to the same table</a></li>
-</ul>
-</li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#keep-each-tenant-s-rows-apart">Keep each tenant’s rows apart</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#what-the-listener-covers">What the listener covers</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#what-the-listener-does-not-cover">What the listener does not cover</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#let-an-admin-read-every-tenant">Let an admin read every tenant</a></li>
-</ul>
-</li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#soft-delete-rows">Soft-delete rows</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#make-delete-set-a-timestamp">Make <code class="docutils literal notranslate"><span class="pre">DELETE</span></code> set a timestamp</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#put-the-parts-together">Put the parts together</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>

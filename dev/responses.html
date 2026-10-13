@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -62,8 +62,8 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Relationships" href="relationships.html" />
-    <link rel="prev" title="Schemas &amp; Validation" href="schemas.html" />
+    <link rel="next" title="Filtering &amp; Pagination" href="filtering.html" />
+    <link rel="prev" title="Relationships" href="relationships.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -410,27 +410,41 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="projects.html">New &amp; Existing Projects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="database.html">Database &amp; Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
-<li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Responses</a></li>
-<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
-<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering &amp; Pagination</a></li>
-<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
-<li class="toctree-l1"><a class="reference internal" href="current.html">Current &amp; ContextParam</a></li>
-<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
-<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
-<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
 <li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
 <li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering &amp; Pagination</a></li>
+<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Access</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="context.html">Request Context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tenancy.html">Multi-Tenancy</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Testing &amp; Deploying</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
 </ul>
 </div>
 </nav></div>
@@ -619,7 +633,17 @@ them as a dict.</p></li>
     <span class="n">pagination</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">NumberedPagination</span><span class="p">(</span><span class="n">envelope</span><span class="o">=</span><span class="n">DataCount</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>camelCase field names, <code class="docutils literal notranslate"><span class="pre">totalCount</span></code>, <code class="docutils literal notranslate"><span class="pre">pageSize</span></code> and <code class="docutils literal notranslate"><span class="pre">totalPages</span></code>:</p>
+<p>To give every list the same envelope, set the pagination on a project base
+view; see <a class="reference internal" href="filtering.html#set-pagination-once"><span class="std std-ref">Set the pagination once for every view</span></a>. A custom list
+route can then name the view’s list response class, so OpenAPI shows the same
+type as for <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>; see
+<a class="reference internal" href="schemas.html#name-the-response-classes"><span class="std std-ref">Name the view’s classes in a custom route</span></a>.
+<a class="reference internal" href="filtering.html#fastapi-pagination-migration"><span class="std std-ref">Coming from fastapi-pagination</span></a> shows the
+envelope that keeps fastapi-pagination’s field names.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>An envelope with camelCase field names, <code class="docutils literal notranslate"><span class="pre">totalCount</span></code>, <code class="docutils literal notranslate"><span class="pre">pageSize</span></code> and
+<code class="docutils literal notranslate"><span class="pre">totalPages</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic.alias_generators</span><span class="w"> </span><span class="kn">import</span> <span class="n">to_camel</span>
 
 
@@ -659,13 +683,7 @@ settings. So a required field that Restly cannot fill, such as a misspelled
 <code class="docutils literal notranslate"><span class="pre">totl_count</span></code>, fails at startup and not on a request. Leave the envelope’s
 <code class="docutils literal notranslate"><span class="pre">extra</span></code> setting at its default: Restly passes it every page value, and it
 keeps the fields that it declares.</p>
-<p>To give every list the same envelope, set the pagination on a project base
-view; see <a class="reference internal" href="filtering.html#set-pagination-once"><span class="std std-ref">Set the pagination once for every view</span></a>. A custom list
-route can then name the view’s list response class, so OpenAPI shows the same
-type as for <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>; see
-<a class="reference internal" href="schemas.html#name-the-response-classes"><span class="std std-ref">Name the view’s classes in a custom route</span></a>.
-<a class="reference internal" href="filtering.html#fastapi-pagination-migration"><span class="std std-ref">Coming from fastapi-pagination</span></a> shows the
-envelope that keeps fastapi-pagination’s field names.</p>
+</div>
 <section id="change-the-envelope-of-a-view-without-pagination">
 <h3>Change the envelope of a view without pagination<a class="headerlink" href="#change-the-envelope-of-a-view-without-pagination" title="Link to this heading">#</a></h3>
 <p>A view that returns every row takes an envelope through
@@ -732,8 +750,10 @@ matching <code class="docutils literal notranslate"><span class="pre">response_m
         <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_single_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)}</span>
 </pre></div>
 </div>
-<p>Call <code class="docutils literal notranslate"><span class="pre">to_single_response(obj)</span></code> before you put the object in the envelope. It
-turns the ORM object into an instance of the response class, which has no
+<p>Call <code class="docutils literal notranslate"><span class="pre">to_single_response(obj)</span></code> before you put the object in the envelope.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>It turns the ORM object into an instance of the response class, which has no
 <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields. The ORM object often has no value for those fields, such
 as a plain <code class="docutils literal notranslate"><span class="pre">password</span></code>, so it may not validate as the view’s schema.</p>
 <p>A replacement for
@@ -744,6 +764,7 @@ and page query parameters. To reuse the page numbers, pass the result of
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_list_response" title="fastapi_restly.views.BaseRestView.to_list_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_list_response(result)</span></code></a>.
 It returns an instance of the view’s envelope model, so read its attributes:
 <code class="docutils literal notranslate"><span class="pre">page.data</span></code> and <code class="docutils literal notranslate"><span class="pre">page.total_count</span></code> with the default envelope.</p>
+</div>
 </section>
 <section id="change-the-shape-of-every-route">
 <span id="to-response"></span><h2>Change the shape of every route<a class="headerlink" href="#change-the-shape-of-every-route" title="Link to this heading">#</a></h2>
@@ -788,9 +809,12 @@ trust the data:</p>
 So make sure that the values match the response class. Build an instance of
 the response class, not of the view’s schema: Restly sends an instance of the
 response class as it is, and converts an instance of any other class first.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
 <p>An override may return an instance of another model, such as the view’s
 schema. Only the fields of the response class go out; see
 <a class="reference internal" href="#response-conversion">Internals</a> for how Restly converts it.</p>
+</div>
 </section>
 <section id="use-a-different-schema-for-the-list-route">
 <span id="list-schema"></span><h2>Use a different schema for the list route<a class="headerlink" href="#use-a-different-schema-for-the-list-route" title="Link to this heading">#</a></h2>
@@ -868,20 +892,20 @@ relationship fields load, and <code class="docutils literal notranslate"><span c
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="schemas.html"
+       href="relationships.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Schemas &amp; Validation</p>
+        <p class="prev-next-title">Relationships</p>
       </div>
     </a>
     <a class="right-next"
-       href="relationships.html"
+       href="filtering.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Relationships</p>
+        <p class="prev-next-title">Filtering &amp; Pagination</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>

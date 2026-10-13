@@ -30,7 +30,7 @@ exist, use a [scope](scopes.md) instead.
 
 Restly does not check who the caller is. Your app does that with FastAPI's
 security tools, and binds the caller with
-[Current & ContextParam](#current-request-binding).
+[Request Context](#current-request-binding).
 
 (authorize-gate)=
 ## Allow or refuse an action
@@ -46,7 +46,7 @@ author change a post or a comment:
 - A read returns at once. The scope already decides which posts each reader
   sees.
 - A write needs a user. `Current.user_id()` is the caller, bound for each
-  request ([Current & ContextParam](current.md)). Without a user, the
+  request ([Request Context](context.md)). Without a user, the
   answer is a 401, from a plain `fastapi.HTTPException`.
 - Every user may create.
 - Every other action changes one row, and `obj` is that row. Only its author
@@ -57,6 +57,16 @@ author change a post or a comment:
 written once. [Views](#share-behaviour-with-base-views) shows more ways to
 share behavior between views. The full file is
 [`blog/main.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/blog/blog/main.py).
+
+`authorize` is an `async def` on
+{class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` and a plain `def`
+on {class}`RestView <fastapi_restly.views.RestView>`. To refuse, raise
+{class}`fr.exc.Forbidden <fastapi_restly.exc.Forbidden>` or any other
+`fastapi.HTTPException`. [Errors](errors.md) lists the
+exceptions that Restly provides.
+
+:::{admonition} Details
+:class: details
 
 A rule can also read the request body in `data`. On an update,
 `data.model_fields_set` names the fields that the client sent. This view gets
@@ -90,13 +100,7 @@ explains `current_user`. A rule that needs the database can query
 `self.session`. In the SaaS example, a member may change the labels of a task
 only when the task is assigned to them
 ([`app/labels/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/labels/views.py)).
-
-`authorize` is an `async def` on
-{class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` and a plain `def`
-on {class}`RestView <fastapi_restly.views.RestView>`. To refuse, raise
-{class}`fr.exc.Forbidden <fastapi_restly.exc.Forbidden>` or any other
-`fastapi.HTTPException`. [Errors](errors.md) lists the
-exceptions that Restly provides.
+:::
 
 (action-names)=
 ## Action names and `fr.Action`
@@ -158,6 +162,6 @@ themselves.
 - [Scopes](scopes.md): which rows a caller can see, and the 404.
 - [Request Lifecycle & Hooks](#view-request-steps): the steps of a request,
   and where `authorize` runs.
-- [Current & ContextParam](current.md): who is calling.
+- [Request Context](context.md): who is calling.
 - [Errors](errors.md): the exceptions to raise, and how errors
   look.

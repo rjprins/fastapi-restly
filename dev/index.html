@@ -34,7 +34,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -452,8 +452,8 @@ and <code class="docutils literal notranslate"><span class="pre">User</span></co
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>  <span class="c1"># SQLAlchemy model</span>
 </pre></div>
 </div>
-<p>The <a class="reference internal" href="guide.html"><span class="std std-doc">Guide</span></a> explains each part of a view and how you can change
-it.</p>
+<p><a class="reference internal" href="guide.html#how-restly-works"><span class="std std-ref">How Restly works</span></a> shows all the parts on one screen, and
+the <a class="reference internal" href="guide.html"><span class="std std-doc">Guide</span></a> explains each part and how you can change it.</p>
 <section id="quick-start">
 <h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading">#</a></h2>
 <p>Install FastAPI-Restly along with an async SQLite driver:</p>
@@ -532,7 +532,7 @@ Restly step by step, from the first model to authors, drafts, and tests.</p>
 <li><p><strong><a class="reference internal" href="schemas.html"><span class="std std-doc">Pydantic v2 integration</span></a></strong>: validation and serialization for public contracts</p></li>
 <li><p><strong><a class="reference internal" href="schemas.html#auto-generated-schemas"><span class="std std-ref">Automatic schema generation</span></a></strong>: response, create, and update schemas generated automatically</p></li>
 <li><p><strong><a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering</span></a></strong>: filter, sort, and paginate from a stable URL dialect generated from the view’s schema</p></li>
-<li><p><strong><a class="reference internal" href="current.html"><span class="std std-doc">Current &amp; ContextParam</span></a></strong>: bind values, such as the current user, to a request-local context and read them anywhere in the request</p></li>
+<li><p><strong><a class="reference internal" href="context.html"><span class="std std-doc">Request Context</span></a></strong>: bind values, such as the current user, to a request-local context and read them anywhere in the request</p></li>
 <li><p><strong><a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a></strong>: control what a view can return with one SQLAlchemy where clause, applied to every read and reference check</p></li>
 <li><p><strong><a class="reference internal" href="relationships.html"><span class="std std-doc">Relationship support</span></a></strong>: handle foreign keys and nested objects</p></li>
 <li><p><strong><a class="reference internal" href="testing.html"><span class="std std-doc">Testing utilities</span></a></strong>: built-in test helpers with savepoint isolation</p></li>

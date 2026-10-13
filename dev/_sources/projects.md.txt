@@ -55,16 +55,19 @@ fr.include_view(api, UserView)  # registers the /api/users CRUD routes
 app.include_router(api)
 ```
 
-`fr.include_view()` also works as a class decorator;
-[Views](#register-a-view) explains both forms. Pass `app` to
-`fr.configure()`, also when the views are on a router. That call installs
-Restly's error handlers on the app and checks its OpenAPI schema, and
-`fr.include_view()` on a router cannot do this; see
-[Database & Configuration](#configure-restly).
-
 You adopt Restly one resource at a time. In the example, the orders routes
 stay hand-written, and the users routes come from `UserView`. If you add a
 `ProductView` later, the orders router does not change.
+
+:::{admonition} Details
+:class: details
+
+`fr.include_view()` also works as a class decorator;
+[Views](#register-a-view) explains both forms. Pass `app` to
+`fr.configure()`, also when the views are on a router. That call checks the
+OpenAPI schema of the app for two classes with the same name, and
+`fr.include_view()` on a router cannot do this; see
+[Database & Configuration](#configure-restly).
 
 A plain FastAPI route can also sit next to a view, for an endpoint that is not
 part of the CRUD routes:
@@ -74,6 +77,7 @@ part of the CRUD routes:
 async def export_user(id: int):
     ...
 ```
+:::
 
 (hand-written-crud-route)=
 
@@ -286,7 +290,7 @@ Model mixins that several subjects share, such as a tenant column, also go in
 ## Share Current from the package root
 
 When several modules need values from the request, declare
-[Current](current.md) in `app/current.py`. Import it from there
+[Current](context.md) in `app/current.py`. Import it from there
 wherever you use it:
 
 ```python
@@ -366,7 +370,8 @@ that layer. Your logic goes in business methods such as
 {meth}`update <fastapi_restly.views.RestView.update>`. A layer that only
 passes calls on to them adds code but no new place to change behavior. Write
 a `service.py` when logic also runs outside a request, such as work that a
-background worker shares; see [Build and save objects](#domain-utilities).
+background worker shares; see
+[Run the same logic in a script or a worker](#logic-outside-a-view).
 
 The same holds for `dependencies.py`, `constants.py` and `exceptions.py` in a
 subject. Add one when it holds more than one item.

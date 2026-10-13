@@ -110,13 +110,7 @@ The list route reads the three JSON-encoded query parameters of react-admin:
 | `range` | JSON `[start, end]` (both included) | `range=[0,24]` |
 | `filter` | JSON object | `filter={"name":"foo"}` or `filter={"id":[1,2,3]}` |
 
-These three are the whole contract. Any other query key gets a 422, so a typo
-cannot return more rows than you asked for without notice. The `page`,
-`page_size` and field filters of the standard dialect are unknown keys here
-too. A key that a dependency declares, or an `APIKeyQuery` key, is accepted.
-For a key that the view reads itself, declare
-{attr}`extra_query_params <fastapi_restly.views.BaseRestView.extra_query_params>`
-on the view.
+These three are the whole contract.
 
 The response body is a plain JSON array, and the `Content-Range` header
 holds the total:
@@ -124,6 +118,17 @@ holds the total:
 ```
 Content-Range: items 0-24/315
 ```
+
+:::{admonition} Details
+:class: details
+
+Any other query key gets a 422, so a typo cannot return more rows than you
+asked for without notice. The `page`, `page_size` and field filters of the
+standard dialect are unknown keys here too. A key that a dependency
+declares, or an `APIKeyQuery` key, is accepted.
+For a key that the view reads itself, declare
+{attr}`extra_query_params <fastapi_restly.views.BaseRestView.extra_query_params>`
+on the view.
 
 `ra-data-simple-rest` requests the collection path without a trailing slash
 (`GET /products?sort=...`). This is the main path of a Restly collection, so
@@ -136,6 +141,7 @@ sends are accepted. Other fields, also react-admin's full-text search
 parameter `q`, get a 400. For a search on part of a value, or a full-text
 search, override the view's
 {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`.
+:::
 
 ### The other routes
 
