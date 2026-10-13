@@ -49,6 +49,9 @@ To check whether the caller may do an action, raise `Forbidden` from
 [`authorize`](#authorize-gate). Restly calls it at the right moment, so the
 business methods stay free of permission checks.
 
+:::{admonition} Details
+:class: details
+
 The other names in `fr.exc` are not HTTP errors.
 {class}`fr.exc.RestlyError <fastapi_restly.exc.RestlyError>` and
 {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
@@ -57,6 +60,7 @@ report a setup mistake. The warnings
 {class}`RestlyMisuseWarning <fastapi_restly.exc.RestlyMisuseWarning>` and
 {class}`RestlyDuplicateSchemaNameWarning <fastapi_restly.exc.RestlyDuplicateSchemaNameWarning>`
 are there too.
+:::
 
 (list-request-errors)=
 ## Why a bad list request returns 422 or 400
@@ -81,6 +85,9 @@ Unknown sort field: 'nope'
 Invalid filter value for 'age': 'old'. Input should be a valid integer, unable to parse string as an integer
 ```
 
+:::{admonition} Details
+:class: details
+
 The text after the value is Pydantic's reason. For a field validator of
 your own, it is Pydantic's text for your error, such as
 `Value error, value is too long`. An exception that is not a validation
@@ -97,6 +104,7 @@ these `400` answers; see [Change the error body](#error-envelope).
 A filter value passes the first step as text. Restly checks it against the
 field only when it builds the query, so a bad filter value returns `400`, not
 `422`.
+:::
 
 (default-exception-handling)=
 ## Unique values and other database conflicts: 409
@@ -124,6 +132,9 @@ The write block makes the `409`. Each CRUD write, and each
 `IntegrityError` as its `__cause__`. So a handler for
 {class}`fr.exc.RestlyHTTPError <fastapi_restly.exc.RestlyHTTPError>` shapes
 these conflicts too; see [Change the error body](#error-envelope).
+
+:::{admonition} Details
+:class: details
 
 Three kinds of code get the raw `IntegrityError` instead:
 
@@ -159,6 +170,7 @@ same request, call `await self.session.rollback()` first.
 A `null` reaches the database only when the type of the schema field allows
 `None`. Otherwise validation rejects it first, with `422`, in the create body
 and in the update body; see [Validation](#validation).
+:::
 
 (error-envelope)=
 ## Change the error body for the whole app
