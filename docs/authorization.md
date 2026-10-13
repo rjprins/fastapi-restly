@@ -58,6 +58,16 @@ written once. [Views](#share-behaviour-with-base-views) shows more ways to
 share behavior between views. The full file is
 [`blog/main.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/blog/blog/main.py).
 
+`authorize` is an `async def` on
+{class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` and a plain `def`
+on {class}`RestView <fastapi_restly.views.RestView>`. To refuse, raise
+{class}`fr.exc.Forbidden <fastapi_restly.exc.Forbidden>` or any other
+`fastapi.HTTPException`. [Errors](errors.md) lists the
+exceptions that Restly provides.
+
+:::{admonition} Details
+:class: details
+
 A rule can also read the request body in `data`. On an update,
 `data.model_fields_set` names the fields that the client sent. This view gets
 the caller from a class attribute dependency, which works as well as
@@ -90,13 +100,7 @@ explains `current_user`. A rule that needs the database can query
 `self.session`. In the SaaS example, a member may change the labels of a task
 only when the task is assigned to them
 ([`app/labels/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/labels/views.py)).
-
-`authorize` is an `async def` on
-{class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` and a plain `def`
-on {class}`RestView <fastapi_restly.views.RestView>`. To refuse, raise
-{class}`fr.exc.Forbidden <fastapi_restly.exc.Forbidden>` or any other
-`fastapi.HTTPException`. [Errors](errors.md) lists the
-exceptions that Restly provides.
+:::
 
 (action-names)=
 ## Action names and `fr.Action`
