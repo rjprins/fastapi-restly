@@ -300,6 +300,7 @@ Read this output when a value is missing or not what you expect.
 
 - [Query Clauses](#binding-values): use the same members in query clauses
   and scopes.
-- [Models](#server-stamped-fields): stamp the author and the tenant on every
-  write.
+- [Models](#server-stamped-fields): stamp the author on every write.
+- [Multi-Tenancy](tenancy.md): stamp the tenant on every write, and keep
+  each tenant's rows apart.
 - [Authorization](#authorize-gate): decide what the caller may do.

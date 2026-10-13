@@ -201,8 +201,7 @@ the namespace and the type already say what the attribute is.
 One name is reserved: the clause named `default_scope` is the scope of every
 view read and every reference check on the model. [Scopes](scopes.md) owns
 that topic. A tenant rule that must hold under every scope is not a clause;
-it is a session rule, described under
-[Keep each tenant's rows apart](#tenant-row-scoping).
+it is a session rule, described in [Multi-Tenancy](#tenant-row-scoping).
 
 (composing-clauses)=
 ## Combine clauses

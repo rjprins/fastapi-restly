@@ -29,7 +29,7 @@ You declare a scope in one of three places. The most specific one wins:
 A scope lower in this list replaces the one above it. It does not add to it.
 So a rule that must hold under every scope, such as the tenant rule, is not a
 scope. It lives on the SQLAlchemy session, as
-[Keep each tenant's rows apart](#tenant-row-scoping) shows.
+[Multi-Tenancy](#tenant-row-scoping) shows.
 `fr.clauses.UNSCOPED` is the explicit way to read without a scope, in each of
 the three places.
 
@@ -158,8 +158,8 @@ class AdminItemView(fr.AsyncRestView):
 
 `UNSCOPED` removes only the scope. It does not remove a rule on the session,
 such as the tenant rule. That rule decides on its own whether an admin may
-read other tenants, as [Keep each tenant's rows apart](#tenant-row-scoping)
-shows.
+read other tenants, as
+[Let an admin read every tenant](#tenant-admin-bypass) shows.
 
 A `scope` that is not a clause raises
 {class}`fr.exc.RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
@@ -483,7 +483,7 @@ binds `Current` once per request, and code reads it where it needs it.
 
 A tenant rule is not a scope in Restly, even when it is one in your old
 framework. It must hold under every scope, so it lives on the session, as
-[Keep each tenant's rows apart](#tenant-row-scoping) shows.
+[Multi-Tenancy](#tenant-row-scoping) shows.
 
 (migrating-build-query)=
 ## Migrating from `build_query`

@@ -12,8 +12,9 @@ every reference check. So it lives on the SQLAlchemy session. A
 `do_orm_execute` listener adds a
 [`with_loader_criteria`](https://docs.sqlalchemy.org/en/20/orm/queryguide/api.html#sqlalchemy.orm.with_loader_criteria)
 option to every ORM read of an entity or a relationship. Restly's views,
-the `fr.objects` helpers and your own ORM queries all read through a
-session, so the rule reaches each of them.
+the {mod}`fr.objects <fastapi_restly.objects>` helpers and your own ORM
+queries all read through a session. So the rule reaches each of them, with
+the limits in [What the listener does not cover](#tenant-listener-limits).
 
 The [SaaS example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/saas)
 runs this rule on all of its tenant models.
@@ -85,7 +86,8 @@ class Project(TenantOwned, fr.TimestampsMixin, fr.IDMixin, Base):
 ```
 
 The column is the write half. `init=False` keeps the tenant out of the
-constructor, and `fr.ReadOnly` on the schema keeps it out of the request body.
+constructor, and {data}`fr.ReadOnly <fastapi_restly.schemas.ReadOnly>` on
+the schema keeps it out of the request body.
 The insert default stamps it during the flush, from the same member that the
 listener reads. So a row lands in the organization that the request acts in,
 whatever code builds it. An admin who writes into another tenant acts as that
@@ -94,7 +96,8 @@ such as a mapper event or a check for a unique name, reads `Current.org_id()`
 itself, because the insert default has not run yet.
 
 Bind the values once per request with a generated dependency,
-`Current.depends(...)`, as
+{meth}`Current.depends(...) <fastapi_restly.clauses.ContextNamespace.depends>`,
+as
 [Bind from a FastAPI dependency](#current-request-binding) shows. The SaaS
 example binds them in
 [`app/current.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/current.py).
@@ -133,6 +136,8 @@ upload. Write each criterion as a lambda. SQLAlchemy analyses a lambda once
 and caches it. It processes a plain expression again for every statement,
 also for statements that never read the model.
 
+(tenant-listener-limits)=
+
 ## What the listener does not cover
 
 The listener filters ORM reads. It is not access control in the database.
@@ -145,6 +150,8 @@ reach a statement only through an entity that the statement selects or joins:
 - A relationship condition built with `.any()` or `.has()` does not get the
   criteria inside its `EXISTS` subquery. Add the tenant condition there
   yourself, as the SaaS criteria do.
+
+(tenant-admin-bypass)=
 
 ## Let an admin read every tenant
 

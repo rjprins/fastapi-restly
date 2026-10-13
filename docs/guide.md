@@ -12,11 +12,12 @@ which tells it where its database sessions come from. Your models stay
 ordinary SQLAlchemy models on a declarative base of your own.
 
 - [New & Existing Projects](projects.md): add Restly to an app that you
-  already have, start a new project with `restly new`, and lay out a project
-  as it grows.
+  already have, start a new project with `restly new`, lay out a project as
+  it grows, and serve more than one API version.
 - [Database & Configuration](database.md): tell Restly where its database
-  is, reuse the engine or sessionmaker that your app already has, and open a
-  session outside a request.
+  is, reuse the engine or sessionmaker that your app already has, use another
+  database on one view, such as a read replica, and open a session outside a
+  request.
 - [Models](models.md): add Restly's defaults and common columns to your
   models, and set the values that every write needs, such as the author or a
   slug.
@@ -24,17 +25,19 @@ ordinary SQLAlchemy models on a declarative base of your own.
 ## Views & Routes
 
 A view is a class that groups related endpoints. A CRUD view serves five
-routes for one model. Every CRUD route runs the same steps in the same order:
-it checks that the caller may act, makes the change, commits it and builds
-the response. Each step is a method, so to change a route, you override the
-method of one step.
+routes for one model by default. Each route runs a fixed list of steps, such
+as `authorize` and `create`. To change a route, you override the method of
+one step.
 
 - [Views](views.md): the view classes, how to declare routes and register a
-  view, and how views share behavior through base classes.
-- [CRUD Routes](crud_routes.md): the five default routes, how to leave some
-  out, and how to serve a child resource under its parent.
+  view, routes that are not CRUD, such as login and webhooks, and how views
+  share behavior through base classes.
+- [CRUD Routes](crud_routes.md): the five default routes, async or sync, how
+  to leave some routes out, and how to serve a child resource under its
+  parent.
 - [Request Lifecycle & Hooks](lifecycle.md): the steps of a request, which
-  method to override for each change, custom routes, and what commits when.
+  method to override for each change, custom routes, what commits when,
+  several writes in one commit, and the same logic in a script or a worker.
 - [React Admin](react_admin.md): views that speak the REST dialect of
   react-admin.
 - [Type Annotations](typing.md): type the schema, the methods that you
@@ -48,25 +51,27 @@ so one schema decides what clients send and what they get back. The list
 route adds filter, sort and page parameters to the URL.
 
 - [Schemas & Validation](schemas.md): generate the schema or write it, keep
-  a field out of the requests or the responses, and validate input.
+  a field out of the requests or the responses, validate input, and use other
+  field names in JSON, such as camelCase.
 - [Relationships](relationships.md): accept the id of another row, check
-  that the row exists, and return related objects.
+  that the row exists, return related objects, and fix `MissingGreenlet`.
 - [Responses](responses.md): what each route returns, the list envelope,
   and how to change the shape of one route or of all routes.
 - [Filtering & Pagination](filtering.md): the filters, the sort order and
   the pages that a client can use on a list.
-- [Errors](errors.md): raise a 404 or a 403, turn a duplicate value into a
-  409, and change the error body.
+- [Errors](errors.md): raise a 404 or a 403, see why a duplicate value gives
+  a 409, and change the error body.
 - [OpenAPI](openapi.md): the tags, names and operation IDs of the routes,
   and how to document a custom route.
 
 ## Access
 
-These pages decide who is calling, which rows the caller sees, and what the
-caller may do. A scope decides which rows exist, so a hidden row gives 404.
+These pages make the caller available to your code, and decide what the
+caller may do and which rows the caller sees. [`Current`](current.md) holds
+the caller during a request.
 {meth}`authorize <fastapi_restly.views.RestView.authorize>` decides whether
-the caller may act on a row that exists, so a refusal gives 403. Both can
-read the caller from [`Current`](current.md).
+the caller may do an action, so a refusal gives 403. A scope decides which
+rows exist, so a hidden row gives 404.
 
 - [Current & ContextParam](current.md): bind the current user in a
   dependency, a script or a test.

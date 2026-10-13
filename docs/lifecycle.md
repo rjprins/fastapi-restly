@@ -1,11 +1,12 @@
 # Request Lifecycle & Hooks
 
 Every CRUD route of a {class}`RestView <fastapi_restly.views.RestView>` or
-{class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` runs the same
-steps in the same order. It checks that the caller may act, makes the change,
-commits it and builds the response. Each step is a method on the view. To
-change a route, you override the method of one step. A custom route calls the
-same methods, so it runs the same steps.
+{class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` runs its steps
+in a fixed order. A write route checks that the caller may act, makes the
+change, commits it and builds the response. A read route also checks the
+caller, but it only loads rows, so it has no commit. Each step except the
+commit is a method on the view. To change a route, you override the method of
+one step. A custom route calls the same methods, so it runs the same steps.
 
 [CRUD Routes](crud_routes.md) lists the default routes and their settings.
 [Views](views.md) covers what every view shares: registration,

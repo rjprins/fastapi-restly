@@ -317,10 +317,9 @@ Register only the subclasses.
 
 A base view overrides the same methods as a single view.
 [How a view handles a request](#view-request-steps) explains which method to
-override for each change. Two shared concerns have their own recipes on
-[Models](models.md): values that every write path must set, such as an
-owner id ([Values every write path sets](#write-path-values)), and
-[soft delete](#soft-delete-mixin).
+override for each change. Two shared concerns have their own sections:
+[values that every write path must set](#write-path-values), such as an
+owner id, on Models, and [soft delete](#soft-delete-mixin) on Scopes.
 
 (app-wide-base-view)=
 ### One base view for the whole app
@@ -417,7 +416,7 @@ explains the binding. The SaaS example's `AuthenticatedView` uses this
 pattern
 ([`app/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py)).
 To limit every read to the rows of one tenant, see
-[Keep each tenant's rows apart](#tenant-row-scoping).
+[Multi-Tenancy](#tenant-row-scoping).
 
 When a subclass sets its own `dependencies`, they run after the base's, in
 the same way as nested FastAPI routers. So a subclass cannot remove a check

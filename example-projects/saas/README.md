@@ -199,6 +199,7 @@ compatibility alias, but OpenAPI records only `/tasks`.
 
 ## Further reading
 
+- [Multi-Tenancy guide](../../docs/tenancy.md)
 - [Deployment guide](../../docs/deploying.md)
 - [Testing guide](../../docs/testing.md)
 - [Guide](../../docs/guide.md)

@@ -207,7 +207,7 @@ A dotted filter joins the related table without that model's default scope;
 see [Scopes](#default-scope). Restly joins through SQL aliases. If you add a
 session rule with {func}`sqlalchemy.orm.with_loader_criteria`, set
 `include_aliases=True`, so the rule also covers these joins. See
-[Keep each tenant's rows apart](#tenant-row-scoping).
+[Multi-Tenancy](#tenant-row-scoping).
 
 Aliases apply to every part of the path, the relationship and the field,
 because the list parameters always use the public names of the response

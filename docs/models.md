@@ -263,7 +263,7 @@ Each rule goes where it reaches every write or every read:
 |---|---|
 | A value that every write path must set, such as a slug from the title | A column default or a mapper event on the model: [Set a value on every write path](#write-path-values) |
 | A value that the server owns, such as the author | A column default that reads `Current`: [Stamp the fields the server owns](#server-stamped-fields) |
-| Each tenant reads and writes only its own rows | A session listener and a stamped column: [Keep each tenant's rows apart](#tenant-row-scoping) |
+| Each tenant reads and writes only its own rows | A session listener and a stamped column: [Multi-Tenancy](#tenant-row-scoping) |
 | Deleted rows are hidden from every read | The model's [default scope](#default-scope) |
 | `DELETE` marks the row instead of removing it | A view mixin that overrides `delete`: [Soft-delete rows](#soft-delete-mixin) |
 
@@ -273,6 +273,8 @@ The SaaS example has these rules as mixins. The model mixins `TenantOwned`,
 and the view mixin `SoftDeleteMixin` is in
 [`app/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py).
 Copy them into your project as a starting point.
+[Put the parts together](#composing-on-a-view) shows a model and a view that
+use all of them.
 
 (write-path-values)=
 

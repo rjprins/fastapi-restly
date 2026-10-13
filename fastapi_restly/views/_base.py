@@ -1317,7 +1317,7 @@ class BaseRestView(
     #: it does not stack on it; compose the replacement from the same leaves
     #: (``ItemClauses.trashed`` containing the tenant clause ``visible``
     #: contains). A rule that must hold under every scope is a session-level
-    #: ``with_loader_criteria``, not a view concern. See the Scopes guide.
+    #: ``with_loader_criteria``, not a view concern. See the Multi-Tenancy guide.
     scope: ClassVar[WhereClause | None] = None
     #: The type of the ``{id}`` path parameter on the default routes. ``None``
     #: (the default) takes the Python type of the model's primary key, and a
