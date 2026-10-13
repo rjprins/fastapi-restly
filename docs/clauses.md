@@ -112,6 +112,9 @@ recently_created = fr.where_clause(
 )
 ```
 
+:::{admonition} Details
+:class: details
+
 A clause is a condition and never joins. For a condition on a related table,
 use the relationship's `any()` or `has()`, which generate `EXISTS`. A join
 for this purpose repeats rows on a one-to-many relationship. `EXISTS` cannot.
@@ -139,6 +142,7 @@ def owned_unless_admin() -> ColumnElement[bool]:
 A function with parameters raises `TypeError` when you declare the clause.
 The values that a condition needs come from context members; see
 [Give a clause its values](#binding-values).
+:::
 
 (clause-namespaces)=
 ## Group the clauses of a model
@@ -174,9 +178,19 @@ clauses through the class name, such as `ItemClauses.visible`. A type checker
 follows this plain attribute access.
 
 Name the namespace after the model, and define it in the module of the model.
-Then importing the model always registers the namespace. `model` is optional.
-A namespace without a model is a plain group of clauses, or a base class for
-namespaces that declare one. Only a namespace with `model` registers.
+Then importing the model always registers the namespace.
+
+One name is reserved: the clause named `default_scope` is the scope of every
+view read and every reference check on the model. [Scopes](scopes.md) owns
+that topic. A tenant rule that must hold under every scope is not a clause;
+it is a session rule, described in [Multi-Tenancy](#tenant-row-scoping).
+
+:::{admonition} Details
+:class: details
+
+`model` is optional. A namespace without a model is a plain group of clauses,
+or a base class for namespaces that declare one. Only a namespace with
+`model` registers.
 
 The SaaS example groups the task rules this way, with a clause function for
 the member role, in `TaskClauses` in
@@ -197,11 +211,7 @@ second namespace for the same model raises.
 Name a clause so that it reads as true after `WHERE`: `owned_by_user`,
 `is_deleted`, `has_active_subscription`. Do not add `_filter` or `_clause`;
 the namespace and the type already say what the attribute is.
-
-One name is reserved: the clause named `default_scope` is the scope of every
-view read and every reference check on the model. [Scopes](scopes.md) owns
-that topic. A tenant rule that must hold under every scope is not a clause;
-it is a session rule, described in [Multi-Tenancy](#tenant-row-scoping).
+:::
 
 (composing-clauses)=
 ## Combine clauses
@@ -252,6 +262,9 @@ The blog example gives comments the scope of their post this way:
 `CommentClauses` in
 [`blog/main.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/blog/blog/main.py).
 
+:::{admonition} Details
+:class: details
+
 A clause function runs each time its clause is applied, so it has no
 condition yet when Python builds the outer condition. A clause function inside
 a condition raises `TypeError`, and so does a combined clause that contains
@@ -275,6 +288,7 @@ a clause that contains members, as
 [Use a clause in plain SQLAlchemy](#clauses-in-plain-sqlalchemy) shows.
 Without the call, SQLAlchemy rejects the statement when it runs, because the
 members have no value.
+:::
 
 (unscoped-composition)=
 ### Combine with `UNSCOPED`
@@ -296,11 +310,6 @@ the order of the arguments does not change the result:
 | `fr.none_of(UNSCOPED, C)` | A `WhereClause` over `sqlalchemy.false()` |
 | `fr.none_of(UNSCOPED)` | A `WhereClause` over `sqlalchemy.false()` |
 
-In AND, `UNSCOPED` changes nothing. In OR and NOT it decides the result:
-every row OR the published rows is still every row, and NOT over that
-matches no rows. The false clause works as a scope too: lists and counts are
-empty, and single-row reads and reference checks return `404`.
-
 `all_of` drops its `UNSCOPED` arguments and combines the rest. With one clause
 left, it returns that same object. With none left, it returns `UNSCOPED`. So
 a condition can extend a default scope that may be `UNSCOPED`, without an
@@ -309,6 +318,14 @@ a condition can extend a default scope that may be `UNSCOPED`, without an
 ```python
 scope = fr.all_of(ItemClauses.default_scope, has_active_subscription)
 ```
+
+:::{admonition} Details
+:class: details
+
+In AND, `UNSCOPED` changes nothing. In OR and NOT it decides the result:
+every row OR the published rows is still every row, and NOT over that
+matches no rows. The false clause works as a scope too: lists and counts are
+empty, and single-row reads and reference checks return `404`.
 
 Each combining function returns a `WhereClause`, since `UNSCOPED` is one too.
 So the result works everywhere a clause works, also when it is `UNSCOPED`.
@@ -323,6 +340,7 @@ needs no bound values.
 `apply_clauses(stmt, UNSCOPED)` adds no condition. Filters already on `stmt`
 stay, and the other clauses you pass still apply. `UNSCOPED` does not remove
 a filter from a statement.
+:::
 
 (binding-values)=
 (shared-params)=
@@ -351,6 +369,14 @@ One binding gives a value to every clause that uses the member.
 `Current.user_id` without parentheses is the placeholder. In a condition that
 the module builds, `Current.user_id()` would read the value at once, so it
 would need a binding when the module runs.
+
+When the clause is applied, a member without a binding raises a
+`LookupError` that names the member. The query never runs without its
+filter. For values per request,
+[bind Current from a FastAPI dependency](#current-request-binding).
+
+:::{admonition} Details
+:class: details
 
 Put the column first. `Item.user_id == Current.user_id` builds SQL, because
 the column builds the comparison. `Current.role != "member"` raises
@@ -384,11 +410,6 @@ def owned_items_stmt(user_id: int):
 rows = session.scalars(owned_items_stmt(42))
 ```
 
-When the clause is applied, a member without a binding raises a
-`LookupError` that names the member.
-The query never runs without its filter. For values per request,
-[bind Current from a FastAPI dependency](#current-request-binding).
-
 A value that one part of the application uses gets its own namespace there:
 
 ```python
@@ -414,6 +435,7 @@ A placeholder gets its value only when a clause is applied. An expression
 that has a member but never passes through a clause fails when it runs, with
 SQLAlchemy's "A value is required for bind parameter". Call the clause to get
 its expression, or read the value with `Current.user_id()`.
+:::
 
 (applying-clauses)=
 ## Apply clauses to a statement
@@ -430,6 +452,9 @@ with Current.bind(user_id=42):
         select(Item), ItemClauses.visible, has_active_subscription
     )
 ```
+
+:::{admonition} Details
+:class: details
 
 `update()` and `delete()` statements take clauses in the same way. The result
 has the type of the statement you passed, a `Select`, an `Update` or a
@@ -464,6 +489,7 @@ Without this check, SQLAlchemy would add the missing table to the `FROM`, and
 the query would combine every item with every collection, so the condition
 would filter almost nothing. A condition inside an `EXISTS` or an
 `IN (SELECT ...)` subquery has its own `FROM`, and passes the check.
+:::
 
 (clauses-in-plain-sqlalchemy)=
 ## Use a clause in plain SQLAlchemy
