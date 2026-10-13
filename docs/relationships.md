@@ -128,6 +128,9 @@ field and the id:
 {"detail": "Id not found for author_id: 99"}
 ```
 
+:::{admonition} Details
+:class: details
+
 Restly checks the `MustExist` ids of a request in batches: one query for
 each referenced model and scope, not one query for each id. It checks only
 the fields that the client sent, and it skips a `null` value.
@@ -140,6 +143,7 @@ another primary key type, name that type first: `fr.MustExist[UUID, Account]`.
 {class}`fr.RefExists <fastapi_restly.schemas.RefExists>` marker:
 `Annotated[int, fr.RefExists(User)]`. Write the marker yourself to check
 against another clause, as the next section shows.
+:::
 
 (visibility-and-multi-tenancy)=
 ## Which rows can a reference reach?
@@ -149,13 +153,6 @@ A reference check applies the
 that the scope hides returns `404`, as a missing row does. So if the scope of
 `User` hides deleted users, a deleted user cannot become the author of a new
 article.
-
-On a `MustExist` field, `RefExists` can check against another clause, or
-against no clause; see [Check a reference against another scope](#reference-scopes).
-An `IDRef` or `IDSchema` field always uses the default scope. The SaaS example
-lets a member attach labels only to a task that is assigned to them, with
-`RefExists(Task, scope=TaskClauses.visible)` in
-[`app/labels/schemas.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/labels/schemas.py).
 
 A session rule, such as the [tenant rule](#tenant-row-scoping),
 also reaches every reference check. This includes `MustExist`, and the
@@ -167,6 +164,16 @@ run.
 A model without a default scope is checked by its primary key alone. Then a
 reference can reach a soft-deleted row, or a row that the caller cannot read.
 To hide such rows, give the model a default scope.
+
+:::{admonition} Details
+:class: details
+
+On a `MustExist` field, `RefExists` can check against another clause, or
+against no clause; see [Check a reference against another scope](#reference-scopes).
+An `IDRef` or `IDSchema` field always uses the default scope. The SaaS example
+lets a member attach labels only to a task that is assigned to them, with
+`RefExists(Task, scope=TaskClauses.visible)` in
+[`app/labels/schemas.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/labels/schemas.py).
 
 A rule that is neither a scope nor a session rule goes in
 {meth}`authorize <fastapi_restly.views.RestView.authorize>` (see
@@ -196,6 +203,7 @@ class ArticleView(fr.AsyncRestView):
 `authorize` does not have the row itself. If a rule needs it, read it in
 {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`,
 for example with `await self.session.get(User, new.author_id)`.
+:::
 
 (reference-field-names)=
 ## Name the field after the model attribute
@@ -246,6 +254,9 @@ class ArticleSchema(fr.IDSchema):
 }
 ```
 
+:::{admonition} Details
+:class: details
+
 Both types check the row and look it up in the same way. In a request, each
 type accepts both forms: `{"author": 1}` and `{"author": {"id": 1}}`. The
 response always uses the declared form. This helps when some clients already
@@ -257,6 +268,7 @@ requested id as `data.author.id`. Restly looks the row up when it writes.
 `IDSchema` is also the usual base class of a schema. As a base class, it only
 adds a read-only `id` field; [Schemas & Validation](schemas.md)
 covers that use.
+:::
 
 (reference-lists)=
 ## Reference several rows
@@ -295,6 +307,9 @@ So you can declare both with any `init` and `default` options:
 author_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
 author: Mapped["User"] = relationship(default=None)
 ```
+
+:::{admonition} Details
+:class: details
 
 A relationship that the request does not send never replaces a foreign key
 that it does send. If that relationship is `None` after the constructor ran,
@@ -347,6 +362,7 @@ class Article(Base):
 Restly builds the object and sets the foreign key column, and the
 relationship when there is one. [Use Your Existing Models](#existing-models)
 covers models like these.
+:::
 
 ## Filter a list by a reference
 
@@ -391,6 +407,9 @@ foreign key columns. The SaaS example runs this code in its
 `POST /task-labels/create-and-attach` route, in
 [`app/labels/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/labels/views.py).
 
+:::{admonition} Details
+:class: details
+
 For an `IDRef` or `IDSchema` field, build the reference object yourself:
 
 ```python
@@ -422,6 +441,7 @@ async def attach(self, request: AttachRequest):
 {meth}`self.to_single_response(obj) <fastapi_restly.views.BaseRestView.to_single_response>`
 returns the response class of the view, not this route's class. Use it only
 when the route returns the view's own response class.
+:::
 
 (relationship-loading)=
 ## Return related objects in a response
@@ -456,6 +476,9 @@ class ArticleSchema(fr.IDSchema):
     comments: fr.ReadOnly[list[CommentSchema]]
 ```
 
+:::{admonition} Details
+:class: details
+
 Nested schemas count too: if `UserSchema` names a relationship of `User`, that
 relationship loads as well.
 
@@ -466,6 +489,7 @@ refresh after the flush unloads them.
 On a **sync** view, the same loads apply. A missing load does not fail there:
 the sync session loads the relationship with one more query. On an async view,
 the same missing load raises `MissingGreenlet`.
+:::
 
 ### Embedded objects are read-only
 
@@ -503,6 +527,9 @@ class ArticleView(fr.AsyncRestView):
         ]
 ```
 
+:::{admonition} Details
+:class: details
+
 The default returns the loads that the response class needs. Adding to it
 keeps those loads. To replace them, return a new list, for example to use
 `joinedload` instead of `selectinload`.
@@ -518,6 +545,7 @@ shows.
 For a load that only the list needs, add `.options(...)` in
 {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`.
 It does not change `get_one`, or the create and update responses.
+:::
 
 (eager-load-extra-relationships)=
 ### Load a relationship in `get_one` only
@@ -588,6 +616,20 @@ in a `ValidationError`. Check these in order:
    `apply_list_params`?** The create and update responses do not get loads
    from them. Move the load to `get_relationship_loader_options`.
 
+:::{note}
+A relationship field in a response must keep the Python name of the
+relationship. Only its JSON name may change. The loads match the Python name
+of the field, so an alias for the output is safe:
+`Field(serialization_alias="ownerInfo")`, or a camelCase `alias_generator`.
+But a field with another Python name that maps back with `alias` or
+`validation_alias`, such as `owner_info: OwnerSchema = Field(alias="owner")`,
+is not loaded, after a read or after a write. On an async view it raises
+`MissingGreenlet`.
+:::
+
+:::{admonition} Details
+:class: details
+
 Restly's session factories set `expire_on_commit=False`, so an object stays
 readable after the commit. Restly warns when the async session factory that
 you pass has `expire_on_commit=True`; see
@@ -598,16 +640,6 @@ relationships: a deferred column, an expired attribute that your code reads,
 or a sync database driver behind an async engine. For those cases, see
 SQLAlchemy's
 [Preventing Implicit IO when Using AsyncSession](https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#preventing-implicit-io-when-using-asyncsession).
-
-:::{note}
-A relationship field in a response must keep the Python name of the
-relationship. Only its JSON name may change. The loads match the Python name
-of the field, so an alias for the output is safe:
-`Field(serialization_alias="ownerInfo")`, or a camelCase `alias_generator`.
-But a field with another Python name that maps back with `alias` or
-`validation_alias`, such as `owner_info: OwnerSchema = Field(alias="owner")`,
-is not loaded, after a read or after a write. On an async view it raises
-`MissingGreenlet`.
 :::
 
 ## Internals
