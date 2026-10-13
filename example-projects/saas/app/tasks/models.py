@@ -150,6 +150,62 @@ restrict_to_tenant(
 )
 
 
+@sa.event.listens_for(orm.Session, "before_flush")
+def _keep_story_point_totals(session: orm.Session, flush_context: Any, _: Any) -> None:
+    """Keep ``Project.total_story_points`` equal to the story points of the
+    project's live tasks.
+
+    A session event runs on every write path: the views, the bulk routes,
+    the ``fr.objects`` helpers and a script. A mapper event may change only
+    its own row, and the total is on another row, so it is kept here. For
+    each new, changed or deleted task, the event takes what the task counted
+    before the flush off its old project, and adds what it counts now to its
+    new project. So a task that moves, is deleted or is restored is covered.
+    """
+    for task in session.new:
+        if isinstance(task, Task):
+            _add_points(*_counts_now(session, task))
+    for task in session.dirty:
+        if isinstance(task, Task):
+            project, points = _counted_before(session, task)
+            _add_points(project, -points)
+            _add_points(*_counts_now(session, task))
+    for task in session.deleted:
+        if isinstance(task, Task):
+            project, points = _counted_before(session, task)
+            _add_points(project, -points)
+
+
+def _add_points(project: Project | None, points: int) -> None:
+    if project is not None and points:
+        project.total_story_points += points
+
+
+def _counts_now(session: orm.Session, task: Task) -> tuple[Project | None, int]:
+    """The project of ``task``, and the points it adds to the total."""
+    if task.project_id is not None:
+        project = session.get(Project, task.project_id)
+    else:
+        # A new task that names its project through the relationship.
+        project = task.project
+    points = (task.story_points or 0) if task.deleted_at is None else 0
+    return project, points
+
+
+def _counted_before(session: orm.Session, task: Task) -> tuple[Project | None, int]:
+    """The project of ``task`` before this flush, and the points it added."""
+    attrs = sa.inspect(task).attrs
+
+    def before(key: str) -> Any:
+        history = attrs[key].load_history()
+        return history.deleted[0] if history.deleted else getattr(task, key)
+
+    project_id = before("project_id")
+    project = session.get(Project, project_id) if project_id is not None else None
+    points = (before("story_points") or 0) if before("deleted_at") is None else 0
+    return project, points
+
+
 class TaskClauses(fr.ClauseNamespace):
     """Task visibility: deletion and assignment; the tenant restriction is the listener's.
 

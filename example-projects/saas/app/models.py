@@ -10,9 +10,9 @@ argument (``init=False``) and not a payload field (``fr.ReadOnly`` on the
 schema): the value comes from ``Current`` at flush time, whoever builds
 the row, so it covers every write path: the view verbs, a custom route
 that builds the object by hand, the free ``fr.objects`` helpers, and the
-bulk routes. Nothing on the view side stamps anything. A verb that needs
-the value before the flush reads ``Current`` itself, as the project slug
-probe does.
+bulk routes. Nothing on the view side stamps anything. Code that needs
+the value before the flush reads ``Current`` itself, as the slug event in
+``app.projects.models`` does.
 """
 
 from __future__ import annotations

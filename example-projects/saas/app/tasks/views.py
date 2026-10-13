@@ -91,16 +91,6 @@ class TaskView(SoftDeleteMixin, AuthenticatedView[Task]):
     schema_create = TaskCreate
     scope = TaskClauses.visible
 
-    async def delete(self, obj: Task) -> None:
-        """Decrement the parent project's story-point rollup, then soft delete."""
-        from ..projects.models import Project
-
-        if obj.story_points:
-            project = await self.session.get(Project, obj.project_id)
-            if project is not None:
-                project.total_story_points -= obj.story_points
-        await super().delete(obj)
-
     async def _validate_cross_resource(self, data: dict[str, Any]) -> None:
         """Validate cross-resource constraints (assignee must be in same org as project)."""
         from ..projects.models import Project
@@ -132,10 +122,10 @@ class TaskView(SoftDeleteMixin, AuthenticatedView[Task]):
             )
 
     async def create(self, schema_obj: BaseModel) -> Task:
-        """Validate, build, save, and bump the parent's story-point rollup.
+        """Validate against the project and the assignee, then build and save.
 
-        The rollup depends on request data, so it lives in the business verb and
-        commits with the task.
+        The project's story-point total follows by itself: the session
+        event in ``app.tasks.models`` keeps it on every write path.
         """
         from ..projects.models import Project, ProjectStatus
 
@@ -157,18 +147,14 @@ class TaskView(SoftDeleteMixin, AuthenticatedView[Task]):
         await self._validate_cross_resource(data)
 
         task = await self.make_new_object(schema_obj)
-        if task.story_points and project:
-            project.total_story_points += task.story_points
         return await self.save_object(task)
 
     async def update(self, obj: Task, schema_obj: BaseModel) -> Task:
-        """Optimistic locking + reroll the parent's story-point rollup.
+        """Optimistic locking, then apply the update.
 
-        Capture old values, apply the update, then propagate the story-point
-        delta to the related project in the same transaction.
+        A change of the story points or the project updates the projects'
+        totals through the session event in ``app.tasks.models``.
         """
-        from ..projects.models import Project
-
         task = obj
 
         # Check version for optimistic locking before applying the update.
@@ -193,29 +179,11 @@ class TaskView(SoftDeleteMixin, AuthenticatedView[Task]):
                 }
             )
 
-        old_points = task.story_points or 0
-        old_project_id = task.project_id
-
         # Apply writable fields, then bump version server-side.
         task = await self.update_object(task, schema_obj)
         task.version = (
             client_version if client_version is not None else task.version
         ) + 1
-
-        # Propagate story-point delta to the (possibly new) parent project.
-        new_points = task.story_points or 0
-        if old_points or new_points:
-            if old_project_id == task.project_id:
-                project = await self.session.get(Project, task.project_id)
-                if project is not None:
-                    project.total_story_points += new_points - old_points
-            else:
-                old_project = await self.session.get(Project, old_project_id)
-                new_project = await self.session.get(Project, task.project_id)
-                if old_project is not None:
-                    old_project.total_story_points -= old_points
-                if new_project is not None:
-                    new_project.total_story_points += new_points
 
         return await self.save_object(task)
 
@@ -253,21 +221,16 @@ class TaskView(SoftDeleteMixin, AuthenticatedView[Task]):
 
     @fr.post("/{id}/restore", response_model=TaskResponse)
     async def restore(self, id: int) -> Task:
-        """Restore a soft-deleted task and put its story points back on the project.
+        """Restore a soft-deleted task.
 
         Loads through ``trashed``, the surface the trash route reads, so a
-        live task is a 404 here.
+        live task is a 404 here. Its story points count for the project's
+        total again through the session event in ``app.tasks.models``.
         """
-        from ..projects.models import Project
-
         task = await self.get_one(id, scope=TaskClauses.trashed)
 
         async with self.write_action("restore", obj=task):
             task.deleted_at = None
-            if task.story_points:
-                project = await self.session.get(Project, task.project_id)
-                if project is not None:
-                    project.total_story_points += task.story_points
             await self.save_object(task)
         return task
 

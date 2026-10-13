@@ -310,6 +310,13 @@ on `connection`. To change other rows in the same flush, use the session's
 [mapper events documentation](https://docs.sqlalchemy.org/en/20/orm/events.html#mapper-events)
 explains these rules.
 
+The SaaS example does both. A project's slug comes from mapper events, with a
+query on `connection` that keeps the slug unique, in
+[`app/projects/models.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/models.py).
+The story-point total of a project comes from a `before_flush` event that
+reads the changes of each task, in
+[`app/tasks/models.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/tasks/models.py).
+
 (server-stamped-fields)=
 
 ## Stamp the fields the server owns

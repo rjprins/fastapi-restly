@@ -1,6 +1,5 @@
 """Project view."""
 
-import re
 from typing import Any
 
 import sqlalchemy as sa
@@ -23,12 +22,6 @@ from .schemas import ProjectResponse, ProjectSchema
 ProjectListResponse = fr.schemas.derive_schema_list_response(
     ProjectResponse, pagination=AuthenticatedView.pagination
 )
-
-
-def _slugify(text: str) -> str:
-    """Lowercase, hyphenated slug — adequate for the example."""
-    text = re.sub(r"[^a-zA-Z0-9]+", "-", text).strip("-").lower()
-    return text or "project"
 
 
 class CloneRequest(BaseModel):
@@ -75,8 +68,9 @@ class ProjectView(SoftDeleteMixin, AuthenticatedView[Project]):
     and context-bind deps and the ``_emit`` outbox helper; the tenant
     floor on reads is the session listener in ``app.models``.
 
-    This view keeps project-specific logic: slug derivation, response
-    decoration, update immutability, and project-level events.
+    The slug and the story-point total are the model's business too (see
+    ``app.projects.models`` and ``app.tasks.models``). This view keeps
+    project-specific logic: response decoration and project-level events.
     """
 
     prefix = "/projects"
@@ -150,21 +144,16 @@ class ProjectView(SoftDeleteMixin, AuthenticatedView[Project]):
         return Current.is_admin() or project.organization_id == Current.org_id()
 
     async def create(self, schema_obj: BaseModel) -> Project:
-        """Slug derivation + outbox emit.
+        """Save the project and emit its outbox event.
 
         Overrides the *bare* business ``create`` verb: auth-free and
-        commit-free. ``organization_id`` and the audit stamps are the
-        model's business (``app.models``), stamped at flush; the slug probe
-        needs the organization before that, so it reads ``Current.org_id()``
-        itself. We only do the project-specific bits:
-        the slug uniqueness probe and the outbox event. The outbox row is
-        added to the session here and the ``handle_create`` commit bracket
-        persists it atomically with the project write.
+        commit-free. ``organization_id``, the audit stamps and the slug are
+        the model's business (``app.models``, ``app.projects.models``), set
+        at flush, so the event reads the slug after ``save_object``. The
+        outbox row is added to the session here and the ``handle_create``
+        commit bracket persists it atomically with the project write.
         """
         project = await self.make_new_object(schema_obj)
-        project.slug = await self._unique_slug(
-            project.slug or _slugify(project.name), Current.org_id()
-        )
         project = await self.save_object(project)
         self._emit(
             "project.created", project, {"name": project.name, "slug": project.slug}
@@ -172,25 +161,22 @@ class ProjectView(SoftDeleteMixin, AuthenticatedView[Project]):
         return await self._decorate_project_response(project)
 
     async def update(self, obj: Project, schema_obj: BaseModel) -> Project:
-        """Slug regen if name changed + status-transition outbox event.
+        """Status-transition outbox event.
 
         Overrides the *bare* business ``update`` verb, which receives the
         already-loaded ``obj``: ``handle_update`` loads it through ``get_one``
         (tenant-scope + soft-delete + 404), runs ``authorize``, then calls this
         method, and finally commits via the bracket. Audit-stamping
         (``updated_by_id``) is the column's ``onupdate`` (``AuditStamped`` in
-        ``app.models``). This method only contains the project-specific
-        slug and transition-event logic; ``organization_id`` is read-only on
-        the schema, so no body can move a project. The status-changed
-        outbox row is added to the session and the ``handle_update`` commit
-        bracket persists it atomically.
+        ``app.models``), and a new name gives a new slug through the mapper
+        event in ``app.projects.models``. This method only contains the
+        transition-event logic; ``organization_id`` is read-only on the
+        schema, so no body can move a project. The status-changed outbox row
+        is added to the session and the ``handle_update`` commit bracket
+        persists it atomically.
         """
-        old_name, old_status = obj.name, obj.status
+        old_status = obj.status
         project = await self.update_object(obj, schema_obj)
-        if project.name != old_name and not getattr(schema_obj, "slug", None):
-            project.slug = await self._unique_slug(
-                _slugify(project.name), project.organization_id, exclude_id=project.id
-            )
         project = await self.save_object(project)
         if project.status != old_status:
             self._emit(
@@ -199,24 +185,6 @@ class ProjectView(SoftDeleteMixin, AuthenticatedView[Project]):
                 {"from": old_status.value, "to": project.status.value},
             )
         return await self._decorate_project_response(project)
-
-    async def _unique_slug(
-        self, base: str, org_id: int, exclude_id: int | None = None
-    ) -> str:
-        """Find a slug that doesn't collide with an existing project in this org."""
-        candidate = base
-        n = 1
-        while True:
-            q = sa.select(Project.id).where(
-                Project.slug == candidate, Project.organization_id == org_id
-            )
-            if exclude_id is not None:
-                q = q.where(Project.id != exclude_id)
-            existing = await self.session.scalar(q)
-            if existing is None:
-                return candidate
-            n += 1
-            candidate = f"{base}-{n}"
 
     @fr.delete("/{id}", status_code=200, response_model=ProjectResponse)
     async def soft_delete(self, id: int) -> Project:
@@ -317,8 +285,7 @@ class ProjectView(SoftDeleteMixin, AuthenticatedView[Project]):
                         acceptance_criteria=task.acceptance_criteria,
                     )
                     self.session.add(new_task)
-                    if new_task.story_points:
-                        new_project.total_story_points += new_task.story_points
+                # The flush adds the tasks' story points to the total.
                 await async_save_object(self.session, new_project)
 
         return await self._decorate_project_response(new_project)

@@ -11,6 +11,7 @@ as the async test client) for direct DB inspection inside each test.
 import io
 from contextlib import asynccontextmanager
 from dataclasses import asdict
+from datetime import UTC, datetime
 
 from app.auth import verify_password
 from app.current import Current
@@ -158,6 +159,22 @@ class TestProjectMeta:
         with beta.acting():
             c = client.post("/projects", json={"name": "Same Name"}).json()
         assert c["slug"] == "same-name"
+
+    async def test_a_script_gets_a_slug_too(self, async_client, async_actor):
+        """The slug is the model's business, so a project that a script
+        creates gets one, unique in its organization, and a rename moves it."""
+        from app.projects.models import Project
+
+        await async_client.post("/projects", json={"name": "Script Made"})
+        async with _async_session(async_actor) as session:
+            project = Project(name="Script Made")
+            session.add(project)
+            await session.flush()
+            assert project.slug == "script-made-2"
+
+            project.name = "Renamed Here"
+            await session.flush()
+            assert project.slug == "renamed-here"
 
     def test_audit_stamps_record_the_acting_user(self, client, actor):
         """The column defaults stamp the tenant and the user of the request."""
@@ -407,6 +424,46 @@ class TestStoryPointRollup:
     def _setup(self, client):
         project = client.post("/projects", json={"name": "Rollup"}).json()
         return project
+
+    async def test_a_script_keeps_the_total_too(self, async_client, async_actor):
+        """The total is the model's business, so a write outside the views
+        keeps it: a new task, new points, a move to another project, a soft
+        delete, a restore and a hard delete."""
+        from app.projects.models import Project
+        from app.tasks.models import Task, TaskType
+
+        first = (await async_client.post("/projects", json={"name": "A"})).json()
+        second = (await async_client.post("/projects", json={"name": "B"})).json()
+        async with _async_session(async_actor) as session:
+            a = await session.get(Project, first["id"])
+            b = await session.get(Project, second["id"])
+            assert a is not None and b is not None
+            task = Task(
+                title="T", project_id=a.id, task_type=TaskType.FEATURE, story_points=5
+            )
+            session.add(task)
+            await session.flush()
+            assert (a.total_story_points, b.total_story_points) == (5, 0)
+
+            task.story_points = 8
+            await session.flush()
+            assert (a.total_story_points, b.total_story_points) == (8, 0)
+
+            task.project_id = b.id
+            await session.flush()
+            assert (a.total_story_points, b.total_story_points) == (0, 8)
+
+            task.deleted_at = datetime.now(UTC)
+            await session.flush()
+            assert b.total_story_points == 0
+
+            task.deleted_at = None
+            await session.flush()
+            assert b.total_story_points == 8
+
+            await session.delete(task)
+            await session.flush()
+            assert b.total_story_points == 0
 
     def test_rollup_on_create(self, client):
         project = self._setup(client)

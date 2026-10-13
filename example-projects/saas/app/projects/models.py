@@ -1,12 +1,15 @@
 """Project model belonging to an organization."""
 
+import re
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+import sqlalchemy as sa
 from sqlalchemy import orm
 
 import fastapi_restly as fr
 
+from ..current import Current
 from ..models import AuditStamped, Base, SoftDeletable, TenantOwned
 
 if TYPE_CHECKING:
@@ -27,13 +30,13 @@ class Project(
     """
     Project belongs to an organization and contains tasks.
 
-    ``slug`` is auto-generated from ``name`` on create/update by
-    ``ProjectView`` if the client doesn't supply one. ``organization_id``,
-    the audit stamps, and ``deleted_at`` come from the model mixins in
-    ``app.models``; the view never touches them.
-    ``total_story_points`` is a denormalized roll-up maintained by
-    ``TaskView`` whenever a task's points change (use-case: "update
-    related object based on updated object").
+    ``slug`` comes from ``name`` when the client sends none, and changes
+    with the name; the mapper events below set it on every write path.
+    ``organization_id``, the audit stamps, and ``deleted_at`` come from the
+    model mixins in ``app.models``; the view never touches them.
+    ``total_story_points`` is the sum of the story points of the project's
+    live tasks. The session event in ``app.tasks.models`` keeps it, on every
+    write path.
     """
 
     name: orm.Mapped[str]
@@ -41,7 +44,7 @@ class Project(
     description: orm.Mapped[str] = orm.mapped_column(default="")
     status: orm.Mapped[ProjectStatus] = orm.mapped_column(default=ProjectStatus.ACTIVE)
 
-    # Denormalized roll-up — kept in sync by TaskView (see use-case in matrix).
+    # Kept by the session event in app.tasks.models.
     total_story_points: orm.Mapped[int] = orm.mapped_column(default=0)
 
     # Relationships
@@ -51,6 +54,56 @@ class Project(
     tasks: orm.Mapped[list["Task"]] = orm.relationship(
         back_populates="project", default_factory=list, cascade="all, delete-orphan"
     )
+
+
+def slugify(text: str) -> str:
+    """Lowercase, hyphenated slug — adequate for the example."""
+    text = re.sub(r"[^a-zA-Z0-9]+", "-", text).strip("-").lower()
+    return text or "project"
+
+
+def _unique_slug(
+    connection: sa.Connection, base: str, org_id: int, exclude_id: int | None = None
+) -> str:
+    """The first of ``base``, ``base-2``, ``base-3``, ... that no other
+    project of the organization uses."""
+    candidate = base
+    n = 1
+    while True:
+        query = sa.select(Project.id).where(
+            Project.slug == candidate, Project.organization_id == org_id
+        )
+        if exclude_id is not None:
+            query = query.where(Project.id != exclude_id)
+        if connection.scalar(query) is None:
+            return candidate
+        n += 1
+        candidate = f"{base}-{n}"
+
+
+@sa.event.listens_for(Project, "before_insert")
+def _set_slug(mapper: Any, connection: sa.Connection, project: Project) -> None:
+    """A new project gets the slug the client sent, or one from its name.
+
+    The insert default has not stamped ``organization_id`` yet, so this
+    reads the organization from ``Current``, as the insert default does.
+    """
+    project.slug = _unique_slug(
+        connection, project.slug or slugify(project.name), Current.org_id()
+    )
+
+
+@sa.event.listens_for(Project, "before_update")
+def _follow_name(mapper: Any, connection: sa.Connection, project: Project) -> None:
+    """A new name gives a new slug, unless the slug changed as well."""
+    attrs = sa.inspect(project).attrs
+    if attrs.name.history.has_changes() and not attrs.slug.history.has_changes():
+        project.slug = _unique_slug(
+            connection,
+            slugify(project.name),
+            project.organization_id,
+            exclude_id=project.id,
+        )
 
 
 class ProjectClauses(fr.ClauseNamespace):
