@@ -3,7 +3,7 @@ import functools
 import inspect
 import sys
 import types
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Iterable, Mapping
 from datetime import datetime
 from typing import (
     TYPE_CHECKING,
@@ -21,9 +21,7 @@ from typing import (
 )
 
 import pydantic
-from pydantic.config import JsonDict
 from pydantic.fields import Field, FieldInfo
-from pydantic_core import to_jsonable_python
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
@@ -1324,10 +1322,10 @@ class PatchMixin(pydantic.BaseModel):
     never written. The defaults of the schema are **replaced** by ``None``.
 
     Implementation note: like :class:`OmitReadOnlyMixin` this mutates
-    ``cls.model_fields`` (``FieldInfo.default``, ``validate_default`` and
-    ``json_schema_extra``) and then calls ``model_rebuild(force=True)``.
-    This relies on pydantic v2 keeping ``FieldInfo`` mutable; verified on the
-    pinned ``pydantic>=2.11.7`` minimum and exercised by
+    ``cls.model_fields`` (``FieldInfo.default`` and ``validate_default``) and
+    then calls ``model_rebuild(force=True)``. This relies on pydantic v2
+    keeping ``FieldInfo`` mutable; verified on the pinned
+    ``pydantic>=2.11.7`` minimum and exercised by
     ``tests/test_pydantic_model_fields_mutation.py``.
     """
 
@@ -1343,30 +1341,16 @@ class PatchMixin(pydantic.BaseModel):
             # Also when the class sets ``validate_default=True``: the default
             # is not a value of the field's type.
             field.validate_default = False
-            field.json_schema_extra = _without_default(field.json_schema_extra)
+
+        # The rebuild validates the default again for a field with a
+        # ``@validator(..., always=True)``.
+        validators = cls.__pydantic_decorators__.validators
+        for name, decorator in list(validators.items()):
+            if decorator.info.always:
+                info = dataclasses.replace(decorator.info, always=False)
+                validators[name] = dataclasses.replace(decorator, info=info)  # type: ignore[assignment]
 
         cls.model_rebuild(force=True)
-
-
-def _without_default(
-    extra: JsonDict | Callable[[JsonDict], None] | None,
-) -> Callable[[JsonDict], None]:
-    """A field's ``json_schema_extra`` that applies ``extra`` and then removes
-    ``default`` from the field's JSON schema.
-
-    A field that the client leaves out of ``PATCH`` keeps its value, so the
-    ``None`` default is not part of the contract. Some client generators
-    also read a field with a default as a field that is always present.
-    """
-
-    def update(schema: JsonDict) -> None:
-        if callable(extra):
-            extra(schema)
-        elif extra:
-            schema.update(to_jsonable_python(extra))
-        schema.pop("default", None)
-
-    return update
 
 
 def getattrs(obj: Any, *attrs: str, default: Any = None) -> Any:

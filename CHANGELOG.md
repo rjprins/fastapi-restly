@@ -79,10 +79,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   only where the type allows `None`, as in the create body. Before, the
   update body made each type `Optional`. So `PATCH {"title": null}` for a
   field `title: str` passed validation, and the database rejected it with
-  `409`. Now it returns `422`, and a validator on such a field no longer gets
-  `None`. A field typed `str` on a nullable column can no longer be set to
-  `null` with `PATCH`; type it `str | None` for that. In OpenAPI, the fields
-  of the update body have no `"default": null`, and `title` is `string`
+  `409`. Now it returns `422`. A field validator in the default `after` mode
+  no longer gets `None` for such a field. A `before` or `wrap` validator
+  still gets the client's `null`, as in the create body. A field typed `str`
+  on a nullable column can no longer be set to `null` with `PATCH`; type it
+  `str | None` for that. In OpenAPI, `title` in the update body is `string`
   instead of `string | null`.
 
 ### Removed

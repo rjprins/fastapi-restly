@@ -257,7 +257,9 @@ validator also runs in these places:
   validate a field that the client leaves out, so the validator does not
   run for it. Each field keeps its type, so `null` is valid only where the
   type allows `None`, as in the create body. `{"slug": null}` returns 422
-  before the validator runs, so the validator above never gets `None`.
+  before the validator runs, so the validator above never gets `None`. A
+  validator with `mode="before"` runs before that check, so it still gets
+  the client's `null`.
 - The response class runs the validator when Restly builds a response from a
   row. A row that breaks the rule, for example one that a script wrote, then
   fails with a server error.
@@ -585,10 +587,10 @@ builds the classes. For the view's schema `UserSchema`:
   default of every field to `None`, so the client may leave out each field.
   The defaults of `UserSchema` are **replaced** by `None`, not kept. Each
   field keeps its type, and Pydantic does not validate the `None` default,
-  also when the class sets `validate_default=True`. A field that the client
-  does not send is not written: Restly writes only the fields in
-  `model_fields_set`. In OpenAPI, the fields of the update body have no
-  `default` and none is required.
+  also when the class sets `validate_default=True` or a validator sets
+  `always=True`. A field that the client does not send is not written:
+  Restly writes only the fields in `model_fields_set`. In OpenAPI, no field
+  of the update body is required.
 
 Both request bodies also leave out a primary key that the server generates,
 even when the schema does not mark it `ReadOnly`. Generated means an

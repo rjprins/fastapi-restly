@@ -97,11 +97,7 @@ The `detail` text depends on the database driver. Restly knows the common
 PostgreSQL error codes and SQLite error messages. For other databases, it uses
 a general conflict message.
 
-A `null` reaches the database only when the type of the schema field allows
-`None`. Otherwise validation rejects it first, with `422`. This holds for the
-create body and for the update body.
-
-The write block does this. Each CRUD write, and each
+The write block makes the `409`. Each CRUD write, and each
 [`write_action`](#custom-action-route) block in a custom route, turns the
 `IntegrityError` into
 {class}`fr.exc.Conflict <fastapi_restly.exc.Conflict>`, with the
@@ -139,6 +135,10 @@ catches `fr.exc.Conflict`:
 
 After a conflict, the session waits for a rollback. To write again in the
 same request, call `await self.session.rollback()` first.
+
+A `null` reaches the database only when the type of the schema field allows
+`None`. Otherwise validation rejects it first, with `422`, in the create body
+and in the update body; see [Validation](#validation).
 
 (error-envelope)=
 ## Change the error body for the whole app

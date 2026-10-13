@@ -6,6 +6,8 @@ each type ``Optional``. Then ``{"title": null}`` passed validation, and the
 database rejected the ``NULL``: 409 instead of 422.
 """
 
+import warnings
+
 import pydantic
 import pytest
 from sqlalchemy.orm import Mapped, mapped_column
@@ -83,3 +85,41 @@ def test_the_update_body_has_no_defaults_and_no_required_fields(client):
     assert fields["secret"] == {"type": "string", "title": "Secret", "writeOnly": True}
     # The create body keeps the defaults of the schema.
     assert schemas["CardCreate"]["properties"]["count"]["default"] == 3
+
+
+def test_a_v1_validator_with_always_does_not_validate_a_left_out_field(client):
+    """Pydantic validates the default of a field with a v1
+    ``@validator(..., always=True)``. In the update body, the ``None``
+    default of ``title: str`` then failed, and each PATCH that left the title
+    out returned 422."""
+
+    class Note(fr.IDMixin, SharedBase):
+        title: Mapped[str]
+        body: Mapped[str]
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", pydantic.PydanticDeprecatedSince20)
+
+        class NoteSchema(fr.IDSchema):
+            title: str
+            body: str
+
+            @pydantic.validator("title", always=True)
+            def strip_title(cls, value: str) -> str:
+                return value.strip()
+
+    @fr.include_view(client.app)
+    class NoteView(fr.AsyncRestView):
+        prefix = "/notes"
+        model = Note
+        schema = NoteSchema
+
+    create_tables()
+    note = client.post("/notes/", json={"title": " a ", "body": "b"}).json()
+    assert note["title"] == "a"
+    url = f"/notes/{note['id']}"
+    assert client.patch(url, json={"body": "c"}).json()["title"] == "a"
+    assert client.patch(url, json={"title": " d "}).json()["title"] == "d"
+    client.patch(url, json={"title": None}, assert_status_code=422)
+    # The create body still validates the default.
+    assert NoteView.schema_create.model_fields["title"].validate_default
