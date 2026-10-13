@@ -16,7 +16,9 @@ What they pin in place:
 """
 
 from datetime import datetime
+from typing import Annotated
 
+import pydantic
 import pytest
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -144,7 +146,12 @@ def test_ne_with_comma_means_not_in(people_client):
     assert names == ["Alice"]
 
 
-def test_range_operators_not_emitted_for_bool(client):
+@pytest.mark.parametrize(
+    "annotation",
+    [bool, Annotated[bool, pydantic.Field(description="Active")] | None],
+    ids=["bool", "annotated-inside-optional"],
+)
+def test_range_operators_not_emitted_for_bool(client, annotation):
     """``__gte``/``__lte``/... must not be generated for boolean fields, and
     sending one is rejected as an unknown query parameter.
 
@@ -152,7 +159,9 @@ def test_range_operators_not_emitted_for_bool(client):
     raises ``sqlalchemy.exc.ArgumentError`` and bubbles up as HTTP 500.
     The schema omits the parameter, and the default list endpoint
     rejects unknown keys with a 422 instead of silently ignoring them
-    (which would widen the result set — bad for filters).
+    (which would widen the result set — bad for filters). Pydantic keeps an
+    ``Annotated`` inside ``Optional`` on the field. Before the fix, that
+    ``Annotated`` layer hid the bool type from the check.
     """
 
     class FlaggedThing(fr.IDMixin, SharedBase):
@@ -161,7 +170,7 @@ def test_range_operators_not_emitted_for_bool(client):
 
     class FlaggedSchema(fr.IDSchema):
         name: str
-        active: bool
+        active: annotation
 
     @fr.include_view(client.app)
     class FlaggedView(fr.AsyncRestView):

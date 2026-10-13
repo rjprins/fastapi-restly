@@ -122,8 +122,28 @@ _ORDERABLE_TYPES: tuple[type, ...] = (
 )
 
 
+def _field_type(field: FieldInfo) -> tuple[Any, list[Any]]:
+    """Return the type of a field without ``Optional`` and ``Annotated``, and
+    the metadata of each ``Annotated`` layer that it removed.
+
+    Pydantic moves the metadata of an outer ``Annotated`` to
+    ``field.metadata``, but it keeps an ``Annotated`` inside ``Optional``. So
+    ``Annotated[bool, Field(...)] | None`` and ``constr(...) | None`` keep
+    both layers, and every check of the type must remove both.
+    """
+    annotation = field.annotation
+    metadata: list[Any] = list(field.metadata)
+    while True:
+        annotation = _unwrap_optional_annotation(annotation)
+        if get_origin(annotation) is Annotated:
+            annotation, *extra = get_args(annotation)
+            metadata.extend(extra)
+            continue
+        return annotation, metadata
+
+
 def _is_string_field(field: FieldInfo) -> bool:
-    annotation = _unwrap_optional_annotation(field.annotation)
+    annotation, _ = _field_type(field)
     return annotation is str
 
 
@@ -143,7 +163,7 @@ def _is_idref_field(field: FieldInfo) -> bool:
     traversal. ``list[IDRef[T]]`` (to-many) is unaffected -- its annotation is a
     list, so it is never a nested schema here.
     """
-    annotation = _unwrap_optional_annotation(field.annotation)
+    annotation, _ = _field_type(field)
     return isinstance(annotation, type) and issubclass(annotation, IDRef)
 
 
@@ -155,21 +175,12 @@ def _supports_scalar_operators(field: FieldInfo) -> bool:
     principle applied to non-column fields.
 
     The check mirrors what the request path's ``_parse_value`` (full Pydantic
-    field validation) will accept. ``Annotated`` wrappers are unwrapped even
-    inside ``Optional`` (``conlist(...)`` produces those), and a
-    ``pydantic.Json[...]`` field counts as scalar: its validation parses the
-    query string as JSON, so its filters work. ``str``/``bytes`` are
-    collections in the abc sense but coerce fine, so they stay scalar.
+    field validation) will accept. A ``pydantic.Json[...]`` field counts as
+    scalar: its validation parses the query string as JSON, so its filters
+    work. ``str``/``bytes`` are collections in the abc sense but coerce fine,
+    so they stay scalar.
     """
-    annotation = field.annotation
-    metadata: list[Any] = list(field.metadata)
-    while True:
-        annotation = _unwrap_optional_annotation(annotation)
-        if get_origin(annotation) is Annotated:
-            annotation, *extra = get_args(annotation)
-            metadata.extend(extra)
-            continue
-        break
+    annotation, metadata = _field_type(field)
     # ``pydantic.Json`` is a real class at runtime; the type stubs model it as
     # an ``Annotated`` factory, hence the cast.
     json_marker = cast(type, pydantic.Json)
@@ -184,7 +195,7 @@ def _supports_scalar_operators(field: FieldInfo) -> bool:
 
 
 def _supports_range_operators(field: FieldInfo) -> bool:
-    annotation = _unwrap_optional_annotation(field.annotation)
+    annotation, _ = _field_type(field)
     if annotation is bool:
         return False
     if not isinstance(annotation, type):
@@ -576,7 +587,9 @@ def _written_name(schema_cls: SchemaType) -> str:
 
 
 def _iter_fields_including_nested(
-    schema_cls: SchemaType, prefix: str = ""
+    schema_cls: SchemaType,
+    prefix: str = "",
+    _followed: frozenset[SchemaType] = frozenset(),
 ) -> Iterator[tuple[str, FieldInfo]]:
     for name, field in schema_cls.model_fields.items():
         # A WriteOnly field, or one with ``exclude=True``, never goes out,
@@ -605,7 +618,13 @@ def _iter_fields_including_nested(
         full_name = f"{prefix}.{public_name}" if prefix else public_name
         nested = _get_nested_schema(field)
         if nested and not _is_idref_field(field):
-            yield from _iter_fields_including_nested(nested, full_name)
+            # Follow each nested schema once in a path. A schema that names
+            # itself, such as ``parent: CategorySchema | None``, then gets
+            # ``parent.name`` but not ``parent.parent.name``, and the walk ends.
+            if nested not in _followed:
+                yield from _iter_fields_including_nested(
+                    nested, full_name, _followed | {nested}
+                )
         else:
             yield full_name, field
 
@@ -870,7 +889,7 @@ def _field_validator(schema_cls: SchemaType, field_name: str) -> SchemaValidator
 def _get_nested_schema(field: FieldInfo | None) -> SchemaType | None:
     if field is None:
         return None
-    annotation = _unwrap_optional_annotation(field.annotation)
+    annotation, _ = _field_type(field)
     if isinstance(annotation, type) and issubclass(annotation, pydantic.BaseModel):
         return annotation
     return None

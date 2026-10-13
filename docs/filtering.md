@@ -174,7 +174,25 @@ does not.
 
 A path can follow a relationship of a model to the same model, such as
 `?manager.name=Alice` or `?manager.manager.name=Alice`. Each step must be a
-nested schema. Two relationships to the same model can be filtered together:
+nested schema, and Restly follows each schema class only once in a path. So
+a schema that names itself, such as `manager: EmployeeSchema | None` inside
+`EmployeeSchema`, gives `?manager.name=` but not `?manager.manager.name=`.
+For two steps, use another class for the second step:
+
+```python
+class EmployeeName(fr.IDSchema):
+    name: str
+
+
+class ManagerSchema(EmployeeName):
+    manager: EmployeeName | None = None
+
+
+class EmployeeSchema(EmployeeName):
+    manager: ManagerSchema | None = None
+```
+
+Two relationships to the same model can be filtered together:
 
 ```text
 GET /people?home_city.name=Amsterdam&work_city.name=Berlin
@@ -232,8 +250,8 @@ GET /comments?post_id__isnull=true
 
 A `MustExist[pk, ...]` field gets the filters of its `pk` type. An `int` id
 gets equality, `__in`, `__ne`, `__isnull` and the range suffixes. A `UUID` id
-gets no range suffixes, as the [list of suffixes](#filter-a-list) says. No id
-gets `__contains`.
+gets no range suffixes, as the [list of suffixes](#filter-a-list) says. Only a
+`str` id gets `__contains` and `__icontains`.
 
 A relationship reference filters differently (see
 [Choose a reference style](#reference-styles)):

@@ -117,6 +117,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Before, it needed `check_fields=False`. The request bodies do not have the
   field, so they do not run the validator. The response class has the field
   and runs it.
+- A field type with `Annotated` inside `Optional`, such as
+  `Annotated[bool, Field(...)] | None`, `constr(...) | None` or
+  `fr.MustExist[UUID, Team] | None`, gets the same list filters as the plain
+  type. Before, such a field got the range filters (`__gte` and the others)
+  for every type. On a bool they returned `500`. A UUID, a plain `Enum` or
+  an `IDRef` no longer gets them, as with the plain type, so a client that
+  sends one now gets `422`. Such a string now gets `__contains` and
+  `__icontains`. Such a nested schema now gets the dotted filters and sort
+  keys, such as `?author.name=Alice`.
+- A schema that names itself in a to-one field, such as
+  `parent: CategorySchema | None` inside `CategorySchema`, no longer makes
+  the view fail with `RecursionError` when it registers. The list filters
+  follow it one step: `?parent.name=` works, `?parent.parent.name=` does not.
 
 ## [0.11.0] - 2026-10-09
 

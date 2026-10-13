@@ -247,9 +247,16 @@ def path_client(request: pytest.FixtureRequest) -> Iterator[RestlyTestClient]:
             (15, "Finn", 2, 1, 2),
         )
     )
-    if request.param is fr.RestView:
+    _create_tables_and_add(request, request.param, Base, rows)
+
+    with RestlyTestClient(app) as client:
+        yield client
+
+
+def _create_tables_and_add(request, view_class, base, rows) -> None:
+    if view_class is fr.RestView:
         engine, make_session = request.getfixturevalue("sync_db")
-        Base.metadata.create_all(engine)
+        base.metadata.create_all(engine)
         with make_session() as session:
             session.add_all(rows)
             session.commit()
@@ -258,12 +265,57 @@ def path_client(request: pytest.FixtureRequest) -> Iterator[RestlyTestClient]:
         async def prepare():
             engine = fr.db.get_async_engine()
             async with engine.begin() as connection:
-                await connection.run_sync(Base.metadata.create_all)
+                await connection.run_sync(base.metadata.create_all)
             async with async_sessionmaker(engine)() as session:
                 session.add_all(rows)
                 await session.commit()
 
         asyncio.run(prepare())
 
+
+@pytest.mark.parametrize(
+    "view_class", [fr.RestView, fr.AsyncRestView], ids=["sync", "async"]
+)
+def test_a_schema_that_names_itself_filters_one_step(request, view_class):
+    """Restly follows a nested schema once in a path. Before, a schema that
+    names itself made view registration fail with ``RecursionError``."""
+
+    class Base(DeclarativeBase):
+        pass
+
+    class Category(Base):
+        __tablename__ = "path_category"
+        id: Mapped[int] = mapped_column(primary_key=True)
+        name: Mapped[str]
+        parent_id: Mapped[int | None] = mapped_column(ForeignKey("path_category.id"))
+        parent: Mapped["Category | None"] = relationship(remote_side=[id])
+
+    class CategorySchema(fr.IDSchema):
+        name: str
+        parent: "CategorySchema | None" = None
+
+    app = FastAPI()
+
+    @fr.include_view(app)
+    class CategoryView(view_class):
+        prefix = "/categories"
+        model = Category
+        schema = CategorySchema
+
+    rows = [
+        Category(id=1, name="root"),
+        Category(id=2, name="mid", parent_id=1),
+        Category(id=3, name="leaf", parent_id=2),
+    ]
+    _create_tables_and_add(request, view_class, Base, rows)
+
     with RestlyTestClient(app) as client:
-        yield client
+        leaf = client.get("/categories/3").json()
+        assert leaf["parent"]["parent"]["name"] == "root"
+        payload = client.get("/categories/", params={"parent.name": "mid"}).json()
+        assert [row["id"] for row in payload["data"]] == [3]
+        client.get(
+            "/categories/",
+            params={"parent.parent.name": "root"},
+            assert_status_code=422,
+        )

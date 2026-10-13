@@ -210,3 +210,110 @@ def test_collection_typed_fields_isnull_works_end_to_end(client):
     # unknown params -- instead of passing validation and 400ing at execution.
     client.get("/json-rows/?meta=x", assert_status_code=422)
     client.get("/json-rows/?meta__in=x", assert_status_code=422)
+
+
+class SpellingOwner(fr.IDMixin, SharedBase):
+    name: Mapped[str] = mapped_column()
+
+
+class SpellingRow(fr.IDMixin, SharedBase):
+    flag: Mapped[bool | None] = mapped_column(default=None)
+    flag_annotated: Mapped[bool | None] = mapped_column(default=None)
+    title: Mapped[str | None] = mapped_column(default=None)
+    title_annotated: Mapped[str | None] = mapped_column(default=None)
+    count: Mapped[int | None] = mapped_column(default=None)
+    count_annotated: Mapped[int | None] = mapped_column(default=None)
+    owner_id: Mapped[int | None] = mapped_column(
+        ForeignKey("spelling_owner.id"), default=None
+    )
+    owner_annotated_id: Mapped[int | None] = mapped_column(
+        ForeignKey("spelling_owner.id"), default=None
+    )
+    owner: Mapped[SpellingOwner | None] = relationship(
+        foreign_keys="SpellingRow.owner_id", default=None
+    )
+    owner_annotated: Mapped[SpellingOwner | None] = relationship(
+        foreign_keys="SpellingRow.owner_annotated_id", default=None
+    )
+
+
+class SpellingCategory(fr.IDMixin, SharedBase):
+    name: Mapped[str] = mapped_column()
+    parent_id: Mapped[int | None] = mapped_column(
+        ForeignKey("spelling_category.id"), default=None
+    )
+    parent: Mapped[SpellingCategory | None] = relationship(
+        remote_side="SpellingCategory.id", default=None
+    )
+
+
+def test_annotated_inside_optional_gets_the_filters_of_the_plain_type():
+    """Pydantic keeps an ``Annotated`` inside ``Optional`` on the field, as in
+    ``constr(...) | None``. The filters must not depend on that spelling. A
+    bool written this way got range filters that returned 500, a string lost
+    ``__contains`` and ``__icontains``, and a nested schema lost its dotted
+    filters."""
+
+    class SpellingOwnerSchema(fr.BaseSchema):
+        name: str
+
+    class SpellingSchema(fr.BaseSchema):
+        flag: bool | None = None
+        flag_annotated: Annotated[bool, pydantic.Field(description="x")] | None = None
+        title: str | None = None
+        title_annotated: Annotated[str, pydantic.Field(max_length=50)] | None = None
+        count: int | None = None
+        count_annotated: Annotated[int, pydantic.Field(ge=0)] | None = None
+        owner_id: fr.IDRef[SpellingOwner] | None = None
+        owner_annotated_id: (
+            Annotated[fr.IDRef[SpellingOwner], pydantic.Field(description="x")] | None
+        ) = None
+        owner: SpellingOwnerSchema | None = None
+        owner_annotated: (
+            Annotated[SpellingOwnerSchema, pydantic.Field(description="x")] | None
+        ) = None
+
+    fields = derive_schema_list_params(SpellingSchema, SpellingRow).model_fields
+
+    def filters(name: str) -> set[str]:
+        """The filter keys of a field, without the field name."""
+        return {
+            key.removeprefix(name)
+            for key in fields
+            if key.split("__")[0].split(".")[0] == name
+        }
+
+    for plain, annotated in (
+        ("flag", "flag_annotated"),
+        ("title", "title_annotated"),
+        ("count", "count_annotated"),
+        ("owner_id", "owner_annotated_id"),
+        ("owner", "owner_annotated"),
+    ):
+        assert filters(annotated) == filters(plain), plain
+    assert "flag_annotated__gte" not in fields
+    assert "title_annotated__contains" in fields
+    assert "count_annotated__gte" in fields
+    assert "owner_annotated_id__in" in fields
+    assert "owner_annotated.name__contains" in fields
+
+
+def test_a_schema_that_names_itself_gets_one_level_of_dotted_filters():
+    """Restly follows a nested schema once in a path. Before, a schema that
+    names itself made view registration fail with ``RecursionError``."""
+
+    class PlainCategory(fr.BaseSchema):
+        name: str
+        parent: PlainCategory | None = None
+
+    class AnnotatedCategory(fr.BaseSchema):
+        name: str
+        parent: Annotated[AnnotatedCategory, pydantic.Field(description="x")] | None = (
+            None
+        )
+
+    for schema in (PlainCategory, AnnotatedCategory):
+        fields = derive_schema_list_params(schema, SpellingCategory).model_fields
+        assert "parent.name" in fields, schema
+        assert "parent.name__contains" in fields, schema
+        assert not any(key.startswith("parent.parent") for key in fields), schema
