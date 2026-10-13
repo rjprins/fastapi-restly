@@ -95,9 +95,11 @@ def _set_slug(mapper: Any, connection: sa.Connection, project: Project) -> None:
 
 @sa.event.listens_for(Project, "before_update")
 def _follow_name(mapper: Any, connection: sa.Connection, project: Project) -> None:
-    """A new name gives a new slug, unless the slug changed as well."""
+    """A new name gives a new slug, unless the slug changed as well. A blank
+    slug comes from the name, as on insert."""
     attrs = sa.inspect(project).attrs
-    if attrs.name.history.has_changes() and not attrs.slug.history.has_changes():
+    renamed = attrs.name.history.has_changes() and not attrs.slug.history.has_changes()
+    if renamed or not project.slug:
         project.slug = _unique_slug(
             connection,
             slugify(project.name),

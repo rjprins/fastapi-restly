@@ -183,11 +183,15 @@ def _add_points(project: Project | None, points: int) -> None:
 
 def _counts_now(session: orm.Session, task: Task) -> tuple[Project | None, int]:
     """The project of ``task``, and the points it adds to the total."""
-    if task.project_id is not None:
+    moved = sa.inspect(task).attrs.project.history.added
+    if moved:
+        # Set through the relationship: the flush copies the key later. None
+        # is a task taken out of its project, which the flush deletes.
+        project = moved[0]
+    elif task.project_id is not None:
         project = session.get(Project, task.project_id)
     else:
-        # A new task that names its project through the relationship.
-        project = task.project
+        project = None
     points = (task.story_points or 0) if task.deleted_at is None else 0
     return project, points
 
@@ -198,7 +202,14 @@ def _counted_before(session: orm.Session, task: Task) -> tuple[Project | None, i
 
     def before(key: str) -> Any:
         history = attrs[key].load_history()
-        return history.deleted[0] if history.deleted else getattr(task, key)
+        if history.deleted:
+            return history.deleted[0]
+        if history.added:
+            # Set while not loaded, so SQLAlchemy kept no old value: read the
+            # row, which holds the state of the last flush.
+            query = sa.select(getattr(Task, key)).where(Task.id == task.id)
+            return session.connection().scalar(query)
+        return getattr(task, key)
 
     project_id = before("project_id")
     project = session.get(Project, project_id) if project_id is not None else None

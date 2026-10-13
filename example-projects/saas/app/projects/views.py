@@ -7,6 +7,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.attributes import flag_modified
 
 import fastapi_restly as fr
 
@@ -177,6 +178,10 @@ class ProjectView(SoftDeleteMixin, AuthenticatedView[Project]):
         """
         old_status = obj.status
         project = await self.update_object(obj, schema_obj)
+        if getattr(schema_obj, "slug", None):
+            # A slug that the client sent is kept, also when it is the
+            # current one, which SQLAlchemy does not count as a change.
+            flag_modified(project, "slug")
         project = await self.save_object(project)
         if project.status != old_status:
             self._emit(

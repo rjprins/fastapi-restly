@@ -176,6 +176,18 @@ class TestProjectMeta:
             await session.flush()
             assert project.slug == "renamed-here"
 
+    def test_a_patch_keeps_a_sent_slug_and_fills_a_blank_one(self, client):
+        """A rename gives a new slug, unless the client sends a slug. A form
+        that sends the whole record back keeps the slug of saved links."""
+        project = client.post("/projects", json={"name": "Keep Me"}).json()
+        url = f"/projects/{project['id']}"
+        kept = client.patch(url, json={"name": "Renamed", "slug": "keep-me"}).json()
+        assert kept["slug"] == "keep-me"
+        followed = client.patch(url, json={"name": "Follows"}).json()
+        assert followed["slug"] == "follows"
+        blank = client.patch(url, json={"name": "Filled In", "slug": ""}).json()
+        assert blank["slug"] == "filled-in"
+
     def test_audit_stamps_record_the_acting_user(self, client, actor):
         """The column defaults stamp the tenant and the user of the request."""
         p = client.post("/projects", json={"name": "Audit Test"}).json()
@@ -464,6 +476,61 @@ class TestStoryPointRollup:
             await session.delete(task)
             await session.flush()
             assert b.total_story_points == 0
+
+    async def test_a_script_keeps_the_total_through_the_relationship(
+        self, async_client, async_actor
+    ):
+        """A move through the relationship sets the key only during the
+        flush, and removing a task from ``Project.tasks`` deletes it."""
+        from app.projects.models import Project
+        from app.tasks.models import Task, TaskType
+
+        first = (await async_client.post("/projects", json={"name": "A"})).json()
+        second = (await async_client.post("/projects", json={"name": "B"})).json()
+        async with _async_session(async_actor) as session:
+            a = await session.get(Project, first["id"])
+            b = await session.get(Project, second["id"])
+            assert a is not None and b is not None
+            task = Task(title="T", project_id=a.id, task_type=TaskType.FEATURE)
+            task.story_points = 5
+            session.add(task)
+            await session.flush()
+
+            task.project = b
+            await session.flush()
+            assert (a.total_story_points, b.total_story_points) == (0, 5)
+
+            tasks = await b.awaitable_attrs.tasks
+            tasks.remove(task)
+            await session.flush()
+            assert b.total_story_points == 0
+
+    async def test_a_script_keeps_the_total_when_a_value_was_not_loaded(
+        self, async_client, async_actor
+    ):
+        """SQLAlchemy keeps no old value for an attribute that was not
+        loaded when it was set, so the event reads the row."""
+        from app.projects.models import Project
+        from app.tasks.models import Task, TaskType
+
+        first = (await async_client.post("/projects", json={"name": "A"})).json()
+        async with _async_session(async_actor) as session:
+            a = await session.get(Project, first["id"])
+            assert a is not None
+            task = Task(title="T", project_id=a.id, task_type=TaskType.FEATURE)
+            task.story_points = 5
+            session.add(task)
+            await session.flush()
+
+            session.expire(task)
+            task.story_points = 8
+            await session.flush()
+            assert a.total_story_points == 8
+
+            session.expire(task)
+            task.deleted_at = datetime.now(UTC)
+            await session.flush()
+            assert a.total_story_points == 0
 
     def test_rollup_on_create(self, client):
         project = self._setup(client)
