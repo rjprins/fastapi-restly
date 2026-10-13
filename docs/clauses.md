@@ -525,5 +525,5 @@ inside the scope.
   of a model applies.
 - [Current & ContextParam](current.md): declare context members and bind
   them.
-- [Models](#tenant-row-scoping): the tenant rule as a session rule.
+- [Multi-Tenancy](tenancy.md): the tenant rule as a session rule.
 - {doc}`api/clauses`: every name with its signature.

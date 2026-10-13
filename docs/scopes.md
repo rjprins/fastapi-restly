@@ -396,6 +396,70 @@ target. Only the scalar marker `RefExists` can change it.
 [Relationships](#visibility-and-multi-tenancy) covers which rows a
 reference can reach.
 
+(soft-delete-mixin)=
+
+## Soft-delete rows
+
+A soft delete marks a row as deleted and keeps it in the table. It has three
+parts:
+
+- The model has a `deleted_at` column.
+- The model's [default scope](#default-scope) hides deleted rows from every
+  read and every reference check, as `default_scope = visible` does in the
+  `ItemClauses` at the top of this page.
+- A view mixin overrides `delete`, so `DELETE` sets `deleted_at` instead of
+  removing the row.
+
+The column comes from a model mixin:
+
+```python
+from datetime import datetime
+
+from sqlalchemy import orm
+
+
+class SoftDeletable(orm.MappedAsDataclass, kw_only=True, eq=False):
+    deleted_at: orm.Mapped[datetime | None] = orm.mapped_column(default=None)
+```
+
+(soft-delete-recipe)=
+
+### Make `DELETE` set a timestamp
+
+Override the {meth}`delete <fastapi_restly.views.RestView.delete>` business
+method. It receives the loaded row. Set the timestamp, flush, and do not call
+`super()`, because that would remove the row:
+
+```python
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Any
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+
+class SoftDeleteMixin:
+    """``delete`` sets ``deleted_at`` instead of removing the row."""
+
+    if TYPE_CHECKING:
+        session: AsyncSession
+
+    async def delete(self, obj: Any) -> None:
+        obj.deleted_at = datetime.now(timezone.utc)
+        await self.session.flush()
+```
+
+If only one view needs it, put the same `delete` method on that view. The
+mixin has no `hasattr` check and no fallback to `super()`. It goes on views of
+`SoftDeletable` models, so the column is always there.
+
+{meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` still
+loads the row through the scope, calls `authorize` and commits. The mixin only
+changes what "delete" does. A query parameter can never widen a scope, so a
+client cannot ask for deleted rows. To list the deleted rows or restore one,
+add a route that reads other rows.
+[Read other rows on one route](#per-read-scope) shows a trash list and a
+restore route on the same view.
+
 (coming-from-rails)=
 ## Coming from Rails, Laravel or Phoenix
 
@@ -466,7 +530,7 @@ repeat rows, and it does not make `total_count` too high.
 
 - [Query Clauses](clauses.md): declare, compose and apply the clauses that a
   scope is made of.
-- [Models](#soft-delete-mixin): soft delete, with the default scope that
-  hides deleted rows.
+- [Multi-Tenancy](tenancy.md): the tenant rule, which holds under every
+  scope.
 - [Authorization](#authorize-gate): decide what the caller may do with the
   rows that the scope shows.

@@ -157,7 +157,7 @@ lets a member attach labels only to a task that is assigned to them, with
 `RefExists(Task, scope=TaskClauses.visible)` in
 [`app/labels/schemas.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/labels/schemas.py).
 
-A session rule, such as the tenant rule on [Models](#tenant-row-scoping),
+A session rule, such as the [tenant rule](#tenant-row-scoping),
 also reaches every reference check. This includes `MustExist`, and the
 `session.get()` that Restly uses for an `IDRef` or `IDSchema` field when the
 model has no default scope. The one exception is an object that is already in
