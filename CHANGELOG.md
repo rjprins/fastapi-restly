@@ -57,10 +57,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   equal, and a model object could not go in a `set`. To compare a model by
   its fields again, pass `eq=True` on it: `class Post(fr.IDMixin, Base, eq=True)`.
   A dataclass mixin of your own declares the same options as `fr.IDMixin`:
-  `class Stamped(MappedAsDataclass, kw_only=True, eq=False)`. A mixin without
-  `eq=False` makes each model that uses it compare fields, so
+  `class Stamped(MappedAsDataclass, kw_only=True, eq=False, repr=False)`. A
+  mixin without `eq=False` makes each model that uses it compare fields, so
   `fr.ModelDefaults` raises `RestlyConfigurationError` for such a model,
   unless the model passes `eq=True` or writes its own `__eq__`.
+- The repr of a model on `fr.ModelDefaults` no longer loads anything. It shows
+  the primary key and the other columns that are loaded, such as
+  `Post(id=1, title='Hello')`. `...` stands for columns that are not loaded,
+  and relationships are left out. Before, the dataclass repr read every field,
+  so in async code it raised `MissingGreenlet` for a relationship or a column
+  that was not loaded. Pass `repr=True` on a model for the dataclass repr. A
+  dataclass mixin of your own adds `repr=False`, or the model gets a dataclass
+  repr instead. A model that uses `fr.IDMixin` or `fr.TimestampsMixin` on a
+  base without `fr.ModelDefaults` gets Python's default repr.
 - `restly new` generates `app/models.py` with the project's own
   `class Base(fr.ModelDefaults, DeclarativeBase)`. The models, `alembic/env.py`,
   the test setup and `create_all` use that `Base` instead of

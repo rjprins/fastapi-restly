@@ -65,6 +65,12 @@ these defaults:
 - **Equality by identity.** Two model objects are equal only when they are
   the same object, as for any SQLAlchemy model. So a model object can go in a
   `set`, and comparing objects never loads a relationship.
+- **A repr that never loads.** `repr(post)` shows the primary key and the
+  other columns that are loaded, such as `BlogPost(id=1, title='Hello')`.
+  `...` stands for columns that are not loaded, and relationships are left
+  out. So the repr works in async code, for example in a log message or in
+  the output of a failed test. Pass `repr=True` on a model for the dataclass
+  repr, which reads every field.
 - **A table name.** The table name is the class name in snake_case:
   `BlogPost` gets `blog_post`. That is why `ForeignKey("blog_post.id")` works.
   Set `__tablename__` on a model to choose another name.
@@ -171,7 +177,7 @@ every field without a default.
 
 Your own mixins with columns, for a base with `fr.ModelDefaults`, must be
 dataclass mixins too. Subclass `MappedAsDataclass` and pass the options of
-`fr.IDMixin`, `kw_only=True` and `eq=False`, as `AuditStamped`
+`fr.IDMixin`, `kw_only=True`, `eq=False` and `repr=False`, as `AuditStamped`
 [below](#server-stamped-fields) does. SQLAlchemy warns about a mixin that is
 not a dataclass, and SQLAlchemy 2.1 rejects it.
 
@@ -190,6 +196,9 @@ set, not the options of `Base`:
   for such a model, unless the model passes `eq=True` or writes its own
   `__eq__`. A model below another model, also an `__abstract__` one, takes
   that model's choice.
+- Without `repr=False`, a model with the mixin gets a dataclass repr instead
+  of the repr of `fr.ModelDefaults`. A dataclass repr reads every field, so in
+  async code it can raise `MissingGreenlet`.
 :::
 
 ## Use the base in your app
@@ -369,7 +378,7 @@ import fastapi_restly as fr
 from app.current import Current
 
 
-class AuditStamped(orm.MappedAsDataclass, kw_only=True, eq=False):
+class AuditStamped(orm.MappedAsDataclass, kw_only=True, eq=False, repr=False):
     created_by_id: orm.Mapped[int | None] = orm.mapped_column(
         ForeignKey("user.id"), init=False, insert_default=Current.user_id
     )

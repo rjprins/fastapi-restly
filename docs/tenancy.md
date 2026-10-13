@@ -40,7 +40,7 @@ class Base(fr.ModelDefaults, orm.DeclarativeBase):
     pass
 
 
-class TenantOwned(orm.MappedAsDataclass, kw_only=True, eq=False):
+class TenantOwned(orm.MappedAsDataclass, kw_only=True, eq=False, repr=False):
     """The tenant column: the organization the request acts in."""
 
     organization_id: orm.Mapped[int] = orm.mapped_column(

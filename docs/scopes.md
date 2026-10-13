@@ -440,7 +440,7 @@ from datetime import datetime
 from sqlalchemy import orm
 
 
-class SoftDeletable(orm.MappedAsDataclass, kw_only=True, eq=False):
+class SoftDeletable(orm.MappedAsDataclass, kw_only=True, eq=False, repr=False):
     deleted_at: orm.Mapped[datetime | None] = orm.mapped_column(default=None)
 ```
 

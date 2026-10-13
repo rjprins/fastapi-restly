@@ -8,7 +8,8 @@ from datetime import datetime
 from decimal import Decimal
 
 import pytest
-from sqlalchemy import DateTime, MetaData, Numeric
+from sqlalchemy import DateTime, ForeignKey, MetaData, Numeric, select
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import (
     DeclarativeBase,
     DeclarativeBaseNoMeta,
@@ -16,6 +17,7 @@ from sqlalchemy.orm import (
     MappedAsDataclass,
     mapped_column,
     registry,
+    relationship,
 )
 
 import fastapi_restly as fr
@@ -180,7 +182,7 @@ def test_a_mixin_without_eq_false_first_in_the_bases_raises():
     message = (
         r"compares its objects field by field, because its dataclass base "
         r"Stamped does not set eq=False.*"
-        r"class Stamped\(MappedAsDataclass, kw_only=True, eq=False\)"
+        r"class Stamped\(MappedAsDataclass, kw_only=True, eq=False, repr=False\)"
     )
     # First in the bases: SQLAlchemy takes the model's options from it.
     with pytest.raises(fr.exc.RestlyConfigurationError, match="Post " + message):
@@ -253,6 +255,81 @@ def test_a_model_that_writes_its_own_eq_keeps_it():
     assert Post(title="a") == Post(title="a", note="other")
 
 
+def test_repr_never_loads():
+    """A dataclass repr reads every field, so in async code it raised
+    MissingGreenlet for a relationship or a column that was not loaded."""
+
+    class Base(fr.ModelDefaults, DeclarativeBase):
+        pass
+
+    class Author(fr.IDMixin, Base):
+        name: Mapped[str]
+        posts: Mapped[list["Post"]] = relationship(
+            default_factory=list, back_populates="author"
+        )
+
+    class Post(fr.TimestampsMixin, fr.IDMixin, Base):
+        title: Mapped[str]
+        author_id: Mapped[int] = mapped_column(ForeignKey("author.id"))
+        author: Mapped[Author] = relationship(init=False, back_populates="posts")
+
+    async def run() -> list[str]:
+        engine = create_async_engine("sqlite+aiosqlite://")
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        make_session = async_sessionmaker(engine)
+        async with make_session() as session:
+            author = Author(name="Anna")
+            new = repr(author)
+            session.add(author)
+            await session.flush()
+            session.add(Post(title="Hello", author_id=author.id))
+            await session.commit()
+            expired = repr(author)
+        async with make_session() as session:
+            loaded = repr((await session.scalars(select(Author))).one())
+            post = repr((await session.scalars(select(Post))).one())
+        await engine.dispose()
+        return [new, expired, loaded, post]
+
+    new, expired, loaded, post = asyncio.run(run())
+    assert new == "Author(name='Anna', ...)"
+    # the primary key is known without a query
+    assert expired == "Author(id=1, ...)"
+    # the posts are not loaded, and a relationship is never shown
+    assert loaded == "Author(id=1, name='Anna')"
+    # the primary key comes first
+    assert post.startswith("Post(id=1, title='Hello', author_id=1, created_at=")
+
+
+def test_a_model_can_ask_for_the_dataclass_repr():
+    class Base(fr.ModelDefaults, DeclarativeBase):
+        pass
+
+    class Post(fr.IDMixin, Base, repr=True):
+        title: Mapped[str]
+
+    assert repr(Post(title="a")).endswith("Post(id=None, title='a')")
+
+
+def test_a_repr_of_your_own_wins():
+    class Base(fr.ModelDefaults, DeclarativeBase):
+        def __repr__(self) -> str:
+            return "from the base"
+
+    class Post(fr.IDMixin, Base):
+        title: Mapped[str]
+
+    class Tag(fr.IDMixin, Base):
+        name: Mapped[str]
+
+        def __repr__(self) -> str:
+            return "from the model"
+
+    assert repr(Post(title="a")) == "from the base"
+    assert repr(Tag(name="a")) == "from the model"
+
+
 def test_dataclass_options_on_the_base_raise():
     with pytest.raises(fr.exc.RestlyConfigurationError, match="on each model"):
 
@@ -291,6 +368,8 @@ def test_model_mixins_on_a_plain_base_make_the_model_a_dataclass():
     assert dataclasses.is_dataclass(Widget)
     assert Widget(name="w").name == "w"
     assert Widget(name="w") != Widget(name="w")
+    # the mixins do not generate a repr that can load
+    assert " object at " in repr(Widget(name="w"))
 
 
 def test_model_mixins_on_a_dataclass_base_without_restly_defaults():

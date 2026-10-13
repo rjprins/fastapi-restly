@@ -3,7 +3,7 @@ import re
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import DateTime, Enum, func
+from sqlalchemy import DateTime, Enum, func, inspect
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import (
     Composite,
@@ -72,7 +72,8 @@ def _reject_field_equality_from_a_mixin(cls: type, base: type, writes_eq: bool) 
         f"change that. Comparing two {cls.__name__} objects can then load a "
         f"relationship, which an async session cannot do on access. Declare "
         f"the mixin with the options of fr.IDMixin: "
-        f"class {mixin.__name__}(MappedAsDataclass, kw_only=True, eq=False). "
+        f"class {mixin.__name__}(MappedAsDataclass, kw_only=True, eq=False, "
+        f"repr=False). "
         f"To compare {cls.__name__} by its fields, pass eq=True on the model."
     )
 
@@ -88,7 +89,7 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-class TimestampsMixin(MappedAsDataclass, kw_only=True, eq=False):
+class TimestampsMixin(MappedAsDataclass, kw_only=True, eq=False, repr=False):
     """
     Dataclass mixin adding UTC-aware created_at and updated_at timestamps.
 
@@ -107,7 +108,7 @@ class TimestampsMixin(MappedAsDataclass, kw_only=True, eq=False):
     )
 
 
-class IDMixin(MappedAsDataclass, kw_only=True, eq=False):
+class IDMixin(MappedAsDataclass, kw_only=True, eq=False, repr=False):
     """Dataclass mixin adding an auto-incrementing integer `id` primary key.
 
     Made for models on a base with :class:`ModelDefaults`. On another base,
@@ -191,6 +192,7 @@ class ModelDefaults(
     metaclass=_KwOnlyDataclassMeta,
     kw_only=True,
     eq=False,
+    repr=False,
 ):
     """Restly's defaults for SQLAlchemy models, for your own declarative base.
 
@@ -207,6 +209,9 @@ class ModelDefaults(
     * Equality by identity, as for any SQLAlchemy model: two objects are equal
       only when they are the same object. So a model object can go in a
       ``set``, and comparing objects never loads a relationship.
+    * A repr that shows the loaded columns and never loads anything, so it
+      works in async code. Pass ``repr=True`` on a model for the dataclass
+      repr, which reads every field.
     * A table name in snake_case from the class name: ``BlogPost`` gets
       ``blog_post``. Set ``__tablename__`` on a model to choose another name.
     * ``Mapped[datetime]`` as ``DateTime(timezone=True)``. Use
@@ -232,11 +237,34 @@ class ModelDefaults(
 
     For the same reason, a dataclass mixin of your own declares the options
     of ``fr.IDMixin``: ``class Stamped(MappedAsDataclass, kw_only=True,
-    eq=False)``. Without ``eq=False``, a model with the mixin compares
-    fields, and comparing two objects can load a relationship. Such a model
-    raises :class:`~fastapi_restly.exc.RestlyConfigurationError` unless it
-    asks for ``eq=True`` itself or writes its own ``__eq__``.
+    eq=False, repr=False)``. Without ``eq=False``, a model with the mixin
+    compares fields, and comparing two objects can load a relationship. Such
+    a model raises :class:`~fastapi_restly.exc.RestlyConfigurationError`
+    unless it asks for ``eq=True`` itself or writes its own ``__eq__``.
+    Without ``repr=False``, the model gets a dataclass repr instead of this
+    one.
     """
+
+    def __repr__(self) -> str:
+        """Show the primary key and the loaded columns, without loading.
+
+        A dataclass repr reads every field. In async code that raises
+        MissingGreenlet for a relationship or a column that is not loaded.
+        This repr reads only what the object holds: ``Post(id=1, title='Hi')``.
+        ``...`` stands for the columns that are not loaded, and relationships
+        are left out.
+        """
+        state = inspect(self, raiseerr=False)
+        if state is None:  # SQLAlchemy has not set up the object yet
+            return object.__repr__(self)
+        mapper = state.mapper
+        primary = [mapper.get_property_by_column(c).key for c in mapper.primary_key]
+        values = {**dict(zip(primary, state.identity or ())), **state.dict}
+        keys = primary + [a.key for a in mapper.column_attrs if a.key not in primary]
+        shown = [f"{key}={values[key]!r}" for key in keys if key in values]
+        if len(shown) < len(keys):
+            shown.append("...")
+        return f"{type(self).__name__}({', '.join(shown)})"
 
     def __init_subclass__(cls, **kw: Any) -> None:
         base = _declarative_base(cls)
