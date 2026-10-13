@@ -19,11 +19,10 @@ configuration and the model around such a view, in one file that runs.
 `include_view` also works as a direct call; see
 [Register a view](#register-a-view).
 
-Each route runs three methods: an endpoint method for the HTTP contract, a
-handler for steps such as authorization and the commit, and a business method
-for the change in the database. To change what a route does, you override one
-of these methods. [Which method do I override](#which-method-to-override)
-maps each change to its method.
+Each route runs an endpoint method, a final handler and a business method.
+To change what a route does, you override the endpoint method or the business
+method; [Which method do I override](#which-method-to-override) maps each
+change to its method.
 
 (choose-async-or-sync)=
 ## Choose async or sync
@@ -63,16 +62,16 @@ For `prefix = "/users"`, `include_view` registers these routes:
 The main path of the list is `/users`, without a slash at the end. Restly
 also accepts `/users/`, as a route that OpenAPI does not show.
 
-`GET /users` has a filter for each field of the response class that maps to
-a column of the model. It sorts with `?sort=field,-other_field`, and it is
-paginated by default. A query key that the list does not know returns `422`.
-[Filtering & Pagination](filtering.md) defines the parameters.
+`GET /users` takes the filter, sort and page parameters that
+[Filtering & Pagination](filtering.md) defines, and it is paginated by
+default.
 [Responses](responses.md) shows the response bodies and how to
 change the `data` envelope.
 
 A row that does not exist returns `404`, and so does a row that the view's
 [scope](scopes.md) hides. Each write commits before Restly builds the
-response. Reads do not commit.
+response, and a read does not commit; see
+[What commits, and when](#what-commits).
 
 :::{important}
 Restly does not authenticate requests, and by default it allows every action
@@ -127,32 +126,15 @@ optional; see [Models](models.md).
 
 If the view does not declare {attr}`schema
 <fastapi_restly.views.BaseRestView.schema>`, Restly generates the view's
-schema from `model` when you register the view. It then derives the other
-schemas from it. Write the view's schema yourself when the API needs stable
-field names, validation, aliases, or fields that differ from the table:
-
-```python
-class UserSchema(fr.IDSchema):
-    name: str
-    email: str
-
-
-@fr.include_view(app)
-class UserView(fr.AsyncRestView):
-    prefix = "/users"
-    model = User
-    schema = UserSchema
-```
-
-A CRUD view derives its request bodies and its response class from `schema`:
+schema from `model` when you register the view. From the view's schema, it
+derives the request bodies and the response class:
 {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>`,
 {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` and
 {attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>`.
+[Generate the schema or write it](#write-or-generate) shows when to write the
+schema yourself, and
 [Hide a field from requests or from responses](#readonly-and-writeonly)
-explains which fields each one takes.
-
-[Schemas & Validation](schemas.md) explains field markers,
-aliases, validation, and when to write the schemas yourself.
+shows which fields each class takes.
 
 (configure-a-crud-view)=
 ## Configure a CRUD view

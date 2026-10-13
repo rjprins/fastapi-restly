@@ -166,7 +166,8 @@ these points:
   `id: int`, the type checker rejects the override, because it accepts less
   than the base method.
 - `get_one` and `get_many` take a keyword argument `scope`, which the
-  handlers always pass. An override must declare it and pass it on.
+  handlers always pass. An override must declare it and pass it on; see
+  [Read other rows on one route](#per-read-scope).
 - For the response type, give the view's schema: the response class that
   Restly builds is a subclass of it. A view that sets its own
   {attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>`

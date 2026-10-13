@@ -68,7 +68,8 @@ Restly marks `id`, `created_at`, `updated_at` and each column with
 
 Write the schema yourself when the API differs from the table: other field
 names, fields that only go one way, references to other rows, or rules for
-the values. Set it on the view:
+the values. Write it also when the field names must stay the same while the
+table changes. Set it on the view:
 
 ```python
 class UserSchema(fr.IDSchema):

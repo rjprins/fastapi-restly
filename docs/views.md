@@ -474,9 +474,8 @@ way
 ([`blog/main.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/blog/blog/main.py)).
 
 The view only reads the caller here. To store the caller on a row, such as
-the owner id, use a column default on the model. Then every write path sets
-it, also the ones that never pass through a view
-([Stamp the fields the server owns](#server-stamped-fields)).
+the owner id, use a column default on the model, as
+[Stamp the fields the server owns](#server-stamped-fields) shows.
 
 ### Share a business method
 
@@ -619,10 +618,8 @@ not fit the CRUD shape: login routes, webhook receivers, RPC-style actions. A
 `View` has no model, no schema and no CRUD routes. It gives the endpoints one
 prefix, one tag and one place for shared dependencies.
 
-A `View` route that writes to the database must commit. Only the CRUD views
-commit for you. When a request ends with changes that were not committed,
-Restly warns with a
-{class}`RestlyUncommittedChangesWarning <fastapi_restly.exc.RestlyUncommittedChangesWarning>`.
+A `View` route that writes to the database must commit, because only the
+CRUD views commit for you; see [What commits, and when](#what-commits).
 
 (login-routes)=
 ### Login, refresh and logout routes

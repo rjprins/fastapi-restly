@@ -27,9 +27,8 @@ You declare a scope in one of three places. The most specific one wins:
   [Read other rows on one route](#per-read-scope).
 
 A scope lower in this list replaces the one above it. It does not add to it.
-So a rule that must hold under every scope, such as the tenant rule, is not a
-scope. It lives on the SQLAlchemy session, as
-[Multi-Tenancy](#tenant-row-scoping) shows.
+So a rule that must hold under every scope, such as the tenant rule, is a
+[session rule](#tenant-row-scoping), not a scope.
 `fr.clauses.UNSCOPED` is the explicit way to read without a scope, in each of
 the three places.
 
@@ -156,10 +155,9 @@ class AdminItemView(fr.AsyncRestView):
     scope = fr.clauses.UNSCOPED
 ```
 
-`UNSCOPED` removes only the scope. It does not remove a rule on the session,
-such as the tenant rule. That rule decides on its own whether an admin may
-read other tenants, as
-[Let an admin read every tenant](#tenant-admin-bypass) shows.
+`UNSCOPED` removes only the scope. A session rule, such as the tenant rule,
+still applies. [Let an admin read every tenant](#tenant-admin-bypass) shows
+how an admin can read every tenant.
 
 A `scope` that is not a clause raises
 {class}`fr.exc.RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
@@ -187,12 +185,11 @@ class DocumentView(fr.AsyncRestView):
     scope = fr.where_clause(Document.owner_id == Current.user_id)
 ```
 
-Like every scope, it covers the list, the total, `GET /{id}`, and the update
-and delete routes, which load the row through `get_one`. A custom route that
-calls `get_one(id)` gets the same scope. `get_one` does not call `authorize`,
-but it still returns 404 for a hidden row, because the scope is part of its
-query. Declare the rule as the model's `default_scope` instead when every
-view and every reference check must follow it.
+Like every scope, it covers every read of the view: the list, the total and
+`GET /{id}`. The update and delete routes load the row through it too, and so
+does a custom route that calls `get_one(id)`. Declare the rule as the model's
+`default_scope` instead when every view and every reference check must
+follow it.
 
 A view has no hook that picks a scope per request, and it needs none. To
 choose per request, write a clause function that reads a bound value:
@@ -238,12 +235,13 @@ app = FastAPI(dependencies=[
 ])
 ```
 
-A read without a bound value fails with an error that names the missing
-member. It never returns the rows without the filter. Restly makes sure that
-the clause is applied and that its values are bound. The source dependency
-must make sure that the value is the right user. When a query returns other
-rows than you expect, read `Current.explain()`: it names the `depends()`
-line that bound each value.
+A read without a bound value fails, and never returns the rows without the
+filter; see [Give a clause its values](#binding-values). Restly makes sure
+that the clause is applied and that its values are bound. The source
+dependency must make sure that the value is the right user. When a query
+returns other rows than you expect,
+[`Current.explain()`](#current-explain) names the `depends()` line that bound
+each value.
 
 (per-read-scope)=
 ## Read other rows on one route
@@ -283,8 +281,10 @@ parameters as `GET /`, as
 [Filtering & Pagination](filtering.md) explains.
 
 The restore route loads the row with `get_one(id, scope=...)`, not with
-`handle_get_one`. A write action calls `authorize` for its own action inside
-{meth}`write_action <fastapi_restly.views.RestView.write_action>`. The route
+`handle_get_one`, because
+{meth}`write_action <fastapi_restly.views.RestView.write_action>` authorizes
+the action itself; see [Add a custom action route](#custom-action-route). The
+route
 reads only the trash, so a row that is not deleted returns 404 here. To read
 without any scope on one route, pass `scope=fr.clauses.UNSCOPED`.
 
@@ -295,8 +295,9 @@ with other pagination passes it, as in
 [Name the view's classes in a custom route](#name-the-response-classes) explains
 this.
 
-The argument replaces the scope. It does not narrow it. So put a rule that
-must never be replaced, such as the tenant rule, on the session. An override
+The argument replaces the scope. It does not narrow it. So a rule that must
+never be replaced belongs on the session, like the
+[tenant rule](#tenant-row-scoping). An override
 of `get_one` or `get_many` declares the `scope` parameter and passes it on to
 `super()`. The handlers always pass it, so an override without the parameter
 fails on its first call, instead of returning the wrong rows. The SaaS example
@@ -481,9 +482,8 @@ word `UNSCOPED`, so a search finds every place.
 Phoenix passes its `Scope` as an argument to each context function. Restly
 binds `Current` once per request, and code reads it where it needs it.
 
-A tenant rule is not a scope in Restly, even when it is one in your old
-framework. It must hold under every scope, so it lives on the session, as
-[Multi-Tenancy](#tenant-row-scoping) shows.
+A tenant rule that is a scope in your old framework is a
+[session rule](#tenant-row-scoping) in Restly.
 
 (migrating-build-query)=
 ## Migrating from `build_query`

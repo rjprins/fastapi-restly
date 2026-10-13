@@ -462,22 +462,10 @@ class UserView(fr.AsyncRestView):
 (change-list-query)=
 ## Change the list query of a view
 
-The filters apply to a query that the view's scope builds first. To limit
-the rows of a view, declare its
-{attr}`scope <fastapi_restly.views.BaseRestView.scope>`.
-{meth}`get_many <fastapi_restly.views.RestView.get_many>`,
-{meth}`count <fastapi_restly.views.RestView.count>` and
-{meth}`get_one <fastapi_restly.views.RestView.get_one>` all apply it, so the
-list, the total and the single-row reads agree:
-
-```python
-class UserView(fr.AsyncRestView):
-    ...
-    scope = fr.where_clause(User.active.is_(True))
-```
-
-[Scopes](scopes.md) owns this topic, including the `default_scope` of a model.
-`get_many` takes no `query` argument, so put base query changes in the scope.
+The filters apply inside the view's scope. To limit the rows of a view,
+declare its {attr}`scope <fastapi_restly.views.BaseRestView.scope>`, as
+[Give one view other rows](#view-scope) shows. `get_many` takes no `query`
+argument, so put base query changes in the scope.
 
 For another URL grammar, such as the filter syntax of another client
 library, override

@@ -94,12 +94,10 @@ uses `PATCH`.
 (view-method-surface)=
 ## Methods
 
-Each CRUD route on `RestView` / `AsyncRestView` runs through three methods:
-the endpoint method (`<verb>_endpoint`), the handler (`handle_<verb>`), and
-the business method (`<verb>`). The handler handles the steps and is final.
-You override the endpoint method or the business method, whichever owns your
-change. The steps and the decision table live in
-[Request Lifecycle & Hooks](#view-request-steps).
+Each CRUD route on `RestView` / `AsyncRestView` runs an endpoint method
+(`<verb>_endpoint`), a final handler (`handle_<verb>`) and a business method
+(`<verb>`). [Request Lifecycle & Hooks](#view-request-steps) shows the steps,
+and which method to override for each change.
 
 Alongside these three are the declared read [scope](scopes.md) (the
 `scope` class attribute) and cross-cutting **override points**

@@ -7,9 +7,9 @@ The rule has two halves: a filter on every read, and a column that every write
 stamps. Both read the tenant from [`Current`](context.md).
 
 The tenant rule is not a [scope](#default-scope). A view or a route can
-replace its scope, but the tenant rule must hold under every scope and for
-every reference check. So it lives on the SQLAlchemy session. A
-`do_orm_execute` listener adds a
+replace its scope, but the tenant rule must hold under every scope, also
+under `fr.clauses.UNSCOPED`, and for every reference check. So it lives on
+the SQLAlchemy session. A `do_orm_execute` listener adds a
 [`with_loader_criteria`](https://docs.sqlalchemy.org/en/20/orm/queryguide/api.html#sqlalchemy.orm.with_loader_criteria)
 option to every ORM read of an entity or a relationship. Restly's views,
 the {mod}`fr.objects <fastapi_restly.objects>` helpers and your own ORM
@@ -85,15 +85,15 @@ class Project(TenantOwned, fr.TimestampsMixin, fr.IDMixin, Base):
     name: orm.Mapped[str]
 ```
 
-The column is the write half. `init=False` keeps the tenant out of the
-constructor, and {data}`fr.ReadOnly <fastapi_restly.schemas.ReadOnly>` on
-the schema keeps it out of the request body.
-The insert default stamps it during the flush, from the same member that the
-listener reads. So a row lands in the organization that the request acts in,
-whatever code builds it. An admin who writes into another tenant acts as that
-tenant, and the stamp follows. Code that needs the tenant before the flush,
-such as a mapper event or a check for a unique name, reads `Current.org_id()`
-itself, because the insert default has not run yet.
+The column is the write half. It is a stamped field, as in
+[Stamp the fields the server owns](#server-stamped-fields): an insert default
+with `init=False`, and {data}`fr.ReadOnly <fastapi_restly.schemas.ReadOnly>`
+on the schema. It reads the same member as the listener, so a row lands in
+the organization that the request acts in, whatever code builds it. An admin
+who writes into another tenant acts as that tenant, and the stamp follows.
+Code that needs the tenant before the flush, such as a mapper event or a
+check for a unique name, reads `Current.org_id()` itself, because the insert
+default has not run yet.
 
 Bind the values once per request with a generated dependency,
 {meth}`Current.depends(...) <fastapi_restly.clauses.ContextNamespace.depends>`,
@@ -197,14 +197,11 @@ class ProjectView(SoftDeleteMixin, fr.AsyncRestView):
     # no scope declared: reads apply ProjectClauses.default_scope
 ```
 
-{meth}`get_many <fastapi_restly.views.RestView.get_many>`,
-{meth}`count <fastapi_restly.views.RestView.count>` and
-{meth}`get_one <fastapi_restly.views.RestView.get_one>` apply the default
-scope. So lists, totals and single reads hide deleted rows. Updates and
-deletes load the row through `get_one`, so they return 404 for a deleted row.
-The session listener adds the tenant rule to these reads and to every
-reference check. The columns stamp themselves on every write. The SaaS example
-runs this view in
+The [default scope](#default-scope) hides deleted rows from every read, so
+the update and delete routes return 404 for a deleted row. The session
+listener adds the tenant rule to every read and to every reference check.
+The columns stamp themselves on every write. The SaaS example runs this view
+in
 [`app/projects/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py).
 
 ## See also

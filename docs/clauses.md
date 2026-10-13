@@ -384,7 +384,8 @@ def owned_items_stmt(user_id: int):
 rows = session.scalars(owned_items_stmt(42))
 ```
 
-A member without a binding raises `LookupError` when the clause is applied.
+When the clause is applied, a member without a binding raises a
+`LookupError` that names the member.
 The query never runs without its filter. For values per request,
 [bind Current from a FastAPI dependency](#current-request-binding).
 

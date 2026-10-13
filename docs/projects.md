@@ -366,7 +366,8 @@ that layer. Your logic goes in business methods such as
 {meth}`update <fastapi_restly.views.RestView.update>`. A layer that only
 passes calls on to them adds code but no new place to change behavior. Write
 a `service.py` when logic also runs outside a request, such as work that a
-background worker shares; see [Build and save objects](#domain-utilities).
+background worker shares; see
+[Run the same logic in a script or a worker](#logic-outside-a-view).
 
 The same holds for `dependencies.py`, `constants.py` and `exceptions.py` in a
 subject. Add one when it holds more than one item.

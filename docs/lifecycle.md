@@ -142,12 +142,10 @@ Override the business method of the action:
 one you need. The handler still checks permissions and commits around it.
 
 Before you set a value in `create` or `update`, ask which write paths must set
-it. The view's routes are not the only code that writes rows. Scripts, jobs,
-imports and the {mod}`fr.objects <fastapi_restly.objects>` functions write
-them too, and they never call the view.
+it, as [Set a value on every write path](#write-path-values) explains:
 
 - A value that every write path must set belongs on the model, as a column
-  default or a mapper event. [Models](#write-path-values) shows both.
+  default or a mapper event.
 - A value that only the HTTP routes set belongs in `create` or `update`.
 
 The common cases:
@@ -359,7 +357,9 @@ block in a custom route, runs `before_action_commit`, commits, and then runs
 
 The session that Restly opens for a request does not commit when the request
 ends. It rolls back and closes. So a custom route that writes must commit
-through a handler or a `write_action` block. When a request ends with changes
+through a handler or a `write_action` block. A route on a plain
+{class}`View <fastapi_restly.views.View>` has neither, so it commits the
+session itself. When a request ends with changes
 that are not committed, Restly warns with
 {class}`RestlyUncommittedChangesWarning <fastapi_restly.exc.RestlyUncommittedChangesWarning>`.
 The warning is on by default. To turn it off for the app, pass

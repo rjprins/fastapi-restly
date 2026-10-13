@@ -35,8 +35,8 @@ For each request, a view gets a session from that source. An
 through {data}`fr.AsyncSessionDep <fastapi_restly.db.AsyncSessionDep>`, and
 a {class}`RestView <fastapi_restly.views.RestView>` through
 {data}`fr.SessionDep <fastapi_restly.db.SessionDep>`. The source opens the
-session and closes it after the request, but it does not commit. The view
-commits its own write actions; see [Run code before or after the commit](#transaction-hooks).
+session and closes it after the request, but it does not commit; see
+[What commits, and when](#what-commits).
 
 (one-configuration-per-process)=
 There is one configuration for each process. Restly stores it in the process,
@@ -249,8 +249,8 @@ with fr.open_session() as session:
 ```
 
 These helpers do not commit. Code outside a request commits its own changes.
-[Build and save objects](#domain-utilities) shows how to share logic between a view
-and such code.
+[Run the same logic in a script or a worker](#logic-outside-a-view) shows how
+to share logic between a view and such code.
 
 (engine-disposal)=
 
