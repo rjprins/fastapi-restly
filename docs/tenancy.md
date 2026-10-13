@@ -4,7 +4,7 @@
 
 In a multi-tenant app, each organization reads and writes only its own rows.
 The rule has two halves: a filter on every read, and a column that every write
-stamps. Both read the tenant from [`Current`](current.md).
+stamps. Both read the tenant from [`Current`](context.md).
 
 The tenant rule is not a [scope](#default-scope). A view or a route can
 replace its scope, but the tenant rule must hold under every scope and for
@@ -209,7 +209,7 @@ runs this view in
 
 ## See also
 
-- [Current & ContextParam](current.md): bind the values that the listener and
+- [Request Context](context.md): bind the values that the listener and
   the tenant column read.
 - [Scopes](scopes.md): the read rules that a view or a route can replace.
 - [Models](#server-stamped-fields): column defaults that stamp a value from

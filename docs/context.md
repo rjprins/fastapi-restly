@@ -1,9 +1,10 @@
 (current)=
-# Current & ContextParam
+# Request Context
 
-`Current` holds values such as the id of the user who sends the request, so
-that any code in the request can read them. Bind a value once, then read it
-wherever you need it:
+The request context holds values, such as the id of the user who sends the
+request, that any code in the request can read. In your app, it is a class,
+usually named `Current`. Bind a value once, then read it wherever you need
+it:
 
 ```python
 import fastapi_restly as fr

@@ -286,7 +286,7 @@ Model mixins that several subjects share, such as a tenant column, also go in
 ## Share Current from the package root
 
 When several modules need values from the request, declare
-[Current](current.md) in `app/current.py`. Import it from there
+[Current](context.md) in `app/current.py`. Import it from there
 wherever you use it:
 
 ```python

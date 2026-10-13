@@ -30,7 +30,7 @@ exist, use a [scope](scopes.md) instead.
 
 Restly does not check who the caller is. Your app does that with FastAPI's
 security tools, and binds the caller with
-[Current & ContextParam](#current-request-binding).
+[Request Context](#current-request-binding).
 
 (authorize-gate)=
 ## Allow or refuse an action
@@ -46,7 +46,7 @@ author change a post or a comment:
 - A read returns at once. The scope already decides which posts each reader
   sees.
 - A write needs a user. `Current.user_id()` is the caller, bound for each
-  request ([Current & ContextParam](current.md)). Without a user, the
+  request ([Request Context](context.md)). Without a user, the
   answer is a 401, from a plain `fastapi.HTTPException`.
 - Every user may create.
 - Every other action changes one row, and `obj` is that row. Only its author
@@ -158,6 +158,6 @@ themselves.
 - [Scopes](scopes.md): which rows a caller can see, and the 404.
 - [Request Lifecycle & Hooks](#view-request-steps): the steps of a request,
   and where `authorize` runs.
-- [Current & ContextParam](current.md): who is calling.
+- [Request Context](context.md): who is calling.
 - [Errors](errors.md): the exceptions to raise, and how errors
   look.

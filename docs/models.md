@@ -342,7 +342,7 @@ reads the changes of each task, in
 
 The server decides some fields, such as who created a row and who changed it
 last. Make each one a column default that reads a member of your
-[`Current`](current.md). This mixin stamps both fields on each model
+[`Current`](context.md). This mixin stamps both fields on each model
 that uses it:
 
 ```python
@@ -440,7 +440,7 @@ class Task(AuditStamped, fr.TimestampsMixin, fr.IDMixin, Base):
 
 ## See also
 
-- [Current & ContextParam](current.md): bind the values that column defaults
+- [Request Context](context.md): bind the values that column defaults
   read.
 - [Multi-Tenancy](tenancy.md): the tenant column, and the session rule that
   filters every read.

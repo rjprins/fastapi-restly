@@ -171,7 +171,7 @@ its own query gets the scope from
 (read-scope)=
 ## Show each caller only their own rows
 
-A scope can read a [`Current`](current.md) member. This view shows each
+A scope can read a [`Current`](context.md) member. This view shows each
 user only the documents that the user owns:
 
 ```python
@@ -469,7 +469,7 @@ The names map like this:
 |---|---|
 | A Rails scope, or a Laravel local scope | A [clause](clauses.md) |
 | Rails `default_scope`, or a Laravel global scope | A scope: the model's [`default_scope`](#default-scope) |
-| A Phoenix `Scope`, which holds the caller | [`Current`](current.md) |
+| A Phoenix `Scope`, which holds the caller | [`Current`](context.md) |
 
 Restly's `default_scope` leaves out the parts of Rails' `default_scope` that
 cause problems. It decides only which rows reads and reference checks see. It

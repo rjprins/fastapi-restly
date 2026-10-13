@@ -390,7 +390,7 @@ The default does not check which success status a route returns. To test
 that a create returns `201`, pass `assert_status_code=201`.
 
 To test a request as a different user, override the dependency that gives
-the user; [Current & ContextParam](#current-testing) shows how.
+the user; [Request Context](#current-testing) shows how.
 
 (writing-async-tests)=
 
@@ -668,7 +668,7 @@ after the test.
 
 ## See also
 
-- [Current & ContextParam](#current-testing): test a request as a different
+- [Request Context](#current-testing): test a request as a different
   user.
 - [Database & Configuration](database.md): the session sources that the
   fixtures record.

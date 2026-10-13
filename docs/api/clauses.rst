@@ -16,5 +16,5 @@ statements.
 
 .. seealso::
 
-   :doc:`/current` covers request values and dependency binding.
+   :doc:`/context` covers request values and dependency binding.
    :doc:`/clauses` covers query fragments and composition.

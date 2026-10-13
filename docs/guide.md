@@ -67,13 +67,13 @@ route adds filter, sort and page parameters to the URL.
 ## Access
 
 These pages make the caller available to your code, and decide what the
-caller may do and which rows the caller sees. [`Current`](current.md) holds
+caller may do and which rows the caller sees. [`Current`](context.md) holds
 the caller during a request.
 {meth}`authorize <fastapi_restly.views.RestView.authorize>` decides whether
 the caller may do an action, so a refusal gives 403. A scope decides which
 rows exist, so a hidden row gives 404.
 
-- [Current & ContextParam](current.md): bind the current user in a
+- [Request Context](context.md): bind the current user in a
   dependency, a script or a test.
 - [Authorization](authorization.md): allow or refuse each action, for each
   caller.
@@ -102,7 +102,7 @@ routes. So these subjects are FastAPI's, and its docs explain them:
 
 - [Security](https://fastapi.tiangolo.com/tutorial/security/): OAuth2, API
   keys and other security schemes. To make the caller available to your
-  views, see [Current & ContextParam](#current-request-binding).
+  views, see [Request Context](#current-request-binding).
 - [Middleware](https://fastapi.tiangolo.com/tutorial/middleware/).
 - [CORS](https://fastapi.tiangolo.com/tutorial/cors/). For a react-admin
   frontend, see also [CORS for React Admin](#react-admin-cors).
@@ -153,7 +153,7 @@ openapi
 :maxdepth: 1
 :hidden:
 
-current
+context
 authorization
 clauses
 scopes
