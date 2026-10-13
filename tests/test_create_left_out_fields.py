@@ -11,7 +11,8 @@ import dataclasses
 import uuid
 
 import pytest
-from sqlalchemy import ForeignKey
+import sqlalchemy
+from sqlalchemy import JSON, ForeignKey, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
@@ -161,3 +162,45 @@ def test_a_left_out_foreign_key_gets_its_default(client, annotated):
     create_tables()
     client.post("/racks/", json={"name": "r"})
     assert client.post("/bins/", json={"name": "b"}).json()["rack_id"] == 1
+
+
+def test_a_json_field_with_default_none_is_required_on_sqlalchemy_2_0(client):
+    """On SQLAlchemy 2.0, the constructor's ``None`` goes into the INSERT, and
+    JSON stores it as ``null`` instead of the server default. The create then
+    failed with 500, and so did each later read. SQLAlchemy 2.1 does not set
+    the default, so the server default runs there."""
+
+    class Board(fr.IDMixin, SharedBase):
+        title: Mapped[str]
+        tags: Mapped[list[str]] = mapped_column(
+            JSON, server_default=text("'[]'"), default=None
+        )
+
+    @fr.include_view(client.app)
+    class BoardView(fr.AsyncRestView):
+        prefix = "/boards"
+        model = Board
+
+    create_tables()
+    if sqlalchemy.__version__.startswith("2.0."):
+        assert BoardView.schema_create.model_fields["tags"].is_required()
+        client.post("/boards/", json={"title": "a"}, assert_status_code=422)
+    else:
+        created = client.post("/boards/", json={"title": "a"}).json()
+        assert created["tags"] == []
+
+
+def test_a_sqlmodel_table_follows_its_constructor_not_its_validation():
+    """A SQLModel table's class signature is Pydantic's validation signature,
+    which requires each field without a Python default. Its ``__init__``
+    requires nothing, so a field with a database default may be left out."""
+    sqlmodel = pytest.importorskip("sqlmodel")
+
+    class LeftOutTicket(sqlmodel.SQLModel, table=True):
+        id: int | None = sqlmodel.Field(default=None, primary_key=True)
+        title: str
+        status: str = sqlmodel.Field(sa_column_kwargs={"server_default": "open"})
+
+    fields = fr.schemas.derive_schema(LeftOutTicket).model_fields
+    assert fields["title"].is_required()
+    assert not fields["status"].is_required()

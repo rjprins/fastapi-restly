@@ -111,11 +111,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The create body of a generated schema follows the model's constructor, as
   SQLAlchemy does. The client may leave out a field when its column is
   nullable, or when the constructor does not require it and the model then
-  still gives the column a value. On a dataclass model, a column with only a
-  `server_default` is a required argument of the constructor, so its field
-  is now required too. Add `default=None` to let the client leave it out:
-  `mapped_column(server_default="x", default=None)`. A `default_factory`, or
-  a `default` other than `None`, also lets the client leave the field out.
+  still gives the column a value. On a dataclass model, a column with only
+  an `insert_default` or a `server_default` is a required argument of the
+  constructor, so its field is now required too. Add `default=None` to let
+  the client leave it out: `mapped_column(server_default="x", default=None)`.
+  A `default_factory`, or a `default` other than `None`, also lets the client
+  leave the field out. On a JSON column, use `default_factory=list` or
+  `JSON(none_as_null=True)` instead: SQLAlchemy 2.0 stores a `None` default
+  as JSON `null`, so Restly keeps that field required. A `Computed` column
+  needs `init=False`, which makes its field `ReadOnly`.
 - The `400` answers of a list request say what is wrong. Before, the
   standard dialect answered "Invalid attribute in URL query: age" both for a
   sort or filter field that does not exist and for a bad filter value. Now

@@ -678,13 +678,16 @@ value. That value comes from the column, such as `insert_default` or
 a `default_factory`. Restly calls the constructor with the fields that the
 client sent, so that value applies.
 
-On a dataclass model, a column with only a `server_default` is a required
-argument of the constructor, so its field is required. To let the client
-leave it out, add `default=None`, as SQLAlchemy does for a value that the
-database fills: `mapped_column(server_default="x", default=None)`. On
-SQLAlchemy 2.0, a JSON column then stores the `None` as JSON `null` instead
-of its default. Use `default_factory=list`, or
-`JSON(none_as_null=True)`, for a JSON column.
+On a dataclass model, a column with only an `insert_default` or a
+`server_default` is a required argument of the constructor, so its field is
+required. To let the client leave it out, add `default=None`, as SQLAlchemy
+does for a value that the database fills:
+`mapped_column(server_default="x", default=None)`. On SQLAlchemy 2.0, a JSON
+column stores that `None` as JSON `null` instead of its default, so Restly
+keeps such a field required. Use `default_factory=list`, or
+`JSON(none_as_null=True)`, for a JSON column. For a column that the client
+must never write, such as a `Computed` column, use `init=False`, as
+SQLAlchemy does. The field is then `ReadOnly`.
 
 Three rules decide the rest:
 

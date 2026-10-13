@@ -18,7 +18,12 @@ import pydantic
 from pydantic import Field
 from sqlalchemy import Column
 from sqlalchemy import inspect as sa_inspect
-from sqlalchemy.orm import ColumnProperty, Mapped, RelationshipProperty
+from sqlalchemy.orm import (
+    ColumnProperty,
+    LoaderCallableStatus,
+    Mapped,
+    RelationshipProperty,
+)
 
 from .._mapping import is_mapped_class
 from ._base import (
@@ -134,18 +139,27 @@ def _model_annotations(model_cls: type, keys: Collection[str]) -> dict[str, Any]
     return annotations
 
 
+# SQLAlchemy 2.1 puts this placeholder in the dataclass field of each
+# mapped_column default, and keeps the real default on the Column.
+_DONT_SET = getattr(LoaderCallableStatus, "DONT_SET", None)
+
+
 @functools.cache
 def _required_init_params(model_cls: type) -> frozenset[str]:
     """The keyword parameters of ``model_cls(...)`` that have no default.
 
-    Reads the real signature, so it also sees a hand-written ``__init__`` and
-    a dataclass ``InitVar``, which ``dataclasses.fields()`` leaves out. The
-    default constructor of a declarative model requires nothing.
+    Reads the signature of ``__init__``, so it also sees a hand-written
+    ``__init__`` and a dataclass ``InitVar``, which ``dataclasses.fields()``
+    leaves out. The default constructor of a declarative model requires
+    nothing. The signature of the class itself would not do: on a SQLModel
+    table it is Pydantic's validation signature, but ``__init__`` takes
+    keyword arguments without validating them.
     """
     try:
-        parameters = inspect.signature(model_cls).parameters.values()
+        signature = inspect.signature(model_cls.__init__)
     except (TypeError, ValueError):
         return frozenset()
+    parameters = list(signature.parameters.values())[1:]  # without self
     keyword = (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY)
     return frozenset(
         p.name
@@ -256,15 +270,22 @@ def get_model_fields(model_cls: type[Any]) -> dict[str, Any]:
             # then still gives the column a value. A None default gives a
             # NOT NULL column no value.
             dc_field = dc_fields.get(name)
+            ctor_default = dataclasses.MISSING if dc_field is None else dc_field.default
             init_default = dc_field is not None and (
                 dc_field.default_factory is not dataclasses.MISSING
-                or (
-                    dc_field.default is not dataclasses.MISSING
-                    and dc_field.default is not None
+                or all(
+                    ctor_default is not v
+                    for v in (dataclasses.MISSING, None, _DONT_SET)
                 )
             )
+            # On SQLAlchemy 2.0 the constructor's None goes into the INSERT. A
+            # type that stores None, such as JSON, then skips the column default.
+            none_is_stored = ctor_default is None and getattr(
+                column.type, "should_evaluate_none", False
+            )
             is_optional = is_nullable or (
-                name not in required_params and (default is not None or init_default)
+                name not in required_params
+                and ((default is not None and not none_is_stored) or init_default)
             )
 
         fields[name] = {
