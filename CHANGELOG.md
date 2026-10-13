@@ -56,6 +56,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   objects of a model on `fr.DataclassBase` were equal when their fields were
   equal, and a model object could not go in a `set`. To compare a model by
   its fields again, pass `eq=True` on it: `class Post(fr.IDMixin, Base, eq=True)`.
+  A dataclass mixin of your own declares the same options as `fr.IDMixin`:
+  `class Stamped(MappedAsDataclass, kw_only=True, eq=False)`. A mixin without
+  `eq=False` makes each model that uses it compare fields, so
+  `fr.ModelDefaults` raises `RestlyConfigurationError` for such a model,
+  unless the model passes `eq=True`.
 - `restly new` generates `app/models.py` with the project's own
   `class Base(fr.ModelDefaults, DeclarativeBase)`. The models, `alembic/env.py`,
   the test setup and `create_all` use that `Base` instead of

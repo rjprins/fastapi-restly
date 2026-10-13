@@ -114,7 +114,7 @@ def test_a_foreign_key_outside_the_constructor_is_read_only(client):
     class Org(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class OrgOwned(MappedAsDataclass, kw_only=True):
+    class OrgOwned(MappedAsDataclass, kw_only=True, eq=False):
         org_id: Mapped[int | None] = mapped_column(
             ForeignKey("org.id"), init=False, default=None
         )

@@ -35,6 +35,46 @@ CASCADE_ALL_ASYNC = "save-update, merge, delete, expunge"
 CASCADE_ALL_DELETE_ORPHAN_ASYNC = CASCADE_ALL_ASYNC + ", delete-orphan"
 
 
+def _reject_field_equality_from_a_mixin(cls: type, base: type) -> None:
+    """Raise when a model compares its fields because of a mixin.
+
+    A dataclass mixin without ``eq=False`` gets Python's default,
+    ``eq=True``. Two things then follow. When the mixin comes first in the
+    model's bases, SQLAlchemy takes the model's options from it, so the
+    model compares all its fields. When it comes later, the model has no
+    ``__eq__`` of its own and inherits the mixin's, which compares the
+    mixin's fields only. Either way the model loses the identity equality of
+    ``ModelDefaults``. A model of another model takes that model's choice.
+    """
+    if cls.__eq__ is object.__eq__:
+        return
+    parents = cls.__mro__[1:]
+    if any(_compares_fields(b) and hasattr(b, "__mapper__") for b in parents):
+        return
+    mixin = next(
+        (b for b in parents if _compares_fields(b) and not hasattr(b, "__mapper__")),
+        None,
+    )
+    if mixin is None:
+        return
+    raise RestlyConfigurationError(
+        f"{cls.__name__} compares its objects field by field, because its "
+        f"dataclass base {mixin.__name__} does not set eq=False. A dataclass "
+        f"mixin gets Python's default eq=True, and {base.__name__} does not "
+        f"change that. Comparing two {cls.__name__} objects can then load a "
+        f"relationship, which an async session cannot do on access. Declare "
+        f"the mixin with the options of fr.IDMixin: "
+        f"class {mixin.__name__}(MappedAsDataclass, kw_only=True, eq=False). "
+        f"To compare {cls.__name__} by its fields, pass eq=True on the model."
+    )
+
+
+def _compares_fields(cls: type) -> bool:
+    """Whether ``cls`` itself is a dataclass with ``eq=True``."""
+    params = cls.__dict__.get("__dataclass_params__")
+    return params is not None and params.eq
+
+
 def utc_now() -> datetime:
     """Replacement for the deprecated datetime.utcnow()"""
     return datetime.now(timezone.utc)
@@ -181,6 +221,13 @@ class ModelDefaults(
     bases, which is often :class:`IDMixin`, so options on ``Base`` would apply
     to some models only. ``Base`` with options raises
     :class:`~fastapi_restly.exc.RestlyConfigurationError`.
+
+    For the same reason, a dataclass mixin of your own declares the options
+    of ``fr.IDMixin``: ``class Stamped(MappedAsDataclass, kw_only=True,
+    eq=False)``. Without ``eq=False``, a model with the mixin compares
+    fields, and comparing two objects can load a relationship. Such a model
+    raises :class:`~fastapi_restly.exc.RestlyConfigurationError` unless it
+    asks for ``eq=True`` itself.
     """
 
     def __init_subclass__(cls, **kw: Any) -> None:
@@ -206,6 +253,8 @@ class ModelDefaults(
                 f"fr.ModelDefaults out: Restly's views also work without it."
             )
         super().__init_subclass__(**kw)
+        if base is not None and base is not cls and kw.get("eq") is not True:
+            _reject_field_equality_from_a_mixin(cls, base)
         if base is cls:
             # SQLAlchemy has set up the registry by now, with the base's own
             # type_annotation_map. Restly's entries fill in what it leaves out.

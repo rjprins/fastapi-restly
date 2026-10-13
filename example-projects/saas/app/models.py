@@ -33,7 +33,7 @@ class Base(fr.ModelDefaults, orm.DeclarativeBase):
     """The base of every model in the app."""
 
 
-class TenantOwned(orm.MappedAsDataclass, kw_only=True):
+class TenantOwned(orm.MappedAsDataclass, kw_only=True, eq=False):
     """The tenant column: the organization the request acts in.
 
     Never ``None`` and never chosen by the caller. A tenant's user writes
@@ -110,7 +110,7 @@ def _restrict_tenant_rows(state: orm.ORMExecuteState) -> None:
     )
 
 
-class AuditStamped(orm.MappedAsDataclass, kw_only=True):
+class AuditStamped(orm.MappedAsDataclass, kw_only=True, eq=False):
     """Who created and last updated the row, from ``Current.user_id``.
 
     ``created_by_id`` is set on insert; ``updated_by_id`` on insert and on
@@ -137,7 +137,7 @@ class AuditStamped(orm.MappedAsDataclass, kw_only=True):
     )
 
 
-class SoftDeletable(orm.MappedAsDataclass, kw_only=True):
+class SoftDeletable(orm.MappedAsDataclass, kw_only=True, eq=False):
     """The soft-delete column.
 
     ``SoftDeleteMixin`` (``app.views``) flips it in ``delete``; the model

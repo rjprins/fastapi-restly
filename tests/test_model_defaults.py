@@ -151,6 +151,73 @@ def test_a_model_can_compare_by_value():
     assert Post(title="a") == Post(title="a")
 
 
+def test_a_mixin_with_the_options_of_id_mixin_keeps_identity_equality():
+    class Base(fr.ModelDefaults, DeclarativeBase):
+        pass
+
+    class Stamped(MappedAsDataclass, kw_only=True, eq=False):
+        note: Mapped[str] = mapped_column(default="")
+
+    class Post(Stamped, fr.IDMixin, Base):
+        title: Mapped[str]
+
+    first, second = Post(title="a"), Post(title="a")
+    assert first != second
+    assert len({first, second}) == 2
+
+
+def test_a_mixin_without_eq_false_first_in_the_bases_raises():
+    """SQLAlchemy takes the model's options from the mixin, so the model
+    compared its fields, and comparing two objects could load a relationship.
+    Before, nothing said so."""
+
+    class Base(fr.ModelDefaults, DeclarativeBase):
+        pass
+
+    class Stamped(MappedAsDataclass, kw_only=True):
+        note: Mapped[str] = mapped_column(default="")
+
+    message = (
+        r"compares its objects field by field, because its dataclass base "
+        r"Stamped does not set eq=False.*"
+        r"class Stamped\(MappedAsDataclass, kw_only=True, eq=False\)"
+    )
+    # First in the bases: SQLAlchemy takes the model's options from it.
+    with pytest.raises(fr.exc.RestlyConfigurationError, match="Post " + message):
+
+        class Post(Stamped, fr.IDMixin, Base):
+            title: Mapped[str]
+
+    # Later in the bases: the model inherits the mixin's __eq__, which
+    # compares the mixin's fields only. eq=False on the model does not help.
+    with pytest.raises(fr.exc.RestlyConfigurationError, match="Note " + message):
+
+        class Note(fr.IDMixin, Stamped, Base, eq=False):
+            title: Mapped[str]
+
+
+def test_a_model_with_such_a_mixin_can_ask_for_field_equality():
+    class Base(fr.ModelDefaults, DeclarativeBase):
+        pass
+
+    class Stamped(MappedAsDataclass, kw_only=True):
+        note: Mapped[str] = mapped_column(default="")
+
+    class Post(Stamped, fr.IDMixin, Base, eq=True):
+        title: Mapped[str]
+        kind: Mapped[str] = mapped_column(default="post", init=False)
+        __mapper_args__ = {"polymorphic_on": "kind", "polymorphic_identity": "post"}
+
+    assert Post(title="a") == Post(title="a")
+
+    # A subclass of the model (single table) takes the model's choice.
+    class Article(Post):
+        __tablename__ = None  # type: ignore[assignment]
+        __mapper_args__ = {"polymorphic_identity": "article"}
+
+    assert Article(title="a") == Article(title="a")
+
+
 def test_dataclass_options_on_the_base_raise():
     with pytest.raises(fr.exc.RestlyConfigurationError, match="on each model"):
 

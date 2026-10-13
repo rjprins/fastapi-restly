@@ -163,9 +163,24 @@ The constructor of that model then takes keyword arguments only, and requires
 every field without a default.
 
 Your own mixins with columns, for a base with `fr.ModelDefaults`, must be
-dataclass mixins too. Subclass `MappedAsDataclass` and pass `kw_only=True`, as
-`AuditStamped` [below](#server-stamped-fields) does. SQLAlchemy warns about a
-mixin that is not a dataclass, and SQLAlchemy 2.1 rejects it.
+dataclass mixins too. Subclass `MappedAsDataclass` and pass the options of
+`fr.IDMixin`, `kw_only=True` and `eq=False`, as `AuditStamped`
+[below](#server-stamped-fields) does. SQLAlchemy warns about a mixin that is
+not a dataclass, and SQLAlchemy 2.1 rejects it.
+
+A dataclass mixin gets Python's defaults for each option that it does not
+set, not the options of `Base`:
+
+- Without `kw_only=True`, a model that lists the mixin first fails when
+  Python reads it, with "non-default argument follows default argument".
+  SQLAlchemy takes a model's options from the first dataclass class in its
+  bases.
+- Without `eq=False`, a model with the mixin compares its objects field by
+  field, wherever the mixin is in the bases. Comparing two objects can then
+  load a relationship, and an async session raises `MissingGreenlet`. Restly
+  raises
+  {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
+  for such a model, unless the model passes `eq=True` itself.
 
 ## Use the base in your app
 
@@ -334,7 +349,7 @@ import fastapi_restly as fr
 from app.current import Current
 
 
-class AuditStamped(orm.MappedAsDataclass, kw_only=True):
+class AuditStamped(orm.MappedAsDataclass, kw_only=True, eq=False):
     created_by_id: orm.Mapped[int | None] = orm.mapped_column(
         ForeignKey("user.id"), init=False, insert_default=Current.user_id
     )
@@ -451,7 +466,7 @@ class Base(fr.ModelDefaults, orm.DeclarativeBase):
     pass
 
 
-class TenantOwned(orm.MappedAsDataclass, kw_only=True):
+class TenantOwned(orm.MappedAsDataclass, kw_only=True, eq=False):
     """The tenant column: the organization the request acts in."""
 
     organization_id: orm.Mapped[int] = orm.mapped_column(
@@ -589,7 +604,7 @@ from datetime import datetime
 from sqlalchemy import orm
 
 
-class SoftDeletable(orm.MappedAsDataclass, kw_only=True):
+class SoftDeletable(orm.MappedAsDataclass, kw_only=True, eq=False):
     deleted_at: orm.Mapped[datetime | None] = orm.mapped_column(default=None)
 ```
 
