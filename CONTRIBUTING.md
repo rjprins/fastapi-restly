@@ -74,7 +74,8 @@ make docs-serve
   warning-clean and CI enforces it (`make docs` runs Sphinx with `-W`).
 - One page owns each topic; other pages link to it instead of restating.
   The Guide front page (`docs/guide.md`) lists each page in its group, with
-  one line that names the main topics of that page.
+  one line that names the main topics of that page. The docs build writes
+  `llms.txt` from this page, and it fails when a Guide page has no line.
 - Link API symbols to their autodoc entry with MyST roles:
   ``{class}`fr.AsyncRestView <fastapi_restly.views.AsyncRestView>` `` —
   prose mentions of Restly objects should be clickable, SQLAlchemy-style.
