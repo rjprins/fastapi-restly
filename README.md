@@ -218,18 +218,23 @@ class UserView(fr.AsyncRestView):
 
 By default, Restly derives the create and update schemas from `UserSchema`.
 The create schema leaves out the `ReadOnly` fields.
-The update schema makes all fields optional, for partial updates.
+The update schema also lets the client leave out each field, for partial updates.
+Each field keeps its type, so `null` is valid only where the type allows it.
 
-When you need full control over write payloads, declare them explicitly:
+Declare a write schema yourself when a request differs from the schema.
+Here the client sets the email when it creates a user, and cannot change it later:
 
 ```python
+class UserSchema(fr.IDSchema):
+    name: str
+    email: fr.ReadOnly[str]
+    password: fr.WriteOnly[str]
+    created_at: fr.ReadOnly[datetime]
+
 class UserCreate(fr.BaseSchema):
     name: str
     email: str
-
-class UserUpdate(fr.BaseSchema):
-    name: str | None = None
-    email: str | None = None
+    password: str
 
 @fr.include_view(app)
 class UserView(fr.AsyncRestView):
@@ -237,8 +242,9 @@ class UserView(fr.AsyncRestView):
     model = User
     schema = UserSchema
     schema_create = UserCreate
-    schema_update = UserUpdate
 ```
+
+`PATCH` uses the update schema that Restly generates from `UserSchema`, which leaves out the `ReadOnly` email.
 
 Use **auto-schema** for prototypes and internal tools. Use an **explicit schema** for public contracts, aliases, and strict validation.
 
