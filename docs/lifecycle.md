@@ -64,6 +64,9 @@ all five actions: `update_endpoint` calls `handle_update`, which calls
   permissions and does not commit. So when your override runs, `authorize` has
   already passed, and the commit comes after it.
 
+:::{admonition} Details
+:class: details
+
 Update and delete have the same steps, with a load first. Their handlers load
 the row through {meth}`get_one <fastapi_restly.views.RestView.get_one>`, so a
 row that the caller cannot see is a 404. Then they call `authorize` with the
@@ -71,6 +74,7 @@ loaded row and take a
 {meth}`snapshot <fastapi_restly.views.BaseRestView.snapshot>` of it as `old`.
 The business method runs next, then the commit bracket. The hooks receive both
 `new` and `old`, so they can see what changed.
+:::
 
 (read-request-steps)=
 ### A read: visibility, then policy
@@ -216,12 +220,16 @@ The generated update body takes `password` too. Without more code,
         return await self.save_object(obj)
 ```
 
+:::{admonition} Details
+:class: details
+
 {meth}`update_object <fastapi_restly.views.RestView.update_object>` writes
 only the fields that the request sends, so the check uses the same set. The
 other way is an [explicit update schema](#explicit-write-schemas) without
 `password`, with a separate route that changes the password. The SaaS example
 does this: its change-password route checks the current password first
 ([`app/users/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/users/views.py)).
+:::
 
 ### Refuse a change in `update`
 
@@ -265,11 +273,7 @@ field:
 ```
 
 It is not a column, so `ReadOnly` keeps it out of the create and update
-bodies. The handlers always pass `scope=`, so the override declares it and
-passes it on. To change the single-row read too, override
-{meth}`get_one <fastapi_restly.views.RestView.get_one>` the same way, as the
-[SaaS example](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py)
-does.
+bodies.
 
 Other changes to a list have their own place. A [scope](#view-scope) hides
 rows.
@@ -278,6 +282,16 @@ changes the filter, sort and page grammar
 ([Filtering & Pagination](filtering.md)).
 {meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`
 loads more relationships ([Relationships](#eager-load-extra-relationships)).
+
+:::{admonition} Details
+:class: details
+
+The handlers always pass `scope=`, so the override declares it and
+passes it on. To change the single-row read too, override
+{meth}`get_one <fastapi_restly.views.RestView.get_one>` the same way, as the
+[SaaS example](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py)
+does.
+:::
 
 (domain-utilities)=
 ## Build and save objects
@@ -362,6 +376,13 @@ through a handler or a `write_action` block. A route on a plain
 session itself. When a request ends with changes
 that are not committed, Restly warns with
 {class}`RestlyUncommittedChangesWarning <fastapi_restly.exc.RestlyUncommittedChangesWarning>`.
+
+To commit several writes at once, see
+[Commit several writes together](#shared-write-action-commit).
+
+:::{admonition} Details
+:class: details
+
 The warning is on by default. To turn it off for the app, pass
 `warn_on_uncommitted=False` to {func}`fr.configure <fastapi_restly.db.configure>`.
 A route that rolls back on purpose, such as a dry run, can turn it off for one
@@ -369,9 +390,7 @@ request with `session.info["_fr_suppress_uncommitted"] = True`.
 
 A [session generator of your own](#own-session-generator) decides how a
 session is made and closed. It does not change who commits.
-
-To commit several writes at once, see
-[Commit several writes together](#shared-write-action-commit).
+:::
 
 (transaction-hooks)=
 ## Run code before or after the commit
@@ -409,6 +428,9 @@ done, so the change is not saved. A change to `new` still shows in the
 response of this request, which hides the problem. Make the change in the
 business method or in `before_action_commit`.
 
+:::{admonition} Details
+:class: details
+
 On a delete, `new` is `None` and `old` holds the columns of the removed row. A
 delete that must finish outside the request can mark the row in `delete`, as a
 [soft delete](#soft-delete-recipe) does. After the commit,
@@ -423,6 +445,7 @@ delete that must finish outside the request can mark the row in `delete`, as a
         if action == "delete":
             await enqueue_async_delete(old["id"])  # a worker deletes the row
 ```
+:::
 
 (after-action-commit-raises)=
 ### When `after_action_commit` raises
@@ -479,6 +502,9 @@ The default `DELETE /{id}` answers `204 No Content`. This version answers
 `200` with the deleted row, as React Admin's `ra-data-simple-rest` expects
 ([React Admin](react_admin.md)).
 
+:::{admonition} Details
+:class: details
+
 When Restly registers the view, an endpoint method that the class defines
 replaces the inherited method with the same name. The other inherited
 endpoint methods stay.
@@ -493,6 +519,7 @@ keeps an annotation that you write, so `schema_obj: ProductReplace` validates
 the request body against `ProductReplace`. `list_params` is the exception: it
 always gets the view's
 {attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`.
+:::
 
 ### Change the list route
 
@@ -582,8 +609,13 @@ The SaaS example's `GET /users/me` returns the caller's own row:
 ```
 
 `Current.user_id()` is the id of the caller
-([Request Context](context.md)). `UserResponse` is the view's
-response class, so OpenAPI shows the same type as for `GET /users/{id}`. See
+([Request Context](context.md)).
+
+:::{admonition} Details
+:class: details
+
+`UserResponse` is the view's response class, so OpenAPI shows the same type
+as for `GET /users/{id}`. See
 [Name the view's classes in a custom route](#name-the-response-classes). The
 route `/me` works beside `/{id}`, because the item routes match only an
 integer id ([Item paths and static routes](#item-route-matching)).
@@ -593,6 +625,7 @@ the model, also the ones that the response leaves out. In the
 [same example](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py),
 `GET /projects/{id}/stats` calls `handle_get_one(id)`, and then counts the
 project's tasks.
+:::
 
 (natural-key-route)=
 ### Look a row up by another key
@@ -609,6 +642,9 @@ of the primary key. Everything else about the load stays the same: the view's
         user = await self.handle_get_one(User.email == email)
         return self.to_response(user)
 ```
+
+:::{admonition} Details
+:class: details
 
 Combine columns with `sqlalchemy.and_(...)`. This is also how a custom route
 reaches a row of a model with a composite primary key. A plain id cannot name
@@ -627,6 +663,7 @@ same expression. So a custom `PATCH /users/by-email/{email}` route that calls
 `handle_update(User.email == email, schema_obj)` runs the same steps as
 `PATCH /users/{id}`. The SaaS example reads and updates projects by slug in
 [`app/projects/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py).
+:::
 
 (custom-action-route)=
 ## Add a custom action route
@@ -702,12 +739,16 @@ way
 one block
 ([`app/labels/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/labels/views.py)).
 
+:::{admonition} Details
+:class: details
+
 Name the view's response classes in `response_model`, so OpenAPI shows the
 same types as for the CRUD routes: see
 [Name the view's classes in a custom route](#name-the-response-classes). A route
 that builds a schema with `model_construct()` skips validation, so its
 reference fields need the right form: see
 [Build references in a custom route](#idref-custom-routes).
+:::
 
 (shared-write-action-commit)=
 ## Commit several writes together
@@ -732,6 +773,9 @@ Its changes are not committed yet, and its `after_action_commit` has not run.
 So build the responses after the block, as in the example. Do the same for
 code that needs an after-hook to have run. On `fr.RestView`, use `with` and
 the sync handlers. The method has the same name.
+
+:::{admonition} Details
+:class: details
 
 The block can also hold other writes, for an operation on more than one
 model:
@@ -788,6 +832,7 @@ and `/tasks/import-csv` put a savepoint around each row inside one
 `POST /projects/{id}/clone` commits a project, its outbox event and the copied
 tasks together
 ([`app/projects/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py)).
+:::
 
 ## What is available on `self`
 
