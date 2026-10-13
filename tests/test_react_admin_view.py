@@ -17,6 +17,7 @@ from collections.abc import Iterator
 import pydantic
 import pytest
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -290,6 +291,42 @@ def test_react_admin_invalid_range_json_returns_400(client):
 def test_react_admin_invalid_filter_json_returns_400(client):
     _setup_async_item_view(client)
     client.get("/items/", params={"filter": "notjson"}, assert_status_code=400)
+
+
+@pytest.mark.parametrize(
+    ("params", "detail"),
+    [
+        ({"sort": "notjson"}, "Invalid sort parameter: must be a JSON array"),
+        ({"sort": '["name"]'}, "Invalid sort parameter: must be [field, direction]"),
+        ({"sort": '["nope","ASC"]'}, "Unknown sort field: 'nope'"),
+        ({"range": "notjson"}, "Invalid range parameter: must be a JSON array"),
+        ({"range": "[0]"}, "Invalid range parameter: must be [start, end]"),
+        ({"range": "[5,1]"}, None),
+        ({"filter": "notjson"}, "Invalid filter parameter: must be a JSON object"),
+        ({"filter": '{"nope":1}'}, "Unknown filter field: 'nope'"),
+        ({"filter": '{"price":"cheap"}'}, "Invalid filter value for 'price': 'cheap'"),
+    ],
+)
+def test_react_admin_query_errors_are_bad_query_params(client, params, detail):
+    """Each 400 of the list route is a ``BadQueryParam``, so a handler for
+    ``RestlyHTTPError`` shapes all of them. Before, most of them were plain
+    ``HTTPException`` and skipped the handler."""
+
+    app = FastAPI()
+
+    @app.exception_handler(fr.exc.RestlyHTTPError)
+    async def problem(request, exc: fr.exc.RestlyHTTPError):
+        return JSONResponse(
+            {"type": type(exc).__name__, "detail": exc.detail},
+            status_code=exc.status_code,
+        )
+
+    problem_client = RestlyTestClient(app)
+    _setup_async_item_view(problem_client)
+    body = problem_client.get("/items/", params=params, assert_status_code=400).json()
+    assert body["type"] == "BadQueryParam"
+    if detail is not None:
+        assert body["detail"] == detail
 
 
 def test_react_admin_unknown_filter_field_returns_400(client):

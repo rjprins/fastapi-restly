@@ -516,8 +516,7 @@ def _get_int(query_params: QueryParams, param_name: str) -> Optional[int]:
         return int(value)
     except ValueError:
         raise BadQueryParam(
-            f"Invalid value for URL query parameter {param_name}: "
-            f"{value} is not an integer"
+            f"Invalid value for {param_name!r}: {value!r}. Use an integer."
         )
 
 
@@ -540,7 +539,7 @@ def _apply_sorting(
             order = sqlalchemy.desc
             column_name = column_name[1:]
         select_query, column = _join_column(
-            select_query, model, column_name, schema_cls, aliases
+            select_query, model, column_name, schema_cls, aliases, kind="sort"
         )
         select_query = select_query.order_by(order(column))
         sorted_on.append(column)
@@ -629,9 +628,11 @@ def _join_column(
     column_path: str,
     schema_cls: SchemaType,
     aliases: _JoinAliases,
+    *,
+    kind: str = "filter",
 ) -> tuple[Select[Any], InstrumentedAttribute[Any]]:
     """Join each relationship path once and return its aliased leaf column."""
-    relationships, column = _resolve_column(model, column_path, schema_cls)
+    relationships, column = _resolve_column(model, column_path, schema_cls, kind=kind)
     source: type[DeclarativeBase] | AliasedClass[Any] = model
     path: tuple[str, ...] = ()
     for relationship in relationships:
@@ -650,7 +651,11 @@ def _join_column(
 
 
 def _resolve_column(
-    model: type[DeclarativeBase], column_path: str, schema_cls: SchemaType
+    model: type[DeclarativeBase],
+    column_path: str,
+    schema_cls: SchemaType,
+    *,
+    kind: str = "filter",
 ) -> tuple[list[InstrumentedAttribute[Any]], InstrumentedAttribute[Any]]:
     """Resolve a (possibly dotted) public column path to its SQLAlchemy column,
     plus the relationship attributes that need to be joined.
@@ -660,7 +665,11 @@ def _resolve_column(
     model attribute lookup would let URLs reach columns the schema didn't
     expose — for example, a Python field name on an aliased schema field —
     and silently bypass the public-name contract.
+
+    :raises BadQueryParam: ``Unknown <kind> field``, with ``kind`` such as
+        ``"filter"`` or ``"sort"``.
     """
+    unknown = BadQueryParam(f"Unknown {kind} field: {column_path!r}")
     joins: list[InstrumentedAttribute[Any]] = []
     current_model = model
     current_schema: SchemaType | None = schema_cls
@@ -668,31 +677,31 @@ def _resolve_column(
     while "." in name:
         relation, _, name = name.partition(".")
         if current_schema is None:
-            raise BadQueryParam(f"Invalid attribute in URL query: {column_path}")
+            raise unknown
         field_name = _resolve_field_name(current_schema, relation)
         if field_name is None:
-            raise BadQueryParam(f"Invalid attribute in URL query: {column_path}")
+            raise unknown
         rel = getattr(current_model, field_name, None)
         if not isinstance(rel, InstrumentedAttribute) or not hasattr(
             rel.property, "mapper"
         ):
-            raise BadQueryParam(f"Invalid attribute in URL query: {column_path}")
+            raise unknown
         joins.append(rel)
         current_model = rel.property.mapper.class_
         current_schema = _get_nested_schema(current_schema.model_fields[field_name])
 
     if current_schema is None:
-        raise BadQueryParam(f"Invalid attribute in URL query: {column_path}")
+        raise unknown
     field_name = _resolve_field_name(current_schema, name)
     if field_name is None:
-        raise BadQueryParam(f"Invalid attribute in URL query: {column_path}")
+        raise unknown
     column = getattr(current_model, field_name, None)
     if (
         column is None
         or not isinstance(column, InstrumentedAttribute)
         or not isinstance(column.property, ColumnProperty)
     ):
-        raise BadQueryParam(f"Invalid attribute in URL query: {column_path}")
+        raise unknown
     return joins, cast(InstrumentedAttribute[Any], column)
 
 
@@ -739,7 +748,8 @@ def _apply_filtering(
                 value = pydantic.TypeAdapter(bool).validate_python(raw_value)
             except pydantic.ValidationError as exc:
                 raise BadQueryParam(
-                    f"Invalid value for URL query parameter {key}"
+                    f"Invalid filter value for {key!r}: {raw_value!r}. "
+                    "Use true or false."
                 ) from exc
             filters[column].append(column.is_(None) if value else column.isnot(None))
             continue
@@ -783,26 +793,37 @@ def _build_clause(
 
 
 def _parse_value(schema_cls: SchemaType, column_name: str, value: str) -> Any:
-    if "." in column_name:
-        relation, _, column_part = column_name.partition(".")
-        relation_field_name = _resolve_field_name(schema_cls, relation) or relation
-        field = schema_cls.model_fields.get(relation_field_name)
+    """Validate one filter value with the validation of its field.
+
+    :raises BadQueryParam: when the value fails that validation. The message
+        has Pydantic's reason, such as ``Input should be a valid integer``.
+    """
+    *relations, name = column_name.split(".")
+    for relation in relations:
+        field = schema_cls.model_fields.get(
+            _resolve_field_name(schema_cls, relation) or relation
+        )
         nested = _get_nested_schema(field)
         if nested is None:
-            raise BadQueryParam(f"Invalid attribute in URL query: {column_name}")
-        return _parse_value(nested, column_part, value)
+            raise BadQueryParam(f"Unknown filter field: {column_name!r}")
+        schema_cls = nested
 
-    field_name = _resolve_field_name(schema_cls, column_name)
+    field_name = _resolve_field_name(schema_cls, name)
     if field_name is None:
-        raise BadQueryParam(f"Invalid attribute in URL query: {column_name}")
+        raise BadQueryParam(f"Unknown filter field: {column_name!r}")
 
+    # Only a validation error is the client's fault. Another exception from
+    # a validator is a bug, as it is for a request body.
     try:
         values, _, _ = _field_validator(schema_cls, field_name).validate_python(
             {field_name: value}
         )
-        result = values[field_name]
-    except Exception:
-        raise BadQueryParam(f"Invalid attribute in URL query: {column_name}")
+    except pydantic.ValidationError as exc:
+        reason = exc.errors()[0]["msg"]
+        raise BadQueryParam(
+            f"Invalid filter value for {column_name!r}: {value!r}. {reason}"
+        ) from exc
+    result = values[field_name]
     # An IDRef[T] FK field validates to an IDRef object; the SQL bind value
     # is its scalar id, not the reference wrapper (which cannot bind).
     if isinstance(result, IDSchema):

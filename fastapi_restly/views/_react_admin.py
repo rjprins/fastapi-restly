@@ -70,7 +70,7 @@ def parse_react_admin_sort(sort_raw: str | None) -> tuple[str, str] | None:
 
     Expected: '["field","ASC"]' or '["field","DESC"]'
     Returns (field, direction) or None if absent.
-    Raises HTTPException 400 on malformed input.
+    Raises BadQueryParam (400) on malformed input.
     """
     if not sort_raw:
         return None
@@ -79,14 +79,10 @@ def parse_react_admin_sort(sort_raw: str | None) -> tuple[str, str] | None:
     except json.JSONDecodeError:
         raise BadQueryParam("Invalid sort parameter: must be a JSON array")
     if not isinstance(parsed, list) or len(parsed) != 2:
-        raise fastapi.HTTPException(
-            400, "Invalid sort parameter: must be [field, direction]"
-        )
+        raise BadQueryParam("Invalid sort parameter: must be [field, direction]")
     field, direction = parsed
     if not isinstance(field, str) or direction not in ("ASC", "DESC"):
-        raise fastapi.HTTPException(
-            400, "Invalid sort parameter: direction must be 'ASC' or 'DESC'"
-        )
+        raise BadQueryParam("Invalid sort parameter: direction must be 'ASC' or 'DESC'")
     return field, direction
 
 
@@ -98,25 +94,19 @@ def parse_react_admin_range(
 
     Expected: '[0,24]' (both inclusive).
     Returns (start, end). Defaults to (0, default_page_size - 1) if absent.
-    Raises HTTPException 400 on malformed input.
+    Raises BadQueryParam (400) on malformed input.
     """
     if not range_raw:
         return 0, default_page_size - 1
     try:
         parsed = json.loads(range_raw)
     except json.JSONDecodeError:
-        raise fastapi.HTTPException(
-            400, "Invalid range parameter: must be a JSON array"
-        )
+        raise BadQueryParam("Invalid range parameter: must be a JSON array")
     if not isinstance(parsed, list) or len(parsed) != 2:
-        raise fastapi.HTTPException(
-            400, "Invalid range parameter: must be [start, end]"
-        )
+        raise BadQueryParam("Invalid range parameter: must be [start, end]")
     start, end = parsed
     if not isinstance(start, int) or not isinstance(end, int):
-        raise fastapi.HTTPException(
-            400, "Invalid range parameter: values must be integers"
-        )
+        raise BadQueryParam("Invalid range parameter: values must be integers")
     return start, end
 
 
@@ -126,24 +116,22 @@ def parse_react_admin_filter(filter_raw: str | None) -> dict:
 
     Expected: '{"field":"value"}' or '{"id":[1,2,3]}' for getMany.
     Returns a dict. Defaults to {} if absent.
-    Raises HTTPException 400 on malformed input.
+    Raises BadQueryParam (400) on malformed input.
     """
     if not filter_raw:
         return {}
     try:
         parsed = json.loads(filter_raw)
     except json.JSONDecodeError:
-        raise fastapi.HTTPException(
-            400, "Invalid filter parameter: must be a JSON object"
-        )
+        raise BadQueryParam("Invalid filter parameter: must be a JSON object")
     if not isinstance(parsed, dict):
-        raise fastapi.HTTPException(
-            400, "Invalid filter parameter: must be a JSON object"
-        )
+        raise BadQueryParam("Invalid filter parameter: must be a JSON object")
     return parsed
 
 
-def _resolve_column(model: type[Any], schema_cls: Any, field_name: str) -> Any:
+def _resolve_column(
+    model: type[Any], schema_cls: Any, field_name: str, *, kind: str = "filter"
+) -> Any:
     """
     Resolve a PUBLIC schema field name (or alias) to its SQLAlchemy column.
 
@@ -154,7 +142,7 @@ def _resolve_column(model: type[Any], schema_cls: Any, field_name: str) -> Any:
     probe -- hidden data. Mirrors the standard REST dialect's schema-driven
     resolution.
 
-    Raises HTTPException 400 if the field is not a public, filterable schema field.
+    Raises BadQueryParam (400) if the field is not a public, filterable schema field.
     """
     resolved_name: str | None = None
     if schema_cls is not None:
@@ -166,14 +154,14 @@ def _resolve_column(model: type[Any], schema_cls: Any, field_name: str) -> Any:
                 break
 
     if resolved_name is None:
-        raise BadQueryParam(f"Unknown filter field: {field_name!r}")
+        raise BadQueryParam(f"Unknown {kind} field: {field_name!r}")
 
     col = getattr(model, resolved_name, None)
     if col is None:
-        raise BadQueryParam(f"Unknown filter field: {field_name!r}")
+        raise BadQueryParam(f"Unknown {kind} field: {field_name!r}")
     if hasattr(col, "property") and isinstance(col.property, RelationshipProperty):
-        raise fastapi.HTTPException(
-            400, f"Cannot sort or filter by relationship field: {field_name!r}"
+        raise BadQueryParam(
+            f"Cannot sort or filter by relationship field: {field_name!r}"
         )
     return col
 
@@ -192,9 +180,7 @@ def _coerce_value(col: Any, value: Any) -> Any:
         try:
             return py_type(value)
         except (ValueError, TypeError):
-            raise fastapi.HTTPException(
-                400, f"Invalid filter value for {col.key!r}: {value!r}"
-            )
+            raise BadQueryParam(f"Invalid filter value for {col.key!r}: {value!r}")
     return value
 
 
@@ -232,7 +218,7 @@ def apply_react_admin_query(
     sorted_on = []
     if sort:
         field, direction = sort
-        col = _resolve_column(model, schema_cls, field)
+        col = _resolve_column(model, schema_cls, field, kind="sort")
         order_fn = sqlalchemy.desc if direction == "DESC" else sqlalchemy.asc
         query = query.order_by(order_fn(col))
         sorted_on.append(col)
@@ -358,14 +344,10 @@ class _ReactAdminMixin:
         )
         if isinstance(range_raw, list | tuple):
             if len(range_raw) != 2:
-                raise fastapi.HTTPException(
-                    400, "Invalid range parameter: must be [start, end]"
-                )
+                raise BadQueryParam("Invalid range parameter: must be [start, end]")
             start, end = range_raw
             if not isinstance(start, int) or not isinstance(end, int):
-                raise fastapi.HTTPException(
-                    400, "Invalid range parameter: values must be integers"
-                )
+                raise BadQueryParam("Invalid range parameter: values must be integers")
         else:
             start, end = parse_react_admin_range(
                 range_raw, default_page_size=default_page_size
@@ -376,15 +358,13 @@ class _ReactAdminMixin:
             else parse_react_admin_filter(filter_raw)
         )
         if start < 0 or end < start:
-            raise fastapi.HTTPException(
-                400,
-                "Invalid range parameter: must be [start, end] with 0 <= start <= end",
+            raise BadQueryParam(
+                "Invalid range parameter: must be [start, end] with 0 <= start <= end"
             )
         if end - start + 1 > pagination.max_page_size:
-            raise fastapi.HTTPException(
-                400,
+            raise BadQueryParam(
                 "Invalid range parameter: a range can ask for at most "
-                f"{pagination.max_page_size} rows",
+                f"{pagination.max_page_size} rows"
             )
         return _ReactAdminListParams(sort=sort, start=start, end=end, filters=filters)
 

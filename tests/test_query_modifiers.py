@@ -259,7 +259,7 @@ class TestApplyPagination:
             _apply_pagination(params, select_query, PAGES)
 
         assert exc_info.value.status_code == 400
-        assert "not an integer" in str(exc_info.value.detail)
+        assert "Use an integer" in str(exc_info.value.detail)
 
     def test__apply_pagination_invalid_page_size(self, select_query, mock_query_params):
         """Test pagination with invalid page_size value."""
@@ -269,7 +269,7 @@ class TestApplyPagination:
             _apply_pagination(params, select_query, PAGES)
 
         assert exc_info.value.status_code == 400
-        assert "not an integer" in str(exc_info.value.detail)
+        assert "Use an integer" in str(exc_info.value.detail)
 
 
 class TestApplySorting:
@@ -330,7 +330,7 @@ class TestApplyFilteringIsNull:
             _apply_sorting(params, select_query, WidgetModel, WidgetSchema)
 
         assert exc_info.value.status_code == 400
-        assert "Invalid attribute" in str(exc_info.value.detail)
+        assert "Unknown sort field" in str(exc_info.value.detail)
 
 
 class TestApplyFiltering:
@@ -423,7 +423,7 @@ class TestApplyFiltering:
             _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
 
         assert exc_info.value.status_code == 400
-        assert "Invalid attribute" in str(exc_info.value.detail)
+        assert "Unknown filter field" in str(exc_info.value.detail)
 
     def test__apply_filtering_unsupported_operator(
         self, select_query, mock_query_params
@@ -445,7 +445,7 @@ class TestApplyFiltering:
             _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
 
         assert exc_info.value.status_code == 400
-        assert "Invalid attribute" in str(exc_info.value.detail)
+        assert "Invalid filter value for 'age'" in str(exc_info.value.detail)
 
     def test__apply_filtering_unknown_relation_in_dotted_path(
         self, select_query, mock_query_params
@@ -457,7 +457,7 @@ class TestApplyFiltering:
             _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
 
         assert exc_info.value.status_code == 400
-        assert "Invalid attribute" in str(exc_info.value.detail)
+        assert "Unknown filter field" in str(exc_info.value.detail)
 
     def test__apply_filtering_plain_column_used_as_relation(
         self, select_query, mock_query_params
@@ -469,7 +469,7 @@ class TestApplyFiltering:
             _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
 
         assert exc_info.value.status_code == 400
-        assert "Invalid attribute" in str(exc_info.value.detail)
+        assert "Unknown filter field" in str(exc_info.value.detail)
 
     def test__apply_filtering_relation_field_uses_join(
         self, post_select_query, mock_query_params

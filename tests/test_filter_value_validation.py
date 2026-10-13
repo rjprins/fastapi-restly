@@ -137,7 +137,10 @@ def test_list_filter_with_field_name_dependent_validator(client):
     assert [row["displayName"] for row in rows["data"]] == ["Alice"]
 
     response = client.get("/items", params={"code": "ABCDE"}, assert_status_code=400)
-    assert response.json() == {"detail": "Invalid attribute in URL query: code"}
+    assert response.json() == {
+        "detail": "Invalid filter value for 'code': 'ABCDE'. "
+        "Value error, value is too long"
+    }
 
 
 def test_field_constraint_still_rejects():
@@ -307,3 +310,31 @@ def test_list_filter_with_cross_field_validator_is_200(client):
     assert [r["title"] for r in rows["data"]] == ["idea"]
     rows = client.get("/tickets", params={"severity__gte": "1"}).json()
     assert [r["title"] for r in rows["data"]] == ["crash"]
+
+
+def test_a_bug_in_a_validator_is_not_a_bad_filter_value(client):
+    """Only a validation error is the client's fault. Before, any exception
+    from the field's validation became 400 "Invalid attribute in URL query"."""
+
+    class Gadget(fr.IDMixin, SharedBase):
+        code: Mapped[str]
+
+    class GadgetSchema(fr.IDSchema):
+        code: str
+
+        @pydantic.field_validator("code")
+        @classmethod
+        def check_code(cls, value: str) -> str:
+            if value == "boom":
+                raise RuntimeError("a bug in the validator")
+            return value
+
+    @fr.include_view(client.app)
+    class GadgetView(fr.AsyncRestView):
+        prefix = "/gadgets"
+        model = Gadget
+        schema = GadgetSchema
+
+    create_tables()
+    with pytest.raises(RuntimeError, match="a bug in the validator"):
+        client.get("/gadgets/", params={"code": "boom"})

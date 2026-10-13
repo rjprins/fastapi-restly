@@ -74,6 +74,23 @@ status code:
   [validation](#filter-value-validation), such as `?age=old` on an `int`
   field.
 
+The `detail` of a `400` names the parameter and says what is wrong:
+
+```text
+Unknown sort field: 'nope'
+Invalid filter value for 'age': 'old'. Input should be a valid integer, unable to parse string as an integer
+```
+
+The second part of a bad filter value is Pydantic's reason. For a field
+validator of your own, it is the text of your `ValueError`. An exception
+that is not a validation error, such as an `AttributeError` in your
+validator, is a bug and returns `500`, as it does for a request body.
+
+A react-admin view raises `BadQueryParam` for each bad `sort`, `range` or
+`filter` parameter too. So a handler for
+{class}`RestlyHTTPError <fastapi_restly.exc.RestlyHTTPError>` shapes all
+these `400` answers; see [Change the error body](#error-envelope).
+
 A filter value passes the first step as text. Restly checks it against the
 field only when it builds the query, so a bad filter value returns `400`, not
 `422`.

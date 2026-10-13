@@ -762,7 +762,7 @@ def test_query_helpers_take_the_pagination():
     )
     assert unpaginated.model_fields.keys().isdisjoint({"page", "page_size"})
     # without pagination, ``size`` is no parameter but an unknown filter
-    with pytest.raises(fr.exc.BadQueryParam, match="Invalid attribute in URL query"):
+    with pytest.raises(fr.exc.BadQueryParam, match="Unknown filter field: 'size'"):
         sql("size=10", pagination=None)
 
 

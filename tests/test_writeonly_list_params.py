@@ -246,7 +246,7 @@ def test_writeonly_filter_is_an_unknown_query_param(accounts, key):
 def test_writeonly_sort_answers_like_an_unknown_field(accounts, sort, path):
     response = accounts.get("/accounts/", params={"sort": sort}, assert_status_code=400)
 
-    assert response.json() == {"detail": f"Invalid attribute in URL query: {path}"}
+    assert response.json() == {"detail": f"Unknown sort field: {path!r}"}
 
 
 def test_readable_fields_still_filter_and_sort(accounts):
@@ -267,8 +267,12 @@ def test_openapi_lists_no_writeonly_params(accounts):
     assert _secret_params(names) == set()
 
 
-@pytest.mark.parametrize("query", [{"pin": "1234"}, {"sort": "-pin"}])
-def test_custom_schema_list_params_cannot_reach_writeonly_column(make_client, query):
+@pytest.mark.parametrize(
+    ("query", "kind"), [({"pin": "1234"}, "filter"), ({"sort": "-pin"}, "sort")]
+)
+def test_custom_schema_list_params_cannot_reach_writeonly_column(
+    make_client, query, kind
+):
     # Hand-written list params pass the unknown-key guard, so the
     # resolver must still refuse the field.
     class LeakyParams(pydantic.BaseModel):
@@ -278,4 +282,4 @@ def test_custom_schema_list_params_cannot_reach_writeonly_column(make_client, qu
     client = make_client(schema_list_params=LeakyParams)
 
     response = client.get("/accounts/", params=query, assert_status_code=400)
-    assert response.json() == {"detail": "Invalid attribute in URL query: pin"}
+    assert response.json() == {"detail": f"Unknown {kind} field: 'pin'"}

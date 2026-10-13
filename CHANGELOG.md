@@ -92,6 +92,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `PATCH {"count": null}` returned `409` from the database. Both now return
   `422`. The client may still leave the field out, and then the default
   applies. In OpenAPI, the field is `integer` instead of `integer | null`.
+- The `400` answers of a list request say what is wrong. Before, the
+  standard dialect answered "Invalid attribute in URL query: age" both for a
+  sort or filter field that does not exist and for a bad filter value. Now
+  it is `Unknown sort field: 'nope'`, `Unknown filter field: 'nope'`, or
+  `Invalid filter value for 'age': 'old'. Input should be a valid integer`,
+  with Pydantic's reason. An exception from a field validator that is not a
+  validation error is now a `500`, as for a request body, instead of a
+  `400`. Code or tests that compare the old texts must change.
+- A react-admin view raises `fr.exc.BadQueryParam` for each bad `sort`,
+  `range` or `filter` parameter. Before, most of them were a plain
+  `HTTPException`, so a handler for `fr.exc.RestlyHTTPError` did not shape
+  them. The status stays `400`, and the default body is the same. An unknown
+  sort field now says `Unknown sort field` instead of `Unknown filter field`.
 
 ### Removed
 
