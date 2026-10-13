@@ -77,6 +77,10 @@ still controls the engine, and Restly applies none of its
 [engine defaults](#engine-defaults) to it.
 
 If you pass an async sessionmaker, create it with `expire_on_commit=False`.
+
+:::{admonition} Details
+:class: details
+
 Restly reads the response from the object after the commit, and in async code
 an expired attribute raises `MissingGreenlet`. Restly warns when it gets an
 async sessionmaker with `expire_on_commit=True`.
@@ -86,6 +90,7 @@ that Restly sets on its own factories.
 The SaaS example builds its own async engine from its settings and passes it
 to `fr.configure()`
 ([`app/main.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/main.py)).
+:::
 
 (own-session-generator)=
 
@@ -134,12 +139,6 @@ def my_get_db() -> Iterator[Session]:
 fr.configure(sync_session_generator=my_get_db)
 ```
 
-Configure the generator before you register any route that uses
-`fr.AsyncSessionDep` or `fr.SessionDep`. This includes plain FastAPI routes.
-FastAPI fixes the dependencies of a route when you register it. For this
-reason, a call that sets or replaces the generator after that raises
-{class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`.
-
 Give your sessions the same options as Restly's own factories, unless you need
 other behavior: `expire_on_commit=False`, and for async sessions also
 `autoflush=False`. [Session factory defaults](#session-factory-defaults)
@@ -149,6 +148,16 @@ To use the generator outside a request, with
 [`fr.open_session()`](#session-off-request), it must take no arguments. In
 tests, Restly's fixtures can replace the generator;
 [the `restly_session` fixture](#restly-session-fixture) describes when.
+
+:::{admonition} Details
+:class: details
+
+Configure the generator before you register any route that uses
+`fr.AsyncSessionDep` or `fr.SessionDep`. This includes plain FastAPI routes.
+FastAPI fixes the dependencies of a route when you register it. For this
+reason, a call that sets or replaces the generator after that raises
+{class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`.
+:::
 
 (share-request-session)=
 
@@ -171,14 +180,19 @@ async def get_current_user(session: fr.AsyncSessionDep):
 ```
 
 The views and every dependency that uses `fr.AsyncSessionDep` get the same
-session within a request. Use `fr.SessionDep` for sync code. On a plain
-route, both aliases also warn when the request ends with changes that were
-not committed, as they do on a view.
+session within a request. Use `fr.SessionDep` for sync code.
+
+:::{admonition} Details
+:class: details
+
+On a plain route, both aliases also warn when the request ends with changes
+that were not committed, as they do on a view.
 
 When you configure your own generator, your existing `Depends(my_get_db)`
 gives the same session as the view's `self.session`. FastAPI runs the
 generator once per request, and cleans it up once. FastAPI's own caching rules
 still apply: a dependency with `use_cache=False` gets its own session.
+:::
 
 (session-dependency-one-view)=
 
