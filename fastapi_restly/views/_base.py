@@ -1296,6 +1296,11 @@ class BaseRestView(
         404: {"description": "Not found"}
     }
 
+    #: The view's schema: the Pydantic class that lists the fields of the
+    #: resource. Restly builds :attr:`schema_response`, :attr:`schema_create`
+    #: and :attr:`schema_update` from it. When a view sets none, Restly
+    #: generates it from :attr:`model` with
+    #: :func:`~fastapi_restly.schemas.derive_schema`.
     schema: ClassVar[type[pydantic.BaseModel]]
     #: The class of everything that goes out: the single responses, the
     #: items of the list response, and the fields the list params filter and
@@ -1305,9 +1310,14 @@ class BaseRestView(
     #: schema without its ``WriteOnly`` fields, named ``<Resource>Response``.
     #: A class that a view sets is used as it is.
     schema_response: ClassVar[type[pydantic.BaseModel]]
-    # If 'schema_create' is not defined it will be created from 'schema'
-    # using `create_model_without_read_only_fields()`.
+    #: The class of the ``POST`` body. When a view sets none, Restly builds
+    #: it from the view's schema without its ``ReadOnly`` fields, named
+    #: ``<Resource>Create``. A class that a view sets is used as it is.
     schema_create: ClassVar[type[pydantic.BaseModel]]
+    #: The class of the ``PATCH`` body. When a view sets none, Restly builds
+    #: it from the view's schema without its ``ReadOnly`` fields, and makes
+    #: every other field optional. It is named ``<Resource>Update``. A class
+    #: that a view sets is used as it is.
     schema_update: ClassVar[type[pydantic.BaseModel]]
     model: ClassVar[type[Any]]
     #: The clause every read on this view applies: list, count, and retrieve

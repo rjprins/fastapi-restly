@@ -265,6 +265,25 @@ def _reject_buried_ref_exists(model_cls: type[pydantic.BaseModel]) -> None:
 
 
 class TimestampsSchemaMixin(pydantic.BaseModel):
+    """Schema mixin that adds two fields: ``created_at`` and ``updated_at``.
+
+    It is the schema side of :class:`~fastapi_restly.models.TimestampsMixin`.
+    Both fields are ``ReadOnly[datetime]``, so the responses contain them, and
+    the create and update bodies that Restly generates leave them out. When a
+    client sends them in a body, Restly ignores them. The fields have no
+    default, so the object that a response reads must have both attributes.
+
+    The mixin adds nothing else, so combine it with :class:`IDSchema` or
+    :class:`BaseSchema`. Put it before the base class, so that ``id`` stays
+    the first field in the responses::
+
+        class UserSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
+            name: str
+
+    A schema that Restly generates for a model with ``created_at`` and
+    ``updated_at`` columns uses this mixin.
+    """
+
     created_at: ReadOnly[datetime]
     updated_at: ReadOnly[datetime]
 

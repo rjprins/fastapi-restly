@@ -6,9 +6,10 @@ class. A `User` model is the database table. `UserSchema`, the view's schema,
 is the public API.
 :::
 
-A view has one schema, the view's schema. It is a Pydantic class that lists
-the fields of the resource. When you register the view, Restly builds the
-classes of the routes from it:
+A view has several schemas. The main one is the view's
+{attr}`schema <fastapi_restly.views.BaseRestView.schema>`, a Pydantic class
+that lists the fields of the resource. When you register the view,
+Restly builds the other schemas from it, one for each use:
 
 | Class | Used for | What Restly leaves out of the view's schema |
 |---|---|---|

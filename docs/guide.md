@@ -110,10 +110,12 @@ set, override or call on a view.
 
 ## Requests & Responses
 
-A view has one schema, a Pydantic class that lists the fields of the
-resource. Restly builds the request bodies and the response class from it,
-so one schema decides what clients send and what they get back. The list
-route adds filter, sort and page parameters to the URL.
+A view has several schemas. The main one is the view's
+{attr}`schema <fastapi_restly.views.BaseRestView.schema>`, a Pydantic class
+that lists the fields of the resource. Restly builds the other schemas
+from it: the request bodies and the response class. So the view's schema
+decides what clients send and what they get back. The list route adds
+filter, sort and page parameters to the URL.
 
 - [Schemas & Validation](schemas.md): generate the schema or write it, keep
   a field out of the requests or the responses, validate input, and use other
