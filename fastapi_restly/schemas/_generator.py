@@ -163,12 +163,17 @@ def get_model_fields(model_cls: type[Any]) -> dict[str, Any]:
         dataclasses.fields(model_cls) if dataclasses.is_dataclass(model_cls) else ()
     )
     not_in_init = {f.name for f in dc_fields if not f.init}
-    # A default of the constructor is a default of the model too.
+    # A default of the constructor is a default of the model too, for a field
+    # that the client can send. A None default gives a NOT NULL column no
+    # value, and a nullable column is optional already.
     init_defaults = {
         f.name
         for f in dc_fields
-        if f.default is not dataclasses.MISSING
-        or f.default_factory is not dataclasses.MISSING
+        if f.init
+        and (
+            (f.default is not dataclasses.MISSING and f.default is not None)
+            or f.default_factory is not dataclasses.MISSING
+        )
     }
     names = list(annotations)
     names += [name for name in props if name not in annotations]
@@ -260,9 +265,12 @@ def derive_schema(model: type[Any], *, name: str | None = None) -> type[BaseSche
     that the constructor does not take (``init=False``).
 
     A field allows ``None`` only when its column is nullable. The client may
-    leave out the field of a nullable column and of a column with a default.
-    Such a field has the default ``None``, which Pydantic does not validate,
-    and Restly does not write it: the column's default applies.
+    leave out a field when its column is nullable, when its annotation allows
+    ``None``, or when the model has a default for it: on the column
+    (``insert_default``, ``server_default``) or on the constructor (a
+    ``default`` other than ``None``, or a ``default_factory``). Such a field
+    has the default ``None``, which Pydantic does not validate. Restly does
+    not write it, so the model's default applies.
 
     :param model: The SQLAlchemy model class.
     :param name: Name for the generated schema class. Defaults to the

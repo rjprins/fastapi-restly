@@ -25,7 +25,8 @@ def make_new_object(
 
     This is the schema-to-ORM mapping primitive. It resolves Restly reference
     fields, skips read-only inputs, applies schema defaults, and stages the
-    object in the session. It does not flush and does not run a view's
+    object in the session. A field that the client left out with the value
+    ``None`` is not passed, so the model's default applies to it. It does not flush and does not run a view's
     ``create`` business logic.
 
     ``schema_obj``'s own schema decides what is written: every field it

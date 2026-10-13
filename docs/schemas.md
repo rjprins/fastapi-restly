@@ -634,11 +634,15 @@ that names the attribute. Synonyms and composites get no field of their own:
 the columns behind them already have one. A field allows `null` (`None` in
 Python) only when its column is nullable. `mapped_column(nullable=...)`
 decides this, as it does for SQLAlchemy, even when the `Mapped[...]`
-annotation says otherwise. The client may leave out the field of a nullable
-column and of a column with a default. A default can be on the column, such
-as `insert_default` or `server_default`, or on the constructor, such as
-`default` or `default_factory`. When the client leaves the field out, Restly
-does not write it, so that default applies.
+annotation says otherwise. The client may leave out a field when its column
+is nullable, when its `Mapped[...]` annotation allows `None`, or when the
+model has a default for it. A default can be on the column, such as
+`insert_default` or `server_default`, or on the constructor: a `default`
+other than `None`, or a `default_factory`. When the client leaves the field
+out, Restly does not write it, so that default applies. For
+`Mapped[int | None]` with `nullable=False`, the field does not allow `null`,
+but the client may leave it out, so that an event can set the value before
+the flush.
 
 Three rules decide the rest:
 

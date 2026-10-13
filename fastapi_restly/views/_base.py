@@ -201,6 +201,25 @@ def _accepts_init_kwarg(model_cls: type, attr_name: str) -> bool:
     return attr_name not in dc_fields or dc_fields[attr_name].init
 
 
+@functools.cache
+def _required_init_params(model_cls: type) -> frozenset[str]:
+    """The keyword parameters of ``model_cls(...)`` that have no default.
+
+    Reads the real signature, so it also sees a hand-written ``__init__`` and
+    a dataclass ``InitVar``, which ``dataclasses.fields()`` leaves out.
+    """
+    try:
+        parameters = inspect.signature(model_cls).parameters.values()
+    except (TypeError, ValueError):
+        return frozenset()
+    keyword = (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY)
+    return frozenset(
+        p.name
+        for p in parameters
+        if p.kind in keyword and p.default is inspect.Parameter.empty
+    )
+
+
 def _requires_init_kwarg(model_cls: type, attr_name: str) -> bool:
     if not dataclasses.is_dataclass(model_cls):
         return False
@@ -513,7 +532,9 @@ def iter_creatable_fields(schema_obj: pydantic.BaseModel) -> Iterator[tuple[str,
 
     Fields marked as ``ReadOnly`` are skipped. Unlike :func:`get_writable_inputs`,
     this also includes fields that were not explicitly provided, so that
-    schema-level defaults end up on the new object.
+    schema-level defaults end up on the new object. :func:`build_create_plan`
+    leaves out a field that the client left out with the value ``None``, so
+    the model's default applies to it.
     """
     schema_cls = type(schema_obj)
     for field_name, value in schema_obj:
@@ -678,18 +699,25 @@ def build_create_plan(
             else:
                 plan.post_assignments[field_name] = value.id
             continue
-        if value is None and is_reference_field(schema_cls, field_name):
+        left_out = value is None and field_name not in schema_obj.model_fields_set
+        if (
+            value is None
+            and is_reference_field(schema_cls, field_name)
+            # A left-out reference on a column is left to the model's default.
+            and not (left_out and _is_mapped_column(model_cls, field_name))
+        ):
             _add_null_reference_to_create_plan(plan, model_cls, field_name)
             continue
         if is_mapped_instance(value) and is_reference_field(schema_cls, field_name):
             _add_resolved_reference_to_create_plan(plan, model_cls, field_name, value)
             continue
-        if value is None and field_name not in schema_obj.model_fields_set:
-            # Left out: the model's own default applies. A None would replace
-            # it, and a JSON column would store it as JSON null.
-            if _requires_init_kwarg(model_cls, field_name):
+        if left_out:
+            # The model's own default applies. A None would replace it, and a
+            # JSON column would store it as JSON null.
+            if field_name in _required_init_params(model_cls):
                 plan.kwargs[field_name] = None
-                plan.unsupplied_columns.append(field_name)
+                if _is_mapped_column(model_cls, field_name):
+                    plan.unsupplied_columns.append(field_name)
             continue
 
         value = _json_ready(model_cls, field_name, value)

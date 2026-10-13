@@ -201,9 +201,9 @@ class UserView(fr.AsyncRestView):
 `authorize` and commits. The override only changes how the object is built.
 The schema field and the column have the same name, because
 {meth}`make_new_object <fastapi_restly.views.RestView.make_new_object>` passes
-every writable schema field to the model's constructor. So the plain password
-goes into `password` first, and the override replaces it with the hash before
-the flush. `fr.WriteOnly` keeps the field out of every response.
+every writable schema field that the client sent to the model's constructor.
+So the plain password goes into `password` first, and the override replaces
+it with the hash before the flush. `fr.WriteOnly` keeps the field out of every response.
 
 The generated update body takes `password` too. Without more code,
 `PATCH /users/{id}` stores a new password as plain text. So hash it in

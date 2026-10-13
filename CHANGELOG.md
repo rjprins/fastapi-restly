@@ -94,8 +94,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   applies. In OpenAPI, the field is `integer` instead of `integer | null`.
   `mapped_column(nullable=...)` now wins over the annotation, as in
   SQLAlchemy: `Mapped[int]` with `nullable=True` allows `null`. A default of
-  the constructor, such as `default_factory=dict`, now also lets the client
-  leave the field out.
+  the constructor, such as `default_factory=dict` or a `default` other than
+  `None`, now also lets the client leave the field out.
 - The `400` answers of a list request say what is wrong. Before, the
   standard dialect answered "Invalid attribute in URL query: age" both for a
   sort or filter field that does not exist and for a bad filter value. Now
@@ -162,13 +162,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- A field that the client leaves out of a create no longer replaces the
-  model's default. Before, Restly passed `None` to the constructor for it.
-  Most columns then still got their column default, but a JSON column stored
-  JSON `null`, and a `default` or `default_factory` of the constructor was
-  lost. Now Restly leaves such a field out. When the dataclass constructor
-  requires the argument, Restly passes `None` and removes it again before
-  the `INSERT`, so the column default or the server default applies.
+- A field that the client leaves out of a create, with the value `None`, no
+  longer replaces the model's default. Before, Restly passed `None` to the
+  constructor for it. Most columns then still got their column default, but
+  a JSON column stored JSON `null`, and a `default_factory` of the
+  constructor was lost. Now Restly leaves such a field out. When the
+  constructor requires the argument, Restly passes `None`, and for a column
+  it removes the `None` again before the `INSERT`, so the column default or
+  the server default applies. This also holds for a reference field, such as
+  `author_id: fr.IDRef[User] | None = None`, on a foreign key column.
 - A validator or serializer for a `ReadOnly` field, or for a primary key that
   the server generates, no longer makes the view fail when it registers.
   Before, it needed `check_fields=False`. The request bodies do not have the
