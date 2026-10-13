@@ -55,16 +55,19 @@ fr.include_view(api, UserView)  # registers the /api/users CRUD routes
 app.include_router(api)
 ```
 
+You adopt Restly one resource at a time. In the example, the orders routes
+stay hand-written, and the users routes come from `UserView`. If you add a
+`ProductView` later, the orders router does not change.
+
+:::{admonition} Details
+:class: details
+
 `fr.include_view()` also works as a class decorator;
 [Views](#register-a-view) explains both forms. Pass `app` to
 `fr.configure()`, also when the views are on a router. That call checks the
 OpenAPI schema of the app for two classes with the same name, and
 `fr.include_view()` on a router cannot do this; see
 [Database & Configuration](#configure-restly).
-
-You adopt Restly one resource at a time. In the example, the orders routes
-stay hand-written, and the users routes come from `UserView`. If you add a
-`ProductView` later, the orders router does not change.
 
 A plain FastAPI route can also sit next to a view, for an endpoint that is not
 part of the CRUD routes:
@@ -74,6 +77,7 @@ part of the CRUD routes:
 async def export_user(id: int):
     ...
 ```
+:::
 
 (hand-written-crud-route)=
 
