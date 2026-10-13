@@ -3,7 +3,7 @@ import functools
 import inspect
 import sys
 import types
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from datetime import datetime
 from typing import (
     TYPE_CHECKING,
@@ -13,7 +13,6 @@ from typing import (
     ForwardRef,
     Generic,
     Literal,
-    Optional,
     Union,
     cast,
     final,
@@ -22,7 +21,9 @@ from typing import (
 )
 
 import pydantic
+from pydantic.config import JsonDict
 from pydantic.fields import Field, FieldInfo
+from pydantic_core import to_jsonable_python
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
@@ -1287,8 +1288,10 @@ def create_model_with_optional_fields(
 ) -> type[pydantic.BaseModel]:
     """
     Create a subclass of the given pydantic model class with a new name.
-    Read-only fields and the fields named in ``omit`` are removed, and all
-    writable fields are made optional with None as default.
+    Read-only fields and the fields named in ``omit`` are removed, and the
+    client may leave out each writable field, which then defaults to None.
+    Each field keeps its type, so ``null`` is valid only where the type
+    allows it; see :class:`PatchMixin`.
     """
     new_model_name = _schema_role_name(model_cls, "Update")
     new_doc = (
@@ -1311,12 +1314,18 @@ def create_model_with_optional_fields(
 
 class PatchMixin(pydantic.BaseModel):
     """
-    A mixin for pydantic classes that makes all fields optional and replaces defaults
-    with None.
+    A mixin for pydantic classes that lets the client leave out every field,
+    for the body of ``PATCH``.
+
+    Each field keeps its type, so ``null`` is valid only where the type
+    allows ``None``, as in the body of ``POST``. A field that the client
+    leaves out gets the default ``None``. Pydantic does not validate it, and
+    Restly writes only the fields in ``model_fields_set``, so the default is
+    never written. The defaults of the schema are **replaced** by ``None``.
 
     Implementation note: like :class:`OmitReadOnlyMixin` this mutates
-    ``cls.model_fields`` (specifically ``FieldInfo.default`` and
-    ``FieldInfo.annotation``) and then calls ``model_rebuild(force=True)``.
+    ``cls.model_fields`` (``FieldInfo.default``, ``validate_default`` and
+    ``json_schema_extra``) and then calls ``model_rebuild(force=True)``.
     This relies on pydantic v2 keeping ``FieldInfo`` mutable; verified on the
     pinned ``pydantic>=2.11.7`` minimum and exercised by
     ``tests/test_pydantic_model_fields_mutation.py``.
@@ -1331,24 +1340,33 @@ class PatchMixin(pydantic.BaseModel):
             # A field cannot have both. FastAPI builds the field again from
             # its attributes for OpenAPI, which raises with both.
             field.default_factory = None
-            # Only wrap if not already Optional, to avoid Optional[Optional[T]]
-            annotation = field.annotation
-            if isinstance(annotation, types.UnionType):
-                # Python 3.10+ `X | Y` syntax - check if None is already a member.
-                # Convert to typing.Optional form so FieldInfo.annotation stays compatible.
-                union_args = get_args(annotation)
-                if type(None) not in union_args:
-                    non_none = [a for a in union_args if a is not type(None)]
-                    inner = (
-                        non_none[0] if len(non_none) == 1 else Union[tuple(non_none)]
-                    )
-                    field.annotation = Optional[inner]  # type: ignore[assignment]
-            else:
-                origin = getattr(annotation, "__origin__", None)
-                if origin is not Union or type(None) not in get_args(annotation):
-                    field.annotation = Optional[annotation]  # type: ignore[assignment]
+            # Also when the class sets ``validate_default=True``: the default
+            # is not a value of the field's type.
+            field.validate_default = False
+            field.json_schema_extra = _without_default(field.json_schema_extra)
 
         cls.model_rebuild(force=True)
+
+
+def _without_default(
+    extra: JsonDict | Callable[[JsonDict], None] | None,
+) -> Callable[[JsonDict], None]:
+    """A field's ``json_schema_extra`` that applies ``extra`` and then removes
+    ``default`` from the field's JSON schema.
+
+    A field that the client leaves out of ``PATCH`` keeps its value, so the
+    ``None`` default is not part of the contract. Some client generators
+    also read a field with a default as a field that is always present.
+    """
+
+    def update(schema: JsonDict) -> None:
+        if callable(extra):
+            extra(schema)
+        elif extra:
+            schema.update(to_jsonable_python(extra))
+        schema.pop("default", None)
+
+    return update
 
 
 def getattrs(obj: Any, *attrs: str, default: Any = None) -> Any:

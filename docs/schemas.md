@@ -244,8 +244,8 @@ class OrganizationSchema(fr.IDSchema):
 
     @pydantic.field_validator("slug")
     @classmethod
-    def check_slug(cls, value: str | None) -> str | None:
-        if value is not None and not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", value):
+    def check_slug(cls, value: str) -> str:
+        if not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", value):
             raise ValueError("use lowercase letters, digits and hyphens")
         return value
 ```
@@ -253,11 +253,11 @@ class OrganizationSchema(fr.IDSchema):
 A value that fails returns 422, with Pydantic's list of errors. The
 validator also runs in these places:
 
-- In the update body, every field is optional and accepts `null`. So a
-  validator there can get `None`. Check for it, as above. Without the check,
-  `{"slug": null}` breaks the validator, and the client gets a 500 instead of
-  a 422. A `null` for a column that must have a value reaches the database,
-  which rejects it with a 409.
+- In the update body, the client may leave out each field. Pydantic does not
+  validate a field that the client leaves out, so the validator does not
+  run for it. Each field keeps its type, so `null` is valid only where the
+  type allows `None`, as in the create body. `{"slug": null}` returns 422
+  before the validator runs, so the validator above never gets `None`.
 - The response class runs the validator when Restly builds a response from a
   row. A row that breaks the rule, for example one that a script wrote, then
   fails with a server error.
@@ -582,10 +582,13 @@ builds the classes. For the view's schema `UserSchema`:
   class with `model_rebuild(force=True)`.
 - {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>`
   adds `PatchMixin` as well. After the `ReadOnly` fields are gone, it sets the
-  default of every field to `None` and makes its type `Optional[...]`. The
-  defaults of `UserSchema` are **replaced** by `None`, not kept. A field that
-  the client does not send is not written: Restly writes only the fields in
-  `model_fields_set`.
+  default of every field to `None`, so the client may leave out each field.
+  The defaults of `UserSchema` are **replaced** by `None`, not kept. Each
+  field keeps its type, and Pydantic does not validate the `None` default,
+  also when the class sets `validate_default=True`. A field that the client
+  does not send is not written: Restly writes only the fields in
+  `model_fields_set`. In OpenAPI, the fields of the update body have no
+  `default` and none is required.
 
 Both request bodies also leave out a primary key that the server generates,
 even when the schema does not mark it `ReadOnly`. Generated means an

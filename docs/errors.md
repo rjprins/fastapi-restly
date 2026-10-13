@@ -84,7 +84,7 @@ field only when it builds the query, so a bad filter value returns `400`, not
 A duplicate value in a unique column, a foreign key to a row that does not
 exist, a `NULL` in a `NOT NULL` column, and a failed check constraint make
 SQLAlchemy raise an `IntegrityError`, at a flush or at the commit. In a
-Restly write, the request then returns `409`, not `500`. The body has
+Restly write, the request then returns `409`, not `500`. The response has
 FastAPI's normal shape:
 
 ```json
@@ -96,6 +96,10 @@ FastAPI's normal shape:
 The `detail` text depends on the database driver. Restly knows the common
 PostgreSQL error codes and SQLite error messages. For other databases, it uses
 a general conflict message.
+
+A `null` reaches the database only when the type of the schema field allows
+`None`. Otherwise validation rejects it first, with `422`. This holds for the
+create body and for the update body.
 
 The write block does this. Each CRUD write, and each
 [`write_action`](#custom-action-route) block in a custom route, turns the

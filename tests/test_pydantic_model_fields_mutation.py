@@ -232,3 +232,20 @@ def test_patch_mixin_directly() -> None:
 
     instance = UpdateFoo()  # type: ignore[call-arg]
     assert instance.model_dump(exclude_unset=True) == {}
+
+
+def test_patch_mixin_does_not_validate_the_default() -> None:
+    """A class with ``validate_default=True`` still lets the client leave a
+    field out. The ``None`` default is not a value of the field's type, and
+    Restly never writes it."""
+
+    class Foo(fr.BaseSchema):
+        model_config = pydantic.ConfigDict(validate_default=True)
+        name: str
+
+    Update = create_model_with_optional_fields(Foo)
+    assert Update().model_dump(exclude_unset=True) == {}  # type: ignore[call-arg]
+    with pytest.raises(pydantic.ValidationError):
+        Update(name=None)  # type: ignore[call-arg]
+    # The schema itself does not change.
+    assert Foo.model_fields["name"].is_required()

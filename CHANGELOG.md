@@ -74,6 +74,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   now gets the raw `IntegrityError` instead of a `409`. A route that caught
   `IntegrityError` around its own `write_action` block catches
   `fr.exc.Conflict` instead.
+- Each field of the update body keeps the type that it has in the view's
+  schema. The client may still leave out every field, but `null` is valid
+  only where the type allows `None`, as in the create body. Before, the
+  update body made each type `Optional`. So `PATCH {"title": null}` for a
+  field `title: str` passed validation, and the database rejected it with
+  `409`. Now it returns `422`, and a validator on such a field no longer gets
+  `None`. A field typed `str` on a nullable column can no longer be set to
+  `null` with `PATCH`; type it `str | None` for that. In OpenAPI, the fields
+  of the update body have no `"default": null`, and `title` is `string`
+  instead of `string | null`.
 
 ### Removed
 

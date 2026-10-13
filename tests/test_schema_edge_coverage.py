@@ -323,7 +323,8 @@ def test_schema_helper_utilities_cover_readonly_optional_and_config_rebasing():
 
     schema_update = create_model_with_optional_fields(DemoSchema)
     assert schema_update().name is None
-    assert type(None) in get_args(schema_update.model_fields["name"].annotation)
+    # Each field keeps its type: only ``email`` allows ``None``.
+    assert type(None) not in get_args(schema_update.model_fields["name"].annotation)
     assert type(None) in get_args(schema_update.model_fields["email"].annotation)
 
     create_schema = create_model_without_read_only_fields(DemoSchema)
