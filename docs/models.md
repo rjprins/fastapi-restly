@@ -180,7 +180,9 @@ set, not the options of `Base`:
   load a relationship, and an async session raises `MissingGreenlet`. Restly
   raises
   {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
-  for such a model, unless the model passes `eq=True` itself.
+  for such a model, unless the model passes `eq=True` or writes its own
+  `__eq__`. A model below another model, also an `__abstract__` one, takes
+  that model's choice.
 
 ## Use the base in your app
 

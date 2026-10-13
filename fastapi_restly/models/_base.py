@@ -35,26 +35,34 @@ CASCADE_ALL_ASYNC = "save-update, merge, delete, expunge"
 CASCADE_ALL_DELETE_ORPHAN_ASYNC = CASCADE_ALL_ASYNC + ", delete-orphan"
 
 
-def _reject_field_equality_from_a_mixin(cls: type, base: type) -> None:
+def _reject_field_equality_from_a_mixin(cls: type, base: type, writes_eq: bool) -> None:
     """Raise when a model compares its fields because of a mixin.
 
     A dataclass mixin without ``eq=False`` gets Python's default,
     ``eq=True``. Two things then follow. When the mixin comes first in the
     model's bases, SQLAlchemy takes the model's options from it, so the
-    model compares all its fields. When it comes later, the model has no
-    ``__eq__`` of its own and inherits the mixin's, which compares the
-    mixin's fields only. Either way the model loses the identity equality of
-    ``ModelDefaults``. A model of another model takes that model's choice.
+    model gets an ``__eq__`` that compares all its fields. When it comes
+    later, the model has no ``__eq__`` of its own and inherits the mixin's,
+    which compares the mixin's fields only. Either way the model loses the
+    identity equality of ``ModelDefaults``.
+
+    A model of another model, mapped or ``__abstract__``, takes that
+    model's choice. An ``__eq__`` that the model writes itself is its own
+    choice too.
     """
-    if cls.__eq__ is object.__eq__:
+    if writes_eq:
         return
-    parents = cls.__mro__[1:]
-    if any(_compares_fields(b) and hasattr(b, "__mapper__") for b in parents):
+    owner = next(b for b in cls.__mro__ if "__eq__" in b.__dict__)
+    if owner is cls:
+        # Generated from the options that SQLAlchemy took from a base.
+        if any(_compares_fields(b) and issubclass(b, base) for b in cls.__mro__[1:]):
+            return
+        mixin = next((b for b in cls.__mro__[1:] if _compares_fields(b)), None)
+    elif _compares_fields(owner) and not issubclass(owner, base):
+        mixin = owner
+    else:
+        # Identity, a parent model's choice, or an __eq__ that someone wrote.
         return
-    mixin = next(
-        (b for b in parents if _compares_fields(b) and not hasattr(b, "__mapper__")),
-        None,
-    )
     if mixin is None:
         return
     raise RestlyConfigurationError(
@@ -227,7 +235,7 @@ class ModelDefaults(
     eq=False)``. Without ``eq=False``, a model with the mixin compares
     fields, and comparing two objects can load a relationship. Such a model
     raises :class:`~fastapi_restly.exc.RestlyConfigurationError` unless it
-    asks for ``eq=True`` itself.
+    asks for ``eq=True`` itself or writes its own ``__eq__``.
     """
 
     def __init_subclass__(cls, **kw: Any) -> None:
@@ -252,9 +260,11 @@ class ModelDefaults(
                 f"makes every model on {base.__name__} a dataclass. Or leave "
                 f"fr.ModelDefaults out: Restly's views also work without it."
             )
+        # Before SQLAlchemy makes the class a dataclass, which can add one.
+        writes_eq = "__eq__" in cls.__dict__
         super().__init_subclass__(**kw)
         if base is not None and base is not cls and kw.get("eq") is not True:
-            _reject_field_equality_from_a_mixin(cls, base)
+            _reject_field_equality_from_a_mixin(cls, base, writes_eq)
         if base is cls:
             # SQLAlchemy has set up the registry by now, with the base's own
             # type_annotation_map. Restly's entries fill in what it leaves out.

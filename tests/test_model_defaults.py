@@ -218,6 +218,41 @@ def test_a_model_with_such_a_mixin_can_ask_for_field_equality():
     assert Article(title="a") == Article(title="a")
 
 
+def test_an_abstract_model_can_ask_for_field_equality():
+    """An ``__abstract__`` model has no mapper, but it is a model of the
+    base, not a mixin."""
+
+    class Base(fr.ModelDefaults, DeclarativeBase):
+        pass
+
+    class Content(fr.IDMixin, Base, eq=True):
+        __abstract__ = True
+        title: Mapped[str]
+
+    class Post(Content):
+        pass
+
+    assert Post(title="a") == Post(title="a")
+
+
+def test_a_model_that_writes_its_own_eq_keeps_it():
+    class Base(fr.ModelDefaults, DeclarativeBase):
+        pass
+
+    class Stamped(MappedAsDataclass, kw_only=True):
+        note: Mapped[str] = mapped_column(default="")
+
+    class Post(fr.IDMixin, Stamped, Base):
+        title: Mapped[str]
+
+        def __eq__(self, other: object) -> bool:
+            return isinstance(other, Post) and other.title == self.title
+
+        __hash__ = object.__hash__
+
+    assert Post(title="a") == Post(title="a", note="other")
+
+
 def test_dataclass_options_on_the_base_raise():
     with pytest.raises(fr.exc.RestlyConfigurationError, match="on each model"):
 

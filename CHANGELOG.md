@@ -60,7 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `class Stamped(MappedAsDataclass, kw_only=True, eq=False)`. A mixin without
   `eq=False` makes each model that uses it compare fields, so
   `fr.ModelDefaults` raises `RestlyConfigurationError` for such a model,
-  unless the model passes `eq=True`.
+  unless the model passes `eq=True` or writes its own `__eq__`.
 - `restly new` generates `app/models.py` with the project's own
   `class Base(fr.ModelDefaults, DeclarativeBase)`. The models, `alembic/env.py`,
   the test setup and `create_all` use that `Base` instead of
