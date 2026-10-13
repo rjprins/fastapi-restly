@@ -99,6 +99,7 @@ from ..schemas import (
 )
 from ..schemas._base import (
     _as_response,
+    _is_readonly,
     _model_id_type,
     _reject_buried_markers,
     _response_adapter,
@@ -2409,6 +2410,10 @@ def _warn_on_misuse(view_cls: type[View]) -> None:
     # wrapper instead of the plain id.
     _warn_scalar_named_reference_fields(view_cls)
 
+    # 5. A writable field on a column that the model sets, such as a tenant
+    # or an audit column: the request body replaces the column default.
+    _warn_writable_model_set_fields(view_cls)
+
 
 def _warn_scalar_named_reference_fields(view_cls: type[View]) -> None:
     """Flag an ``IDRef``/``IDSchema`` field whose name is a scalar foreign-key
@@ -2455,6 +2460,77 @@ def _warn_scalar_named_reference_fields(view_cls: type[View]) -> None:
             RestlyMisuseWarning,
             stacklevel=6,
         )
+
+
+def _model_set_columns(model: type[Any]) -> set[str]:
+    """The columns that the model sets: outside the constructor
+    (``init=False``), with a column default or a server default. A primary
+    key that the server generates is left out, because Restly already leaves
+    it out of the request bodies."""
+    if not dataclasses.is_dataclass(model):
+        return set()
+    mapper = sa_inspect(model)
+    generated_keys = _generated_primary_key_fields(model)
+    names = set()
+    for field in dataclasses.fields(model):
+        if field.init or field.name in generated_keys:
+            continue
+        column = mapper.columns.get(field.name)
+        if column is not None and (
+            column.default is not None or column.server_default is not None
+        ):
+            names.add(field.name)
+    return names
+
+
+def _warn_writable_model_set_fields(view_cls: type[View]) -> None:
+    """Flag a writable field on a column that the model sets.
+
+    A column with ``init=False`` and a default, such as a tenant column with
+    ``insert_default=Current.org_id``, gets its value from the model. Restly
+    sets each writable field that the constructor does not take after it
+    builds the object, so a value in the request body replaces the default:
+    a client can pick the tenant. Lints the write classes that the view
+    declares, and the declared ``schema`` when Restly derives a write class
+    from it. A generated ``schema`` already marks these columns ReadOnly.
+    """
+    if not issubclass(view_cls, BaseRestView):
+        return
+    model = getattr(view_cls, "model", None)
+    if model is None:
+        return
+    try:
+        model_set = _model_set_columns(model)
+    except Exception:
+        return
+    if not model_set:
+        return
+    write_classes: list[type[pydantic.BaseModel]] = []
+    for attr in ("schema_create", "schema_update"):
+        if not _needs_generating(view_cls, attr):
+            cls = getattr(view_cls, attr)
+        elif _declared_at(view_cls, "schema") is not None:
+            # A derived write class has the writable fields of ``schema``.
+            cls = view_cls.schema
+        else:
+            continue
+        if cls not in write_classes:
+            write_classes.append(cls)
+    for cls in write_classes:
+        for field_name, field_info in cls.model_fields.items():
+            if field_name not in model_set or _is_readonly(field_info):
+                continue
+            warnings.warn(
+                f"{cls.__name__}.{field_name} is writable, but "
+                f"`{model.__name__}.{field_name}` has `init=False` and a "
+                f"default, so the model sets it. A value in the request body "
+                f"replaces the default. Mark the field "
+                f"`fr.ReadOnly[...]` on the schema, so the value always comes "
+                f"from the model. If the client may set it, remove "
+                f"`init=False` and give the column a `default`.",
+                RestlyMisuseWarning,
+                stacklevel=6,
+            )
 
 
 def _reject_buried_markers_in_view_schemas(view_cls: type[View]) -> None:

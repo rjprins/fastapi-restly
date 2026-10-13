@@ -27,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to some models only. `fr.ModelDefaults` on a class below another
   declarative base also raises.
 - `fr.IDMixin` at the top level. Before, it was only in `fr.models`.
+- With `fr.configure(warn_on_misuse=True)`, Restly warns about a writable
+  field on a column with `init=False` and a default, in a schema that you
+  write. The model sets such a column, as with a tenant or an audit column,
+  so the field must be `fr.ReadOnly`.
 
 ### Changed
 
@@ -141,6 +145,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `parent: CategorySchema | None` inside `CategorySchema`, no longer makes
   the view fail with `RecursionError` when it registers. The list filters
   follow it one step: `?parent.name=` works, `?parent.parent.name=` does not.
+
+### Security
+
+- A schema that Restly generates, for a view without `schema`, now marks
+  each column with `init=False` as `ReadOnly`. Before, the client could write
+  such a column. For a tenant column with `insert_default=Current.org_id`, a
+  create could put the row in another organization, and a PATCH could move
+  it there. The model sets these columns, with a column default, a mapper
+  event or the view's `create`, so the request bodies no longer have them.
+  To let the client write such a column, remove `init=False` and give the
+  column a `default`, or write the schema yourself.
 
 ## [0.11.0] - 2026-10-09
 

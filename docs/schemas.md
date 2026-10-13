@@ -62,7 +62,8 @@ class UserView(fr.AsyncRestView):
 ```
 
 The generated schema has one field for each column, and no relationships.
-Restly marks `id`, `created_at` and `updated_at` as `ReadOnly`; see
+Restly marks `id`, `created_at`, `updated_at` and each column with
+`init=False` as `ReadOnly`; see
 [How Restly generates a schema](#auto-generated-schemas) for the details.
 
 Write the schema yourself when the API differs from the table: other field
@@ -639,8 +640,11 @@ Three rules decide the rest:
   named `id` for another reason also gets `IDSchema`.
 - **ReadOnly fields**: the fields `id`, `created_at` and `updated_at` are
   always `ReadOnly`. So is a `column_property` over a SQL expression, which
-  cannot be written. Any other column that the server fills, for example with
-  a server default, is **not** `ReadOnly`.
+  cannot be written. So is a column that the constructor does not take
+  (`init=False`), such as a tenant column with an `insert_default`: the model
+  sets it, so the client must not. To let the client write such a column,
+  remove `init=False` and give the column a `default`. Any other column that
+  the server fills, for example with a server default, is **not** `ReadOnly`.
 - **Relationships**: never included. A foreign key column, such as
   `customer_id`, is an ordinary field. To show a related row in a response,
   write the schema yourself, for example with an `IDRef[Customer]` field; see

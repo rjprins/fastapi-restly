@@ -92,9 +92,11 @@ class RestlyMisuseWarning(UserWarning):
     dominant misuses -- overriding an endpoint method (``<verb>_endpoint``) where
     a business-method override was meant, calling ``session.commit()`` directly in a
     view method, hand-rolling a CRUD route set on a bare ``View`` instead of
-    subclassing ``RestView`` / ``AsyncRestView``, and typing a scalar
+    subclassing ``RestView`` / ``AsyncRestView``, typing a scalar
     foreign-key column (``post_id``) as an ``IDRef`` / ``IDSchema`` reference
-    instead of ``fr.MustExist[int, Model]``.
+    instead of ``fr.MustExist[int, Model]``, and a writable field on a column
+    that the model sets (``init=False`` with a default) instead of
+    ``fr.ReadOnly``.
     """
 
 

@@ -367,11 +367,14 @@ class DocumentSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     updated_by_id: fr.ReadOnly[int | None] = None
 ```
 
-`init=False` does not protect the field from the request body. Restly sets
-each writable field that the constructor does not take after it builds the
-object. So without `fr.ReadOnly`, a client could choose the author, and the
-column default would not run. With `fr.ReadOnly`, the value always comes from
-`Current`.
+In a schema that you write, `init=False` does not protect the field from the
+request body. Restly sets each writable field that the constructor does not
+take after it builds the object. So without `fr.ReadOnly`, a client could
+choose the author, and the column default would not run. With `fr.ReadOnly`,
+the value always comes from `Current`. A view without a schema is safe: the
+[schema that Restly generates](#auto-generated-schemas) marks each column with
+`init=False` as `ReadOnly`. With `fr.configure(warn_on_misuse=True)`, Restly
+warns about a writable field on a column with `init=False` and a default.
 
 A column default runs on every write path: a view's `create`, a custom route
 that builds the row itself, the `fr.objects` helpers, a bulk route, a script.

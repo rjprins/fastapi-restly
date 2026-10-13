@@ -3,9 +3,9 @@
 ``fr.configure(warn_on_misuse=True)`` makes ``include_view`` lint the
 registered class for the dominant misuse patterns (route-shell override,
 manual ``session.commit()`` in a view method, hand-rolled CRUD on a bare
-``View``, a reference type named after a scalar FK column, and a duplicate
-registration on the same parent) and emit :class:`RestlyMisuseWarning` for
-each. Off by default.
+``View``, a reference type named after a scalar FK column, a writable field
+on a column that the model sets, and a duplicate registration on the same
+parent) and emit :class:`RestlyMisuseWarning` for each. Off by default.
 
 The lint runs before parent endpoints are copied into the subclass, so a clean
 view must not warn even though its ``__dict__`` gains the five shells during
@@ -305,3 +305,74 @@ def test_scalar_named_reference_off_by_default():
         schema = QuietRefSchema
 
     assert _register(QuietRefView, warn_on_misuse=None) == []
+
+
+class StampedNote(fr.IDMixin, SharedBase):
+    body: orm.Mapped[str]
+    # The model sets both: the tenant from a column default, the slug from a
+    # mapper event.
+    tenant_id: orm.Mapped[int] = orm.mapped_column(init=False, insert_default=lambda: 1)
+    slug: orm.Mapped[str] = orm.mapped_column(init=False)
+
+
+def test_writable_field_on_a_model_set_column_warns():
+    class StampedNoteSchema(fr.IDSchema):
+        body: str
+        tenant_id: int | None = None
+
+    class StampedNoteView(fr.AsyncRestView):
+        prefix = "/stamped-notes"
+        model = StampedNote
+        schema = StampedNoteSchema
+
+    messages = _register(StampedNoteView)
+    # The create and update classes come from one schema: one warning.
+    assert len(messages) == 1
+    assert "StampedNoteSchema.tenant_id is writable" in messages[0]
+    assert "`StampedNote.tenant_id` has `init=False` and a default" in messages[0]
+    assert "fr.ReadOnly" in messages[0]
+
+
+def test_readonly_field_on_a_model_set_column_does_not_warn():
+    class ReadOnlyStampSchema(fr.IDSchema):
+        body: str
+        tenant_id: fr.ReadOnly[int | None] = None
+        # No column default: a mapper event or the view's create sets it.
+        slug: str | None = None
+
+    class ReadOnlyStampView(fr.AsyncRestView):
+        prefix = "/readonly-stamps"
+        model = StampedNote
+        schema = ReadOnlyStampSchema
+
+    assert _register(ReadOnlyStampView) == []
+
+
+def test_declared_write_class_with_a_model_set_column_warns():
+    class StampCreate(fr.BaseSchema):
+        body: str
+        tenant_id: int | None = None
+
+    class DeclaredCreateView(fr.AsyncRestView):
+        prefix = "/declared-create-stamps"
+        model = StampedNote
+        schema_create = StampCreate
+
+    messages = _register(DeclaredCreateView)
+    # The generated schema marks the column ReadOnly, so only the declared
+    # create class warns.
+    assert len(messages) == 1
+    assert "StampCreate.tenant_id is writable" in messages[0]
+
+
+def test_writable_model_set_field_off_by_default():
+    class QuietStampSchema(fr.IDSchema):
+        body: str
+        tenant_id: int | None = None
+
+    class QuietStampView(fr.AsyncRestView):
+        prefix = "/quiet-stamps"
+        model = StampedNote
+        schema = QuietStampSchema
+
+    assert _register(QuietStampView, warn_on_misuse=None) == []

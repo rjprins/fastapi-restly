@@ -28,6 +28,7 @@ from fastapi_restly.schemas._base import (
 )
 
 from ._models import SharedBase
+from .conftest import create_tables
 
 
 def test_unannotated_columns_get_fields(client):
@@ -73,6 +74,35 @@ def test_expression_column_property_is_read_only():
     schema = fr_schemas.derive_schema(Person)
     assert schema.model_fields["shout"].annotation is str
     assert schema.model_fields["shout"].json_schema_extra["readOnly"] is True
+
+
+def test_a_column_outside_the_constructor_is_read_only(client):
+    """The model sets a column with ``init=False``, such as a tenant column.
+    Before, the generated schema let the client write it: a create could
+    choose another tenant, and the column default did not run."""
+
+    class Ledger(fr.IDMixin, SharedBase):
+        title: Mapped[str]
+        tenant_id: Mapped[int] = mapped_column(init=False, insert_default=lambda: 1)
+        status: Mapped[str] = mapped_column(init=False, insert_default="draft")
+
+    @fr.include_view(client.app)
+    class LedgerView(fr.AsyncRestView):
+        prefix = "/ledgers"
+        model = Ledger
+
+    for name in ("tenant_id", "status"):
+        field = LedgerView.schema.model_fields[name]
+        assert field.json_schema_extra["readOnly"] is True, name
+    assert set(LedgerView.schema_create.model_fields) == {"title"}
+    assert set(LedgerView.schema_update.model_fields) == {"title"}
+
+    create_tables()
+    body = {"title": "a", "tenant_id": 2, "status": "paid"}
+    created = client.post("/ledgers/", json=body).json()
+    assert (created["tenant_id"], created["status"]) == (1, "draft")
+    patched = client.patch(f"/ledgers/{created['id']}", json=body).json()
+    assert (patched["tenant_id"], patched["status"]) == (1, "draft")
 
 
 def test_untypeable_column_raises_naming_the_attribute(client):

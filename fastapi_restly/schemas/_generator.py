@@ -2,6 +2,7 @@
 Schema generation utilities for auto-generating Pydantic schemas from SQLAlchemy models.
 """
 
+import dataclasses
 import enum
 import sys
 import types
@@ -158,6 +159,11 @@ def get_model_fields(model_cls: type[Any]) -> dict[str, Any]:
     mapper = sa_inspect(model_cls)
     props = {prop.key: prop for prop in mapper.attrs}
     annotations = _model_annotations(model_cls, props.keys())
+    not_in_init = (
+        {f.name for f in dataclasses.fields(model_cls) if not f.init}
+        if dataclasses.is_dataclass(model_cls)
+        else set()
+    )
     names = list(annotations)
     names += [name for name in props if name not in annotations]
 
@@ -215,8 +221,9 @@ def get_model_fields(model_cls: type[Any]) -> dict[str, Any]:
             "is_relationship": False,
             "target_model": None,
             "is_optional": is_optional,
-            # A column_property over an expression cannot be written.
-            "is_read_only": not isinstance(column, Column),
+            # A column_property over an expression cannot be written. The
+            # model or the server sets a column outside the constructor.
+            "is_read_only": not isinstance(column, Column) or name in not_in_init,
             "default": default,
         }
 
@@ -229,9 +236,10 @@ def derive_schema(model: type[Any], *, name: str | None = None) -> type[BaseSche
 
     This is the same schema that a view generates when it has no ``schema``:
     one field per column, and no relationship fields. A foreign key column,
-    such as ``author_id``, is an ordinary field. The fields ``id``,
-    ``created_at`` and ``updated_at``, and read-only columns such as a
-    ``column_property``, are marked ``ReadOnly``.
+    such as ``author_id``, is an ordinary field. These fields are marked
+    ``ReadOnly``: ``id``, ``created_at`` and ``updated_at``, a
+    ``column_property`` over a SQL expression, and a column that the
+    constructor does not take (``init=False``).
 
     :param model: The SQLAlchemy model class.
     :param name: Name for the generated schema class. Defaults to the
