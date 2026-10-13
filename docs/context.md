@@ -83,14 +83,17 @@ def me() -> dict[str, int]:
 Trust this header only when an authenticating proxy replaces the values that
 clients send, and clients cannot reach the app directly.
 
-`SetCurrentContextDep` is already a {func}`Depends <fastapi.Depends>` object.
-Add it directly to `dependencies`, without another `Depends(...)` around it.
-
 FastAPI calls `get_user_id` before the endpoint. The generated dependency
 binds the result for the request. Both `def` and `async def` endpoints can
 read it. Binding only supplies the value. It does not check who the caller is,
 and it does not decide what the caller may do: that is
 [`authorize`](#authorize-gate).
+
+:::{admonition} Details
+:class: details
+
+`SetCurrentContextDep` is already a {func}`Depends <fastapi.Depends>` object.
+Add it directly to `dependencies`, without another `Depends(...)` around it.
 
 Attach the dependency to the app when every route needs it. Use the
 `dependencies` of an `APIRouter`, or a view's
@@ -101,6 +104,7 @@ an `Annotated` dependency alias.
 One `Current.depends(...)` call can bind several members, each from its own
 dependency. The SaaS example binds four members from its authentication in
 [`app/current.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/current.py).
+:::
 
 (current-column-defaults)=
 ## Read the current user in a column default
@@ -192,6 +196,16 @@ You can bind a SQLAlchemy {class}`Session <sqlalchemy.orm.Session>` or
 `Current.session` member. This works, but we do not recommend it. Pass the
 session as an argument to the functions that use the database.
 
+Coroutines that you start with {func}`asyncio.create_task` or
+{func}`asyncio.gather` get the current bindings. If `Current.session` is
+bound, they get the same session object, not separate sessions. Give
+database tasks that run at the same time separate sessions. SQLAlchemy's
+[async scoped-session guidance](https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#using-asyncio-scoped-session)
+also recommends passing sessions as arguments in new asyncio code.
+
+:::{admonition} Details
+:class: details
+
 `Current.session` works like SQLAlchemy's
 {class}`scoped_session <sqlalchemy.orm.scoped_session>`: code finds the
 session in the context instead of receiving it as an argument. `Current`
@@ -204,13 +218,7 @@ same session. A commit then includes the pending changes of all those
 helpers. Keep it clear which code creates, commits, rolls back and closes
 the session. See SQLAlchemy's
 [session lifecycle guidance](https://docs.sqlalchemy.org/en/20/orm/session_basics.html#when-do-i-construct-a-session-when-do-i-commit-it-and-when-do-i-close-it).
-
-Coroutines that you start with {func}`asyncio.create_task` or
-{func}`asyncio.gather` get the current bindings. If `Current.session` is
-bound, they get the same session object, not separate sessions. Give
-database tasks that run at the same time separate sessions. SQLAlchemy's
-[async scoped-session guidance](https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#using-asyncio-scoped-session)
-also recommends passing sessions as arguments in new asyncio code.
+:::
 
 (current-testing)=
 ## Use another user in a test
@@ -258,10 +266,15 @@ with ReportContext.bind(user_id=42, locale="nl"):
     assert ReportContext.locale() == "nl"
 ```
 
-`ReportContext.user_id` is the same member as `Current.user_id`. A new
-`user_id: fr.ContextParam[int]` annotation would create a separate member
-instead. A subclass inherits the members of its parent. Start the names of
-helper methods with `_`, because every public attribute must be a member.
+`ReportContext.user_id` is the same member as
+`Current.user_id`. A new `user_id: fr.ContextParam[int]`
+annotation would create a separate member instead.
+
+:::{admonition} Details
+:class: details
+
+A subclass inherits the members of its parent. Start the names of helper
+methods with `_`, because every public attribute must be a member.
 
 A `bind()` or `depends()` call must use one name for each member. Two names
 for the same member raise `TypeError`, even when their values are equal.
@@ -269,6 +282,7 @@ for the same member raise `TypeError`, even when their values are equal.
 A nullable annotation, such as `fr.ContextParam[int | None]`, gives no
 default value. Bind `None` explicitly when "no value" is a valid value. A
 read without a binding still raises `LookupError`.
+:::
 
 (current-explain)=
 ## See what is bound
