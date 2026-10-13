@@ -106,24 +106,9 @@ never `None`. An admin is a flag, `Current.is_admin`, not a missing value.
 
 ## What the listener covers
 
-- The listener adds the option also to a query that starts from a model
-  without a tenant, because that query can load tenant rows through a
-  relationship. `select(Organization).options(joinedload(Organization.users))`
-  must filter the users.
 - Relationship loads get the option too, also when their parent was inserted
   and not loaded by a query. Keep the default `propagate_to_loaders=True`, so
   that joined eager loads get the criteria.
-- A relationship load receives the options of the statement that loaded its
-  parent. Without the `TenantCriteria` marker, the listener would add a second
-  copy of each criterion to that load. A chain of loads, such as the subtasks
-  of a task, would add one more copy at each level. The marker goes with the
-  criteria, so the listener skips a statement that has it.
-- [`bindparam(callable_=...)`](https://docs.sqlalchemy.org/en/20/core/sqlelement.html#sqlalchemy.sql.expression.bindparam)
-  reads the identity only when the SQL uses that parameter. So a query that
-  reads no tenant rows needs no identity. A read of tenant rows without an
-  identity fails with a `LookupError`, wrapped in SQLAlchemy's
-  `StatementError`. The lambdas are needed because `bindparam` tests whether
-  its callable is true, and a `ContextParam` raises on that test.
 - Keep `Current.bind(...)` active as long as the session lives. Use a new
   session for a different identity. The criteria do not remove objects that
   the session has already loaded, and `session.get()` returns such an object
@@ -135,6 +120,26 @@ criterion. The SaaS example has one for `Task` through its project, for
 upload. Write each criterion as a lambda. SQLAlchemy analyses a lambda once
 and caches it. It processes a plain expression again for every statement,
 also for statements that never read the model.
+
+:::{admonition} Details
+:class: details
+
+- The listener adds the option also to a query that starts from a model
+  without a tenant, because that query can load tenant rows through a
+  relationship. `select(Organization).options(joinedload(Organization.users))`
+  must filter the users.
+- A relationship load receives the options of the statement that loaded its
+  parent. Without the `TenantCriteria` marker, the listener would add a second
+  copy of each criterion to that load. A chain of loads, such as the subtasks
+  of a task, would add one more copy at each level. The marker goes with the
+  criteria, so the listener skips a statement that has it.
+- [`bindparam(callable_=...)`](https://docs.sqlalchemy.org/en/20/core/sqlelement.html#sqlalchemy.sql.expression.bindparam)
+  reads the identity only when the SQL uses that parameter. So a query that
+  reads no tenant rows needs no identity. A read of tenant rows without an
+  identity fails with a `LookupError`, wrapped in SQLAlchemy's
+  `StatementError`. The lambdas are needed because `bindparam` tests whether
+  its callable is true, and a `ContextParam` raises on that test.
+:::
 
 (tenant-listener-limits)=
 
