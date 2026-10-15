@@ -180,7 +180,9 @@ class TestDeriveSchemaListParams:
 
     def test_derive_schema_list_params_nested(self):
         """Test creating a query param schema for nested fields."""
-        schema = derive_schema_list_params(NestedWidgetSchema, NestedWidgetModel)
+        schema = derive_schema_list_params(
+            NestedWidgetSchema, NestedWidgetModel, include_filters=("**",)
+        )
 
         # Check that nested field filters exist (using dot notation)
         assert "user.name" in schema.model_fields
@@ -192,7 +194,9 @@ class TestDeriveSchemaListParams:
         class OptionalNestedSchema(pydantic.BaseModel):
             user: WidgetSchema | None = None
 
-        schema = derive_schema_list_params(OptionalNestedSchema, NestedWidgetModel)
+        schema = derive_schema_list_params(
+            OptionalNestedSchema, NestedWidgetModel, include_filters=("**",)
+        )
 
         assert "user.name" in schema.model_fields
         assert "user.email__contains" in schema.model_fields
@@ -330,7 +334,7 @@ class TestApplyFilteringIsNull:
             _apply_sorting(params, select_query, WidgetModel, WidgetSchema)
 
         assert exc_info.value.status_code == 400
-        assert "Unknown sort field" in str(exc_info.value.detail)
+        assert "Unknown sort key" in str(exc_info.value.detail)
 
 
 class TestApplyFiltering:
@@ -423,7 +427,7 @@ class TestApplyFiltering:
             _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
 
         assert exc_info.value.status_code == 400
-        assert "Unknown filter field" in str(exc_info.value.detail)
+        assert "Unknown filter key" in str(exc_info.value.detail)
 
     def test__apply_filtering_unsupported_operator(
         self, select_query, mock_query_params
@@ -457,7 +461,7 @@ class TestApplyFiltering:
             _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
 
         assert exc_info.value.status_code == 400
-        assert "Unknown filter field" in str(exc_info.value.detail)
+        assert "Unknown filter key" in str(exc_info.value.detail)
 
     def test__apply_filtering_plain_column_used_as_relation(
         self, select_query, mock_query_params
@@ -469,7 +473,7 @@ class TestApplyFiltering:
             _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
 
         assert exc_info.value.status_code == 400
-        assert "Unknown filter field" in str(exc_info.value.detail)
+        assert "Unknown filter key" in str(exc_info.value.detail)
 
     def test__apply_filtering_relation_field_uses_join(
         self, post_select_query, mock_query_params
@@ -683,7 +687,9 @@ def test_three_level_dotted_filter_executes_with_correct_joins(sync_db):
         city: CitySchema | None = None
 
     # The deep path is advertised — and must therefore execute.
-    params_schema = derive_schema_list_params(ResidentSchema, Resident)
+    params_schema = derive_schema_list_params(
+        ResidentSchema, Resident, include_filters=("**",)
+    )
     assert "city.country.code" in params_schema.model_fields
 
     SharedBase.metadata.create_all(engine)

@@ -129,7 +129,9 @@ class TestContainsSchemaGeneration:
             email: str
             address: Address
 
-        fields = derive_schema_list_params(Schema, DotUser).model_fields
+        fields = derive_schema_list_params(
+            Schema, DotUser, include_filters=("**",)
+        ).model_fields
         assert "name__contains" in fields
         assert "name__icontains" in fields
         assert "email__contains" in fields

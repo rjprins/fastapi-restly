@@ -58,7 +58,9 @@ def test_dead_relationship_params_are_not_generated():
         publisher: PublisherSchema | None = None  # to-one nested -> dotted traversal
         books: list[fr.IDRef[DeadParamBook]]  # to-many relationship -> dead
 
-    fields = derive_schema_list_params(AuthorSchema, DeadParamAuthor).model_fields
+    fields = derive_schema_list_params(
+        AuthorSchema, DeadParamAuthor, include_filters=("**",)
+    ).model_fields
 
     # A real scalar column is filterable.
     assert "name" in fields
@@ -273,7 +275,9 @@ def test_annotated_inside_optional_gets_the_filters_of_the_plain_type():
             Annotated[SpellingOwnerSchema, pydantic.Field(description="x")] | None
         ) = None
 
-    fields = derive_schema_list_params(SpellingSchema, SpellingRow).model_fields
+    fields = derive_schema_list_params(
+        SpellingSchema, SpellingRow, include_filters=("**",)
+    ).model_fields
 
     def filters(name: str) -> set[str]:
         """The filter keys of a field, without the field name."""
@@ -313,7 +317,9 @@ def test_a_schema_that_names_itself_gets_one_level_of_dotted_filters():
         )
 
     for schema in (PlainCategory, AnnotatedCategory):
-        fields = derive_schema_list_params(schema, SpellingCategory).model_fields
+        fields = derive_schema_list_params(
+            schema, SpellingCategory, include_filters=("**",)
+        ).model_fields
         assert "parent.name" in fields, schema
         assert "parent.name__contains" in fields, schema
         assert not any(key.startswith("parent.parent") for key in fields), schema

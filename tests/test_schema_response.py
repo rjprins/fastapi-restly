@@ -263,6 +263,7 @@ def _member_view(base: type) -> type:
         model = _Member
         schema = MemberSchema
         schema_response = MemberResponse
+        include_filters = ("**",)
 
     return MemberView
 
@@ -345,7 +346,7 @@ def test_the_list_params_follow_the_response_class(members):
     page = client.get("/members/", params={"team.name": "blue"}).json()
     assert [member["name"] for member in page["data"]] == ["bob"]
     client.get("/members/", params={"email": "ann@example.com"}, assert_status_code=422)
-    client.get("/members/", params={"sort": "score"}, assert_status_code=400)
+    client.get("/members/", params={"sort": "score"}, assert_status_code=422)
 
 
 def test_the_view_loads_the_relationships_the_response_class_names(members):

@@ -89,8 +89,14 @@ from .._routes import matched_route
 from ..db._globals import _fr_globals
 from ..exc import RestlyConfigurationError, RestlyMisuseWarning
 from ..objects import snapshot as _object_snapshot
-from ..query import derive_schema_list_params
-from ..query._impl import _UNKNOWN, _created_with, _query_settings
+from ..query._impl import (
+    _KEY_SETTING_DEFAULTS,
+    _KEY_SETTINGS,
+    _check_key_setting,
+    _derive_list_params,
+    _query_settings,
+    _record_of,
+)
 from ..schemas import (
     BaseSchema,
     IDSchema,
@@ -1217,6 +1223,23 @@ def _check_pagination_setting(cls: type) -> None:
 
 # Renamed before 1.0. Restly no longer reads the old names, so a definition
 # would be silently dead, or would fail only on a request.
+def _check_key_settings(cls: type) -> None:
+    """Reject a key setting that is not a tuple of keys and patterns, when
+    the class is defined. Whether each entry matches a key is checked when
+    the view registers, with the schema."""
+    for name in _KEY_SETTINGS:
+        if name in vars(cls):
+            _check_key_setting(f"{cls.__name__}.{name}", vars(cls)[name])
+
+
+def _set_by(cls: type, name: str) -> str:
+    """`` (from AppView)`` when a base class of ``cls`` sets ``name``."""
+    for klass in cls.__mro__:
+        if name in vars(klass):
+            return "" if klass is cls else f" (from {klass.__name__})"
+    return ""
+
+
 _RENAMED_SETTINGS = {"listing_param_schema": "schema_list_params"}
 _RENAMED_METHODS = {
     "to_listing_response": "to_list_response",
@@ -1358,6 +1381,29 @@ class BaseRestView(
     #: ``get_many_endpoint`` with a matching ``response_model`` (see
     #: :class:`AsyncReactAdminView`).
     pagination: ClassVar[NumberedPagination | NoPagination | None] = _DEFAULT_PAGINATION
+    #: The filter keys that the list params keep, from the keys that Restly
+    #: generates from :attr:`schema_response`. An entry is a key as the
+    #: client sends it, such as ``"name__icontains"``, or a pattern. ``*``
+    #: matches any characters except ``.``, and ``**`` matches any
+    #: characters, so ``"created_at__*"`` is every filter on ``created_at``
+    #: with a suffix, and ``"vendor.**"`` is every key under ``vendor``. The
+    #: default, ``("*",)``, keeps the keys of the resource's own fields, and
+    #: no dotted keys. ``("**",)`` keeps every key, and ``()`` none. An entry
+    #: that the view sets and that matches no key fails when the view
+    #: registers.
+    include_filters: ClassVar[tuple[str, ...]] = ("*",)
+    #: The filter keys that the list params leave out, after
+    #: :attr:`include_filters`. The entries are the same as there.
+    exclude_filters: ClassVar[tuple[str, ...]] = ()
+    #: The keys that ``sort`` accepts: a field as the client writes it in
+    #: ``?sort=``, without the ``-``, such as ``"name"`` or
+    #: ``"vendor.name"``, or a pattern as in :attr:`include_filters`. The
+    #: default, ``("*",)``, is the resource's own fields. A sort key never goes
+    #: through a to-many relationship. With ``()``, the list has no ``sort``
+    #: parameter.
+    include_sort_keys: ClassVar[tuple[str, ...]] = ("*",)
+    #: The sort keys to leave out, after :attr:`include_sort_keys`.
+    exclude_sort_keys: ClassVar[tuple[str, ...]] = ()
     #: The list params (filter, sort, page) as a pydantic model, generated
     #: from ``schema_response`` and ``model`` by
     #: :func:`~fastapi_restly.query.derive_schema_list_params`. Any route
@@ -1445,6 +1491,7 @@ class BaseRestView(
                         _final_handler_message(cls.__name__, name, origin)
                     )
         _check_pagination_setting(cls)
+        _check_key_settings(cls)
         _check_renamed_names(cls)
 
     def _apply_scope(self, query: Select[Any], scope: ReadScope) -> Select[Any]:
@@ -1663,19 +1710,44 @@ class BaseRestView(
 
     @classmethod
     def _check_declared_schema_list_params(cls) -> None:
-        """Reject declared list params that ``derive_schema_list_params`` made
-        for other pagination settings: they read other page parameters than
-        the view applies, or none. Hand-written list params are the author's
-        to keep in step."""
-        created_with = _created_with(cls.schema_list_params)
-        if created_with is _UNKNOWN:
+        """Reject declared list params that do not follow the view's settings.
+
+        List params from ``derive_schema_list_params`` must have the view's
+        pagination and key settings: other pagination reads other page
+        parameters than the view applies, and other key settings give other
+        keys than the view says. Hand-written list params are the author's
+        to keep in step, so the view cannot change the key settings.
+        """
+        record = _record_of(cls.schema_list_params)
+        if record is None:
+            changed = [
+                name
+                for name in _KEY_SETTINGS
+                if tuple(getattr(cls, name)) != _KEY_SETTING_DEFAULTS[name]
+            ]
+            if changed:
+                names = ", ".join(f"{name}{_set_by(cls, name)}" for name in changed)
+                raise RestlyConfigurationError(
+                    f"{cls.__name__} sets {names}, but its schema_list_params "
+                    "is written by hand, so Restly cannot apply the setting. "
+                    "Leave schema_list_params out to have it generated, or "
+                    "create it with fr.query.derive_schema_list_params()."
+                )
             return
-        if _query_settings(created_with) != _query_settings(cls.pagination):
+        if _query_settings(record.pagination) != _query_settings(cls.pagination):
             raise RestlyConfigurationError(
                 f"{cls.__name__}.schema_list_params was created for other "
                 "pagination settings than the view's. Create it with "
                 f"pagination={cls.__name__}.pagination, or leave it out to "
                 "have it generated."
+            )
+        settings = tuple(tuple(getattr(cls, name)) for name in _KEY_SETTINGS)
+        if record.settings != settings:
+            raise RestlyConfigurationError(
+                f"{cls.__name__}.schema_list_params was created with other "
+                "include_filters, exclude_filters, include_sort_keys or "
+                "exclude_sort_keys than the view's. Create it with the "
+                "settings of the view, or leave it out to have it generated."
             )
 
     @classmethod
@@ -1711,8 +1783,14 @@ class BaseRestView(
                     f"'{cls.__name__}.model' must be specified: it is needed to "
                     "generate the list params."
                 )
-            cls.schema_list_params = derive_schema_list_params(
-                cls.schema_response, cls.model, pagination=cls.pagination
+            cls.schema_list_params = _derive_list_params(
+                cls.schema_response,
+                cls.model,
+                pagination=cls.pagination,
+                settings={name: getattr(cls, name) for name in _KEY_SETTINGS},
+                owner=cls.__name__,
+                # a base view serves many schemas
+                unchecked={name for name in _KEY_SETTINGS if name not in vars(cls)},
             )
             _mark_generated(cls, "schema_list_params")
         else:

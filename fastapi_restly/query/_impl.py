@@ -1,7 +1,9 @@
 import collections.abc as _abc
+import dataclasses
 import datetime as _dt
 import decimal as _decimal
 import functools
+import re
 import uuid as _uuid
 import weakref
 from collections import defaultdict
@@ -11,7 +13,7 @@ import pydantic
 import sqlalchemy
 from pydantic import Field
 from pydantic.fields import FieldInfo
-from pydantic_core import SchemaValidator, core_schema
+from pydantic_core import PydanticCustomError, SchemaValidator, core_schema
 from sqlalchemy import ColumnElement, Select
 from sqlalchemy.orm import DeclarativeBase, aliased
 from sqlalchemy.orm.attributes import InstrumentedAttribute
@@ -25,7 +27,7 @@ from .._pagination import (
     NoPagination,
     NumberedPagination,
 )
-from ..exc import BadQueryParam
+from ..exc import BadQueryParam, RestlyConfigurationError
 from ..schemas._base import IDRef, IDSchema, _schema_role_name, _unwrap_type
 from ._shared import _append_pk_tiebreak, _escape_like_value
 
@@ -34,9 +36,39 @@ _JoinAliases = dict[tuple[str, ...], AliasedClass[Any]]
 
 _AnyPagination = NumberedPagination | NoPagination | None
 
-#: The pagination that each generated list params model was created with, so
-#: :func:`apply_list_params` and view registration can read it back.
-_CREATED_WITH: "weakref.WeakKeyDictionary[type, _AnyPagination]" = (
+#: The names of the settings that choose the generated keys, in order.
+_KEY_SETTINGS = (
+    "include_filters",
+    "exclude_filters",
+    "include_sort_keys",
+    "exclude_sort_keys",
+)
+
+#: The value of each key setting when no one sets it: the keys on the
+#: resource's own fields, and no dotted keys.
+_KEY_SETTING_DEFAULTS: dict[str, tuple[str, ...]] = {
+    "include_filters": ("*",),
+    "exclude_filters": (),
+    "include_sort_keys": ("*",),
+    "exclude_sort_keys": (),
+}
+
+
+@dataclasses.dataclass(frozen=True)
+class _ListParamsRecord:
+    """What Restly generated a list params model with.
+
+    :func:`apply_list_params` and view registration read it back.
+    """
+
+    pagination: _AnyPagination
+    #: The four key settings, as tuples, by name.
+    settings: tuple[tuple[str, ...], ...]
+    #: The sort keys that are on, in the order of the schema.
+    sort_keys: tuple[str, ...]
+
+
+_RECORDS: "weakref.WeakKeyDictionary[type, _ListParamsRecord]" = (
     weakref.WeakKeyDictionary()
 )
 
@@ -51,13 +83,75 @@ class _FromParams:
 
 
 _FROM_PARAMS = _FromParams()
-_UNKNOWN = object()
 
 
-def _created_with(params_model: type) -> Any:
-    """The pagination that generated list params were created with, or
-    ``_UNKNOWN`` for hand-written ones."""
-    return _CREATED_WITH.get(params_model, _UNKNOWN)
+def _record_of(params_model: type) -> _ListParamsRecord | None:
+    """What generated list params were created with, or ``None`` for
+    hand-written ones."""
+    return _RECORDS.get(params_model)
+
+
+def _check_key_setting(label: str, value: Any) -> tuple[str, ...]:
+    """The value of a key setting as a tuple of patterns.
+
+    :param label: The setting in messages, such as ``ItemView.include_filters``.
+
+    :raises RestlyConfigurationError: ``value`` is a string, holds something
+        that is not a string, or uses a wildcard that Restly does not have.
+    """
+    if isinstance(value, str):
+        raise RestlyConfigurationError(
+            f"{label} must be a tuple of keys, got the string {value!r}. "
+            f"For one key, write ({value!r},) with a comma."
+        )
+    try:
+        entries = tuple(value)
+    except TypeError:
+        raise RestlyConfigurationError(
+            f"{label} must be a tuple of keys, got {value!r}."
+        ) from None
+    for entry in entries:
+        if not isinstance(entry, str) or not entry:
+            raise RestlyConfigurationError(
+                f"{label} must hold keys as strings, got {entry!r}."
+            )
+        if any(char in entry for char in "?[]"):
+            raise RestlyConfigurationError(
+                f"{label}: {entry!r} uses '?' or '[...]'. A key pattern "
+                "has only two wildcards: '*' for any characters except '.', "
+                "and '**' for any characters."
+            )
+    return entries
+
+
+@functools.cache
+def _pattern_regex(pattern: str) -> "re.Pattern[str]":
+    """A regular expression for a key pattern, for ``fullmatch``.
+
+    The rules of a file glob, with ``.`` in place of ``/``: ``**`` matches
+    any characters, ``*`` any characters except ``.``. Every other character,
+    ``.`` too, matches only itself.
+    """
+    parts = re.split(r"(\*\*|\*)", pattern)
+    return re.compile(
+        "".join(
+            ".*" if part == "**" else "[^.]*" if part == "*" else re.escape(part)
+            for part in parts
+        )
+    )
+
+
+def _matches(patterns: tuple[str, ...], key: str) -> bool:
+    return any(_pattern_regex(pattern).fullmatch(key) for pattern in patterns)
+
+
+def _pick_keys(
+    keys: list[str], include: tuple[str, ...], exclude: tuple[str, ...]
+) -> list[str]:
+    """The keys that ``include`` matches and ``exclude`` does not, in order."""
+    return [
+        key for key in keys if _matches(include, key) and not _matches(exclude, key)
+    ]
 
 
 def _query_settings(pagination: _AnyPagination) -> tuple[Any, ...] | None:
@@ -203,6 +297,10 @@ def derive_schema_list_params(
     model: type[DeclarativeBase],
     *,
     pagination: _AnyPagination = _DEFAULT_PAGINATION,
+    include_filters: _abc.Iterable[str] = ("*",),
+    exclude_filters: _abc.Iterable[str] = (),
+    include_sort_keys: _abc.Iterable[str] = ("*",),
+    exclude_sort_keys: _abc.Iterable[str] = (),
 ) -> SchemaType:
     """
     Build the list params: a Pydantic model that describes and validates the
@@ -210,17 +308,22 @@ def derive_schema_list_params(
     :attr:`~fastapi_restly.views.BaseRestView.schema_list_params`.
 
     The generated model accepts pagination (``page``, ``page_size``), sorting
-    (``sort``), and one filter parameter per field of ``schema_response`` that maps to
-    a filterable column on ``model`` -- with optional ``__in``/``__ne``/``__gte``/
-    ``__lte``/``__gt``/``__lt``/``__isnull``/``__contains``/``__icontains``
-    suffixes. Fields that do not resolve to a column (relationship/collection
-    fields, or reference traversals the request path would reject) get no filter
-    params, so the generated schema -- and the OpenAPI it produces -- no longer
-    advertises filters for fields that are not filterable at all. WriteOnly
-    fields get none either, since a filter on one would leak its value. Fields
-    whose type is a collection (``dict``/``list``, e.g. ``JSON`` or ``ARRAY``
-    columns) generate only ``__isnull``: a query-string value cannot coerce into
-    them, so every other operator would fail at request time.
+    (``sort``), and filters. Each field of ``schema_response`` that maps to a
+    column of ``model`` gives filter keys: the plain key, and keys with the
+    suffixes ``__in``, ``__ne``, ``__gte``, ``__lte``, ``__gt``, ``__lt``,
+    ``__isnull``, ``__contains`` and ``__icontains``. A field that does not
+    map to a column, such as a relationship, gives no keys. A WriteOnly field
+    gives none either, because a filter on it would let a client find out its
+    value. A field whose type is a collection (``dict``/``list``, e.g. a
+    ``JSON`` or ``ARRAY`` column) gives only ``__isnull``: a value from the
+    URL cannot become a collection. A field of a nested schema gives dotted
+    keys, such as ``vendor.name``.
+
+    The four key settings choose which of these keys the model has. Each
+    entry is a key as the client sends it, or a pattern. ``*`` in a pattern
+    matches any characters except ``.``, and ``**`` matches any characters.
+    By default the model has the keys of the resource's own fields, and no
+    dotted keys. An entry that matches no key raises an error.
 
     With a ``pagination`` (the default is ``page`` and ``page_size``), its two
     query parameters are added under its names and validated by Pydantic with
@@ -239,7 +342,50 @@ def derive_schema_list_params(
         omitted from the generated params.
     :param pagination: The view's pagination settings. A ``NoPagination`` or
         ``None`` is an unpaginated view, which returns the full result set.
+    :param include_filters: The filter keys to keep. ``("**",)`` keeps every
+        key, also the dotted ones, and ``()`` keeps none.
+    :param exclude_filters: The filter keys to remove, after
+        ``include_filters``.
+    :param include_sort_keys: The keys that ``sort`` accepts. A sort key has
+        no suffix, and never goes through a to-many relationship. With
+        ``()``, the model has no ``sort``.
+    :param exclude_sort_keys: The sort keys to remove, after
+        ``include_sort_keys``.
+    :raises fastapi_restly.exc.RestlyConfigurationError: An entry of a key
+        setting matches no key, or is not a key or pattern.
     """
+    return _derive_list_params(
+        schema_response,
+        model,
+        pagination=pagination,
+        settings={
+            "include_filters": include_filters,
+            "exclude_filters": exclude_filters,
+            "include_sort_keys": include_sort_keys,
+            "exclude_sort_keys": exclude_sort_keys,
+        },
+    )
+
+
+def _derive_list_params(
+    schema_response: SchemaType,
+    model: type[DeclarativeBase],
+    *,
+    pagination: _AnyPagination,
+    settings: _abc.Mapping[str, Any],
+    owner: str | None = None,
+    unchecked: _abc.Set[str] = frozenset(),
+) -> SchemaType:
+    """:func:`derive_schema_list_params`, for a view too.
+
+    :param owner: The view, for the messages.
+    :param unchecked: The key settings whose entries may match no key: the
+        ones that a view inherits. A base view serves many schemas.
+    """
+    patterns = {
+        name: _check_key_setting(_setting_label(owner, name), settings[name])
+        for name in _KEY_SETTINGS
+    }
     fields: dict[str, Any] = {}
     if isinstance(pagination, NumberedPagination):
         page_description = "1-based page number."
@@ -265,20 +411,12 @@ def derive_schema_list_params(
             ],
             pagination.default_page_size,
         )
-    fields[_SORT_QUERY_PARAM] = (
-        Annotated[
-            Optional[str],
-            Field(
-                description=(
-                    "Comma-separated list of fields to sort by. Prefix a "
-                    "field with ``-`` for descending order. Example: "
-                    "``-created_at,name``."
-                )
-            ),
-        ],
-        None,
-    )
+
     reserved = _reserved_names(pagination)
+    filter_fields: dict[str, Any] = {}
+    # The filter keys of each field, for the messages.
+    keys_of_field: dict[str, list[str]] = {}
+    sort_keys: list[str] = []
     for name, field in _iter_fields_including_nested(schema_response):
         if name in reserved:
             raise ValueError(
@@ -294,113 +432,246 @@ def derive_schema_list_params(
         # reference traversal that does not resolve would otherwise advertise
         # filters in OpenAPI that always 400 at request time.
         try:
-            _resolve_column(model, name, schema_response)
+            relationships, _ = _resolve_column(model, name, schema_response)
         except BadQueryParam:
             continue
+        # ``sort=tags.name`` has no clear meaning when an item has several
+        # tags, and the join repeats rows.
+        if not any(relationship.property.uselist for relationship in relationships):
+            sort_keys.append(name)
+        field_filters = _filter_fields(name, field)
+        filter_fields.update(field_filters)
+        keys_of_field[name] = list(field_filters)
 
-        # Type filter parameters as ``Optional[list[str]]`` instead of the
-        # column's true type) so FastAPI/Starlette preserve repeated query
-        # parameters as a list and downstream ``_parse_value`` can perform
-        # field-type coercion. ``__isnull`` stays a scalar bool because
-        # repeating it makes no sense.
-        # Collection/JSON-typed fields (``dict``, ``list[str]``) resolve to
-        # real columns, but no query-string value can coerce into them, so
-        # every operator except ``__isnull`` would 400 at request time.
-        supports_scalar = _supports_scalar_operators(field)
-        if supports_scalar:
-            eq_desc = (
-                f"Filter by ``{name}``. Comma-separated values are OR-combined "
-                "(SQL ``IN``). Repeat the parameter to AND multiple predicates."
+    schema_name = _written_name(schema_response)
+    for name in ("include_filters", "exclude_filters"):
+        if name not in unchecked and patterns[name] != _KEY_SETTING_DEFAULTS[name]:
+            _check_filter_entries(
+                _setting_label(owner, name), patterns[name], keys_of_field, schema_name
             )
-            ne_desc = (
-                f"Exclude rows where ``{name}`` matches. Comma-separated values "
-                "are AND-combined (SQL ``NOT IN``)."
-            )
-            in_desc = (
-                f"Filter by ``{name}`` with explicit SQL ``IN`` semantics. "
-                "Provide comma-separated values."
-            )
-            fields[name] = (
-                Annotated[Optional[list[str]], Field(description=eq_desc)],
-                None,
-            )
-            fields[f"{name}__in"] = (
-                Annotated[Optional[list[str]], Field(description=in_desc)],
-                None,
-            )
-            fields[f"{name}__ne"] = (
-                Annotated[Optional[list[str]], Field(description=ne_desc)],
-                None,
-            )
-        fields[f"{name}__isnull"] = (
-            Annotated[
-                Optional[bool],
-                Field(
-                    description=(
-                        f"``true`` matches rows where ``{name}`` IS NULL; "
-                        f"``false`` matches IS NOT NULL."
-                    )
-                ),
-            ],
-            None,
-        )
-
-        if supports_scalar and _supports_range_operators(field):
-            for suffix, sql in (
-                ("__gte", ">="),
-                ("__lte", "<="),
-                ("__gt", ">"),
-                ("__lt", "<"),
-            ):
-                fields[f"{name}{suffix}"] = (
-                    Annotated[
-                        Optional[list[str]],
-                        Field(description=f"``{name} {sql} value``."),
-                    ],
-                    None,
-                )
-
-        if _is_string_field(field):
-            fields[f"{name}__contains"] = (
-                Annotated[
-                    Optional[list[str]],
-                    Field(
-                        description=(
-                            f"Case-sensitive substring search on "
-                            f"``{name}``. Repeat the parameter to AND "
-                            "multiple terms; whitespace inside one value is "
-                            "also AND-split as a convenience."
-                        )
-                    ),
-                ],
-                None,
-            )
-            fields[f"{name}__icontains"] = (
-                Annotated[
-                    Optional[list[str]],
-                    Field(
-                        description=(
-                            f"Case-insensitive substring search on "
-                            f"``{name}``. Repeat the parameter to AND "
-                            "multiple terms; whitespace inside one value is "
-                            "also AND-split as a convenience."
-                        )
-                    ),
-                ],
-                None,
+    for name in ("include_sort_keys", "exclude_sort_keys"):
+        if name not in unchecked and patterns[name] != _KEY_SETTING_DEFAULTS[name]:
+            _check_sort_entries(
+                _setting_label(owner, name), patterns[name], sort_keys, schema_name
             )
 
-    schema_name = _schema_role_name(schema_response, "ListParams")
+    sort_keys = _pick_keys(
+        sort_keys, patterns["include_sort_keys"], patterns["exclude_sort_keys"]
+    )
+    if sort_keys:
+        fields[_SORT_QUERY_PARAM] = _sort_field(sort_keys)
+    for key in _pick_keys(
+        list(filter_fields), patterns["include_filters"], patterns["exclude_filters"]
+    ):
+        fields[key] = filter_fields[key]
+
     validators = (
         {"_validate_pagination_offset": _pagination_offset_validator(pagination)}
         if isinstance(pagination, NumberedPagination)
         else {}
     )
     params_model = pydantic.create_model(  # type: ignore[call-overload]
-        schema_name, __validators__=validators, **fields
+        _schema_role_name(schema_response, "ListParams"),
+        __validators__=validators,
+        **fields,
     )
-    _CREATED_WITH[params_model] = pagination
+    _RECORDS[params_model] = _ListParamsRecord(
+        pagination=pagination,
+        settings=tuple(patterns[name] for name in _KEY_SETTINGS),
+        sort_keys=tuple(sort_keys),
+    )
     return params_model
+
+
+def _setting_label(owner: str | None, name: str) -> str:
+    return f"{owner}.{name}" if owner else name
+
+
+def _filter_fields(name: str, field: FieldInfo) -> dict[str, Any]:
+    """The filter keys of one field, as fields of the list params model."""
+    fields: dict[str, Any] = {}
+    # Type filter parameters as ``Optional[list[str]]`` instead of the
+    # column's true type) so FastAPI/Starlette preserve repeated query
+    # parameters as a list and downstream ``_parse_value`` can perform
+    # field-type coercion. ``__isnull`` stays a scalar bool because
+    # repeating it makes no sense.
+    # Collection/JSON-typed fields (``dict``, ``list[str]``) resolve to
+    # real columns, but no query-string value can coerce into them, so
+    # every operator except ``__isnull`` would 400 at request time.
+    supports_scalar = _supports_scalar_operators(field)
+    if supports_scalar:
+        eq_desc = (
+            f"Filter by ``{name}``. Comma-separated values are OR-combined "
+            "(SQL ``IN``). Repeat the parameter to AND multiple predicates."
+        )
+        ne_desc = (
+            f"Exclude rows where ``{name}`` matches. Comma-separated values "
+            "are AND-combined (SQL ``NOT IN``)."
+        )
+        in_desc = (
+            f"Filter by ``{name}`` with explicit SQL ``IN`` semantics. "
+            "Provide comma-separated values."
+        )
+        fields[name] = (
+            Annotated[Optional[list[str]], Field(description=eq_desc)],
+            None,
+        )
+        fields[f"{name}__in"] = (
+            Annotated[Optional[list[str]], Field(description=in_desc)],
+            None,
+        )
+        fields[f"{name}__ne"] = (
+            Annotated[Optional[list[str]], Field(description=ne_desc)],
+            None,
+        )
+    fields[f"{name}__isnull"] = (
+        Annotated[
+            Optional[bool],
+            Field(
+                description=(
+                    f"``true`` matches rows where ``{name}`` IS NULL; "
+                    f"``false`` matches IS NOT NULL."
+                )
+            ),
+        ],
+        None,
+    )
+
+    if supports_scalar and _supports_range_operators(field):
+        for suffix, sql in (
+            ("__gte", ">="),
+            ("__lte", "<="),
+            ("__gt", ">"),
+            ("__lt", "<"),
+        ):
+            fields[f"{name}{suffix}"] = (
+                Annotated[
+                    Optional[list[str]], Field(description=f"``{name} {sql} value``.")
+                ],
+                None,
+            )
+
+    if _is_string_field(field):
+        fields[f"{name}__contains"] = (
+            Annotated[
+                Optional[list[str]],
+                Field(
+                    description=(
+                        f"Case-sensitive substring search on "
+                        f"``{name}``. Repeat the parameter to AND "
+                        "multiple terms; whitespace inside one value is "
+                        "also AND-split as a convenience."
+                    )
+                ),
+            ],
+            None,
+        )
+        fields[f"{name}__icontains"] = (
+            Annotated[
+                Optional[list[str]],
+                Field(
+                    description=(
+                        f"Case-insensitive substring search on "
+                        f"``{name}``. Repeat the parameter to AND "
+                        "multiple terms; whitespace inside one value is "
+                        "also AND-split as a convenience."
+                    )
+                ),
+            ],
+            None,
+        )
+    return fields
+
+
+#: Why a field has no key with this suffix, for the messages.
+_SUFFIX_HINTS = {
+    "contains": "Only text fields have __contains and __icontains.",
+    "icontains": "Only text fields have __contains and __icontains.",
+    **dict.fromkeys(
+        ("gte", "lte", "gt", "lt"),
+        "Only fields with an order, such as numbers, text and dates, have "
+        "__gte, __lte, __gt and __lt.",
+    ),
+    **dict.fromkeys(
+        ("", "in", "ne"), "A field that holds a dict or a list has only __isnull."
+    ),
+}
+
+
+def _check_filter_entries(
+    label: str,
+    entries: tuple[str, ...],
+    keys_of_field: dict[str, list[str]],
+    schema_name: str,
+) -> None:
+    """Raise for the first entry that matches no filter key.
+
+    The message lists the keys of the field that the entry names, or the
+    fields that have filters.
+    """
+    keys = [key for field_keys in keys_of_field.values() for key in field_keys]
+    for entry in entries:
+        if any(_pattern_regex(entry).fullmatch(key) for key in keys):
+            continue
+        message = f"{label}: {entry!r} matches no filter key of {schema_name}."
+        field, _, suffix = entry.partition("__")
+        if "*" not in field and field in keys_of_field:
+            field_keys = ", ".join(keys_of_field[field])
+            message += f" The filter keys of {field!r} are: {field_keys}."
+            if suffix in _SUFFIX_HINTS:
+                message += f" {_SUFFIX_HINTS[suffix]}"
+        elif "*" not in entry:
+            if keys_of_field:
+                message += f" The fields with filters are: {', '.join(keys_of_field)}."
+            else:
+                message += f" {schema_name} has no fields with filters."
+        raise RestlyConfigurationError(message)
+
+
+def _check_sort_entries(
+    label: str, entries: tuple[str, ...], sort_keys: list[str], schema_name: str
+) -> None:
+    """Raise for the first entry that matches no sort key."""
+    for entry in entries:
+        if any(_pattern_regex(entry).fullmatch(key) for key in sort_keys):
+            continue
+        message = f"{label}: {entry!r} matches no sort key of {schema_name}."
+        if "__" in entry:
+            message += " A sort key has no suffix."
+        if sort_keys:
+            message += f" The sort keys are: {', '.join(sort_keys)}."
+        else:
+            message += f" {schema_name} has no sort keys."
+        raise RestlyConfigurationError(message)
+
+
+def _sort_field(sort_keys: list[str]) -> tuple[Any, None]:
+    """The ``sort`` field of a list params model, which accepts ``sort_keys``."""
+    allowed = frozenset(sort_keys)
+
+    def check_sort_keys(value: str | None) -> str | None:
+        for term in (value or "").split(","):
+            key = term.removeprefix("-")
+            if term and key not in allowed:
+                raise PydanticCustomError(
+                    "unknown_sort_key", "Unknown sort key '{key}'", {"key": key}
+                )
+        return value
+
+    example = ",".join([f"-{sort_keys[0]}", *sort_keys[1:2]])
+    keys = ", ".join(f"``{key}``" for key in sort_keys)
+    description = (
+        "Keys to sort by, separated by commas. A ``-`` before a key sorts in "
+        f"descending order. Example: ``{example}``. The sort keys are: {keys}."
+    )
+    return (
+        Annotated[
+            Optional[str],
+            Field(description=description),
+            pydantic.AfterValidator(check_sort_keys),
+        ],
+        None,
+    )
 
 
 def apply_list_params(
@@ -425,12 +696,16 @@ def apply_list_params(
     :meth:`~fastapi_restly.views.RestView.apply_list_params`, which calls this
     function with the view's model, response class and pagination.
 
+    With list params from :func:`derive_schema_list_params`, ``sort``
+    accepts only the sort keys that the model was created with.
+
     A raw :class:`~starlette.datastructures.QueryParams` is also accepted
     for callers that build the query parameters programmatically.
     **Raw inputs bypass schema validation** — the caller is responsible
     for verifying ``page``/``page_size`` ranges and any per-view bounds
     (``max_page_size``); this function only performs the minimum coercion
-    needed to apply the SQL clauses.
+    needed to apply the SQL clauses. Every key that
+    :func:`derive_schema_list_params` can generate works, also a dotted one.
 
     ``pagination`` names the page and page-size parameters to read. By default
     it is the pagination that :func:`derive_schema_list_params` created the
@@ -452,12 +727,13 @@ def apply_list_params(
         # Contains (string fields)
         name__contains=John&email__icontains=example
     """
+    record = (
+        _record_of(type(list_params))
+        if isinstance(list_params, pydantic.BaseModel)
+        else None
+    )
     if isinstance(pagination, _FromParams):
-        pagination = (
-            _CREATED_WITH.get(type(list_params), _DEFAULT_PAGINATION)
-            if isinstance(list_params, pydantic.BaseModel)
-            else _DEFAULT_PAGINATION
-        )
+        pagination = record.pagination if record else _DEFAULT_PAGINATION
     query_params = _coerce_to_query_params(list_params)
     aliases: _JoinAliases = {}
     query = _apply_filtering(
@@ -468,7 +744,14 @@ def apply_list_params(
         aliases=aliases,
         pagination=pagination,
     )
-    query = _apply_sorting(query_params, query, model, schema_response, aliases=aliases)
+    query = _apply_sorting(
+        query_params,
+        query,
+        model,
+        schema_response,
+        aliases=aliases,
+        sort_keys=record.sort_keys if record else None,
+    )
     if isinstance(pagination, NumberedPagination):
         query = _apply_pagination(query_params, query, pagination)
     return query
@@ -527,7 +810,14 @@ def _apply_sorting(
     schema_cls: SchemaType,
     *,
     aliases: _JoinAliases | None = None,
+    sort_keys: tuple[str, ...] | None = None,
 ) -> Select[Any]:
+    """Apply ``sort`` to ``select_query``, with the primary key last.
+
+    :param sort_keys: The keys that ``sort`` may use. ``None`` allows every
+        key that resolves to a column, as for hand-written list params.
+    :raises BadQueryParam: ``Unknown sort key``.
+    """
     if aliases is None:
         aliases = {}
     sorted_on: list[InstrumentedAttribute[Any]] = []
@@ -538,6 +828,10 @@ def _apply_sorting(
         if column_name.startswith("-"):
             order = sqlalchemy.desc
             column_name = column_name[1:]
+        # The model checked ``sort``, but ``model_copy(update=...)`` does
+        # not validate.
+        if sort_keys is not None and column_name not in sort_keys:
+            raise BadQueryParam(f"Unknown sort key: {column_name!r}")
         select_query, column = _join_column(
             select_query, model, column_name, schema_cls, aliases, kind="sort"
         )
@@ -666,10 +960,13 @@ def _resolve_column(
     expose — for example, a Python field name on an aliased schema field —
     and silently bypass the public-name contract.
 
-    :raises BadQueryParam: ``Unknown <kind> field``, with ``kind`` such as
+    A sort key never goes through a to-many relationship: an item with
+    several tags has no single ``tags.name`` to sort on.
+
+    :raises BadQueryParam: ``Unknown <kind> key``, with ``kind`` such as
         ``"filter"`` or ``"sort"``.
     """
-    unknown = BadQueryParam(f"Unknown {kind} field: {column_path!r}")
+    unknown = BadQueryParam(f"Unknown {kind} key: {column_path!r}")
     joins: list[InstrumentedAttribute[Any]] = []
     current_model = model
     current_schema: SchemaType | None = schema_cls
@@ -685,6 +982,8 @@ def _resolve_column(
         if not isinstance(rel, InstrumentedAttribute) or not hasattr(
             rel.property, "mapper"
         ):
+            raise unknown
+        if kind == "sort" and rel.property.uselist:
             raise unknown
         joins.append(rel)
         current_model = rel.property.mapper.class_
@@ -805,12 +1104,12 @@ def _parse_value(schema_cls: SchemaType, column_name: str, value: str) -> Any:
         )
         nested = _get_nested_schema(field)
         if nested is None:
-            raise BadQueryParam(f"Unknown filter field: {column_name!r}")
+            raise BadQueryParam(f"Unknown filter key: {column_name!r}")
         schema_cls = nested
 
     field_name = _resolve_field_name(schema_cls, name)
     if field_name is None:
-        raise BadQueryParam(f"Unknown filter field: {column_name!r}")
+        raise BadQueryParam(f"Unknown filter key: {column_name!r}")
 
     # Only a validation error is the client's fault. Another exception from
     # a validator is a bug, as it is for a request body.

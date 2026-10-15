@@ -302,12 +302,12 @@ def test_react_admin_invalid_filter_json_returns_400(client):
     [
         ({"sort": "notjson"}, "Invalid sort parameter: must be a JSON array"),
         ({"sort": '["name"]'}, "Invalid sort parameter: must be [field, direction]"),
-        ({"sort": '["nope","ASC"]'}, "Unknown sort field: 'nope'"),
+        ({"sort": '["nope","ASC"]'}, "Unknown sort key: 'nope'"),
         ({"range": "notjson"}, "Invalid range parameter: must be a JSON array"),
         ({"range": "[0]"}, "Invalid range parameter: must be [start, end]"),
         ({"range": "[5,1]"}, None),
         ({"filter": "notjson"}, "Invalid filter parameter: must be a JSON object"),
-        ({"filter": '{"nope":1}'}, "Unknown filter field: 'nope'"),
+        ({"filter": '{"nope":1}'}, "Unknown filter key: 'nope'"),
         (
             {"filter": '{"price":"cheap"}'},
             "Invalid filter value for 'price': 'cheap'. "
@@ -540,7 +540,7 @@ def test_resolve_column_rejects_a_field_that_never_goes_out(hidden):
         _resolve_column(RaThing, RaThingSchema, "secret")
 
     assert exc_info.value.status_code == 400
-    assert "Unknown filter field" in str(exc_info.value.detail)
+    assert "Unknown filter key" in str(exc_info.value.detail)
 
 
 # --- Pre-parsed (programmatic) param coercion ---

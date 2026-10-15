@@ -22,7 +22,7 @@ from sqlalchemy.orm import RelationshipProperty
 
 from .._pagination import _DEFAULT_PAGINATION, NoPagination, NumberedPagination
 from ..exc import BadQueryParam, RestlyConfigurationError
-from ..query._impl import _MAX_PAGINATION_OFFSET
+from ..query._impl import _KEY_SETTINGS, _MAX_PAGINATION_OFFSET
 from ..query._shared import _append_pk_tiebreak
 from ._async import AsyncRestView
 from ._base import (
@@ -156,11 +156,11 @@ def _resolve_column(
                 break
 
     if resolved_name is None:
-        raise BadQueryParam(f"Unknown {kind} field: {field_name!r}")
+        raise BadQueryParam(f"Unknown {kind} key: {field_name!r}")
 
     col = getattr(model, resolved_name, None)
     if col is None:
-        raise BadQueryParam(f"Unknown {kind} field: {field_name!r}")
+        raise BadQueryParam(f"Unknown {kind} key: {field_name!r}")
     if hasattr(col, "property") and isinstance(col.property, RelationshipProperty):
         raise BadQueryParam(
             f"Cannot sort or filter by relationship field: {field_name!r}"
@@ -487,6 +487,20 @@ class _ReactAdminMixin:
                 "Content-Range header, so these settings do not apply: "
                 f"{', '.join(ignored)}."
             )
+        # react-admin sends its own filter and sort grammar, so a setting
+        # for the keys of the default grammar would be silently ignored
+        for name in _KEY_SETTINGS:
+            for klass in cls.__mro__:
+                if klass.__module__.startswith("fastapi_restly."):
+                    continue
+                if name in vars(klass):
+                    origin = "" if klass is cls else f" (from {klass.__name__})"
+                    raise RestlyConfigurationError(
+                        f"{cls.__name__} sets {name}{origin}, which a "
+                        "react-admin view does not use. React-admin sends "
+                        "its filters and sort order in the 'filter' and "
+                        "'sort' parameters, as JSON. Remove the setting."
+                    )
         if "schema_list_params" not in cls.__dict__:
             view_cls.schema_list_params = _ReactAdminQueryParams
         cast(Any, super()).before_include_view()

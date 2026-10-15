@@ -66,7 +66,9 @@ def _secret_params(names: Any) -> set[str]:
 
 
 def test_list_params_schema_has_no_writeonly_params():
-    fields = derive_schema_list_params(AccountSchema, Account).model_fields
+    fields = derive_schema_list_params(
+        AccountSchema, Account, include_filters=("**",)
+    ).model_fields
 
     assert {"name", "name__gte", "owner.name", "owner.name__contains"} <= set(fields)
     assert _secret_params(fields) == set()
@@ -191,7 +193,7 @@ def make_client(
 
 @pytest.fixture
 def accounts(make_client: Callable[..., RestlyTestClient]) -> RestlyTestClient:
-    return make_client()
+    return make_client(include_filters=("**",), include_sort_keys=("**",))
 
 
 @pytest.mark.parametrize(
@@ -244,9 +246,11 @@ def test_writeonly_filter_is_an_unknown_query_param(accounts, key):
     ],
 )
 def test_writeonly_sort_answers_like_an_unknown_field(accounts, sort, path):
-    response = accounts.get("/accounts/", params={"sort": sort}, assert_status_code=400)
+    response = accounts.get("/accounts/", params={"sort": sort}, assert_status_code=422)
 
-    assert response.json() == {"detail": f"Unknown sort field: {path!r}"}
+    [error] = response.json()["detail"]
+    assert error["loc"] == ["query", "sort"]
+    assert error["msg"] == f"Unknown sort key {path!r}"
 
 
 def test_readable_fields_still_filter_and_sort(accounts):
@@ -282,4 +286,4 @@ def test_custom_schema_list_params_cannot_reach_writeonly_column(
     client = make_client(schema_list_params=LeakyParams)
 
     response = client.get("/accounts/", params=query, assert_status_code=400)
-    assert response.json() == {"detail": f"Unknown {kind} field: 'pin'"}
+    assert response.json() == {"detail": f"Unknown {kind} key: 'pin'"}

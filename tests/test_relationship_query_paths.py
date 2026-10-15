@@ -165,7 +165,7 @@ def test_openapi_advertises_public_paths_and_unknown_paths_are_rejected(path_cli
         assert ["query", unknown] in [
             error["loc"] for error in response.json()["detail"]
         ]
-        path_client.get("/employees/", params={"sort": unknown}, assert_status_code=400)
+        path_client.get("/employees/", params={"sort": unknown}, assert_status_code=422)
 
 
 @pytest.fixture(params=[fr.RestView, fr.AsyncRestView], ids=["sync", "async"])
@@ -221,6 +221,8 @@ def path_client(request: pytest.FixtureRequest) -> Iterator[RestlyTestClient]:
         prefix = "/employees"
         model = Employee
         schema = EmployeeSchema
+        include_filters = ("**",)
+        include_sort_keys = ("**",)
 
     rows = [
         Country(id=1, code="NL"),
@@ -301,6 +303,7 @@ def test_a_schema_that_names_itself_filters_one_step(request, view_class):
         prefix = "/categories"
         model = Category
         schema = CategorySchema
+        include_filters = ("**",)
 
     rows = [
         Category(id=1, name="root"),
