@@ -1,3 +1,4 @@
+import inspect
 from contextlib import AbstractAsyncContextManager
 from typing import Any, cast, final
 
@@ -11,7 +12,7 @@ from ..objects import async_delete_object as object_async_delete_object
 from ..objects import async_make_new_object as object_async_make_new_object
 from ..objects import async_save_object as object_async_save_object
 from ..objects import async_update_object as object_async_update_object
-from ..query._impl import _apply_filters, _apply_sort_and_page
+from ..query._impl import _apply_filters, _apply_sort_and_page, _keep_joins, _record_of
 from ._base import (
     Action,
     BaseRestView,
@@ -23,6 +24,7 @@ from ._base import (
     ResponseSchemaT,
     ResponseShape,
     UpdateSchemaT,
+    _apply_own_filter,
     _check_list_methods,
     _identity_criterion,
     _not_found_message,
@@ -432,14 +434,27 @@ class AsyncRestView(
         and applies the scope itself. :meth:`apply_list_params` calls this
         method first. A ``QueryParams`` or a mapping goes through
         :attr:`schema_list_params` first, as on the list route.
+
+        The generated filters come first, then the view's own filters from
+        :func:`~fastapi_restly.list_filter`, in the order of the class.
         """
-        return _apply_filters(
+        list_params = self._validated_list_params(list_params)
+        filtered = _apply_filters(
             stmt,
-            self._validated_list_params(list_params),
+            list_params,
             self.model,
             _schema_response(type(self)),
             pagination=self.pagination,
         )
+        stmt = filtered
+        record = _record_of(type(list_params))
+        for own, value in record.own_filter_values(list_params) if record else ():
+            result = getattr(self, own.method)(value)
+            if inspect.isawaitable(result):
+                result = await result
+            label = f"{type(self).__name__}.{own.method}"
+            stmt = _apply_own_filter(stmt, result, label)
+        return _keep_joins(filtered, stmt)
 
     async def count(self, query: sqlalchemy.Select[Any]) -> int:
         """Total for the list, ignoring presentation-layer ordering/pagination.

@@ -37,6 +37,7 @@ fastapi_restly:
   - exc
   - get
   - include_view
+  - list_filter
   - models
   - none_of
   - objects
@@ -156,6 +157,7 @@ fastapi_restly.views:
   - delete
   - get
   - include_view
+  - list_filter
   - patch
   - post
   - put

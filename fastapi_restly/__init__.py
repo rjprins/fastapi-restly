@@ -61,6 +61,7 @@ from .views import (
     delete,
     get,
     include_view,
+    list_filter,
     patch,
     post,
     put,
@@ -127,6 +128,7 @@ __all__ = [
     "View",
     "ViewRoute",
     "include_view",
+    "list_filter",
     "resolve_scope",
     # Views — route decorators
     "route",

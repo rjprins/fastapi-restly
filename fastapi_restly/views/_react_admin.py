@@ -29,7 +29,9 @@ from ._base import (
     ListResult,
     ResponseShape,
     _annotate,
+    _list_filter_methods,
     _schema_response,
+    _set_by,
     _typed_id_route,
     _view_id_type,
     get,
@@ -242,9 +244,7 @@ def apply_react_admin_query(
     :func:`fastapi_restly.query.apply_list_params` for the standard REST dialect.
     """
     query = _apply_react_admin_filters(query, model, schema_cls, filters)
-    return _apply_react_admin_sort_and_range(
-        query, model, schema_cls, sort, start, end
-    )
+    return _apply_react_admin_sort_and_range(query, model, schema_cls, sort, start, end)
 
 
 def _apply_react_admin_sort_and_range(
@@ -519,6 +519,13 @@ class _ReactAdminMixin:
                         "its filters and sort order in the 'filter' and "
                         "'sort' parameters, as JSON. Remove the setting."
                     )
+        for name in _list_filter_methods(cls):
+            raise RestlyConfigurationError(
+                f"{cls.__name__}.{name}{_set_by(cls, name)} has "
+                "@fr.list_filter, which a react-admin view does not use. "
+                "React-admin sends its filters in the 'filter' parameter, as "
+                "JSON. Override apply_filters to read another filter."
+            )
         if "schema_list_params" not in cls.__dict__:
             view_cls.schema_list_params = _ReactAdminQueryParams
         cast(Any, super()).before_include_view()

@@ -78,6 +78,7 @@ _ReadWhere = ColumnElement[bool] | WhereClause | None
 from .._mapping import is_mapped_class, is_mapped_instance
 from .._pagination import (
     _DEFAULT_PAGINATION,
+    _SORT_QUERY_PARAM,
     DEFAULT_PAGE_SIZE,
     NoPagination,
     NumberedPagination,
@@ -92,8 +93,10 @@ from ..objects import snapshot as _object_snapshot
 from ..query._impl import (
     _KEY_SETTING_DEFAULTS,
     _KEY_SETTINGS,
+    _NO_DEFAULT,
     _check_key_setting,
     _derive_list_params,
+    _OwnFilter,
     _query_settings,
     _record_of,
 )
@@ -1045,6 +1048,194 @@ def route(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
     return store_args_decorator
 
 
+_F = TypeVar("_F", bound=Callable[..., Any])
+
+
+def list_filter(key: str) -> Callable[[_F], _F]:
+    """Make a view method the filter for the query key ``key``.
+
+    For a filter that is not a comparison with a column::
+
+        @fr.list_filter("popular")
+        def filter_popular(self, value: bool) -> ColumnElement[bool]:
+            popular = Item.view_count > 1000
+            return popular if value else ~popular
+
+    The method takes one value after ``self``. Its type becomes the type of
+    the key in the list params, so OpenAPI shows it and a bad value gets
+    ``422``. The docstring becomes the description of the key. Without a
+    default, the view calls the method when the key has a value. With a
+    default, it calls the method on every list request, with the default
+    when the key is missing.
+
+    The method returns a SQLAlchemy condition, a clause or ``None`` for no
+    condition. The view adds it to the statement with AND, inside the scope.
+    The condition may use only the tables that are in the statement; use a
+    relationship (``.has()``/``.any()``) for another table. On an async view
+    the method can be ``async def``.
+
+    The key is always on: ``include_filters`` and ``exclude_filters`` choose
+    among the generated keys only. A subclass drops the key by setting the
+    method name to ``None``.
+
+    :raises RestlyConfigurationError: ``key`` has ``__`` or ``.``, starts
+        with ``_``, is ``sort``, or is the name of a Pydantic model
+        attribute.
+    """
+    _check_own_key_name(key)
+
+    def mark(method: _F) -> _F:
+        method._fr_list_filter = key  # type: ignore[attr-defined]
+        return method
+
+    return mark
+
+
+def _check_own_key_name(key: Any) -> None:
+    """Reject a key that cannot be a query parameter of the list params,
+    with the rules of the page parameters."""
+    if not isinstance(key, str) or not key:
+        raise RestlyConfigurationError(
+            f"@fr.list_filter needs a key as a non-empty string, got {key!r}."
+        )
+    if "__" in key or "." in key:
+        raise RestlyConfigurationError(
+            f"@fr.list_filter({key!r}): '__' is for the suffixes of the "
+            "generated filters, and '.' for related fields. Choose another key."
+        )
+    if key == _SORT_QUERY_PARAM:
+        raise RestlyConfigurationError(
+            f"@fr.list_filter({key!r}): 'sort' is the sort parameter."
+        )
+    # the list params are a Pydantic model with one field per key
+    if key.startswith("_") or hasattr(pydantic.BaseModel, key):
+        raise RestlyConfigurationError(
+            f"@fr.list_filter({key!r}): a key cannot start with '_' or be "
+            "the name of a Pydantic model attribute."
+        )
+
+
+def _list_filter_methods(cls: type) -> dict[str, Any]:
+    """The methods of ``cls`` with ``@fr.list_filter``, by name, in the
+    order that the classes define them.
+
+    A name set to ``None`` drops the filter of a base class.
+
+    :raises RestlyConfigurationError: a method overrides a filter method
+        without the decorator.
+    """
+    names: dict[str, None] = {}
+    for klass in reversed(cls.__mro__):
+        names.update(dict.fromkeys(vars(klass)))
+    methods: dict[str, Any] = {}
+    for name in names:
+        marked = [
+            klass
+            for klass in cls.__mro__
+            if hasattr(vars(klass).get(name), "_fr_list_filter")
+        ]
+        if not marked:
+            continue
+        value = inspect.getattr_static(cls, name)
+        if value is None:
+            continue
+        if not hasattr(value, "_fr_list_filter"):
+            key = getattr(vars(marked[0])[name], "_fr_list_filter")
+            raise RestlyConfigurationError(
+                f"{cls.__name__}.{name}{_set_by(cls, name)} overrides the "
+                f"filter method of {marked[0].__name__} without "
+                f"@fr.list_filter. Add @fr.list_filter({key!r}) to keep the "
+                f"key, or set {name} = None to drop it."
+            )
+        methods[name] = value
+    return methods
+
+
+def _own_filters(cls: type) -> list[_OwnFilter]:
+    """The own filter keys of a view, with the types of their values.
+
+    :raises RestlyConfigurationError: two methods have one key, or a method
+        does not take one value with a type.
+    """
+    filters: list[_OwnFilter] = []
+    method_of: dict[str, str] = {}
+    for name, method in _list_filter_methods(cls).items():
+        label = f"{cls.__name__}.{name}"
+        key = method._fr_list_filter
+        if key in method_of:
+            raise RestlyConfigurationError(
+                f"{cls.__name__}: {method_of[key]} and {name} are both the "
+                f"filter for the key {key!r}."
+            )
+        method_of[key] = name
+        parameters = list(inspect.signature(method).parameters.values())[1:]
+        if len(parameters) != 1 or parameters[0].kind not in (
+            inspect.Parameter.POSITIONAL_ONLY,
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+        ):
+            raise RestlyConfigurationError(
+                f"{label} must take one value after self, as in "
+                f"'def {name}(self, value: bool)'."
+            )
+        parameter = parameters[0]
+        try:
+            hints = get_type_hints(method, include_extras=True)
+        except NameError as exc:
+            raise RestlyConfigurationError(
+                f"{label}: the type of {parameter.name!r} cannot be resolved: {exc}."
+            ) from exc
+        if parameter.name not in hints:
+            raise RestlyConfigurationError(
+                f"{label} needs a type on {parameter.name!r}, such as "
+                f"'{parameter.name}: bool'. The type checks the value from the "
+                "URL, and OpenAPI shows it."
+            )
+        filters.append(
+            _OwnFilter(
+                key=key,
+                method=name,
+                annotation=hints[parameter.name],
+                default=(
+                    _NO_DEFAULT
+                    if parameter.default is inspect.Parameter.empty
+                    else parameter.default
+                ),
+                description=inspect.getdoc(method),
+            )
+        )
+    return filters
+
+
+def _apply_own_filter(stmt: Select[Any], result: Any, label: str) -> Select[Any]:
+    """Add what a filter method returned to ``stmt``.
+
+    :raises TypeError: the method returned something else than a condition,
+        a clause or ``None``, or a condition on a table that is not in the
+        statement.
+    """
+    if result is None:
+        return stmt
+    if isinstance(result, ColumnElement):
+        result = where_clause(result)
+    elif type(result) is bool:
+        raise TypeError(
+            f"{label} returned a bool, not a SQL expression. A comparison on "
+            "an instance attribute is a bool; compare the column instead "
+            "(Item.name == value)."
+        )
+    elif not isinstance(result, WhereClause):
+        raise TypeError(
+            f"{label} must return a SQLAlchemy boolean expression, a clause or "
+            f"None, got {type(result).__name__}."
+        )
+    try:
+        return apply_clauses(stmt, result)
+    except TypeError as exc:
+        # a table outside the statement would be a cross join that the
+        # scope does not reach
+        raise TypeError(f"{label}: {exc}") from None
+
+
 def _typed_id_route(endpoint: Callable[..., Any]) -> Callable[..., Any]:
     """Mark a built-in item route whose copied path follows the view's ID type."""
     endpoint._fr_typed_id_route = True  # type: ignore[attr-defined]
@@ -1243,6 +1434,14 @@ def _check_list_methods(cls: type, *, is_async: bool) -> None:
     so a plain ``def`` fails there on the first request, and a sync view
     would get a coroutine instead of a statement.
     """
+    if not is_async:
+        for name, method in _list_filter_methods(cls).items():
+            if inspect.iscoroutinefunction(method):
+                raise RestlyConfigurationError(
+                    f"{cls.__name__}.{name}{_set_by(cls, name)} is 'async "
+                    "def', but a sync view calls it without await. Write "
+                    f"'def {name}', or use fr.AsyncRestView."
+                )
     for name in _LIST_METHODS:
         method = getattr(cls, name, None)
         if method is None or inspect.iscoroutinefunction(method) == is_async:
@@ -1761,6 +1960,19 @@ class BaseRestView(
         to keep in step, so the view cannot change the key settings.
         """
         record = _record_of(cls.schema_list_params)
+        own_keys = [
+            (method._fr_list_filter, name)
+            for name, method in _list_filter_methods(cls).items()
+        ]
+        if own_keys and (
+            record is None
+            or [(own.key, own.method) for own in record.own_filters] != own_keys
+        ):
+            raise RestlyConfigurationError(
+                f"{cls.__name__} has filter methods with @fr.list_filter, so "
+                "Restly must generate its list params. Leave "
+                "schema_list_params out."
+            )
         if record is None:
             changed = [
                 name
@@ -1833,6 +2045,7 @@ class BaseRestView(
                 owner=cls.__name__,
                 # a base view serves many schemas
                 unchecked={name for name in _KEY_SETTINGS if name not in vars(cls)},
+                own_filters=_own_filters(cls),
             )
             _mark_generated(cls, "schema_list_params")
         else:

@@ -54,6 +54,31 @@ _KEY_SETTING_DEFAULTS: dict[str, tuple[str, ...]] = {
 }
 
 
+_NO_DEFAULT: Any = object()
+
+
+@dataclasses.dataclass(frozen=True)
+class _OwnFilter:
+    """A filter key of the view's own, from a method with
+    ``@fr.list_filter``."""
+
+    key: str
+    #: The name of the method on the view.
+    method: str
+    #: The type of the method's value.
+    annotation: Any
+    #: The default of the value, or ``_NO_DEFAULT``.
+    default: Any
+    description: str | None
+
+    @property
+    def always(self) -> bool:
+        """Whether Restly calls the method on every request: its value has
+        a default. Without one, it calls the method when the key has a
+        value."""
+        return self.default is not _NO_DEFAULT
+
+
 @dataclasses.dataclass(frozen=True)
 class _ListParamsRecord:
     """What Restly generated a list params model with.
@@ -66,6 +91,20 @@ class _ListParamsRecord:
     settings: tuple[tuple[str, ...], ...]
     #: The sort keys that are on, in the order of the schema.
     sort_keys: tuple[str, ...]
+    #: The view's own filter keys.
+    own_filters: tuple[_OwnFilter, ...] = ()
+
+    def own_filter_values(
+        self, list_params: pydantic.BaseModel
+    ) -> list[tuple[_OwnFilter, Any]]:
+        """The own filters to apply to ``list_params``, each with its
+        value."""
+        values = []
+        for own in self.own_filters:
+            value = getattr(list_params, own.key)
+            if own.always or value is not None:
+                values.append((own, value))
+        return values
 
 
 _RECORDS: "weakref.WeakKeyDictionary[type, _ListParamsRecord]" = (
@@ -375,12 +414,14 @@ def _derive_list_params(
     settings: _abc.Mapping[str, Any],
     owner: str | None = None,
     unchecked: _abc.Set[str] = frozenset(),
+    own_filters: _abc.Sequence[_OwnFilter] = (),
 ) -> SchemaType:
     """:func:`derive_schema_list_params`, for a view too.
 
     :param owner: The view, for the messages.
     :param unchecked: The key settings whose entries may match no key: the
         ones that a view inherits. A base view serves many schemas.
+    :param own_filters: The view's own filter keys, which are always on.
     """
     patterns = {
         name: _check_key_setting(_setting_label(owner, name), settings[name])
@@ -464,6 +505,14 @@ def _derive_list_params(
         list(filter_fields), patterns["include_filters"], patterns["exclude_filters"]
     ):
         fields[key] = filter_fields[key]
+    for own in own_filters:
+        _check_own_key(_setting_label(owner, own.method), own.key, fields, pagination)
+        annotation = own.annotation if own.always else Optional[own.annotation]
+        default = own.default if own.always else None
+        fields[own.key] = (
+            Annotated[annotation, Field(description=own.description)],
+            default,
+        )
 
     validators = (
         {"_validate_pagination_offset": _pagination_offset_validator(pagination)}
@@ -479,8 +528,29 @@ def _derive_list_params(
         pagination=pagination,
         settings=tuple(patterns[name] for name in _KEY_SETTINGS),
         sort_keys=tuple(sort_keys),
+        own_filters=tuple(own_filters),
     )
     return params_model
+
+
+def _check_own_key(
+    label: str, key: str, fields: dict[str, Any], pagination: _AnyPagination
+) -> None:
+    """Reject an own filter key that the list params already have.
+
+    :raises RestlyConfigurationError: the key is a pagination parameter, or
+        a generated filter key that is on.
+    """
+    if key in _reserved_names(pagination):
+        raise RestlyConfigurationError(
+            f"{label}: the key {key!r} is a pagination parameter. Choose another key."
+        )
+    if key in fields:
+        raise RestlyConfigurationError(
+            f"{label}: the key {key!r} is also a generated filter key. To "
+            f"replace it, leave it out with exclude_filters = ({key!r},). Then "
+            f"choose what happens to {key}__in and the other keys of the field."
+        )
 
 
 def _setting_label(owner: str | None, name: str) -> str:
@@ -697,7 +767,10 @@ def apply_list_params(
     function with the view's model, response class and pagination.
 
     With list params from :func:`derive_schema_list_params`, ``sort``
-    accepts only the sort keys that the model was created with.
+    accepts only the sort keys that the model was created with. List params
+    with a value for a view's own filter key, from
+    :func:`~fastapi_restly.list_filter`, raise ``ValueError``: only the
+    view can apply them. Use the view's ``apply_list_params``.
 
     A raw :class:`~starlette.datastructures.QueryParams` is also accepted
     for callers that build the query parameters programmatically.
@@ -727,6 +800,7 @@ def apply_list_params(
         # Contains (string fields)
         name__contains=John&email__icontains=example
     """
+    _reject_own_filters(list_params)
     query = _apply_filters(
         query, list_params, model, schema_response, pagination=pagination
     )
@@ -756,7 +830,40 @@ def _read_list_params(
     )
     if isinstance(pagination, _FromParams):
         pagination = record.pagination if record else _DEFAULT_PAGINATION
-    return record, pagination, _coerce_to_query_params(list_params)
+    own_keys = {own.key for own in record.own_filters} if record else set()
+    return record, pagination, _coerce_to_query_params(list_params, exclude=own_keys)
+
+
+def _keep_joins(source: Select[Any], stmt: Select[Any]) -> Select[Any]:
+    """``stmt``, which adds only conditions to ``source``, with the joins
+    that the filters added to ``source``."""
+    joins = _STATEMENT_JOINS.get(source)
+    if joins:
+        _STATEMENT_JOINS[stmt] = joins
+    return stmt
+
+
+def _reject_own_filters(list_params: pydantic.BaseModel | QueryParams) -> None:
+    """Reject list params with a value for a view's own filter key.
+
+    Only the view can call its filter methods. Leaving the key out would
+    return more rows than the client asked for.
+
+    :raises ValueError: an own filter has a value.
+    """
+    if not isinstance(list_params, pydantic.BaseModel):
+        return
+    record = _record_of(type(list_params))
+    if record is None:
+        return
+    applied = record.own_filter_values(list_params)
+    if applied:
+        own, _ = applied[0]
+        raise ValueError(
+            f"apply_list_params cannot apply the key {own.key!r}: it is a "
+            f"filter of the view's own, from the method {own.method}. Call "
+            "apply_list_params on the view instead."
+        )
 
 
 def _apply_filters(
@@ -808,17 +915,23 @@ def _apply_sort_and_page(
 
 def _coerce_to_query_params(
     list_params: pydantic.BaseModel | QueryParams,
+    *,
+    exclude: _abc.Set[str] = frozenset(),
 ) -> QueryParams:
     """Normalise validated list params or raw QueryParams to QueryParams.
 
     When a dumped field is a list (e.g. a repeated ``name__contains``), each
     element is expanded to its own ``(key, value)`` tuple so that
     ``QueryParams.multi_items()`` later returns the original repeated values.
+
+    :param exclude: The fields of a model to leave out.
     """
     if isinstance(list_params, QueryParams):
         return list_params
     if isinstance(list_params, pydantic.BaseModel):
-        dumped = list_params.model_dump(exclude_none=True, by_alias=True, mode="json")
+        dumped = list_params.model_dump(
+            exclude_none=True, by_alias=True, mode="json", exclude=set(exclude)
+        )
         items: list[tuple[str, str]] = []
         for key, value in dumped.items():
             if isinstance(value, list):
