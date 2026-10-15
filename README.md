@@ -258,8 +258,10 @@ GET /users?email__icontains=example
 GET /users?sort=-created_at&page=2&page_size=10
 ```
 
-Parameter keys use the **public names of the view's response class**, including dotted
-relation paths; unknown keys are rejected with `422`.
+Parameter keys use the **public names of the view's response class**; unknown keys are
+rejected with `422`. A view chooses its keys with `include_filters` and
+`include_sort_keys`, which also turn on dotted relation paths such as
+`?vendor.name=`, and adds a typed filter of its own with `@fr.list_filter`.
 
 Pagination is on by default: list endpoints wrap rows in a `data` envelope and
 cap each page at 50 rows. Clients page with `?page=` and `?page_size=`. Set the

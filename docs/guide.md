@@ -125,7 +125,8 @@ filter, sort and page parameters to the URL.
 - [Responses](responses.md): what each route returns, the list envelope,
   and how to change the shape of one route or of all routes.
 - [Filtering & Pagination](filtering.md): the filters, the sort order and
-  the pages that a client can use on a list.
+  the pages that a client can use on a list, the keys that a view chooses,
+  and filters of your own.
 - [Errors](errors.md): raise a 404 or a 403, see why a duplicate value gives
   a 409, and change the error body.
 - [OpenAPI](openapi.md): the tags, names and operation IDs of the routes,

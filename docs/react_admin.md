@@ -140,7 +140,14 @@ must be equal to the column value. Only fields that the view's response class
 sends are accepted. Other fields, also react-admin's full-text search
 parameter `q`, get a 400. For a search on part of a value, or a full-text
 search, override the view's
-{meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`.
+{meth}`apply_filters <fastapi_restly.views.RestView.apply_filters>`.
+
+The settings that choose the keys of the standard dialect,
+{attr}`include_filters <fastapi_restly.views.BaseRestView.include_filters>`,
+`exclude_filters`, `include_sort_keys` and `exclude_sort_keys`, and
+{func}`fr.list_filter <fastapi_restly.views.list_filter>`, do not apply to
+this dialect. A react-admin view that has one fails when it registers, also
+when it inherits the setting from another class.
 :::
 
 ### The other routes
@@ -357,7 +364,9 @@ to read the react-admin query string. Then it calls the standard
 {meth}`get_many <fastapi_restly.views.RestView.get_many>`. The react-admin
 dialect itself is in
 {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
-(JSON `sort`, `range` and `filter`) and
+(JSON `sort` and `range`), in
+{meth}`apply_filters <fastapi_restly.views.RestView.apply_filters>`
+(JSON `filter`) and
 {meth}`to_list_response <fastapi_restly.views.BaseRestView.to_list_response>`
 (a plain array body and `Content-Range`). These views do not use the list
 parameters of the standard dialect, which

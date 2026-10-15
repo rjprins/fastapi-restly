@@ -1432,10 +1432,13 @@ def _check_list_methods(cls: type, *, is_async: bool) -> None:
 
     An async view awaits :meth:`apply_list_params` and :meth:`apply_filters`,
     so a plain ``def`` fails there on the first request, and a sync view
-    would get a coroutine instead of a statement.
+    would get a coroutine instead of a statement. A sync view also calls its
+    filter methods without await. A filter method that is overridden
+    without ``@fr.list_filter`` fails here too.
     """
+    filter_methods = _list_filter_methods(cls)
     if not is_async:
-        for name, method in _list_filter_methods(cls).items():
+        for name, method in filter_methods.items():
             if inspect.iscoroutinefunction(method):
                 raise RestlyConfigurationError(
                     f"{cls.__name__}.{name}{_set_by(cls, name)} is 'async "

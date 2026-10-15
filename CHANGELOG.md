@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Four view settings choose the keys of a list: `include_filters`,
+  `exclude_filters`, `include_sort_keys` and `exclude_sort_keys`. An entry is
+  a key as the client sends it, or a pattern: `*` matches any characters
+  except `.`, and `**` matches any characters, as in a file glob with `.` in
+  place of `/`. So `include_filters = ("status", "created_at__*")` keeps the
+  filter on `status` and every filter on `created_at` with a suffix. An entry
+  that a view sets and that matches no key fails when the view registers, and
+  the message lists the keys of the field. `include_sort_keys = ()` removes
+  the `sort` parameter. `fr.query.derive_schema_list_params` takes the four
+  settings as keywords.
+- `@fr.list_filter("key")` makes a view method the filter for a query key.
+  The type of the method's value becomes the type of the key, so OpenAPI
+  shows it and a bad value gets `422`, and the docstring becomes its
+  description. The method returns a condition, a clause or `None`. Without a
+  default on the value, the view calls it when the key has a value; with a
+  default, on every list request. On an async view the method can be
+  `async def`, to load data first. A condition on a table that is not in the
+  statement raises `TypeError`, as `where=` does. The key is always on, and a
+  subclass drops it with `filter_name = None`.
+- `apply_filters(stmt, list_params)` on a view applies the client's filters
+  without the sort and the page. A route that counts per category with
+  `GROUP BY` uses it: `ORDER BY` from `apply_list_params` would fail there.
+  `apply_list_params` calls it first.
+
 - A clause can go into the condition of another clause, written without a
   call. A model's scope can then follow a relationship, such as
   `fr.where_clause(Comment.post.has(PostClauses.default_scope))`: a comment
@@ -35,6 +59,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- A list has no dotted filter keys and no dotted sort keys by default, such
+  as `?vendor.name=` or `?sort=vendor.name`. Clients that send them now get
+  `422`. Turn them on with `include_filters = ("**",)` and
+  `include_sort_keys = ("**",)`, or with a narrower pattern such as
+  `("*", "vendor.*")`. Each dotted key is a join that a client can add, and a
+  new field on a nested schema would add keys to every list that nests it.
+- A sort key that the list does not have now gets `422` from the list
+  params, not `400`. The description of `sort` in OpenAPI lists the sort
+  keys. A sort key never goes through a to-many relationship.
+- The errors say "Unknown filter key" and "Unknown sort key", not "field".
+  This holds for react-admin views too.
+- On `AsyncRestView` and `AsyncReactAdminView`, `apply_list_params` is now
+  `async def`: write `await self.apply_list_params(...)`. An override must
+  be `async def` and call `await super().apply_list_params(...)`. A plain
+  `def` override fails when the class is defined, with a message that says
+  so. On a sync view, an `async def` override fails the same way.
+- `apply_list_params` and `apply_filters` on a view validate a
+  `QueryParams` or a mapping through `schema_list_params` first, as the list
+  route does. An unknown key or a bad value raises `RequestValidationError`,
+  which is a `422`.
+- A view with a declared `schema_list_params` fails when it registers if the
+  list params do not follow its key settings. A hand-written model cannot
+  follow them, so a view that sets one of the four settings must leave
+  `schema_list_params` out, or create it with
+  `fr.query.derive_schema_list_params`.
+- React-admin views reject the four key settings and `@fr.list_filter` when
+  they register, also when they inherit them. React-admin sends its filters
+  in its own `filter` parameter.
 - The test clients now accept any success status (2xx) by default. Before,
   each method expected one status, such as `201` for POST. So a POST action
   that returns `200` now passes without `assert_status_code`. No test starts

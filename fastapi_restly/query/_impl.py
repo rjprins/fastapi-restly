@@ -769,7 +769,7 @@ def apply_list_params(
     With list params from :func:`derive_schema_list_params`, ``sort``
     accepts only the sort keys that the model was created with. List params
     with a value for a view's own filter key, from
-    :func:`~fastapi_restly.list_filter`, raise ``ValueError``: only the
+    :func:`~fastapi_restly.views.list_filter`, raise ``ValueError``: only the
     view can apply them. Use the view's ``apply_list_params``.
 
     A raw :class:`~starlette.datastructures.QueryParams` is also accepted

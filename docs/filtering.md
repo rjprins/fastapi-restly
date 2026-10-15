@@ -20,13 +20,17 @@ and sort only on fields it can see. By default the response class is the
 view's schema without its `WriteOnly` fields; see
 [Set your own response class](#own-response-class).
 
+By default a list has the keys of the resource's own fields. A view chooses
+other keys with four settings; see [Choose the keys of a list](#choose-list-keys).
+For a filter that is not a comparison with a column, see
+[Add a filter of your own](#own-list-filter).
+
 The filters narrow the rows inside the view's [scope](scopes.md). They can
 never show a row that the scope hides.
 
 Restly rejects an unknown key with `422`. A filter only narrows the result, so
 a mistyped key that Restly ignored would return more rows than the client
-asked for. To allow a key of your own, see
-[Accept extra query parameters](#extra-query-parameters).
+asked for.
 
 Lists are paginated by default: 50 rows per page, and a client can ask for up
 to 1000. The rows come in a `data` envelope with the total count. The view's
@@ -170,7 +174,16 @@ This gives `WHERE created_at >= '2024-01-01' AND created_at < '2025-01-01'`.
 (relation-filtering)=
 ## Filter on a related row
 
-A dot reaches a field of a related row:
+A dot reaches a field of a related row. These keys are off by default. Turn
+them on with
+{attr}`include_filters <fastapi_restly.views.BaseRestView.include_filters>`;
+see [Choose the keys of a list](#choose-list-keys):
+
+```python
+class OrderView(fr.AsyncRestView):
+    ...
+    include_filters = ("*", "user.*")
+```
 
 ```text
 GET /orders?user.name=Alice
@@ -192,6 +205,9 @@ session rule with {func}`sqlalchemy.orm.with_loader_criteria`, set
 
 :::{admonition} Details
 :class: details
+
+The examples here have `include_filters = ("**",)` and
+`include_sort_keys = ("**",)`, which turn on every dotted key.
 
 A path can follow a relationship of a model to the same model, such as
 `?manager.name=Alice` or `?manager.manager.name=Alice`. Each step must be a
@@ -220,9 +236,10 @@ GET /people?home_city.name=Amsterdam&work_city.name=Berlin
 GET /people?home_city.country.code=NL&work_city.country.code=DE
 ```
 
-Sorting accepts the same paths. A filter and a sort on the same relationship
-share one join. The joins are inner joins: a row without the related row is
-left out, also for a dotted `__isnull` filter.
+Sorting accepts the same paths, when `include_sort_keys` has them. A filter
+and a sort on the same relationship share one join. The joins are inner
+joins: a row without the related row is left out, also for a dotted
+`__isnull` filter.
 
 Aliases apply to every part of the path, the relationship and the field,
 because the list parameters always use the public names of the response
@@ -315,14 +332,18 @@ To use another key in the URL, change the alias.
 (sort-a-list)=
 ## Sort a list
 
-The `sort` parameter takes field names separated by commas. A `-` before a
-name sorts that field in descending order:
+The `sort` parameter takes sort keys separated by commas. A sort key is the
+name of a field. A `-` before a key sorts in descending order:
 
 ```text
 GET /users?sort=-created_at,name
 ```
 
-A dotted path sorts by a related field, as it filters:
+By default every own field of the resource is a sort key. An unknown sort key
+gets `422`. The description of `sort` in OpenAPI lists the sort keys. To
+choose them, see [Choose the keys of a list](#choose-list-keys).
+
+A dotted key sorts by a related field, when `include_sort_keys` has it:
 `?sort=-city.country.code` orders by that column, and joins each step of the
 path.
 
@@ -330,6 +351,180 @@ Restly always adds the primary key as the last sort term, every column of a
 composite key included. So rows with equal values are never skipped or
 repeated from one page to the next. Without `sort`, the list is in primary key
 order.
+
+(choose-list-keys)=
+## Choose the keys of a list
+
+A view chooses the keys of its list with
+{attr}`include_filters <fastapi_restly.views.BaseRestView.include_filters>`
+and
+{attr}`include_sort_keys <fastapi_restly.views.BaseRestView.include_sort_keys>`:
+
+```python
+class ItemView(fr.AsyncRestView):
+    ...
+    include_filters = ("status", "category_id", "name__icontains", "created_at__*")
+    include_sort_keys = ("name", "created_at")
+```
+
+An entry is a key as the client sends it, such as `name__icontains`, or a
+pattern. Patterns work as file globs do, with `.` in place of `/`: `*`
+matches any characters except `.`, and `**` matches any characters. So
+`"created_at__*"` is every filter on `created_at` with a suffix. OpenAPI shows
+only the keys that are on, and another key gets `422`.
+
+To remove a few keys, use
+{attr}`exclude_filters <fastapi_restly.views.BaseRestView.exclude_filters>`
+and
+{attr}`exclude_sort_keys <fastapi_restly.views.BaseRestView.exclude_sort_keys>`.
+Restly applies them after the include settings:
+
+```python
+class ItemView(fr.AsyncRestView):
+    ...
+    exclude_filters = ("internal_note", "internal_note__*", "*__icontains")
+```
+
+:::{admonition} Details
+:class: details
+
+Some patterns, for an item with a `vendor`, and a `country` on the vendor:
+
+| Pattern | Keys |
+|---|---|
+| `"*"` | the keys on the item's own fields: the default |
+| `"vendor.*"` | the keys on the fields of `vendor`, but not on `vendor.country` |
+| `"vendor.**"` | every key under `vendor`, at every level |
+| `"*.**"` | every dotted key |
+| `"**"` | every key |
+| `"**.name"` | `vendor.name` and `vendor.country.name`, but not `name` |
+| `"*__icontains"` | `__icontains` on every own field |
+
+Every `.` in a pattern must be in the key. `?` and `[...]` are not wildcards,
+and fail when the class is defined.
+
+Two patterns match more than they seem to. `"name*"` also matches a field
+such as `names`: write `("name", "name__*")`. `"**name"` also matches a field
+such as `username`: write `("name", "**.name")`.
+
+`include_filters = ()` leaves no generated filters, and
+`include_sort_keys = ()` removes the `sort` parameter. `page` and `page_size`
+are not filters, and they always stay.
+
+Dotted keys are off by default. Each one is a join that a client can add, and
+a new field on a nested schema would add keys to every list that nests it.
+
+An entry that a view sets and that matches no key fails when the view
+registers. The message lists the keys of the field:
+
+```text
+ItemView.include_filters: 'price__icontains' matches no filter key of
+ItemSchema. The filter keys of 'price' are: price, price__in, price__ne,
+price__isnull, price__gte, price__lte, price__gt, price__lt. Only text fields
+have __contains and __icontains.
+```
+
+A view inherits each setting on its own, as it inherits `pagination`. So a
+project base view can set `include_filters = ()`, and a view turns its
+filters on again with `("*",)`. An entry that a view inherits may match no
+key, because a base view serves many schemas.
+
+The sort keys are separate from the filter keys, so a view can sort on
+`created_at` without a `?created_at=` filter. A sort key has no suffix. It
+never goes through a list of related rows: an item with several tags has no
+single `tags.name` to sort on.
+
+To see every key that a view could have, set `include_filters = ("**",)` and
+`include_sort_keys = ("**",)` for a moment, and look at `/docs`.
+
+{func}`derive_schema_list_params() <fastapi_restly.query.derive_schema_list_params>`
+takes the four settings as keywords, so a route outside a view can build the
+same list parameters.
+
+A key that clients use is part of your API. Removing it later breaks those
+clients.
+:::
+
+(own-list-filter)=
+## Add a filter of your own
+
+For a filter that is not a comparison with a column, decorate a view method
+with {func}`fr.list_filter <fastapi_restly.views.list_filter>`:
+
+```python
+from sqlalchemy import ColumnElement
+
+
+class ItemView(fr.AsyncRestView):
+    ...
+
+    @fr.list_filter("popular")
+    def filter_popular(self, value: bool) -> ColumnElement[bool]:
+        """Items with more than 1000 views, or with false the other items."""
+        popular = Item.view_count > 1000
+        return popular if value else ~popular
+```
+
+The client sends `?popular=true`. The type of `value` becomes the type of
+the key: OpenAPI shows a boolean, with the docstring as its description, and
+`?popular=maybe` gets `422`. The method gets the value after validation,
+never the text from the URL.
+
+The method returns a SQLAlchemy condition, a [clause](clauses.md), or `None`
+for no condition. Restly adds the condition with AND, inside the view's
+scope, after the generated filters.
+
+Restly calls the method only when the key has a value. With a default on
+`value`, it calls the method on every list request, with the default when the
+key is missing. This list hides archived items, unless the client asks for
+them:
+
+```python
+@fr.list_filter("allow_archived")
+def filter_allow_archived(self, value: bool = False) -> ColumnElement[bool] | None:
+    return None if value else ~Item.archived
+```
+
+A filter on a column lets a client find out the values of that column, one
+request at a time. Write a filter only on data that the client may see.
+
+:::{admonition} Details
+:class: details
+
+`value: list[str]` reads a repeated key, as in `?tag=a&tag=b`. A plain type
+takes the last value, as in FastAPI.
+
+The condition may use only the tables that are in the statement. A condition
+on another table, such as `Vendor.name == value`, raises `TypeError`, because
+SQL would add the table as a cross join that the scope does not reach. Use the
+relationship instead: `Item.vendor.has(Vendor.name == value)`.
+
+On an {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>`, the
+method can be `async def`, to load data with `self.session` first. It runs
+only when the key has a value, and only on routes that filter. Often a
+subquery in the condition is enough, and it is faster than loading ids for
+`IN (...)`. On a {class}`RestView <fastapi_restly.views.RestView>`, an
+`async def` method fails when the class is defined.
+
+The key is always on: `include_filters` and `exclude_filters` choose among
+the generated keys only. A key with the name of a generated key that is on
+fails when the view registers. To replace `name`, leave the generated key out
+with `exclude_filters = ("name",)`, and decorate your own.
+
+A subclass inherits the key. It drops the key by setting the name of the
+method to `None`, as in `filter_popular = None`. An override without the
+decorator fails when the class is defined.
+
+A key follows the rules of the page parameters: no `__` and no `.`, not
+`page`, `page_size` or `sort`, and not the name of a Pydantic model
+attribute, such as `copy`.
+
+{func}`fr.query.apply_list_params <fastapi_restly.query.apply_list_params>`
+has no view, so it cannot call the method. It raises `ValueError` for list
+parameters with a value for the key. Call the view's
+{meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
+instead.
+:::
 
 (list-pagination)=
 ## Page through a list
@@ -468,6 +663,10 @@ adds both, as this page describes.
 (extra-query-parameters)=
 ## Accept extra query parameters
 
+For a key that filters the list, write
+[a filter of your own](#own-list-filter): it has a type, and OpenAPI shows
+it.
+
 A query parameter that the route declares needs no setup: a parameter of the
 endpoint method, or one that a dependency reads, wherever the dependency is
 declared. That is the app or a router, the view's `dependencies`, or a class
@@ -497,7 +696,9 @@ argument, so put base query changes in the scope.
 For another URL grammar, such as the filter syntax of another client
 library, override
 {meth}`apply_list_params(query, list_params) <fastapi_restly.views.RestView.apply_list_params>`.
-It turns the URL parameters into the query. The
+It turns the URL parameters into the query. On an async view it is
+`async def`: write `async def apply_list_params`, and
+`await super().apply_list_params(query, list_params)`. The
 [React Admin](react_admin.md) views override it for the react-admin
 grammar. Override `get_many()` itself only for a list that has another
 *result*, and build the query in the method. The override gets the scope as
@@ -515,6 +716,44 @@ query parameters next to `list_params`, as in
 `def search(self, list_params, mode: SearchMode)`.
 :::
 
+(filters-in-own-route)=
+## Use the filters in a route of your own
+
+{meth}`apply_filters <fastapi_restly.views.RestView.apply_filters>` applies
+the client's filters to a statement, without the sort and the page. This
+route counts the items per category, under the client's other filters:
+
+```python
+@fr.get("/category-counts")
+async def category_counts(self, list_params) -> dict[str, int]:
+    await self.authorize(fr.Action.GET_MANY)
+    stmt = sa.select(Item.category, sa.func.count()).group_by(Item.category)
+    stmt = fr.apply_clauses(stmt, fr.resolve_scope(self))
+    others = list_params.model_copy(update={"category": None})
+    stmt = await self.apply_filters(stmt, others)
+    return dict((await self.session.execute(stmt)).all())
+```
+
+The route calls `authorize` and applies the scope itself, as every read
+route of your own does; see [Use the scope in your own query](#reading-the-scope).
+It removes the client's own `category` filter. Otherwise the result has only
+the category that the client chose.
+
+:::{admonition} Details
+:class: details
+
+{meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
+would add `ORDER BY` and `LIMIT`. PostgreSQL rejects an order on a column
+that the `GROUP BY` does not have.
+
+A real route also removes `category__in` and the other keys of `category`.
+The route still documents `page`, `page_size` and `sort`, and ignores them.
+
+On an async view, `apply_filters` is `async def`, as `apply_list_params` is.
+A view can override it to add a condition to every list, and to every route
+that calls it. `apply_list_params` calls it first.
+:::
+
 ## Internals
 
 (list-parameters-lifecycle)=
@@ -525,9 +764,9 @@ Restly sets one class attribute,
 {attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`.
 It is a Pydantic model that
 {func}`derive_schema_list_params(cls.schema_response, cls.model, pagination=cls.pagination) <fastapi_restly.query.derive_schema_list_params>`
-generates. It holds the pagination parameters, `sort`, and the filters for
-each field of the response class that maps to a column of the model. Restly
-builds it once, when the view registers, and never again.
+generates, with the view's four key settings. It holds the pagination
+parameters, `sort`, the filter keys that the settings keep, and the view's
+own keys. Restly builds it once, when the view registers, and never again.
 
 A route reads the list parameters through a dependency, not as a FastAPI
 query model. FastAPI splits a query model into separate parameters only when
@@ -536,10 +775,10 @@ it is the only query parameter of the route. Next to a dependency that reads
 validates the model from the query string itself, and shows each key as its
 own parameter in OpenAPI, next to the other parameters of the route.
 
-Apart from `__isnull`, the filter values are text in this model. Restly
-validates them against the field when
+Apart from `__isnull`, the generated filter values are text in this model.
+Restly validates them against the field when
 {func}`apply_list_params <fastapi_restly.query.apply_list_params>` builds the
-query.
+query. A key of your own has the type of its method's value.
 
 The [React Admin](react_admin.md) views read another grammar, with
 their own parameters.

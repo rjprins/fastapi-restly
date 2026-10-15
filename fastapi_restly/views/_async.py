@@ -409,7 +409,7 @@ class AsyncRestView(
 
         Async, as :meth:`apply_filters` is: call it with ``await``. Override
         for another URL grammar; the common case is driven by configuration.
-        A ``QueryParams`` or a mapping goes through :attr:`schema_list_params`
+        A ``QueryParams`` or a mapping goes through :attr:`~fastapi_restly.views.BaseRestView.schema_list_params`
         first, as on the list route.
         """
         list_params = self._validated_list_params(list_params)
@@ -433,10 +433,10 @@ class AsyncRestView(
         Like every custom read route, such a route calls :meth:`authorize`
         and applies the scope itself. :meth:`apply_list_params` calls this
         method first. A ``QueryParams`` or a mapping goes through
-        :attr:`schema_list_params` first, as on the list route.
+        :attr:`~fastapi_restly.views.BaseRestView.schema_list_params` first, as on the list route.
 
         The generated filters come first, then the view's own filters from
-        :func:`~fastapi_restly.list_filter`, in the order of the class.
+        :func:`~fastapi_restly.views.list_filter`, in the order of the class.
         """
         list_params = self._validated_list_params(list_params)
         filtered = _apply_filters(

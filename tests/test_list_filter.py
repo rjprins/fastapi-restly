@@ -275,12 +275,11 @@ def test_a_subclass_changes_the_key_with_the_decorator():
 
 
 def test_an_override_without_the_decorator_fails():
-    class ItemView(PopularView):
-        def filter_popular(self, value: bool) -> ColumnElement[bool]:
-            return Item.view_count > 5000
-
     with pytest.raises(RestlyConfigurationError) as exc_info:
-        fr.include_view(FastAPI(), ItemView)
+
+        class ItemView(PopularView):
+            def filter_popular(self, value: bool) -> ColumnElement[bool]:
+                return Item.view_count > 5000
 
     assert str(exc_info.value) == (
         "ItemView.filter_popular overrides the filter method of PopularView "
