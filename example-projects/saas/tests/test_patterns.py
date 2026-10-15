@@ -11,7 +11,7 @@ as the async test client) for direct DB inspection inside each test.
 import io
 from contextlib import asynccontextmanager
 from dataclasses import asdict
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from app.auth import verify_password
 from app.current import Current
@@ -465,7 +465,7 @@ class TestStoryPointRollup:
             await session.flush()
             assert (a.total_story_points, b.total_story_points) == (0, 8)
 
-            task.deleted_at = datetime.now(UTC)
+            task.deleted_at = datetime.now(timezone.utc)
             await session.flush()
             assert b.total_story_points == 0
 
@@ -528,7 +528,7 @@ class TestStoryPointRollup:
             assert a.total_story_points == 8
 
             session.expire(task)
-            task.deleted_at = datetime.now(UTC)
+            task.deleted_at = datetime.now(timezone.utc)
             await session.flush()
             assert a.total_story_points == 0
 
