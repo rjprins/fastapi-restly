@@ -242,11 +242,19 @@ def test_a_mapping_is_validated_like_query_params(view_class):
             stmt = await self.apply_filters(select(Item), params)
             return [item.name for item in (await self.session.scalars(stmt))]
 
+        @fr.get("/repeated")
+        async def repeated(self) -> list[str]:
+            # a list is a repeated key: both terms must match
+            params = {"name__icontains": ["a", "p"]}
+            stmt = await self.apply_filters(select(Item), params)
+            return [item.name for item in (await self.session.scalars(stmt))]
+
     app = FastAPI()
     fr.include_view(app, ItemView)
     client = RestlyTestClient(app)
 
     assert client.get("/items/mapping").json() == ["axe"]
+    assert client.get("/items/repeated").json() == ["apple"]
     detail = client.get(
         "/items/mapping", params={"nope": True}, assert_status_code=422
     ).json()["detail"]

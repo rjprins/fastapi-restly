@@ -459,14 +459,6 @@ def _derive_list_params(
     keys_of_field: dict[str, list[str]] = {}
     sort_keys: list[str] = []
     for name, field in _iter_fields_including_nested(schema_response):
-        if name in reserved:
-            raise ValueError(
-                f"List params for {_written_name(schema_response)!r} cannot expose "
-                f"field {name!r}: it collides with a reserved pagination/sort "
-                "parameter. Add a Pydantic alias to expose it as a filter, or "
-                "rename the pagination parameter."
-            )
-
         # Only emit params for fields that resolve to a filterable column on the
         # model -- using the very predicate the request path applies. A
         # relationship/collection field (e.g. ``books: list[BookRef]``) or a
@@ -504,6 +496,14 @@ def _derive_list_params(
     for key in _pick_keys(
         list(filter_fields), patterns["include_filters"], patterns["exclude_filters"]
     ):
+        if key in reserved:
+            raise ValueError(
+                f"List params for {schema_name!r} cannot expose the filter "
+                f"key {key!r}: it collides with a reserved pagination/sort "
+                "parameter. Add a Pydantic alias to the field, rename the "
+                f"pagination parameter, or leave the key out with "
+                f"exclude_filters = ({key!r},)."
+            )
         fields[key] = filter_fields[key]
     for own in own_filters:
         _check_own_key(_setting_label(owner, own.method), own.key, fields, pagination)

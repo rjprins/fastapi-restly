@@ -1967,14 +1967,22 @@ class BaseRestView(
             (method._fr_list_filter, name)
             for name, method in _list_filter_methods(cls).items()
         ]
-        if own_keys and (
-            record is None
-            or [(own.key, own.method) for own in record.own_filters] != own_keys
-        ):
+        record_keys = (
+            [(own.key, own.method) for own in record.own_filters] if record else []
+        )
+        if own_keys and record_keys != own_keys:
             raise RestlyConfigurationError(
                 f"{cls.__name__} has filter methods with @fr.list_filter, so "
                 "Restly must generate its list params. Leave "
                 "schema_list_params out."
+            )
+        if record_keys != own_keys:
+            # the list params of another view, with its filter methods
+            raise RestlyConfigurationError(
+                f"{cls.__name__}.schema_list_params has the keys of filter "
+                "methods that the view does not have: "
+                f"{', '.join(key for key, _ in record_keys)}. Leave "
+                "schema_list_params out to have it generated."
             )
         if record is None:
             changed = [
@@ -2483,7 +2491,17 @@ def _validate_raw_list_params(
     :raises RequestValidationError: a key that ``params_model`` does not
         have, or a value that fails the validation of its field.
     """
-    query = raw if isinstance(raw, QueryParams) else QueryParams(raw)
+    if isinstance(raw, QueryParams):
+        query = raw
+    else:
+        # a list value is a repeated key, as in the query string
+        query = QueryParams(
+            [
+                (key, item)
+                for key, value in dict(raw).items()
+                for item in (value if isinstance(value, (list, tuple)) else [value])
+            ]
+        )
     fields = _list_params_fields(params_model)
     unknown = set(query.keys()) - {key for key, _, _ in fields}
     if unknown:

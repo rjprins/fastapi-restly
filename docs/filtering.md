@@ -572,8 +572,9 @@ class UserView(fr.AsyncRestView):
 Clients then send `?p=2&size=50`, `page` and `page_size` become unknown keys,
 and OpenAPI shows the new names. A schema field with the same public name as
 a pagination parameter fails when the view registers: rename the parameter,
-or give the field an alias. A renamed parameter frees its old name, so a field
-called `page` gets its filter back.
+give the field an alias, or leave the field's plain key out with
+`exclude_filters = ("size",)`. A renamed parameter frees its old name, so a
+field called `page` gets its filter back.
 
 (set-pagination-once)=
 ### Set the pagination once for every view

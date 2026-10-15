@@ -502,3 +502,26 @@ def test_react_admin_views_reject_the_settings(app, base):
         "ItemAdmin sets exclude_sort_keys (from KeysMixin), which a react-admin "
         "view does not use."
     )
+
+
+def test_a_field_with_a_reserved_name_can_be_left_out():
+    class PageBase(DeclarativeBase):
+        pass
+
+    class Book(PageBase):
+        __tablename__ = "keys_book"
+        id: Mapped[int] = mapped_column(primary_key=True)
+        page: Mapped[int]
+
+    class BookSchema(fr.IDSchema):
+        page: int
+
+    with pytest.raises(ValueError, match=r"exclude_filters = \('page',\)"):
+        derive_schema_list_params(BookSchema, Book)
+
+    model = derive_schema_list_params(BookSchema, Book, exclude_filters=("page",))
+    assert model.model_fields["page"].annotation is int
+    assert "page__gte" in model.model_fields
+    record = _record_of(model)
+    assert record is not None
+    assert "page" in record.sort_keys

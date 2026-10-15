@@ -559,3 +559,22 @@ def test_react_admin_views_reject_the_decorator(base):
         "ItemAdmin.filter_popular (from FilterMixin) has @fr.list_filter, which "
         "a react-admin view does not use."
     )
+
+
+def test_a_view_cannot_declare_the_list_params_of_another_view():
+    fr.include_view(FastAPI(), PopularView)
+
+    class OtherView(fr.AsyncRestView):
+        prefix = "/others"
+        model = Item
+        schema = ItemSchema
+        schema_list_params = PopularView.schema_list_params
+
+    with pytest.raises(RestlyConfigurationError) as exc_info:
+        fr.include_view(FastAPI(), OtherView)
+
+    assert str(exc_info.value) == (
+        "OtherView.schema_list_params has the keys of filter methods that the "
+        "view does not have: popular. Leave schema_list_params out to have it "
+        "generated."
+    )

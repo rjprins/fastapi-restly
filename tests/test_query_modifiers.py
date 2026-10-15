@@ -203,14 +203,22 @@ class TestDeriveSchemaListParams:
         assert "user.email__icontains" in schema.model_fields
 
     def test_derive_schema_list_params_rejects_sort_field_collision(self):
-        """A response field named ``sort`` would shadow the sorting parameter."""
+        """A filter key named ``sort`` would shadow the sorting parameter."""
+
+        class SortedWidget(SharedBase):
+            __tablename__ = "sorted_widget"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            sort: Mapped[str] = mapped_column(String(50))
 
         class SortFieldSchema(pydantic.BaseModel):
             id: int
             sort: str
 
         with pytest.raises(ValueError, match="reserved pagination/sort"):
-            derive_schema_list_params(SortFieldSchema, WidgetModel)
+            derive_schema_list_params(SortFieldSchema, SortedWidget)
+        # a field that is no column gives no key, so it collides with nothing
+        fields = derive_schema_list_params(SortFieldSchema, WidgetModel).model_fields
+        assert "sort__in" not in fields
 
     def test_derive_schema_list_params_rejects_dunder_in_alias(self):
         """An alias containing ``__`` would collide with operator suffixes."""
