@@ -889,7 +889,7 @@ the same options in <code class="docutils literal notranslate"><span class="pre"
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.AsyncRestView.session">
-<span class="sig-name descname"><span class="pre">session</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">_AsyncSessionDependency</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x7f9a48138da0&gt;,</span> <span class="pre">use_cache=True,</span> <span class="pre">scope=function)]</span></em><a class="headerlink" href="#fastapi_restly.views.AsyncRestView.session" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">session</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">_AsyncSessionDependency</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x7ffa35f0d0d0&gt;,</span> <span class="pre">use_cache=True,</span> <span class="pre">scope=function)]</span></em><a class="headerlink" href="#fastapi_restly.views.AsyncRestView.session" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -1066,12 +1066,20 @@ adds its own, and a subclass’s entry for a status code wins.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.schema">
 <span class="sig-name descname"><span class="pre">schema</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.15)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#fastapi_restly.views.BaseRestView.schema" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dd><p>The view’s schema: the Pydantic class that lists the fields of the
+resource. Restly builds <a class="reference internal" href="#fastapi_restly.views.BaseRestView.schema_response" title="fastapi_restly.views.BaseRestView.schema_response"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_response</span></code></a>, <a class="reference internal" href="#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a>
+and <a class="reference internal" href="#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a> from it. When a view sets none, Restly
+generates it from <a class="reference internal" href="#fastapi_restly.views.BaseRestView.model" title="fastapi_restly.views.BaseRestView.model"><code class="xref py py-attr docutils literal notranslate"><span class="pre">model</span></code></a> with
+<a class="reference internal" href="schemas.html#fastapi_restly.schemas.derive_schema" title="fastapi_restly.schemas.derive_schema"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_schema()</span></code></a>.</p>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.schema_create">
 <span class="sig-name descname"><span class="pre">schema_create</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.15)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#fastapi_restly.views.BaseRestView.schema_create" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dd><p>The class of the <code class="docutils literal notranslate"><span class="pre">POST</span></code> body. When a view sets none, Restly builds
+it from the view’s schema without its <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> fields, named
+<code class="docutils literal notranslate"><span class="pre">&lt;Resource&gt;Create</span></code>. A class that a view sets is used as it is.</p>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.schema_list_params">
@@ -1101,7 +1109,11 @@ A class that a view sets is used as it is.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.schema_update">
 <span class="sig-name descname"><span class="pre">schema_update</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.15)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#fastapi_restly.views.BaseRestView.schema_update" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dd><p>The class of the <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> body. When a view sets none, Restly builds
+it from the view’s schema without its <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> fields, and makes
+every other field optional. It is named <code class="docutils literal notranslate"><span class="pre">&lt;Resource&gt;Update</span></code>. A class
+that a view sets is used as it is.</p>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.scope">
@@ -1721,7 +1733,7 @@ same options in <code class="docutils literal notranslate"><span class="pre">get
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.RestView.session">
-<span class="sig-name descname"><span class="pre">session</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">_SyncSessionDependency</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x7f9a48138ce0&gt;,</span> <span class="pre">use_cache=True,</span> <span class="pre">scope=function)]</span></em><a class="headerlink" href="#fastapi_restly.views.RestView.session" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">session</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">_SyncSessionDependency</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x7ffa35f0d010&gt;,</span> <span class="pre">use_cache=True,</span> <span class="pre">scope=function)]</span></em><a class="headerlink" href="#fastapi_restly.views.RestView.session" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">

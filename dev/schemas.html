@@ -513,9 +513,10 @@
 class. A <code class="docutils literal notranslate"><span class="pre">User</span></code> model is the database table. <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code>, the view’s schema,
 is the public API.</p>
 </div>
-<p>A view has one schema, the view’s schema. It is a Pydantic class that lists
-the fields of the resource. When you register the view, Restly builds the
-classes of the routes from it:</p>
+<p>A view has several schemas. The main one is the view’s
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a>, a Pydantic class
+that lists the fields of the resource. When you register the view,
+Restly builds the other schemas from it, one for each use:</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>
 <tr class="row-odd"><th class="head"><p>Class</p></th>
@@ -1200,13 +1201,16 @@ value. That value comes from the column, such as <code class="docutils literal n
 <code class="docutils literal notranslate"><span class="pre">server_default</span></code>, or from the constructor: a <code class="docutils literal notranslate"><span class="pre">default</span></code> other than <code class="docutils literal notranslate"><span class="pre">None</span></code>, or
 a <code class="docutils literal notranslate"><span class="pre">default_factory</span></code>. Restly calls the constructor with the fields that the
 client sent, so that value applies.</p>
-<p>On a dataclass model, a column with only a <code class="docutils literal notranslate"><span class="pre">server_default</span></code> is a required
-argument of the constructor, so its field is required. To let the client
-leave it out, add <code class="docutils literal notranslate"><span class="pre">default=None</span></code>, as SQLAlchemy does for a value that the
-database fills: <code class="docutils literal notranslate"><span class="pre">mapped_column(server_default=&quot;x&quot;,</span> <span class="pre">default=None)</span></code>. On
-SQLAlchemy 2.0, a JSON column then stores the <code class="docutils literal notranslate"><span class="pre">None</span></code> as JSON <code class="docutils literal notranslate"><span class="pre">null</span></code> instead
-of its default. Use <code class="docutils literal notranslate"><span class="pre">default_factory=list</span></code>, or
-<code class="docutils literal notranslate"><span class="pre">JSON(none_as_null=True)</span></code>, for a JSON column.</p>
+<p>On a dataclass model, a column with only an <code class="docutils literal notranslate"><span class="pre">insert_default</span></code> or a
+<code class="docutils literal notranslate"><span class="pre">server_default</span></code> is a required argument of the constructor, so its field is
+required. To let the client leave it out, add <code class="docutils literal notranslate"><span class="pre">default=None</span></code>, as SQLAlchemy
+does for a value that the database fills:
+<code class="docutils literal notranslate"><span class="pre">mapped_column(server_default=&quot;x&quot;,</span> <span class="pre">default=None)</span></code>. On SQLAlchemy 2.0, a JSON
+column stores that <code class="docutils literal notranslate"><span class="pre">None</span></code> as JSON <code class="docutils literal notranslate"><span class="pre">null</span></code> instead of its default, so Restly
+keeps such a field required. Use <code class="docutils literal notranslate"><span class="pre">default_factory=list</span></code>, or
+<code class="docutils literal notranslate"><span class="pre">JSON(none_as_null=True)</span></code>, for a JSON column. For a column that the client
+must never write, such as a <code class="docutils literal notranslate"><span class="pre">Computed</span></code> column, use <code class="docutils literal notranslate"><span class="pre">init=False</span></code>, as
+SQLAlchemy does. The field is then <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>.</p>
 <p>Three rules decide the rest:</p>
 <ul class="simple">
 <li><p><strong>Base classes</strong>: Restly checks whether the model has fields <em>named</em>

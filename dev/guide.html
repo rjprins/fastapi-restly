@@ -612,10 +612,12 @@ override and your custom routes.</p></li>
 </section>
 <section id="requests-responses">
 <h2>Requests &amp; Responses<a class="headerlink" href="#requests-responses" title="Link to this heading">#</a></h2>
-<p>A view has one schema, a Pydantic class that lists the fields of the
-resource. Restly builds the request bodies and the response class from it,
-so one schema decides what clients send and what they get back. The list
-route adds filter, sort and page parameters to the URL.</p>
+<p>A view has several schemas. The main one is the view’s
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a>, a Pydantic class
+that lists the fields of the resource. Restly builds the other schemas
+from it: the request bodies and the response class. So the view’s schema
+decides what clients send and what they get back. The list route adds
+filter, sort and page parameters to the URL.</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="schemas.html"><span class="std std-doc">Schemas &amp; Validation</span></a>: generate the schema or write it, keep
 a field out of the requests or the responses, validate input, and use other

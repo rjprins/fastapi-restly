@@ -606,11 +606,15 @@ SQLAlchemy: <code class="docutils literal notranslate"><span class="pre">Mapped[
 <li><p>The create body of a generated schema follows the model’s constructor, as
 SQLAlchemy does. The client may leave out a field when its column is
 nullable, or when the constructor does not require it and the model then
-still gives the column a value. On a dataclass model, a column with only a
-<code class="docutils literal notranslate"><span class="pre">server_default</span></code> is a required argument of the constructor, so its field
-is now required too. Add <code class="docutils literal notranslate"><span class="pre">default=None</span></code> to let the client leave it out:
-<code class="docutils literal notranslate"><span class="pre">mapped_column(server_default=&quot;x&quot;,</span> <span class="pre">default=None)</span></code>. A <code class="docutils literal notranslate"><span class="pre">default_factory</span></code>, or
-a <code class="docutils literal notranslate"><span class="pre">default</span></code> other than <code class="docutils literal notranslate"><span class="pre">None</span></code>, also lets the client leave the field out.</p></li>
+still gives the column a value. On a dataclass model, a column with only
+an <code class="docutils literal notranslate"><span class="pre">insert_default</span></code> or a <code class="docutils literal notranslate"><span class="pre">server_default</span></code> is a required argument of the
+constructor, so its field is now required too. Add <code class="docutils literal notranslate"><span class="pre">default=None</span></code> to let
+the client leave it out: <code class="docutils literal notranslate"><span class="pre">mapped_column(server_default=&quot;x&quot;,</span> <span class="pre">default=None)</span></code>.
+A <code class="docutils literal notranslate"><span class="pre">default_factory</span></code>, or a <code class="docutils literal notranslate"><span class="pre">default</span></code> other than <code class="docutils literal notranslate"><span class="pre">None</span></code>, also lets the client
+leave the field out. On a JSON column, use <code class="docutils literal notranslate"><span class="pre">default_factory=list</span></code> or
+<code class="docutils literal notranslate"><span class="pre">JSON(none_as_null=True)</span></code> instead: SQLAlchemy 2.0 stores a <code class="docutils literal notranslate"><span class="pre">None</span></code> default
+as JSON <code class="docutils literal notranslate"><span class="pre">null</span></code>, so Restly keeps that field required. A <code class="docutils literal notranslate"><span class="pre">Computed</span></code> column
+needs <code class="docutils literal notranslate"><span class="pre">init=False</span></code>, which makes its field <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>.</p></li>
 <li><p>The <code class="docutils literal notranslate"><span class="pre">400</span></code> answers of a list request say what is wrong. Before, the
 standard dialect answered “Invalid attribute in URL query: age” both for a
 sort or filter field that does not exist and for a bad filter value. Now
