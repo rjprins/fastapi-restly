@@ -192,8 +192,8 @@ def test_the_new_names_define_a_view():
         def to_single_response(self, obj):
             return super().to_single_response(obj)
 
-        def apply_list_params(self, query, list_params):
-            return super().apply_list_params(query, list_params)
+        async def apply_list_params(self, query, list_params):
+            return await super().apply_list_params(query, list_params)
 
         @fr.get("/trash")
         async def trash(self, list_params):

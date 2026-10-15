@@ -242,7 +242,20 @@ def apply_react_admin_query(
     :func:`fastapi_restly.query.apply_list_params` for the standard REST dialect.
     """
     query = _apply_react_admin_filters(query, model, schema_cls, filters)
+    return _apply_react_admin_sort_and_range(
+        query, model, schema_cls, sort, start, end
+    )
 
+
+def _apply_react_admin_sort_and_range(
+    query: sqlalchemy.Select,
+    model: type[Any],
+    schema_cls: Any,
+    sort: tuple[str, str] | None,
+    start: int,
+    end: int,
+) -> sqlalchemy.Select:
+    """The sort and the range of :func:`apply_react_admin_query`."""
     sorted_on = []
     if sort:
         field, direction = sort
@@ -400,20 +413,25 @@ class _ReactAdminMixin:
             )
         return _ReactAdminListParams(sort=sort, start=start, end=end, filters=filters)
 
-    def apply_list_params(
-        self, query: sqlalchemy.Select, list_params: Any
+    def _react_admin_filters(
+        self, stmt: sqlalchemy.Select, params: _ReactAdminListParams
     ) -> sqlalchemy.Select:
-        """Apply the react-admin list grammar to the scoped base query."""
         view = cast(_ReactAdminViewProtocol, self)
-        params = self._coerce_react_admin_params(list_params)
-        return apply_react_admin_query(
-            query,
+        return _apply_react_admin_filters(
+            stmt, view.model, _schema_response(type(self)), params.filters
+        )
+
+    def _react_admin_sort_and_range(
+        self, stmt: sqlalchemy.Select, params: _ReactAdminListParams
+    ) -> sqlalchemy.Select:
+        view = cast(_ReactAdminViewProtocol, self)
+        return _apply_react_admin_sort_and_range(
+            stmt,
             view.model,
             _schema_response(type(self)),
             params.sort,
             params.start,
             params.end,
-            params.filters,
         )
 
     def _serialize_items(self, items: Sequence[Any]) -> list[dict]:
@@ -536,6 +554,24 @@ class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
         result = await self.handle_get_many(self._parse_react_admin_params())
         return self.to_response(result, ResponseShape.LIST)
 
+    async def apply_list_params(
+        self, query: sqlalchemy.Select, list_params: Any
+    ) -> sqlalchemy.Select:
+        """Apply the react-admin list grammar to the scoped base query:
+        :meth:`apply_filters`, then ``sort`` and ``range``."""
+        params = self._coerce_react_admin_params(list_params)
+        query = await self.apply_filters(query, params)
+        return self._react_admin_sort_and_range(query, params)
+
+    async def apply_filters(
+        self, stmt: sqlalchemy.Select, list_params: Any
+    ) -> sqlalchemy.Select:
+        """Apply the react-admin ``filter`` to ``stmt``, without the sort and
+        the range."""
+        return self._react_admin_filters(
+            stmt, self._coerce_react_admin_params(list_params)
+        )
+
     @_typed_id_route
     @put("/{id}")
     async def put(self, id: Any, schema_obj: Any) -> Any:
@@ -555,6 +591,24 @@ class ReactAdminView(_ReactAdminMixin, RestView):
     def get_many_endpoint(self) -> Any:
         result = self.handle_get_many(self._parse_react_admin_params())
         return self.to_response(result, ResponseShape.LIST)
+
+    def apply_list_params(
+        self, query: sqlalchemy.Select, list_params: Any
+    ) -> sqlalchemy.Select:
+        """Apply the react-admin list grammar to the scoped base query:
+        :meth:`apply_filters`, then ``sort`` and ``range``."""
+        params = self._coerce_react_admin_params(list_params)
+        query = self.apply_filters(query, params)
+        return self._react_admin_sort_and_range(query, params)
+
+    def apply_filters(
+        self, stmt: sqlalchemy.Select, list_params: Any
+    ) -> sqlalchemy.Select:
+        """Apply the react-admin ``filter`` to ``stmt``, without the sort and
+        the range."""
+        return self._react_admin_filters(
+            stmt, self._coerce_react_admin_params(list_params)
+        )
 
     @_typed_id_route
     @put("/{id}")

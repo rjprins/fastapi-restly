@@ -727,6 +727,28 @@ def apply_list_params(
         # Contains (string fields)
         name__contains=John&email__icontains=example
     """
+    query = _apply_filters(
+        query, list_params, model, schema_response, pagination=pagination
+    )
+    return _apply_sort_and_page(
+        query, list_params, model, schema_response, pagination=pagination
+    )
+
+
+#: The joins that the filters added to a statement, by the path of
+#: relationships. The sort reuses them, so a filter and a sort on the same
+#: relationship share one join. A statement that changes after the filters
+#: is another object, and its sort joins again.
+_STATEMENT_JOINS: "weakref.WeakKeyDictionary[Select[Any], _JoinAliases]" = (
+    weakref.WeakKeyDictionary()
+)
+
+
+def _read_list_params(
+    list_params: pydantic.BaseModel | QueryParams, pagination: Any
+) -> tuple[_ListParamsRecord | None, _AnyPagination, QueryParams]:
+    """The record of ``list_params``, the pagination to apply, and the
+    list params as query parameters."""
     record = (
         _record_of(type(list_params))
         if isinstance(list_params, pydantic.BaseModel)
@@ -734,27 +756,54 @@ def apply_list_params(
     )
     if isinstance(pagination, _FromParams):
         pagination = record.pagination if record else _DEFAULT_PAGINATION
-    query_params = _coerce_to_query_params(list_params)
+    return record, pagination, _coerce_to_query_params(list_params)
+
+
+def _apply_filters(
+    stmt: Select[Any],
+    list_params: pydantic.BaseModel | QueryParams,
+    model: type[DeclarativeBase],
+    schema_response: SchemaType,
+    *,
+    pagination: _AnyPagination = cast(Any, _FROM_PARAMS),
+) -> Select[Any]:
+    """The first step of :func:`apply_list_params`: the generated filters."""
+    _, pagination, query_params = _read_list_params(list_params, pagination)
     aliases: _JoinAliases = {}
-    query = _apply_filtering(
+    stmt = _apply_filtering(
         query_params,
-        query,
+        stmt,
         model,
         schema_response,
         aliases=aliases,
         pagination=pagination,
     )
-    query = _apply_sorting(
+    if aliases:
+        _STATEMENT_JOINS[stmt] = aliases
+    return stmt
+
+
+def _apply_sort_and_page(
+    stmt: Select[Any],
+    list_params: pydantic.BaseModel | QueryParams,
+    model: type[DeclarativeBase],
+    schema_response: SchemaType,
+    *,
+    pagination: _AnyPagination = cast(Any, _FROM_PARAMS),
+) -> Select[Any]:
+    """The last steps of :func:`apply_list_params`: the sort, then the page."""
+    record, pagination, query_params = _read_list_params(list_params, pagination)
+    stmt = _apply_sorting(
         query_params,
-        query,
+        stmt,
         model,
         schema_response,
-        aliases=aliases,
+        aliases=dict(_STATEMENT_JOINS.get(stmt, {})),
         sort_keys=record.sort_keys if record else None,
     )
     if isinstance(pagination, NumberedPagination):
-        query = _apply_pagination(query_params, query, pagination)
-    return query
+        stmt = _apply_pagination(query_params, stmt, pagination)
+    return stmt
 
 
 def _coerce_to_query_params(

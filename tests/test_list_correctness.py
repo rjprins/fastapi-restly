@@ -185,10 +185,10 @@ def test_to_many_join_in_list_query_does_not_duplicate_or_inflate(client):
         model = Author
         schema = AuthorSchema
 
-        def apply_list_params(self, query, list_params):
+        async def apply_list_params(self, query, list_params):
             # A collection JOIN: one row per book -> fan-out without dedup.
             query = query.join(Book, Book.author_id == Author.id)
-            return super().apply_list_params(query, list_params)
+            return await super().apply_list_params(query, list_params)
 
     @fr.include_view(client.app)
     class BookView(fr.AsyncRestView):
@@ -225,10 +225,10 @@ def test_default_ordering_belongs_in_apply_list_params(client):
         model = RankedNote
         schema = RankedNoteSchema
 
-        def apply_list_params(self, query, list_params):
+        async def apply_list_params(self, query, list_params):
             # before super(): the client's ?sort= then orders within it
             query = query.order_by(RankedNote.rank.desc())
-            return super().apply_list_params(query, list_params)
+            return await super().apply_list_params(query, list_params)
 
     create_tables()
     for rank in (1, 3, 2, 3):

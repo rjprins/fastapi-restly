@@ -1232,6 +1232,35 @@ def _check_key_settings(cls: type) -> None:
             _check_key_setting(f"{cls.__name__}.{name}", vars(cls)[name])
 
 
+#: The list methods that an async view awaits, and a sync view calls.
+_LIST_METHODS = ("apply_list_params", "apply_filters")
+
+
+def _check_list_methods(cls: type, *, is_async: bool) -> None:
+    """Reject a list method of the wrong kind when the class is defined.
+
+    An async view awaits :meth:`apply_list_params` and :meth:`apply_filters`,
+    so a plain ``def`` fails there on the first request, and a sync view
+    would get a coroutine instead of a statement.
+    """
+    for name in _LIST_METHODS:
+        method = getattr(cls, name, None)
+        if method is None or inspect.iscoroutinefunction(method) == is_async:
+            continue
+        origin = _set_by(cls, name)
+        if is_async:
+            raise RestlyConfigurationError(
+                f"{cls.__name__}.{name}{origin} must be 'async def' on an "
+                f"async view, which awaits it. Write 'async def {name}', and "
+                f"'await super().{name}(...)'."
+            )
+        raise RestlyConfigurationError(
+            f"{cls.__name__}.{name}{origin} is 'async def', but a sync view "
+            f"calls it without await. Write 'def {name}', or use "
+            "fr.AsyncRestView."
+        )
+
+
 def _set_by(cls: type, name: str) -> str:
     """`` (from AppView)`` when a base class of ``cls`` sets ``name``."""
     for klass in cls.__mro__:
@@ -1580,6 +1609,19 @@ class BaseRestView(
             for name, field in schema_list_params.model_fields.items()
         }
         reject_unknown_query_keys(request, list_keys | set(self.extra_query_params))
+
+    def _validated_list_params(self, list_params: Any) -> Any:
+        """``list_params`` as the list route gives them.
+
+        A ``QueryParams`` or a mapping goes through :attr:`schema_list_params`
+        first, as on the list route. List params as a Pydantic model are
+        already validated. A view that is not registered has no list params
+        model, and passes the values on as they are.
+        """
+        params_model = getattr(type(self), "schema_list_params", None)
+        if isinstance(list_params, pydantic.BaseModel) or params_model is None:
+            return list_params
+        return _validate_raw_list_params(params_model, list_params)
 
     def to_single_response(self, obj: ModelT | ResponseSchemaT) -> ResponseSchemaT:
         """Serialize one ORM object to the view's :attr:`schema_response`.
@@ -2141,34 +2183,10 @@ def _list_params_dependency(
     and any other key as sent. :func:`_list_openapi_parameters`
     documents the fields.
     """
-    fields = [
-        (_query_key(name, field), field, _reads_every_value(field))
-        for name, field in params_model.model_fields.items()
-    ]
-    field_keys = {key for key, _, _ in fields}
+    fields = _list_params_fields(params_model)
 
     def list_params(request: fastapi.Request, first: Any = None) -> pydantic.BaseModel:
-        query = request.query_params
-        data: dict[str, Any] = {}
-        for key, field, every_value in fields:
-            if key in query:
-                data[key] = query.getlist(key) if every_value else query[key]
-            elif not field.is_required():
-                default = field.get_default()
-                if default is not None:
-                    data[key] = default
-        for key in query.keys():
-            if key not in field_keys:
-                values = query.getlist(key)
-                data[key] = values[0] if len(values) == 1 else values
-        try:
-            return params_model.model_validate(data)
-        except pydantic.ValidationError as exc:
-            errors = [
-                {**error, "loc": ("query", *error["loc"])}
-                for error in exc.errors(include_url=False)
-            ]
-            raise RequestValidationError(errors) from None
+        return _validate_list_params(params_model, fields, request.query_params)
 
     parameters = [
         inspect.Parameter(
@@ -2190,6 +2208,81 @@ def _list_params_dependency(
         )
     list_params.__signature__ = inspect.Signature(parameters)  # type: ignore[attr-defined]
     return list_params
+
+
+#: The query key of each field of a list params model, the field, and
+#: whether the field reads every value of a repeated key.
+_ListParamsFields = list[tuple[str, FieldInfo, bool]]
+
+
+def _list_params_fields(params_model: type[pydantic.BaseModel]) -> _ListParamsFields:
+    return [
+        (_query_key(name, field), field, _reads_every_value(field))
+        for name, field in params_model.model_fields.items()
+    ]
+
+
+def _validate_list_params(
+    params_model: type[pydantic.BaseModel],
+    fields: _ListParamsFields,
+    query: QueryParams,
+) -> pydantic.BaseModel:
+    """Validate ``params_model`` from ``query``, as FastAPI validates a
+    query model.
+
+    :raises RequestValidationError: a value fails the validation of its
+        field. The location of each error starts with ``"query"``.
+    """
+    field_keys = {key for key, _, _ in fields}
+    data: dict[str, Any] = {}
+    for key, field, every_value in fields:
+        if key in query:
+            data[key] = query.getlist(key) if every_value else query[key]
+        elif not field.is_required():
+            default = field.get_default()
+            if default is not None:
+                data[key] = default
+    for key in query.keys():
+        if key not in field_keys:
+            values = query.getlist(key)
+            data[key] = values[0] if len(values) == 1 else values
+    try:
+        return params_model.model_validate(data)
+    except pydantic.ValidationError as exc:
+        errors = [
+            {**error, "loc": ("query", *error["loc"])}
+            for error in exc.errors(include_url=False)
+        ]
+        raise RequestValidationError(errors) from None
+
+
+def _validate_raw_list_params(
+    params_model: type[pydantic.BaseModel], raw: Any
+) -> pydantic.BaseModel:
+    """Validate query parameters that a caller passes instead of list params.
+
+    The list route checks the keys and validates the values. A caller that
+    passes a ``QueryParams`` or a mapping gets the same checks.
+
+    :raises RequestValidationError: a key that ``params_model`` does not
+        have, or a value that fails the validation of its field.
+    """
+    query = raw if isinstance(raw, QueryParams) else QueryParams(raw)
+    fields = _list_params_fields(params_model)
+    unknown = set(query.keys()) - {key for key, _, _ in fields}
+    if unknown:
+        raise RequestValidationError(
+            [
+                {
+                    "type": "extra_forbidden",
+                    "loc": ("query", key),
+                    "msg": f"Unknown query parameter {key!r}",
+                    "input": query.get(key),
+                }
+                for key in sorted(unknown)
+            ]
+        )
+    return _validate_list_params(params_model, fields, query)
 
 
 def _query_key(name: str, field: FieldInfo) -> str:

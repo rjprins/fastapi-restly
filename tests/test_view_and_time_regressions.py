@@ -2,6 +2,7 @@
 
 from datetime import datetime, timezone
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 from pydantic import BaseModel
@@ -55,19 +56,15 @@ async def test_async_get_many_uses_validated_list_params(monkeypatch):
     values (e.g. invalid pagination bounds) that would silently bypass our
     Pydantic Query schema.
     """
-    captured = {}
+    captured: dict[str, list[Any]] = {"list_params": [], "pagination": []}
 
-    def _apply_list_params(query, list_params, model, schema, *, pagination):
-        captured["calls"] = captured.get("calls", 0) + 1
-        captured["list_params"] = list_params
-        captured["model"] = model
-        captured["schema"] = schema
-        captured["pagination"] = pagination
+    def _apply_step(query, list_params, model, schema, *, pagination):
+        captured["list_params"].append(list_params)
+        captured["pagination"].append(pagination)
         return query
 
-    monkeypatch.setattr(
-        "fastapi_restly.views._async.apply_list_params", _apply_list_params
-    )
+    monkeypatch.setattr("fastapi_restly.views._async._apply_filters", _apply_step)
+    monkeypatch.setattr("fastapi_restly.views._async._apply_sort_and_page", _apply_step)
 
     view = _DummyAsyncView()
     view.session = _DummySession()
@@ -82,10 +79,11 @@ async def test_async_get_many_uses_validated_list_params(monkeypatch):
     # The validated Pydantic model is passed through verbatim — the modifier
     # is responsible for unpacking it. The raw request query params must not
     # be consulted.
-    assert captured["list_params"] is params
-    assert captured["calls"] == 1
+    # the filter step, then the sort and page step
+    assert captured["list_params"] == [params, params]
+    assert all(each is params for each in captured["list_params"])
     # and the view's pagination, which names the page parameters to read
-    assert captured["pagination"] is _DummyAsyncView.pagination
+    assert captured["pagination"] == [_DummyAsyncView.pagination] * 2
 
 
 def test_utc_now_is_timezone_aware_utc():

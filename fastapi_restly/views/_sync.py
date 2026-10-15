@@ -11,7 +11,7 @@ from ..objects import delete_object as object_delete_object
 from ..objects import make_new_object as object_make_new_object
 from ..objects import save_object as object_save_object
 from ..objects import update_object as object_update_object
-from ..query import apply_list_params
+from ..query._impl import _apply_filters, _apply_sort_and_page
 from ._base import (
     Action,
     BaseRestView,
@@ -23,6 +23,7 @@ from ._base import (
     ResponseSchemaT,
     ResponseShape,
     UpdateSchemaT,
+    _check_list_methods,
     _identity_criterion,
     _not_found_message,
     _ReadWhere,
@@ -69,6 +70,10 @@ class RestView(
     """
 
     session: SessionDep
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        _check_list_methods(cls, is_async=False)
 
     # ====================================================================
     # Endpoint methods (HTTP contract)
@@ -393,14 +398,39 @@ class RestView(
     def apply_list_params(
         self, query: sqlalchemy.Select[Any], list_params: Any
     ) -> sqlalchemy.Select[Any]:
-        """Apply the list params (filter, sort, page) to ``query``. Override
-        for a non-default URL grammar; the common case is driven by
-        configuration. The default is :func:`fastapi_restly.query.apply_list_params`
-        with the view's model, response class and pagination.
+        """Apply the list params to ``query``: :meth:`apply_filters`, then the
+        sort, then the page.
+
+        Override for another URL grammar; the common case is driven by
+        configuration. A ``QueryParams`` or a mapping goes through
+        :attr:`schema_list_params` first, as on the list route.
         """
-        return apply_list_params(
+        list_params = self._validated_list_params(list_params)
+        query = self.apply_filters(query, list_params)
+        return _apply_sort_and_page(
             query,
             list_params,
+            self.model,
+            _schema_response(type(self)),
+            pagination=self.pagination,
+        )
+
+    def apply_filters(
+        self, stmt: sqlalchemy.Select[Any], list_params: Any
+    ) -> sqlalchemy.Select[Any]:
+        """Apply the filters of ``list_params`` to ``stmt``, without the sort
+        and the page.
+
+        For a route that reads the client's filters but has its own order or
+        no rows to page, such as a count per category with ``GROUP BY``.
+        Like every custom read route, such a route calls :meth:`authorize`
+        and applies the scope itself. :meth:`apply_list_params` calls this
+        method first. A ``QueryParams`` or a mapping goes through
+        :attr:`schema_list_params` first, as on the list route.
+        """
+        return _apply_filters(
+            stmt,
+            self._validated_list_params(list_params),
             self.model,
             _schema_response(type(self)),
             pagination=self.pagination,

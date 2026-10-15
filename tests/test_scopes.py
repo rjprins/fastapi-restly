@@ -639,7 +639,7 @@ def test_a_count_route_counts_the_scoped_select_under_the_list_params(client):
         async def total(self, list_params) -> int:
             await self.authorize(fr.Action.GET_MANY)
             query = fr.apply_clauses(select(CountRow), fr.resolve_scope(self))
-            return await self.count(self.apply_list_params(query, list_params))
+            return await self.count(await self.apply_list_params(query, list_params))
 
     create_tables()
 
