@@ -47,7 +47,6 @@ Coverage checklist:
 - [x] View options: `pagination`
 - [x] View options: `exclude_routes`
 - [x] View options: class-level `dependencies`
-- [x] View options: `route_options` with endpoint names and `ViewRoute` keys
 - [x] `AsyncReactAdminView`
 - [x] `ReactAdminView` sync variant
 - [x] Inherited view configuration from base classes

@@ -34,10 +34,6 @@ class TicketBase(fr.AsyncRestView):
 @fr.include_view(app)
 class TicketView(TicketBase):
     prefix = "/tickets"
-    route_options = {
-        fr.ViewRoute.GET_MANY: {"name": "list_tickets", "operation_id": "list_tickets"},
-        "create_endpoint": {"summary": "Create a ticket"},
-    }
 
 
 APP_PAGINATION = fr.NumberedPagination(page_size_query_param="size", max_page_size=100)

@@ -16,8 +16,9 @@ the CRUD routes included. Restly fills in a few things for you:
 When the app builds its spec, Restly also warns when two classes have the same
 name; see [Name your schemas](#name-your-schemas).
 
-To change a default, set a view attribute or a route option. To document a
-custom route, pass keyword arguments to its decorator, as in FastAPI.
+To change a default, set a view attribute, or override the endpoint method
+with a decorator of your own. To document a custom route, pass keyword
+arguments to its decorator, as in FastAPI.
 
 (view-openapi-metadata)=
 ## Set tags and responses for a whole view
@@ -90,50 +91,56 @@ names above, so a function based on the tag and the name can give IDs such as
 `items-get_many`.
 
 If you generate clients from the spec, generate them again when you move to
-Restly's IDs. To keep an existing operation ID, set `operation_id` in the
-route's options; see the next section.
+Restly's IDs. To keep an existing operation ID, pass `operation_id` to the
+decorator of the endpoint method; see the next section.
 :::
 
-(route-options)=
+(crud-route-metadata)=
 ## Change the name, summary or operation ID of a CRUD route
 
-Set {attr}`route_options <fastapi_restly.views.View.route_options>` to pass
-FastAPI route keyword arguments to an endpoint method, without replacing the
-method:
+Override the endpoint method, and pass the keyword arguments to its
+decorator, as in FastAPI. The method calls the method of the base class, so
+the route works as before:
 
 ```python
 class InvoiceView(fr.AsyncRestView):
     prefix = "/invoices"
     model = Invoice
     schema = InvoiceSchema
-    route_options = {
-        fr.ViewRoute.GET_MANY: {
-            "name": "list_invoices",
-            "summary": "List invoices",
-            "operation_id": "billing_list_invoices",
-        },
-        "create_endpoint": {"summary": "Create an invoice"},
-    }
+
+    @fr.get("/", summary="List invoices", operation_id="billing_list_invoices")
+    async def get_many_endpoint(self, list_params):
+        return await super().get_many_endpoint(list_params)
 ```
 
-A key is an endpoint method name or a
-{class}`ViewRoute <fastapi_restly.views.ViewRoute>` value. Use `"put"` for the
-PUT route of React Admin, and the method name for a custom route. A value
-takes the same keyword arguments as a route decorator, except the path. An
-unknown method name raises
-{class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
-when the view registers. Options for an excluded route are ignored.
+Restly still fills in the rest of the route: the response model, the list
+params, and the name and the summary that you do not pass. A keyword argument
+that you pass wins over Restly's default. The table in
+[The names and operation IDs of the CRUD routes](#default-route-metadata)
+lists the endpoint methods.
 
 :::{admonition} Details
 :class: details
 
-The options win over the keyword arguments of the decorator, which win over
-Restly's defaults. A subclass inherits the mapping. A subclass that declares
-its own mapping replaces the parent's: Restly does not merge the two.
+The decorator passes its keyword arguments to FastAPI, so every option of a
+FastAPI route works. For example, `dependencies` adds a check to one route:
+
+```python
+    @fr.post("/", dependencies=[Depends(require_admin)])
+    async def create_endpoint(self, schema_obj):
+        return await super().create_endpoint(schema_obj)
+```
+
+An item route that you declare, such as `GET /{id}`, keeps the path that you
+give it. Restly does not add the `int` or `uuid` converter to it; see
+[Item paths and static routes](#item-route-matching).
+
+A subclass inherits the method and its decorator, so it also inherits an
+explicit `operation_id`. Each `operation_id` must be unique in the app's
+spec.
 
 The route names repeat across views. If you use `app.url_path_for()` to build
-the URLs of routes in several views, give them names of their own. Each
-explicit `operation_id` must be unique in the app's spec.
+the URLs of routes in several views, give them names of their own.
 :::
 
 (document-custom-route)=

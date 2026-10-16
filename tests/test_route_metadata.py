@@ -71,17 +71,29 @@ def test_two_view_operation_ids_and_summaries(base):
     assert len(ids) == len(set(ids))
 
 
-def test_route_options_override_metadata_without_replacing_endpoints(base):
+def test_override_with_a_decorator_sets_metadata_and_keeps_the_route(base):
     class ItemView(base):
         prefix = "/items"
-        route_options = {
-            fr.ViewRoute.GET_MANY: {
-                "name": "search_items",
-                "summary": "Search items",
-                "operation_id": "catalog_search",
-            },
-            "create_endpoint": {"name": "add_item", "summary": "Add an item"},
-        }
+
+        if issubclass(base, fr.AsyncRestView):
+
+            @fr.get("/{id}", operation_id="catalog_get", summary="Get an item")
+            async def get_one_endpoint(self, id):
+                return await super().get_one_endpoint(id)
+
+            @fr.post("/", name="add_item", summary="Add an item")
+            async def create_endpoint(self, schema_obj):
+                return await super().create_endpoint(schema_obj)
+
+        else:
+
+            @fr.get("/{id}", operation_id="catalog_get", summary="Get an item")
+            def get_one_endpoint(self, id):
+                return super().get_one_endpoint(id)
+
+            @fr.post("/", name="add_item", summary="Add an item")
+            def create_endpoint(self, schema_obj):
+                return super().create_endpoint(schema_obj)
 
     app = FastAPI()
     router = APIRouter()
@@ -89,10 +101,20 @@ def test_route_options_override_metadata_without_replacing_endpoints(base):
     app.include_router(router, prefix="/api")
 
     operations = _operations(app)
-    assert operations["/api/items", "get"] == ("catalog_search", "Search items")
+    assert operations["/api/items/{id}", "get"] == ("catalog_get", "Get an item")
     assert operations["/api/items", "post"] == ("api_items_add_item", "Add an item")
-    assert str(app.url_path_for("search_items")) == "/api/items"
+    assert str(app.url_path_for("get_one", id=1)) == "/api/items/1"
     assert str(app.url_path_for("add_item")) == "/api/items"
+
+    # Restly still fills in the types of the overridden routes
+    paths = app.openapi()["paths"]
+    create = paths["/api/items"]["post"]
+    body = create["requestBody"]["content"]["application/json"]["schema"]
+    assert body["$ref"].endswith("/ItemCreate")
+    response = create["responses"]["201"]["content"]["application/json"]["schema"]
+    assert response["$ref"].endswith("/ItemResponse")
+    (id_param,) = paths["/api/items/{id}"]["get"]["parameters"]
+    assert id_param["schema"]["type"] == "integer"
 
 
 def test_explicit_decorator_metadata_wins_over_defaults(base):
@@ -109,33 +131,13 @@ def test_explicit_decorator_metadata_wins_over_defaults(base):
     assert str(app.url_path_for("read_item", id=1)) == "/items/1"
 
 
-def test_route_options_win_over_decorator_metadata(base):
-    class ItemView(base):
-        prefix = "/items"
-        route_options = {
-            fr.ViewRoute.GET_ONE: {
-                "name": "retrieve_item",
-                "summary": "Retrieve an item",
-                "operation_id": "retrieve",
-            }
-        }
-
-        @fr.get("/{id}", name="read_item", summary="Read an item", operation_id="read")
-        def get_one_endpoint(self, id: int):
-            return {"id": id, "name": "Item"}
-
-    app = FastAPI()
-    fr.include_view(app, ItemView)
-    assert _operations(app)["/items/{id}", "get"] == ("retrieve", "Retrieve an item")
-    assert str(app.url_path_for("retrieve_item", id=1)) == "/items/1"
-
-
-def test_inherited_options_and_repeated_registration_do_not_mutate_metadata(base):
-    options = {fr.ViewRoute.GET_MANY: {"summary": "Find items"}}
-
+def test_inherited_overrides_and_repeated_registration_keep_metadata(base):
     class ParentView(base):
         prefix = "/v1"
-        route_options = options
+
+        @fr.get("/{id}", summary="Find an item")
+        def get_one_endpoint(self, id: int):
+            return {"id": id, "name": "Item"}
 
     app = FastAPI()
     fr.include_view(app, ParentView)
@@ -145,19 +147,22 @@ def test_inherited_options_and_repeated_registration_do_not_mutate_metadata(base
 
     class SiblingView(ParentView):
         prefix = "/others"
-        route_options = {fr.ViewRoute.GET_MANY: {"summary": "Find others"}}
+
+        @fr.get("/{id}", summary="Find another")
+        def get_one_endpoint(self, id: int):
+            return {"id": id, "name": "Other"}
 
     fr.include_view(app, ChildView)
     fr.include_view(app, SiblingView)
     operations = _operations(app)
-    assert operations["/v1", "get"] == ("v1_list", "Find items")
-    assert operations["/v1/items", "get"] == ("v1_items_list", "Find items")
-    assert operations["/v1/others", "get"] == ("v1_others_list", "Find others")
+    assert operations["/v1/{id}", "get"] == ("v1_get", "Find an item")
+    assert operations["/v1/items/{id}", "get"] == ("v1_items_get", "Find an item")
+    assert operations["/v1/others/{id}", "get"] == ("v1_others_get", "Find another")
 
     second_app = FastAPI()
     fr.include_view(second_app, ChildView)
-    assert _operations(second_app)["/v1/items", "get"] == operations["/v1/items", "get"]
-    assert options == {fr.ViewRoute.GET_MANY: {"summary": "Find items"}}
+    second = _operations(second_app)
+    assert second["/v1/items/{id}", "get"] == operations["/v1/items/{id}", "get"]
 
 
 def test_fastapi_custom_id_generator_receives_clean_route_names(base):
@@ -235,9 +240,13 @@ def test_explicit_generators_override_crud_fallback_after_mount(base, generator_
     class ItemView(base):
         prefix = "/items"
 
+        if generator_source == "route":
+
+            @fr.get("/{id}", generate_unique_id_function=generate_id)
+            def get_one_endpoint(self, id: int):
+                return {"id": id, "name": "Item"}
+
     kwargs = {"generate_unique_id_function": generate_id}
-    if generator_source == "route":
-        ItemView.route_options = {fr.ViewRoute.GET_MANY: kwargs}
     router = APIRouter(**(kwargs if generator_source == "router" else {}))
     fr.include_view(router, ItemView)
     app = FastAPI(**(kwargs if generator_source == "app" else {}))
@@ -245,25 +254,31 @@ def test_explicit_generators_override_crud_fallback_after_mount(base, generator_
         router, prefix="/api", **(kwargs if generator_source == "mount" else {})
     )
     operations = _operations(app)
-    assert operations["/api/items", "get"][0] == "custom_get_many_get"
+    assert operations["/api/items/{id}", "get"][0] == "custom_get_one_get"
 
 
 def test_explicit_operation_id_wins_over_app_generator(base):
     class ItemView(base):
         prefix = "/items"
-        route_options = {fr.ViewRoute.GET_MANY: {"operation_id": "catalog_search"}}
+
+        @fr.get("/{id}", operation_id="catalog_get")
+        def get_one_endpoint(self, id: int):
+            return {"id": id, "name": "Item"}
 
     app = FastAPI(generate_unique_id_function=lambda route: f"custom_{route.name}")
     fr.include_view(app, ItemView)
     operations = _operations(app)
-    assert operations["/items", "get"][0] == "catalog_search"
-    assert operations["/items/{id}", "get"][0] == "custom_get_one"
+    assert operations["/items/{id}", "get"][0] == "catalog_get"
+    assert operations["/items", "get"][0] == "custom_get_many"
 
 
 def test_custom_member_route_name_changes_operation_id_action(base):
     class ItemView(base):
         prefix = "/items"
-        route_options = {fr.ViewRoute.GET_ONE: {"name": "fetch_item"}}
+
+        @fr.get("/{id}", name="fetch_item")
+        def get_one_endpoint(self, id: int):
+            return {"id": id, "name": "Item"}
 
     app = FastAPI()
     fr.include_view(app, ItemView)
@@ -303,12 +318,11 @@ def test_custom_routes_on_rest_view_keep_fastapi_operation_ids(base):
     assert operations["/items", "get"][0] == "items_list"
 
 
-def test_plain_view_metadata_and_options():
+def test_plain_view_keeps_fastapi_metadata():
     class UtilityView(fr.View):
         prefix = "/utils"
-        route_options = {"status": {"name": "status", "summary": "Service status"}}
 
-        @fr.get("/status")
+        @fr.get("/status", name="status", summary="Service status")
         def status(self):
             return {"status": "ok"}
 
@@ -329,21 +343,36 @@ def test_plain_view_metadata_and_options():
     )
 
 
-def test_unknown_route_options_key_raises(base):
-    class ItemView(base):
-        prefix = "/items"
-        route_options = {"create": {"summary": "Add an item"}}
-
-    with pytest.raises(fr.exc.RestlyConfigurationError, match="create.*route_options"):
-        fr.include_view(FastAPI(), ItemView)
-
-
-def test_options_for_excluded_routes_are_allowed(base):
+def test_excluded_route_stays_out_when_the_view_overrides_it(base):
     class ItemView(base):
         prefix = "/items"
         exclude_routes = (fr.ViewRoute.DELETE,)
-        route_options = {fr.ViewRoute.DELETE: {"summary": "Remove an item"}}
+
+        @fr.delete("/{id}", summary="Remove an item")
+        def delete_endpoint(self, id: int):
+            return None
 
     app = FastAPI()
     fr.include_view(app, ItemView)
     assert ("/items/{id}", "delete") not in _operations(app)
+
+
+@pytest.mark.parametrize(
+    "base",
+    [fr.ReactAdminView, fr.AsyncReactAdminView],
+    ids=["react-admin-sync", "react-admin-async"],
+    indirect=True,
+)
+def test_react_admin_put_override_sets_its_metadata(base):
+    class ItemView(base):
+        prefix = "/items"
+
+        @fr.put("/{id}", summary="Replace an item", operation_id="catalog_replace")
+        def put(self, id: int, schema_obj):
+            return {"id": id, "name": "Item"}
+
+    app = FastAPI()
+    fr.include_view(app, ItemView)
+    operations = _operations(app)
+    assert operations["/items/{id}", "put"] == ("catalog_replace", "Replace an item")
+    assert str(app.url_path_for("put", id=1)) == "/items/1"

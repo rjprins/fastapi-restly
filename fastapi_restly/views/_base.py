@@ -977,11 +977,6 @@ class View:
     #: OpenAPI responses documented on every route. Each class in the hierarchy
     #: adds its own, and a subclass's entry for a status code wins.
     responses: ClassVar[dict[int | str, dict[str, Any]]] = {}
-    #: FastAPI route keyword arguments keyed by endpoint method name or
-    #: ``ViewRoute``. These override decorator metadata without replacing the
-    #: endpoint method. A subclass inherits this mapping unless it declares
-    #: its own, which replaces it.
-    route_options: ClassVar[Mapping[str | ViewRoute, Mapping[str, Any]]] = {}
 
     if TYPE_CHECKING:
         # include_view replaces __init__: each injected attribute becomes a
@@ -3544,12 +3539,6 @@ def _get_all_parent_endpoints(view_cls: type[View]) -> dict[str, Callable]:
 
 
 def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
-    for name in view_cls.route_options:
-        if not _is_route_name_in_lineage(view_cls, name):
-            raise RestlyConfigurationError(
-                f"{name!r} is not a route in {view_cls.__name__}.route_options"
-            )
-
     # Each level of the class hierarchy adds to these, base first: a subclass
     # cannot drop a guard its base declares.
     levels = [c.__dict__ for c in reversed(view_cls.mro())]
@@ -3592,11 +3581,7 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
                     )
                 ),
             }
-        route_kwargs = {
-            **defaults,
-            **route_kwargs,
-            **view_cls.route_options.get(name, {}),
-        }
+        route_kwargs = {**defaults, **route_kwargs}
         if getattr(endpoint, "_fr_list_guard", False):
             if list_parameters is None:
                 list_parameters = _list_openapi_parameters(

@@ -302,6 +302,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to the factory: `app = create_app(Settings(database_url=..., _env_file=None))`,
   in place of `Settings.use(...)` and then `create_app()`. In `alembic/env.py`,
   use `get_settings().database_url` in place of `Settings.current.database_url`.
+- `route_options` on a view. Override the endpoint method instead, and pass
+  the route arguments to its decorator, as in FastAPI. The method calls the
+  method of the base class, so the route works as before, and Restly still
+  fills in the response model and the list params:
+
+  ```python
+  class InvoiceView(fr.AsyncRestView):
+      # was: route_options = {fr.ViewRoute.GET_MANY: {"summary": "List invoices"}}
+      @fr.get("/", summary="List invoices", operation_id="billing_list")
+      async def get_many_endpoint(self, list_params):
+          return await super().get_many_endpoint(list_params)
+  ```
+
+  `route_options` was a second place for the route arguments, and a type
+  checker could not check its keys and values. A subclass that set it
+  replaced the whole mapping of its base, so a `dependencies` entry for one
+  route could disappear without an error. Restly now ignores the attribute,
+  also without an error. So move every entry to a decorator: a
+  `dependencies` entry that stays in `route_options` no longer runs.
 
 ### Fixed
 
