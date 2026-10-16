@@ -202,7 +202,7 @@ def test_raw_query_params_go_through_the_list_params(view_class):
         schema = ItemSchema
 
         @fr.get("/raw")
-        async def raw(self) -> list[str]:
+        async def raw(self, mode: str = "all") -> list[str]:
             stmt = await self.apply_list_params(select(Item), self.request.query_params)
             return [item.name for item in (await self.session.scalars(stmt))]
 
@@ -210,23 +210,19 @@ def test_raw_query_params_go_through_the_list_params(view_class):
     fr.include_view(app, ItemView)
     client = RestlyTestClient(app)
 
-    names = client.get("/items/raw", params={"name__in": "axe,bread"}).json()
+    names = client.get(
+        "/items/raw", params={"name__in": "axe,bread", "mode": "new"}
+    ).json()
     assert names == ["axe", "bread"]
     detail = client.get(
         "/items/raw", params={"page_size": 5000}, assert_status_code=422
     ).json()["detail"]
     assert detail[0]["loc"] == ["query", "page_size"]
-    detail = client.get(
-        "/items/raw", params={"vendor.name": "acme"}, assert_status_code=422
-    ).json()["detail"]
-    assert detail == [
-        {
-            "type": "extra_forbidden",
-            "loc": ["query", "vendor.name"],
-            "msg": "Unknown query parameter 'vendor.name'",
-            "input": "acme",
-        }
-    ]
+    # a key that the list params do not have belongs to the route
+    every_name = client.get("/items/raw").json()
+    assert client.get("/items/raw", params={"vendor.name": "acme"}).json() == (
+        every_name
+    )
 
 
 @pytest.mark.parametrize("view_class", [fr.AsyncRestView], indirect=True)

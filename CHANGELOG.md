@@ -79,12 +79,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   so. On a sync view, an `async def` override fails the same way.
 - `apply_list_params` and `apply_filters` on a view validate a
   `QueryParams` or a mapping through `schema_list_params` first, as the list
-  route does. An unknown key, a bad `sort` or `page_size`, or a bad value for
-  a filter of the view's own raises `RequestValidationError`, which is a
-  `422`. A bad value for a generated filter still raises `BadQueryParam`, a
-  `400`, as on the list route. A mapping without `page_size` gets the
-  default page size, so `view.get_many({})` now returns the first page, not
-  every row.
+  route does. A bad `sort` or `page_size`, or a bad value for a filter of the
+  view's own, raises `RequestValidationError`, which is a `422`. A key that
+  the list params do not have raises it too in a mapping. In a
+  `QueryParams`, such a key belongs to the route, such as `?mode=`, so
+  Restly leaves it out. A route that declares `list_params` gets a `422` for
+  an unknown key. A bad value for a generated filter still raises
+  `BadQueryParam`, a `400`, as on the list route. A mapping without
+  `page_size` gets the default page size, so `view.get_many({})` now returns
+  the first page, not every row.
 - A response field named like a pagination parameter, such as `page`, fails
   only when it gets a filter key. Leave the key out with
   `exclude_filters = ("page",)`. Before, such a field always failed when the

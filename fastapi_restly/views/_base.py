@@ -2625,25 +2625,32 @@ def _validate_raw_list_params(
 ) -> pydantic.BaseModel:
     """Validate query parameters that a caller passes instead of list params.
 
-    The list route checks the keys and validates the values. A caller that
-    passes a ``QueryParams`` or a mapping gets the same checks.
+    The values are validated as on the list route. A ``QueryParams`` is the
+    query of a request, which also holds the keys of the route, so a key
+    that ``params_model`` does not have is left out, as FastAPI leaves out a
+    key that a route does not declare. A mapping holds list params only, so
+    such a key is an error.
 
-    :raises RequestValidationError: a key that ``params_model`` does not
-        have, or a value that fails the validation of its field.
+    :raises RequestValidationError: a mapping has a key that
+        ``params_model`` does not have, or a value fails the validation of
+        its field.
     """
-    if isinstance(raw, QueryParams):
-        query = raw
-    else:
-        # a list value is a repeated key, as in the query string
-        query = QueryParams(
-            [
-                (key, item)
-                for key, value in dict(raw).items()
-                for item in (value if isinstance(value, (list, tuple)) else [value])
-            ]
-        )
     fields = _list_params_fields(params_model)
-    unknown = set(query.keys()) - {key for key, _, _ in fields}
+    keys = {key for key, _, _ in fields}
+    if isinstance(raw, QueryParams):
+        query = QueryParams(
+            [(key, value) for key, value in raw.multi_items() if key in keys]
+        )
+        return _validate_list_params(params_model, fields, query)
+    # a list value is a repeated key, as in the query string
+    query = QueryParams(
+        [
+            (key, item)
+            for key, value in dict(raw).items()
+            for item in (value if isinstance(value, (list, tuple)) else [value])
+        ]
+    )
+    unknown = set(query.keys()) - keys
     if unknown:
         raise RequestValidationError(
             [

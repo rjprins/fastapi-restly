@@ -721,6 +721,13 @@ route, passes them on with `self.handle_get_many(list_params, scope=...)`; see
 [Read other rows on one route](#per-read-scope). The route can take its own
 query parameters next to `list_params`, as in
 `def search(self, list_params, mode: SearchMode)`.
+
+A route can also pass `self.request.query_params` on, in place of
+`list_params`. Restly reads the keys of the list parameters from it and
+leaves the other keys to the route. So a misspelled key, such as `?nmae=`, is
+not an error there, and OpenAPI does not show the list keys. A dict, as in
+`view.get_many({"name": "axe"})`, holds list parameters only, so a key that
+they do not have gets `422`.
 :::
 
 (filters-in-own-route)=
