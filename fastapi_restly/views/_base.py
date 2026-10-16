@@ -1563,6 +1563,18 @@ _RENAMED_METHOD_HINTS = {
     ),
     "apply_query_params": " Its arguments are (query, list_params).",
 }
+# Removed before 1.0, with what to use instead.
+_REMOVED_SETTINGS = {
+    "route_options": (
+        "Override the endpoint method and pass the route arguments to its "
+        "decorator, as in FastAPI."
+    ),
+    "extra_query_params": (
+        "Declare the key where your code reads it: a parameter of the endpoint "
+        "method, a dependency, or @fr.list_filter. For keys that are only known "
+        'at run time, set unknown_query_params = "ignore".'
+    ),
+}
 
 
 def _route_parameters(route: Callable[..., Any]) -> Mapping[str, inspect.Parameter]:
@@ -1579,10 +1591,23 @@ def _route_parameters(route: Callable[..., Any]) -> Mapping[str, inspect.Paramet
     return inspect.signature(route).parameters
 
 
+def _check_removed_settings(cls: type) -> None:
+    """Reject a setting that Restly no longer reads. Without this a guard in
+    ``route_options`` would stop running, and nothing would say so."""
+    for klass in cls.__mro__:
+        for name, instead in _REMOVED_SETTINGS.items():
+            if name in vars(klass):
+                raise RestlyConfigurationError(
+                    f"{cls.__name__} sets {name}{_origin(cls, klass)}, which was "
+                    f"removed. {instead}"
+                )
+
+
 def _check_renamed_names(cls: type) -> None:
     """Reject a setting, a method or a route parameter that still uses a name
     from before the rename. Runs when the class is defined and again at
     registration, so a value assigned to the class later is caught too."""
+    _check_removed_settings(cls)
     for klass in cls.__mro__:
         origin = _origin(cls, klass)
         for old, new in _RENAMED_SETTINGS.items():
@@ -3528,6 +3553,8 @@ def _get_all_parent_endpoints(view_cls: type[View]) -> dict[str, Callable]:
 
 
 def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
+    # Also for a plain View, which _check_renamed_names does not see.
+    _check_removed_settings(view_cls)
     # Each level of the class hierarchy adds to these, base first: a subclass
     # cannot drop a guard its base declares.
     levels = [c.__dict__ for c in reversed(view_cls.mro())]

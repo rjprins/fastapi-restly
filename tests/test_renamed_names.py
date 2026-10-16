@@ -1,8 +1,8 @@
-"""Names that were renamed before 1.0 fail at class definition.
+"""Names that were renamed or removed before 1.0 fail at class definition.
 
 Restly no longer reads the old names, so a view that still uses one would
 lose its setting or override without any error, or fail only on a request.
-The error names the new name.
+The error names the new name, or what to use instead.
 """
 
 import re
@@ -30,6 +30,38 @@ def test_old_list_params_setting_names_the_new_one(base):
         "OldView sets listing_param_schema, which was renamed to "
         "schema_list_params. Rename the setting."
     )
+
+
+@pytest.mark.parametrize("base", VIEW_BASES)
+@pytest.mark.parametrize(
+    "name, instead",
+    [
+        ("route_options", "Override the endpoint method"),
+        ("extra_query_params", 'set unknown_query_params = "ignore".'),
+    ],
+)
+def test_removed_setting_says_what_to_use_instead(base, name, instead):
+    with pytest.raises(RestlyConfigurationError) as excinfo:
+        type("OldView", (base,), {name: {}})
+
+    message = str(excinfo.value)
+    assert message.startswith(f"OldView sets {name}, which was removed. ")
+    assert instead in message
+
+
+def test_removed_setting_on_a_plain_view_fails_at_registration(client):
+    class OldView(fr.View):
+        prefix = "/old"
+        route_options = {"ping": {"summary": "Ping"}}
+
+        @fr.get("/ping")
+        async def ping(self):
+            return "pong"
+
+    with pytest.raises(
+        RestlyConfigurationError, match="OldView sets route_options, which was removed"
+    ):
+        fr.include_view(client.app, OldView)
 
 
 @pytest.mark.parametrize("base", VIEW_BASES)

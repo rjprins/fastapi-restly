@@ -318,9 +318,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `route_options` was a second place for the route arguments, and a type
   checker could not check its keys and values. A subclass that set it
   replaced the whole mapping of its base, so a `dependencies` entry for one
-  route could disappear without an error. Restly now ignores the attribute,
-  also without an error. So move every entry to a decorator: a
-  `dependencies` entry that stays in `route_options` no longer runs.
+  route could disappear without an error. A view that still sets
+  `route_options` raises `RestlyConfigurationError`.
 - `extra_query_params` on a view. The unknown-key check accepts every query
   key that the route declares. So declare a key of your own where your code
   uses it. Then it has a type, and OpenAPI shows it. Use the place that fits
@@ -334,9 +333,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Keys that are only known at run time, such as a family `extra.<name>`
     that your code reads from `self.request`: `unknown_query_params = "ignore"`.
 
-  React-admin views follow the same rules. Restly now ignores
-  `extra_query_params` without an error, so a key that is only in it gets
-  `422` again.
+  React-admin views follow the same rules. A view that still sets
+  `extra_query_params` raises `RestlyConfigurationError`.
 
 ### Fixed
 
