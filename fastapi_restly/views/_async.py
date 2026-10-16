@@ -300,10 +300,14 @@ class AsyncRestView(
         is no separate parameter to declare.
 
         :param list_params: the list params (filter, sort, page) as the
-            endpoint receives them.
+            endpoint receives them. A ``QueryParams`` or a mapping goes
+            through :attr:`schema_list_params` first, as on the list route.
         :param scope: a clause that replaces the resolved scope for this
             read; ``fr.clauses.UNSCOPED`` reads unscoped.
         """
+        # once here, so an override of apply_list_params and the response
+        # get the list params as the list route gives them
+        list_params = self._validated_list_params(list_params)
         query = self._apply_scope(select(self.model), scope)
         query = await self.apply_list_params(query, list_params)
         total_count = (

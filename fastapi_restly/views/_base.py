@@ -1871,11 +1871,11 @@ class BaseRestView(
         """``list_params`` as the list route gives them.
 
         A ``QueryParams`` or a mapping goes through :attr:`schema_list_params`
-        first, as on the list route. List params as a Pydantic model are
-        already validated. A view that is not registered gets the list params
-        that registration would set.
+        first, as on the list route. Anything else is list params already,
+        such as a Pydantic model, which is validated. A view that is not
+        registered gets the list params that registration would set.
         """
-        if isinstance(list_params, pydantic.BaseModel):
+        if not isinstance(list_params, Mapping):
             return list_params
         return _validate_raw_list_params(_schema_list_params(type(self)), list_params)
 

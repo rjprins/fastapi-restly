@@ -286,9 +286,19 @@ def test_a_view_with_list_params_of_its_own(view_class):
                 stmt.order_by(name, Item.id).limit(list_params.page_size).offset(offset)
             )
 
+        @fr.get("/raw")
+        async def raw(self) -> Any:
+            # the overrides get the model, and the envelope its page size
+            result = await self.handle_get_many(self.request.query_params)
+            return self.to_response(result, fr.ResponseShape.LIST)
+
     app = FastAPI()
     fr.include_view(app, ItemView)
     client = RestlyTestClient(app)
+
+    raw = client.get("/items/raw", params={"q": "a", "order": "-name"}).json()
+    assert raw == client.get("/items/", params={"q": "a", "order": "-name"}).json()
+    assert (len(raw["data"]), raw["page_size"]) == (2, 2)
 
     payload = client.get(
         "/items/", params={"q": "a", "order": "-name", "page": 2}
