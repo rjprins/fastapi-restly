@@ -5,7 +5,7 @@ from sqlalchemy import engine_from_config, pool
 
 import app.main  # noqa: F401  (imports every view, and each view its models)
 from app.models import Base
-from app.settings import Settings
+from app.settings import get_settings
 
 config = context.config
 
@@ -16,7 +16,7 @@ if config.config_file_name is not None:
 # command falls back to the same settings the application uses.
 if not config.get_main_option("sqlalchemy.url"):
     # Escaped because Alembic reads this through configparser interpolation.
-    url = Settings.current.database_url.replace("%", "%%")
+    url = get_settings().database_url.replace("%", "%%")
     config.set_main_option("sqlalchemy.url", url)
 
 target_metadata = Base.metadata

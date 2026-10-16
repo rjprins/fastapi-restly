@@ -338,9 +338,7 @@ from {PACKAGE}.settings import Settings
 # _env_file=None so a local .env cannot point the suite at the development
 # database. The ignore is for the type checker: pydantic-settings accepts the
 # underscore arguments at runtime but does not declare them.
-Settings.use(Settings(database_url=TEST_DATABASE_URL, _env_file=None))  # type: ignore[call-arg]
-
-app = create_app()
+app = create_app(Settings(database_url=TEST_DATABASE_URL, _env_file=None))  # type: ignore[call-arg]
 fr.testing.configure_tests(app=app, base=Base, {schema_setup})
 '''
 

@@ -51,7 +51,6 @@ fastapi_restly:
   - route
   - schemas
   - testing
-  - utils
   - views
   - where_clause
 fastapi_restly.clauses:
@@ -137,8 +136,6 @@ fastapi_restly.testing:
   - AsyncRestlyTestClient
   - RestlyTestClient
   - configure_tests
-fastapi_restly.utils:
-  - CurrentSettingsMixin
 fastapi_restly.views:
   - Action
   - AsyncReactAdminView
@@ -225,8 +222,6 @@ fastapi_restly.testing:
   - AsyncRestlyTestClient
   - RestlyTestClient
   - configure_tests
-fastapi_restly.utils:
-  - CurrentSettingsMixin
 fastapi_restly.views:
   - BaseRestView
   - Envelope

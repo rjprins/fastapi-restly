@@ -6,7 +6,7 @@ from logging.config import fileConfig
 import app.main  # noqa: F401  (imports every view, and each view its models)
 from alembic import context
 from app.models import Base
-from app.settings import Settings
+from app.settings import get_settings
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
@@ -19,7 +19,7 @@ if config.config_file_name is not None:
 # Restly's test setup injects its database URL into the Alembic config. Direct
 # Alembic commands fall back to the same validated settings as the application.
 if not config.get_main_option("sqlalchemy.url"):
-    database_url = Settings().sqlalchemy_database_url.replace("%", "%%")
+    database_url = get_settings().sqlalchemy_database_url.replace("%", "%%")
     config.set_main_option("sqlalchemy.url", database_url)
 
 target_metadata = Base.metadata

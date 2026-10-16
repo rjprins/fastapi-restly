@@ -185,6 +185,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   conflict in a CRUD write or a `write_action` block, because the block raises
   `fr.exc.Conflict` first. Register it for `fr.exc.Conflict` instead; the
   original error is `exc.__cause__`.
+- `fr.utils.CurrentSettingsMixin`, and the `fr.utils` module with it. An app
+  reads its settings in only two places, the application factory and
+  `alembic/env.py`, so it does not need a shared instance. Use a plain
+  `pydantic-settings` class with a `get_settings()` function, and give the
+  factory an optional `settings` argument:
+
+  ```python
+  class Settings(BaseSettings):  # was: (fr.utils.CurrentSettingsMixin, BaseSettings)
+      database_url: str
+
+
+  def get_settings() -> Settings:
+      return Settings()  # type: ignore[call-arg]
+
+
+  def create_app(settings: Settings | None = None) -> FastAPI:
+      if settings is None:
+          settings = get_settings()  # was: settings = Settings.current
+      ...
+  ```
+
+  Pyright and mypy report `Settings()` as a call with a missing argument,
+  because they do not know that pydantic-settings reads `database_url` from
+  the environment. `get_settings()` keeps that `# type: ignore` in one place,
+  as in the project that `restly new` makes. A test passes its own settings
+  to the factory: `app = create_app(Settings(database_url=..., _env_file=None))`,
+  in place of `Settings.use(...)` and then `create_app()`. In `alembic/env.py`,
+  use `get_settings().database_url` in place of `Settings.current.database_url`.
 
 ### Fixed
 

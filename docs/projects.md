@@ -324,9 +324,10 @@ schema. Alembic's `env.py` imports `main.py` for this reason; see
 [Set up migrations with Alembic](#alembic). A model that no view imports, such as an
 outbox table, needs its own import, which that section also explains.
 
-Importing `main.py` must not build the application. `create_app()` builds it,
-and only the server calls it. [Run the app](#running-the-app) shows how,
-and why the application object does not belong in `main.py`. The lifespan in
+Importing `main.py` must not build the application. `create_app()` builds it.
+The server calls it, and the test suite calls it with its own settings.
+[Run the app](#running-the-app) shows how the server calls it, and why the
+application object does not belong in `main.py`. The lifespan in
 this file closes the engine on shutdown; see
 [Close the engine on shutdown](#engine-disposal).
 
@@ -397,7 +398,7 @@ import fastapi_restly as fr
 from fastapi import APIRouter, FastAPI
 
 from .orders.views import OrderV2View, OrderView
-from .settings import Settings
+from .settings import Settings, get_settings
 from .users.views import UserView
 
 VIEWS = {
@@ -406,8 +407,9 @@ VIEWS = {
 }
 
 
-def create_app() -> FastAPI:
-    settings = Settings.current
+def create_app(settings: Settings | None = None) -> FastAPI:
+    if settings is None:
+        settings = get_settings()
     app = FastAPI()
     fr.configure(app, async_database_url=settings.database_url)
     for prefix, views in VIEWS.items():

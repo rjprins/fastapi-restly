@@ -7,14 +7,15 @@ import fastapi_restly as fr
 from fastapi import FastAPI
 
 from .models import Base
-from .settings import Settings
+from .settings import Settings, get_settings
 from .users.views import UserView
 
 VIEWS = (UserView,)
 
 
-def create_app() -> FastAPI:
-    settings = Settings.current
+def create_app(settings: Settings | None = None) -> FastAPI:
+    if settings is None:
+        settings = get_settings()
     app = FastAPI(title="myapp", lifespan=lifespan)
     fr.configure(app, async_database_url=settings.database_url, health="/health")
 

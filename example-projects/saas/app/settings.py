@@ -5,10 +5,8 @@ from pathlib import Path
 from pydantic import Field, PostgresDsn, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-import fastapi_restly as fr
 
-
-class Settings(fr.utils.CurrentSettingsMixin, BaseSettings):
+class Settings(BaseSettings):
     """Application settings loaded from environment variables or ``.env``."""
 
     # Absolute path: a relative env_file resolves against the working
@@ -35,3 +33,10 @@ class Settings(fr.utils.CurrentSettingsMixin, BaseSettings):
     def sqlalchemy_database_url(self) -> str:
         """Return the validated URL in the form SQLAlchemy accepts."""
         return str(self.database_url)
+
+
+def get_settings() -> Settings:
+    """Read the settings from the environment and the .env file."""
+    # pydantic-settings fills the required fields from the environment. Type
+    # checkers do not know that, and report them as missing arguments.
+    return Settings()  # type: ignore[call-arg]

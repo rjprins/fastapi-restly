@@ -24,7 +24,6 @@ import fastapi_restly as fr
 | {mod}`fr.objects <fastapi_restly.objects>` | Functions for building, updating, saving, and deleting ORM objects through a session. |
 | {mod}`fr.exc <fastapi_restly.exc>` | Configuration errors, HTTP errors, and warnings. |
 | {mod}`fr.testing <fastapi_restly.testing>` | Database test setup and synchronous and asynchronous test clients. |
-| {mod}`fr.utils <fastapi_restly.utils>` | Shared settings instances through {class}`CurrentSettingsMixin <fastapi_restly.utils.CurrentSettingsMixin>`. |
 
 ## Reference pages
 

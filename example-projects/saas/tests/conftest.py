@@ -69,14 +69,13 @@ _test_url = _test_url.set(drivername="postgresql+asyncpg")
 # Disable the local .env file so omitted settings do not pick up a developer's
 # dotenv values. An exported shell variable (e.g. DB_POOL_SIZE) still applies,
 # the same as it would in production, since only the file source is disabled.
-Settings.use(
+app = create_app(
     Settings(
         database_url=_test_url.render_as_string(hide_password=False), _env_file=None
     )
 )
-app = create_app()
 
-# Dog-food the migration-backed setup against the database the suite installed.
+# Dog-food the migration-backed setup against the test database.
 fr.testing.configure_tests(
     app=app, base=Base, alembic_upgrade=True, db_cleanup_exclude=("country",)
 )
