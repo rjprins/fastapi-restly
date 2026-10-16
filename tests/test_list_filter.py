@@ -10,7 +10,7 @@ from typing import Any
 
 import pydantic
 import pytest
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from sqlalchemy import ColumnElement, ForeignKey, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -341,6 +341,28 @@ def test_a_key_can_replace_a_generated_key_that_is_off(view_class):
 def test_a_key_follows_the_rules_of_a_query_parameter(key, message):
     with pytest.raises(RestlyConfigurationError, match=message):
         fr.list_filter(key)
+
+
+def test_a_condition_reads_a_context_member(view_class):
+    class Current(fr.ContextNamespace):
+        min_views: fr.ContextParam[int]
+
+    async def bind_min_views():
+        with Current.bind(min_views=1000):
+            yield
+
+    class ItemView(view_class):  # type: ignore[valid-type,misc]
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+        dependencies = [Depends(bind_min_views)]
+
+        @fr.list_filter("popular")
+        def filter_popular(self, value: bool) -> ColumnElement[bool]:
+            return Item.view_count > Current.min_views
+
+    with client_for(ItemView) as client:
+        assert names(client, popular=True) == ["Anvil", "apple"]
 
 
 def test_a_key_of_a_page_parameter_fails():

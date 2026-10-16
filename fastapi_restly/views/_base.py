@@ -1225,39 +1225,34 @@ def _apply_own_filters(
         a clause or ``None``, or a condition on a table that is not in the
         statement.
     """
-    conditions: list[tuple[str, ColumnElement[bool]]] = []
+    conditions: list[ColumnElement[bool]] = []
     for label, result in results:
         if result is None or result is UNSCOPED:
             continue
         result = _clause_element(result)
-        if isinstance(result, WhereClause):
-            result = result()
-        elif type(result) is bool:
+        if isinstance(result, ColumnElement):
+            # applying it as a clause fills members such as Current.user_id
+            result = where_clause(result)
+        if type(result) is bool:
             raise TypeError(
                 f"{label} returned a bool, not a SQL expression. A comparison "
                 "on an instance attribute is a bool; compare the column "
                 "instead (Item.name == value)."
             )
-        elif not isinstance(result, ColumnElement):
+        if not isinstance(result, WhereClause):
             raise TypeError(
                 f"{label} must return a SQLAlchemy boolean expression, a "
                 f"clause or None, got {type(result).__name__}."
             )
-        conditions.append((label, result))
-    if not conditions:
-        return stmt
-    # a table outside the statement would be a cross join that the scope
-    # does not reach; the statement's tables are read once for all methods
-    try:
-        _guard_statement_tables(stmt, [condition for _, condition in conditions])
-    except TypeError:
-        for label, condition in conditions:
-            try:
-                _guard_statement_tables(stmt, [condition])
-            except TypeError as exc:
-                raise TypeError(f"{label}: {exc}") from None
-        raise
-    return stmt.where(*(condition for _, condition in conditions))
+        condition = result()
+        # a table outside the statement would be a cross join that the scope
+        # does not reach
+        try:
+            _guard_statement_tables(stmt, [condition])
+        except TypeError as exc:
+            raise TypeError(f"{label}: {exc}") from None
+        conditions.append(condition)
+    return stmt.where(*conditions) if conditions else stmt
 
 
 def _typed_id_route(endpoint: Callable[..., Any]) -> Callable[..., Any]:
