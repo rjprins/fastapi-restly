@@ -20,6 +20,7 @@ import re
 import sys
 import types
 import warnings
+import weakref
 from collections.abc import Mapping, Set
 from enum import Enum
 from typing import (
@@ -2009,14 +2010,15 @@ class BaseRestView(
     def _check_declared_schema_list_params(cls) -> None:
         """Reject declared list params that do not follow the view's settings.
 
-        Restly generates list params from the pagination, the four key
-        settings and the filter methods. When a subclass changes one of them,
-        it gets generated list params, unless the base wrote its list params
-        by hand. So a setting here comes with or before the declaration, or
-        the list params are written by hand. List params from
-        ``derive_schema_list_params`` must have the view's settings: other
-        settings give other keys than the view says. Hand-written list params
-        take no settings and no filter methods.
+        Restly generates list params from the pagination, the list settings
+        and the filter methods. A subclass that changes one of them gets new
+        list params only when the declared ones are what Restly would
+        generate for the class that declares them (see
+        ``_generated_for``). Otherwise the declared list params stay, and
+        must fit the view. List params from ``derive_schema_list_params``
+        must have the view's settings: other settings give other keys than
+        the view says. Hand-written list params take no settings and no
+        filter methods.
         """
         params = cls.schema_list_params
         declarer = _owner(cls, "schema_list_params")
@@ -2027,14 +2029,14 @@ class BaseRestView(
         # after "Leave" or "leave"
         out = f"schema_list_params out{on_declarer} to have it generated"
 
-        def derive(change: str) -> str:
-            return (
-                f"create {params.__name__} with "
-                "fr.query.derive_schema_list_params(), so that Restly can "
-                f"generate new list params for a subclass with other {change}"
-            )
+        def below(setter: type) -> bool:
+            """Whether ``setter`` is a subclass of the declaring class."""
+            return cls.__mro__.index(setter) < cls.__mro__.index(declarer)
 
-        position = cls.__mro__.index
+        def remove(name: str, setter: type) -> str:
+            if setter is cls:
+                return "Remove the setting"
+            return f"Remove {name} from {setter.__name__}"
 
         record_keys = (
             [(own.key, own.method) for own in record.own_filters] if record else []
@@ -2046,20 +2048,15 @@ class BaseRestView(
             if (key, name) in record_keys:
                 continue
             setter = _owner(cls, name)
-            if position(setter) < position(declarer):
-                fix = f"Leave {out}, or {derive('filter methods')}"
-            elif setter is declarer:
-                fix = f"Leave {out}"
-            else:
-                fix = (
-                    f"Leave {out}, or set {name} = None on {declarer.__name__} "
-                    "to drop the filter"
-                )
+            fix = f"Leave {out}"
+            if setter is not declarer and not below(setter):
+                fix += f", or set {name} = None on {declarer.__name__} to drop it"
+            kind = "is written by hand" if record is None else "was created without it"
             raise RestlyConfigurationError(
                 f"{cls.__name__} has the filter method {name}"
-                f"{_set_by(cls, name)}, but {its} does not have its key "
-                f"{key!r}. Restly adds the key of a filter method only to list "
-                f"params that it generates. {fix}."
+                f"{_set_by(cls, name)}, but {its} {kind}. Restly adds the key "
+                f"{key!r} of a filter method only to list params that it "
+                f"generates. {fix}."
             )
         others = [key for key, name in record_keys if (key, name) not in own_keys]
         if others:
@@ -2082,34 +2079,27 @@ class BaseRestView(
                 found = f"sets {name} = {value!r}"
             else:
                 found = f"inherits {name} = {value!r} from {setter.__name__}"
-            remove = (
-                "Remove the setting"
-                if setter is cls
-                else f"Remove {name} from {setter.__name__}"
-            )
             if record is None:
                 problem = "is written by hand, so Restly cannot apply the setting"
-                if position(setter) < position(declarer):
-                    fix = f"{remove}, or {derive('settings')}"
-                elif setter is declarer:
-                    fix = f"{remove}, or leave {out}"
-                else:
-                    fix = (
-                        f"Set {name} = {default!r} on {declarer.__name__}, or "
-                        f"leave {out}"
-                    )
             else:
                 problem = (
                     f"was created with {name}={expected!r}. A view's settings "
                     "must be the ones that its list params were created with"
                 )
-                if setter is declarer and value != default:
-                    fix = f"Create it with {name}={value!r}, or leave {out}"
-                else:
-                    fix = (
-                        f"Set {name} = {expected!r} on {declarer.__name__}, or "
-                        f"leave {out}"
-                    )
+            if below(setter):
+                fix = (
+                    f"{remove(name, setter)}, or declare schema_list_params on "
+                    f"{setter.__name__} as well, created by "
+                    f"fr.query.derive_schema_list_params() with {name}={value!r}"
+                )
+            elif setter is declarer and record is None:
+                fix = f"{remove(name, setter)}, or leave {out}"
+            elif setter is declarer:
+                fix = f"Create it with {name}={value!r}, or leave {out}"
+            else:
+                fix = (
+                    f"Set {name} = {expected!r} on {declarer.__name__}, or leave {out}"
+                )
             raise RestlyConfigurationError(
                 f"{cls.__name__} {found}, but {its} {problem}. {fix}."
             )
@@ -2117,10 +2107,23 @@ class BaseRestView(
         if record is None:
             return
         if _query_settings(record.pagination) != _query_settings(cls.pagination):
+            setter = _owner(cls, "pagination")
+            if below(setter):
+                fix = (
+                    f"{remove('pagination', setter)}, or declare "
+                    f"schema_list_params on {setter.__name__} as well, created "
+                    "with its pagination"
+                )
+            elif cls.pagination is _DEFAULT_PAGINATION:
+                fix = f"Create it with the default pagination, or leave {out}"
+            else:
+                fix = (
+                    f"Create it with the pagination of {setter.__name__}, or "
+                    f"leave {out}"
+                )
             raise RestlyConfigurationError(
                 f"{cls.__name__}.schema_list_params{origin} was created for "
-                "other pagination settings than the view's. Create it with "
-                f"pagination={cls.__name__}.pagination, or leave {out}."
+                f"other pagination settings than the view's. {fix}."
             )
 
     @classmethod
@@ -2276,22 +2279,50 @@ def _decided_at(cls: type, name: str) -> int | None:
     if source is None:
         return declared
     source_at = _decided_at(cls, source)
-    if (
-        name == "schema_list_params"
-        and declared is not None
-        and _record_of(vars(cls.__mro__[declared])[name]) is not None
-    ):
-        # Restly can generate these list params again, so they also follow
-        # the settings and the filter methods of a subclass.
+    if name == "schema_list_params" and declared is not None:
+        # Declared list params that are the generated ones also follow the
+        # settings and the filter methods of a subclass.
         settings_at = _list_settings_at(cls)
-        if source_at is None or settings_at < source_at:
-            source_at = settings_at
+        if settings_at < declared and _generated_for(cls.__mro__[declared]):
+            if source_at is None or settings_at < source_at:
+                source_at = settings_at
     if declared is None:
         return source_at
     # A declared schema stays, whatever model a subclass sets.
     if name != "schema" and source_at is not None and source_at < declared:
         return source_at
     return declared
+
+
+#: Whether the list params that a class declares are the ones that Restly
+#: would generate for it.
+_GENERATED_FOR: "weakref.WeakKeyDictionary[type, bool]" = weakref.WeakKeyDictionary()
+
+
+def _generated_for(declarer: type) -> bool:
+    """Whether the list params that ``declarer`` declares are the ones that
+    Restly would generate for it.
+
+    Only then does a subclass with other settings get new list params.
+    List params from a narrower schema, or with settings that the class does
+    not have, would get wider keys.
+    """
+    if declarer in _GENERATED_FOR:
+        return _GENERATED_FOR[declarer]
+    declared = vars(declarer)["schema_list_params"]
+    generated: type[pydantic.BaseModel] | None = None
+    if _record_of(declared) is not None:
+        try:
+            generated = _derive_view_list_params(declarer)
+        except (AttributeError, ValueError, RestlyConfigurationError):
+            pass  # the class cannot generate list params, such as a mixin
+    result = (
+        generated is not None
+        and list(generated.model_fields) == list(declared.model_fields)
+        and _record_of(generated) == _record_of(declared)
+    )
+    _GENERATED_FOR[declarer] = result
+    return result
 
 
 def _list_settings_at(cls: type) -> int:

@@ -492,9 +492,9 @@ def test_a_subclass_cannot_change_the_keys_of_hand_written_list_params(app):
     assert str(exc_info.value) == (
         "UserView sets include_filters = ('username',), but its schema_list_params "
         "(from ItemView) is written by hand, so Restly cannot apply the "
-        "setting. Remove the setting, or create ItemParams with "
-        "fr.query.derive_schema_list_params(), so that Restly can generate "
-        "new list params for a subclass with other settings."
+        "setting. Remove the setting, or declare schema_list_params on "
+        "UserView as well, created by fr.query.derive_schema_list_params() "
+        "with include_filters=('username',)."
     )
 
 
@@ -707,3 +707,44 @@ def test_react_admin_views_reject_the_sort_parameter(app, base):
 
     with pytest.raises(RestlyConfigurationError, match="ItemAdmin sets sort_query"):
         fr.include_view(app, view)
+
+
+class NarrowSchema(fr.IDSchema):
+    name: str
+
+
+def test_a_subclass_keeps_list_params_from_a_narrower_schema(app):
+    declared = derive_schema_list_params(NarrowSchema, Item)
+    base = item_view(schema_list_params=declared)
+    fr.include_view(app, base)
+
+    same = type("SameView", (base,), {"pagination": fr.NumberedPagination()})
+    assert fr.include_view(app, same).schema_list_params is declared
+
+    # new list params would get the keys of every field of ItemSchema
+    paged = fr.NumberedPagination(default_page_size=10)
+    view = type("PagedView", (base,), {"pagination": paged})
+    with pytest.raises(RestlyConfigurationError) as exc_info:
+        fr.include_view(app, view)
+
+    assert str(exc_info.value) == (
+        "PagedView.schema_list_params (from ItemView) was created for other "
+        "pagination settings than the view's. Remove the setting, or declare "
+        "schema_list_params on PagedView as well, created with its pagination."
+    )
+
+
+def test_a_subclass_keeps_list_params_with_settings_of_their_own(app):
+    declared = derive_schema_list_params(ItemSchema, Item, include_filters=("name",))
+    # a base that passes the setting only to the call, and is not registered
+    base = item_view(schema_list_params=declared)
+    paged = fr.NumberedPagination(default_page_size=10)
+    view = type("PagedView", (base,), {"pagination": paged})
+
+    with pytest.raises(RestlyConfigurationError) as exc_info:
+        fr.include_view(app, view)
+
+    assert str(exc_info.value).startswith(
+        "PagedView has include_filters = ('*',), but its schema_list_params "
+        "(from ItemView) was created with include_filters=('name',)."
+    )

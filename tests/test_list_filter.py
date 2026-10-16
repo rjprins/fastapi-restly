@@ -639,10 +639,10 @@ def test_declared_list_params_cannot_hold_the_own_keys():
 
     assert str(exc_info.value) == (
         "ItemView has the filter method filter_popular (from PopularView), but "
-        "its schema_list_params does not have its key 'popular'. Restly adds "
-        "the key of a filter method only to list params that it generates. "
+        "its schema_list_params is written by hand. Restly adds the key "
+        "'popular' of a filter method only to list params that it generates. "
         "Leave schema_list_params out to have it generated, or set "
-        "filter_popular = None on ItemView to drop the filter."
+        "filter_popular = None on ItemView to drop it."
     )
 
 
