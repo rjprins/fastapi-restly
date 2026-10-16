@@ -293,8 +293,9 @@ A relationship reference filters differently (see
 [Choose a reference style](#reference-styles)):
 
 - An {class}`IDSchema[Model] <fastapi_restly.schemas.IDSchema>` field filters
-  by its id, as in `?author.id=1`, with equality, `__in`, `__ne` and
-  `__isnull`.
+  by its id, as in `?author.id=1`, with the filters of the id's type. That key
+  has a dot, so the view turns it on first, for example with
+  `include_filters = ("*", "author.*")`.
 - A flat {class}`IDRef[Model] <fastapi_restly.schemas.IDRef>` field on a
   relationship gets no filter. To filter by it, also put the foreign key
   column in the response class, for example as `author_id: fr.ReadOnly[int]`.
@@ -427,7 +428,9 @@ have __contains and __icontains.
 A view inherits each setting on its own, as it inherits `pagination`. So a
 project base view can set `include_filters = ()`, and a view turns its
 filters on again with `("*",)`. An entry that a view inherits may match no
-key, because a base view serves many schemas.
+key, because a base view serves many schemas. For mypy, give the setting a
+type on the base view: `include_filters: ClassVar[tuple[str, ...]] = ()`.
+Without it, mypy takes the type of `()` and rejects `("*",)` in the view.
 
 The sort keys are separate from the filter keys, so a view can sort on
 `created_at` without a `?created_at=` filter. A sort key has no suffix. It
@@ -501,7 +504,7 @@ relationship instead: `Item.vendor.has(Vendor.name == value)`.
 
 On an {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>`, the
 method can be `async def`, to load data with `self.session` first. It runs
-only when the key has a value, and only on routes that filter. Often a
+when a plain method would, and only on routes that filter. Often a
 subquery in the condition is enough, and it is faster than loading ids for
 `IN (...)`. On a {class}`RestView <fastapi_restly.views.RestView>`, an
 `async def` method fails when the class is defined.
@@ -515,13 +518,15 @@ A subclass inherits the key. It drops the key by setting the name of the
 method to `None`, as in `filter_popular = None`. An override without the
 decorator fails when the class is defined.
 
-A key follows the rules of the page parameters: no `__` and no `.`, not
-`page`, `page_size` or `sort`, and not the name of a Pydantic model
+A key follows the rules of the page parameters: no `__`, no `.` and no `_`
+at the start. It is not the name of the view's page or sort parameters, such
+as `page`, `page_size` or `sort`, and not the name of a Pydantic model
 attribute, such as `copy`.
 
 {func}`fr.query.apply_list_params <fastapi_restly.query.apply_list_params>`
 has no view, so it cannot call the method. It raises `ValueError` for list
-parameters with a value for the key. Call the view's
+parameters with a value for the key. A key with a default always has a
+value. Call the view's
 {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
 instead.
 :::
@@ -680,7 +685,7 @@ override, must name it. Otherwise the unknown-key check rejects it with
 
 ```python
 class UserView(fr.AsyncRestView):
-    extra_query_params = ("include_deleted",)
+    extra_query_params = ("expand",)
 ```
 
 (change-list-query)=
@@ -752,7 +757,9 @@ The route still documents `page`, `page_size` and `sort`, and ignores them.
 
 On an async view, `apply_filters` is `async def`, as `apply_list_params` is.
 A view can override it to add a condition to every list, and to every route
-that calls it. `apply_list_params` calls it first.
+that calls it. `apply_list_params` calls it first. Add the condition to the
+statement before `super().apply_filters(...)`. After it, a sort on a
+relationship that a filter joined joins that table a second time.
 :::
 
 ## Internals

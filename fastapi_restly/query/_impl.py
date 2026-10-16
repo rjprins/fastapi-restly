@@ -143,6 +143,12 @@ def _check_key_setting(label: str, value: Any) -> tuple[str, ...]:
             f"{label} must be a tuple of keys, got the string {value!r}. "
             f"For one key, write ({value!r},) with a comma."
         )
+    if isinstance(value, _abc.Iterator):
+        # the class-definition check would use it up before registration
+        raise RestlyConfigurationError(
+            f"{label} must be a tuple of keys, got an iterator, which can be "
+            "read only once. Write tuple(...) around it."
+        )
     try:
         entries = tuple(value)
     except TypeError:
@@ -298,7 +304,8 @@ def _supports_range_operators(field: FieldInfo) -> bool:
     annotation, _ = _unwrap_type(field.annotation)
     if annotation is bool:
         return False
-    if not isinstance(annotation, type):
+    # ``Any`` is a class from Python 3.11 on; it is still an unknown type.
+    if annotation is Any or not isinstance(annotation, type):
         return True
     if issubclass(annotation, bool):
         return False

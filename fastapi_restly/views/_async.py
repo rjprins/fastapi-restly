@@ -24,7 +24,7 @@ from ._base import (
     ResponseSchemaT,
     ResponseShape,
     UpdateSchemaT,
-    _apply_own_filter,
+    _apply_own_filters,
     _check_list_methods,
     _identity_criterion,
     _not_found_message,
@@ -446,15 +446,14 @@ class AsyncRestView(
             _schema_response(type(self)),
             pagination=self.pagination,
         )
-        stmt = filtered
         record = _record_of(type(list_params))
+        results: list[tuple[str, Any]] = []
         for own, value in record.own_filter_values(list_params) if record else ():
             result = getattr(self, own.method)(value)
             if inspect.isawaitable(result):
                 result = await result
-            label = f"{type(self).__name__}.{own.method}"
-            stmt = _apply_own_filter(stmt, result, label)
-        return _keep_joins(filtered, stmt)
+            results.append((f"{type(self).__name__}.{own.method}", result))
+        return _keep_joins(filtered, _apply_own_filters(filtered, results))
 
     async def count(self, query: sqlalchemy.Select[Any]) -> int:
         """Total for the list, ignoring presentation-layer ordering/pagination.

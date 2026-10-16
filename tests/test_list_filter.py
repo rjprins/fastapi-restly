@@ -466,6 +466,64 @@ def test_a_method_must_return_a_condition(view_class, result, message):
 
 
 @pytest.mark.parametrize("view_class", [fr.AsyncRestView], indirect=True)
+def test_a_method_may_return_a_boolean_column(view_class):
+    class ItemView(fr.AsyncRestView):
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+
+        @fr.list_filter("archived")
+        def filter_archived(self, value: bool) -> Any:
+            # .where() takes a mapped column as it is
+            return Item.archived if value else ~Item.archived
+
+    with client_for(ItemView) as client:
+        assert names(client, archived="true") == ["apple", "bread"]
+        assert names(client, archived="false") == ["Anvil", "axe"]
+
+
+def test_only_the_type_of_the_value_is_resolved():
+    def filter_popular(self: Any, value: bool) -> Any:
+        return None
+
+    # as with 'from __future__ import annotations' and a return type that the
+    # module imports under TYPE_CHECKING
+    filter_popular.__annotations__ = {"value": "bool", "return": "NotImported"}
+
+    class ItemView(fr.AsyncRestView):
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+
+    ItemView.filter_popular = fr.list_filter("popular")(filter_popular)
+    with client_for(ItemView) as client:
+        assert query_parameter(client, "popular")["schema"]["anyOf"][0] == {
+            "type": "boolean"
+        }
+
+
+@pytest.mark.parametrize("view_class", [fr.RestView], indirect=True)
+def test_a_subclass_that_is_not_registered_runs_its_own_filters(view_class, sync_db):
+    class ItemView(fr.RestView):
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+
+    client_for(ItemView)
+
+    class LiveItemView(ItemView):
+        @fr.list_filter("allow_archived")
+        def filter_allow_archived(self, value: bool = False) -> Any:
+            return None if value else ~Item.archived
+
+    _, make_session = sync_db
+    with make_session() as session:
+        view = LiveItemView(request=None, session=session)
+        stmt = view.apply_list_params(select(Item), {})
+        assert sorted(item.name for item in session.scalars(stmt)) == ["Anvil", "axe"]
+
+
+@pytest.mark.parametrize("view_class", [fr.AsyncRestView], indirect=True)
 def test_a_sort_still_shares_the_join_of_a_filter(view_class):
     class ItemView(PopularView):
         include_filters = ("**",)

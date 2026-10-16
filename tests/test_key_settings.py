@@ -294,6 +294,11 @@ def test_apply_list_params_checks_a_sort_that_skipped_validation():
             "For one key, write ('name',) with a comma.",
         ),
         (
+            {"exclude_filters": iter(("name",))},
+            "exclude_filters must be a tuple of keys, got an iterator, which "
+            "can be read only once.",
+        ),
+        (
             {"exclude_sort_keys": ("na?e",)},
             "exclude_sort_keys: 'na?e' uses '?' or '[...]'.",
         ),

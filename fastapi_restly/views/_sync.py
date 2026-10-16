@@ -23,7 +23,7 @@ from ._base import (
     ResponseSchemaT,
     ResponseShape,
     UpdateSchemaT,
-    _apply_own_filter,
+    _apply_own_filters,
     _check_list_methods,
     _identity_criterion,
     _not_found_message,
@@ -440,13 +440,12 @@ class RestView(
             _schema_response(type(self)),
             pagination=self.pagination,
         )
-        stmt = filtered
         record = _record_of(type(list_params))
-        for own, value in record.own_filter_values(list_params) if record else ():
-            result = getattr(self, own.method)(value)
-            label = f"{type(self).__name__}.{own.method}"
-            stmt = _apply_own_filter(stmt, result, label)
-        return _keep_joins(filtered, stmt)
+        results = [
+            (f"{type(self).__name__}.{own.method}", getattr(self, own.method)(value))
+            for own, value in (record.own_filter_values(list_params) if record else ())
+        ]
+        return _keep_joins(filtered, _apply_own_filters(filtered, results))
 
     def count(self, query: sqlalchemy.Select[Any]) -> int:
         """Total for the list, ignoring presentation-layer ordering/pagination.

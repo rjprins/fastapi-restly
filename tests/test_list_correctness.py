@@ -5,7 +5,7 @@ Covers two list-endpoint bugs:
 * **lm7** — a paginated list sorted on a *non-unique* column had no PK
   tiebreaker, so rows could be skipped or repeated across pages. Both the
   standard dialect (``_apply_sorting``) and the react-admin dialect
-  (``apply_react_admin_query``) must append the primary key as the final
+  (``_apply_react_admin_sort_and_range``) must append the primary key as the final
   ``ORDER BY`` term (and must not duplicate it when the user already sorts by
   the PK). These are asserted on the compiled SQL, so they hold regardless of a
   given backend's incidental tie ordering.
@@ -26,10 +26,19 @@ from starlette.datastructures import QueryParams
 
 import fastapi_restly as fr
 from fastapi_restly.query._impl import _apply_sorting
-from fastapi_restly.views._react_admin import apply_react_admin_query
+from fastapi_restly.views._react_admin import (
+    _apply_react_admin_filters,
+    _apply_react_admin_sort_and_range,
+)
 
 from ._models import SharedBase
 from .conftest import create_tables
+
+
+def apply_react_admin_query(query, model, schema_cls, sort, start, end, filters):
+    query = _apply_react_admin_filters(query, model, schema_cls, filters)
+    return _apply_react_admin_sort_and_range(query, model, schema_cls, sort, start, end)
+
 
 # ---------------------------------------------------------------------------
 # lm7 -- PK tiebreaker on a non-unique sort (asserted on the compiled SQL)

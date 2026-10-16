@@ -27,12 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   default, on every list request. On an async view the method can be
   `async def`, to load data first. A condition on a table that is not in the
   statement raises `TypeError`, as `where=` does. The key is always on, and a
-  subclass drops it with `filter_name = None`.
+  subclass drops it by setting the method's name to `None`, such as
+  `filter_popular = None`.
 - `apply_filters(stmt, list_params)` on a view applies the client's filters
   without the sort and the page. A route that counts per category with
   `GROUP BY` uses it: `ORDER BY` from `apply_list_params` would fail there.
   `apply_list_params` calls it first.
-
 - A clause can go into the condition of another clause, written without a
   call. A model's scope can then follow a relationship, such as
   `fr.where_clause(Comment.post.has(PostClauses.default_scope))`: a comment
@@ -65,11 +65,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `include_sort_keys = ("**",)`, or with a narrower pattern such as
   `("*", "vendor.*")`. Each dotted key is a join that a client can add, and a
   new field on a nested schema would add keys to every list that nests it.
+  `fr.query.derive_schema_list_params` has the same default. Its model
+  ignores a key that it does not have, so a route of your own that uses it
+  now ignores a dotted key without an error. Pass `include_filters=("**",)`
+  and `include_sort_keys=("**",)` to keep them.
 - A sort key that the list does not have now gets `422` from the list
   params, not `400`. The description of `sort` in OpenAPI lists the sort
   keys. A sort key never goes through a to-many relationship.
-- The errors say "Unknown filter key" and "Unknown sort key", not "field".
-  This holds for react-admin views too.
 - On `AsyncRestView` and `AsyncReactAdminView`, `apply_list_params` is now
   `async def`: write `await self.apply_list_params(...)`. An override must
   be `async def` and call `await super().apply_list_params(...)`. A plain
@@ -77,8 +79,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   so. On a sync view, an `async def` override fails the same way.
 - `apply_list_params` and `apply_filters` on a view validate a
   `QueryParams` or a mapping through `schema_list_params` first, as the list
-  route does. An unknown key or a bad value raises `RequestValidationError`,
-  which is a `422`.
+  route does. An unknown key, a bad `sort` or `page_size`, or a bad value for
+  a filter of the view's own raises `RequestValidationError`, which is a
+  `422`. A bad value for a generated filter still raises `BadQueryParam`, a
+  `400`, as on the list route. A mapping without `page_size` gets the
+  default page size, so `view.get_many({})` now returns the first page, not
+  every row.
+- A response field named like a pagination parameter, such as `page`, fails
+  only when it gets a filter key. Leave the key out with
+  `exclude_filters = ("page",)`. Before, such a field always failed when the
+  view registered.
 - A view with a declared `schema_list_params` fails when it registers if the
   list params do not follow its key settings. A hand-written model cannot
   follow them, so a view that sets one of the four settings must leave
@@ -177,7 +187,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The `400` answers of a list request say what is wrong. Before, the
   standard dialect answered "Invalid attribute in URL query: age" both for a
   sort or filter field that does not exist and for a bad filter value. Now
-  it is `Unknown sort field: 'nope'`, `Unknown filter field: 'nope'`, or
+  it is `Unknown sort key: 'nope'`, `Unknown filter key: 'nope'`, or
   `Invalid filter value for 'age': 'old'.` followed by Pydantic's reason,
   such as `Input should be a valid integer, unable to parse string as an
   integer`. An exception from a field validator that is not a validation
@@ -188,7 +198,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `range` or `filter` parameter. Before, most of them were a plain
   `HTTPException`, so a handler for `fr.exc.RestlyHTTPError` did not shape
   them. The status stays `400`, and the default body is the same. An unknown
-  sort field now says `Unknown sort field` instead of `Unknown filter field`.
+  sort key now says `Unknown sort key` instead of `Unknown filter field`.
 - A react-admin view checks a filter value against the column's type with
   Pydantic, as the standard dialect does. Before, it called the type on the
   value. So `{"active": "false"}` matched the rows where `active` is true,
@@ -290,7 +300,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `Enum` or an `IDRef` no longer gets them, as with the plain type, so a
     client that sends one now gets `422`. Such a string now gets `__contains`
     and `__icontains`. Such a nested schema now gets the dotted filters and
-    sort keys, such as `?author.name=Alice`.
+    sort keys, such as `?author.name=Alice`, when the view turns them on.
   - Restly did not see such an `IDRef` or `IDSchema` as a reference. A field
     named after a foreign key column returned `500` on every create or update
     that sent it. A field named after a relationship returned `500` on create
@@ -304,7 +314,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A schema that names itself in a to-one field, such as
   `parent: CategorySchema | None` inside `CategorySchema`, no longer makes
   the view fail with `RecursionError` when it registers. The list filters
-  follow it one step: `?parent.name=` works, `?parent.parent.name=` does not.
+  follow it one step: with dotted keys on, `?parent.name=` works, and
+  `?parent.parent.name=` does not.
 
 ### Security
 

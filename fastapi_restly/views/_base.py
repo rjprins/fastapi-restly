@@ -57,7 +57,7 @@ from sqlalchemy import JSON as _JSONType
 from sqlalchemy import ColumnElement, Select
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import select as sa_select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import QueryableAttribute, selectinload
 from sqlalchemy.orm.attributes import del_attribute
 from starlette.datastructures import QueryParams
 from typing_extensions import TypeVar
@@ -65,6 +65,7 @@ from typing_extensions import TypeVar
 if sys.version_info >= (3, 14):
     import annotationlib
 from ..clauses import UNSCOPED, WhereClause, all_of, apply_clauses, where_clause
+from ..clauses._runtime import _guard_statement_tables
 from ..clauses._scopes import _default_scope
 
 #: A per-read scope: ``None`` for the view's own, a clause that replaces it
@@ -1168,7 +1169,7 @@ def _own_filters(cls: type) -> list[_OwnFilter]:
                 f"filter for the key {key!r}."
             )
         method_of[key] = name
-        parameters = list(inspect.signature(method).parameters.values())[1:]
+        parameters = list(_route_parameters(method).values())[1:]
         if len(parameters) != 1 or parameters[0].kind not in (
             inspect.Parameter.POSITIONAL_ONLY,
             inspect.Parameter.POSITIONAL_OR_KEYWORD,
@@ -1178,23 +1179,32 @@ def _own_filters(cls: type) -> list[_OwnFilter]:
                 f"'def {name}(self, value: bool)'."
             )
         parameter = parameters[0]
-        try:
-            hints = get_type_hints(method, include_extras=True)
-        except NameError as exc:
-            raise RestlyConfigurationError(
-                f"{label}: the type of {parameter.name!r} cannot be resolved: {exc}."
-            ) from exc
-        if parameter.name not in hints:
+        if parameter.annotation is inspect.Parameter.empty:
             raise RestlyConfigurationError(
                 f"{label} needs a type on {parameter.name!r}, such as "
                 f"'{parameter.name}: bool'. The type checks the value from the "
                 "URL, and OpenAPI shows it."
             )
+        # Only the value's type is evaluated: the return type may name a
+        # class that the module imports under TYPE_CHECKING.
+        holder = types.SimpleNamespace(
+            __annotations__={parameter.name: parameter.annotation}
+        )
+        try:
+            annotation = get_type_hints(
+                holder,
+                globalns=getattr(inspect.unwrap(method), "__globals__", {}),
+                include_extras=True,
+            )[parameter.name]
+        except NameError as exc:
+            raise RestlyConfigurationError(
+                f"{label}: the type of {parameter.name!r} cannot be resolved: {exc}."
+            ) from exc
         filters.append(
             _OwnFilter(
                 key=key,
                 method=name,
-                annotation=hints[parameter.name],
+                annotation=annotation,
                 default=(
                     _NO_DEFAULT
                     if parameter.default is inspect.Parameter.empty
@@ -1206,34 +1216,51 @@ def _own_filters(cls: type) -> list[_OwnFilter]:
     return filters
 
 
-def _apply_own_filter(stmt: Select[Any], result: Any, label: str) -> Select[Any]:
-    """Add what a filter method returned to ``stmt``.
+def _apply_own_filters(
+    stmt: Select[Any], results: Iterable[tuple[str, Any]]
+) -> Select[Any]:
+    """Add what the filter methods returned to ``stmt``, with AND.
 
-    :raises TypeError: the method returned something else than a condition,
+    :param results: The label of each method, such as
+        ``ItemView.filter_popular``, and what the method returned.
+
+    :raises TypeError: a method returned something else than a condition,
         a clause or ``None``, or a condition on a table that is not in the
         statement.
     """
-    if result is None:
+    conditions: list[tuple[str, ColumnElement[bool]]] = []
+    for label, result in results:
+        if result is None or result is UNSCOPED:
+            continue
+        result = _clause_element(result)
+        if isinstance(result, WhereClause):
+            result = result()
+        elif type(result) is bool:
+            raise TypeError(
+                f"{label} returned a bool, not a SQL expression. A comparison "
+                "on an instance attribute is a bool; compare the column "
+                "instead (Item.name == value)."
+            )
+        elif not isinstance(result, ColumnElement):
+            raise TypeError(
+                f"{label} must return a SQLAlchemy boolean expression, a "
+                f"clause or None, got {type(result).__name__}."
+            )
+        conditions.append((label, result))
+    if not conditions:
         return stmt
-    if isinstance(result, ColumnElement):
-        result = where_clause(result)
-    elif type(result) is bool:
-        raise TypeError(
-            f"{label} returned a bool, not a SQL expression. A comparison on "
-            "an instance attribute is a bool; compare the column instead "
-            "(Item.name == value)."
-        )
-    elif not isinstance(result, WhereClause):
-        raise TypeError(
-            f"{label} must return a SQLAlchemy boolean expression, a clause or "
-            f"None, got {type(result).__name__}."
-        )
+    # a table outside the statement would be a cross join that the scope
+    # does not reach; the statement's tables are read once for all methods
     try:
-        return apply_clauses(stmt, result)
-    except TypeError as exc:
-        # a table outside the statement would be a cross join that the
-        # scope does not reach
-        raise TypeError(f"{label}: {exc}") from None
+        _guard_statement_tables(stmt, [condition for _, condition in conditions])
+    except TypeError:
+        for label, condition in conditions:
+            try:
+                _guard_statement_tables(stmt, [condition])
+            except TypeError as exc:
+                raise TypeError(f"{label}: {exc}") from None
+        raise
+    return stmt.where(*(condition for _, condition in conditions))
 
 
 def _typed_id_route(endpoint: Callable[..., Any]) -> Callable[..., Any]:
@@ -1412,8 +1439,6 @@ def _check_pagination_setting(cls: type) -> None:
         )
 
 
-# Renamed before 1.0. Restly no longer reads the old names, so a definition
-# would be silently dead, or would fail only on a request.
 def _check_key_settings(cls: type) -> None:
     """Reject a key setting that is not a tuple of keys and patterns, when
     the class is defined. Whether each entry matches a key is checked when
@@ -1471,6 +1496,8 @@ def _set_by(cls: type, name: str) -> str:
     return ""
 
 
+# Renamed before 1.0. Restly no longer reads the old names, so a definition
+# would be silently dead, or would fail only on a request.
 _RENAMED_SETTINGS = {"listing_param_schema": "schema_list_params"}
 _RENAMED_METHODS = {
     "to_listing_response": "to_list_response",
@@ -1817,13 +1844,12 @@ class BaseRestView(
 
         A ``QueryParams`` or a mapping goes through :attr:`schema_list_params`
         first, as on the list route. List params as a Pydantic model are
-        already validated. A view that is not registered has no list params
-        model, and passes the values on as they are.
+        already validated. A view that is not registered gets the list params
+        that registration would set.
         """
-        params_model = getattr(type(self), "schema_list_params", None)
-        if isinstance(list_params, pydantic.BaseModel) or params_model is None:
+        if isinstance(list_params, pydantic.BaseModel):
             return list_params
-        return _validate_raw_list_params(params_model, list_params)
+        return _validate_raw_list_params(_schema_list_params(type(self)), list_params)
 
     def to_single_response(self, obj: ModelT | ResponseSchemaT) -> ResponseSchemaT:
         """Serialize one ORM object to the view's :attr:`schema_response`.
@@ -2043,21 +2069,7 @@ class BaseRestView(
             _mark_generated(cls, "schema_response")
 
         if _needs_generating(cls, "schema_list_params"):
-            if not hasattr(cls, "model"):
-                raise ValueError(
-                    f"'{cls.__name__}.model' must be specified: it is needed to "
-                    "generate the list params."
-                )
-            cls.schema_list_params = _derive_list_params(
-                cls.schema_response,
-                cls.model,
-                pagination=cls.pagination,
-                settings={name: getattr(cls, name) for name in _KEY_SETTINGS},
-                owner=cls.__name__,
-                # a base view serves many schemas
-                unchecked={name for name in _KEY_SETTINGS if name not in vars(cls)},
-                own_filters=_own_filters(cls),
-            )
+            cls.schema_list_params = _derive_view_list_params(cls)
             _mark_generated(cls, "schema_list_params")
         else:
             cls._check_declared_schema_list_params()
@@ -2215,6 +2227,38 @@ def _schema_response(view_cls: type) -> type[pydantic.BaseModel]:
     return view_cls.schema_response
 
 
+def _derive_view_list_params(view_cls: type) -> type[pydantic.BaseModel]:
+    """The list params that registration generates for a view: from its
+    response class, its key settings and its filter methods."""
+    if not hasattr(view_cls, "model"):
+        raise ValueError(
+            f"'{view_cls.__name__}.model' must be specified: it is needed to "
+            "generate the list params."
+        )
+    return _derive_list_params(
+        _schema_response(view_cls),
+        view_cls.model,
+        pagination=view_cls.pagination,
+        settings={name: getattr(view_cls, name) for name in _KEY_SETTINGS},
+        owner=view_cls.__name__,
+        # a base view serves many schemas
+        unchecked={name for name in _KEY_SETTINGS if name not in vars(view_cls)},
+        own_filters=_own_filters(view_cls),
+    )
+
+
+def _schema_list_params(view_cls: type) -> type[pydantic.BaseModel]:
+    """The list params of a view.
+
+    Registration sets ``schema_list_params``. A view that is not registered
+    yet, such as a subclass of a registered view, gets the class that
+    registration would set.
+    """
+    if _needs_generating(view_cls, "schema_list_params"):
+        return _derive_view_list_params(view_cls)
+    return view_cls.schema_list_params
+
+
 #: A ``BaseRestView`` at any parameterization, for the signature below.
 _AnyRestView = BaseRestView[Any, Any, Any, Any, Any]
 
@@ -2282,9 +2326,19 @@ def _checked_scope(scope: Any, label: str, what: str) -> WhereClause:
     )
 
 
+def _clause_element(value: Any) -> Any:
+    """The SQL expression behind a mapped column or a hybrid property, such
+    as ``Item.archived``, which ``.where()`` accepts too. Other values are
+    returned as they are."""
+    if isinstance(value, QueryableAttribute):
+        return value.__clause_element__()
+    return value
+
+
 def _checked_where(where: Any, label: str) -> WhereClause:
     if isinstance(where, WhereClause):
         return where
+    where = _clause_element(where)
     if isinstance(where, ColumnElement):
         return where_clause(where)
     if type(where) is bool:

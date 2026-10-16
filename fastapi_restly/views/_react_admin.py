@@ -228,25 +228,6 @@ def _apply_react_admin_filters(
     return query
 
 
-def apply_react_admin_query(
-    query: sqlalchemy.Select,
-    model: type[Any],
-    schema_cls: Any,
-    sort: tuple[str, str] | None,
-    start: int,
-    end: int,
-    filters: dict,
-) -> sqlalchemy.Select:
-    """
-    Apply filter, sort, and range (limit/offset) to a select query.
-
-    This is the main query transformation entry point, analogous to
-    :func:`fastapi_restly.query.apply_list_params` for the standard REST dialect.
-    """
-    query = _apply_react_admin_filters(query, model, schema_cls, filters)
-    return _apply_react_admin_sort_and_range(query, model, schema_cls, sort, start, end)
-
-
 def _apply_react_admin_sort_and_range(
     query: sqlalchemy.Select,
     model: type[Any],
@@ -255,7 +236,7 @@ def _apply_react_admin_sort_and_range(
     start: int,
     end: int,
 ) -> sqlalchemy.Select:
-    """The sort and the range of :func:`apply_react_admin_query`."""
+    """The sort and the range (limit/offset) of a react-admin list."""
     sorted_on = []
     if sort:
         field, direction = sort
