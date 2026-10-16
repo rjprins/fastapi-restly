@@ -6,8 +6,9 @@ then the page. On an async view both methods are async.
 
 import asyncio
 from collections.abc import Iterator
-from typing import Any
+from typing import Any, Literal
 
+import pydantic
 import pytest
 from fastapi import FastAPI
 from sqlalchemy import ForeignKey, func, select
@@ -255,6 +256,50 @@ def test_a_mapping_is_validated_like_query_params(view_class):
         "/items/mapping", params={"nope": True}, assert_status_code=422
     ).json()["detail"]
     assert detail[0]["msg"] == "Unknown query parameter 'nope'"
+
+
+@pytest.mark.parametrize("view_class", [fr.AsyncRestView], indirect=True)
+def test_a_view_with_list_params_of_its_own(view_class):
+    # the example of docs/filtering.md, "Write the list params yourself"
+    class ItemSearch(pydantic.BaseModel):
+        q: str | None = None
+        order: Literal["name", "-name"] = "name"
+        page: int = pydantic.Field(1, ge=1)
+        page_size: int = pydantic.Field(2, ge=1, le=100)
+
+    class ItemView(fr.AsyncRestView):
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+        schema_list_params = ItemSearch
+
+        async def apply_filters(self, stmt, list_params: ItemSearch):
+            if list_params.q:
+                stmt = stmt.where(Item.name.icontains(list_params.q))
+            return stmt
+
+        async def apply_list_params(self, stmt, list_params: ItemSearch):
+            stmt = await self.apply_filters(stmt, list_params)
+            name = Item.name.desc() if list_params.order == "-name" else Item.name
+            offset = (list_params.page - 1) * list_params.page_size
+            return (
+                stmt.order_by(name, Item.id).limit(list_params.page_size).offset(offset)
+            )
+
+    app = FastAPI()
+    fr.include_view(app, ItemView)
+    client = RestlyTestClient(app)
+
+    payload = client.get(
+        "/items/", params={"q": "a", "order": "-name", "page": 2}
+    ).json()
+    assert [row["name"] for row in payload["data"]] == ["apple", "anvil"]
+    assert (payload["total_count"], payload["page"], payload["page_size"]) == (4, 2, 2)
+    client.get("/items/", params={"name": "axe"}, assert_status_code=422)
+    client.get("/items/", params={"page_size": 500}, assert_status_code=422)
+    operation = client.get("/openapi.json").json()["paths"]["/items"]["get"]
+    names = [parameter["name"] for parameter in operation["parameters"]]
+    assert names == ["q", "order", "page", "page_size"]
 
 
 @pytest.mark.parametrize("name", ["apply_filters", "apply_list_params"])

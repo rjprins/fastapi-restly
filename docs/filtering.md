@@ -700,15 +700,10 @@ argument, so put base query changes in the scope.
 :::{admonition} Details
 :class: details
 
-For another URL grammar, such as the filter syntax of another client
-library, override
-{meth}`apply_list_params(query, list_params) <fastapi_restly.views.RestView.apply_list_params>`.
-It turns the URL parameters into the query. On an async view it is
-`async def`: write `async def apply_list_params`, and
-`await super().apply_list_params(query, list_params)`. The
-[React Admin](react_admin.md) views override it for the react-admin
-grammar. Override `get_many()` itself only for a list that has another
-*result*, and build the query in the method. The override gets the scope as
+For list params of another form, such as those of another client library,
+see [Write the list params yourself](#own-list-params). Override
+`get_many()` itself only for a list that has another *result*, and build the
+query in the method. The override gets the scope as
 its `scope` argument: apply it to the query with `fr.apply_clauses`, as
 [Use the scope in your own query](#reading-the-scope) shows.
 
@@ -768,6 +763,69 @@ A view can override it to add a condition to every list, and to every route
 that calls it. `apply_list_params` calls it first. Add the condition to the
 statement before `super().apply_filters(...)`. After it, a sort on a
 relationship that a filter joined joins that table a second time.
+:::
+
+(own-list-params)=
+## Write the list params yourself
+
+For list params that Restly does not generate, such as one search key, or
+the keys of another client library, write them as a Pydantic model. Declare
+it as
+{attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`,
+and apply it to the statement in
+{meth}`apply_filters <fastapi_restly.views.RestView.apply_filters>` and
+{meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`:
+
+```python
+from typing import Literal
+
+import pydantic
+
+
+class ItemSearch(pydantic.BaseModel):
+    q: str | None = None
+    order: Literal["name", "-name"] = "name"
+    page: int = pydantic.Field(1, ge=1)
+    page_size: int = pydantic.Field(20, ge=1, le=100)
+
+
+class ItemView(fr.AsyncRestView):
+    prefix = "/items"
+    model = Item
+    schema = ItemSchema
+    schema_list_params = ItemSearch
+
+    async def apply_filters(self, stmt, list_params: ItemSearch):
+        if list_params.q:
+            stmt = stmt.where(Item.name.icontains(list_params.q))
+        return stmt
+
+    async def apply_list_params(self, stmt, list_params: ItemSearch):
+        stmt = await self.apply_filters(stmt, list_params)
+        name = Item.name.desc() if list_params.order == "-name" else Item.name
+        offset = (list_params.page - 1) * list_params.page_size
+        return stmt.order_by(name, Item.id).limit(list_params.page_size).offset(offset)
+```
+
+The client sends `GET /items/?q=axe&order=-name&page=2`. Restly reads the
+model from the query string, as on every list route: a bad value or an
+unknown key gets `422`, and OpenAPI shows each field. The scope still
+applies, and `total_count` counts the rows that `apply_filters` keeps. The
+envelope takes the page and the page size from the fields with the names of
+the pagination parameters, here `page` and `page_size`.
+
+:::{admonition} Details
+:class: details
+
+On a sync view, the two methods are `def`. `apply_list_params` adds the
+order and the page. Order by a unique column last, such as `Item.id`, so
+that a row never moves to another page.
+
+The four key settings and {func}`fr.list_filter <fastapi_restly.views.list_filter>`
+apply to the list params that Restly generates. A view with list params of
+its own that has one of them fails when it registers. The
+[React Admin](react_admin.md) views have list params of their own: `sort`,
+`range` and `filter`.
 :::
 
 ## Internals
