@@ -24,6 +24,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from starlette.datastructures import QueryParams
 
 import fastapi_restly as fr
 from fastapi_restly.db._globals import _fr_globals
@@ -450,6 +451,46 @@ def test_react_admin_extra_query_params_widens_the_guard(client):
 
     client.get("/verbose/", params={"verbose": "true"})
     client.get("/verbose/", params={"chatty": "true"}, assert_status_code=422)
+
+
+def test_react_admin_follows_unknown_query_params(client):
+    """As on the default list routes, also for a ``QueryParams`` that a
+    method gets."""
+
+    class Quiet(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    class QuietSchema(fr.IDSchema):
+        name: str
+
+    @fr.include_view(client.app)
+    class StrictView(fr.AsyncReactAdminView):
+        prefix = "/strict"
+        model = Quiet
+        schema = QuietSchema
+
+        @fr.get("/raw")
+        async def raw(self) -> list[str]:
+            query = QueryParams(
+                [*self.request.query_params.multi_items(), ("tenant_id", "1")]
+            )
+            stmt = await self.apply_filters(sqlalchemy.select(Quiet), query)
+            return [row.name for row in await self.session.scalars(stmt)]
+
+    @fr.include_view(client.app)
+    class QuietView(StrictView):
+        prefix = "/quiet"
+        unknown_query_params = "ignore"
+
+    create_tables()
+    client.post("/strict/quiet", json={"name": "Desk"})
+
+    client.get("/strict/", params={"utm_source": "mail"}, assert_status_code=422)
+    detail = client.get("/strict/raw", assert_status_code=422).json()["detail"]
+    assert detail[0]["msg"] == "Unknown query parameter 'tenant_id'"
+    rows = client.get("/strict/quiet/", params={"utm_source": "mail"}).json()
+    assert [row["name"] for row in rows] == ["Desk"]
+    assert client.get("/strict/quiet/raw").json() == ["Desk"]
 
 
 def test_react_admin_sort_wrong_shape_returns_400(client):

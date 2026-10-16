@@ -14,6 +14,7 @@ from fastapi import FastAPI
 from sqlalchemy import ForeignKey, func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from starlette.datastructures import QueryParams
 
 import fastapi_restly as fr
 from fastapi_restly.exc import RestlyConfigurationError
@@ -207,10 +208,25 @@ def test_raw_query_params_go_through_the_list_params(view_class):
             stmt = await self.apply_list_params(select(Item), self.request.query_params)
             return [item.name for item in (await self.session.scalars(stmt))]
 
+        @fr.get("/tenant")
+        async def tenant(self) -> list[str]:
+            # the route does not read tenant_id, and the list params lack it
+            query = QueryParams(
+                [*self.request.query_params.multi_items(), ("tenant_id", "1")]
+            )
+            stmt = await self.apply_list_params(select(Item), query)
+            return [item.name for item in (await self.session.scalars(stmt))]
+
+    class LenientItemView(ItemView):
+        prefix = "/lenient"
+        unknown_query_params = "ignore"
+
     app = FastAPI()
     fr.include_view(app, ItemView)
+    fr.include_view(app, LenientItemView)
     client = RestlyTestClient(app)
 
+    # mode is a key of the route, so it is left out
     names = client.get(
         "/items/raw", params={"name__in": "axe,bread", "mode": "new"}
     ).json()
@@ -219,11 +235,20 @@ def test_raw_query_params_go_through_the_list_params(view_class):
         "/items/raw", params={"page_size": 5000}, assert_status_code=422
     ).json()["detail"]
     assert detail[0]["loc"] == ["query", "page_size"]
-    # a key that the list params do not have belongs to the route
-    every_name = client.get("/items/raw").json()
-    assert client.get("/items/raw", params={"vendor.name": "acme"}).json() == (
+    # any other key is unknown, as on the list route
+    detail = client.get(
+        "/items/raw", params={"vendor.name": "acme"}, assert_status_code=422
+    ).json()["detail"]
+    assert detail[0]["msg"] == "Unknown query parameter 'vendor.name'"
+    detail = client.get("/items/tenant", assert_status_code=422).json()["detail"]
+    assert detail[0]["msg"] == "Unknown query parameter 'tenant_id'"
+    # unless the view ignores unknown keys
+    every_name = client.get("/items/lenient/raw").json()
+    assert len(every_name) == 4
+    assert client.get("/items/lenient/raw", params={"vendor.name": "acme"}).json() == (
         every_name
     )
+    assert client.get("/items/lenient/tenant").json() == every_name
 
 
 @pytest.mark.parametrize("view_class", [fr.AsyncRestView], indirect=True)

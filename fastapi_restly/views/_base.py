@@ -32,6 +32,7 @@ from typing import (
     Generic,
     Iterable,
     Iterator,
+    Literal,
     Protocol,
     Sequence,
     Union,
@@ -1446,6 +1447,15 @@ def _check_key_settings(cls: type) -> None:
         )
 
 
+def _check_unknown_query_params(cls: type) -> None:
+    value = vars(cls).get("unknown_query_params", "forbid")
+    if value not in ("forbid", "ignore"):
+        raise RestlyConfigurationError(
+            f"{cls.__name__}.unknown_query_params must be 'forbid' or 'ignore', "
+            f"got {value!r}."
+        )
+
+
 #: The view settings that Restly generates the list params with, besides
 #: the pagination, and their defaults.
 _LIST_SETTING_DEFAULTS: dict[str, Any] = {
@@ -1656,6 +1666,13 @@ class BaseRestView(
     #: route declares, on the endpoint method or in a dependency, or an
     #: ``APIKeyQuery`` key, needs no entry.
     extra_query_params: ClassVar[Iterable[str]] = ()
+    #: What a list route does with a query key that it does not read.
+    #: ``"forbid"`` (the default) rejects the request with 422, so a typo in
+    #: a filter key does not return more rows than the client asked for.
+    #: ``"ignore"`` leaves the key out, as FastAPI does. The values are those of
+    #: Pydantic's ``extra`` setting. The same rule applies to a ``QueryParams``
+    #: that a method gets as list params.
+    unknown_query_params: ClassVar[Literal["forbid", "ignore"]] = "forbid"
     #: How list endpoints paginate. The default :class:`NumberedPagination`
     #: takes ``page`` / ``page_size`` query parameters, runs the count query,
     #: and wraps the list in its ``envelope`` (:class:`PaginatedEnvelope`:
@@ -1785,6 +1802,7 @@ class BaseRestView(
                     )
         _check_pagination_setting(cls)
         _check_key_settings(cls)
+        _check_unknown_query_params(cls)
         _check_renamed_names(cls)
 
     def _apply_scope(self, query: Select[Any], scope: ReadScope) -> Select[Any]:
@@ -1856,7 +1874,8 @@ class BaseRestView(
         emit a range operator) widen the result set without telling the
         caller. We treat unknown keys as a validation error instead, mirroring
         FastAPI's 422 envelope shape so the response is consistent with
-        bound-violation errors.
+        bound-violation errors, unless :attr:`unknown_query_params` is
+        ``"ignore"``.
 
         No-op when there is no live request, as when code calls a route
         method directly, outside an HTTP request. Then there is no URL to
@@ -1868,23 +1887,50 @@ class BaseRestView(
         schema_list_params = getattr(self, "schema_list_params", None)
         if schema_list_params is None:
             return
-        list_keys = {
-            _query_key(name, field)
-            for name, field in schema_list_params.model_fields.items()
-        }
-        reject_unknown_query_keys(request, list_keys | set(self.extra_query_params))
+        list_keys = {key for key, _, _ in _list_params_fields(schema_list_params)}
+        self._reject_unknown_keys(request.query_params, list_keys)
+
+    def _reject_unknown_keys(self, query: QueryParams, allowed: set[str]) -> None:
+        """Raise a 422 for a key of ``query`` that is not in ``allowed`` or
+        :attr:`extra_query_params`, and that the route does not read.
+
+        Does nothing when :attr:`unknown_query_params` is ``"ignore"``.
+        """
+        if self.unknown_query_params == "ignore":
+            return
+        reject_unknown_query_keys(
+            query,
+            allowed | set(self.extra_query_params),
+            getattr(self, "request", None),
+        )
 
     def _validated_list_params(self, list_params: Any) -> Any:
         """``list_params`` as the list route gives them.
 
         A ``QueryParams`` or a mapping goes through :attr:`schema_list_params`
-        first, as on the list route. Anything else is list params already,
-        such as a Pydantic model, which is validated. A view that is not
-        registered gets the list params that registration would set.
+        first, as on the list route. A ``QueryParams`` is the query of a
+        request, so it can also hold keys that the route reads. Those are
+        left out, and any other key is unknown, as on the list route (see
+        :attr:`unknown_query_params`). A mapping holds list params only, so
+        a key that they do not have is an error. Anything else is list
+        params already, such as a Pydantic model, which is validated. A view
+        that is not registered gets the list params that registration would
+        set.
         """
         if not isinstance(list_params, Mapping):
             return list_params
-        return _validate_raw_list_params(_schema_list_params(type(self)), list_params)
+        params_model = _schema_list_params(type(self))
+        if isinstance(list_params, QueryParams):
+            keys = {key for key, _, _ in _list_params_fields(params_model)}
+            self._reject_unknown_keys(list_params, keys)
+            list_params = QueryParams(
+                [
+                    (key, value)
+                    for key, value in list_params.multi_items()
+                    if key in keys
+                ]
+            )
+        return _validate_raw_list_params(params_model, list_params)
 
     def to_single_response(self, obj: ModelT | ResponseSchemaT) -> ResponseSchemaT:
         """Serialize one ORM object to the view's :attr:`schema_response`.
@@ -2546,29 +2592,39 @@ def _not_found_message(model_cls: type[Any], id: Any) -> str:
     return f"{model_cls.__name__} with id {id!r} was not found"
 
 
-def reject_unknown_query_keys(request: fastapi.Request, allowed: set[str]) -> None:
-    """Raise a 422 naming every query key that is not in ``allowed``.
+def reject_unknown_query_keys(
+    query: QueryParams, allowed: set[str], request: fastapi.Request | None
+) -> None:
+    """Raise a 422 naming every key of ``query`` that is not in ``allowed``.
 
-    The dialect decides what is allowed (the list params for the default
-    one, ``sort``/``range``/``filter`` for react-admin); the envelope is the
-    same either way, and mirrors FastAPI's own validation shape. A key that
-    the route reads elsewhere is never unknown (see :func:`_route_query_keys`).
+    The list params decide what is allowed: their keys for the default list
+    params, ``sort``/``range``/``filter`` for react-admin. A key that the
+    route of ``request`` reads elsewhere is never unknown (see
+    :func:`_route_query_keys`).
+
+    :raises RequestValidationError: ``query`` has an unknown key.
     """
-    unknown = set(request.query_params.keys()) - allowed
-    if unknown:
+    unknown = set(query.keys()) - allowed
+    if unknown and request is not None:
         unknown -= _route_query_keys(request)
-    if not unknown:
-        return
-    detail = [
-        {
-            "type": "extra_forbidden",
-            "loc": ["query", key],
-            "msg": f"Unknown query parameter {key!r}",
-            "input": request.query_params.get(key),
-        }
-        for key in sorted(unknown)
-    ]
-    raise fastapi.HTTPException(status_code=422, detail=detail)
+    if unknown:
+        raise _unknown_keys_error(query, unknown)
+
+
+def _unknown_keys_error(query: QueryParams, keys: set[str]) -> RequestValidationError:
+    """The error for unknown query keys, in the shape of FastAPI's own
+    validation errors."""
+    return RequestValidationError(
+        [
+            {
+                "type": "extra_forbidden",
+                "loc": ("query", key),
+                "msg": f"Unknown query parameter {key!r}",
+                "input": query.get(key),
+            }
+            for key in sorted(keys)
+        ]
+    )
 
 
 def _route_query_keys(request: fastapi.Request) -> set[str]:
@@ -2688,44 +2744,26 @@ def _validate_raw_list_params(
 ) -> pydantic.BaseModel:
     """Validate query parameters that a caller passes instead of list params.
 
-    The values are validated as on the list route. A ``QueryParams`` is the
-    query of a request, which also holds the keys of the route, so a key
-    that ``params_model`` does not have is left out, as FastAPI leaves out a
-    key that a route does not declare. A mapping holds list params only, so
-    such a key is an error.
+    The values are validated as on the list route. In a mapping, a list
+    value is a repeated key.
 
-    :raises RequestValidationError: a mapping has a key that
-        ``params_model`` does not have, or a value fails the validation of
-        its field.
+    :raises RequestValidationError: a key is not a key of ``params_model``,
+        or a value fails the validation of its field.
     """
     fields = _list_params_fields(params_model)
-    keys = {key for key, _, _ in fields}
     if isinstance(raw, QueryParams):
+        query = raw
+    else:
         query = QueryParams(
-            [(key, value) for key, value in raw.multi_items() if key in keys]
-        )
-        return _validate_list_params(params_model, fields, query)
-    # a list value is a repeated key, as in the query string
-    query = QueryParams(
-        [
-            (key, item)
-            for key, value in dict(raw).items()
-            for item in (value if isinstance(value, (list, tuple)) else [value])
-        ]
-    )
-    unknown = set(query.keys()) - keys
-    if unknown:
-        raise RequestValidationError(
             [
-                {
-                    "type": "extra_forbidden",
-                    "loc": ("query", key),
-                    "msg": f"Unknown query parameter {key!r}",
-                    "input": query.get(key),
-                }
-                for key in sorted(unknown)
+                (key, item)
+                for key, value in dict(raw).items()
+                for item in (value if isinstance(value, (list, tuple)) else [value])
             ]
         )
+    unknown = set(query.keys()) - {key for key, _, _ in fields}
+    if unknown:
+        raise _unknown_keys_error(query, unknown)
     return _validate_list_params(params_model, fields, query)
 
 

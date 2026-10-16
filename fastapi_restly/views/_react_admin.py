@@ -11,7 +11,6 @@ Implements the ra-data-simple-rest HTTP contract for list:
 
 import functools
 import json
-from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Annotated, Any, ClassVar, Protocol, Sequence, cast
 
@@ -19,6 +18,7 @@ import fastapi
 import pydantic
 import sqlalchemy
 from sqlalchemy.orm import RelationshipProperty
+from starlette.datastructures import QueryParams
 
 from .._pagination import _DEFAULT_PAGINATION, NoPagination, NumberedPagination
 from ..exc import BadQueryParam, RestlyConfigurationError
@@ -39,7 +39,6 @@ from ._base import (
     _view_id_type,
     get,
     put,
-    reject_unknown_query_keys,
 )
 from ._sync import RestView
 
@@ -265,13 +264,13 @@ class _ReactAdminViewProtocol(Protocol):
     schema_update: ClassVar[type[pydantic.BaseModel]]
     schema_list_params: ClassVar[type[pydantic.BaseModel]]
     pagination: ClassVar[NumberedPagination | NoPagination | None]
-    extra_query_params: ClassVar[Iterable[str]]
     get_many_endpoint: ClassVar[Any]
     put: ClassVar[Any]
 
     def get_react_admin_range_unit(self) -> str: ...
     def get_relationship_loader_options(self) -> list[Any]: ...
     def _single_response(self, obj: Any) -> pydantic.BaseModel: ...
+    def _reject_unknown_keys(self, query: QueryParams, allowed: set[str]) -> None: ...
 
     @classmethod
     def before_include_view(cls) -> None: ...
@@ -326,25 +325,25 @@ class _ReactAdminMixin:
         Overrides the default list params guard: this dialect takes three
         JSON-encoded keys, not the schema-derived grammar, so the inherited
         allow-list would wave through ``?page=2`` while still missing a typo.
-        ``extra_query_params`` widens this the same way it widens the default.
+        ``extra_query_params`` and ``unknown_query_params`` work as on the
+        default list routes.
         """
         view = cast(_ReactAdminViewProtocol, self)
         request = getattr(view, "request", None)
         if request is None:
             return
-        reject_unknown_query_keys(
-            request, set(self.react_admin_query_params) | set(view.extra_query_params)
+        view._reject_unknown_keys(
+            request.query_params, set(self.react_admin_query_params)
         )
 
     def _parse_react_admin_params(self) -> _ReactAdminListParams:
         """Parse sort, range, and filter from the current request query string.
 
-        The unknown-key guard runs here rather than through the registration
-        wrapper: the react-admin list endpoint declares no ``list_params``
-        argument, so nothing else would run it.
+        The unknown-key guard runs in :meth:`_coerce_react_admin_params`,
+        not through the registration wrapper: the react-admin list endpoint
+        declares no ``list_params`` argument.
         """
         view = cast(_ReactAdminViewProtocol, self)
-        self._reject_unknown_query_params()
         return self._coerce_react_admin_params(view.request.query_params)
 
     def _coerce_react_admin_params(self, params: Any) -> _ReactAdminListParams:
@@ -354,6 +353,9 @@ class _ReactAdminMixin:
             params = params.model_dump()
 
         view = cast(_ReactAdminViewProtocol, self)
+        if isinstance(params, QueryParams):
+            # the query of a request: a key the route reads is not unknown
+            view._reject_unknown_keys(params, set(self.react_admin_query_params))
         # ``pagination`` is required on react-admin (see before_include_view),
         # and NumberedPagination checks default_page_size when it is created.
         pagination = cast(NumberedPagination, view.pagination)

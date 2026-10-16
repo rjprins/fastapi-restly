@@ -24,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `fr.query.derive_schema_list_params` takes it too. The old name is then
   free: a pagination parameter or a filter of your own can be called
   `sort`. Before, `sort` was always reserved.
+- `unknown_query_params = "ignore"` on a view leaves out a query key that
+  the route does not read, as FastAPI does. The default, `"forbid"`, rejects
+  such a key with `422`, as before. The two values are those of Pydantic's
+  `extra` setting. A project base view sets it once for every view.
 - `@fr.list_filter("key")` makes a view method the filter for a query key.
   The type of the method's value becomes the type of the key, so OpenAPI
   shows it and a bad value gets `422`, and the docstring becomes its
@@ -64,6 +68,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The `422` for an unknown query key is now a `RequestValidationError`, as
+  for a bad query value, so an exception handler for
+  `RequestValidationError` gets it too. Before, it was an `HTTPException`.
+  The response body is the same.
+
 - A list has no dotted filter keys and no dotted sort keys by default, such
   as `?vendor.name=` or `?sort=vendor.name`. Clients that send them now get
   `422`. Turn them on with `include_filters = ("**",)` and
@@ -86,10 +95,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `QueryParams` or a mapping through `schema_list_params` first, as the list
   route does. A bad `sort` or `page_size`, or a bad value for a filter of the
   view's own, raises `RequestValidationError`, which is a `422`. A key that
-  the list params do not have raises it too in a mapping. In a
-  `QueryParams`, such a key belongs to the route, such as `?mode=`, so
-  Restly leaves it out. A route that declares `list_params` gets a `422` for
-  an unknown key. A bad value for a generated filter still raises
+  the list params do not have raises it too, as on the list route. Only in a
+  `QueryParams`, a key that the route reads, such as `?mode=`, is left out.
+  A bad value for a generated filter still raises
   `BadQueryParam`, a `400`, as on the list route. A mapping without
   `page_size` gets the default page size, so `view.get_many({})` now returns
   the first page, not every row.

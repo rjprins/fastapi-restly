@@ -30,7 +30,8 @@ never show a row that the scope hides.
 
 Restly rejects an unknown key with `422`. A filter only narrows the result, so
 a mistyped key that Restly ignored would return more rows than the client
-asked for.
+asked for. A view can ignore unknown keys instead; see
+[Accept extra query parameters](#extra-query-parameters).
 
 Lists are paginated by default: 50 rows per page, and a client can ask for up
 to 1000. The rows come in a `data` envelope with the total count. The view's
@@ -706,6 +707,20 @@ class UserView(fr.AsyncRestView):
     extra_query_params = ("expand",)
 ```
 
+To accept every key that the route does not read, and leave it out, as
+FastAPI does, set
+{attr}`unknown_query_params <fastapi_restly.views.BaseRestView.unknown_query_params>`
+to `"ignore"`. A project base view sets it once for every view:
+
+```python
+class AppView(fr.AsyncRestView):
+    unknown_query_params = "ignore"
+```
+
+Then a mistyped filter key is not an error, and the client gets more rows
+than it asked for. The default is `"forbid"`. These are the values of
+Pydantic's `extra` setting.
+
 (change-list-query)=
 ## Change the list query of a view
 
@@ -735,11 +750,12 @@ query parameters next to `list_params`, as in
 `def search(self, list_params, mode: SearchMode)`.
 
 A route can also pass `self.request.query_params` on, in place of
-`list_params`. Restly reads the keys of the list params from it and
-leaves the other keys to the route. So a misspelled key, such as `?nmae=`, is
-not an error there, and OpenAPI does not show the list keys. A dict, as in
-`view.get_many({"name": "axe"})`, holds list params only, so a key that
-they do not have gets `422`.
+`list_params`. Restly reads the keys of the list params from it and leaves
+out the keys that the route reads, such as `mode` above. Any other key gets
+`422`, as on the list route, or is left out when the view sets
+`unknown_query_params = "ignore"`. OpenAPI does not show the list keys of
+such a route. A dict, as in `view.get_many({"name": "axe"})`, holds list
+params only, so a key that they do not have always gets `422`.
 :::
 
 (filters-in-own-route)=

@@ -128,7 +128,9 @@ standard dialect are unknown keys here too. A key that a dependency
 declares, or an `APIKeyQuery` key, is accepted.
 For a key that the view reads itself, declare
 {attr}`extra_query_params <fastapi_restly.views.BaseRestView.extra_query_params>`
-on the view.
+on the view. To accept every key, set
+{attr}`unknown_query_params <fastapi_restly.views.BaseRestView.unknown_query_params>`
+to `"ignore"`, as on the other views.
 
 `ra-data-simple-rest` requests the collection path without a trailing slash
 (`GET /products?sort=...`). This is the main path of a Restly collection, so

@@ -19,6 +19,7 @@ from fastapi.security import APIKeyQuery
 from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
+from fastapi_restly.exc import RestlyConfigurationError
 from fastapi_restly.testing import RestlyTestClient
 
 from ._models import SharedBase
@@ -282,3 +283,40 @@ def test_an_empty_grammar_declares_no_parameter(sync_db):
 
     operation = app.openapi()["paths"]["/items"]["get"]
     assert operation.get("parameters", []) == []
+
+
+def test_a_view_can_ignore_unknown_keys(flavor, request):
+    sync = flavor == "sync"
+
+    class Item(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    class ItemSchema(fr.IDSchema):
+        name: str
+
+    class ItemView(fr.RestView if sync else fr.AsyncRestView):  # type: ignore[misc]
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+        unknown_query_params = "ignore"
+
+    app = FastAPI()
+    fr.include_view(app, ItemView)
+    _create_tables(request, sync)
+    client = RestlyTestClient(app)
+    for name in ("Desk", "Lamp"):
+        client.post("/items/", json={"name": name})
+
+    response = client.get("/items/", params={"name": "Desk", "_": "1697400000"})
+
+    assert [item["name"] for item in response.json()["data"]] == ["Desk"]
+
+
+def test_unknown_query_params_is_forbid_or_ignore():
+    with pytest.raises(
+        RestlyConfigurationError,
+        match="ItemView.unknown_query_params must be 'forbid' or 'ignore', got 'allow'",
+    ):
+
+        class ItemView(fr.AsyncRestView):
+            unknown_query_params = "allow"  # type: ignore[assignment]
