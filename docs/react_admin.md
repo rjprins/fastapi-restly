@@ -124,11 +124,10 @@ Content-Range: items 0-24/315
 
 Any other query key gets a 422, so a typo cannot return more rows than you
 asked for without notice. The `page`, `page_size` and field filters of the
-standard dialect are unknown keys here too. A key that a dependency
-declares, or an `APIKeyQuery` key, is accepted.
-For a key that the view reads itself, declare
-{attr}`extra_query_params <fastapi_restly.views.BaseRestView.extra_query_params>`
-on the view. To accept every key, set
+standard dialect are unknown keys here too. A key that the route declares,
+on the endpoint method or in a dependency, is accepted, and so is an
+`APIKeyQuery` key; see [Accept extra query parameters](#extra-query-parameters).
+To accept every key, set
 {attr}`unknown_query_params <fastapi_restly.views.BaseRestView.unknown_query_params>`
 to `"ignore"`, as on the other views.
 

@@ -170,7 +170,7 @@ add it.
    generated `UserSchema`.
 7. One word per thing. "Response" is what goes out. "List params" is the list
    grammar and its value. "Query params" only means raw keys from the URL, as
-   in `extra_query_params`.
+   in `unknown_query_params`.
 
 A public function takes the same argument names as the view: `schema`, not
 `schema_cls`; `query`, not `select_query`; `list_params`, not `params`. An

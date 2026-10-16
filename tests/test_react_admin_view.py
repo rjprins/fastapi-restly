@@ -16,11 +16,12 @@ import decimal
 import json
 import uuid
 from collections.abc import Iterator
+from typing import Annotated
 
 import pydantic
 import pytest
 import sqlalchemy
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -111,19 +112,18 @@ def custom_list_client(request):
     class CustomItemView(base):
         prefix = "/custom-items"
         model = CustomItem
-        extra_query_params = {"trace"}
 
         if asynchronous:
 
             @fr.get("/custom")
-            async def custom(self, list_params):
+            async def custom(self, list_params, trace: str | None = None):
                 result = await self.handle_get_many(list_params)
                 return self.to_response(result, fr.ResponseShape.LIST)
 
         else:
 
             @fr.get("/custom")
-            def custom(self, list_params):
+            def custom(self, list_params, trace: str | None = None):
                 result = self.handle_get_many(list_params)
                 return self.to_response(result, fr.ResponseShape.LIST)
 
@@ -171,6 +171,7 @@ def test_custom_react_admin_list_openapi_uses_its_dialect(custom_list_client):
         "sort",
         "range",
         "filter",
+        "trace",
     }
 
 
@@ -431,8 +432,8 @@ def test_react_admin_contract_keys_are_accepted(client):
     assert [row["name"] for row in body] == ["Foo"]
 
 
-def test_react_admin_extra_query_params_widens_the_guard(client):
-    """The same escape hatch as the default dialect."""
+def test_react_admin_accepts_a_key_that_a_class_attribute_reads(client):
+    """As on the default list routes."""
 
     class Verbose(fr.IDMixin, SharedBase):
         name: Mapped[str]
@@ -440,12 +441,15 @@ def test_react_admin_extra_query_params_widens_the_guard(client):
     class VerboseSchema(fr.IDSchema):
         name: str
 
+    def read_verbose(verbose: bool = False) -> bool:
+        return verbose
+
     @fr.include_view(client.app)
     class VerboseView(fr.AsyncReactAdminView):
         prefix = "/verbose"
         model = Verbose
         schema = VerboseSchema
-        extra_query_params = ("verbose",)
+        verbose: Annotated[bool, Depends(read_verbose)]
 
     create_tables()
 

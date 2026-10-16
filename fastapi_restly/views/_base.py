@@ -1667,13 +1667,6 @@ class BaseRestView(
     #: falls through to another route or returns 404, instead of 422.
     id_type: ClassVar[type[Any] | None] = None
     exclude_routes: ClassVar[Iterable[str | ViewRoute]] = ()
-    #: Extra query-parameter keys to allow on list routes beyond those
-    #: derived from the response class. Use this when a view reads a custom
-    #: parameter from ``self.request`` (e.g. ``?verbose=true``). Without this,
-    #: the strict unknown-key guard rejects the request with 422. A key that the
-    #: route declares, on the endpoint method or in a dependency, or an
-    #: ``APIKeyQuery`` key, needs no entry.
-    extra_query_params: ClassVar[Iterable[str]] = ()
     #: What a list route does with a query key that it does not read.
     #: ``"forbid"`` (the default) rejects the request with 422, so a typo in
     #: a filter key does not return more rows than the client asked for.
@@ -1899,18 +1892,14 @@ class BaseRestView(
         self._reject_unknown_keys(request.query_params, list_keys)
 
     def _reject_unknown_keys(self, query: QueryParams, allowed: set[str]) -> None:
-        """Raise a 422 for a key of ``query`` that is not in ``allowed`` or
-        :attr:`extra_query_params`, and that the route does not read.
+        """Raise a 422 for a key of ``query`` that is not in ``allowed``, and
+        that the route does not read.
 
         Does nothing when :attr:`unknown_query_params` is ``"ignore"``.
         """
         if self.unknown_query_params == "ignore":
             return
-        reject_unknown_query_keys(
-            query,
-            allowed | set(self.extra_query_params),
-            getattr(self, "request", None),
-        )
+        reject_unknown_query_keys(query, allowed, getattr(self, "request", None))
 
     def _validated_list_params(self, list_params: Any) -> Any:
         """``list_params`` as the list route gives them.

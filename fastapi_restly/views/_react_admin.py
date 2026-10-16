@@ -326,8 +326,7 @@ class _ReactAdminMixin:
         Overrides the default list params guard: this dialect takes three
         JSON-encoded keys, not the schema-derived grammar, so the inherited
         allow-list would wave through ``?page=2`` while still missing a typo.
-        ``extra_query_params`` and ``unknown_query_params`` work as on the
-        default list routes.
+        ``unknown_query_params`` works as on the default list routes.
         """
         view = cast(_ReactAdminViewProtocol, self)
         request = getattr(view, "request", None)

@@ -321,6 +321,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   route could disappear without an error. Restly now ignores the attribute,
   also without an error. So move every entry to a decorator: a
   `dependencies` entry that stays in `route_options` no longer runs.
+- `extra_query_params` on a view. The unknown-key check accepts every query
+  key that the route declares. So declare a key of your own where your code
+  uses it. Then it has a type, and OpenAPI shows it. Use the place that fits
+  what the key does:
+
+  - A key that filters the rows: `@fr.list_filter("key")` on a view method.
+  - A key that changes the response: a parameter of the endpoint method, as
+    in `async def get_many_endpoint(self, list_params, as_text: bool = False)`.
+  - A value that other methods or the scope need: a dependency, in a class
+    attribute with `Depends(...)`, or `Current.depends(...)`.
+  - Keys that are only known at run time, such as a family `extra.<name>`
+    that your code reads from `self.request`: `unknown_query_params = "ignore"`.
+
+  React-admin views follow the same rules. Restly now ignores
+  `extra_query_params` without an error, so a key that is only in it gets
+  `422` again.
 
 ### Fixed
 

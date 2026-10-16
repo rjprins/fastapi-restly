@@ -158,7 +158,7 @@ This table maps each need to its setting:
 | Other page limits, parameter names or list envelope | Set {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` to a {class}`NumberedPagination <fastapi_restly.views.NumberedPagination>` ([Pagination settings](#pagination-settings)) |
 | Fewer filter or sort keys on a list | Set {attr}`include_filters <fastapi_restly.views.BaseRestView.include_filters>` or {attr}`include_sort_keys <fastapi_restly.views.BaseRestView.include_sort_keys>` ([Choose the keys of a list](#choose-list-keys)) |
 | A list filter of your own | Decorate a method with {func}`fr.list_filter <fastapi_restly.views.list_filter>` ([Add a filter of your own](#own-list-filter)) |
-| A list query key of your own that is not a filter | Declare it on the endpoint method or in a dependency. When code reads it from the request, add it to {attr}`extra_query_params <fastapi_restly.views.BaseRestView.extra_query_params>` |
+| A list query key of your own that is not a filter | Declare it on the endpoint method or in a dependency ([Accept extra query parameters](#extra-query-parameters)) |
 | OpenAPI metadata or dependencies on every route | Set {attr}`tags <fastapi_restly.views.View.tags>`, {attr}`responses <fastapi_restly.views.View.responses>` or {attr}`dependencies <fastapi_restly.views.View.dependencies>` ([Share behavior with base views](#share-behaviour-with-base-views)) |
 | A route name, summary or operation ID | Override the endpoint method with a decorator of your own ([OpenAPI](#crud-route-metadata)) |
 | Another session for one view | Override the `session` annotation ([Database & Configuration](#session-dependency-one-view)) |

@@ -694,38 +694,59 @@ adds both, as this page describes.
 (extra-query-parameters)=
 ## Accept extra query parameters
 
-For a key that filters the list, write
-[a filter of your own](#own-list-filter): it has a type, and OpenAPI shows
-it.
-
-A query parameter that the route declares needs no setup: a parameter of the
-endpoint method, or one that a dependency reads, wherever the dependency is
-declared. That is the app or a router, the view's `dependencies`, or a class
-attribute. The key of an `APIKeyQuery` counts too. The unknown-key check
-accepts these keys, and OpenAPI shows them next to the filters.
-
-A view that reads a key straight from `self.request.query_params`, in an
-override, must name it. Otherwise the unknown-key check rejects it with
-`422`:
+The unknown-key check accepts every query parameter that the route declares.
+So declare a key of your own where your code uses it. Then the key has a
+type, and OpenAPI shows it next to the filters. A key that changes the
+response is a parameter of the endpoint method:
 
 ```python
-class UserView(fr.AsyncRestView):
-    extra_query_params = ("expand",)
+from fastapi.responses import PlainTextResponse
+
+
+class ItemView(fr.AsyncRestView):
+    ...
+
+    @fr.get("/")
+    async def get_many_endpoint(self, list_params, as_text: bool = False):
+        if not as_text:
+            return await super().get_many_endpoint(list_params)
+        result = await self.handle_get_many(list_params)
+        return PlainTextResponse("\n".join(item.name for item in result.objects))
 ```
 
-To accept every key that the route does not read, and leave it out, as
-FastAPI does, set
+The client sends `?as_text=true`, and `?as_text=maybe` gets `422`. A key
+that filters the rows is [a filter of your own](#own-list-filter). A value
+that other methods or the scope need comes from a dependency: a
+[class attribute](#dependency-injection-on-class-attributes) with `Depends`,
+or a member of [`Current`](#current) that
+{meth}`Current.depends <fastapi_restly.clauses.ContextNamespace.depends>`
+binds.
+
+Some keys are only known at run time, such as a family of keys
+`extra.<name>` that your code reads from `self.request.query_params`. A
+route cannot declare them. For these, set
 {attr}`unknown_query_params <fastapi_restly.views.BaseRestView.unknown_query_params>`
-to `"ignore"`. A project base view sets it once for every view:
+to `"ignore"`. The view then accepts every key that the route does not read,
+and leaves it out, as FastAPI does:
 
 ```python
-class AppView(fr.AsyncRestView):
+class ItemView(fr.AsyncRestView):
+    ...
     unknown_query_params = "ignore"
 ```
 
 Then a mistyped filter key is not an error, and the client gets more rows
 than it asked for. The default is `"forbid"`. These are the values of
 Pydantic's `extra` setting.
+
+:::{admonition} Details
+:class: details
+
+A key that a dependency reads is accepted wherever the dependency is
+declared: on the app or a router, in the view's `dependencies`, or in a
+class attribute. The key of an `APIKeyQuery` is accepted too. A project base
+view can set `unknown_query_params` once for every view.
+:::
 
 (change-list-query)=
 ## Change the list query of a view
