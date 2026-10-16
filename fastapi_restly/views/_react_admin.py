@@ -22,7 +22,7 @@ from sqlalchemy.orm import RelationshipProperty
 
 from .._pagination import _DEFAULT_PAGINATION, NoPagination, NumberedPagination
 from ..exc import BadQueryParam, RestlyConfigurationError
-from ..query._impl import _KEY_SETTINGS, _MAX_PAGINATION_OFFSET
+from ..query._impl import _KEY_SETTING_DEFAULTS, _KEY_SETTINGS, _MAX_PAGINATION_OFFSET
 from ..query._shared import _append_pk_tiebreak
 from ._async import AsyncRestView
 from ._base import (
@@ -30,6 +30,7 @@ from ._base import (
     ResponseShape,
     _annotate,
     _list_filter_methods,
+    _owner,
     _schema_response,
     _set_by,
     _typed_id_route,
@@ -486,20 +487,25 @@ class _ReactAdminMixin:
                 "Content-Range header, so these settings do not apply: "
                 f"{', '.join(ignored)}."
             )
-        # react-admin sends its own filter and sort grammar, so a setting
-        # for the keys of the default grammar would be silently ignored
+        # react-admin sends its own filter and sort grammar, so a key
+        # setting other than the default would be silently ignored. A view
+        # that inherits one sets the default again, to show it knows.
         for name in _KEY_SETTINGS:
-            for klass in cls.__mro__:
-                if klass.__module__.startswith("fastapi_restly."):
-                    continue
-                if name in vars(klass):
-                    origin = "" if klass is cls else f" (from {klass.__name__})"
-                    raise RestlyConfigurationError(
-                        f"{cls.__name__} sets {name}{origin}, which a "
-                        "react-admin view does not use. React-admin sends "
-                        "its filters and sort order in the 'filter' and "
-                        "'sort' parameters, as JSON. Remove the setting."
-                    )
+            value = tuple(getattr(cls, name))
+            default = _KEY_SETTING_DEFAULTS[name]
+            if value == default:
+                continue
+            owner = _owner(cls, name)
+            if owner is cls:
+                found, fix = f"sets {name}", "Remove the setting."
+            else:
+                found = f"inherits {name} = {value!r} from {owner.__name__}"
+                fix = f"Set {name} = {default!r} on {cls.__name__}."
+            raise RestlyConfigurationError(
+                f"{cls.__name__} {found}, which a react-admin view does not "
+                "use. React-admin sends its filters and sort order in the "
+                f"'filter' and 'sort' parameters, as JSON. {fix}"
+            )
         for name in _list_filter_methods(cls):
             raise RestlyConfigurationError(
                 f"{cls.__name__}.{name}{_set_by(cls, name)} has "

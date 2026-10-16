@@ -146,8 +146,9 @@ The settings that choose the keys of the standard dialect,
 {attr}`include_filters <fastapi_restly.views.BaseRestView.include_filters>`,
 `exclude_filters`, `include_sort_keys` and `exclude_sort_keys`, and
 {func}`fr.list_filter <fastapi_restly.views.list_filter>`, do not apply to
-this dialect. A react-admin view that has one fails when it registers, also
-when it inherits the setting from another class.
+this dialect. A react-admin view that has one fails when it registers. When
+it inherits a setting from a base view, it sets the default again, such as
+`exclude_filters = ()`, to show that the setting does not apply.
 :::
 
 ### The other routes

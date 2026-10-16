@@ -1496,6 +1496,11 @@ def _set_by(cls: type, name: str) -> str:
     return ""
 
 
+def _owner(cls: type, name: str) -> type:
+    """The class in the MRO of ``cls`` that sets ``name``."""
+    return next(klass for klass in cls.__mro__ if name in vars(klass))
+
+
 # Renamed before 1.0. Restly no longer reads the old names, so a definition
 # would be silently dead, or would fail only on a request.
 _RENAMED_SETTINGS = {"listing_param_schema": "schema_list_params"}
@@ -1982,63 +1987,119 @@ class BaseRestView(
     def _check_declared_schema_list_params(cls) -> None:
         """Reject declared list params that do not follow the view's settings.
 
-        List params from ``derive_schema_list_params`` must have the view's
-        pagination and key settings: other pagination reads other page
-        parameters than the view applies, and other key settings give other
-        keys than the view says. Hand-written list params are the author's
-        to keep in step, so the view cannot change the key settings.
+        Restly generates list params from the pagination, the four key
+        settings and the filter methods. When a subclass changes one of them,
+        it gets generated list params, unless the base wrote its list params
+        by hand. So a setting here comes with or before the declaration, or
+        the list params are written by hand. List params from
+        ``derive_schema_list_params`` must have the view's settings: other
+        settings give other keys than the view says. Hand-written list params
+        take no settings and no filter methods.
         """
-        record = _record_of(cls.schema_list_params)
-        own_keys = [
-            (method._fr_list_filter, name)
-            for name, method in _list_filter_methods(cls).items()
-        ]
+        params = cls.schema_list_params
+        declarer = _owner(cls, "schema_list_params")
+        record = _record_of(params)
+        origin = _set_by(cls, "schema_list_params")
+        its = f"its schema_list_params{origin}"
+        on_declarer = "" if declarer is cls else f" of {declarer.__name__}"
+        # after "Leave" or "leave"
+        out = f"schema_list_params out{on_declarer} to have it generated"
+
+        def derive(change: str) -> str:
+            return (
+                f"create {params.__name__} with "
+                "fr.query.derive_schema_list_params(), so that Restly can "
+                f"generate new list params for a subclass with other {change}"
+            )
+
+        position = cls.__mro__.index
+
         record_keys = (
             [(own.key, own.method) for own in record.own_filters] if record else []
         )
-        if own_keys and record_keys != own_keys:
+        own_keys = []
+        for name, method in _list_filter_methods(cls).items():
+            key = method._fr_list_filter
+            own_keys.append((key, name))
+            if (key, name) in record_keys:
+                continue
+            setter = _owner(cls, name)
+            if position(setter) < position(declarer):
+                fix = f"Leave {out}, or {derive('filter methods')}"
+            elif setter is declarer:
+                fix = f"Leave {out}"
+            else:
+                fix = (
+                    f"Leave {out}, or set {name} = None on {declarer.__name__} "
+                    "to drop the filter"
+                )
             raise RestlyConfigurationError(
-                f"{cls.__name__} has filter methods with @fr.list_filter, so "
-                "Restly must generate its list params. Leave "
-                "schema_list_params out."
+                f"{cls.__name__} has the filter method {name}"
+                f"{_set_by(cls, name)}, but {its} does not have its key "
+                f"{key!r}. Restly adds the key of a filter method only to list "
+                f"params that it generates. {fix}."
             )
-        if record_keys != own_keys:
+        others = [key for key, name in record_keys if (key, name) not in own_keys]
+        if others:
             # the list params of another view, with its filter methods
             raise RestlyConfigurationError(
-                f"{cls.__name__}.schema_list_params has the keys of filter "
-                "methods that the view does not have: "
-                f"{', '.join(key for key, _ in record_keys)}. Leave "
-                "schema_list_params out to have it generated."
+                f"{cls.__name__}.schema_list_params{origin} has the keys of "
+                "filter methods that the view does not have: "
+                f"{', '.join(others)}. Leave {out}."
             )
-        if record is None:
-            changed = [
-                name
-                for name in _KEY_SETTINGS
-                if tuple(getattr(cls, name)) != _KEY_SETTING_DEFAULTS[name]
-            ]
-            if changed:
-                names = ", ".join(f"{name}{_set_by(cls, name)}" for name in changed)
-                raise RestlyConfigurationError(
-                    f"{cls.__name__} sets {names}, but its schema_list_params "
-                    "is written by hand, so Restly cannot apply the setting. "
-                    "Leave schema_list_params out to have it generated, or "
-                    "create it with fr.query.derive_schema_list_params()."
+
+        for index, name in enumerate(_KEY_SETTINGS):
+            value = tuple(getattr(cls, name))
+            default = _KEY_SETTING_DEFAULTS[name]
+            expected = record.settings[index] if record else default
+            if value == expected:
+                continue
+            setter = _owner(cls, name)
+            if value == default:
+                found = f"has {name} = {value!r}"
+            elif setter is cls:
+                found = f"sets {name} = {value!r}"
+            else:
+                found = f"inherits {name} = {value!r} from {setter.__name__}"
+            remove = (
+                "Remove the setting"
+                if setter is cls
+                else f"Remove {name} from {setter.__name__}"
+            )
+            if record is None:
+                problem = "is written by hand, so Restly cannot apply the setting"
+                if position(setter) < position(declarer):
+                    fix = f"{remove}, or {derive('settings')}"
+                elif setter is declarer:
+                    fix = f"{remove}, or leave {out}"
+                else:
+                    fix = (
+                        f"Set {name} = {default!r} on {declarer.__name__}, or "
+                        f"leave {out}"
+                    )
+            else:
+                problem = (
+                    f"was created with {name}={expected!r}. A view's settings "
+                    "must be the ones that its list params were created with"
                 )
+                if setter is declarer and value != default:
+                    fix = f"Create it with {name}={value!r}, or leave {out}"
+                else:
+                    fix = (
+                        f"Set {name} = {expected!r} on {declarer.__name__}, or "
+                        f"leave {out}"
+                    )
+            raise RestlyConfigurationError(
+                f"{cls.__name__} {found}, but {its} {problem}. {fix}."
+            )
+
+        if record is None:
             return
         if _query_settings(record.pagination) != _query_settings(cls.pagination):
             raise RestlyConfigurationError(
-                f"{cls.__name__}.schema_list_params was created for other "
-                "pagination settings than the view's. Create it with "
-                f"pagination={cls.__name__}.pagination, or leave it out to "
-                "have it generated."
-            )
-        settings = tuple(tuple(getattr(cls, name)) for name in _KEY_SETTINGS)
-        if record.settings != settings:
-            raise RestlyConfigurationError(
-                f"{cls.__name__}.schema_list_params was created with other "
-                "include_filters, exclude_filters, include_sort_keys or "
-                "exclude_sort_keys than the view's. Create it with the "
-                "settings of the view, or leave it out to have it generated."
+                f"{cls.__name__}.schema_list_params{origin} was created for "
+                "other pagination settings than the view's. Create it with "
+                f"pagination={cls.__name__}.pagination, or leave {out}."
             )
 
     @classmethod
@@ -2194,12 +2255,37 @@ def _decided_at(cls: type, name: str) -> int | None:
     if source is None:
         return declared
     source_at = _decided_at(cls, source)
+    if (
+        name == "schema_list_params"
+        and declared is not None
+        and _record_of(vars(cls.__mro__[declared])[name]) is not None
+    ):
+        # Restly can generate these list params again, so they also follow
+        # the settings and the filter methods of a subclass.
+        settings_at = _list_settings_at(cls)
+        if source_at is None or settings_at < source_at:
+            source_at = settings_at
     if declared is None:
         return source_at
     # A declared schema stays, whatever model a subclass sets.
     if name != "schema" and source_at is not None and source_at < declared:
         return source_at
     return declared
+
+
+def _list_settings_at(cls: type) -> int:
+    """Position in the MRO of the nearest class that sets the pagination, a
+    key setting or a filter method, or drops a filter method with None."""
+    names = {"pagination", *_KEY_SETTINGS}
+    for klass in cls.__mro__:
+        names.update(
+            name
+            for name, value in vars(klass).items()
+            if hasattr(value, "_fr_list_filter")
+        )
+    return next(
+        index for index, klass in enumerate(cls.__mro__) if names & vars(klass).keys()
+    )
 
 
 def _needs_generating(cls: type, name: str) -> bool:

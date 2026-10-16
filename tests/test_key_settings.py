@@ -471,9 +471,30 @@ def test_hand_written_list_params_cannot_follow_the_settings(app):
     with pytest.raises(RestlyConfigurationError) as exc_info:
         fr.include_view(app, view)
 
-    assert str(exc_info.value).startswith(
-        "ItemView sets exclude_filters (from AppView), but its "
-        "schema_list_params is written by hand"
+    assert str(exc_info.value) == (
+        "ItemView inherits exclude_filters = ('*__icontains',) from AppView, "
+        "but its schema_list_params is written by hand, so Restly cannot "
+        "apply the setting. Set exclude_filters = () on ItemView, or leave "
+        "schema_list_params out to have it generated."
+    )
+
+
+def test_a_subclass_cannot_change_the_keys_of_hand_written_list_params(app):
+    class ItemParams(pydantic.BaseModel):
+        name: str | None = None
+
+    base = item_view(schema_list_params=ItemParams)
+    view = type("UserView", (base,), {"include_filters": ("username",)})
+
+    with pytest.raises(RestlyConfigurationError) as exc_info:
+        fr.include_view(app, view)
+
+    assert str(exc_info.value) == (
+        "UserView sets include_filters = ('username',), but its schema_list_params "
+        "(from ItemView) is written by hand, so Restly cannot apply the "
+        "setting. Remove the setting, or create ItemParams with "
+        "fr.query.derive_schema_list_params(), so that Restly can generate "
+        "new list params for a subclass with other settings."
     )
 
 
@@ -481,12 +502,59 @@ def test_declared_list_params_must_have_the_settings_of_the_view(app):
     declared = derive_schema_list_params(ItemSchema, Item, include_filters=("name",))
 
     view = item_view(schema_list_params=declared)
-    with pytest.raises(RestlyConfigurationError, match="other include_filters"):
+    with pytest.raises(RestlyConfigurationError) as exc_info:
         fr.include_view(app, view)
+    assert str(exc_info.value) == (
+        "ItemView has include_filters = ('*',), but its schema_list_params "
+        "was created with include_filters=('name',). A view's settings must "
+        "be the ones that its list params were created with. Set "
+        "include_filters = ('name',) on ItemView, or leave schema_list_params "
+        "out to have it generated."
+    )
 
     same = item_view(schema_list_params=declared, include_filters=("name",))
     fr.include_view(app, same)
     assert same.schema_list_params is declared
+
+
+def test_declared_list_params_cannot_hide_an_inherited_setting(app):
+    class AppView(fr.AsyncRestView):
+        exclude_filters = ("*__icontains",)
+
+    declared = derive_schema_list_params(ItemSchema, Item)
+    view = item_view(AppView, schema_list_params=declared)
+
+    with pytest.raises(RestlyConfigurationError) as exc_info:
+        fr.include_view(app, view)
+
+    assert str(exc_info.value) == (
+        "ItemView inherits exclude_filters = ('*__icontains',) from AppView, "
+        "but its schema_list_params was created with exclude_filters=(). A "
+        "view's settings must be the ones that its list params were created "
+        "with. Set exclude_filters = () on ItemView, or leave "
+        "schema_list_params out to have it generated."
+    )
+
+    reset = item_view(AppView, schema_list_params=declared, exclude_filters=())
+    fr.include_view(app, reset)
+    assert reset.schema_list_params is declared
+
+
+def test_a_subclass_with_other_settings_gets_new_list_params(app):
+    declared = derive_schema_list_params(ItemSchema, Item, include_filters=("name",))
+    base = item_view(schema_list_params=declared, include_filters=("name",))
+
+    same = fr.include_view(app, type("SameView", (base,), {"prefix": "/same"}))
+    user = fr.include_view(
+        app,
+        type(
+            "UserView", (base,), {"prefix": "/users", "include_filters": ("username",)}
+        ),
+    )
+
+    assert same.schema_list_params is declared
+    assert "username" in user.schema_list_params.model_fields
+    assert "name" not in user.schema_list_params.model_fields
 
 
 @pytest.mark.parametrize("base", [fr.AsyncReactAdminView, fr.ReactAdminView])
@@ -503,10 +571,26 @@ def test_react_admin_views_reject_the_settings(app, base):
     with pytest.raises(RestlyConfigurationError) as exc_info:
         fr.include_view(app, view)
 
-    assert str(exc_info.value).startswith(
-        "ItemAdmin sets exclude_sort_keys (from KeysMixin), which a react-admin "
-        "view does not use."
+    assert str(exc_info.value) == (
+        "ItemAdmin inherits exclude_sort_keys = ('name',) from KeysMixin, which "
+        "a react-admin view does not use. React-admin sends its filters and "
+        "sort order in the 'filter' and 'sort' parameters, as JSON. Set "
+        "exclude_sort_keys = () on ItemAdmin."
     )
+
+
+@pytest.mark.parametrize("base", [fr.AsyncReactAdminView, fr.ReactAdminView])
+def test_a_react_admin_view_sets_an_inherited_setting_back(app, base):
+    class KeysMixin:
+        include_filters = ("name",)
+
+    attrs = {"prefix": "/items", "model": Item, "schema": ItemSchema}
+    own = type("ItemAdmin", (base,), {**attrs, "include_filters": ("name",)})
+    with pytest.raises(RestlyConfigurationError, match="ItemAdmin sets include_"):
+        fr.include_view(app, own)
+
+    reset = type("ItemAdmin", (KeysMixin, base), {**attrs, "include_filters": ["*"]})
+    fr.include_view(app, reset)
 
 
 def test_a_field_with_a_reserved_name_can_be_left_out():

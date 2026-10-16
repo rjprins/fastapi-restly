@@ -90,13 +90,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `exclude_filters = ("page",)`. Before, such a field always failed when the
   view registered.
 - A view with a declared `schema_list_params` fails when it registers if the
-  list params do not follow its key settings. A hand-written model cannot
-  follow them, so a view that sets one of the four settings must leave
-  `schema_list_params` out, or create it with
-  `fr.query.derive_schema_list_params`.
+  list params do not follow its key settings and its filter methods. A view
+  that inherits a setting from a base view sets it again, to the value that
+  the list params were created with. Hand-written list params take no
+  settings and no filter methods. The message says what to change.
+- A subclass that changes `pagination`, a key setting or a filter method gets
+  new `schema_list_params` when its base declares list params from
+  `fr.query.derive_schema_list_params`, as a subclass with a new `schema`
+  does. Before, the subclass failed when it registered.
 - React-admin views reject the four key settings and `@fr.list_filter` when
-  they register, also when they inherit them. React-admin sends its filters
-  in its own `filter` parameter.
+  they register. React-admin sends its filters in its own `filter`
+  parameter. A react-admin view that inherits a setting from a base view
+  sets the default again, such as `exclude_filters = ()`.
 - The test clients now accept any success status (2xx) by default. Before,
   each method expected one status, such as `201` for POST. So a POST action
   that returns `200` now passes without `assert_status_code`. No test starts

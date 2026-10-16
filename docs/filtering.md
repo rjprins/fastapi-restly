@@ -515,8 +515,9 @@ fails when the view registers. To replace `name`, leave the generated key out
 with `exclude_filters = ("name",)`, and decorate your own.
 
 A subclass inherits the key. It drops the key by setting the name of the
-method to `None`, as in `filter_popular = None`. An override without the
-decorator fails when the class is defined.
+method to `None`, as in `filter_popular = None`. A type checker rejects
+`None` in place of a method, so give it a type: `filter_popular: Any = None`.
+An override without the decorator fails when the class is defined.
 
 A key follows the rules of the page parameters: no `__`, no `.` and no `_`
 at the start. It is not the name of the view's page or sort parameters, such

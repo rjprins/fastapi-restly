@@ -441,6 +441,14 @@ def test_declared_grammar_must_match_the_pagination(client):
             ThingSchema, Thing, pagination=None
         )
 
+    # a subclass with other pagination gets new list params
+    @fr.include_view(client.app)
+    class PagedView(MatchView):
+        prefix = "/paged-things"
+        pagination = fr.NumberedPagination(default_page_size=1)
+
+    assert PagedView.schema_list_params.model_fields["page_size"].default == 1
+
     create_tables()
     client.post("/things/", json={"name": "Thing 0"})
     assert client.get("/things/").json() == {"data": [{"id": 1, "name": "Thing 0"}]}

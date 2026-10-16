@@ -592,9 +592,29 @@ def test_declared_list_params_cannot_hold_the_own_keys():
         fr.include_view(FastAPI(), ItemView)
 
     assert str(exc_info.value) == (
-        "ItemView has filter methods with @fr.list_filter, so Restly must "
-        "generate its list params. Leave schema_list_params out."
+        "ItemView has the filter method filter_popular (from PopularView), but "
+        "its schema_list_params does not have its key 'popular'. Restly adds "
+        "the key of a filter method only to list params that it generates. "
+        "Leave schema_list_params out to have it generated, or set "
+        "filter_popular = None on ItemView to drop the filter."
     )
+
+
+def test_a_subclass_with_a_filter_method_gets_new_list_params():
+    class ItemView(fr.AsyncRestView):
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+        schema_list_params = fr.query.derive_schema_list_params(ItemSchema, Item)
+
+    class PopularItemView(ItemView):
+        @fr.list_filter("popular")
+        def filter_popular(self, value: bool) -> Any:
+            return None
+
+    fr.include_view(FastAPI(), PopularItemView)
+
+    assert "popular" in PopularItemView.schema_list_params.model_fields
 
 
 @pytest.mark.parametrize("base", [fr.AsyncReactAdminView, fr.ReactAdminView])
