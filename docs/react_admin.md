@@ -311,7 +311,7 @@ A react-admin view uses two pagination settings: `default_page_size`, and
 `range`, or one with a negative start or an end before its start, gets a
 `400`. The view pages with `range` and reports the total in the
 `Content-Range` header, so other settings, such as parameter names or an
-envelope, raise an error when you register the view. So does
+envelope, raise an error when Python defines the view class. So does
 `pagination = None`, because the header needs the total count.
 
 ### Change the Content-Range unit
@@ -359,26 +359,34 @@ class CustomerView(ReactAdminBase):
 
 {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` is a
 small subclass of
-{class}`AsyncRestView <fastapi_restly.views.AsyncRestView>`, built by
-[replacing an endpoint method](#replace-endpoint-method). It replaces
-{meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>`
-to read the react-admin query string. Then it calls the standard
-{meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>` and
-{meth}`get_many <fastapi_restly.views.RestView.get_many>`. The react-admin
-dialect itself is in
+{class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` with
+[list params of its own](#own-list-params). Its
+{attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`
+is a Pydantic model with three fields: `sort`, `range` and `filter`, each as
+JSON text. The list route declares `list_params`, as every list route does.
+So OpenAPI shows the three keys, and an unknown key gets `422`. A route of
+your own that declares `list_params` gets them too.
+
+The views read the JSON where they apply it: in
 {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
-(JSON `sort` and `range`), in
+(`sort` and `range`), in
 {meth}`apply_filters <fastapi_restly.views.RestView.apply_filters>`
-(JSON `filter`) and
+(`filter`) and in
 {meth}`to_list_response <fastapi_restly.views.BaseRestView.to_list_response>`
-(a plain array body and `Content-Range`). These views do not use the list
-parameters of the standard dialect, which
+(a plain array body and `Content-Range`). An override of `apply_filters`
+gets the list params with `filter` as JSON text. These views do not use the
+list params that Restly generates, which
 [Filtering & Pagination](#list-parameters-lifecycle) describes.
 
-The views also add a `PUT /{id}` route that calls the standard
+The views [replace the endpoint method](#replace-endpoint-method)
+{meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>`,
+so that OpenAPI does not show the envelope as the response. It calls the
+standard {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>`
+and {meth}`get_many <fastapi_restly.views.RestView.get_many>`. The views also
+add a `PUT /{id}` route that calls the standard
 {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` handler.
 The endpoint methods of the other CRUD routes (`GET /{id}`, `POST /`,
 `PATCH /{id}`, `DELETE /{id}`) and the business methods for writes are
 inherited without change.
 
-The shared helpers that parse the query and build the response are internal.
+The helpers that parse the JSON and build the response are internal.

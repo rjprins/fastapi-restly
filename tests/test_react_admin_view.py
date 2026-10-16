@@ -175,6 +175,27 @@ def test_custom_react_admin_list_openapi_uses_its_dialect(custom_list_client):
     }
 
 
+@pytest.mark.parametrize("flavor", ["sync", "async"])
+def test_react_admin_list_shows_its_list_params_in_openapi(flavor, request):
+    """GET / declares its list params, as every list route does. Before, it
+    read them from the request, and OpenAPI showed no query parameters."""
+    asynchronous = flavor == "async"
+    client = request.getfixturevalue("client" if asynchronous else "sync_client")
+    if asynchronous:
+        _setup_async_item_view(client)
+    else:
+        _setup_sync_item_view(client)
+
+    operation = client.app.openapi()["paths"]["/items"]["get"]
+
+    parameters = {p["name"]: p for p in operation["parameters"]}
+    assert list(parameters) == ["sort", "range", "filter"]
+    for parameter in parameters.values():
+        assert parameter["in"] == "query"
+        assert parameter["required"] is False
+        assert "as JSON" in parameter["description"]
+
+
 # ===========================================================================
 # Async variant tests
 # ===========================================================================
@@ -455,6 +476,43 @@ def test_react_admin_accepts_a_key_that_a_class_attribute_reads(client):
 
     client.get("/verbose/", params={"verbose": "true"})
     client.get("/verbose/", params={"chatty": "true"}, assert_status_code=422)
+
+
+def test_a_react_admin_view_keeps_the_list_params_of_its_base(client):
+    """A base view adds a search key to the list params, and its subclass
+    keeps them. Before, the subclass got the three keys of react-admin."""
+
+    class SearchParams(pydantic.BaseModel):
+        sort: str | None = None
+        range: str | None = None
+        filter: str | None = None
+        q: str | None = None
+
+    class RaNote(fr.IDMixin, SharedBase):
+        text: Mapped[str]
+
+    class SearchAdmin(fr.AsyncReactAdminView):
+        schema_list_params = SearchParams
+
+        async def apply_filters(self, stmt, list_params):
+            stmt = await super().apply_filters(stmt, list_params)
+            if list_params.q:
+                stmt = stmt.where(RaNote.text.icontains(list_params.q))
+            return stmt
+
+    @fr.include_view(client.app)
+    class NoteAdmin(SearchAdmin):
+        prefix = "/notes"
+        model = RaNote
+
+    create_tables()
+    client.post("/notes/", json={"text": "buy milk"})
+    client.post("/notes/", json={"text": "call mom"})
+
+    response = client.get("/notes/", params={"q": "milk", "range": "[0,9]"})
+
+    assert [row["text"] for row in response.json()] == ["buy milk"]
+    assert response.headers["Content-Range"] == "items 0-0/1"
 
 
 def test_react_admin_follows_unknown_query_params(client):

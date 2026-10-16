@@ -124,6 +124,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `@fr.list_filter` when they register. React-admin sends its filters in its
   own `filter` parameter. A react-admin view that inherits a setting from a
   base view sets the default again, such as `exclude_filters = ()`.
+- The list route of a react-admin view declares `list_params`, as every list
+  route does. The view's `schema_list_params` has the fields `sort`, `range`
+  and `filter`, as JSON text. `apply_list_params`, `apply_filters` and
+  `to_list_response` read the JSON from these list params. So an override of
+  `apply_list_params` now gets the list params, not the parsed values. A
+  route of your own on a react-admin view gets the list params when it
+  declares `list_params`.
+- A react-admin view with pagination that it cannot use now fails when
+  Python defines the class, not when the view registers. This is
+  `pagination = None`, or pagination settings other than the two page sizes.
 - The test clients now accept any success status (2xx) by default. Before,
   each method expected one status, such as `201` for POST. So a POST action
   that returns `200` now passes without `assert_status_code`. No test starts
@@ -335,6 +345,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   React-admin views follow the same rules. A view that still sets
   `extra_query_params` raises `RestlyConfigurationError`.
+- `react_admin_query_params` on the react-admin views. The three keys are the
+  fields of the view's `schema_list_params`.
 
 ### Fixed
 
@@ -376,6 +388,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the view fail with `RecursionError` when it registers. The list filters
   follow it one step: with dotted keys on, `?parent.name=` works, and
   `?parent.parent.name=` does not.
+- OpenAPI shows the `sort`, `range` and `filter` parameters of the list
+  route of a react-admin view, each with a description of its JSON. Before,
+  it showed no query parameters for this route.
+- A subclass of a react-admin view keeps the `schema_list_params` that its
+  base view declares, such as list params with a search key. Before, it got
+  the three keys of react-admin again.
 
 ### Security
 

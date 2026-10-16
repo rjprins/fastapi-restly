@@ -45,8 +45,12 @@ from ._base import (
     route,
 )
 from ._lifecycle import async_run_write_action, run_write_action
-from ._react_admin import AsyncReactAdminView, ReactAdminView
 from ._sync import RestView
+
+# isort: split
+# Last: the react-admin views import the public names above, as a view of
+# yours does.
+from ._react_admin import AsyncReactAdminView, ReactAdminView
 
 # Public API for ``fastapi_restly.views``.
 #

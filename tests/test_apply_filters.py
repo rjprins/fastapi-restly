@@ -375,20 +375,38 @@ def test_a_sync_view_needs_sync_list_methods():
     )
 
 
-@pytest.mark.parametrize("view_class", [fr.AsyncRestView], indirect=True)
-def test_a_react_admin_count_route_reads_its_filter(view_class):
-    class ItemAdmin(fr.AsyncReactAdminView):
-        prefix = "/items"
-        model = Item
-        schema = ItemSchema
+def test_a_react_admin_count_route_declares_list_params(view_class):
+    """A route of a react-admin view gets its list params as every route
+    does: it declares ``list_params``."""
+    if view_class is fr.AsyncRestView:
 
-        @fr.get("/category-counts")
-        async def category_counts(self) -> dict[str, int]:
-            await self.authorize(fr.Action.GET_MANY)
-            stmt = select(Item.category, func.count()).group_by(Item.category)
-            stmt = fr.apply_clauses(stmt, fr.resolve_scope(self))
-            stmt = await self.apply_filters(stmt, self._parse_react_admin_params())
-            return dict((await self.session.execute(stmt)).all())
+        class ItemAdmin(fr.AsyncReactAdminView):
+            prefix = "/items"
+            model = Item
+            schema = ItemSchema
+
+            @fr.get("/category-counts")
+            async def category_counts(self, list_params) -> dict[str, int]:
+                await self.authorize(fr.Action.GET_MANY)
+                stmt = select(Item.category, func.count()).group_by(Item.category)
+                stmt = fr.apply_clauses(stmt, fr.resolve_scope(self))
+                stmt = await self.apply_filters(stmt, list_params)
+                return dict((await self.session.execute(stmt)).all())
+
+    else:
+
+        class ItemAdmin(fr.ReactAdminView):  # type: ignore[no-redef]
+            prefix = "/items"
+            model = Item
+            schema = ItemSchema
+
+            @fr.get("/category-counts")
+            def category_counts(self, list_params) -> dict[str, int]:
+                self.authorize(fr.Action.GET_MANY)
+                stmt = select(Item.category, func.count()).group_by(Item.category)
+                stmt = fr.apply_clauses(stmt, fr.resolve_scope(self))
+                stmt = self.apply_filters(stmt, list_params)
+                return dict(self.session.execute(stmt).all())
 
     app = FastAPI()
     fr.include_view(app, ItemAdmin)
@@ -398,3 +416,7 @@ def test_a_react_admin_count_route_reads_its_filter(view_class):
         "/items/category-counts", params={"filter": '{"id": [1, 3]}'}
     ).json()
     assert counts == {"food": 1, "tools": 1}
+    client.get("/items/category-counts", params={"page": 2}, assert_status_code=422)
+    operation = app.openapi()["paths"]["/items/category-counts"]["get"]
+    names = [parameter["name"] for parameter in operation["parameters"]]
+    assert names == ["sort", "range", "filter"]
