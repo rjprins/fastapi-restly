@@ -16,7 +16,10 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
-from fastapi_restly.exc import RestlyConfigurationError
+from fastapi_restly.exc import (
+    RestlyConfigurationError,
+    RestlySkippedFilterMethodsWarning,
+)
 from fastapi_restly.query import apply_list_params
 from fastapi_restly.testing import RestlyTestClient
 
@@ -566,6 +569,36 @@ def test_a_subclass_that_is_not_registered_runs_its_own_filters(view_class, sync
     with make_session() as session:
         view = LiveItemView(request=None, session=session)
         stmt = view.apply_list_params(select(Item), {})
+        assert sorted(item.name for item in session.scalars(stmt)) == ["Anvil", "axe"]
+
+
+@pytest.mark.parametrize("view_class", [fr.RestView], indirect=True)
+def test_other_list_params_skip_the_filter_methods_with_a_warning(view_class, sync_db):
+    class Search(pydantic.BaseModel):
+        name: str | None = None
+
+    class ItemView(fr.RestView):
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+
+        @fr.list_filter("allow_archived")
+        def filter_allow_archived(self, value: bool = False) -> Any:
+            return None if value else ~Item.archived
+
+    client_for(ItemView)
+    _, make_session = sync_db
+    with make_session() as session:
+        view = ItemView(request=None, session=session)
+        with pytest.warns(
+            RestlySkippedFilterMethodsWarning,
+            match="ItemView got list params of the class Search, so its filter "
+            "method filter_allow_archived does not run.",
+        ):
+            stmt = view.apply_filters(select(Item), Search())
+        assert len(session.scalars(stmt).all()) == 4
+        # its own list params run the method, without a warning
+        stmt = view.apply_filters(select(Item), ItemView.schema_list_params())
         assert sorted(item.name for item in session.scalars(stmt)) == ["Anvil", "axe"]
 
 

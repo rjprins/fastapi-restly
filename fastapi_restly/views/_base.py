@@ -92,7 +92,11 @@ from .._pagination import (
 )
 from .._routes import matched_route
 from ..db._globals import _fr_globals
-from ..exc import RestlyConfigurationError, RestlyMisuseWarning
+from ..exc import (
+    RestlyConfigurationError,
+    RestlyMisuseWarning,
+    RestlySkippedFilterMethodsWarning,
+)
 from ..objects import snapshot as _object_snapshot
 from ..query._impl import (
     _KEY_SETTING_DEFAULTS,
@@ -1931,6 +1935,37 @@ class BaseRestView(
                 ]
             )
         return _validate_raw_list_params(params_model, list_params)
+
+    def _filter_method_values(self, list_params: Any) -> list[tuple[_OwnFilter, Any]]:
+        """The filter methods to call for ``list_params``, each with its value.
+
+        The class of ``list_params`` records its filter methods. Other list
+        params, such as a Pydantic model of your own, record none, so the
+        view's filter methods do not run. A warning then names them.
+        """
+        record = _record_of(type(list_params))
+        params_model = _schema_list_params(type(self))
+        if type(list_params) is not params_model:
+            own = _record_of(params_model)
+            skipped = [
+                own_filter.method
+                for own_filter in (own.own_filters if own else ())
+                if record is None or own_filter not in record.own_filters
+            ]
+            if skipped:
+                methods = "methods" if len(skipped) > 1 else "method"
+                verb = "do" if len(skipped) > 1 else "does"
+                warnings.warn(
+                    f"{type(self).__name__} got list params of the class "
+                    f"{type(list_params).__name__}, so its filter {methods} "
+                    f"{', '.join(skipped)} {verb} not run. Only an instance of "
+                    "its schema_list_params runs the filter methods. Pass one, "
+                    "or pass a dict or a QueryParams, which Restly validates "
+                    "through schema_list_params.",
+                    RestlySkippedFilterMethodsWarning,
+                    stacklevel=3,
+                )
+        return record.own_filter_values(list_params) if record else []
 
     def to_single_response(self, obj: ModelT | ResponseSchemaT) -> ResponseSchemaT:
         """Serialize one ORM object to the view's :attr:`schema_response`.

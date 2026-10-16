@@ -86,6 +86,7 @@ fastapi_restly.exc:
   - RestlyError
   - RestlyHTTPError
   - RestlyMisuseWarning
+  - RestlySkippedFilterMethodsWarning
   - RestlyUncommittedChangesWarning
   - fastapi
 fastapi_restly.models:
@@ -184,6 +185,7 @@ fastapi_restly.exc:
   - RestlyError
   - RestlyHTTPError
   - RestlyMisuseWarning
+  - RestlySkippedFilterMethodsWarning
   - RestlyUncommittedChangesWarning
   - fastapi
 fastapi_restly.models:

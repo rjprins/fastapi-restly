@@ -12,7 +12,7 @@ from ..objects import async_delete_object as object_async_delete_object
 from ..objects import async_make_new_object as object_async_make_new_object
 from ..objects import async_save_object as object_async_save_object
 from ..objects import async_update_object as object_async_update_object
-from ..query._impl import _apply_filters, _apply_sort_and_page, _keep_joins, _record_of
+from ..query._impl import _apply_filters, _apply_sort_and_page, _keep_joins
 from ._base import (
     Action,
     BaseRestView,
@@ -417,9 +417,10 @@ class AsyncRestView(
         for another URL grammar; the common case is driven by configuration.
         A ``QueryParams`` or a mapping goes through
         :attr:`~fastapi_restly.views.BaseRestView.schema_list_params` first,
-        as on the list route. Keys that the list params do not have are left
-        out of a ``QueryParams``, since they belong to the route, and raise
-        ``RequestValidationError`` in a mapping.
+        as on the list route. In a ``QueryParams``, a key that the route
+        reads is left out. Any other key that the list params do not have
+        raises ``RequestValidationError``, as on the list route (see
+        :attr:`~fastapi_restly.views.BaseRestView.unknown_query_params`).
         """
         list_params = self._validated_list_params(list_params)
         query = await self.apply_filters(query, list_params)
@@ -443,9 +444,10 @@ class AsyncRestView(
         and applies the scope itself. :meth:`apply_list_params` calls this
         method first. A ``QueryParams`` or a mapping goes through
         :attr:`~fastapi_restly.views.BaseRestView.schema_list_params` first,
-        as on the list route. Keys that the list params do not have are left
-        out of a ``QueryParams``, since they belong to the route, and raise
-        ``RequestValidationError`` in a mapping.
+        as on the list route. In a ``QueryParams``, a key that the route
+        reads is left out. Any other key that the list params do not have
+        raises ``RequestValidationError``, as on the list route (see
+        :attr:`~fastapi_restly.views.BaseRestView.unknown_query_params`).
 
         The generated filters come first, then the view's own filters from
         :func:`~fastapi_restly.views.list_filter`, in the order of the class.
@@ -458,9 +460,8 @@ class AsyncRestView(
             _schema_response(type(self)),
             pagination=self.pagination,
         )
-        record = _record_of(type(list_params))
         results: list[tuple[str, Any]] = []
-        for own, value in record.own_filter_values(list_params) if record else ():
+        for own, value in self._filter_method_values(list_params):
             result = getattr(self, own.method)(value)
             if inspect.isawaitable(result):
                 result = await result

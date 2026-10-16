@@ -57,8 +57,10 @@ The other names in `fr.exc` are not HTTP errors.
 {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
 report a setup mistake. The warnings
 {class}`RestlyUncommittedChangesWarning <fastapi_restly.exc.RestlyUncommittedChangesWarning>`,
-{class}`RestlyMisuseWarning <fastapi_restly.exc.RestlyMisuseWarning>` and
+{class}`RestlyMisuseWarning <fastapi_restly.exc.RestlyMisuseWarning>`,
 {class}`RestlyDuplicateSchemaNameWarning <fastapi_restly.exc.RestlyDuplicateSchemaNameWarning>`
+and
+{class}`RestlySkippedFilterMethodsWarning <fastapi_restly.exc.RestlySkippedFilterMethodsWarning>`
 are there too.
 :::
 

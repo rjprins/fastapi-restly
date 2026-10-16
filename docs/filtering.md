@@ -537,6 +537,12 @@ method to `None`, as in `filter_popular = None`. A type checker rejects
 `None` in place of a method, so give it a type: `filter_popular: Any = None`.
 An override without the decorator fails when the class is defined.
 
+Restly runs the filter methods only for the view's own list params: those of
+a list route, or a dict or a `QueryParams` that a method gets. A Pydantic
+model of another class, such as one of your own, does not run them, and
+Restly warns with
+{class}`RestlySkippedFilterMethodsWarning <fastapi_restly.exc.RestlySkippedFilterMethodsWarning>`.
+
 A key follows the rules of the page parameters: no `__`, no `.` and no `_`
 at the start. It is not the name of the view's page or sort parameters, such
 as `page`, `page_size` or `sort`, and not the name of a Pydantic model

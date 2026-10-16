@@ -37,7 +37,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `async def`, to load data first. A condition on a table that is not in the
   statement raises `TypeError`, as `where=` does. The key is always on, and a
   subclass drops it by setting the method's name to `None`, such as
-  `filter_popular = None`.
+  `filter_popular = None`. List params of another class, such as a Pydantic
+  model of your own, do not run the filter methods, and a
+  `RestlySkippedFilterMethodsWarning` says so.
 - `apply_filters(stmt, list_params)` on a view applies the client's filters
   without the sort and the page. A route that counts per category with
   `GROUP BY` uses it: `ORDER BY` from `apply_list_params` would fail there.
