@@ -142,13 +142,14 @@ parameter `q`, get a 400. For a search on part of a value, or a full-text
 search, override the view's
 {meth}`apply_filters <fastapi_restly.views.RestView.apply_filters>`.
 
-The settings that choose the keys of the standard dialect,
+The settings that choose the generated list params,
 {attr}`include_filters <fastapi_restly.views.BaseRestView.include_filters>`,
-`exclude_filters`, `include_sort_keys` and `exclude_sort_keys`, and
-{func}`fr.list_filter <fastapi_restly.views.list_filter>`, do not apply to
-this dialect. A react-admin view that has one fails when it registers. When
-it inherits a setting from a base view, it sets the default again, such as
-`exclude_filters = ()`, to show that the setting does not apply.
+`exclude_filters`, `include_sort_keys`, `exclude_sort_keys` and
+`sort_query_param`, and {func}`fr.list_filter <fastapi_restly.views.list_filter>`,
+do not apply to react-admin's list params. A react-admin view that has one
+fails when it registers. When it inherits a setting from a base view, it
+sets the default again, such as `exclude_filters = ()`, to show that the
+setting does not apply.
 :::
 
 ### The other routes

@@ -654,12 +654,16 @@ there a new `model` counts as a new `schema`. A class that Restly generates
 for the subclass is not a change of its own, so it does not replace a class
 that the base declares.
 
-The list params are also built from `pagination`, the four key settings such
-as `include_filters`, and the filter methods. A subclass that changes one of
-them gets new `schema_list_params` when the base declares list params from
+The list params are also built from `pagination`, the list settings such as
+`include_filters` and `sort_query_param`, and the filter methods. A subclass
+that changes one of them gets new `schema_list_params` when the base declares
+the list params that Restly would generate for it, made with
 {func}`derive_schema_list_params() <fastapi_restly.query.derive_schema_list_params>`.
-Restly cannot change the keys of list params that you write by hand, so
-there the subclass fails when it registers.
+Other declared list params stay, such as ones from a narrower schema. A
+subclass with other settings then fails when it registers, and the message
+says what to change. List params that you write by hand take no list
+settings and no filter methods. A new `schema` replaces them too, so a
+subclass with a new schema declares its list params again.
 
 (auto-generated-schemas)=
 ### How Restly generates a schema

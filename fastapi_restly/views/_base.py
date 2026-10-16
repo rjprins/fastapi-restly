@@ -1082,8 +1082,9 @@ def list_filter(key: str) -> Callable[[_F], _F]:
     method name to ``None``.
 
     :raises RestlyConfigurationError: ``key`` has ``__`` or ``.``, starts
-        with ``_``, is ``sort``, or is the name of a Pydantic model
-        attribute.
+        with ``_``, or is the name of a Pydantic model attribute. A key that
+        is a page parameter or the sort parameter fails when the view
+        registers.
     """
     _check_own_key_name(key)
 
@@ -1454,9 +1455,15 @@ _LIST_SETTING_DEFAULTS: dict[str, Any] = {
 
 
 def _list_setting(cls: type, name: str) -> Any:
-    """The value of a list setting of a view, as it is recorded."""
+    """The value of a list setting of a view, as it is recorded.
+
+    :raises RestlyConfigurationError: a key setting is not keys, such as one
+        that a mixin sets, which is not checked when it is defined.
+    """
     value = getattr(cls, name)
-    return value if name == "sort_query_param" else tuple(value)
+    if name == "sort_query_param":
+        return value
+    return _check_key_setting(f"{cls.__name__}.{name}{_set_by(cls, name)}", value)
 
 
 def _recorded_setting(record: Any, name: str) -> Any:
@@ -2272,7 +2279,9 @@ def _decided_at(cls: type, name: str) -> int | None:
     A declared value is decided where it is declared, unless what it is built
     from is decided nearer to ``cls``: then registration rebuilds it. A
     generated value is decided where its source is decided. So a copy that
-    registration wrote into a subclass does not count as a change.
+    registration wrote into a subclass does not count as a change. Declared
+    list params that Restly would generate for the declaring class are also
+    built from the list settings and the filter methods.
     """
     declared = _declared_at(cls, name)
     source = _BUILT_FROM.get(name)
@@ -2327,7 +2336,7 @@ def _generated_for(declarer: type) -> bool:
 
 def _list_settings_at(cls: type) -> int:
     """Position in the MRO of the nearest class that sets the pagination, a
-    key setting or a filter method, or drops a filter method with None."""
+    list setting or a filter method, or drops a filter method with None."""
     names = {"pagination", *_LIST_SETTING_DEFAULTS}
     for klass in cls.__mro__:
         names.update(
@@ -2367,7 +2376,8 @@ def _schema_response(view_cls: type) -> type[pydantic.BaseModel]:
 
 def _derive_view_list_params(view_cls: type) -> type[pydantic.BaseModel]:
     """The list params that registration generates for a view: from its
-    response class, its key settings and its filter methods."""
+    response class, its pagination, its list settings and its filter
+    methods."""
     if not hasattr(view_cls, "model"):
         raise ValueError(
             f"'{view_cls.__name__}.model' must be specified: it is needed to "

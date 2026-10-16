@@ -458,8 +458,8 @@ To see every key that a view could have, set `include_filters = ("**",)` and
 `include_sort_keys = ("**",)` for a moment, and look at `/docs`.
 
 {func}`derive_schema_list_params() <fastapi_restly.query.derive_schema_list_params>`
-takes the four settings as keywords, so a route outside a view can build the
-same list parameters.
+takes the four settings and `sort_query_param` as keywords, so a route
+outside a view can build the same list params.
 
 A key that clients use is part of your API. Removing it later breaks those
 clients.
@@ -735,10 +735,10 @@ query parameters next to `list_params`, as in
 `def search(self, list_params, mode: SearchMode)`.
 
 A route can also pass `self.request.query_params` on, in place of
-`list_params`. Restly reads the keys of the list parameters from it and
+`list_params`. Restly reads the keys of the list params from it and
 leaves the other keys to the route. So a misspelled key, such as `?nmae=`, is
 not an error there, and OpenAPI does not show the list keys. A dict, as in
-`view.get_many({"name": "axe"})`, holds list parameters only, so a key that
+`view.get_many({"name": "axe"})`, holds list params only, so a key that
 they do not have gets `422`.
 :::
 
@@ -838,9 +838,11 @@ On a sync view, the two methods are `def`. `apply_list_params` adds the
 order and the page. Order by a unique column last, such as `Item.id`, so
 that a row never moves to another page.
 
-The four key settings and {func}`fr.list_filter <fastapi_restly.views.list_filter>`
-apply to the list params that Restly generates. A view with list params of
-its own that has one of them fails when it registers. The
+The list settings, such as `include_filters` and `sort_query_param`, and
+{func}`fr.list_filter <fastapi_restly.views.list_filter>` apply to the list
+params that Restly generates. A view with list params of its own that has
+one of them fails when it registers. A subclass with a new `schema` gets
+generated list params, so it declares its own again. The
 [React Admin](react_admin.md) views have list params of their own: `sort`,
 `range` and `filter`.
 :::
@@ -855,9 +857,9 @@ Restly sets one class attribute,
 {attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`.
 It is a Pydantic model that
 {func}`derive_schema_list_params(cls.schema_response, cls.model, pagination=cls.pagination) <fastapi_restly.query.derive_schema_list_params>`
-generates, with the view's four key settings. It holds the pagination
-parameters, `sort`, the filter keys that the settings keep, and the view's
-own keys. Restly builds it once, when the view registers, and never again.
+generates, with the view's list settings. It holds the pagination
+parameters, the sort parameter, the filter keys that the settings keep, and
+the view's own keys. Restly builds it once, when the view registers.
 
 A route reads the list parameters through a dependency, not as a FastAPI
 query model. FastAPI splits a query model into separate parameters only when

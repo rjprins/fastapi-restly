@@ -29,7 +29,8 @@ DEFAULT_PAGE_SIZE: int = 50
 #: :attr:`NumberedPagination.max_page_size`.
 MAX_PAGE_SIZE = 1000
 
-#: The sort parameter's name. A pagination parameter cannot take it.
+#: The default name of the sort parameter. A view renames it with
+#: ``sort_query_param``.
 _SORT_QUERY_PARAM = "sort"
 
 DataT = TypeVar("DataT")

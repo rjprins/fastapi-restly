@@ -798,8 +798,10 @@ def apply_list_params(
     :meth:`~fastapi_restly.views.RestView.apply_list_params`, which calls this
     function with the view's model, response class and pagination.
 
-    With list params from :func:`derive_schema_list_params`, ``sort``
-    accepts only the sort keys that the model was created with. List params
+    With list params from :func:`derive_schema_list_params`, the sort
+    parameter has the name that the model was created with, and accepts only
+    its sort keys. With raw ``QueryParams`` or a hand-written model, the sort
+    parameter is ``sort``. List params
     with a value for a view's own filter key, from
     :func:`~fastapi_restly.views.list_filter`, raise ``ValueError``: only the
     view can apply them. Use the view's ``apply_list_params``.
@@ -809,7 +811,7 @@ def apply_list_params(
     **Raw inputs bypass schema validation** — the caller is responsible
     for verifying ``page``/``page_size`` ranges and any per-view bounds
     (``max_page_size``); this function only performs the minimum coercion
-    needed to apply the SQL clauses. Every key that
+    needed to apply the SQL clauses. Every filter key that
     :func:`derive_schema_list_params` can generate works, also a dotted one.
 
     ``pagination`` names the page and page-size parameters to read. By default

@@ -767,3 +767,16 @@ def test_a_page_parameter_cannot_be_the_sort_parameter_without_a_record():
         "A page parameter of the pagination is 'sort', which is also the sort "
         "parameter of these list params. Give the page parameter another name."
     )
+
+
+def test_a_bad_setting_from_a_mixin_fails_when_the_view_registers(app):
+    class KeysMixin:
+        include_filters = None
+
+    declared = derive_schema_list_params(ItemSchema, Item)
+    view = item_view(
+        type("Base", (KeysMixin, fr.AsyncRestView), {}), schema_list_params=declared
+    )
+
+    with pytest.raises(RestlyConfigurationError, match=r"\(from KeysMixin\)"):
+        fr.include_view(app, view)
