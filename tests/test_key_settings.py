@@ -614,3 +614,96 @@ def test_a_field_with_a_reserved_name_can_be_left_out():
     record = _record_of(model)
     assert record is not None
     assert "page" in record.sort_keys
+
+
+def test_a_view_renames_the_sort_parameter(app):
+    fr.include_view(app, item_view(sort_query_param="order_by"))
+    client = RestlyTestClient(app)
+
+    names = query_names(client)
+    assert "order_by" in names
+    assert "sort" not in names
+    client.get("/items/", params={"order_by": "-name"})
+    detail = client.get(
+        "/items/", params={"order_by": "nope"}, assert_status_code=422
+    ).json()["detail"]
+    assert (detail[0]["loc"], detail[0]["msg"]) == (
+        ["query", "order_by"],
+        "Unknown sort key 'nope'",
+    )
+    detail = client.get(
+        "/items/", params={"sort": "name"}, assert_status_code=422
+    ).json()["detail"]
+    assert detail[0]["msg"] == "Unknown query parameter 'sort'"
+
+
+def test_apply_list_params_reads_the_renamed_sort_parameter():
+    model = derive_schema_list_params(ItemSchema, Item, sort_query_param="order_by")
+
+    stmt = apply_list_params(
+        select(Item), model.model_validate({"order_by": "-name"}), Item, ItemSchema
+    )
+
+    assert "ORDER BY keys_item.name DESC" in str(stmt)
+
+
+@pytest.mark.parametrize(
+    ("value", "message"),
+    [
+        ("", "ItemView.sort_query_param must be a non-empty string"),
+        ("order__by", "'__' is reserved for filter operators"),
+        ("_order", "cannot start with '_'"),
+    ],
+)
+def test_a_bad_sort_parameter_fails_when_the_class_is_defined(value, message):
+    with pytest.raises(RestlyConfigurationError, match=message):
+        item_view(sort_query_param=value)
+
+
+def test_the_sort_parameter_cannot_be_a_page_parameter(app):
+    with pytest.raises(RestlyConfigurationError) as exc_info:
+        fr.include_view(app, item_view(sort_query_param="page"))
+
+    assert str(exc_info.value) == (
+        "ItemView.sort_query_param cannot be 'page': it is a page parameter "
+        "of the pagination. Choose another name for one of them."
+    )
+
+
+def test_declared_list_params_must_have_the_sort_parameter_of_the_view(app):
+    declared = derive_schema_list_params(ItemSchema, Item)
+    view = item_view(schema_list_params=declared, sort_query_param="order_by")
+
+    with pytest.raises(RestlyConfigurationError) as exc_info:
+        fr.include_view(app, view)
+
+    assert str(exc_info.value) == (
+        "ItemView sets sort_query_param = 'order_by', but its "
+        "schema_list_params was created with sort_query_param='sort'. A view's "
+        "settings must be the ones that its list params were created with. "
+        "Create it with sort_query_param='order_by', or leave "
+        "schema_list_params out to have it generated."
+    )
+
+    base = item_view(schema_list_params=declared)
+    ordered = fr.include_view(
+        app, type("OrderedView", (base,), {"prefix": "/o", "sort_query_param": "o"})
+    )
+    assert "o" in ordered.schema_list_params.model_fields
+
+
+@pytest.mark.parametrize("base", [fr.AsyncReactAdminView, fr.ReactAdminView])
+def test_react_admin_views_reject_the_sort_parameter(app, base):
+    view = type(
+        "ItemAdmin",
+        (base,),
+        {
+            "prefix": "/items",
+            "model": Item,
+            "schema": ItemSchema,
+            "sort_query_param": "order_by",
+        },
+    )
+
+    with pytest.raises(RestlyConfigurationError, match="ItemAdmin sets sort_query"):
+        fr.include_view(app, view)

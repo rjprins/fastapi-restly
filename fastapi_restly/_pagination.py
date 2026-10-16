@@ -220,10 +220,6 @@ def _check_query_params(owner: str, **params: Any) -> None:
                 f"{owner}.{setting} cannot be {name!r}: '__' is reserved for "
                 "filter operators and '.' for relation traversal."
             )
-        if name == _SORT_QUERY_PARAM:
-            raise RestlyConfigurationError(
-                f"{owner}.{setting} cannot be {name!r}: it is the sort parameter."
-            )
         # the list params are a Pydantic model with one field per query
         # parameter; Pydantic drops a field that starts with "_", and one
         # named like a BaseModel attribute breaks or shadows it

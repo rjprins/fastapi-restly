@@ -19,6 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the message lists the keys of the field. `include_sort_keys = ()` removes
   the `sort` parameter. `fr.query.derive_schema_list_params` takes the four
   settings as keywords.
+- `sort_query_param` on a view renames the sort parameter, such as
+  `sort_query_param = "order_by"`, to keep the URLs of another library.
+  `fr.query.derive_schema_list_params` takes it too. The old name is then
+  free: a pagination parameter or a filter of your own can be called
+  `sort`. Before, `sort` was always reserved.
 - `@fr.list_filter("key")` makes a view method the filter for a query key.
   The type of the method's value becomes the type of the key, so OpenAPI
   shows it and a bad value gets `422`, and the docstring becomes its

@@ -84,6 +84,7 @@ from .._pagination import (
     NoPagination,
     NumberedPagination,
     _build_envelope,
+    _check_query_params,
     _numbered_page_info,
     _unpaginated_page_info,
 )
@@ -1104,10 +1105,6 @@ def _check_own_key_name(key: Any) -> None:
             f"@fr.list_filter({key!r}): '__' is for the suffixes of the "
             "generated filters, and '.' for related fields. Choose another key."
         )
-    if key == _SORT_QUERY_PARAM:
-        raise RestlyConfigurationError(
-            f"@fr.list_filter({key!r}): 'sort' is the sort parameter."
-        )
     # the list params are a Pydantic model with one field per key
     if key.startswith("_") or hasattr(pydantic.BaseModel, key):
         raise RestlyConfigurationError(
@@ -1446,6 +1443,31 @@ def _check_key_settings(cls: type) -> None:
     for name in _KEY_SETTINGS:
         if name in vars(cls):
             _check_key_setting(f"{cls.__name__}.{name}", vars(cls)[name])
+    if "sort_query_param" in vars(cls):
+        _check_query_params(
+            cls.__name__, sort_query_param=vars(cls)["sort_query_param"]
+        )
+
+
+#: The view settings that Restly generates the list params with, besides
+#: the pagination, and their defaults.
+_LIST_SETTING_DEFAULTS: dict[str, Any] = {
+    **_KEY_SETTING_DEFAULTS,
+    "sort_query_param": _SORT_QUERY_PARAM,
+}
+
+
+def _list_setting(cls: type, name: str) -> Any:
+    """The value of a list setting of a view, as it is recorded."""
+    value = getattr(cls, name)
+    return value if name == "sort_query_param" else tuple(value)
+
+
+def _recorded_setting(record: Any, name: str) -> Any:
+    """The value of a list setting that list params were created with."""
+    if name == "sort_query_param":
+        return record.sort_query_param
+    return record.settings[_KEY_SETTINGS.index(name)]
 
 
 #: The list methods that an async view awaits, and a sync view calls.
@@ -1667,6 +1689,11 @@ class BaseRestView(
     include_sort_keys: ClassVar[tuple[str, ...]] = ("*",)
     #: The sort keys to leave out, after :attr:`include_sort_keys`.
     exclude_sort_keys: ClassVar[tuple[str, ...]] = ()
+    #: The name of the sort parameter. Set it to keep the URLs of another
+    #: library, such as ``"ordering"`` for Django REST framework or
+    #: ``"order_by"`` for fastapi-filter. The old name is then free for a
+    #: filter key.
+    sort_query_param: ClassVar[str] = "sort"
     #: The list params (filter, sort, page) as a pydantic model, generated
     #: from ``schema_response`` and ``model`` by
     #: :func:`~fastapi_restly.query.derive_schema_list_params`. Any route
@@ -2048,10 +2075,9 @@ class BaseRestView(
                 f"{', '.join(others)}. Leave {out}."
             )
 
-        for index, name in enumerate(_KEY_SETTINGS):
-            value = tuple(getattr(cls, name))
-            default = _KEY_SETTING_DEFAULTS[name]
-            expected = record.settings[index] if record else default
+        for name, default in _LIST_SETTING_DEFAULTS.items():
+            value = _list_setting(cls, name)
+            expected = _recorded_setting(record, name) if record else default
             if value == expected:
                 continue
             setter = _owner(cls, name)
@@ -2276,7 +2302,7 @@ def _decided_at(cls: type, name: str) -> int | None:
 def _list_settings_at(cls: type) -> int:
     """Position in the MRO of the nearest class that sets the pagination, a
     key setting or a filter method, or drops a filter method with None."""
-    names = {"pagination", *_KEY_SETTINGS}
+    names = {"pagination", *_LIST_SETTING_DEFAULTS}
     for klass in cls.__mro__:
         names.update(
             name
@@ -2330,6 +2356,7 @@ def _derive_view_list_params(view_cls: type) -> type[pydantic.BaseModel]:
         # a base view serves many schemas
         unchecked={name for name in _KEY_SETTINGS if name not in vars(view_cls)},
         own_filters=_own_filters(view_cls),
+        sort_query_param=view_cls.sort_query_param,
     )
 
 

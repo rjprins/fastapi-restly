@@ -167,7 +167,6 @@ def test_replace_returns_a_checked_copy():
         ({"page_query_param": ""}, "page_query_param must be a non-empty string"),
         ({"page_size_query_param": "page__size"}, "'__' is reserved"),
         ({"page_query_param": "page.number"}, "'.' for relation traversal"),
-        ({"page_query_param": "sort"}, "it is the sort parameter"),
         ({"page_query_param": "n", "page_size_query_param": "n"}, "must differ"),
         ({"page_query_param": "_page"}, "cannot start with '_'"),
         ({"page_size_query_param": "model_config"}, "Pydantic BaseModel attribute"),

@@ -333,7 +333,6 @@ def test_a_key_can_replace_a_generated_key_that_is_off(view_class):
     [
         ("a__b", "'__' is for the suffixes of the generated filters"),
         ("a.b", "'__' is for the suffixes of the generated filters"),
-        ("sort", "'sort' is the sort parameter."),
         ("_private", "cannot start with '_'"),
         ("copy", "be the name of a Pydantic model attribute"),
         ("", "needs a key as a non-empty string"),
@@ -354,14 +353,39 @@ def test_a_key_of_a_page_parameter_fails():
         def filter_page(self, value: int) -> Any:
             return None
 
-    with pytest.raises(RestlyConfigurationError, match="is a pagination parameter"):
+    with pytest.raises(RestlyConfigurationError) as exc_info:
         fr.include_view(FastAPI(), ItemView)
+    assert str(exc_info.value) == (
+        "ItemView.filter_page: the key 'page' is a page parameter or the sort "
+        "parameter. Choose another key."
+    )
 
     class UnpagedItemView(ItemView):
         pagination = None
 
     fr.include_view(FastAPI(), UnpagedItemView)
     assert "page" in UnpagedItemView.schema_list_params.model_fields
+
+
+def test_the_key_of_the_sort_parameter_is_free_after_a_rename():
+    class ItemView(fr.AsyncRestView):
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+
+        @fr.list_filter("sort")
+        def filter_sort(self, value: str) -> Any:
+            return None
+
+    with pytest.raises(RestlyConfigurationError, match="the sort parameter"):
+        fr.include_view(FastAPI(), ItemView)
+
+    class OrderedItemView(ItemView):
+        sort_query_param = "order_by"
+
+    fr.include_view(FastAPI(), OrderedItemView)
+    fields = OrderedItemView.schema_list_params.model_fields
+    assert {"sort", "order_by"} <= set(fields)
 
 
 def test_two_methods_with_one_key_fail():

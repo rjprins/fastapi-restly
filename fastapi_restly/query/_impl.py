@@ -26,6 +26,7 @@ from .._pagination import (
     _SORT_QUERY_PARAM,
     NoPagination,
     NumberedPagination,
+    _check_query_params,
 )
 from ..exc import BadQueryParam, RestlyConfigurationError
 from ..schemas._base import IDRef, IDSchema, _schema_role_name, _unwrap_type
@@ -93,6 +94,8 @@ class _ListParamsRecord:
     sort_keys: tuple[str, ...]
     #: The view's own filter keys.
     own_filters: tuple[_OwnFilter, ...] = ()
+    #: The name of the sort parameter.
+    sort_query_param: str = _SORT_QUERY_PARAM
 
     def own_filter_values(
         self, list_params: pydantic.BaseModel
@@ -218,14 +221,16 @@ def _query_settings(pagination: _AnyPagination) -> tuple[Any, ...] | None:
 _MAX_PAGINATION_OFFSET = 2**63 - 1
 
 
-def _reserved_names(pagination: _AnyPagination) -> frozenset[str]:
+def _reserved_names(
+    pagination: _AnyPagination, sort_query_param: str = _SORT_QUERY_PARAM
+) -> frozenset[str]:
     """Query parameters the schema produces besides filters.
 
     A filter column whose public name is one of these would shadow pagination
     or sort, which would silently break the endpoint contract. Treated as a
     hard error.
     """
-    names = {_SORT_QUERY_PARAM}
+    names = {sort_query_param}
     if isinstance(pagination, NumberedPagination):
         names |= {pagination.page_query_param, pagination.page_size_query_param}
     return frozenset(names)
@@ -347,6 +352,7 @@ def derive_schema_list_params(
     exclude_filters: _abc.Iterable[str] = (),
     include_sort_keys: _abc.Iterable[str] = ("*",),
     exclude_sort_keys: _abc.Iterable[str] = (),
+    sort_query_param: str = "sort",
 ) -> SchemaType:
     """
     Build the list params: a Pydantic model that describes and validates the
@@ -397,8 +403,11 @@ def derive_schema_list_params(
         ``()``, the model has no ``sort``.
     :param exclude_sort_keys: The sort keys to remove, after
         ``include_sort_keys``.
+    :param sort_query_param: The name of the sort parameter, such as
+        ``"order_by"``.
     :raises fastapi_restly.exc.RestlyConfigurationError: An entry of a key
-        setting matches no key, or is not a key or pattern.
+        setting matches no key, or is not a key or pattern. The sort
+        parameter has the name of a page parameter.
     """
     return _derive_list_params(
         schema_response,
@@ -410,6 +419,7 @@ def derive_schema_list_params(
             "include_sort_keys": include_sort_keys,
             "exclude_sort_keys": exclude_sort_keys,
         },
+        sort_query_param=sort_query_param,
     )
 
 
@@ -422,6 +432,7 @@ def _derive_list_params(
     owner: str | None = None,
     unchecked: _abc.Set[str] = frozenset(),
     own_filters: _abc.Sequence[_OwnFilter] = (),
+    sort_query_param: str = _SORT_QUERY_PARAM,
 ) -> SchemaType:
     """:func:`derive_schema_list_params`, for a view too.
 
@@ -434,6 +445,18 @@ def _derive_list_params(
         name: _check_key_setting(_setting_label(owner, name), settings[name])
         for name in _KEY_SETTINGS
     }
+    _check_query_params(
+        owner or "derive_schema_list_params", sort_query_param=sort_query_param
+    )
+    if isinstance(pagination, NumberedPagination) and sort_query_param in (
+        pagination.page_query_param,
+        pagination.page_size_query_param,
+    ):
+        raise RestlyConfigurationError(
+            f"{_setting_label(owner, 'sort_query_param')} cannot be "
+            f"{sort_query_param!r}: it is a page parameter of the pagination. "
+            "Choose another name for one of them."
+        )
     fields: dict[str, Any] = {}
     if isinstance(pagination, NumberedPagination):
         page_description = "1-based page number."
@@ -460,7 +483,7 @@ def _derive_list_params(
             pagination.default_page_size,
         )
 
-    reserved = _reserved_names(pagination)
+    reserved = _reserved_names(pagination, sort_query_param)
     filter_fields: dict[str, Any] = {}
     # The filter keys of each field, for the messages.
     keys_of_field: dict[str, list[str]] = {}
@@ -499,7 +522,7 @@ def _derive_list_params(
         sort_keys, patterns["include_sort_keys"], patterns["exclude_sort_keys"]
     )
     if sort_keys:
-        fields[_SORT_QUERY_PARAM] = _sort_field(sort_keys)
+        fields[sort_query_param] = _sort_field(sort_keys)
     for key in _pick_keys(
         list(filter_fields), patterns["include_filters"], patterns["exclude_filters"]
     ):
@@ -508,12 +531,12 @@ def _derive_list_params(
                 f"List params for {schema_name!r} cannot expose the filter "
                 f"key {key!r}: it collides with a reserved pagination/sort "
                 "parameter. Add a Pydantic alias to the field, rename the "
-                f"pagination parameter, or leave the key out with "
+                f"page or sort parameter, or leave the key out with "
                 f"exclude_filters = ({key!r},)."
             )
         fields[key] = filter_fields[key]
     for own in own_filters:
-        _check_own_key(_setting_label(owner, own.method), own.key, fields, pagination)
+        _check_own_key(_setting_label(owner, own.method), own.key, fields, reserved)
         annotation = own.annotation if own.always else Optional[own.annotation]
         default = own.default if own.always else None
         fields[own.key] = (
@@ -536,21 +559,23 @@ def _derive_list_params(
         settings=tuple(patterns[name] for name in _KEY_SETTINGS),
         sort_keys=tuple(sort_keys),
         own_filters=tuple(own_filters),
+        sort_query_param=sort_query_param,
     )
     return params_model
 
 
 def _check_own_key(
-    label: str, key: str, fields: dict[str, Any], pagination: _AnyPagination
+    label: str, key: str, fields: dict[str, Any], reserved: _abc.Set[str]
 ) -> None:
     """Reject an own filter key that the list params already have.
 
-    :raises RestlyConfigurationError: the key is a pagination parameter, or
-        a generated filter key that is on.
+    :raises RestlyConfigurationError: the key is a page parameter or the
+        sort parameter, or a generated filter key that is on.
     """
-    if key in _reserved_names(pagination):
+    if key in reserved:
         raise RestlyConfigurationError(
-            f"{label}: the key {key!r} is a pagination parameter. Choose another key."
+            f"{label}: the key {key!r} is a page parameter or the sort "
+            "parameter. Choose another key."
         )
     if key in fields:
         raise RestlyConfigurationError(
@@ -829,7 +854,8 @@ def _read_list_params(
     list_params: pydantic.BaseModel | QueryParams, pagination: Any
 ) -> tuple[_ListParamsRecord | None, _AnyPagination, QueryParams]:
     """The record of ``list_params``, the pagination to apply, and the
-    list params as query parameters."""
+    list params as query parameters. Without a record, the sort parameter
+    is ``sort``."""
     record = (
         _record_of(type(list_params))
         if isinstance(list_params, pydantic.BaseModel)
@@ -882,7 +908,7 @@ def _apply_filters(
     pagination: _AnyPagination = cast(Any, _FROM_PARAMS),
 ) -> Select[Any]:
     """The first step of :func:`apply_list_params`: the generated filters."""
-    _, pagination, query_params = _read_list_params(list_params, pagination)
+    record, pagination, query_params = _read_list_params(list_params, pagination)
     aliases: _JoinAliases = {}
     stmt = _apply_filtering(
         query_params,
@@ -891,6 +917,7 @@ def _apply_filters(
         schema_response,
         aliases=aliases,
         pagination=pagination,
+        sort_query_param=record.sort_query_param if record else _SORT_QUERY_PARAM,
     )
     if aliases:
         _STATEMENT_JOINS[stmt] = aliases
@@ -914,6 +941,7 @@ def _apply_sort_and_page(
         schema_response,
         aliases=dict(_STATEMENT_JOINS.get(stmt, {})),
         sort_keys=record.sort_keys if record else None,
+        sort_query_param=record.sort_query_param if record else _SORT_QUERY_PARAM,
     )
     if isinstance(pagination, NumberedPagination):
         stmt = _apply_pagination(query_params, stmt, pagination)
@@ -980,8 +1008,10 @@ def _apply_sorting(
     *,
     aliases: _JoinAliases | None = None,
     sort_keys: tuple[str, ...] | None = None,
+    sort_query_param: str = _SORT_QUERY_PARAM,
 ) -> Select[Any]:
-    """Apply ``sort`` to ``select_query``, with the primary key last.
+    """Apply the sort parameter to ``select_query``, with the primary key
+    last.
 
     :param sort_keys: The keys that ``sort`` may use. ``None`` allows every
         key that resolves to a column, as for hand-written list params.
@@ -990,7 +1020,7 @@ def _apply_sorting(
     if aliases is None:
         aliases = {}
     sorted_on: list[InstrumentedAttribute[Any]] = []
-    for column_name in (query_params.get("sort") or "").split(","):
+    for column_name in (query_params.get(sort_query_param) or "").split(","):
         if not column_name:
             continue
         order = sqlalchemy.asc
@@ -1181,6 +1211,7 @@ def _apply_filtering(
     *,
     aliases: _JoinAliases | None = None,
     pagination: _AnyPagination = _DEFAULT_PAGINATION,
+    sort_query_param: str = _SORT_QUERY_PARAM,
 ) -> Select[Any]:
     """Apply ``key=value`` and ``key__op=value`` filters to ``select_query``.
 
@@ -1192,7 +1223,7 @@ def _apply_filtering(
     """
     if aliases is None:
         aliases = {}
-    reserved = _reserved_names(pagination)
+    reserved = _reserved_names(pagination, sort_query_param)
     filters: dict[InstrumentedAttribute[Any], list[ColumnElement[Any]]] = defaultdict(
         list
     )

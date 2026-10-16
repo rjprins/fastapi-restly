@@ -22,14 +22,16 @@ from sqlalchemy.orm import RelationshipProperty
 
 from .._pagination import _DEFAULT_PAGINATION, NoPagination, NumberedPagination
 from ..exc import BadQueryParam, RestlyConfigurationError
-from ..query._impl import _KEY_SETTING_DEFAULTS, _KEY_SETTINGS, _MAX_PAGINATION_OFFSET
+from ..query._impl import _MAX_PAGINATION_OFFSET
 from ..query._shared import _append_pk_tiebreak
 from ._async import AsyncRestView
 from ._base import (
+    _LIST_SETTING_DEFAULTS,
     ListResult,
     ResponseShape,
     _annotate,
     _list_filter_methods,
+    _list_setting,
     _owner,
     _schema_response,
     _set_by,
@@ -487,12 +489,11 @@ class _ReactAdminMixin:
                 "Content-Range header, so these settings do not apply: "
                 f"{', '.join(ignored)}."
             )
-        # react-admin sends its own filter and sort grammar, so a key
+        # react-admin sends its own filter and sort parameters, so a list
         # setting other than the default would be silently ignored. A view
         # that inherits one sets the default again, to show it knows.
-        for name in _KEY_SETTINGS:
-            value = tuple(getattr(cls, name))
-            default = _KEY_SETTING_DEFAULTS[name]
+        for name, default in _LIST_SETTING_DEFAULTS.items():
+            value = _list_setting(cls, name)
             if value == default:
                 continue
             owner = _owner(cls, name)

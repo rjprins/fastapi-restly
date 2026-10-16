@@ -353,6 +353,23 @@ composite key included. So rows with equal values are never skipped or
 repeated from one page to the next. Without `sort`, the list is in primary key
 order.
 
+:::{admonition} Details
+:class: details
+
+To keep the URLs of another library, rename the parameter with
+{attr}`sort_query_param <fastapi_restly.views.BaseRestView.sort_query_param>`,
+such as `"ordering"` for Django REST framework or `"order_by"` for
+fastapi-filter:
+
+```python
+class UserView(fr.AsyncRestView):
+    sort_query_param = "order_by"
+```
+
+Clients then send `?order_by=-created_at`, and `sort` becomes an unknown key.
+A field called `sort` gets its filter key back.
+:::
+
 (choose-list-keys)=
 ## Choose the keys of a list
 
