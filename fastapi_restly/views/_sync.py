@@ -408,7 +408,7 @@ class RestView(
         """Apply the list params to ``query``: :meth:`apply_filters`, then the
         sort, then the page.
 
-        Override for another URL grammar; the common case is driven by
+        Override for list params of your own; the common case is driven by
         configuration. A ``QueryParams`` or a mapping goes through
         :attr:`~fastapi_restly.views.BaseRestView.schema_list_params` first,
         as on the list route. In a ``QueryParams``, a key that the route

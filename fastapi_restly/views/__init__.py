@@ -15,7 +15,7 @@ methods. The handler handles the steps, and you override a step:
    usual override point.
 
 Cross-cutting seams: ``scope`` (read visibility), ``authorize`` (policy),
-``apply_list_params`` (URL grammar), ``to_response`` (response shape),
+``apply_list_params`` (list params), ``to_response`` (response shape),
 ``write_action`` (custom write actions), ``shared_write_action_commit``
 (one commit over several writes). Under the verbs sit the final
 domain utilities (``make_new_object``, ``update_object``, ``save_object``):

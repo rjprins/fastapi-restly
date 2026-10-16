@@ -2,7 +2,7 @@
 
 [React-admin](https://marmelab.com/react-admin/) with
 [`ra-data-simple-rest`](https://github.com/marmelab/react-admin/tree/master/packages/ra-data-simple-rest)
-expects a REST dialect that differs from the
+expects routes that differ from the
 [default CRUD routes](#default-crud-behavior) of Restly in four ways:
 
 - The list route reads three JSON-encoded query parameters: `sort`, `range`
@@ -13,8 +13,8 @@ expects a REST dialect that differs from the
 - Updates use `PUT`.
 
 {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>` and
-{class}`ReactAdminView <fastapi_restly.views.ReactAdminView>` speak this
-dialect, so `ra-data-simple-rest` works without a custom data provider. They
+{class}`ReactAdminView <fastapi_restly.views.ReactAdminView>` serve these
+routes, so `ra-data-simple-rest` works without a custom data provider. They
 are a {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` and a
 {class}`RestView <fastapi_restly.views.RestView>` with a different list
 route and an added `PUT` route. Everything else is inherited: the other
@@ -124,9 +124,10 @@ Content-Range: items 0-24/315
 
 Any other query key gets a 422, so a typo cannot return more rows than you
 asked for without notice. The `page`, `page_size` and field filters of the
-standard dialect are unknown keys here too. A key that the route declares,
-on the endpoint method or in a dependency, is accepted, and so is an
-`APIKeyQuery` key; see [Accept extra query parameters](#extra-query-parameters).
+list params that Restly generates are unknown keys here too. A key that the
+route declares, on the endpoint method or in a dependency, is accepted, and
+so is an `APIKeyQuery` key; see
+[Accept extra query parameters](#extra-query-parameters).
 To accept every key, set
 {attr}`unknown_query_params <fastapi_restly.views.BaseRestView.unknown_query_params>`
 to `"ignore"`, as on the other views.
@@ -276,8 +277,8 @@ that the browser blocked the request: the API sends no
 
 **"422 (Unprocessable Content)"** on the list request means that the route
 rejected the query of react-admin, so the view is a plain
-{class}`AsyncRestView <fastapi_restly.views.AsyncRestView>`: the standard
-dialect does not accept the JSON-encoded `sort`, `range` and `filter`
+{class}`AsyncRestView <fastapi_restly.views.AsyncRestView>`: its list
+params do not accept the JSON-encoded `sort`, `range` and `filter`
 parameters. Change the view to
 {class}`AsyncReactAdminView <fastapi_restly.views.AsyncReactAdminView>`.
 

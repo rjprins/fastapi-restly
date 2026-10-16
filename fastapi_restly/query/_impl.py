@@ -1081,8 +1081,8 @@ def _iter_fields_including_nested(
         if field.exclude is True:
             continue
         public_name = field.alias or name
-        # Each segment of the public dotted path becomes part of the URL
-        # grammar. ``__`` is reserved for operator suffixes (``__gte``,
+        # Each segment of the public dotted path becomes part of a key of
+        # the list params. ``__`` is reserved for operator suffixes (``__gte``,
         # ``__contains``, ...) and ``.`` is reserved for relation traversal,
         # so a segment containing either character would create an
         # ambiguous URL key. Reject at schema-generation time so the

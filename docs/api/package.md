@@ -28,7 +28,7 @@ through `fr`.
 | {class}`fr.IDRef <fastapi_restly.schemas.IDRef>` | Relationship reference serialized as a scalar ID. |
 | {class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>` | Schema base with a read-only ID, or a nested relationship reference when parameterized. |
 | {func}`fr.include_view <fastapi_restly.views.include_view>` | Register a view's endpoint methods on an app or router. |
-| {func}`fr.list_filter <fastapi_restly.views.list_filter>` | Make a view method the filter for a list query key. |
+| {func}`fr.list_filter <fastapi_restly.views.list_filter>` | Make a view method the filter for a key of the list params. |
 | {class}`fr.ListResult <fastapi_restly.views.ListResult>` | The objects, total count, and list params of a list, before response serialization. |
 | {class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>` | Restly's defaults for models, added to your own declarative base. |
 | {class}`fr.MustExist <fastapi_restly.schemas.MustExist>` | Scalar foreign-key annotation that checks the referenced row exists. |

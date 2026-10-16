@@ -5,7 +5,7 @@ from importlib.metadata import version as _version
 # ``__all__`` so ``from fastapi_restly import *`` stays the everyday surface:
 #   fr.exc     — errors, HTTP exceptions, and the uncommitted-changes warning
 #   fr.objects — schema<->ORM helpers for use outside a view
-#   fr.query   — low-level list query-parameter helpers
+#   fr.query   — low-level helpers for list params
 # (fr.db / fr.models / fr.schemas / fr.views / fr.clauses are bound by the
 # from-imports below.)
 from . import exc, objects, query  # noqa: F401

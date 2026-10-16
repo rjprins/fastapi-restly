@@ -59,7 +59,7 @@ method overrides to share behavior across resources.
 - **Incremental adoption**: use Restly per resource; drop to ordinary FastAPI when needed — see [New & Existing Projects](https://www.fastapi-restly.org/projects.html).
 - **Class-level dependencies**: declare shared dependencies once and read their values from `self`.
 - **Explicit override points**: replace the endpoint method for the HTTP contract, override the business method for domain logic, and call the final handler from custom routes.
-- **Filtering, pagination, sorting**: get schema-derived list parameters.
+- **Filtering, pagination, sorting**: get list params derived from the schema.
 - **Row visibility as a clause**: declare `default_scope` once on the model's clause namespace, and every list, retrieve, count, and reference check applies it; see [Scopes](https://www.fastapi-restly.org/scopes.html).
 - **Field control**: `ReadOnly` / `WriteOnly` markers, plus foreign-key validation through `MustExist[...]`.
 - **React Admin ready**: `AsyncReactAdminView` / `ReactAdminView` speak `ra-data-simple-rest`.
@@ -250,7 +250,7 @@ Use **auto-schema** for prototypes and internal tools. Use an **explicit schema*
 
 ### List endpoint query parameters
 
-List endpoints expose a stable URL parameter dialect generated from the view's response class:
+List endpoints take list params generated from the view's response class:
 
 ```bash
 GET /users?name=John&created_at__gte=2024-01-01

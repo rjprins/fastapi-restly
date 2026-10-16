@@ -168,9 +168,10 @@ add it.
    and `UserListResponse`. It sees the view's schema only when another schema
    nests it or a custom route names it. A view without a schema gets a
    generated `UserSchema`.
-7. One word per thing. "Response" is what goes out. "List params" is the list
-   grammar and its value. "Query params" only means raw keys from the URL, as
-   in `unknown_query_params`.
+7. One word per thing. "Response" is what goes out. "List params" are the
+   keys that a list reads from the URL, such as its filters, sort and page,
+   and their values. "Query params" only means raw keys from the URL, as in
+   `unknown_query_params`.
 
 A public function takes the same argument names as the view: `schema`, not
 `schema_cls`; `query`, not `select_query`; `list_params`, not `params`. An
@@ -210,6 +211,9 @@ request bodies follow `schema_create` and `schema_update`.
 - "singular" or "item" for one object: say "single". The docs use `Item` as
   an example model.
 - `list` as a method name: it hides the builtin `list` in the class body.
+- "grammar", "dialect", "query contract" or "filter syntax" for the keys of a
+  list, and "list parameters" in prose: say "list params". "Dialect" only
+  means the type of database, as in SQLAlchemy.
 
 ## Release Process
 

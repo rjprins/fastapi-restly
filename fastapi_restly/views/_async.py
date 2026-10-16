@@ -414,8 +414,8 @@ class AsyncRestView(
         sort, then the page.
 
         Async, as :meth:`apply_filters` is: call it with ``await``. Override
-        for another URL grammar; the common case is driven by configuration.
-        A ``QueryParams`` or a mapping goes through
+        for list params of your own; the common case is driven by
+        configuration. A ``QueryParams`` or a mapping goes through
         :attr:`~fastapi_restly.views.BaseRestView.schema_list_params` first,
         as on the list route. In a ``QueryParams``, a key that the route
         reads is left out. Any other key that the list params do not have

@@ -2733,8 +2733,8 @@ def _route_query_keys(request: fastapi.Request) -> set[str]:
     app or a router, the view's ``dependencies``, a class attribute, the
     endpoint. Also the key of a query API key scheme such as
     ``APIKeyQuery``, which reads the query string without declaring a
-    parameter. The guard walks the tree only for a key that its dialect
-    does not allow.
+    parameter. The guard walks the tree only for a key that the list
+    params do not have.
     """
     dependant = getattr(matched_route(request.scope), "dependant", None)
     pending = [dependant] if dependant is not None else []
