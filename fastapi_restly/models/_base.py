@@ -35,53 +35,81 @@ CASCADE_ALL_ASYNC = "save-update, merge, delete, expunge"
 CASCADE_ALL_DELETE_ORPHAN_ASYNC = CASCADE_ALL_ASYNC + ", delete-orphan"
 
 
-def _reject_field_equality_from_a_mixin(cls: type, base: type, writes_eq: bool) -> None:
-    """Raise when a model compares its fields because of a mixin.
+def _reject_dataclass_method_from_a_mixin(cls: type, base: type, option: str) -> None:
+    """Raise when a model, or ``base`` itself, gets ``__eq__`` or ``__repr__``
+    from a mixin.
 
-    A dataclass mixin without ``eq=False`` gets Python's default,
-    ``eq=True``. Two things then follow. When the mixin comes first in the
-    model's bases, SQLAlchemy takes the model's options from it, so the
-    model gets an ``__eq__`` that compares all its fields. When it comes
-    later, the model has no ``__eq__`` of its own and inherits the mixin's,
-    which compares the mixin's fields only. Either way the model loses the
-    identity equality of ``ModelDefaults``.
+    ``option`` is ``"eq"`` or ``"repr"``. A dataclass mixin that leaves the
+    option out gets Python's default, True. What happens then depends on
+    where the mixin is in the bases. When the mixin comes first, SQLAlchemy
+    takes the class's options from it, so the class gets a method that reads
+    all its fields. When it comes later, the class inherits the mixin's own
+    method, which reads the mixin's fields only. Either way the class loses
+    its default: identity equality for ``eq``, or the repr of
+    ``ModelDefaults`` for ``repr``.
 
-    A model of another model, mapped or ``__abstract__``, takes that
-    model's choice. An ``__eq__`` that the model writes itself is its own
-    choice too.
+    A class that passes the option as True, or that has a parent model that
+    does, asks for the method. The caller skips a class that writes the
+    method itself.
     """
-    if writes_eq:
+    method = f"__{option}__"
+    owner = next(b for b in cls.__mro__ if method in b.__dict__)
+    if not _left_to_python(owner, option):
+        # The default (object.__eq__ or ModelDefaults.__repr__), a method
+        # someone wrote, or a method someone asked for.
         return
-    owner = next(b for b in cls.__mro__ if "__eq__" in b.__dict__)
     if owner is cls:
         # Generated from the options that SQLAlchemy took from a base.
-        if any(_compares_fields(b) and issubclass(b, base) for b in cls.__mro__[1:]):
+        mixin = next(
+            (
+                b
+                for b in cls.__mro__[1:]
+                if _left_to_python(b, option) and not issubclass(b, base)
+            ),
+            None,
+        )
+        if mixin is None:
             return
-        mixin = next((b for b in cls.__mro__[1:] if _compares_fields(b)), None)
-    elif _compares_fields(owner) and not issubclass(owner, base):
+    elif not issubclass(owner, base):
         mixin = owner
     else:
-        # Identity, a parent model's choice, or an __eq__ that someone wrote.
+        # A method that a parent model wrote.
         return
-    if mixin is None:
-        return
+    name = cls.__name__
+    target = "each model" if cls is base else "the model"
+    if option == "eq":
+        what = "compares its objects field by field"
+        risk = f"Comparing two {name} objects can then read a relationship"
+        keep = f"To compare {name} by its fields, pass eq=True on {target}."
+    else:
+        what = "gets a dataclass repr"
+        risk = f"The repr of a {name} object can then read a relationship or a column"
+        keep = f"For the dataclass repr, pass repr=True on {target}."
     raise RestlyConfigurationError(
-        f"{cls.__name__} compares its objects field by field, because its "
-        f"dataclass base {mixin.__name__} does not set eq=False. A dataclass "
-        f"mixin gets Python's default eq=True, and {base.__name__} does not "
-        f"change that. Comparing two {cls.__name__} objects can then load a "
-        f"relationship, which an async session cannot do on access. Declare "
-        f"the mixin with the options of fr.IDMixin: "
-        f"class {mixin.__name__}(MappedAsDataclass, kw_only=True, eq=False, "
-        f"repr=False). "
-        f"To compare {cls.__name__} by its fields, pass eq=True on the model."
+        f"{name} {what}, because its dataclass base {mixin.__name__} does not "
+        f"set {option}=False. A dataclass mixin gets Python's default "
+        f"{option}=True, and {base.__name__} does not change that. {risk} that "
+        f"is not loaded. In async code, that raises MissingGreenlet. Declare "
+        f"the mixin with the options of fr.IDMixin: class {mixin.__name__}("
+        f"MappedAsDataclass, kw_only=True, eq=False, repr=False). {keep}"
     )
 
 
-def _compares_fields(cls: type) -> bool:
-    """Whether ``cls`` itself is a dataclass with ``eq=True``."""
+def _left_to_python(cls: type, option: str) -> bool:
+    """Whether ``cls`` itself is a dataclass with ``option`` True only because
+    no class passed it, so Python's default applies.
+
+    SQLAlchemy keeps the options that it applied in
+    ``_sa_apply_dc_transforms``, with ``NO_ARG`` for an option that is left
+    out. This is the same in SQLAlchemy 2.0 and 2.1.
+    """
     params = cls.__dict__.get("__dataclass_params__")
-    return params is not None and params.eq
+    applied = cls.__dict__.get("_sa_apply_dc_transforms", {})
+    return (
+        params is not None
+        and getattr(params, option)
+        and applied.get(option) is not True
+    )
 
 
 def utc_now() -> datetime:
@@ -158,7 +186,19 @@ def underscore(name: str) -> str:
     ),
 )
 class _KwOnlyDataclassMeta(DCTransformDeclarative):
-    pass
+    def __new__(
+        mcls, name: str, bases: tuple[type, ...], namespace: dict[str, Any], **kw: Any
+    ) -> "_KwOnlyDataclassMeta":
+        cls = super().__new__(mcls, name, bases, namespace, **kw)
+        base = _declarative_base(cls)
+        if base is not None:
+            for option in ("eq", "repr"):
+                # The class body, not cls.__dict__: with the bases in the order
+                # (DeclarativeBase, fr.ModelDefaults), SQLAlchemy makes the
+                # class a dataclass before ModelDefaults.__init_subclass__ runs.
+                if f"__{option}__" not in namespace:
+                    _reject_dataclass_method_from_a_mixin(cls, base, option)
+        return cls
 
 
 _TYPE_ANNOTATION_MAP: dict[Any, Any] = {
@@ -238,11 +278,12 @@ class ModelDefaults(
     For the same reason, a dataclass mixin of your own declares the options
     of ``fr.IDMixin``: ``class Stamped(MappedAsDataclass, kw_only=True,
     eq=False, repr=False)``. Without ``eq=False``, a model with the mixin
-    compares fields, and comparing two objects can load a relationship. Such
-    a model raises :class:`~fastapi_restly.exc.RestlyConfigurationError`
-    unless it asks for ``eq=True`` itself or writes its own ``__eq__``.
+    compares fields, and comparing two objects can load a relationship.
     Without ``repr=False``, the model gets a dataclass repr instead of this
-    one.
+    one, and that repr can load a relationship too. Such a model raises
+    :class:`~fastapi_restly.exc.RestlyConfigurationError`, unless it passes
+    ``eq=True`` or ``repr=True`` itself, or writes its own ``__eq__`` or
+    ``__repr__``.
     """
 
     def __repr__(self) -> str:
@@ -288,11 +329,7 @@ class ModelDefaults(
                 f"makes every model on {base.__name__} a dataclass. Or leave "
                 f"fr.ModelDefaults out: Restly's views also work without it."
             )
-        # Before SQLAlchemy makes the class a dataclass, which can add one.
-        writes_eq = "__eq__" in cls.__dict__
         super().__init_subclass__(**kw)
-        if base is not None and base is not cls and kw.get("eq") is not True:
-            _reject_field_equality_from_a_mixin(cls, base, writes_eq)
         if base is cls:
             # SQLAlchemy has set up the registry by now, with the base's own
             # type_annotation_map. Restly's entries fill in what it leaves out.

@@ -190,15 +190,18 @@ set, not the options of `Base`:
   bases.
 - Without `eq=False`, a model with the mixin compares its objects field by
   field, wherever the mixin is in the bases. Comparing two objects can then
-  load a relationship, and an async session raises `MissingGreenlet`. Restly
-  raises
-  {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
-  for such a model, unless the model passes `eq=True` or writes its own
-  `__eq__`. A model below another model, also an `__abstract__` one, takes
-  that model's choice.
-- Without `repr=False`, a model with the mixin gets a dataclass repr instead
-  of the repr of `fr.ModelDefaults`. A dataclass repr reads every field, so in
-  async code it can raise `MissingGreenlet`.
+  load a relationship, and an async session raises `MissingGreenlet`.
+- Without `repr=False`, a model that lists the mixin before `Base` gets a
+  dataclass repr instead of the repr of `fr.ModelDefaults`. A dataclass repr
+  reads its fields, so in async code it can raise `MissingGreenlet` too.
+
+Restly raises
+{class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
+for a model that gets `__eq__` or `__repr__` from a mixin without `eq=False`
+or `repr=False`. For the dataclass method, a model passes `eq=True` or
+`repr=True`. A model can also write its own `__eq__` or `__repr__`. A model
+below another model, also an `__abstract__` one, takes the choice of that
+model when it passes `eq=True` or `repr=True`.
 :::
 
 ## Use the base in your app

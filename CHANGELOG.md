@@ -67,9 +67,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and relationships are left out. Before, the dataclass repr read every field,
   so in async code it raised `MissingGreenlet` for a relationship or a column
   that was not loaded. Pass `repr=True` on a model for the dataclass repr. A
-  dataclass mixin of your own adds `repr=False`, or the model gets a dataclass
-  repr instead. A model that uses `fr.IDMixin` or `fr.TimestampsMixin` on a
-  base without `fr.ModelDefaults` gets Python's default repr.
+  dataclass mixin of your own adds `repr=False`. Without it, the model gets a
+  dataclass repr, so `fr.ModelDefaults` raises `RestlyConfigurationError`,
+  unless the model passes `repr=True` or writes its own `__repr__`. A model
+  that uses `fr.IDMixin` or `fr.TimestampsMixin` on a base without
+  `fr.ModelDefaults` gets Python's default repr.
 - `restly new` generates `app/models.py` with the project's own
   `class Base(fr.ModelDefaults, DeclarativeBase)`. The models, `alembic/env.py`,
   the test setup and `create_all` use that `Base` instead of

@@ -157,7 +157,7 @@ def test_a_mixin_with_the_options_of_id_mixin_keeps_identity_equality():
     class Base(fr.ModelDefaults, DeclarativeBase):
         pass
 
-    class Stamped(MappedAsDataclass, kw_only=True, eq=False):
+    class Stamped(MappedAsDataclass, kw_only=True, eq=False, repr=False):
         note: Mapped[str] = mapped_column(default="")
 
     class Post(Stamped, fr.IDMixin, Base):
@@ -202,7 +202,7 @@ def test_a_model_with_such_a_mixin_can_ask_for_field_equality():
     class Base(fr.ModelDefaults, DeclarativeBase):
         pass
 
-    class Stamped(MappedAsDataclass, kw_only=True):
+    class Stamped(MappedAsDataclass, kw_only=True, repr=False):
         note: Mapped[str] = mapped_column(default="")
 
     class Post(Stamped, fr.IDMixin, Base, eq=True):
@@ -241,7 +241,7 @@ def test_a_model_that_writes_its_own_eq_keeps_it():
     class Base(fr.ModelDefaults, DeclarativeBase):
         pass
 
-    class Stamped(MappedAsDataclass, kw_only=True):
+    class Stamped(MappedAsDataclass, kw_only=True, repr=False):
         note: Mapped[str] = mapped_column(default="")
 
     class Post(fr.IDMixin, Stamped, Base):
@@ -310,6 +310,131 @@ def test_a_model_can_ask_for_the_dataclass_repr():
         title: Mapped[str]
 
     assert repr(Post(title="a")).endswith("Post(id=None, title='a')")
+
+
+def test_a_mixin_without_repr_false_raises():
+    """The model got a dataclass repr that read every field, or the mixin's
+    repr, which showed the mixin's fields only. In async code either could
+    raise MissingGreenlet. Before, nothing said so."""
+
+    class Base(fr.ModelDefaults, DeclarativeBase):
+        pass
+
+    class Stamped(MappedAsDataclass, kw_only=True, eq=False):
+        note: Mapped[str] = mapped_column(default="")
+
+    message = (
+        r"gets a dataclass repr, because its dataclass base Stamped does not "
+        r"set repr=False.*"
+        r"class Stamped\(MappedAsDataclass, kw_only=True, eq=False, repr=False\)"
+    )
+    # First in the bases: SQLAlchemy takes the model's options from it.
+    with pytest.raises(fr.exc.RestlyConfigurationError, match="Post " + message):
+
+        class Post(Stamped, fr.IDMixin, Base):
+            title: Mapped[str]
+
+    # Later in the bases: the model inherits the mixin's __repr__.
+    # repr=False on the model does not help.
+    with pytest.raises(fr.exc.RestlyConfigurationError, match="Note " + message):
+
+        class Note(fr.IDMixin, Stamped, Base, repr=False):
+            title: Mapped[str]
+
+
+def test_a_model_with_such_a_mixin_can_ask_for_the_dataclass_repr():
+    class Base(fr.ModelDefaults, DeclarativeBase):
+        pass
+
+    class Stamped(MappedAsDataclass, kw_only=True, eq=False):
+        note: Mapped[str] = mapped_column(default="")
+
+    class Post(Stamped, fr.IDMixin, Base, repr=True):
+        title: Mapped[str]
+
+    class Note(fr.IDMixin, Stamped, Base, repr=True):
+        title: Mapped[str]
+
+    assert repr(Post(title="a")).endswith("Post(id=None, note='', title='a')")
+    assert repr(Note(title="a")).endswith("Note(note='', id=None, title='a')")
+
+
+def test_a_model_that_writes_its_own_repr_keeps_it():
+    class Base(fr.ModelDefaults, DeclarativeBase):
+        pass
+
+    class Stamped(MappedAsDataclass, kw_only=True, eq=False):
+        note: Mapped[str] = mapped_column(default="")
+
+    class Post(Stamped, fr.IDMixin, Base):
+        title: Mapped[str]
+
+        def __repr__(self) -> str:
+            return "from the model"
+
+    assert repr(Post(title="a")) == "from the model"
+
+
+def test_a_parent_model_that_writes_its_own_method_does_not_exempt_its_children():
+    """The parent's own __repr__ and __eq__ were fine. A model below it still
+    got the dataclass methods from the parent's mixin, and nothing raised."""
+
+    class Base(fr.ModelDefaults, DeclarativeBase):
+        pass
+
+    class Stamped(MappedAsDataclass, kw_only=True):
+        note: Mapped[str] = mapped_column(default="")
+
+    class Content(Stamped, fr.IDMixin, Base):
+        __abstract__ = True
+        title: Mapped[str]
+
+        def __eq__(self, other: object) -> bool:
+            return self is other
+
+        __hash__ = object.__hash__
+
+        def __repr__(self) -> str:
+            return "from Content"
+
+    with pytest.raises(fr.exc.RestlyConfigurationError, match="Post compares"):
+
+        class Post(Content):
+            pass
+
+
+@pytest.mark.parametrize("option", ["eq", "repr"])
+def test_the_check_works_in_either_order_of_the_bases(option):
+    """With DeclarativeBase first, SQLAlchemy made the class a dataclass before
+    the check looked for the methods that the model wrote, and nothing
+    raised."""
+
+    class Base(DeclarativeBase, fr.ModelDefaults):
+        pass
+
+    other = "repr" if option == "eq" else "eq"
+
+    class Stamped(MappedAsDataclass, kw_only=True, **{other: False}):
+        note: Mapped[str] = mapped_column(default="")
+
+    with pytest.raises(fr.exc.RestlyConfigurationError, match=f"set {option}=False"):
+
+        class Post(Stamped, fr.IDMixin, Base):
+            title: Mapped[str]
+
+
+def test_a_mixin_on_the_base_raises():
+    """Each model got the mixin's options through the base, and nothing
+    raised."""
+
+    class Stamped(MappedAsDataclass, kw_only=True, eq=False):
+        note: Mapped[str] = mapped_column(default="")
+
+    message = r"Base gets a dataclass repr.*pass repr=True on each model"
+    with pytest.raises(fr.exc.RestlyConfigurationError, match=message):
+
+        class Base(Stamped, fr.ModelDefaults, DeclarativeBase):
+            pass
 
 
 def test_a_repr_of_your_own_wins():
