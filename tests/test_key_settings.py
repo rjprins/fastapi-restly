@@ -748,3 +748,22 @@ def test_a_subclass_keeps_list_params_with_settings_of_their_own(app):
         "PagedView has include_filters = ('*',), but its schema_list_params "
         "(from ItemView) was created with include_filters=('name',)."
     )
+
+
+def test_a_page_parameter_cannot_be_the_sort_parameter_without_a_record():
+    # hand-written list params and a QueryParams read "sort" for the sort
+    pagination = fr.NumberedPagination(page_query_param="sort")
+
+    with pytest.raises(RestlyConfigurationError) as exc_info:
+        apply_list_params(
+            select(Item),
+            QueryParams("sort=2&page_size=2"),
+            Item,
+            ItemSchema,
+            pagination=pagination,
+        )
+
+    assert str(exc_info.value) == (
+        "A page parameter of the pagination is 'sort', which is also the sort "
+        "parameter of these list params. Give the page parameter another name."
+    )

@@ -852,10 +852,16 @@ _STATEMENT_JOINS: "weakref.WeakKeyDictionary[Select[Any], _JoinAliases]" = (
 
 def _read_list_params(
     list_params: pydantic.BaseModel | QueryParams, pagination: Any
-) -> tuple[_ListParamsRecord | None, _AnyPagination, QueryParams]:
-    """The record of ``list_params``, the pagination to apply, and the
-    list params as query parameters. Without a record, the sort parameter
-    is ``sort``."""
+) -> tuple[_ListParamsRecord | None, _AnyPagination, str, QueryParams]:
+    """The record of ``list_params``, the pagination to apply, the name of
+    the sort parameter, and the list params as query parameters.
+
+    Without a record, as for hand-written list params, the sort parameter is
+    ``sort``.
+
+    :raises RestlyConfigurationError: a page parameter has the name of the
+        sort parameter.
+    """
     record = (
         _record_of(type(list_params))
         if isinstance(list_params, pydantic.BaseModel)
@@ -863,8 +869,20 @@ def _read_list_params(
     )
     if isinstance(pagination, _FromParams):
         pagination = record.pagination if record else _DEFAULT_PAGINATION
+    sort_query_param = record.sort_query_param if record else _SORT_QUERY_PARAM
+    if isinstance(pagination, NumberedPagination) and sort_query_param in (
+        pagination.page_query_param,
+        pagination.page_size_query_param,
+    ):
+        # list params from derive_schema_list_params reject this when created
+        raise RestlyConfigurationError(
+            f"A page parameter of the pagination is {sort_query_param!r}, "
+            "which is also the sort parameter of these list params. Give the "
+            "page parameter another name."
+        )
     own_keys = {own.key for own in record.own_filters} if record else set()
-    return record, pagination, _coerce_to_query_params(list_params, exclude=own_keys)
+    query_params = _coerce_to_query_params(list_params, exclude=own_keys)
+    return record, pagination, sort_query_param, query_params
 
 
 def _keep_joins(source: Select[Any], stmt: Select[Any]) -> Select[Any]:
@@ -908,7 +926,9 @@ def _apply_filters(
     pagination: _AnyPagination = cast(Any, _FROM_PARAMS),
 ) -> Select[Any]:
     """The first step of :func:`apply_list_params`: the generated filters."""
-    record, pagination, query_params = _read_list_params(list_params, pagination)
+    _, pagination, sort_query_param, query_params = _read_list_params(
+        list_params, pagination
+    )
     aliases: _JoinAliases = {}
     stmt = _apply_filtering(
         query_params,
@@ -917,7 +937,7 @@ def _apply_filters(
         schema_response,
         aliases=aliases,
         pagination=pagination,
-        sort_query_param=record.sort_query_param if record else _SORT_QUERY_PARAM,
+        sort_query_param=sort_query_param,
     )
     if aliases:
         _STATEMENT_JOINS[stmt] = aliases
@@ -933,7 +953,9 @@ def _apply_sort_and_page(
     pagination: _AnyPagination = cast(Any, _FROM_PARAMS),
 ) -> Select[Any]:
     """The last steps of :func:`apply_list_params`: the sort, then the page."""
-    record, pagination, query_params = _read_list_params(list_params, pagination)
+    record, pagination, sort_query_param, query_params = _read_list_params(
+        list_params, pagination
+    )
     stmt = _apply_sorting(
         query_params,
         stmt,
@@ -941,7 +963,7 @@ def _apply_sort_and_page(
         schema_response,
         aliases=dict(_STATEMENT_JOINS.get(stmt, {})),
         sort_keys=record.sort_keys if record else None,
-        sort_query_param=record.sort_query_param if record else _SORT_QUERY_PARAM,
+        sort_query_param=sort_query_param,
     )
     if isinstance(pagination, NumberedPagination):
         stmt = _apply_pagination(query_params, stmt, pagination)

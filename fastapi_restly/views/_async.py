@@ -301,7 +301,9 @@ class AsyncRestView(
 
         :param list_params: the list params (filter, sort, page) as the
             endpoint receives them. A ``QueryParams`` or a mapping goes
-            through :attr:`schema_list_params` first, as on the list route.
+            through
+            :attr:`~fastapi_restly.views.BaseRestView.schema_list_params`
+            first, as on the list route.
         :param scope: a clause that replaces the resolved scope for this
             read; ``fr.clauses.UNSCOPED`` reads unscoped.
         """
