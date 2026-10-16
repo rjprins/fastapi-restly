@@ -26,19 +26,10 @@ from starlette.datastructures import QueryParams
 
 import fastapi_restly as fr
 from fastapi_restly.query._impl import _apply_sorting
-from fastapi_restly.views._react_admin import (
-    _apply_react_admin_filters,
-    _apply_react_admin_sort_and_range,
-)
+from fastapi_restly.views._react_admin import _apply_react_admin_sort_and_range
 
 from ._models import SharedBase
 from .conftest import create_tables
-
-
-def apply_react_admin_query(query, model, schema_cls, sort, start, end, filters):
-    query = _apply_react_admin_filters(query, model, schema_cls, filters)
-    return _apply_react_admin_sort_and_range(query, model, schema_cls, sort, start, end)
-
 
 # ---------------------------------------------------------------------------
 # lm7 -- PK tiebreaker on a non-unique sort (asserted on the compiled SQL)
@@ -78,8 +69,8 @@ def test_standard_sort_by_pk_is_not_duplicated():
 
 
 def test_react_admin_sort_appends_pk_tiebreaker():
-    out = apply_react_admin_query(
-        sqlalchemy.select(_Book), _Book, _BookSchema, ("status", "ASC"), 0, 9, {}
+    out = _apply_react_admin_sort_and_range(
+        sqlalchemy.select(_Book), _Book, _BookSchema, ("status", "ASC"), 0, 9
     )
     order_by = _order_by_sql(out)
     assert ".status" in order_by and ".id" in order_by
@@ -87,8 +78,8 @@ def test_react_admin_sort_appends_pk_tiebreaker():
 
 
 def test_react_admin_sort_by_pk_is_not_duplicated():
-    out = apply_react_admin_query(
-        sqlalchemy.select(_Book), _Book, _BookSchema, ("id", "ASC"), 0, 9, {}
+    out = _apply_react_admin_sort_and_range(
+        sqlalchemy.select(_Book), _Book, _BookSchema, ("id", "ASC"), 0, 9
     )
     assert _order_by_sql(out).count(".id") == 1
 
@@ -150,20 +141,20 @@ def test_standard_sort_appends_every_column_of_a_composite_key():
 
 
 def test_react_admin_sort_appends_a_primary_key_not_called_id():
-    out = apply_react_admin_query(
-        sqlalchemy.select(_Code), _Code, _CodeSchema, ("status", "ASC"), 0, 9, {}
+    out = _apply_react_admin_sort_and_range(
+        sqlalchemy.select(_Code), _Code, _CodeSchema, ("status", "ASC"), 0, 9
     )
     order_by = _order_by_sql(out)
     assert order_by.rindex("lc_codes.code") > order_by.rindex("lc_codes.status")
-    out = apply_react_admin_query(
-        sqlalchemy.select(_Code), _Code, _CodeSchema, None, 0, 9, {}
+    out = _apply_react_admin_sort_and_range(
+        sqlalchemy.select(_Code), _Code, _CodeSchema, None, 0, 9
     )
     assert _order_by_sql(out).split("LIMIT")[0].strip() == "lc_codes.code"
 
 
 def test_react_admin_sort_appends_every_column_of_a_composite_key():
-    out = apply_react_admin_query(
-        sqlalchemy.select(_Pair), _Pair, _PairSchema, ("b", "DESC"), 0, 9, {}
+    out = _apply_react_admin_sort_and_range(
+        sqlalchemy.select(_Pair), _Pair, _PairSchema, ("b", "DESC"), 0, 9
     )
     assert _order_by_sql(out).split("LIMIT")[0].strip() == "lc_pairs.b DESC, lc_pairs.a"
 

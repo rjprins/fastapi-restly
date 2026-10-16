@@ -8,6 +8,7 @@ has the keys of the resource's own fields, and no dotted keys.
 
 import asyncio
 import datetime
+import inspect
 from typing import Any
 
 import pydantic
@@ -22,6 +23,7 @@ from fastapi_restly.exc import BadQueryParam, RestlyConfigurationError
 from fastapi_restly.query import apply_list_params, derive_schema_list_params
 from fastapi_restly.query._impl import _record_of
 from fastapi_restly.testing import RestlyTestClient
+from fastapi_restly.views._base import _LIST_SETTING_DEFAULTS
 
 
 class Base(DeclarativeBase):
@@ -647,6 +649,14 @@ def test_apply_list_params_reads_the_renamed_sort_parameter():
     assert "ORDER BY keys_item.name DESC" in str(stmt)
 
 
+def test_the_list_settings_have_one_default():
+    # the view attributes and the keywords repeat the defaults for the docs
+    keywords = inspect.signature(derive_schema_list_params).parameters
+    for name, default in _LIST_SETTING_DEFAULTS.items():
+        assert getattr(fr.AsyncRestView, name) == default
+        assert keywords[name].default == default
+
+
 @pytest.mark.parametrize(
     ("value", "message"),
     [
@@ -668,6 +678,24 @@ def test_the_sort_parameter_cannot_be_a_page_parameter(app):
         "ItemView.sort_query_param cannot be 'page': it is a page parameter "
         "of the pagination. Choose another name for one of them."
     )
+
+
+@pytest.mark.parametrize(
+    ("value", "message"),
+    [
+        ("", "sort_query_param must be a non-empty string, got ''."),
+        (
+            "page",
+            "sort_query_param cannot be 'page': it is a page parameter of the "
+            "pagination. Choose another name for one of them.",
+        ),
+    ],
+)
+def test_derive_schema_list_params_names_the_sort_parameter_once(value, message):
+    with pytest.raises(RestlyConfigurationError) as exc_info:
+        derive_schema_list_params(ItemSchema, Item, sort_query_param=value)
+
+    assert str(exc_info.value) == message
 
 
 def test_declared_list_params_must_have_the_sort_parameter_of_the_view(app):

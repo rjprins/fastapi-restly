@@ -26,7 +26,7 @@ from .._pagination import (
     _SORT_QUERY_PARAM,
     NoPagination,
     NumberedPagination,
-    _check_query_params,
+    _check_query_param,
 )
 from ..exc import BadQueryParam, RestlyConfigurationError
 from ..schemas._base import IDRef, IDSchema, _schema_role_name, _unwrap_type
@@ -88,14 +88,17 @@ class _ListParamsRecord:
     """
 
     pagination: _AnyPagination
-    #: The four key settings, as tuples, by name.
-    settings: tuple[tuple[str, ...], ...]
+    #: The key settings, as tuples of patterns.
+    include_filters: tuple[str, ...]
+    exclude_filters: tuple[str, ...]
+    include_sort_keys: tuple[str, ...]
+    exclude_sort_keys: tuple[str, ...]
+    #: The name of the sort parameter.
+    sort_query_param: str
     #: The sort keys that are on, in the order of the schema.
     sort_keys: tuple[str, ...]
     #: The view's own filter keys.
-    own_filters: tuple[_OwnFilter, ...] = ()
-    #: The name of the sort parameter.
-    sort_query_param: str = _SORT_QUERY_PARAM
+    own_filters: tuple[_OwnFilter, ...]
 
     def own_filter_values(
         self, list_params: pydantic.BaseModel
@@ -445,9 +448,7 @@ def _derive_list_params(
         name: _check_key_setting(_setting_label(owner, name), settings[name])
         for name in _KEY_SETTINGS
     }
-    _check_query_params(
-        owner or "derive_schema_list_params", sort_query_param=sort_query_param
-    )
+    _check_query_param(_setting_label(owner, "sort_query_param"), sort_query_param)
     if isinstance(pagination, NumberedPagination) and sort_query_param in (
         pagination.page_query_param,
         pagination.page_size_query_param,
@@ -556,10 +557,10 @@ def _derive_list_params(
     )
     _RECORDS[params_model] = _ListParamsRecord(
         pagination=pagination,
-        settings=tuple(patterns[name] for name in _KEY_SETTINGS),
+        **patterns,
+        sort_query_param=sort_query_param,
         sort_keys=tuple(sort_keys),
         own_filters=tuple(own_filters),
-        sort_query_param=sort_query_param,
     )
     return params_model
 

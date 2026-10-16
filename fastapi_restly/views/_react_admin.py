@@ -30,6 +30,7 @@ from ._base import (
     ListResult,
     ResponseShape,
     _annotate,
+    _how_set,
     _list_filter_methods,
     _list_setting,
     _owner,
@@ -495,19 +496,16 @@ class _ReactAdminMixin:
         # setting other than the default would be silently ignored. A view
         # that inherits one sets the default again, to show it knows.
         for name, default in _LIST_SETTING_DEFAULTS.items():
-            value = _list_setting(cls, name)
-            if value == default:
+            if _list_setting(cls, name) == default:
                 continue
-            owner = _owner(cls, name)
-            if owner is cls:
-                found, fix = f"sets {name}", "Remove the setting."
+            if _owner(cls, name) is cls:
+                fix = "Remove the setting."
             else:
-                found = f"inherits {name} = {value!r} from {owner.__name__}"
                 fix = f"Set {name} = {default!r} on {cls.__name__}."
             raise RestlyConfigurationError(
-                f"{cls.__name__} {found}, which a react-admin view does not "
-                "use. React-admin sends its filters and sort order in the "
-                f"'filter' and 'sort' parameters, as JSON. {fix}"
+                f"{cls.__name__} {_how_set(cls, name)}, which a react-admin "
+                "view does not use. React-admin sends its filters and sort "
+                f"order in the 'filter' and 'sort' parameters, as JSON. {fix}"
             )
         for name in _list_filter_methods(cls):
             raise RestlyConfigurationError(

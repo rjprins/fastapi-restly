@@ -210,26 +210,34 @@ def _check_count(owner: str, name: str, value: Any) -> None:
         )
 
 
+def _check_query_param(label: str, name: Any) -> None:
+    """Reject a name that cannot be a query parameter of the list params.
+
+    :param label: The setting in messages, such as
+        ``NumberedPagination.page_query_param``.
+    """
+    if not isinstance(name, str) or not name:
+        raise RestlyConfigurationError(
+            f"{label} must be a non-empty string, got {name!r}."
+        )
+    if "__" in name or "." in name:
+        raise RestlyConfigurationError(
+            f"{label} cannot be {name!r}: '__' is reserved for filter operators "
+            "and '.' for relation traversal."
+        )
+    # the list params are a Pydantic model with one field per query
+    # parameter; Pydantic drops a field that starts with "_", and one named
+    # like a BaseModel attribute breaks or shadows it
+    if name.startswith("_") or hasattr(pydantic.BaseModel, name):
+        raise RestlyConfigurationError(
+            f"{label} cannot be {name!r}: a query parameter cannot start with "
+            "'_' or share a name with a Pydantic BaseModel attribute."
+        )
+
+
 def _check_query_params(owner: str, **params: Any) -> None:
     for setting, name in params.items():
-        if not isinstance(name, str) or not name:
-            raise RestlyConfigurationError(
-                f"{owner}.{setting} must be a non-empty string, got {name!r}."
-            )
-        if "__" in name or "." in name:
-            raise RestlyConfigurationError(
-                f"{owner}.{setting} cannot be {name!r}: '__' is reserved for "
-                "filter operators and '.' for relation traversal."
-            )
-        # the list params are a Pydantic model with one field per query
-        # parameter; Pydantic drops a field that starts with "_", and one
-        # named like a BaseModel attribute breaks or shadows it
-        if name.startswith("_") or hasattr(pydantic.BaseModel, name):
-            raise RestlyConfigurationError(
-                f"{owner}.{setting} cannot be {name!r}: a query parameter "
-                "cannot start with '_' or share a name with a Pydantic "
-                "BaseModel attribute."
-            )
+        _check_query_param(f"{owner}.{setting}", name)
     if len(set(params.values())) != len(params):
         raise RestlyConfigurationError(
             f"{owner} query parameters must differ, got {params!r}."
