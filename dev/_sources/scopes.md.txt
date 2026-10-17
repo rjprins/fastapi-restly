@@ -365,9 +365,13 @@ applies the client's filters to the scoped query:
 @fr.get("/count")
 async def total(self, list_params) -> int:
     await self.authorize(fr.Action.GET_MANY)
-    query = fr.apply_clauses(sa.select(Task), fr.resolve_scope(self))
-    return await self.count(self.apply_list_params(query, list_params))
+    stmt = fr.apply_clauses(sa.select(Task), fr.resolve_scope(self))
+    return await self.count(await self.apply_filters(stmt, list_params))
 ```
+
+{meth}`apply_filters <fastapi_restly.views.RestView.apply_filters>` applies
+the filters without the sort and the page; see
+[Use the filters in a route of your own](#filters-in-own-route).
 
 Do not name that route method `count`. It would hide the
 {meth}`count <fastapi_restly.views.RestView.count>` method that it calls.
@@ -538,9 +542,9 @@ override:
 class ItemView(fr.AsyncRestView):
     ...
 
-    def apply_list_params(self, query, list_params):
+    async def apply_list_params(self, query, list_params):
         query = query.order_by(Item.created_at.desc())
-        return super().apply_list_params(query, list_params)
+        return await super().apply_list_params(query, list_params)
 ```
 
 An order that you add before `super()` comes first, so a client's `?sort=`

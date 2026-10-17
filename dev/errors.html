@@ -546,7 +546,7 @@ a <code class="docutils literal notranslate"><span class="pre">fastapi.HTTPExcep
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/exc.html#fastapi_restly.exc.BadQueryParam" title="fastapi_restly.exc.BadQueryParam"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.BadQueryParam</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">400</span></code></p></td>
-<td><p>Restly cannot apply a list parameter, such as <code class="docutils literal notranslate"><span class="pre">?sort=unknown_field</span></code>.</p></td>
+<td><p>Restly cannot apply a list parameter, such as a filter value that fails the validation of its field.</p></td>
 </tr>
 </tbody>
 </table>
@@ -578,8 +578,10 @@ business methods stay free of permission checks.</p>
 <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>
 report a setup mistake. The warnings
 <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyUncommittedChangesWarning" title="fastapi_restly.exc.RestlyUncommittedChangesWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyUncommittedChangesWarning</span></code></a>,
-<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyMisuseWarning" title="fastapi_restly.exc.RestlyMisuseWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyMisuseWarning</span></code></a> and
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyMisuseWarning" title="fastapi_restly.exc.RestlyMisuseWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyMisuseWarning</span></code></a>,
 <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyDuplicateSchemaNameWarning" title="fastapi_restly.exc.RestlyDuplicateSchemaNameWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyDuplicateSchemaNameWarning</span></code></a>
+and
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlySkippedFilterMethodsWarning" title="fastapi_restly.exc.RestlySkippedFilterMethodsWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlySkippedFilterMethodsWarning</span></code></a>
 are there too.</p>
 </div>
 </section>
@@ -590,17 +592,16 @@ status code:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">422</span></code>: the query string does not match the
 <a class="reference internal" href="filtering.html"><span class="std std-doc">list parameters</span></a>. This covers an unknown key,
-such as <code class="docutils literal notranslate"><span class="pre">?nope=1</span></code>, and a value of the wrong type for a typed parameter,
-such as <code class="docutils literal notranslate"><span class="pre">?page_size=oops</span></code>.</p></li>
+such as <code class="docutils literal notranslate"><span class="pre">?nope=1</span></code>, a sort key that the list does not have, such as
+<code class="docutils literal notranslate"><span class="pre">?sort=nope</span></code>, and a value of the wrong type for a typed parameter, such as
+<code class="docutils literal notranslate"><span class="pre">?page_size=oops</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">400</span></code>: the key is known, but Restly cannot apply the value. Restly raises
-<a class="reference internal" href="api/exc.html#fastapi_restly.exc.BadQueryParam" title="fastapi_restly.exc.BadQueryParam"><code class="xref py py-class docutils literal notranslate"><span class="pre">BadQueryParam</span></code></a> for a sort field
-that does not exist, and for a filter value that fails the field’s
-<a class="reference internal" href="filtering.html#filter-value-validation"><span class="std std-ref">validation</span></a>, such as <code class="docutils literal notranslate"><span class="pre">?age=old</span></code> on an <code class="docutils literal notranslate"><span class="pre">int</span></code>
-field.</p></li>
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.BadQueryParam" title="fastapi_restly.exc.BadQueryParam"><code class="xref py py-class docutils literal notranslate"><span class="pre">BadQueryParam</span></code></a> for a filter
+value that fails the field’s <a class="reference internal" href="filtering.html#filter-value-validation"><span class="std std-ref">validation</span></a>, such
+as <code class="docutils literal notranslate"><span class="pre">?age=old</span></code> on an <code class="docutils literal notranslate"><span class="pre">int</span></code> field.</p></li>
 </ul>
 <p>The <code class="docutils literal notranslate"><span class="pre">detail</span></code> of a <code class="docutils literal notranslate"><span class="pre">400</span></code> names the parameter and says what is wrong:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Unknown sort field: &#39;nope&#39;
-Invalid filter value for &#39;age&#39;: &#39;old&#39;. Input should be a valid integer, unable to parse string as an integer
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Invalid filter value for &#39;age&#39;: &#39;old&#39;. Input should be a valid integer, unable to parse string as an integer
 </pre></div>
 </div>
 <div class="details admonition">

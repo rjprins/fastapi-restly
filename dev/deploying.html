@@ -526,23 +526,29 @@ in the project.</p>
 <span id="production-settings"></span><h2>Read the database settings from the environment<a class="headerlink" href="#read-the-database-settings-from-the-environment" title="Link to this heading">#</a></h2>
 <p>In production, take the database URL and the pool size from environment
 variables. A small <code class="docutils literal notranslate"><span class="pre">pydantic-settings</span></code> class holds them:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic_settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseSettings</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic_settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseSettings</span>
 
 
-<span class="k">class</span><span class="w"> </span><span class="nc">Settings</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">CurrentSettingsMixin</span><span class="p">,</span> <span class="n">BaseSettings</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Settings</span><span class="p">(</span><span class="n">BaseSettings</span><span class="p">):</span>
     <span class="n">database_url</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">db_pool_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span>
     <span class="n">db_max_overflow</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_settings</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Settings</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Read the settings from the environment and the .env file.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Settings</span><span class="p">()</span>  <span class="c1"># type: ignore[call-arg]</span>
 </pre></div>
 </div>
-<p><a class="reference internal" href="api/utils.html#fastapi_restly.utils.CurrentSettingsMixin" title="fastapi_restly.utils.CurrentSettingsMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">CurrentSettingsMixin</span></code></a>
-gives the class one shared instance, but it does not build it when the module
-is imported. So importing your package never needs a configured environment.
-<code class="docutils literal notranslate"><span class="pre">Settings.current</span></code> reads <code class="docutils literal notranslate"><span class="pre">DATABASE_URL</span></code> and the pool fields the first time
-that code asks for them. <code class="docutils literal notranslate"><span class="pre">Settings.use(...)</span></code> installs an instance instead;
-a test suite does this to give the application its test settings, as
-<a class="reference internal" href="testing.html"><span class="std std-doc">Testing</span></a> shows.</p>
+<p><code class="docutils literal notranslate"><span class="pre">get_settings()</span></code> reads <code class="docutils literal notranslate"><span class="pre">DATABASE_URL</span></code> and the pool fields from the
+environment. It fails when <code class="docutils literal notranslate"><span class="pre">DATABASE_URL</span></code> is not set. So call it in the
+factory, and not when a module is imported. With <code class="docutils literal notranslate"><span class="pre">settings</span> <span class="pre">=</span> <span class="pre">get_settings()</span></code>
+at the end of this file, every import of your package would need a configured
+environment, also in Alembic and in the tests.</p>
+<p>Pyright and mypy report <code class="docutils literal notranslate"><span class="pre">Settings()</span></code> as a call with a missing argument. They
+do not know that pydantic-settings reads <code class="docutils literal notranslate"><span class="pre">database_url</span></code> from the environment.
+The function keeps the <code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">type:</span> <span class="pre">ignore</span></code> in one place, so the rest of the app
+needs none. The project that <code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> makes has this function.</p>
 <p>Restly does not choose a pool size, so set it yourself. To do that, build the
 engine yourself and pass it to <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code>, as the template below does.
 Restly’s <a class="reference internal" href="database.html#engine-defaults"><span class="std std-ref">engine defaults</span></a> apply only to an engine that
@@ -559,15 +565,16 @@ pass that one; see <a class="reference internal" href="database.html#reuse-exist
 <span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.ext.asyncio</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_async_engine</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">.settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">Settings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">Settings</span><span class="p">,</span> <span class="n">get_settings</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.tasks.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaskView</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.users.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">UserView</span>
 
 <span class="n">VIEWS</span> <span class="o">=</span> <span class="p">(</span><span class="n">TaskView</span><span class="p">,</span> <span class="n">UserView</span><span class="p">)</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">create_app</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">FastAPI</span><span class="p">:</span>
-    <span class="n">settings</span> <span class="o">=</span> <span class="n">Settings</span><span class="o">.</span><span class="n">current</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_app</span><span class="p">(</span><span class="n">settings</span><span class="p">:</span> <span class="n">Settings</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FastAPI</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">settings</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">settings</span> <span class="o">=</span> <span class="n">get_settings</span><span class="p">()</span>
     <span class="n">engine</span> <span class="o">=</span> <span class="n">create_async_engine</span><span class="p">(</span>
         <span class="n">settings</span><span class="o">.</span><span class="n">database_url</span><span class="p">,</span>
         <span class="n">pool_size</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">db_pool_size</span><span class="p">,</span>
@@ -591,9 +598,11 @@ pass that one; see <a class="reference internal" href="database.html#reuse-exist
 </div>
 <p>Three details matter in production:</p>
 <ul class="simple">
-<li><p>The factory reads the settings and builds the engine only when it runs. So
-a test suite can install its own settings first, and then call the same
-factory.</p></li>
+<li><p>The factory reads the settings and builds the engine only when it runs.
+Without an argument, it reads the settings from the environment. A test
+suite passes its own settings to the same factory, such as
+<code class="docutils literal notranslate"><span class="pre">create_app(Settings(database_url=...))</span></code>; see
+<a class="reference internal" href="testing.html#async-postgresql-tests"><span class="std std-ref">Test an async-only PostgreSQL app</span></a>.</p></li>
 <li><p>The engine belongs to the app that the factory built. The lifespan disposes
 it, so the connections close and the workers exit quickly; see
 <a class="reference internal" href="database.html#engine-disposal"><span class="std std-ref">Close the engine on shutdown</span></a>.</p></li>

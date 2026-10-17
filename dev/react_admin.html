@@ -633,11 +633,12 @@ holds the total:</p>
 <p class="admonition-title">Details</p>
 <p>Any other query key gets a 422, so a typo cannot return more rows than you
 asked for without notice. The <code class="docutils literal notranslate"><span class="pre">page</span></code>, <code class="docutils literal notranslate"><span class="pre">page_size</span></code> and field filters of the
-standard dialect are unknown keys here too. A key that a dependency
-declares, or an <code class="docutils literal notranslate"><span class="pre">APIKeyQuery</span></code> key, is accepted.
-For a key that the view reads itself, declare
-<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.extra_query_params" title="fastapi_restly.views.BaseRestView.extra_query_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">extra_query_params</span></code></a>
-on the view.</p>
+standard dialect are unknown keys here too. A key that the route declares,
+on the endpoint method or in a dependency, is accepted, and so is an
+<code class="docutils literal notranslate"><span class="pre">APIKeyQuery</span></code> key; see <a class="reference internal" href="filtering.html#extra-query-parameters"><span class="std std-ref">Accept extra query parameters</span></a>.
+To accept every key, set
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.unknown_query_params" title="fastapi_restly.views.BaseRestView.unknown_query_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">unknown_query_params</span></code></a>
+to <code class="docutils literal notranslate"><span class="pre">&quot;ignore&quot;</span></code>, as on the other views.</p>
 <p><code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code> requests the collection path without a trailing slash
 (<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/products?sort=...</span></code>). This is the main path of a Restly collection, so
 no redirect happens.</p>
@@ -647,7 +648,15 @@ must be equal to the column value. Only fields that the view’s response class
 sends are accepted. Other fields, also react-admin’s full-text search
 parameter <code class="docutils literal notranslate"><span class="pre">q</span></code>, get a 400. For a search on part of a value, or a full-text
 search, override the view’s
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_list_params" title="fastapi_restly.views.RestView.apply_list_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_list_params</span></code></a>.</p>
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_filters" title="fastapi_restly.views.RestView.apply_filters"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_filters</span></code></a>.</p>
+<p>The settings that choose the generated list params,
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.include_filters" title="fastapi_restly.views.BaseRestView.include_filters"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_filters</span></code></a>,
+<code class="docutils literal notranslate"><span class="pre">exclude_filters</span></code>, <code class="docutils literal notranslate"><span class="pre">include_sort_keys</span></code>, <code class="docutils literal notranslate"><span class="pre">exclude_sort_keys</span></code> and
+<code class="docutils literal notranslate"><span class="pre">sort_query_param</span></code>, and <a class="reference internal" href="api/views.html#fastapi_restly.views.list_filter" title="fastapi_restly.views.list_filter"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.list_filter</span></code></a>,
+do not apply to react-admin’s list params. A react-admin view that has one
+fails when it registers. When it inherits a setting from a base view, it
+sets the default again, such as <code class="docutils literal notranslate"><span class="pre">exclude_filters</span> <span class="pre">=</span> <span class="pre">()</span></code>, to show that the
+setting does not apply.</p>
 </div>
 </section>
 <section id="the-other-routes">
@@ -866,7 +875,9 @@ to read the react-admin query string. Then it calls the standard
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a>. The react-admin
 dialect itself is in
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_list_params" title="fastapi_restly.views.RestView.apply_list_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_list_params</span></code></a>
-(JSON <code class="docutils literal notranslate"><span class="pre">sort</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code> and <code class="docutils literal notranslate"><span class="pre">filter</span></code>) and
+(JSON <code class="docutils literal notranslate"><span class="pre">sort</span></code> and <code class="docutils literal notranslate"><span class="pre">range</span></code>), in
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_filters" title="fastapi_restly.views.RestView.apply_filters"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_filters</span></code></a>
+(JSON <code class="docutils literal notranslate"><span class="pre">filter</span></code>) and
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_list_response" title="fastapi_restly.views.BaseRestView.to_list_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_list_response</span></code></a>
 (a plain array body and <code class="docutils literal notranslate"><span class="pre">Content-Range</span></code>). These views do not use the list
 parameters of the standard dialect, which

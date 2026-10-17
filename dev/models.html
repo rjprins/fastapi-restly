@@ -676,16 +676,18 @@ SQLAlchemy takes a model’s options from the first dataclass class in its
 bases.</p></li>
 <li><p>Without <code class="docutils literal notranslate"><span class="pre">eq=False</span></code>, a model with the mixin compares its objects field by
 field, wherever the mixin is in the bases. Comparing two objects can then
-load a relationship, and an async session raises <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. Restly
-raises
-<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>
-for such a model, unless the model passes <code class="docutils literal notranslate"><span class="pre">eq=True</span></code> or writes its own
-<code class="docutils literal notranslate"><span class="pre">__eq__</span></code>. A model below another model, also an <code class="docutils literal notranslate"><span class="pre">__abstract__</span></code> one, takes
-that model’s choice.</p></li>
-<li><p>Without <code class="docutils literal notranslate"><span class="pre">repr=False</span></code>, a model with the mixin gets a dataclass repr instead
-of the repr of <code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code>. A dataclass repr reads every field, so in
-async code it can raise <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>.</p></li>
+load a relationship, and an async session raises <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>.</p></li>
+<li><p>Without <code class="docutils literal notranslate"><span class="pre">repr=False</span></code>, a model that lists the mixin before <code class="docutils literal notranslate"><span class="pre">Base</span></code> gets a
+dataclass repr instead of the repr of <code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code>. A dataclass repr
+reads its fields, so in async code it can raise <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code> too.</p></li>
 </ul>
+<p>Restly raises
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>
+for a model that gets <code class="docutils literal notranslate"><span class="pre">__eq__</span></code> or <code class="docutils literal notranslate"><span class="pre">__repr__</span></code> from a mixin without <code class="docutils literal notranslate"><span class="pre">eq=False</span></code>
+or <code class="docutils literal notranslate"><span class="pre">repr=False</span></code>. For the dataclass method, a model passes <code class="docutils literal notranslate"><span class="pre">eq=True</span></code> or
+<code class="docutils literal notranslate"><span class="pre">repr=True</span></code>. A model can also write its own <code class="docutils literal notranslate"><span class="pre">__eq__</span></code> or <code class="docutils literal notranslate"><span class="pre">__repr__</span></code>. A model
+below another model, also an <code class="docutils literal notranslate"><span class="pre">__abstract__</span></code> one, takes the choice of that
+model when it passes <code class="docutils literal notranslate"><span class="pre">eq=True</span></code> or <code class="docutils literal notranslate"><span class="pre">repr=True</span></code>.</p>
 </div>
 </section>
 <section id="use-the-base-in-your-app">

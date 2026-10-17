@@ -422,7 +422,6 @@
 <li class="toctree-l2"><a class="reference internal" href="schemas.html">Schemas API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="views.html">Views API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="testing.html">Testing API</a></li>
-<li class="toctree-l2"><a class="reference internal" href="utils.html">Utils API</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../view_reference.html">View Reference</a></li>
@@ -645,6 +644,21 @@ a column that the model sets (<code class="docutils literal notranslate"><span c
 </dd></dl>
 
 <dl class="py exception">
+<dt class="sig sig-object py" id="fastapi_restly.exc.RestlySkippedFilterMethodsWarning">
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.exc.</span></span><span class="sig-name descname"><span class="pre">RestlySkippedFilterMethodsWarning</span></span><a class="headerlink" href="#fastapi_restly.exc.RestlySkippedFilterMethodsWarning" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#UserWarning" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">UserWarning</span></code></a></p>
+<p>Emitted when a view filters a list with list params that do not run
+its filter methods.</p>
+<p>A view runs the methods from <a class="reference internal" href="views.html#fastapi_restly.views.list_filter" title="fastapi_restly.views.list_filter"><code class="xref py py-func docutils literal notranslate"><span class="pre">list_filter()</span></code></a>
+only for its own list params: those of a list route, or a dict or a
+<code class="docutils literal notranslate"><span class="pre">QueryParams</span></code> that a method gets. A Pydantic model of another class,
+such as one of your own, does not run them. Then the list can have rows
+that a method would leave out. Pass the view’s <code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code>, a
+dict or a <code class="docutils literal notranslate"><span class="pre">QueryParams</span></code> instead. To skip the methods on purpose, turn
+the warning off with <code class="docutils literal notranslate"><span class="pre">warnings.filterwarnings</span></code>.</p>
+</dd></dl>
+
+<dl class="py exception">
 <dt class="sig sig-object py" id="fastapi_restly.exc.RestlyUncommittedChangesWarning">
 <em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.exc.</span></span><span class="sig-name descname"><span class="pre">RestlyUncommittedChangesWarning</span></span><a class="headerlink" href="#fastapi_restly.exc.RestlyUncommittedChangesWarning" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#UserWarning" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">UserWarning</span></code></a></p>
@@ -742,6 +756,7 @@ and how to change the error envelope app-wide.</p>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.RestlyMisuseWarning"><code class="docutils literal notranslate"><span class="pre">RestlyMisuseWarning</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.RestlySkippedFilterMethodsWarning"><code class="docutils literal notranslate"><span class="pre">RestlySkippedFilterMethodsWarning</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.RestlyUncommittedChangesWarning"><code class="docutils literal notranslate"><span class="pre">RestlyUncommittedChangesWarning</span></code></a></li>
 </ul>
   </nav></div>

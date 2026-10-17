@@ -368,8 +368,10 @@ covers models like these.
 
 A `MustExist` field filters the list endpoint by its own name, as in
 `GET /articles?author_id=1`. An `IDSchema[Model]` field filters by its id, as
-in `GET /articles?author.id=1`. A flat `IDRef` on a relationship gets no
-filter. [Filter by a foreign key](#foreign-key-filtering) lists the operators
+in `GET /articles?author.id=1`. That key has a dot, so the view turns it on
+first, for example with `include_filters = ("*", "author.*")`, as
+[Choose the keys of a list](#choose-list-keys) shows. A flat `IDRef` on a
+relationship gets no filter. [Filter by a foreign key](#foreign-key-filtering) lists the operators
 that each one gets.
 
 (idref-custom-routes)=

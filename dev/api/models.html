@@ -422,7 +422,6 @@
 <li class="toctree-l2"><a class="reference internal" href="schemas.html">Schemas API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="views.html">Views API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="testing.html">Testing API</a></li>
-<li class="toctree-l2"><a class="reference internal" href="utils.html">Utils API</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../view_reference.html">View Reference</a></li>
@@ -554,11 +553,12 @@ to some models only. <code class="docutils literal notranslate"><span class="pre
 <p>For the same reason, a dataclass mixin of your own declares the options
 of <code class="docutils literal notranslate"><span class="pre">fr.IDMixin</span></code>: <code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">Stamped(MappedAsDataclass,</span> <span class="pre">kw_only=True,</span>
 <span class="pre">eq=False,</span> <span class="pre">repr=False)</span></code>. Without <code class="docutils literal notranslate"><span class="pre">eq=False</span></code>, a model with the mixin
-compares fields, and comparing two objects can load a relationship. Such
-a model raises <a class="reference internal" href="exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>
-unless it asks for <code class="docutils literal notranslate"><span class="pre">eq=True</span></code> itself or writes its own <code class="docutils literal notranslate"><span class="pre">__eq__</span></code>.
+compares fields, and comparing two objects can load a relationship.
 Without <code class="docutils literal notranslate"><span class="pre">repr=False</span></code>, the model gets a dataclass repr instead of this
-one.</p>
+one, and that repr can load a relationship too. Such a model raises
+<a class="reference internal" href="exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>, unless it passes
+<code class="docutils literal notranslate"><span class="pre">eq=True</span></code> or <code class="docutils literal notranslate"><span class="pre">repr=True</span></code> itself, or writes its own <code class="docutils literal notranslate"><span class="pre">__eq__</span></code> or
+<code class="docutils literal notranslate"><span class="pre">__repr__</span></code>.</p>
 </dd></dl>
 
 <dl class="py class">

@@ -27,7 +27,7 @@ a `fastapi.HTTPException`:
 | {class}`fr.exc.NotFound <fastapi_restly.exc.NotFound>` | `404` | The row does not exist, or the [scope](scopes.md) hides it. Restly raises it for `/{id}` routes and for a [reference](relationships.md) to a missing row. |
 | {class}`fr.exc.Forbidden <fastapi_restly.exc.Forbidden>` | `403` | The caller may not do this action. Raise it in {meth}`authorize <fastapi_restly.views.RestView.authorize>`. |
 | {class}`fr.exc.Conflict <fastapi_restly.exc.Conflict>` | `409` | The request does not fit the current state of the row, such as publishing a post that is already published. Restly raises it for a [database conflict](#default-exception-handling) in a write. |
-| {class}`fr.exc.BadQueryParam <fastapi_restly.exc.BadQueryParam>` | `400` | Restly cannot apply a list parameter, such as `?sort=unknown_field`. |
+| {class}`fr.exc.BadQueryParam <fastapi_restly.exc.BadQueryParam>` | `400` | Restly cannot apply a list parameter, such as a filter value that fails the validation of its field. |
 
 Raise them from your own code: a business method, a hook or a custom route.
 The publish route of the blog example raises `Conflict` inside its write
@@ -57,8 +57,10 @@ The other names in `fr.exc` are not HTTP errors.
 {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
 report a setup mistake. The warnings
 {class}`RestlyUncommittedChangesWarning <fastapi_restly.exc.RestlyUncommittedChangesWarning>`,
-{class}`RestlyMisuseWarning <fastapi_restly.exc.RestlyMisuseWarning>` and
+{class}`RestlyMisuseWarning <fastapi_restly.exc.RestlyMisuseWarning>`,
 {class}`RestlyDuplicateSchemaNameWarning <fastapi_restly.exc.RestlyDuplicateSchemaNameWarning>`
+and
+{class}`RestlySkippedFilterMethodsWarning <fastapi_restly.exc.RestlySkippedFilterMethodsWarning>`
 are there too.
 :::
 
@@ -70,18 +72,17 @@ status code:
 
 - `422`: the query string does not match the
   [list parameters](filtering.md). This covers an unknown key,
-  such as `?nope=1`, and a value of the wrong type for a typed parameter,
-  such as `?page_size=oops`.
+  such as `?nope=1`, a sort key that the list does not have, such as
+  `?sort=nope`, and a value of the wrong type for a typed parameter, such as
+  `?page_size=oops`.
 - `400`: the key is known, but Restly cannot apply the value. Restly raises
-  {class}`BadQueryParam <fastapi_restly.exc.BadQueryParam>` for a sort field
-  that does not exist, and for a filter value that fails the field's
-  [validation](#filter-value-validation), such as `?age=old` on an `int`
-  field.
+  {class}`BadQueryParam <fastapi_restly.exc.BadQueryParam>` for a filter
+  value that fails the field's [validation](#filter-value-validation), such
+  as `?age=old` on an `int` field.
 
 The `detail` of a `400` names the parameter and says what is wrong:
 
 ```text
-Unknown sort field: 'nope'
 Invalid filter value for 'age': 'old'. Input should be a valid integer, unable to parse string as an integer
 ```
 

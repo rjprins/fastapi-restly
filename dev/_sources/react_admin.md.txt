@@ -124,11 +124,12 @@ Content-Range: items 0-24/315
 
 Any other query key gets a 422, so a typo cannot return more rows than you
 asked for without notice. The `page`, `page_size` and field filters of the
-standard dialect are unknown keys here too. A key that a dependency
-declares, or an `APIKeyQuery` key, is accepted.
-For a key that the view reads itself, declare
-{attr}`extra_query_params <fastapi_restly.views.BaseRestView.extra_query_params>`
-on the view.
+standard dialect are unknown keys here too. A key that the route declares,
+on the endpoint method or in a dependency, is accepted, and so is an
+`APIKeyQuery` key; see [Accept extra query parameters](#extra-query-parameters).
+To accept every key, set
+{attr}`unknown_query_params <fastapi_restly.views.BaseRestView.unknown_query_params>`
+to `"ignore"`, as on the other views.
 
 `ra-data-simple-rest` requests the collection path without a trailing slash
 (`GET /products?sort=...`). This is the main path of a Restly collection, so
@@ -140,7 +141,16 @@ must be equal to the column value. Only fields that the view's response class
 sends are accepted. Other fields, also react-admin's full-text search
 parameter `q`, get a 400. For a search on part of a value, or a full-text
 search, override the view's
-{meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`.
+{meth}`apply_filters <fastapi_restly.views.RestView.apply_filters>`.
+
+The settings that choose the generated list params,
+{attr}`include_filters <fastapi_restly.views.BaseRestView.include_filters>`,
+`exclude_filters`, `include_sort_keys`, `exclude_sort_keys` and
+`sort_query_param`, and {func}`fr.list_filter <fastapi_restly.views.list_filter>`,
+do not apply to react-admin's list params. A react-admin view that has one
+fails when it registers. When it inherits a setting from a base view, it
+sets the default again, such as `exclude_filters = ()`, to show that the
+setting does not apply.
 :::
 
 ### The other routes
@@ -357,7 +367,9 @@ to read the react-admin query string. Then it calls the standard
 {meth}`get_many <fastapi_restly.views.RestView.get_many>`. The react-admin
 dialect itself is in
 {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
-(JSON `sort`, `range` and `filter`) and
+(JSON `sort` and `range`), in
+{meth}`apply_filters <fastapi_restly.views.RestView.apply_filters>`
+(JSON `filter`) and
 {meth}`to_list_response <fastapi_restly.views.BaseRestView.to_list_response>`
 (a plain array body and `Content-Range`). These views do not use the list
 parameters of the standard dialect, which

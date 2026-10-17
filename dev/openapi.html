@@ -522,8 +522,9 @@ builds from the view’s schema, named as in
 </ul>
 <p>When the app builds its spec, Restly also warns when two classes have the same
 name; see <a class="reference internal" href="schemas.html#name-your-schemas"><span class="std std-ref">Name your schemas</span></a>.</p>
-<p>To change a default, set a view attribute or a route option. To document a
-custom route, pass keyword arguments to its decorator, as in FastAPI.</p>
+<p>To change a default, set a view attribute, or override the endpoint method
+with a decorator of your own. To document a custom route, pass keyword
+arguments to its decorator, as in FastAPI.</p>
 <section id="set-tags-and-responses-for-a-whole-view">
 <span id="view-openapi-metadata"></span><h2>Set tags and responses for a whole view<a class="headerlink" href="#set-tags-and-responses-for-a-whole-view" title="Link to this heading">#</a></h2>
 <p>The class attributes
@@ -617,44 +618,47 @@ Restly’s IDs, with FastAPI’s normal order of precedence. It receives the rou
 names above, so a function based on the tag and the name can give IDs such as
 <code class="docutils literal notranslate"><span class="pre">items-get_many</span></code>.</p>
 <p>If you generate clients from the spec, generate them again when you move to
-Restly’s IDs. To keep an existing operation ID, set <code class="docutils literal notranslate"><span class="pre">operation_id</span></code> in the
-route’s options; see the next section.</p>
+Restly’s IDs. To keep an existing operation ID, pass <code class="docutils literal notranslate"><span class="pre">operation_id</span></code> to the
+decorator of the endpoint method; see the next section.</p>
 </div>
 </section>
 <section id="change-the-name-summary-or-operation-id-of-a-crud-route">
-<span id="route-options"></span><h2>Change the name, summary or operation ID of a CRUD route<a class="headerlink" href="#change-the-name-summary-or-operation-id-of-a-crud-route" title="Link to this heading">#</a></h2>
-<p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.View.route_options" title="fastapi_restly.views.View.route_options"><code class="xref py py-attr docutils literal notranslate"><span class="pre">route_options</span></code></a> to pass
-FastAPI route keyword arguments to an endpoint method, without replacing the
-method:</p>
+<span id="crud-route-metadata"></span><h2>Change the name, summary or operation ID of a CRUD route<a class="headerlink" href="#change-the-name-summary-or-operation-id-of-a-crud-route" title="Link to this heading">#</a></h2>
+<p>Override the endpoint method, and pass the keyword arguments to its
+decorator, as in FastAPI. The method calls the method of the base class, so
+the route works as before:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">InvoiceView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/invoices&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Invoice</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">InvoiceSchema</span>
-    <span class="n">route_options</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">GET_MANY</span><span class="p">:</span> <span class="p">{</span>
-            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;list_invoices&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;summary&quot;</span><span class="p">:</span> <span class="s2">&quot;List invoices&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;operation_id&quot;</span><span class="p">:</span> <span class="s2">&quot;billing_list_invoices&quot;</span><span class="p">,</span>
-        <span class="p">},</span>
-        <span class="s2">&quot;create_endpoint&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;summary&quot;</span><span class="p">:</span> <span class="s2">&quot;Create an invoice&quot;</span><span class="p">},</span>
-    <span class="p">}</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="n">summary</span><span class="o">=</span><span class="s2">&quot;List invoices&quot;</span><span class="p">,</span> <span class="n">operation_id</span><span class="o">=</span><span class="s2">&quot;billing_list_invoices&quot;</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_many_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">):</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_many_endpoint</span><span class="p">(</span><span class="n">list_params</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>A key is an endpoint method name or a
-<a class="reference internal" href="api/views.html#fastapi_restly.views.ViewRoute" title="fastapi_restly.views.ViewRoute"><code class="xref py py-class docutils literal notranslate"><span class="pre">ViewRoute</span></code></a> value. Use <code class="docutils literal notranslate"><span class="pre">&quot;put&quot;</span></code> for the
-PUT route of React Admin, and the method name for a custom route. A value
-takes the same keyword arguments as a route decorator, except the path. An
-unknown method name raises
-<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>
-when the view registers. Options for an excluded route are ignored.</p>
+<p>Restly still fills in the rest of the route: the response model, the list
+params, and the name and the summary that you do not pass. A keyword argument
+that you pass wins over Restly’s default. The table in
+<a class="reference internal" href="#default-route-metadata">The names and operation IDs of the CRUD routes</a>
+lists the endpoint methods.</p>
 <div class="details admonition">
 <p class="admonition-title">Details</p>
-<p>The options win over the keyword arguments of the decorator, which win over
-Restly’s defaults. A subclass inherits the mapping. A subclass that declares
-its own mapping replaces the parent’s: Restly does not merge the two.</p>
+<p>The decorator passes its keyword arguments to FastAPI, so every option of a
+FastAPI route works. For example, <code class="docutils literal notranslate"><span class="pre">dependencies</span></code> adds a check to one route:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="n">dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">Depends</span><span class="p">(</span><span class="n">require_admin</span><span class="p">)])</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">create_endpoint</span><span class="p">(</span><span class="n">schema_obj</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>An item route that you declare, such as <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code>, keeps the path that you
+give it. Restly does not add the <code class="docutils literal notranslate"><span class="pre">int</span></code> or <code class="docutils literal notranslate"><span class="pre">uuid</span></code> converter to it; see
+<a class="reference internal" href="crud_routes.html#item-route-matching"><span class="std std-ref">Item paths and static routes</span></a>.</p>
+<p>A subclass inherits the method and its decorator, so it also inherits an
+explicit <code class="docutils literal notranslate"><span class="pre">operation_id</span></code>. Each <code class="docutils literal notranslate"><span class="pre">operation_id</span></code> must be unique in the app’s
+spec.</p>
 <p>The route names repeat across views. If you use <code class="docutils literal notranslate"><span class="pre">app.url_path_for()</span></code> to build
-the URLs of routes in several views, give them names of their own. Each
-explicit <code class="docutils literal notranslate"><span class="pre">operation_id</span></code> must be unique in the app’s spec.</p>
+the URLs of routes in several views, give them names of their own.</p>
 </div>
 </section>
 <section id="document-a-custom-route">

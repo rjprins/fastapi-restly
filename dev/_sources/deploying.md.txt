@@ -26,23 +26,30 @@ In production, take the database URL and the pool size from environment
 variables. A small `pydantic-settings` class holds them:
 
 ```python
-import fastapi_restly as fr
 from pydantic_settings import BaseSettings
 
 
-class Settings(fr.utils.CurrentSettingsMixin, BaseSettings):
+class Settings(BaseSettings):
     database_url: str
     db_pool_size: int = 5
     db_max_overflow: int = 10
+
+
+def get_settings() -> Settings:
+    """Read the settings from the environment and the .env file."""
+    return Settings()  # type: ignore[call-arg]
 ```
 
-{class}`CurrentSettingsMixin <fastapi_restly.utils.CurrentSettingsMixin>`
-gives the class one shared instance, but it does not build it when the module
-is imported. So importing your package never needs a configured environment.
-`Settings.current` reads `DATABASE_URL` and the pool fields the first time
-that code asks for them. `Settings.use(...)` installs an instance instead;
-a test suite does this to give the application its test settings, as
-[Testing](testing.md) shows.
+`get_settings()` reads `DATABASE_URL` and the pool fields from the
+environment. It fails when `DATABASE_URL` is not set. So call it in the
+factory, and not when a module is imported. With `settings = get_settings()`
+at the end of this file, every import of your package would need a configured
+environment, also in Alembic and in the tests.
+
+Pyright and mypy report `Settings()` as a call with a missing argument. They
+do not know that pydantic-settings reads `database_url` from the environment.
+The function keeps the `# type: ignore` in one place, so the rest of the app
+needs none. The project that `restly new` makes has this function.
 
 Restly does not choose a pool size, so set it yourself. To do that, build the
 engine yourself and pass it to `fr.configure()`, as the template below does.
@@ -64,15 +71,16 @@ import fastapi_restly as fr
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from .settings import Settings
+from .settings import Settings, get_settings
 from .tasks.views import TaskView
 from .users.views import UserView
 
 VIEWS = (TaskView, UserView)
 
 
-def create_app() -> FastAPI:
-    settings = Settings.current
+def create_app(settings: Settings | None = None) -> FastAPI:
+    if settings is None:
+        settings = get_settings()
     engine = create_async_engine(
         settings.database_url,
         pool_size=settings.db_pool_size,
@@ -96,9 +104,11 @@ def create_app() -> FastAPI:
 
 Three details matter in production:
 
-- The factory reads the settings and builds the engine only when it runs. So
-  a test suite can install its own settings first, and then call the same
-  factory.
+- The factory reads the settings and builds the engine only when it runs.
+  Without an argument, it reads the settings from the environment. A test
+  suite passes its own settings to the same factory, such as
+  `create_app(Settings(database_url=...))`; see
+  [Test an async-only PostgreSQL app](#async-postgresql-tests).
 - The engine belongs to the app that the factory built. The lifespan disposes
   it, so the connections close and the workers exit quickly; see
   [Close the engine on shutdown](#engine-disposal).

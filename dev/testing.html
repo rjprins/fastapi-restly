@@ -696,9 +696,7 @@ generates:</p>
 <span class="c1"># _env_file=None so a local .env cannot point the suite at the development</span>
 <span class="c1"># database. The ignore is for the type checker: pydantic-settings accepts the</span>
 <span class="c1"># underscore arguments at runtime but does not declare them.</span>
-<span class="n">Settings</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="n">Settings</span><span class="p">(</span><span class="n">database_url</span><span class="o">=</span><span class="n">TEST_DATABASE_URL</span><span class="p">,</span> <span class="n">_env_file</span><span class="o">=</span><span class="kc">None</span><span class="p">))</span>  <span class="c1"># type: ignore[call-arg]</span>
-
-<span class="n">app</span> <span class="o">=</span> <span class="n">create_app</span><span class="p">()</span>
+<span class="n">app</span> <span class="o">=</span> <span class="n">create_app</span><span class="p">(</span><span class="n">Settings</span><span class="p">(</span><span class="n">database_url</span><span class="o">=</span><span class="n">TEST_DATABASE_URL</span><span class="p">,</span> <span class="n">_env_file</span><span class="o">=</span><span class="kc">None</span><span class="p">))</span>  <span class="c1"># type: ignore[call-arg]</span>
 <span class="n">fr</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">configure_tests</span><span class="p">(</span><span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="n">Base</span><span class="p">,</span> <span class="n">alembic_upgrade</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>

@@ -736,8 +736,8 @@ these steps:
    `__init__`. FastAPI then resolves them, and the new instance stores them.
 6. It builds an `APIRouter`. The prefix joins the prefixes of all classes in
    the hierarchy, base first. Their `dependencies` and `responses` add up in
-   the same order. It adds each route method with its decorator arguments and
-   its `route_options`, and then includes the router in the parent.
+   the same order. It adds each route method with its decorator arguments,
+   and then includes the router in the parent.
 
 Steps 1 to 5 run once for each class. A second registration on another
 parent only builds a new router.

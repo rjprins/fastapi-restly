@@ -422,7 +422,6 @@
 <li class="toctree-l2"><a class="reference internal" href="api/schemas.html">Schemas API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/views.html">Views API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/testing.html">Testing API</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api/utils.html">Utils API</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="view_reference.html">View Reference</a></li>
@@ -502,6 +501,41 @@ and this project adheres to <a class="reference external" href="https://semver.o
 <section id="added">
 <h3>Added<a class="headerlink" href="#added" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>Four view settings choose the keys of a list: <code class="docutils literal notranslate"><span class="pre">include_filters</span></code>,
+<code class="docutils literal notranslate"><span class="pre">exclude_filters</span></code>, <code class="docutils literal notranslate"><span class="pre">include_sort_keys</span></code> and <code class="docutils literal notranslate"><span class="pre">exclude_sort_keys</span></code>. An entry is
+a key as the client sends it, or a pattern: <code class="docutils literal notranslate"><span class="pre">*</span></code> matches any characters
+except <code class="docutils literal notranslate"><span class="pre">.</span></code>, and <code class="docutils literal notranslate"><span class="pre">**</span></code> matches any characters, as in a file glob with <code class="docutils literal notranslate"><span class="pre">.</span></code> in
+place of <code class="docutils literal notranslate"><span class="pre">/</span></code>. So <code class="docutils literal notranslate"><span class="pre">include_filters</span> <span class="pre">=</span> <span class="pre">(&quot;status&quot;,</span> <span class="pre">&quot;created_at__*&quot;)</span></code> keeps the
+filter on <code class="docutils literal notranslate"><span class="pre">status</span></code> and every filter on <code class="docutils literal notranslate"><span class="pre">created_at</span></code> with a suffix. An entry
+that a view sets and that matches no key fails when the view registers, and
+the message lists the keys of the field. <code class="docutils literal notranslate"><span class="pre">include_sort_keys</span> <span class="pre">=</span> <span class="pre">()</span></code> removes
+the <code class="docutils literal notranslate"><span class="pre">sort</span></code> parameter. <code class="docutils literal notranslate"><span class="pre">fr.query.derive_schema_list_params</span></code> takes the four
+settings as keywords.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sort_query_param</span></code> on a view renames the sort parameter, such as
+<code class="docutils literal notranslate"><span class="pre">sort_query_param</span> <span class="pre">=</span> <span class="pre">&quot;order_by&quot;</span></code>, to keep the URLs of another library.
+<code class="docutils literal notranslate"><span class="pre">fr.query.derive_schema_list_params</span></code> takes it too. The old name is then
+free: a pagination parameter or a filter of your own can be called
+<code class="docutils literal notranslate"><span class="pre">sort</span></code>. Before, <code class="docutils literal notranslate"><span class="pre">sort</span></code> was always reserved.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">unknown_query_params</span> <span class="pre">=</span> <span class="pre">&quot;ignore&quot;</span></code> on a view leaves out a query key that
+the route does not read, as FastAPI does. The default, <code class="docutils literal notranslate"><span class="pre">&quot;forbid&quot;</span></code>, rejects
+such a key with <code class="docutils literal notranslate"><span class="pre">422</span></code>, as before. The two values are those of Pydantic’s
+<code class="docutils literal notranslate"><span class="pre">extra</span></code> setting. A project base view sets it once for every view.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&#64;fr.list_filter(&quot;key&quot;)</span></code> makes a view method the filter for a query key.
+The type of the method’s value becomes the type of the key, so OpenAPI
+shows it and a bad value gets <code class="docutils literal notranslate"><span class="pre">422</span></code>, and the docstring becomes its
+description. The method returns a condition, a clause or <code class="docutils literal notranslate"><span class="pre">None</span></code>. Without a
+default on the value, the view calls it when the key has a value; with a
+default, on every list request. On an async view the method can be
+<code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">def</span></code>, to load data first. A condition on a table that is not in the
+statement raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code>, as <code class="docutils literal notranslate"><span class="pre">where=</span></code> does. The key is always on, and a
+subclass drops it by setting the method’s name to <code class="docutils literal notranslate"><span class="pre">None</span></code>, such as
+<code class="docutils literal notranslate"><span class="pre">filter_popular</span> <span class="pre">=</span> <span class="pre">None</span></code>. List params of another class, such as a Pydantic
+model of your own, do not run the filter methods, and a
+<code class="docutils literal notranslate"><span class="pre">RestlySkippedFilterMethodsWarning</span></code> says so.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">apply_filters(stmt,</span> <span class="pre">list_params)</span></code> on a view applies the client’s filters
+without the sort and the page. A route that counts per category with
+<code class="docutils literal notranslate"><span class="pre">GROUP</span> <span class="pre">BY</span></code> uses it: <code class="docutils literal notranslate"><span class="pre">ORDER</span> <span class="pre">BY</span></code> from <code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code> would fail there.
+<code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code> calls it first.</p></li>
 <li><p>A clause can go into the condition of another clause, written without a
 call. A model’s scope can then follow a relationship, such as
 <code class="docutils literal notranslate"><span class="pre">fr.where_clause(Comment.post.has(PostClauses.default_scope))</span></code>: a comment
@@ -530,6 +564,59 @@ when its foreign key is such a column.</p></li>
 <section id="changed">
 <h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>The <code class="docutils literal notranslate"><span class="pre">422</span></code> for an unknown query key is now a <code class="docutils literal notranslate"><span class="pre">RequestValidationError</span></code>, as
+for a bad query value, so an exception handler for
+<code class="docutils literal notranslate"><span class="pre">RequestValidationError</span></code> gets it too. Before, it was an <code class="docutils literal notranslate"><span class="pre">HTTPException</span></code>.
+The response body is the same.</p></li>
+<li><p>A list has no dotted filter keys and no dotted sort keys by default, such
+as <code class="docutils literal notranslate"><span class="pre">?vendor.name=</span></code> or <code class="docutils literal notranslate"><span class="pre">?sort=vendor.name</span></code>. Clients that send them now get
+<code class="docutils literal notranslate"><span class="pre">422</span></code>. Turn them on with <code class="docutils literal notranslate"><span class="pre">include_filters</span> <span class="pre">=</span> <span class="pre">(&quot;**&quot;,)</span></code> and
+<code class="docutils literal notranslate"><span class="pre">include_sort_keys</span> <span class="pre">=</span> <span class="pre">(&quot;**&quot;,)</span></code>, or with a narrower pattern such as
+<code class="docutils literal notranslate"><span class="pre">(&quot;*&quot;,</span> <span class="pre">&quot;vendor.*&quot;)</span></code>. Each dotted key is a join that a client can add, and a
+new field on a nested schema would add keys to every list that nests it.
+<code class="docutils literal notranslate"><span class="pre">fr.query.derive_schema_list_params</span></code> has the same default. Its model
+ignores a key that it does not have, so a route of your own that uses it
+now ignores a dotted key without an error. Pass <code class="docutils literal notranslate"><span class="pre">include_filters=(&quot;**&quot;,)</span></code>
+and <code class="docutils literal notranslate"><span class="pre">include_sort_keys=(&quot;**&quot;,)</span></code> to keep them.</p></li>
+<li><p>A sort key that the list does not have now gets <code class="docutils literal notranslate"><span class="pre">422</span></code> from the list
+params, not <code class="docutils literal notranslate"><span class="pre">400</span></code>. The description of <code class="docutils literal notranslate"><span class="pre">sort</span></code> in OpenAPI lists the sort
+keys. A sort key never goes through a to-many relationship.</p></li>
+<li><p>On <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code> and <code class="docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code>, <code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code> is now
+<code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">def</span></code>: write <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">self.apply_list_params(...)</span></code>. An override must
+be <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">def</span></code> and call <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">super().apply_list_params(...)</span></code>. A plain
+<code class="docutils literal notranslate"><span class="pre">def</span></code> override fails when the class is defined, with a message that says
+so. On a sync view, an <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">def</span></code> override fails the same way.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code> and <code class="docutils literal notranslate"><span class="pre">apply_filters</span></code> on a view validate a
+<code class="docutils literal notranslate"><span class="pre">QueryParams</span></code> or a mapping through <code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code> first, as the list
+route does. A bad <code class="docutils literal notranslate"><span class="pre">sort</span></code> or <code class="docutils literal notranslate"><span class="pre">page_size</span></code>, or a bad value for a filter of the
+view’s own, raises <code class="docutils literal notranslate"><span class="pre">RequestValidationError</span></code>, which is a <code class="docutils literal notranslate"><span class="pre">422</span></code>. A key that
+the list params do not have raises it too, as on the list route. Only in a
+<code class="docutils literal notranslate"><span class="pre">QueryParams</span></code>, a key that the route reads, such as <code class="docutils literal notranslate"><span class="pre">?mode=</span></code>, is left out.
+A bad value for a generated filter still raises
+<code class="docutils literal notranslate"><span class="pre">BadQueryParam</span></code>, a <code class="docutils literal notranslate"><span class="pre">400</span></code>, as on the list route. A mapping without
+<code class="docutils literal notranslate"><span class="pre">page_size</span></code> gets the default page size, so <code class="docutils literal notranslate"><span class="pre">view.get_many({})</span></code> now returns
+the first page, not every row.</p></li>
+<li><p>A response field named like a pagination parameter, such as <code class="docutils literal notranslate"><span class="pre">page</span></code>, fails
+only when it gets a filter key. Leave the key out with
+<code class="docutils literal notranslate"><span class="pre">exclude_filters</span> <span class="pre">=</span> <span class="pre">(&quot;page&quot;,)</span></code>. Before, such a field always failed when the
+view registered.</p></li>
+<li><p>A view with a declared <code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code> fails when it registers if the
+list params do not follow its list settings (the four key settings and
+<code class="docutils literal notranslate"><span class="pre">sort_query_param</span></code>) and its filter methods. A view that inherits a setting
+from a base view sets it again, to the value that the list params were
+created with. Hand-written list params take no list settings and no
+filter methods. The message says what to change.</p></li>
+<li><p>A subclass that changes <code class="docutils literal notranslate"><span class="pre">pagination</span></code>, a list setting or a filter method
+gets new <code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code> when its base declares the list params that
+Restly would generate for the base, made with
+<code class="docutils literal notranslate"><span class="pre">fr.query.derive_schema_list_params</span></code>, as a subclass with a new <code class="docutils literal notranslate"><span class="pre">schema</span></code>
+does. Before, the subclass failed when it registered. Other declared list
+params, such as ones from a narrower schema, stay, and the subclass still
+fails.</p></li>
+<li><p>React-admin views reject the four key settings, <code class="docutils literal notranslate"><span class="pre">sort_query_param</span></code> and
+<code class="docutils literal notranslate"><span class="pre">&#64;fr.list_filter</span></code> when they register. React-admin sends its filters in its
+own <code class="docutils literal notranslate"><span class="pre">filter</span></code> parameter. A react-admin view that inherits a setting from a
+base view sets the default again, such as <code class="docutils literal notranslate"><span class="pre">exclude_filters</span> <span class="pre">=</span> <span class="pre">()</span></code>.</p></li>
 <li><p>The test clients now accept any success status (2xx) by default. Before,
 each method expected one status, such as <code class="docutils literal notranslate"><span class="pre">201</span></code> for POST. So a POST action
 that returns <code class="docutils literal notranslate"><span class="pre">200</span></code> now passes without <code class="docutils literal notranslate"><span class="pre">assert_status_code</span></code>. No test starts
@@ -562,9 +649,11 @@ the primary key and the other columns that are loaded, such as
 and relationships are left out. Before, the dataclass repr read every field,
 so in async code it raised <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code> for a relationship or a column
 that was not loaded. Pass <code class="docutils literal notranslate"><span class="pre">repr=True</span></code> on a model for the dataclass repr. A
-dataclass mixin of your own adds <code class="docutils literal notranslate"><span class="pre">repr=False</span></code>, or the model gets a dataclass
-repr instead. A model that uses <code class="docutils literal notranslate"><span class="pre">fr.IDMixin</span></code> or <code class="docutils literal notranslate"><span class="pre">fr.TimestampsMixin</span></code> on a
-base without <code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code> gets Python’s default repr.</p></li>
+dataclass mixin of your own adds <code class="docutils literal notranslate"><span class="pre">repr=False</span></code>. Without it, the model gets a
+dataclass repr, so <code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code> raises <code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code>,
+unless the model passes <code class="docutils literal notranslate"><span class="pre">repr=True</span></code> or writes its own <code class="docutils literal notranslate"><span class="pre">__repr__</span></code>. A model
+that uses <code class="docutils literal notranslate"><span class="pre">fr.IDMixin</span></code> or <code class="docutils literal notranslate"><span class="pre">fr.TimestampsMixin</span></code> on a base without
+<code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code> gets Python’s default repr.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> generates <code class="docutils literal notranslate"><span class="pre">app/models.py</span></code> with the project’s own
 <code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">Base(fr.ModelDefaults,</span> <span class="pre">DeclarativeBase)</span></code>. The models, <code class="docutils literal notranslate"><span class="pre">alembic/env.py</span></code>,
 the test setup and <code class="docutils literal notranslate"><span class="pre">create_all</span></code> use that <code class="docutils literal notranslate"><span class="pre">Base</span></code> instead of
@@ -618,7 +707,7 @@ needs <code class="docutils literal notranslate"><span class="pre">init=False</s
 <li><p>The <code class="docutils literal notranslate"><span class="pre">400</span></code> answers of a list request say what is wrong. Before, the
 standard dialect answered “Invalid attribute in URL query: age” both for a
 sort or filter field that does not exist and for a bad filter value. Now
-it is <code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">sort</span> <span class="pre">field:</span> <span class="pre">'nope'</span></code>, <code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">filter</span> <span class="pre">field:</span> <span class="pre">'nope'</span></code>, or
+it is <code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">sort</span> <span class="pre">key:</span> <span class="pre">'nope'</span></code>, <code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">filter</span> <span class="pre">key:</span> <span class="pre">'nope'</span></code>, or
 <code class="docutils literal notranslate"><span class="pre">Invalid</span> <span class="pre">filter</span> <span class="pre">value</span> <span class="pre">for</span> <span class="pre">'age':</span> <span class="pre">'old'.</span></code> followed by Pydantic’s reason,
 such as <code class="docutils literal notranslate"><span class="pre">Input</span> <span class="pre">should</span> <span class="pre">be</span> <span class="pre">a</span> <span class="pre">valid</span> <span class="pre">integer,</span> <span class="pre">unable</span> <span class="pre">to</span> <span class="pre">parse</span> <span class="pre">string</span> <span class="pre">as</span> <span class="pre">an</span> <span class="pre">integer</span></code>. An exception from a field validator that is not a validation
 error is now a <code class="docutils literal notranslate"><span class="pre">500</span></code>, as for a request body, instead of a <code class="docutils literal notranslate"><span class="pre">400</span></code>. Code or
@@ -628,7 +717,7 @@ or <code class="docutils literal notranslate"><span class="pre">page_size</span>
 <code class="docutils literal notranslate"><span class="pre">range</span></code> or <code class="docutils literal notranslate"><span class="pre">filter</span></code> parameter. Before, most of them were a plain
 <code class="docutils literal notranslate"><span class="pre">HTTPException</span></code>, so a handler for <code class="docutils literal notranslate"><span class="pre">fr.exc.RestlyHTTPError</span></code> did not shape
 them. The status stays <code class="docutils literal notranslate"><span class="pre">400</span></code>, and the default body is the same. An unknown
-sort field now says <code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">sort</span> <span class="pre">field</span></code> instead of <code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">filter</span> <span class="pre">field</span></code>.</p></li>
+sort key now says <code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">sort</span> <span class="pre">key</span></code> instead of <code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">filter</span> <span class="pre">field</span></code>.</p></li>
 <li><p>A react-admin view checks a filter value against the column’s type with
 Pydantic, as the standard dialect does. Before, it called the type on the
 value. So <code class="docutils literal notranslate"><span class="pre">{&quot;active&quot;:</span> <span class="pre">&quot;false&quot;}</span></code> matched the rows where <code class="docutils literal notranslate"><span class="pre">active</span></code> is true,
@@ -679,6 +768,66 @@ handler for <code class="docutils literal notranslate"><span class="pre">fr.exc.
 conflict in a CRUD write or a <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block, because the block raises
 <code class="docutils literal notranslate"><span class="pre">fr.exc.Conflict</span></code> first. Register it for <code class="docutils literal notranslate"><span class="pre">fr.exc.Conflict</span></code> instead; the
 original error is <code class="docutils literal notranslate"><span class="pre">exc.__cause__</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.utils.CurrentSettingsMixin</span></code>, and the <code class="docutils literal notranslate"><span class="pre">fr.utils</span></code> module with it. An app
+reads its settings in only two places, the application factory and
+<code class="docutils literal notranslate"><span class="pre">alembic/env.py</span></code>, so it does not need a shared instance. Use a plain
+<code class="docutils literal notranslate"><span class="pre">pydantic-settings</span></code> class with a <code class="docutils literal notranslate"><span class="pre">get_settings()</span></code> function, and give the
+factory an optional <code class="docutils literal notranslate"><span class="pre">settings</span></code> argument:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Settings</span><span class="p">(</span><span class="n">BaseSettings</span><span class="p">):</span>  <span class="c1"># was: (fr.utils.CurrentSettingsMixin, BaseSettings)</span>
+    <span class="n">database_url</span><span class="p">:</span> <span class="nb">str</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_settings</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Settings</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">Settings</span><span class="p">()</span>  <span class="c1"># type: ignore[call-arg]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">create_app</span><span class="p">(</span><span class="n">settings</span><span class="p">:</span> <span class="n">Settings</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FastAPI</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">settings</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">settings</span> <span class="o">=</span> <span class="n">get_settings</span><span class="p">()</span>  <span class="c1"># was: settings = Settings.current</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<p>Pyright and mypy report <code class="docutils literal notranslate"><span class="pre">Settings()</span></code> as a call with a missing argument,
+because they do not know that pydantic-settings reads <code class="docutils literal notranslate"><span class="pre">database_url</span></code> from
+the environment. <code class="docutils literal notranslate"><span class="pre">get_settings()</span></code> keeps that <code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">type:</span> <span class="pre">ignore</span></code> in one place,
+as in the project that <code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> makes. A test passes its own settings
+to the factory: <code class="docutils literal notranslate"><span class="pre">app</span> <span class="pre">=</span> <span class="pre">create_app(Settings(database_url=...,</span> <span class="pre">_env_file=None))</span></code>,
+in place of <code class="docutils literal notranslate"><span class="pre">Settings.use(...)</span></code> and then <code class="docutils literal notranslate"><span class="pre">create_app()</span></code>. In <code class="docutils literal notranslate"><span class="pre">alembic/env.py</span></code>,
+use <code class="docutils literal notranslate"><span class="pre">get_settings().database_url</span></code> in place of <code class="docutils literal notranslate"><span class="pre">Settings.current.database_url</span></code>.</p>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">route_options</span></code> on a view. Override the endpoint method instead, and pass
+the route arguments to its decorator, as in FastAPI. The method calls the
+method of the base class, so the route works as before, and Restly still
+fills in the response model and the list params:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">InvoiceView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="c1"># was: route_options = {fr.ViewRoute.GET_MANY: {&quot;summary&quot;: &quot;List invoices&quot;}}</span>
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="n">summary</span><span class="o">=</span><span class="s2">&quot;List invoices&quot;</span><span class="p">,</span> <span class="n">operation_id</span><span class="o">=</span><span class="s2">&quot;billing_list&quot;</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_many_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">):</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_many_endpoint</span><span class="p">(</span><span class="n">list_params</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">route_options</span></code> was a second place for the route arguments, and a type
+checker could not check its keys and values. A subclass that set it
+replaced the whole mapping of its base, so a <code class="docutils literal notranslate"><span class="pre">dependencies</span></code> entry for one
+route could disappear without an error. A view that still sets
+<code class="docutils literal notranslate"><span class="pre">route_options</span></code> raises <code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code>.</p>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">extra_query_params</span></code> on a view. The unknown-key check accepts every query
+key that the route declares. So declare a key of your own where your code
+uses it. Then it has a type, and OpenAPI shows it. Use the place that fits
+what the key does:</p>
+<ul class="simple">
+<li><p>A key that filters the rows: <code class="docutils literal notranslate"><span class="pre">&#64;fr.list_filter(&quot;key&quot;)</span></code> on a view method.</p></li>
+<li><p>A key that changes the response: a parameter of the endpoint method, as
+in <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">def</span> <span class="pre">get_many_endpoint(self,</span> <span class="pre">list_params,</span> <span class="pre">as_text:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False)</span></code>.</p></li>
+<li><p>A value that other methods or the scope need: a dependency, in a class
+attribute with <code class="docutils literal notranslate"><span class="pre">Depends(...)</span></code>, or <code class="docutils literal notranslate"><span class="pre">Current.depends(...)</span></code>.</p></li>
+<li><p>Keys that are only known at run time, such as a family <code class="docutils literal notranslate"><span class="pre">extra.&lt;name&gt;</span></code>
+that your code reads from <code class="docutils literal notranslate"><span class="pre">self.request</span></code>: <code class="docutils literal notranslate"><span class="pre">unknown_query_params</span> <span class="pre">=</span> <span class="pre">&quot;ignore&quot;</span></code>.</p></li>
+</ul>
+<p>React-admin views follow the same rules. A view that still sets
+<code class="docutils literal notranslate"><span class="pre">extra_query_params</span></code> raises <code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code>.</p>
+</li>
 </ul>
 </section>
 <section id="fixed">
@@ -707,7 +856,7 @@ others) for every type. On a bool they returned <code class="docutils literal no
 <code class="docutils literal notranslate"><span class="pre">Enum</span></code> or an <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> no longer gets them, as with the plain type, so a
 client that sends one now gets <code class="docutils literal notranslate"><span class="pre">422</span></code>. Such a string now gets <code class="docutils literal notranslate"><span class="pre">__contains</span></code>
 and <code class="docutils literal notranslate"><span class="pre">__icontains</span></code>. Such a nested schema now gets the dotted filters and
-sort keys, such as <code class="docutils literal notranslate"><span class="pre">?author.name=Alice</span></code>.</p></li>
+sort keys, such as <code class="docutils literal notranslate"><span class="pre">?author.name=Alice</span></code>, when the view turns them on.</p></li>
 <li><p>Restly did not see such an <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> or <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> as a reference. A field
 named after a foreign key column returned <code class="docutils literal notranslate"><span class="pre">500</span></code> on every create or update
 that sent it. A field named after a relationship returned <code class="docutils literal notranslate"><span class="pre">500</span></code> on create
@@ -723,7 +872,8 @@ schema of its own, because Restly did not load the second level.</p></li>
 <li><p>A schema that names itself in a to-one field, such as
 <code class="docutils literal notranslate"><span class="pre">parent:</span> <span class="pre">CategorySchema</span> <span class="pre">|</span> <span class="pre">None</span></code> inside <code class="docutils literal notranslate"><span class="pre">CategorySchema</span></code>, no longer makes
 the view fail with <code class="docutils literal notranslate"><span class="pre">RecursionError</span></code> when it registers. The list filters
-follow it one step: <code class="docutils literal notranslate"><span class="pre">?parent.name=</span></code> works, <code class="docutils literal notranslate"><span class="pre">?parent.parent.name=</span></code> does not.</p></li>
+follow it one step: with dotted keys on, <code class="docutils literal notranslate"><span class="pre">?parent.name=</span></code> works, and
+<code class="docutils literal notranslate"><span class="pre">?parent.parent.name=</span></code> does not.</p></li>
 </ul>
 </section>
 <section id="security">

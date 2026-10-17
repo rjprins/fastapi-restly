@@ -1185,8 +1185,8 @@ methods, and removes the route marker of each excluded route.</p></li>
 <code class="docutils literal notranslate"><span class="pre">__init__</span></code>. FastAPI then resolves them, and the new instance stores them.</p></li>
 <li><p>It builds an <code class="docutils literal notranslate"><span class="pre">APIRouter</span></code>. The prefix joins the prefixes of all classes in
 the hierarchy, base first. Their <code class="docutils literal notranslate"><span class="pre">dependencies</span></code> and <code class="docutils literal notranslate"><span class="pre">responses</span></code> add up in
-the same order. It adds each route method with its decorator arguments and
-its <code class="docutils literal notranslate"><span class="pre">route_options</span></code>, and then includes the router in the parent.</p></li>
+the same order. It adds each route method with its decorator arguments,
+and then includes the router in the parent.</p></li>
 </ol>
 <p>Steps 1 to 5 run once for each class. A second registration on another
 parent only builds a new router.</p>

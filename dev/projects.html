@@ -803,14 +803,15 @@ the application factory registers after it calls
 <span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">.settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">Settings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">Settings</span><span class="p">,</span> <span class="n">get_settings</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.users.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">UserView</span>
 
 <span class="n">VIEWS</span> <span class="o">=</span> <span class="p">(</span><span class="n">UserView</span><span class="p">,)</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">create_app</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">FastAPI</span><span class="p">:</span>
-    <span class="n">settings</span> <span class="o">=</span> <span class="n">Settings</span><span class="o">.</span><span class="n">current</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_app</span><span class="p">(</span><span class="n">settings</span><span class="p">:</span> <span class="n">Settings</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FastAPI</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">settings</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">settings</span> <span class="o">=</span> <span class="n">get_settings</span><span class="p">()</span>
     <span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">&quot;myapp&quot;</span><span class="p">,</span> <span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">)</span>
     <span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">async_database_url</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">database_url</span><span class="p">,</span> <span class="n">health</span><span class="o">=</span><span class="s2">&quot;/health&quot;</span><span class="p">)</span>
 
@@ -833,9 +834,10 @@ the application factory registers after it calls
 schema. Alembic’s <code class="docutils literal notranslate"><span class="pre">env.py</span></code> imports <code class="docutils literal notranslate"><span class="pre">main.py</span></code> for this reason; see
 <a class="reference internal" href="deploying.html#alembic"><span class="std std-ref">Set up migrations with Alembic</span></a>. A model that no view imports, such as an
 outbox table, needs its own import, which that section also explains.</p>
-<p>Importing <code class="docutils literal notranslate"><span class="pre">main.py</span></code> must not build the application. <code class="docutils literal notranslate"><span class="pre">create_app()</span></code> builds it,
-and only the server calls it. <a class="reference internal" href="deploying.html#running-the-app"><span class="std std-ref">Run the app</span></a> shows how,
-and why the application object does not belong in <code class="docutils literal notranslate"><span class="pre">main.py</span></code>. The lifespan in
+<p>Importing <code class="docutils literal notranslate"><span class="pre">main.py</span></code> must not build the application. <code class="docutils literal notranslate"><span class="pre">create_app()</span></code> builds it.
+The server calls it, and the test suite calls it with its own settings.
+<a class="reference internal" href="deploying.html#running-the-app"><span class="std std-ref">Run the app</span></a> shows how the server calls it, and why the
+application object does not belong in <code class="docutils literal notranslate"><span class="pre">main.py</span></code>. The lifespan in
 this file closes the engine on shutdown; see
 <a class="reference internal" href="database.html#engine-disposal"><span class="std std-ref">Close the engine on shutdown</span></a>.</p>
 </section>
@@ -893,7 +895,7 @@ views. A view that does not change goes in both tuples:</p>
 <span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">APIRouter</span><span class="p">,</span> <span class="n">FastAPI</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.orders.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">OrderV2View</span><span class="p">,</span> <span class="n">OrderView</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">Settings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">Settings</span><span class="p">,</span> <span class="n">get_settings</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.users.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">UserView</span>
 
 <span class="n">VIEWS</span> <span class="o">=</span> <span class="p">{</span>
@@ -902,8 +904,9 @@ views. A view that does not change goes in both tuples:</p>
 <span class="p">}</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">create_app</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">FastAPI</span><span class="p">:</span>
-    <span class="n">settings</span> <span class="o">=</span> <span class="n">Settings</span><span class="o">.</span><span class="n">current</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_app</span><span class="p">(</span><span class="n">settings</span><span class="p">:</span> <span class="n">Settings</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FastAPI</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">settings</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">settings</span> <span class="o">=</span> <span class="n">get_settings</span><span class="p">()</span>
     <span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">()</span>
     <span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">async_database_url</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">database_url</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">prefix</span><span class="p">,</span> <span class="n">views</span> <span class="ow">in</span> <span class="n">VIEWS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>

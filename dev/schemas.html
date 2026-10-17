@@ -1179,6 +1179,16 @@ new <code class="docutils literal notranslate"><span class="pre">schema_list_par
 there a new <code class="docutils literal notranslate"><span class="pre">model</span></code> counts as a new <code class="docutils literal notranslate"><span class="pre">schema</span></code>. A class that Restly generates
 for the subclass is not a change of its own, so it does not replace a class
 that the base declares.</p>
+<p>The list params are also built from <code class="docutils literal notranslate"><span class="pre">pagination</span></code>, the list settings such as
+<code class="docutils literal notranslate"><span class="pre">include_filters</span></code> and <code class="docutils literal notranslate"><span class="pre">sort_query_param</span></code>, and the filter methods. A subclass
+that changes one of them gets new <code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code> when the base declares
+the list params that Restly would generate for it, made with
+<a class="reference internal" href="api/query.html#fastapi_restly.query.derive_schema_list_params" title="fastapi_restly.query.derive_schema_list_params"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_schema_list_params()</span></code></a>.
+Other declared list params stay, such as ones from a narrower schema. A
+subclass with other settings then fails when it registers, and the message
+says what to change. List params that you write by hand take no list
+settings and no filter methods. A new <code class="docutils literal notranslate"><span class="pre">schema</span></code> replaces them too, so a
+subclass with a new schema declares its list params again.</p>
 </section>
 <section id="how-restly-generates-a-schema">
 <span id="auto-generated-schemas"></span><h3>How Restly generates a schema<a class="headerlink" href="#how-restly-generates-a-schema" title="Link to this heading">#</a></h3>

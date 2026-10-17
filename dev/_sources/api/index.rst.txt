@@ -17,4 +17,3 @@ The module references document their definitions and signatures.
    schemas
    views
    testing
-   utils

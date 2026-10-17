@@ -847,8 +847,10 @@ covers models like these.</p>
 <h2>Filter a list by a reference<a class="headerlink" href="#filter-a-list-by-a-reference" title="Link to this heading">#</a></h2>
 <p>A <code class="docutils literal notranslate"><span class="pre">MustExist</span></code> field filters the list endpoint by its own name, as in
 <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/articles?author_id=1</span></code>. An <code class="docutils literal notranslate"><span class="pre">IDSchema[Model]</span></code> field filters by its id, as
-in <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/articles?author.id=1</span></code>. A flat <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> on a relationship gets no
-filter. <a class="reference internal" href="filtering.html#foreign-key-filtering"><span class="std std-ref">Filter by a foreign key</span></a> lists the operators
+in <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/articles?author.id=1</span></code>. That key has a dot, so the view turns it on
+first, for example with <code class="docutils literal notranslate"><span class="pre">include_filters</span> <span class="pre">=</span> <span class="pre">(&quot;*&quot;,</span> <span class="pre">&quot;author.*&quot;)</span></code>, as
+<a class="reference internal" href="filtering.html#choose-list-keys"><span class="std std-ref">Choose the keys of a list</span></a> shows. A flat <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> on a
+relationship gets no filter. <a class="reference internal" href="filtering.html#foreign-key-filtering"><span class="std std-ref">Filter by a foreign key</span></a> lists the operators
 that each one gets.</p>
 </section>
 <section id="build-references-in-a-custom-route">
