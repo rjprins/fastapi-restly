@@ -68,6 +68,14 @@ nitpick_ignore = [
     ("py:class", "starlette.datastructures.QueryParams"),
     ("py:class", "fr.ReadOnly"),
     ("py:class", "function"),
+    # The markers are type aliases, documented as data in api/views.rst. A
+    # signature links them as classes, which never resolves to data
+    # (fastapi-restly-b59j.39.1).
+    ("py:class", "fastapi_restly.views.ViewID"),
+    ("py:class", "fastapi_restly.views.ViewResponse"),
+    ("py:class", "fastapi_restly.views.ViewListResponse"),
+    ("py:class", "fastapi_restly.views.ViewCreate"),
+    ("py:class", "fastapi_restly.views.ViewUpdate"),
     # Python 3.10 only: Self comes from typing_extensions there, not typing.
     ("py:class", "typing_extensions.Self"),
 ]

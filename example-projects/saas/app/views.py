@@ -43,8 +43,10 @@ import fastapi
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import fastapi_restly as fr
+from fastapi_restly.views import ViewID, ViewListResponse, ViewResponse
 
 from .current import SetCurrentContextDep
+from .models import SoftDeletable
 
 # Module level, not inside _emit(): Alembic reaches models through this graph.
 from .outbox import OutboxEvent
@@ -64,6 +66,7 @@ def check_api_key(request: fastapi.Request) -> None:
 
 
 ModelT = TypeVar("ModelT")
+SoftDeletableT = TypeVar("SoftDeletableT", bound=SoftDeletable)
 
 
 class AuthenticatedView(fr.AsyncRestView[ModelT]):
@@ -142,3 +145,32 @@ class SoftDeleteMixin:
     async def delete(self, obj: Any) -> None:
         obj.deleted_at = datetime.now(timezone.utc)
         await self.session.flush()
+
+
+class TrashView(SoftDeleteMixin, AuthenticatedView[SoftDeletableT]):
+    """A base view with a trash: ``GET /trash`` lists the soft-deleted rows,
+    and ``POST /{id}/restore`` brings one back.
+
+    Both routes read through ``trash_scope``, a clause that the view sets,
+    such as ``ProjectClauses.is_deleted``. The view's own scope hides the
+    deleted rows, so the trash is the only surface for them, and a live row
+    is a 404 on restore. ``ViewID``, ``ViewResponse`` and ``ViewListResponse``
+    give each view its own id type and response classes when it registers.
+    """
+
+    trash_scope: ClassVar[fr.WhereClause]
+
+    @fr.get("/trash")
+    async def trash(self, list_params: Any) -> ViewListResponse:
+        """The trash: the deleted rows the caller may see, with the list params."""
+        result = await self.handle_get_many(list_params, scope=self.trash_scope)
+        return self.to_response(result, fr.ResponseShape.LIST)
+
+    @fr.post("/{id}/restore")
+    async def restore(self, id: ViewID) -> ViewResponse:
+        """Restore a soft-deleted row, loaded through the trash."""
+        obj = await self.get_one(id, scope=self.trash_scope)
+        async with self.write_action("restore", obj=obj):
+            obj.deleted_at = None
+            await self.save_object(obj)
+        return self.to_response(obj)

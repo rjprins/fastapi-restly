@@ -220,7 +220,9 @@ takes the update body.
 
 The classes that
 {func}`derive_schema_response() <fastapi_restly.schemas.derive_schema_response>`
-returns cannot be used in an annotation; see
+returns cannot be used in an annotation. In a route, use the markers of
+`fastapi_restly.views` instead, such as `ViewResponse`: a type checker reads
+each marker as `Any`. See
 [Name the view's classes in a custom route](#name-the-response-classes).
 
 (typing-limits)=

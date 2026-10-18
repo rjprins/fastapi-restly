@@ -32,23 +32,15 @@ from fastapi_restly.views import (
     NumberedPagination,
     ResponseShape,
     RestView,
+    ViewID,
+    ViewResponse,
+    ViewUpdate,
     get,
     put,
 )
 
-# Private names without a public form yet. PUT /{id} takes the update schema
-# and the id type of each view: _annotate, _typed_id_route and _view_id_type
-# wait for fastapi-restly-hf41.8. The others wait for fastapi-restly-1kcg.11.
-from ._base import (
-    _annotate,
-    _how_set,
-    _list_filter_methods,
-    _list_setting,
-    _owner,
-    _set_by,
-    _typed_id_route,
-    _view_id_type,
-)
+# Private names without a public form yet: fastapi-restly-1kcg.11.
+from ._base import _how_set, _list_filter_methods, _list_setting, _owner, _set_by
 
 #: Default page size used when the react-admin client does not send a `range`
 #: query parameter. Override per view with
@@ -484,16 +476,6 @@ class _ReactAdminMixin:
         # yet: fastapi-restly-1kcg.11.
         _reject_list_settings(cls)
         cast(Any, super()).before_include_view()
-        # PUT /{id} takes the update schema and the id type of the view. No
-        # public form yet: fastapi-restly-hf41.8.
-        view_cls = cast(type[_ReactAdminViewProtocol], cls)
-        if hasattr(view_cls, "put"):
-            _annotate(
-                view_cls.put,
-                return_annotation=view_cls.schema_response,
-                schema_obj=view_cls.schema_update,
-                id=_view_id_type(view_cls),
-            )
 
 
 # ---------------------------------------------------------------------------
@@ -529,11 +511,8 @@ class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
         the range."""
         return self._react_admin_filters(stmt, list_params)
 
-    # _typed_id_route gives the path the id type of the view. No public form
-    # yet: fastapi-restly-hf41.8.
-    @_typed_id_route
     @put("/{id}")
-    async def put(self, id: Any, schema_obj: Any) -> Any:
+    async def put(self, id: ViewID, schema_obj: ViewUpdate) -> ViewResponse:
         obj = await self.handle_update(id, schema_obj)
         return self.to_response(obj)
 
@@ -566,10 +545,7 @@ class ReactAdminView(_ReactAdminMixin, RestView):
         the range."""
         return self._react_admin_filters(stmt, list_params)
 
-    # _typed_id_route gives the path the id type of the view. No public form
-    # yet: fastapi-restly-hf41.8.
-    @_typed_id_route
     @put("/{id}")
-    def put(self, id: Any, schema_obj: Any) -> Any:
+    def put(self, id: ViewID, schema_obj: ViewUpdate) -> ViewResponse:
         obj = self.handle_update(id, schema_obj)
         return self.to_response(obj)

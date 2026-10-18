@@ -2,6 +2,7 @@ import inspect
 from contextlib import AbstractAsyncContextManager
 from typing import Any, cast, final
 
+import fastapi
 import sqlalchemy
 from sqlalchemy import ColumnElement, func, select
 
@@ -30,7 +31,6 @@ from ._base import (
     _not_found_message,
     _ReadWhere,
     _schema_response,
-    _typed_id_route,
     delete,
     get,
     patch,
@@ -42,6 +42,7 @@ from ._lifecycle import (
     async_run_write_action,
     async_write_action,
 )
+from ._view_types import ViewCreate, ViewID, ViewListResponse, ViewResponse, ViewUpdate
 
 
 class AsyncRestView(
@@ -82,16 +83,15 @@ class AsyncRestView(
     # ====================================================================
 
     @get("/")
-    async def get_many_endpoint(self, list_params: Any) -> Any:
+    async def get_many_endpoint(self, list_params: Any) -> ViewListResponse:
         """``GET /`` endpoint method. Override ``get_many`` for domain
         logic, ``to_response`` for the response shape; replace this method only
         to change the HTTP contract."""
         result = await self.handle_get_many(list_params)
         return self.to_response(result, ResponseShape.LIST)
 
-    @_typed_id_route
     @get("/{id}")
-    async def get_one_endpoint(self, id: Any) -> Any:
+    async def get_one_endpoint(self, id: ViewID) -> ViewResponse:
         """``GET /{id}`` endpoint method. Override ``get_one`` for domain
         logic (visibility lives in the scope), ``to_response`` for the response
         shape; replace this method only to change the HTTP contract."""
@@ -99,7 +99,7 @@ class AsyncRestView(
         return self.to_response(obj)
 
     @post("/")
-    async def create_endpoint(self, schema_obj: Any) -> Any:
+    async def create_endpoint(self, schema_obj: ViewCreate) -> ViewResponse:
         """``POST /`` endpoint method. Override ``create`` for domain
         logic (it is commit-free; the handler owns the commit),
         ``to_response`` for the response shape; replace this method only to
@@ -107,18 +107,16 @@ class AsyncRestView(
         obj = await self.handle_create(schema_obj)
         return self.to_response(obj)
 
-    @_typed_id_route
     @patch("/{id}")
-    async def update_endpoint(self, id: Any, schema_obj: Any) -> Any:
+    async def update_endpoint(self, id: ViewID, schema_obj: ViewUpdate) -> ViewResponse:
         """``PATCH /{id}`` endpoint method. Override ``update`` for
         domain logic, ``to_response`` for the response shape; replace this
         method only to change the HTTP contract."""
         obj = await self.handle_update(id, schema_obj)
         return self.to_response(obj)
 
-    @_typed_id_route
     @delete("/{id}")
-    async def delete_endpoint(self, id: Any) -> Any:
+    async def delete_endpoint(self, id: ViewID) -> fastapi.Response:
         """``DELETE /{id}`` endpoint method. Override ``delete`` for
         domain logic (e.g. soft delete); replace this method only to change the
         HTTP contract (e.g. return the deleted object instead of 204)."""

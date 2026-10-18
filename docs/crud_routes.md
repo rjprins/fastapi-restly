@@ -110,10 +110,14 @@ route matches it. So a negative integer id does not match, even when the row
 exists. OpenAPI still shows the path as `/users/{id}`, with an integer or UUID
 parameter.
 
-A route that you declare yourself keeps the path you give it. To accept
-negative integer ids, replace each item endpoint you need with an untyped
-path such as `@fr.get("/{id}")`, and annotate its `id` parameter as `int`;
-see [Change the status code or headers of one route](#replace-endpoint-method).
+A route that you declare yourself keeps the path you give it. Restly adds
+the converter only to a path parameter annotated
+{data}`ViewID <fastapi_restly.views.ViewID>`; see
+[Name the view's classes in a custom route](#name-the-response-classes). To
+accept negative integer ids, replace each item endpoint you need with an
+untyped path such as `@fr.get("/{id}")`, and annotate its `id` parameter as
+`int`; see
+[Change the status code or headers of one route](#replace-endpoint-method).
 :::
 
 (crud-model-and-schemas)=

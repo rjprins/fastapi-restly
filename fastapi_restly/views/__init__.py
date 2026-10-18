@@ -46,6 +46,7 @@ from ._base import (
 )
 from ._lifecycle import async_run_write_action, run_write_action
 from ._sync import RestView
+from ._view_types import ViewCreate, ViewID, ViewListResponse, ViewResponse, ViewUpdate
 
 # isort: split
 # Last: the react-admin views import the public names above, as a view of
@@ -75,6 +76,11 @@ __all__ = [
     "ResponseShape",
     "View",
     "ViewRoute",
+    "ViewID",
+    "ViewResponse",
+    "ViewListResponse",
+    "ViewCreate",
+    "ViewUpdate",
     "async_run_write_action",
     "run_write_action",
     "resolve_scope",

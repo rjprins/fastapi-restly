@@ -260,8 +260,7 @@ replaces the view's scope for this one read. So the trash list and the
 restore action can be routes on the same view, not a second view class:
 
 ```python
-ItemResponse = fr.schemas.derive_schema_response(ItemSchema)
-ItemListResponse = fr.schemas.derive_schema_list_response(ItemResponse)
+from fastapi_restly.views import ViewID, ViewListResponse, ViewResponse
 
 
 @fr.include_view(app)
@@ -271,13 +270,13 @@ class ItemView(fr.AsyncRestView):
     schema = ItemSchema
     # no scope declared: reads apply ItemClauses.default_scope
 
-    @fr.get("/trash", response_model=ItemListResponse)
-    async def trash(self, list_params):
+    @fr.get("/trash")
+    async def trash(self, list_params) -> ViewListResponse:
         result = await self.handle_get_many(list_params, scope=ItemClauses.trashed)
         return self.to_response(result, fr.ResponseShape.LIST)
 
-    @fr.post("/{id}/restore", response_model=ItemResponse, status_code=200)
-    async def restore(self, id: int):
+    @fr.post("/{id}/restore", status_code=200)
+    async def restore(self, id: ViewID) -> ViewResponse:
         item = await self.get_one(id, scope=ItemClauses.trashed)
         async with self.write_action("restore", obj=item):
             item.deleted_at = None
@@ -303,18 +302,18 @@ the action itself; see [Add a custom action route](#custom-action-route). The
 route reads only the trash, so a row that is not deleted returns 404 here. To
 read without any scope on one route, pass `scope=fr.clauses.UNSCOPED`.
 
-The two routes use the view's response classes, `ItemListResponse` and
-`ItemResponse`, so OpenAPI shows the same types as for the CRUD routes. A view
-with other pagination passes it, as in
-{func}`derive_schema_list_response(ItemResponse, pagination=AppView.pagination) <fastapi_restly.schemas.derive_schema_list_response>`.
-[Name the view's classes in a custom route](#name-the-response-classes) explains
-this.
+The markers `ViewListResponse`, `ViewResponse` and `ViewID` give the two
+routes the view's classes, `ItemListResponse` and `ItemResponse`, and its id
+type. So OpenAPI shows the same types as for the CRUD routes.
+[Name the view's classes in a custom route](#name-the-response-classes)
+explains the markers.
 
 An override of `get_one` or `get_many` declares the `scope` parameter and
 passes it on to `super()`. The handlers always pass it, so an override without
 the parameter fails on its first call, instead of returning the wrong rows.
-The SaaS example runs a trash and a restore route in
-[`app/projects/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py).
+The SaaS example puts a trash and a restore route on a base view,
+`TrashView`, in
+[`app/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py).
 :::
 
 (per-read-where)=
@@ -325,8 +324,8 @@ also takes `where=`. It narrows the read and keeps the scope. Here a list of
 the items in one collection still hides deleted items:
 
 ```python
-@fr.get("/in-collection/{collection_id}", response_model=ItemListResponse)
-async def in_collection(self, collection_id: int, list_params):
+@fr.get("/in-collection/{collection_id}")
+async def in_collection(self, collection_id: int, list_params) -> ViewListResponse:
     result = await self.handle_get_many(
         list_params, where=Item.collection_id == collection_id
     )

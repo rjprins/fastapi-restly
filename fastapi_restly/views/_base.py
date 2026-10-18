@@ -130,6 +130,7 @@ from ..schemas._base import (
 )
 from ..schemas._generator import _required_init_params, derive_schema
 from ._openapi import _register_for_resource_ref
+from ._view_types import _ViewType
 
 # Unbound: a mapped class need not subclass DeclarativeBase (a SQLModel table,
 # an imperative mapping). ``BaseRestView`` checks the mapping at class definition.
@@ -1042,8 +1043,6 @@ def route(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
     """
 
     def store_args_decorator(func: Callable[..., Any]) -> Callable[..., Any]:
-        # A new declaration takes precedence over metadata copied by wraps().
-        func.__dict__.pop("_fr_typed_id_route", None)
         # Create a new attribute: '_api_route_args'
         func._api_route_args = (path, api_route_kwargs)  # type: ignore[attr-defined]
         return func
@@ -1255,12 +1254,6 @@ def _apply_own_filters(
             raise TypeError(f"{label}: {exc}") from None
         conditions.append(condition)
     return stmt.where(*conditions) if conditions else stmt
-
-
-def _typed_id_route(endpoint: Callable[..., Any]) -> Callable[..., Any]:
-    """Mark a built-in item route whose copied path follows the view's ID type."""
-    endpoint._fr_typed_id_route = True  # type: ignore[attr-defined]
-    return endpoint
 
 
 def get(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
@@ -2182,24 +2175,6 @@ class BaseRestView(
             )
             _mark_generated(cls, "schema_update")
 
-        response_schema = cls.schema_response
-        id_type = _view_id_type(cls)
-        if id_type is int:
-            item_path = "/{id:int}"
-        elif id_type is UUID:
-            item_path = "/{id:uuid}"
-        else:
-            item_path = "/{id}"
-        for endpoint in cls.__dict__.values():
-            if getattr(endpoint, "_fr_typed_id_route", False):
-                _, route_kwargs = endpoint._api_route_args
-                endpoint._api_route_args = (item_path, route_kwargs.copy())
-
-        # Only annotate if the methods exist (they will be overridden in subclasses)
-        list_response_annotation: Any = derive_schema_list_response(
-            response_schema, pagination=cls.pagination
-        )
-
         # Every route that declares ``list_params`` takes the view's list
         # params: ``GET /`` and any custom list route alike, guarded the same
         # way. The guard checks keys against ``schema_list_params`` whatever
@@ -2211,37 +2186,16 @@ class BaseRestView(
             cls.schema_list_params,
             fastapi.Depends(_list_params_dependency(cls.schema_list_params)),
         ]
+        view_types = _view_types(cls)
         for name, route in list(cls.__dict__.items()):
             if not hasattr(route, "_api_route_args"):
                 continue
-            if "list_params" not in _route_parameters(route):
-                continue
-            if not getattr(route, "_fr_list_guard", False):
+            if "list_params" in _route_parameters(route) and not getattr(
+                route, "_fr_list_guard", False
+            ):
                 route = _guard_list_params(route)
                 setattr(cls, name, route)
-            _annotate(route, overwrite=True, list_params=list_params)
-
-        # The ``*_endpoint`` methods are defined on AsyncRestView/RestView
-        # subclasses and may be excluded by ``exclude_routes``, so they aren't
-        # visible on BaseRestView. ``getattr`` keeps pyright happy without
-        # falsely advertising them on the base class.
-        if (ep := getattr(cls, "get_many_endpoint", None)) is not None:
-            _annotate(ep, return_annotation=list_response_annotation)
-        if (ep := getattr(cls, "get_one_endpoint", None)) is not None:
-            _annotate(ep, return_annotation=response_schema, id=id_type)
-        if (ep := getattr(cls, "create_endpoint", None)) is not None:
-            _annotate(
-                ep, return_annotation=response_schema, schema_obj=cls.schema_create
-            )
-        if (ep := getattr(cls, "update_endpoint", None)) is not None:
-            _annotate(
-                ep,
-                return_annotation=response_schema,
-                schema_obj=cls.schema_update,
-                id=id_type,
-            )
-        if (ep := getattr(cls, "delete_endpoint", None)) is not None:
-            _annotate(ep, return_annotation=fastapi.Response, id=id_type)
+            _fill_view_types(route, view_types, list_params)
         _exclude_routes(cls)
 
 
@@ -3499,47 +3453,170 @@ def _view_id_type(view_cls: type) -> Any:
     return _model_id_type(model) or int
 
 
-_UNCHANGED: Any = object()
-_ANY_STRINGS = frozenset({"Any", "typing.Any"})
+def _view_types(view_cls: type) -> dict[str, Any]:
+    """The class that each marker of ``fastapi_restly.views`` stands for."""
+    view = cast(Any, view_cls)
+    return {
+        "ViewID": _view_id_type(view_cls),
+        "ViewResponse": view.schema_response,
+        "ViewListResponse": derive_schema_list_response(
+            view.schema_response, pagination=view.pagination
+        ),
+        "ViewCreate": view.schema_create,
+        "ViewUpdate": view.schema_update,
+    }
 
 
-def _annotate(
-    func: Callable,
-    return_annotation: Any = _UNCHANGED,
-    *,
-    overwrite: bool = False,
-    **param_annotations: Any,
+def _fill_view_types(
+    func: Callable, view_types: Mapping[str, Any], list_params: Any
 ) -> None:
-    """Fill the view's concrete types into ``func.__signature__``.
+    """Put the view's classes in place of the markers in ``func.__signature__``.
 
-    The endpoint shells declare ``Any`` because the concrete types only exist
-    per view class. A parameter or return is filled only where the author
-    wrote no annotation or ``Any``, so a replaced endpoint method keeps its
-    own types. ``overwrite`` fills regardless.
+    A parameter named ``list_params`` always takes the view's list params,
+    whatever its annotation says: the unknown-key guard checks the keys
+    against them.
     """
-    # Judge what the author wrote, not the signature: functools.update_wrapper
+    # Read what the author wrote, not the signature: functools.update_wrapper
     # copies a registered parent's filled-in signature onto a subclass's copy.
     written = inspect.get_annotations(func)
-
-    def fillable(name: str) -> bool:
-        annotation = written.get(name, Any)
-        # under PEP 563 the default signature's ``Any`` is the string "Any"
-        return (
-            overwrite
-            or annotation is Any
-            or (isinstance(annotation, str) and annotation in _ANY_STRINGS)
+    sig = inspect.signature(func)
+    changed = False
+    params = []
+    for param in sig.parameters.values():
+        if param.name == "list_params":
+            annotation = list_params
+        elif param.name in written:
+            annotation = _with_view_types(written[param.name], func, view_types)
+        else:
+            annotation = param.annotation
+        changed = changed or annotation is not param.annotation
+        params.append(param.replace(annotation=annotation))
+    returns = sig.return_annotation
+    if "return" in written:
+        returns = _with_view_types(written["return"], func, view_types)
+    if changed or returns is not sig.return_annotation:
+        func.__signature__ = sig.replace(  # type: ignore[attr-defined]
+            parameters=params, return_annotation=returns
         )
 
-    sig = inspect.signature(func)
-    params = [
-        param.replace(annotation=param_annotations[param.name])
-        if param.name in param_annotations and fillable(param.name)
-        else param
-        for param in sig.parameters.values()
-    ]
-    if return_annotation is not _UNCHANGED and fillable("return"):
-        sig = sig.replace(return_annotation=return_annotation)
-    func.__signature__ = sig.replace(parameters=params)  # type: ignore[attr-defined]
+
+def _with_view_types(
+    annotation: Any, func: Callable, view_types: Mapping[str, Any]
+) -> Any:
+    """``annotation`` with the view's classes in place of its markers.
+
+    It is ``annotation`` itself when it holds no marker. So an annotation
+    that is a string, under ``from __future__ import annotations``, stays a
+    string for FastAPI to resolve.
+    """
+    evaluated = _evaluated(annotation, func)
+    filled = _replace_view_types(evaluated, view_types)
+    return annotation if filled is evaluated else filled
+
+
+def _evaluated(annotation: Any, func: Callable) -> Any:
+    """A string annotation, evaluated in the module of the route's author.
+
+    A string that does not evaluate there, such as one that names a class of
+    a function body, stays a string.
+    """
+    if not isinstance(annotation, str):
+        return annotation
+    try:
+        return eval(annotation, inspect.unwrap(func).__globals__)  # noqa: S307
+    except Exception:
+        return annotation
+
+
+def _replace_view_types(annotation: Any, view_types: Mapping[str, Any]) -> Any:
+    """Replace each marker in ``annotation``, also inside a type such as
+    ``list[ViewResponse]``. Returns ``annotation`` itself when it holds no
+    marker."""
+    origin = get_origin(annotation)
+    if origin is Annotated:
+        inner, *metadata = get_args(annotation)
+        marker = next((m for m in metadata if isinstance(m, _ViewType)), None)
+        if marker is not None:
+            # Annotated[ViewID, Path(ge=1)] keeps the Path(ge=1)
+            rest = [m for m in metadata if not isinstance(m, _ViewType)]
+            filled = view_types[marker.name]
+            return Annotated[(filled, *rest)] if rest else filled
+        filled_inner = _replace_view_types(inner, view_types)
+        if filled_inner is inner:
+            return annotation
+        return Annotated[(filled_inner, *metadata)]
+    args = get_args(annotation)
+    if not args or origin is Literal:
+        return annotation
+    filled_args = tuple(_replace_view_types(arg, view_types) for arg in args)
+    if all(new is old for new, old in zip(filled_args, args)):
+        return annotation
+    if origin in (Union, types.UnionType):
+        return Union[filled_args]
+    if isinstance(annotation, types.GenericAlias):
+        return types.GenericAlias(origin, filled_args)
+    return annotation.copy_with(filled_args)
+
+
+def _view_type_in(annotation: Any) -> _ViewType | None:
+    """The first marker in ``annotation``, or ``None``."""
+    if get_origin(annotation) is Annotated:
+        for metadata in get_args(annotation)[1:]:
+            if isinstance(metadata, _ViewType):
+                return metadata
+    if get_origin(annotation) is Literal:
+        return None
+    for arg in get_args(annotation):
+        if (found := _view_type_in(arg)) is not None:
+            return found
+    return None
+
+
+def _view_route_args(
+    endpoint: Callable, view_types: Mapping[str, Any]
+) -> tuple[str, dict[str, Any]]:
+    """The path and the route arguments of ``endpoint``, for this view.
+
+    ``response_model`` can hold a marker. A path parameter annotated
+    ``ViewID`` gets the converter of the view's id type, unless the path
+    gives one already. The decorator's arguments stay as written, so a
+    subclass with another id type gets its own path.
+    """
+    path, route_kwargs = endpoint._api_route_args  # type: ignore[attr-defined]
+    response_model = route_kwargs.get("response_model")
+    filled = _replace_view_types(response_model, view_types)
+    if filled is not response_model:
+        route_kwargs = {**route_kwargs, "response_model": filled}
+    converter = {int: "int", UUID: "uuid"}.get(view_types["ViewID"])
+    if converter is not None:
+        for name, annotation in inspect.get_annotations(endpoint).items():
+            annotation = _evaluated(annotation, endpoint)
+            is_id = get_origin(annotation) is Annotated and any(
+                isinstance(m, _ViewType) and m.name == "ViewID"
+                for m in get_args(annotation)[1:]
+            )
+            if is_id:
+                path = path.replace(f"{{{name}}}", f"{{{name}:{converter}}}")
+    return path, route_kwargs
+
+
+def _reject_view_types_on_a_plain_view(
+    view_cls: type, name: str, endpoint: Callable, route_kwargs: Mapping[str, Any]
+) -> None:
+    """Raise when a route of a plain View uses a marker: there is no type to
+    put in its place."""
+    sig = inspect.signature(endpoint)
+    annotations = [p.annotation for p in sig.parameters.values()]
+    annotations += [sig.return_annotation, route_kwargs.get("response_model")]
+    for annotation in annotations:
+        marker = _view_type_in(_evaluated(annotation, endpoint))
+        if marker is not None:
+            raise RestlyConfigurationError(
+                f"{view_cls.__name__}.{name} uses {marker!r}, which stands for "
+                f"a type of a CRUD view. {view_cls.__name__} is a plain View, "
+                "so it has no such type. Write the type, or base the view on "
+                "fr.AsyncRestView or fr.RestView."
+            )
 
 
 def _get_all_parent_endpoints(view_cls: type[View]) -> dict[str, Callable]:
@@ -3589,11 +3666,16 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
 
     # Find all endpoint functions in this class and add them to the router
     list_parameters: list[dict[str, Any]] | None = None
+    view_types = _view_types(view_cls) if issubclass(view_cls, BaseRestView) else None
     for name, attr in view_cls.__dict__.items():
         if not hasattr(attr, "_api_route_args"):
             continue
         endpoint = attr
-        path, route_kwargs = endpoint._api_route_args
+        if view_types is not None:
+            path, route_kwargs = _view_route_args(endpoint, view_types)
+        else:
+            path, route_kwargs = endpoint._api_route_args
+            _reject_view_types_on_a_plain_view(view_cls, name, endpoint, route_kwargs)
         defaults = {}
         if issubclass(view_cls, BaseRestView) and name in _CRUD_ROUTE_METADATA:
             route_name, summary = _CRUD_ROUTE_METADATA[name]

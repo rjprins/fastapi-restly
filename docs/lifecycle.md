@@ -507,14 +507,13 @@ When Restly registers the view, an endpoint method that the class defines
 replaces the inherited method with the same name. The other inherited
 endpoint methods stay.
 
-Registration also fills in the view's types where your method has no
-annotation, or `Any`. `id` gets
-{attr}`id_type <fastapi_restly.views.BaseRestView.id_type>`, `schema_obj`
-gets {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>`
-or {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>`,
-and the return annotation gets the route's default response model. Restly
-keeps an annotation that you write, so `schema_obj: ProductReplace` validates
-the request body against `ProductReplace`. `list_params` is the exception: it
+The built-in endpoint methods get the view's types from markers, such as
+`get_one_endpoint(self, id: ViewID) -> ViewResponse`. A replacement gets the
+view's types only where it uses the markers too; see
+[Name the view's classes in a custom route](#name-the-response-classes). A
+parameter or a return without an annotation gets no type. Restly keeps an
+annotation that you write, so `schema_obj: ProductReplace` validates the
+request body against `ProductReplace`. `list_params` is the exception: it
 always gets the view's
 {attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`.
 :::
@@ -531,7 +530,7 @@ header. Keep the `list_params` parameter to keep Restly's
 import fastapi
 import json
 
-ProductResponse = fr.schemas.derive_schema_response(ProductSchema)
+from fastapi_restly.views import ViewResponse
 
 
 @fr.include_view(app)
@@ -540,7 +539,7 @@ class ProductView(fr.AsyncRestView):
     model = Product
     schema = ProductSchema
 
-    @fr.get("/", response_model=list[ProductResponse])
+    @fr.get("/", response_model=list[ViewResponse])
     async def get_many_endpoint(self, list_params):
         result = await self.handle_get_many(list_params)
         serialized = [
@@ -555,10 +554,10 @@ class ProductView(fr.AsyncRestView):
 ```
 
 The route sends a plain list, not the default envelope, so it names its
-`response_model`. Without it, registration documents the envelope in
-OpenAPI, and generated clients expect the wrong body.
+`response_model`: a list of the view's response class. Without it, OpenAPI
+shows no schema for the response.
 [Name the view's classes in a custom route](#name-the-response-classes)
-explains `derive_schema_response`.
+explains the markers, such as `ViewResponse`.
 
 ### Share a changed route across views
 
@@ -566,9 +565,12 @@ When several views need the same contract, put the replacement in a mixin.
 List the mixin before the view class, so Python finds its method first:
 
 ```python
+from fastapi_restly.views import ViewID, ViewResponse
+
+
 class DeleteReturnsObjectMixin:
     @fr.delete("/{id}", status_code=200)
-    async def delete_endpoint(self, id):
+    async def delete_endpoint(self, id: ViewID) -> ViewResponse:
         obj = await self.get_one(id)
         serialized = self.to_single_response(obj).model_dump(mode="json")
         await self.handle_delete(id)
@@ -581,6 +583,9 @@ class ProductView(DeleteReturnsObjectMixin, fr.AsyncRestView):
     model = Product
     schema = ProductSchema
 ```
+
+`ViewID` and `ViewResponse` give each view that uses the mixin its own id
+type and response class.
 
 The [React Admin](react_admin.md) views use this pattern. They replace
 {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>`

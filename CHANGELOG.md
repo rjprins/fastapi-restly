@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `fastapi_restly.views` has markers for the view's own types: `ViewID`,
+  `ViewResponse`, `ViewListResponse`, `ViewCreate` and `ViewUpdate`. A route
+  names them, and when the view registers, Restly puts the view's classes in
+  place of them. So a route on a base view or a mixin gets the classes of
+  each view that uses it. A marker works in a parameter annotation, in the
+  return annotation, in `response_model=`, and inside another type, such as
+  `list[ViewResponse]`. A path parameter annotated `ViewID` gets the
+  converter of the id type, such as `{id:int}`. For a type checker, each
+  marker is `Any`.
+
+  ```python
+  from fastapi_restly.views import ViewID, ViewResponse
+
+
+  class RestoreView(fr.AsyncRestView[Any]):
+      @fr.post("/{id}/restore", status_code=200)
+      async def restore(self, id: ViewID) -> ViewResponse: ...
+  ```
 - `fr.views.ReactAdminListParams`, the list params of a react-admin view,
   with the fields `sort`, `range` and `filter`. To add a query key, such as
   a search key, subclass it and set the subclass as the view's
@@ -74,6 +92,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- A replaced endpoint method gets the view's types only from the markers of
+  `fastapi_restly.views`. Before, registration filled them in by parameter
+  name where the method had no annotation or `Any`: `id` got the id type,
+  `schema_obj` got the create or update body, and the return got the
+  response model. The built-in endpoint methods now use the markers, such as
+  `get_one_endpoint(self, id: ViewID) -> ViewResponse`. A replaced method
+  without annotations now gets no types: `schema_obj` becomes a query
+  parameter, and OpenAPI shows an empty response schema. Add the markers:
+
+  ```python
+  # Before
+  @fr.post("/", dependencies=[Depends(require_admin)])
+  async def create_endpoint(self, schema_obj): ...
+
+  # After
+  from fastapi_restly.views import ViewCreate, ViewResponse
+
+
+  @fr.post("/", dependencies=[Depends(require_admin)])
+  async def create_endpoint(self, schema_obj: ViewCreate) -> ViewResponse: ...
+  ```
+
+  `list_params` still takes the view's list params by its name.
 - The `422` for an unknown query key is now a `RequestValidationError`, as
   for a bad query value, so an exception handler for
   `RequestValidationError` gets it too. Before, it was an `HTTPException`.

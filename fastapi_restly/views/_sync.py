@@ -1,6 +1,7 @@
 from contextlib import AbstractContextManager
 from typing import Any, cast, final
 
+import fastapi
 import sqlalchemy
 from sqlalchemy import ColumnElement, func, select
 
@@ -29,7 +30,6 @@ from ._base import (
     _not_found_message,
     _ReadWhere,
     _schema_response,
-    _typed_id_route,
     delete,
     get,
     patch,
@@ -41,6 +41,7 @@ from ._lifecycle import (
     run_write_action,
     sync_write_action,
 )
+from ._view_types import ViewCreate, ViewID, ViewListResponse, ViewResponse, ViewUpdate
 
 
 class RestView(
@@ -81,16 +82,15 @@ class RestView(
     # ====================================================================
 
     @get("/")
-    def get_many_endpoint(self, list_params: Any) -> Any:
+    def get_many_endpoint(self, list_params: Any) -> ViewListResponse:
         """``GET /`` endpoint method. Override ``get_many`` for domain
         logic, ``to_response`` for the response shape; replace this method only
         to change the HTTP contract."""
         result = self.handle_get_many(list_params)
         return self.to_response(result, ResponseShape.LIST)
 
-    @_typed_id_route
     @get("/{id}")
-    def get_one_endpoint(self, id: Any) -> Any:
+    def get_one_endpoint(self, id: ViewID) -> ViewResponse:
         """``GET /{id}`` endpoint method. Override ``get_one`` for domain
         logic (visibility lives in the scope), ``to_response`` for the response
         shape; replace this method only to change the HTTP contract."""
@@ -98,7 +98,7 @@ class RestView(
         return self.to_response(obj)
 
     @post("/")
-    def create_endpoint(self, schema_obj: Any) -> Any:
+    def create_endpoint(self, schema_obj: ViewCreate) -> ViewResponse:
         """``POST /`` endpoint method. Override ``create`` for domain
         logic (it is commit-free; the handler owns the commit),
         ``to_response`` for the response shape; replace this method only to
@@ -106,18 +106,16 @@ class RestView(
         obj = self.handle_create(schema_obj)
         return self.to_response(obj)
 
-    @_typed_id_route
     @patch("/{id}")
-    def update_endpoint(self, id: Any, schema_obj: Any) -> Any:
+    def update_endpoint(self, id: ViewID, schema_obj: ViewUpdate) -> ViewResponse:
         """``PATCH /{id}`` endpoint method. Override ``update`` for
         domain logic, ``to_response`` for the response shape; replace this
         method only to change the HTTP contract."""
         obj = self.handle_update(id, schema_obj)
         return self.to_response(obj)
 
-    @_typed_id_route
     @delete("/{id}")
-    def delete_endpoint(self, id: Any) -> Any:
+    def delete_endpoint(self, id: ViewID) -> fastapi.Response:
         """``DELETE /{id}`` endpoint method. Override ``delete`` for
         domain logic (e.g. soft delete); replace this method only to change the
         HTTP contract (e.g. return the deleted object instead of 204)."""

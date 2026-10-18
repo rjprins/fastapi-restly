@@ -334,6 +334,10 @@ override for each change. Two shared concerns have their own sections:
 [values that every write path must set](#write-path-values), such as an
 owner id, on Models, and [soft delete](#soft-delete-mixin) on Scopes.
 
+A route on a base view names the classes of each subclass with markers, such
+as `ViewResponse`; see
+[Name the view's classes in a custom route](#name-the-response-classes).
+
 (app-wide-base-view)=
 ### One base view for the whole app
 

@@ -103,18 +103,23 @@ decorator, as in FastAPI. The method calls the method of the base class, so
 the route works as before:
 
 ```python
+from fastapi_restly.views import ViewListResponse
+
+
 class InvoiceView(fr.AsyncRestView):
     prefix = "/invoices"
     model = Invoice
     schema = InvoiceSchema
 
     @fr.get("/", summary="List invoices", operation_id="billing_list_invoices")
-    async def get_many_endpoint(self, list_params):
+    async def get_many_endpoint(self, list_params) -> ViewListResponse:
         return await super().get_many_endpoint(list_params)
 ```
 
-Restly still fills in the rest of the route: the response model, the list
-params, and the name and the summary that you do not pass. A keyword argument
+`ViewListResponse` keeps the view's list response as the response model; see
+[Name the view's classes in a custom route](#name-the-response-classes).
+Restly still fills in the rest of the route: the list params, and the name
+and the summary that you do not pass. A keyword argument
 that you pass wins over Restly's default. The table in
 [The names and operation IDs of the CRUD routes](#default-route-metadata)
 lists the endpoint methods.
@@ -127,13 +132,13 @@ FastAPI route works. For example, `dependencies` adds a check to one route:
 
 ```python
     @fr.post("/", dependencies=[Depends(require_admin)])
-    async def create_endpoint(self, schema_obj):
+    async def create_endpoint(self, schema_obj: ViewCreate) -> ViewResponse:
         return await super().create_endpoint(schema_obj)
 ```
 
 An item route that you declare, such as `GET /{id}`, keeps the path that you
-give it. Restly does not add the `int` or `uuid` converter to it; see
-[Item paths and static routes](#item-route-matching).
+give it. Restly adds the `int` or `uuid` converter only to a path parameter
+annotated `ViewID`; see [Item paths and static routes](#item-route-matching).
 
 A subclass inherits the method and its decorator, so it also inherits an
 explicit `operation_id`. Each `operation_id` must be unique in the app's

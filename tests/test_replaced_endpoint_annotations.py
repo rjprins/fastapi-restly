@@ -1,10 +1,10 @@
 """A replaced endpoint method keeps the annotations its author wrote.
 
-Registration fills the view's types (``id_type``, ``schema_create``,
-``schema_update``, the response model) only into parameters and returns left
-unannotated or annotated ``Any``. ``list_params`` is the exception: it always
-takes the view's list params, because the unknown-key guard checks against
-them.
+Registration puts the view's types only in place of the markers of
+``fastapi_restly.views``, such as ``ViewID`` and ``ViewResponse``. A
+parameter or a return without an annotation gets none. ``list_params`` is
+the exception: it always takes the view's list params, because the
+unknown-key guard checks against them.
 """
 
 from types import SimpleNamespace
@@ -249,8 +249,9 @@ def test_replaced_delete_endpoint_keeps_explicit_id(env):
     assert _id_param(openapi, "/products/{id}", "delete")["minimum"] == 1
 
 
-def test_replaced_endpoint_without_annotations_gets_the_view_types(env):
-    """Unannotated and ``Any`` parameters and returns take the view's types."""
+def test_replaced_endpoint_with_markers_gets_the_view_types(env):
+    """The markers take the view's types, as on the built-in methods."""
+    views = fr.views
 
     class ProductView(env.base):
         prefix = "/products"
@@ -260,29 +261,37 @@ def test_replaced_endpoint_without_annotations_gets_the_view_types(env):
         if env.asynchronous:
 
             @fr.get("/{id}")
-            async def get_one_endpoint(self, id: Any):
+            async def get_one_endpoint(self, id: views.ViewID) -> views.ViewResponse:
                 return self.to_response(await self.handle_get_one(id))
 
             @fr.post("/", status_code=201)
-            async def create_endpoint(self, schema_obj):
+            async def create_endpoint(
+                self, schema_obj: views.ViewCreate
+            ) -> views.ViewResponse:
                 return self.to_response(await self.handle_create(schema_obj))
 
             @fr.patch("/{id}")
-            async def update_endpoint(self, id, schema_obj: Any) -> Any:
+            async def update_endpoint(
+                self, id: views.ViewID, schema_obj: views.ViewUpdate
+            ) -> views.ViewResponse:
                 return self.to_response(await self.handle_update(id, schema_obj))
 
         else:
 
             @fr.get("/{id}")
-            def get_one_endpoint(self, id: Any):
+            def get_one_endpoint(self, id: views.ViewID) -> views.ViewResponse:
                 return self.to_response(self.handle_get_one(id))
 
             @fr.post("/", status_code=201)
-            def create_endpoint(self, schema_obj):
+            def create_endpoint(
+                self, schema_obj: views.ViewCreate
+            ) -> views.ViewResponse:
                 return self.to_response(self.handle_create(schema_obj))
 
             @fr.patch("/{id}")
-            def update_endpoint(self, id, schema_obj: Any) -> Any:
+            def update_endpoint(
+                self, id: views.ViewID, schema_obj: views.ViewUpdate
+            ) -> views.ViewResponse:
                 return self.to_response(self.handle_update(id, schema_obj))
 
     openapi = _register(env, ProductView)
@@ -293,8 +302,9 @@ def test_replaced_endpoint_without_annotations_gets_the_view_types(env):
     created = client.post("/products/", json={"name": "Lamp", "price": 1.0}).json()
     response = client.patch(f"/products/{created['id']}", json={"name": "Desk"})
     assert response.json() == {"id": created["id"], "name": "Desk", "price": 1.0}
-    client.get("/products/abc", assert_status_code=422)
-    client.patch("/products/abc", json={"name": "Desk"}, assert_status_code=422)
+    # ViewID gives the path the converter of the id type, as on GET /{id}
+    client.get("/products/abc", assert_status_code=404)
+    client.patch("/products/abc", json={"name": "Desk"}, assert_status_code=404)
 
     create_ref = _body_ref(openapi, "/products", "post")
     update_ref = _body_ref(openapi, "/products/{id}", "patch")
@@ -309,6 +319,32 @@ def test_replaced_endpoint_without_annotations_gets_the_view_types(env):
         ("/products/{id}", "patch", "200"),
     ]:
         assert _response_ref(openapi, path, method, status) == "ProductResponse"
+
+
+def test_replaced_endpoint_without_annotations_gets_no_view_types(env):
+    """Registration no longer fills in types by parameter name."""
+
+    class ProductView(env.base):
+        prefix = "/products"
+        model = env.Product
+        schema = env.ProductSchema
+
+        if env.asynchronous:
+
+            @fr.get("/{id}")
+            async def get_one_endpoint(self, id: Any):
+                return self.to_response(await self.handle_get_one(int(id)))
+
+        else:
+
+            @fr.get("/{id}")
+            def get_one_endpoint(self, id: Any):
+                return self.to_response(self.handle_get_one(int(id)))
+
+    openapi = _register(env, ProductView)
+    assert _id_param(openapi, "/products/{id}", "get") == {"title": "Id"}
+    response = openapi["paths"]["/products/{id}"]["get"]["responses"]["200"]
+    assert response["content"]["application/json"]["schema"] == {}
 
 
 def test_replaced_endpoint_keeps_explicit_return_annotation(env):

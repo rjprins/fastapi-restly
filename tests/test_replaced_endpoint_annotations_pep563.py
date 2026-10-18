@@ -1,15 +1,15 @@
 """Under PEP 563 an endpoint annotation is a string.
 
-A string is explicit: registration keeps it, and FastAPI resolves it against
-the module the method was written in. The exception is ``Any``, which the
-default endpoint signature uses: spelled ``"Any"`` or ``"typing.Any"``, it
-still gets the view's types. Kept in its own ``from __future__ import
-annotations`` module, with the schemas at module level so the strings resolve.
+Registration keeps a string, and FastAPI resolves it against the module the
+method was written in. A string that holds a marker of
+``fastapi_restly.views`` is the exception: registration evaluates it in that
+module and puts the view's type in place of the marker. Kept in its own
+``from __future__ import annotations`` module, with the schemas at module
+level so the strings resolve.
 """
 
 from __future__ import annotations
 
-import typing
 from typing import Any
 
 import pytest
@@ -18,6 +18,7 @@ from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 from fastapi_restly.testing._client import RestlyTestClient
+from fastapi_restly.views import ViewUpdate
 
 from ._models import SharedBase
 from .conftest import create_tables
@@ -87,7 +88,7 @@ def test_string_annotation_on_replaced_endpoint_is_kept(request, asynchronous):
 
 
 @pytest.mark.parametrize("asynchronous", [False, True], ids=["sync", "async"])
-def test_string_any_on_replaced_endpoint_gets_the_view_types(request, asynchronous):
+def test_string_markers_on_replaced_endpoint_get_the_view_types(request, asynchronous):
     client, make_tables = _client_and_tables(request, asynchronous)
 
     class Product(fr.IDMixin, SharedBase):
@@ -104,19 +105,23 @@ def test_string_any_on_replaced_endpoint_gets_the_view_types(request, asynchrono
         if asynchronous:
 
             @fr.patch("/{id}")
-            async def update_endpoint(self, id: Any, schema_obj: typing.Any) -> Any:
+            async def update_endpoint(
+                self, id: fr.views.ViewID, schema_obj: ViewUpdate
+            ) -> fr.views.ViewResponse:
                 return self.to_response(await self.handle_update(id, schema_obj))
 
         else:
 
             @fr.patch("/{id}")
-            def update_endpoint(self, id: Any, schema_obj: typing.Any) -> Any:
+            def update_endpoint(
+                self, id: fr.views.ViewID, schema_obj: ViewUpdate
+            ) -> fr.views.ViewResponse:
                 return self.to_response(self.handle_update(id, schema_obj))
 
     assert ProductView.update_endpoint.__annotations__ == {
-        "id": "Any",
-        "schema_obj": "typing.Any",
-        "return": "Any",
+        "id": "fr.views.ViewID",
+        "schema_obj": "ViewUpdate",
+        "return": "fr.views.ViewResponse",
     }
     fr.include_view(client.app, ProductView)
     make_tables()
@@ -125,7 +130,7 @@ def test_string_any_on_replaced_endpoint_gets_the_view_types(request, asynchrono
     created = client.post("/products/", json={"name": "Lamp", "price": 1.0}).json()
     response = client.patch(f"/products/{created['id']}", json={"name": "Desk"})
     assert response.json() == {"id": created["id"], "name": "Desk", "price": 1.0}
-    client.patch("/products/abc", json={"name": "Desk"}, assert_status_code=422)
+    client.patch("/products/abc", json={"name": "Desk"}, assert_status_code=404)
 
     operation = client.app.openapi()["paths"]["/products/{id}"]["patch"]
     assert "requestBody" in operation

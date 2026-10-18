@@ -15,14 +15,9 @@ from ..current import Current
 from ..tasks.models import Task, TaskPriority, TaskStatus, TaskType
 from ..tasks.schemas import TaskResponse
 from ..tasks.views import TaskCreate, TaskView
-from ..views import AuthenticatedView, SoftDeleteMixin
+from ..views import TrashView
 from .models import Project, ProjectClauses, ProjectStatus
 from .schemas import ProjectResponse, ProjectSchema
-
-# The list response class of ProjectView, for the trash route.
-ProjectListResponse = fr.schemas.derive_schema_list_response(
-    ProjectResponse, pagination=AuthenticatedView.pagination
-)
 
 
 class CloneRequest(BaseModel):
@@ -54,17 +49,18 @@ class ProjectStats(BaseModel):
     completion_percent: float
 
 
-class ProjectView(SoftDeleteMixin, AuthenticatedView[Project]):
+class ProjectView(TrashView[Project]):
     """CRUD endpoints for projects.
 
     Read visibility is the model's ``default_scope`` (``ProjectClauses``):
     live projects under the tenant floor, for the list, the count,
     ``get_one`` and every ``project_id`` reference alike. The trash and
-    restore routes below name ``is_deleted`` as their own scope per read.
+    restore routes of ``TrashView`` read through ``trash_scope``,
+    ``is_deleted``.
     The write side is structural too: ``Project`` mixes in
     ``TenantOwned``, ``AuditStamped``, and ``SoftDeletable`` (see
     ``app.models``), so ``organization_id`` and the audit ids are stamped
-    from ``Current`` on every write path, and ``SoftDeleteMixin`` turns
+    from ``Current`` on every write path, and ``TrashView`` turns
     ``delete`` into a ``deleted_at`` flip. ``AuthenticatedView`` adds the auth
     and context-bind deps and the ``_emit`` outbox helper; the tenant
     floor on reads is the session listener in ``app.models``.
@@ -78,6 +74,7 @@ class ProjectView(SoftDeleteMixin, AuthenticatedView[Project]):
     model = Project
     schema = ProjectSchema
     # No scope declared: reads apply ProjectClauses.default_scope.
+    trash_scope = ProjectClauses.is_deleted
     exclude_routes = [fr.ViewRoute.DELETE]  # replaced by soft_delete below
 
     async def _decorate_project_response(self, project: Project) -> Project:
@@ -202,34 +199,6 @@ class ProjectView(SoftDeleteMixin, AuthenticatedView[Project]):
 
         async with self.write_action("delete", obj=project):
             await self.delete(project)
-        return await self._decorate_project_response(project)
-
-    @fr.get("/trash", response_model=ProjectListResponse)
-    async def trash(self, list_params: Any) -> Any:
-        """The trash: deleted projects, read through ``is_deleted``.
-
-        A route that declares ``list_params`` takes the view's list params
-        (filter, sort, page), and the scope named here replaces the
-        default for this read only; the tenant listener in ``app.models``
-        holds underneath.
-        """
-        result = await self.handle_get_many(
-            list_params, scope=ProjectClauses.is_deleted
-        )
-        return self.to_response(result, fr.ResponseShape.LIST)
-
-    @fr.post("/{id}/restore", response_model=ProjectResponse)
-    async def restore(self, id: int) -> Project:
-        """Restore a soft-deleted project.
-
-        Loads through ``is_deleted``: the trash is the surface this route
-        reads, so a live project, like another tenant's, is a 404 here.
-        """
-        project = await self.get_one(id, scope=ProjectClauses.is_deleted)
-
-        async with self.write_action("restore", obj=project):
-            project.deleted_at = None
-            await self.save_object(project)
         return await self._decorate_project_response(project)
 
     @fr.post("/{id}/archive", response_model=ProjectResponse)

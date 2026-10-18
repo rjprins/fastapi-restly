@@ -214,6 +214,8 @@ For a `{"data": ...}` wrapper around a single object, replace
 ```python
 import pydantic
 
+from fastapi_restly.views import ViewCreate
+
 
 class UserEnvelope(pydantic.BaseModel):
     data: UserSchema
@@ -231,12 +233,14 @@ class UserView(fr.AsyncRestView):
         return {"data": self.to_single_response(obj)}
 
     @fr.post("/", response_model=UserEnvelope)
-    async def create_endpoint(self, schema_obj):
+    async def create_endpoint(self, schema_obj: ViewCreate):
         obj = await self.handle_create(schema_obj)
         return {"data": self.to_single_response(obj)}
 ```
 
 Call `to_single_response(obj)` before you put the object in the envelope.
+`ViewCreate` keeps the view's create body; see
+[Name the view's classes in a custom route](#name-the-response-classes).
 
 :::{admonition} Details
 :class: details

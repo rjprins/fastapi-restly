@@ -15,7 +15,7 @@ registering the same View twice would:
 * Re-rename endpoints (``create_endpoint`` → ``fooview_create_endpoint`` →
   ``fooview_fooview_create_endpoint``), yielding endpoint name collisions and
   broken signatures.
-* Re-run ``_annotate`` on already-modified signatures.
+* Re-run ``_fill_view_types`` on already-modified signatures.
 * Re-trip ``_exclude_routes``: ``del view_func._api_route_args`` raises
   AttributeError on the second run, since the attribute was already removed.
 * Risk corrupting the first registration's class attributes (``cls.schema``,

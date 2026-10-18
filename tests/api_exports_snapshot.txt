@@ -154,7 +154,12 @@ fastapi_restly.views:
   - ResponseShape
   - RestView
   - View
+  - ViewCreate
+  - ViewID
+  - ViewListResponse
+  - ViewResponse
   - ViewRoute
+  - ViewUpdate
   - async_run_write_action
   - delete
   - get
@@ -233,5 +238,10 @@ fastapi_restly.views:
   - PaginatedEnvelope
   - ReactAdminListParams
   - ReadScope
+  - ViewCreate
+  - ViewID
+  - ViewListResponse
+  - ViewResponse
+  - ViewUpdate
   - async_run_write_action
   - run_write_action

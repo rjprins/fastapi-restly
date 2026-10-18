@@ -5,6 +5,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from fastapi import APIRouter, FastAPI, Response
+from fastapi.routing import APIRoute
 from pydantic import BaseModel
 from sqlalchemy import ForeignKey, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -476,11 +477,22 @@ def test_id_paths_are_isolated_across_registered_relatives(flavor):
         fr.include_view(second_app, view)
     assert app.openapi() == second_app.openapi()
 
+    # Each view gets the converter of its own id type. The decorator's path
+    # stays as written, on the views and on the base.
+    methods = {"GET", "PATCH", "DELETE", "PUT"}
+    item_paths = {
+        (route.path, method)
+        for route in app.routes
+        if isinstance(route, APIRoute)
+        for method in route.methods & methods
+        if "{id" in route.path
+    }
+    for path in ("/things/{id:int}", "/things/uuids/{id:uuid}"):
+        assert {(path, method) for method in methods} <= item_paths
+    assert {("/things/uuids/strings/{id}", m) for m in methods} <= item_paths
     for name in ("get_one_endpoint", "update_endpoint", "delete_endpoint", "put"):
-        assert getattr(ThingView, name)._api_route_args[0] == "/{id:int}"
-        assert getattr(UuidView, name)._api_route_args[0] == "/{id:uuid}"
-        assert getattr(StrView, name)._api_route_args[0] == "/{id}"
-        assert getattr(flavor.react_admin_base, name)._api_route_args[0] == "/{id}"
+        for view in (ThingView, UuidView, StrView, flavor.react_admin_base):
+            assert getattr(view, name)._api_route_args[0] == "/{id}"
 
 
 @pytest.mark.parametrize(
@@ -544,5 +556,9 @@ def test_redecorated_builtin_endpoint_keeps_its_custom_path(flavor):
             def get_one_endpoint(self, id):
                 return {"id": id}
 
+    # wraps() copies the id: ViewID annotation of the built-in method, so the
+    # path gets the view's converter. The rest of the path stays as written.
     fr.include_view(flavor.client.app, ThingView)
-    assert flavor.client.get("/things/lookup/-1").json() == {"id": -1}
+    assert flavor.client.get("/things/lookup/5").json() == {"id": 5}
+    flavor.client.get("/things/lookup/-1", assert_status_code=404)
+    assert "/things/lookup/{id}" in flavor.client.app.openapi()["paths"]

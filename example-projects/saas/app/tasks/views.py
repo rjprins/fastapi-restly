@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 import fastapi_restly as fr
 
-from ..views import AuthenticatedView, SoftDeleteMixin
+from ..views import TrashView
 from .models import Task, TaskClauses, TaskPriority, TaskStatus, TaskType
 from .schemas import TaskResponse, TaskSchema
 
@@ -55,12 +55,6 @@ class BulkResult(BaseModel):
     errors: list[str] = []
 
 
-# The list response class of TaskView, for the trash route.
-TaskListResponse = fr.schemas.derive_schema_list_response(
-    TaskResponse, pagination=AuthenticatedView.pagination
-)
-
-
 # Valid state transitions for task workflow
 VALID_TRANSITIONS = {
     TaskStatus.TODO: [TaskStatus.IN_PROGRESS],
@@ -69,7 +63,7 @@ VALID_TRANSITIONS = {
 }
 
 
-class TaskView(SoftDeleteMixin, AuthenticatedView[Task]):
+class TaskView(TrashView[Task]):
     """CRUD endpoints for tasks.
 
     Task visibility is a row-level permission (a member sees their own
@@ -90,6 +84,7 @@ class TaskView(SoftDeleteMixin, AuthenticatedView[Task]):
     schema = TaskSchema
     schema_create = TaskCreate
     scope = TaskClauses.visible
+    trash_scope = TaskClauses.trashed
 
     async def _validate_cross_resource(self, data: dict[str, Any]) -> None:
         """Validate cross-resource constraints (assignee must be in same org as project)."""
@@ -210,27 +205,6 @@ class TaskView(SoftDeleteMixin, AuthenticatedView[Task]):
         async with self.write_action(action, obj=task):
             task.status = target_status
             task.version += 1
-            await self.save_object(task)
-        return task
-
-    @fr.get("/trash", response_model=TaskListResponse)
-    async def trash(self, list_params: Any) -> Any:
-        """The trash: deleted tasks the caller may see, with the list params."""
-        result = await self.handle_get_many(list_params, scope=TaskClauses.trashed)
-        return self.to_response(result, fr.ResponseShape.LIST)
-
-    @fr.post("/{id}/restore", response_model=TaskResponse)
-    async def restore(self, id: int) -> Task:
-        """Restore a soft-deleted task.
-
-        Loads through ``trashed``, the surface the trash route reads, so a
-        live task is a 404 here. Its story points count for the project's
-        total again through the session event in ``app.tasks.models``.
-        """
-        task = await self.get_one(id, scope=TaskClauses.trashed)
-
-        async with self.write_action("restore", obj=task):
-            task.deleted_at = None
             await self.save_object(task)
         return task
 
