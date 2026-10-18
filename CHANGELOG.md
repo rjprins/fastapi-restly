@@ -362,6 +362,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- On FastAPI 0.115, a module with `from __future__ import annotations` can
+  now declare a route on a mixin or a parent view, and a custom list route
+  that takes `list_params`. Before, when the annotations of such a route
+  named a schema, an enum or a type alias from that module, the view failed
+  when it registered, or a valid request returned 422. FastAPI 0.128 and
+  later were not affected.
 - Restly calls the model's constructor with the fields that the client sent,
   as code that builds the object itself would. A field that the client
   leaves out, with the value `None`, is no longer passed, unless the
