@@ -340,6 +340,44 @@ def test_replaced_endpoint_keeps_explicit_return_annotation(env):
     assert _response_ref(openapi, "/products/{id}", "get") == "ProductName"
 
 
+def test_replaced_list_endpoint_on_a_mixin_keeps_explicit_return_annotation(env):
+    """A list route on a mixin is wrapped twice: once as the view's copy, then
+    by the unknown-key guard. On Python 3.14, ``functools.wraps`` no longer
+    copies ``__annotations__``, so the second wrapper lost them."""
+
+    class ProductNames(fr.BaseSchema):
+        names: list[str]
+
+    class ListMixin:
+        if env.asynchronous:
+
+            @fr.get("/")
+            async def get_many_endpoint(self, list_params) -> ProductNames:
+                result = await self.handle_get_many(list_params)
+                return ProductNames(names=[obj.name for obj in result.objects])
+
+        else:
+
+            @fr.get("/")
+            def get_many_endpoint(self, list_params) -> ProductNames:
+                result = self.handle_get_many(list_params)
+                return ProductNames(names=[obj.name for obj in result.objects])
+
+    class ProductView(ListMixin, env.base):
+        prefix = "/products"
+        model = env.Product
+        schema = env.ProductSchema
+
+    openapi = _register(env, ProductView)
+    client = env.client
+    client.post("/products/", json={"name": "Lamp", "price": 1.0})
+    client.post("/products/", json={"name": "Desk", "price": 2.0})
+
+    response = client.get("/products/", params={"name": "Desk"})
+    assert response.json() == {"names": ["Desk"]}
+    assert _response_ref(openapi, "/products", "get") == "ProductNames"
+
+
 def test_subclass_of_registered_view_fills_its_own_types(env):
     """A subclass's copies of the parent's endpoints take the subclass's types.
 

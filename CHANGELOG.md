@@ -368,6 +368,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   named a schema, an enum or a type alias from that module, the view failed
   when it registered, or a valid request returned 422. FastAPI 0.128 and
   later were not affected.
+- On Python 3.14, a `get_many_endpoint` keeps the return type that its
+  author wrote when the view inherits it from a mixin, or from a base view
+  that is not registered. Before, registration replaced it with the list
+  response that Restly generates. OpenAPI showed the wrong response, and a
+  request failed with a `ResponseValidationError`.
 - Restly calls the model's constructor with the fields that the client sent,
   as code that builds the object itself would. A field that the client
   leaves out, with the value `None`, is no longer passed, unless the
