@@ -19,29 +19,29 @@ registers, Restly puts the view's class in place of each marker, so a route
 on a base view gets the classes of each subclass. A type checker reads each
 marker as ``Any``. See :ref:`name-the-response-classes`.
 
-.. py:data:: fastapi_restly.views.ViewID
+.. py:data:: ViewID
 
    The view's id type: :attr:`~fastapi_restly.views.BaseRestView.id_type`,
    else the type of the model's primary key. A path parameter with this type
    gets the view's path converter: ``{id:int}`` for ``int`` and
    ``{id:uuid}`` for ``UUID``.
 
-.. py:data:: fastapi_restly.views.ViewResponse
+.. py:data:: ViewResponse
 
    The view's response class,
    :attr:`~fastapi_restly.views.BaseRestView.schema_response`.
 
-.. py:data:: fastapi_restly.views.ViewListResponse
+.. py:data:: ViewListResponse
 
    The view's list response: the envelope of the view's pagination, with
    items of the view's response class.
 
-.. py:data:: fastapi_restly.views.ViewCreate
+.. py:data:: ViewCreate
 
    The view's create body,
    :attr:`~fastapi_restly.views.BaseRestView.schema_create`.
 
-.. py:data:: fastapi_restly.views.ViewUpdate
+.. py:data:: ViewUpdate
 
    The view's update body,
    :attr:`~fastapi_restly.views.BaseRestView.schema_update`.
