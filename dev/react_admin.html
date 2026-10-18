@@ -509,7 +509,7 @@
 <h1>React Admin<a class="headerlink" href="#react-admin" title="Link to this heading">#</a></h1>
 <p><a class="reference external" href="https://marmelab.com/react-admin/">React-admin</a> with
 <a class="reference external" href="https://github.com/marmelab/react-admin/tree/master/packages/ra-data-simple-rest"><code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code></a>
-expects a REST dialect that differs from the
+expects routes that differ from the
 <a class="reference internal" href="crud_routes.html#default-crud-behavior"><span class="std std-ref">default CRUD routes</span></a> of Restly in four ways:</p>
 <ul class="simple">
 <li><p>The list route reads three JSON-encoded query parameters: <code class="docutils literal notranslate"><span class="pre">sort</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code>
@@ -520,8 +520,8 @@ rows.</p></li>
 <li><p>Updates use <code class="docutils literal notranslate"><span class="pre">PUT</span></code>.</p></li>
 </ul>
 <p><a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncReactAdminView" title="fastapi_restly.views.AsyncReactAdminView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code></a> and
-<a class="reference internal" href="api/views.html#fastapi_restly.views.ReactAdminView" title="fastapi_restly.views.ReactAdminView"><code class="xref py py-class docutils literal notranslate"><span class="pre">ReactAdminView</span></code></a> speak this
-dialect, so <code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code> works without a custom data provider. They
+<a class="reference internal" href="api/views.html#fastapi_restly.views.ReactAdminView" title="fastapi_restly.views.ReactAdminView"><code class="xref py py-class docutils literal notranslate"><span class="pre">ReactAdminView</span></code></a> serve these
+routes, so <code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code> works without a custom data provider. They
 are a <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> and a
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> with a different list
 route and an added <code class="docutils literal notranslate"><span class="pre">PUT</span></code> route. Everything else is inherited: the other
@@ -633,22 +633,42 @@ holds the total:</p>
 <p class="admonition-title">Details</p>
 <p>Any other query key gets a 422, so a typo cannot return more rows than you
 asked for without notice. The <code class="docutils literal notranslate"><span class="pre">page</span></code>, <code class="docutils literal notranslate"><span class="pre">page_size</span></code> and field filters of the
-standard dialect are unknown keys here too. A key that the route declares,
-on the endpoint method or in a dependency, is accepted, and so is an
-<code class="docutils literal notranslate"><span class="pre">APIKeyQuery</span></code> key; see <a class="reference internal" href="filtering.html#extra-query-parameters"><span class="std std-ref">Accept extra query parameters</span></a>.
+list params that Restly generates are unknown keys here too. A key that the
+route declares, on the endpoint method or in a dependency, is accepted, and
+so is an <code class="docutils literal notranslate"><span class="pre">APIKeyQuery</span></code> key; see
+<a class="reference internal" href="filtering.html#extra-query-parameters"><span class="std std-ref">Accept extra query parameters</span></a>.
 To accept every key, set
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.unknown_query_params" title="fastapi_restly.views.BaseRestView.unknown_query_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">unknown_query_params</span></code></a>
 to <code class="docutils literal notranslate"><span class="pre">&quot;ignore&quot;</span></code>, as on the other views.</p>
 <p><code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code> requests the collection path without a trailing slash
 (<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/products?sort=...</span></code>). This is the main path of a Restly collection, so
 no redirect happens.</p>
+<p>JSON that does not have the shape of <code class="docutils literal notranslate"><span class="pre">sort</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code> or <code class="docutils literal notranslate"><span class="pre">filter</span></code> gets a
+422 that names the place, as a bad value of other list params does.</p>
 <p>React-admin uses the <code class="docutils literal notranslate"><span class="pre">id</span></code> array form of <code class="docutils literal notranslate"><span class="pre">filter</span></code> (<code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">[1,</span> <span class="pre">2,</span> <span class="pre">3]}</span></code>) for
 its <code class="docutils literal notranslate"><span class="pre">getMany</span></code> calls. It becomes <code class="docutils literal notranslate"><span class="pre">WHERE</span> <span class="pre">id</span> <span class="pre">IN</span> <span class="pre">(1,</span> <span class="pre">2,</span> <span class="pre">3)</span></code>. Other filter values
 must be equal to the column value. Only fields that the view’s response class
 sends are accepted. Other fields, also react-admin’s full-text search
 parameter <code class="docutils literal notranslate"><span class="pre">q</span></code>, get a 400. For a search on part of a value, or a full-text
 search, override the view’s
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_filters" title="fastapi_restly.views.RestView.apply_filters"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_filters</span></code></a>.</p>
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_filters" title="fastapi_restly.views.RestView.apply_filters"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_filters</span></code></a>. It gets
+the list params with <code class="docutils literal notranslate"><span class="pre">filter</span></code> as a dict. Take your keys out, and pass the
+rest on:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ProductView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncReactAdminView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/products&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Product</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">apply_filters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stmt</span><span class="p">,</span> <span class="n">list_params</span><span class="p">):</span>
+        <span class="n">filters</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">list_params</span><span class="o">.</span><span class="n">filter</span> <span class="ow">or</span> <span class="p">{})</span>
+        <span class="n">q</span> <span class="o">=</span> <span class="n">filters</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;q&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">rest</span> <span class="o">=</span> <span class="n">list_params</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span><span class="n">update</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;filter&quot;</span><span class="p">:</span> <span class="n">filters</span><span class="p">})</span>
+        <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">apply_filters</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="n">rest</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">q</span><span class="p">:</span>
+            <span class="n">stmt</span> <span class="o">=</span> <span class="n">stmt</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Product</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">icontains</span><span class="p">(</span><span class="n">q</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">stmt</span>
+</pre></div>
+</div>
 <p>The settings that choose the generated list params,
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.include_filters" title="fastapi_restly.views.BaseRestView.include_filters"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_filters</span></code></a>,
 <code class="docutils literal notranslate"><span class="pre">exclude_filters</span></code>, <code class="docutils literal notranslate"><span class="pre">include_sort_keys</span></code>, <code class="docutils literal notranslate"><span class="pre">exclude_sort_keys</span></code> and
@@ -794,8 +814,8 @@ that the browser blocked the request: the API sends no
 <code class="docutils literal notranslate"><span class="pre">CORSMiddleware</span></code> with the frontend origin in <code class="docutils literal notranslate"><span class="pre">allow_origins</span></code>.</p>
 <p><strong>“422 (Unprocessable Content)”</strong> on the list request means that the route
 rejected the query of react-admin, so the view is a plain
-<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a>: the standard
-dialect does not accept the JSON-encoded <code class="docutils literal notranslate"><span class="pre">sort</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code> and <code class="docutils literal notranslate"><span class="pre">filter</span></code>
+<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a>: its list
+params do not accept the JSON-encoded <code class="docutils literal notranslate"><span class="pre">sort</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code> and <code class="docutils literal notranslate"><span class="pre">filter</span></code>
 parameters. Change the view to
 <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncReactAdminView" title="fastapi_restly.views.AsyncReactAdminView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code></a>.</p>
 </section>
@@ -820,9 +840,9 @@ of 50 for other views. To choose another value, set it in the view’s
 <p>A react-admin view uses two pagination settings: <code class="docutils literal notranslate"><span class="pre">default_page_size</span></code>, and
 <code class="docutils literal notranslate"><span class="pre">max_page_size</span></code>, the most rows that one <code class="docutils literal notranslate"><span class="pre">range</span></code> may ask for. A wider
 <code class="docutils literal notranslate"><span class="pre">range</span></code>, or one with a negative start or an end before its start, gets a
-<code class="docutils literal notranslate"><span class="pre">400</span></code>. The view pages with <code class="docutils literal notranslate"><span class="pre">range</span></code> and reports the total in the
+<code class="docutils literal notranslate"><span class="pre">422</span></code>. The view pages with <code class="docutils literal notranslate"><span class="pre">range</span></code> and reports the total in the
 <code class="docutils literal notranslate"><span class="pre">Content-Range</span></code> header, so other settings, such as parameter names or an
-envelope, raise an error when you register the view. So does
+envelope, raise an error when Python defines the view class. So does
 <code class="docutils literal notranslate"><span class="pre">pagination</span> <span class="pre">=</span> <span class="pre">None</span></code>, because the header needs the total count.</p>
 </section>
 <section id="change-the-content-range-unit">
@@ -867,27 +887,41 @@ inherit from it, as
 <span id="react-admin-internals"></span><h2>Internals<a class="headerlink" href="#internals" title="Link to this heading">#</a></h2>
 <p><a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncReactAdminView" title="fastapi_restly.views.AsyncReactAdminView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code></a> is a
 small subclass of
-<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a>, built by
-<a class="reference internal" href="lifecycle.html#replace-endpoint-method"><span class="std std-ref">replacing an endpoint method</span></a>. It replaces
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many_endpoint" title="fastapi_restly.views.RestView.get_many_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many_endpoint</span></code></a>
-to read the react-admin query string. Then it calls the standard
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_many" title="fastapi_restly.views.RestView.handle_get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_many</span></code></a> and
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a>. The react-admin
-dialect itself is in
+<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> with
+<a class="reference internal" href="filtering.html#own-list-params"><span class="std std-ref">list params of its own</span></a>. Its
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_list_params" title="fastapi_restly.views.BaseRestView.schema_list_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_list_params</span></code></a>
+is <a class="reference internal" href="api/views.html#fastapi_restly.views.ReactAdminListParams" title="fastapi_restly.views.ReactAdminListParams"><code class="xref py py-class docutils literal notranslate"><span class="pre">ReactAdminListParams</span></code></a>,
+a Pydantic model with three fields: <code class="docutils literal notranslate"><span class="pre">sort</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code> and <code class="docutils literal notranslate"><span class="pre">filter</span></code>. React-admin
+sends each one as JSON. The fields are
+<a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/types/#pydantic.types.Json" title="(in Pydantic v0.0.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pydantic.Json</span></code></a>, so Pydantic parses the JSON.
+The list route declares <code class="docutils literal notranslate"><span class="pre">list_params</span></code>, as every list route does. So OpenAPI
+shows the three keys with the shape of their JSON, and an unknown key gets
+<code class="docutils literal notranslate"><span class="pre">422</span></code>. A route of your own that declares <code class="docutils literal notranslate"><span class="pre">list_params</span></code> gets them too.</p>
+<p>The views use the parsed values where they apply them: in
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_list_params" title="fastapi_restly.views.RestView.apply_list_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_list_params</span></code></a>
-(JSON <code class="docutils literal notranslate"><span class="pre">sort</span></code> and <code class="docutils literal notranslate"><span class="pre">range</span></code>), in
+(<code class="docutils literal notranslate"><span class="pre">sort</span></code> and <code class="docutils literal notranslate"><span class="pre">range</span></code>), in
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_filters" title="fastapi_restly.views.RestView.apply_filters"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_filters</span></code></a>
-(JSON <code class="docutils literal notranslate"><span class="pre">filter</span></code>) and
+(<code class="docutils literal notranslate"><span class="pre">filter</span></code>) and in
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_list_response" title="fastapi_restly.views.BaseRestView.to_list_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_list_response</span></code></a>
-(a plain array body and <code class="docutils literal notranslate"><span class="pre">Content-Range</span></code>). These views do not use the list
-parameters of the standard dialect, which
-<a class="reference internal" href="filtering.html#list-parameters-lifecycle"><span class="std std-ref">Filtering &amp; Pagination</span></a> describes.</p>
-<p>The views also add a <code class="docutils literal notranslate"><span class="pre">PUT</span> <span class="pre">/{id}</span></code> route that calls the standard
+(a plain array body and <code class="docutils literal notranslate"><span class="pre">Content-Range</span></code>). An override of these methods gets
+the same values: <code class="docutils literal notranslate"><span class="pre">sort</span></code> as <code class="docutils literal notranslate"><span class="pre">(&quot;name&quot;,</span> <span class="pre">&quot;DESC&quot;)</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code> as <code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">24)</span></code> and
+<code class="docutils literal notranslate"><span class="pre">filter</span></code> as a dict. These views do not use the list params that Restly
+generates, which <a class="reference internal" href="filtering.html#list-parameters-lifecycle"><span class="std std-ref">Filtering &amp; Pagination</span></a>
+describes.</p>
+<p>To add a query key, subclass <code class="docutils literal notranslate"><span class="pre">ReactAdminListParams</span></code> and set the subclass as
+<code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code>. A subclass of the view keeps it. List params that are
+not a <code class="docutils literal notranslate"><span class="pre">ReactAdminListParams</span></code> fail when Python defines the view class.</p>
+<p>The views <a class="reference internal" href="lifecycle.html#replace-endpoint-method"><span class="std std-ref">replace the endpoint method</span></a>
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many_endpoint" title="fastapi_restly.views.RestView.get_many_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many_endpoint</span></code></a>,
+so that OpenAPI does not show the envelope as the response. It calls the
+standard <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_many" title="fastapi_restly.views.RestView.handle_get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_many</span></code></a>
+and <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a>. The views also
+add a <code class="docutils literal notranslate"><span class="pre">PUT</span> <span class="pre">/{id}</span></code> route that calls the standard
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update</span></code></a> handler.
 The endpoint methods of the other CRUD routes (<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code>, <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code>,
 <code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/{id}</span></code>, <code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/{id}</span></code>) and the business methods for writes are
 inherited without change.</p>
-<p>The shared helpers that parse the query and build the response are internal.</p>
+<p>The helpers that build the query and the response are internal.</p>
 </section>
 </section>
 

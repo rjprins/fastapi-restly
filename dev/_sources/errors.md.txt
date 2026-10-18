@@ -27,7 +27,7 @@ a `fastapi.HTTPException`:
 | {class}`fr.exc.NotFound <fastapi_restly.exc.NotFound>` | `404` | The row does not exist, or the [scope](scopes.md) hides it. Restly raises it for `/{id}` routes and for a [reference](relationships.md) to a missing row. |
 | {class}`fr.exc.Forbidden <fastapi_restly.exc.Forbidden>` | `403` | The caller may not do this action. Raise it in {meth}`authorize <fastapi_restly.views.RestView.authorize>`. |
 | {class}`fr.exc.Conflict <fastapi_restly.exc.Conflict>` | `409` | The request does not fit the current state of the row, such as publishing a post that is already published. Restly raises it for a [database conflict](#default-exception-handling) in a write. |
-| {class}`fr.exc.BadQueryParam <fastapi_restly.exc.BadQueryParam>` | `400` | Restly cannot apply a list parameter, such as a filter value that fails the validation of its field. |
+| {class}`fr.exc.BadQueryParam <fastapi_restly.exc.BadQueryParam>` | `400` | Restly cannot apply a value of the list params, such as a filter value that fails the validation of its field. |
 
 Raise them from your own code: a business method, a hook or a custom route.
 The publish route of the blog example raises `Conflict` inside its write
@@ -71,7 +71,7 @@ Two steps check the query string of a list endpoint, and each has its own
 status code:
 
 - `422`: the query string does not match the
-  [list parameters](filtering.md). This covers an unknown key,
+  [list params](filtering.md). This covers an unknown key,
   such as `?nope=1`, a sort key that the list does not have, such as
   `?sort=nope`, and a value of the wrong type for a typed parameter, such as
   `?page_size=oops`.
@@ -95,10 +95,11 @@ your own, it is Pydantic's text for your error, such as
 error, such as an `AttributeError` in your validator, is a bug and returns
 `500`, as it does for a request body.
 
-A react-admin view raises `BadQueryParam` for each bad `sort`, `range` or
-`filter` parameter too. It checks a filter value against the type of the
-column, with Pydantic, so `"2020-01-01"` filters a date column and `"false"`
-a boolean column. A handler for
+A react-admin view follows the same two steps. JSON in `sort`, `range` or
+`filter` that does not have their shape gets a `422`. A sort key or a filter
+that the view cannot apply raises `BadQueryParam`. It checks a filter value
+against the type of the column, with Pydantic, so `"2020-01-01"` filters a
+date column and `"false"` a boolean column. A handler for
 {class}`RestlyHTTPError <fastapi_restly.exc.RestlyHTTPError>` shapes all
 these `400` answers; see [Change the error body](#error-envelope).
 
@@ -203,23 +204,22 @@ async def problem_handler(request, exc):
 With this handler, a missing row returns
 `{"type": "about:blank", "title": "Doc with id 999 was not found", "status": 404}`
 with the `application/problem+json` content type. The `400` errors of the
-list routes get the same body, in the standard dialect and in react-admin.
+list routes get the same body, also on a react-admin view.
 
 Some errors are not a `RestlyHTTPError`, so this handler does not change them:
 
 - A `422` for a request body or a parameter that fails validation, such as
-  `?page_size=oops`. This is a `fastapi.exceptions.RequestValidationError`.
-  Register a handler for it.
-- A plain `fastapi.HTTPException`. Restly raises one for an unknown list
-  parameter (`422`), and for a foreign key and its relationship field that
-  name different rows (`422`). Register a handler for
-  `fastapi.HTTPException`.
+  `?page_size=oops`, and for an unknown key of the list params. This is a
+  `fastapi.exceptions.RequestValidationError`. Register a handler for it.
+- A plain `fastapi.HTTPException`. Restly raises one for a foreign key and
+  its relationship field that name different rows (`422`). Register a
+  handler for `fastapi.HTTPException`.
 
 ## See also
 
 - [Request Lifecycle & Hooks](lifecycle.md): where
   {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the business
   methods run, and when the commit happens.
-- [Filtering & Pagination](filtering.md): the list parameters that
-  the `422` and `400` errors check.
+- [Filtering & Pagination](filtering.md): the list params that the `422`
+  and `400` errors check.
 - {doc}`api/exc`: every name in `fr.exc`.

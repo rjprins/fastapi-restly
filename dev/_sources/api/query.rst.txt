@@ -7,7 +7,7 @@ of the URL parameters, from the view's response class and its model, and
 ``apply_list_params()`` applies validated list params to a SQLAlchemy select.
 
 The view classes call these for you. Call them yourself only in a custom
-endpoint that needs the same list grammar, and pass validated list params, not
+endpoint that needs the same list params, and pass validated list params, not
 raw ``QueryParams``. Pass the view's settings to
 ``derive_schema_list_params()``: ``pagination=self.pagination``, and
 ``include_filters``, ``exclude_filters``, ``include_sort_keys``,
@@ -24,5 +24,5 @@ follow the response class.
 
 .. seealso::
 
-   :doc:`/filtering` documents the URL filter, sort, and
-   pagination grammar that these helpers implement.
+   :doc:`/filtering` documents the list params that these helpers build
+   and apply: filter, sort and pagination.

@@ -501,6 +501,10 @@ and this project adheres to <a class="reference external" href="https://semver.o
 <section id="added">
 <h3>Added<a class="headerlink" href="#added" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.views.ReactAdminListParams</span></code>, the list params of a react-admin view,
+with the fields <code class="docutils literal notranslate"><span class="pre">sort</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code> and <code class="docutils literal notranslate"><span class="pre">filter</span></code>. To add a query key, such as
+a search key, subclass it and set the subclass as the view’s
+<code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code>.</p></li>
 <li><p>Four view settings choose the keys of a list: <code class="docutils literal notranslate"><span class="pre">include_filters</span></code>,
 <code class="docutils literal notranslate"><span class="pre">exclude_filters</span></code>, <code class="docutils literal notranslate"><span class="pre">include_sort_keys</span></code> and <code class="docutils literal notranslate"><span class="pre">exclude_sort_keys</span></code>. An entry is
 a key as the client sends it, or a pattern: <code class="docutils literal notranslate"><span class="pre">*</span></code> matches any characters
@@ -617,6 +621,21 @@ fails.</p></li>
 <code class="docutils literal notranslate"><span class="pre">&#64;fr.list_filter</span></code> when they register. React-admin sends its filters in its
 own <code class="docutils literal notranslate"><span class="pre">filter</span></code> parameter. A react-admin view that inherits a setting from a
 base view sets the default again, such as <code class="docutils literal notranslate"><span class="pre">exclude_filters</span> <span class="pre">=</span> <span class="pre">()</span></code>.</p></li>
+<li><p>The list route of a react-admin view declares <code class="docutils literal notranslate"><span class="pre">list_params</span></code>, as every list
+route does. Its <code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code> is <code class="docutils literal notranslate"><span class="pre">fr.views.ReactAdminListParams</span></code>.
+The fields <code class="docutils literal notranslate"><span class="pre">sort</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code> and <code class="docutils literal notranslate"><span class="pre">filter</span></code> are <code class="docutils literal notranslate"><span class="pre">pydantic.Json</span></code>, so Pydantic
+parses the JSON of each key. <code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code>, <code class="docutils literal notranslate"><span class="pre">apply_filters</span></code> and
+<code class="docutils literal notranslate"><span class="pre">to_list_response</span></code> read the parsed values from these list params: <code class="docutils literal notranslate"><span class="pre">sort</span></code>
+as <code class="docutils literal notranslate"><span class="pre">(&quot;name&quot;,</span> <span class="pre">&quot;DESC&quot;)</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code> as <code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">24)</span></code> and <code class="docutils literal notranslate"><span class="pre">filter</span></code> as a dict. So an
+override of these methods now gets the list params. Before, it got a
+private object with the same values. A mapping that you pass to these
+methods holds query values, so <code class="docutils literal notranslate"><span class="pre">sort</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code> and <code class="docutils literal notranslate"><span class="pre">filter</span></code> are JSON text,
+as on the other views. A route of your own on a react-admin view gets the
+list params when it declares <code class="docutils literal notranslate"><span class="pre">list_params</span></code>. List params that are not a
+subclass of <code class="docutils literal notranslate"><span class="pre">ReactAdminListParams</span></code> fail when Python defines the class.</p></li>
+<li><p>A react-admin view with pagination that it cannot use now fails when
+Python defines the class, not when the view registers. This is
+<code class="docutils literal notranslate"><span class="pre">pagination</span> <span class="pre">=</span> <span class="pre">None</span></code>, or pagination settings other than the two page sizes.</p></li>
 <li><p>The test clients now accept any success status (2xx) by default. Before,
 each method expected one status, such as <code class="docutils literal notranslate"><span class="pre">201</span></code> for POST. So a POST action
 that returns <code class="docutils literal notranslate"><span class="pre">200</span></code> now passes without <code class="docutils literal notranslate"><span class="pre">assert_status_code</span></code>. No test starts
@@ -705,7 +724,7 @@ leave the field out. On a JSON column, use <code class="docutils literal notrans
 as JSON <code class="docutils literal notranslate"><span class="pre">null</span></code>, so Restly keeps that field required. A <code class="docutils literal notranslate"><span class="pre">Computed</span></code> column
 needs <code class="docutils literal notranslate"><span class="pre">init=False</span></code>, which makes its field <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>.</p></li>
 <li><p>The <code class="docutils literal notranslate"><span class="pre">400</span></code> answers of a list request say what is wrong. Before, the
-standard dialect answered “Invalid attribute in URL query: age” both for a
+generated list params said “Invalid attribute in URL query: age” both for a
 sort or filter field that does not exist and for a bad filter value. Now
 it is <code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">sort</span> <span class="pre">key:</span> <span class="pre">'nope'</span></code>, <code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">filter</span> <span class="pre">key:</span> <span class="pre">'nope'</span></code>, or
 <code class="docutils literal notranslate"><span class="pre">Invalid</span> <span class="pre">filter</span> <span class="pre">value</span> <span class="pre">for</span> <span class="pre">'age':</span> <span class="pre">'old'.</span></code> followed by Pydantic’s reason,
@@ -713,19 +732,22 @@ such as <code class="docutils literal notranslate"><span class="pre">Input</span
 error is now a <code class="docutils literal notranslate"><span class="pre">500</span></code>, as for a request body, instead of a <code class="docutils literal notranslate"><span class="pre">400</span></code>. Code or
 tests that compare the old texts must change. The texts for a bad <code class="docutils literal notranslate"><span class="pre">page</span></code>
 or <code class="docutils literal notranslate"><span class="pre">page_size</span></code> changed too.</p></li>
-<li><p>A react-admin view raises <code class="docutils literal notranslate"><span class="pre">fr.exc.BadQueryParam</span></code> for each bad <code class="docutils literal notranslate"><span class="pre">sort</span></code>,
-<code class="docutils literal notranslate"><span class="pre">range</span></code> or <code class="docutils literal notranslate"><span class="pre">filter</span></code> parameter. Before, most of them were a plain
-<code class="docutils literal notranslate"><span class="pre">HTTPException</span></code>, so a handler for <code class="docutils literal notranslate"><span class="pre">fr.exc.RestlyHTTPError</span></code> did not shape
-them. The status stays <code class="docutils literal notranslate"><span class="pre">400</span></code>, and the default body is the same. An unknown
-sort key now says <code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">sort</span> <span class="pre">key</span></code> instead of <code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">filter</span> <span class="pre">field</span></code>.</p></li>
+<li><p>A react-admin view answers <code class="docutils literal notranslate"><span class="pre">422</span></code> instead of <code class="docutils literal notranslate"><span class="pre">400</span></code> for JSON in <code class="docutils literal notranslate"><span class="pre">sort</span></code>,
+<code class="docutils literal notranslate"><span class="pre">range</span></code> or <code class="docutils literal notranslate"><span class="pre">filter</span></code> that does not have their shape. So does a <code class="docutils literal notranslate"><span class="pre">range</span></code> with
+a negative start, an end before its start, an end past the largest offset
+that the database takes (before, a <code class="docutils literal notranslate"><span class="pre">500</span></code>), or more rows than
+<code class="docutils literal notranslate"><span class="pre">max_page_size</span></code>. The error names the place, such as
+<code class="docutils literal notranslate"><span class="pre">[&quot;query&quot;,</span> <span class="pre">&quot;sort&quot;,</span> <span class="pre">1]</span></code>, as for a bad value of other list params. A sort
+key or a filter that the view cannot apply is still a <code class="docutils literal notranslate"><span class="pre">400</span></code>. It is now a
+<code class="docutils literal notranslate"><span class="pre">fr.exc.BadQueryParam</span></code>. Before, it was a plain <code class="docutils literal notranslate"><span class="pre">HTTPException</span></code>, so a
+handler for <code class="docutils literal notranslate"><span class="pre">fr.exc.RestlyHTTPError</span></code> did not shape it. An unknown sort key
+now says <code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">sort</span> <span class="pre">key</span></code> instead of <code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">filter</span> <span class="pre">field</span></code>.</p></li>
 <li><p>A react-admin view checks a filter value against the column’s type with
-Pydantic, as the standard dialect does. Before, it called the type on the
+Pydantic, as the generated list params do. Before, it called the type on the
 value. So <code class="docutils literal notranslate"><span class="pre">{&quot;active&quot;:</span> <span class="pre">&quot;false&quot;}</span></code> matched the rows where <code class="docutils literal notranslate"><span class="pre">active</span></code> is true,
 a date such as <code class="docutils literal notranslate"><span class="pre">&quot;2020-01-01&quot;</span></code> returned <code class="docutils literal notranslate"><span class="pre">400</span></code>, and a bad decimal or UUID
 returned <code class="docutils literal notranslate"><span class="pre">500</span></code>. A bad value now returns <code class="docutils literal notranslate"><span class="pre">400</span></code> with Pydantic’s reason, and
-names the field as the client wrote it, also with an alias. A <code class="docutils literal notranslate"><span class="pre">range</span></code>
-past the largest offset that the database takes returns <code class="docutils literal notranslate"><span class="pre">400</span></code> instead of
-<code class="docutils literal notranslate"><span class="pre">500</span></code>.</p></li>
+names the field as the client wrote it, also with an alias.</p></li>
 </ul>
 </section>
 <section id="removed">
@@ -828,6 +850,8 @@ that your code reads from <code class="docutils literal notranslate"><span class
 <p>React-admin views follow the same rules. A view that still sets
 <code class="docutils literal notranslate"><span class="pre">extra_query_params</span></code> raises <code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code>.</p>
 </li>
+<li><p><code class="docutils literal notranslate"><span class="pre">react_admin_query_params</span></code> on the react-admin views. The three keys are the
+fields of the view’s <code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code>.</p></li>
 </ul>
 </section>
 <section id="fixed">
@@ -874,6 +898,12 @@ schema of its own, because Restly did not load the second level.</p></li>
 the view fail with <code class="docutils literal notranslate"><span class="pre">RecursionError</span></code> when it registers. The list filters
 follow it one step: with dotted keys on, <code class="docutils literal notranslate"><span class="pre">?parent.name=</span></code> works, and
 <code class="docutils literal notranslate"><span class="pre">?parent.parent.name=</span></code> does not.</p></li>
+<li><p>OpenAPI shows the <code class="docutils literal notranslate"><span class="pre">sort</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code> and <code class="docutils literal notranslate"><span class="pre">filter</span></code> parameters of the list
+route of a react-admin view, each with a description of its JSON. Before,
+it showed no query parameters for this route.</p></li>
+<li><p>A subclass of a react-admin view keeps the <code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code> that its
+base view declares, such as list params with a search key. Before, it got
+the three keys of react-admin again.</p></li>
 </ul>
 </section>
 <section id="security">

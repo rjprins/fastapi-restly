@@ -13,7 +13,7 @@ GET /users?sort=-created_at,name
 GET /users?page=2&page_size=50
 ```
 
-Restly builds these list parameters when the view registers. It reads the
+Restly builds these list params when the view registers. It reads the
 view's response class, and gives each field that maps to a column one filter,
 plus filters with an operator suffix such as `__gte`. So a client can filter
 and sort only on fields it can see. By default the response class is the
@@ -243,7 +243,7 @@ joins: a row without the related row is left out, also for a dotted
 `__isnull` filter.
 
 Aliases apply to every part of the path, the relationship and the field,
-because the list parameters always use the public names of the response
+because the list params always use the public names of the response
 class:
 
 ```python
@@ -305,7 +305,7 @@ A relationship reference filters differently (see
 (public-names)=
 ## Use aliases in the URL
 
-The keys of the list parameters use the **public name** of each field: its
+The keys of the list params use the **public name** of each field: its
 alias when it has one, and its Python name otherwise. The URL accepts only the
 public name. `populate_by_name` changes how Pydantic reads a request body. It
 does not add the Python names to the URL.
@@ -766,8 +766,8 @@ query in the method. The override gets the scope as
 its `scope` argument: apply it to the query with `fr.apply_clauses`, as
 [Use the scope in your own query](#reading-the-scope) shows.
 
-A route method with a `list_params` parameter takes the same list parameters
-as `GET /`. Restly gives it the view's
+A route method with a `list_params` parameter takes the same list params as
+`GET /`. Restly gives it the view's
 {attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`,
 so filters, sort and page are read and checked in the same way, OpenAPI shows
 them, and an unknown key returns `422`. A custom list route, such as a trash
@@ -893,7 +893,7 @@ generated list params, so it declares its own again. The
 ## Internals
 
 (list-parameters-lifecycle)=
-### How Restly builds the list parameters
+### How Restly builds the list params
 
 In {meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>`,
 Restly sets one class attribute,
@@ -904,7 +904,7 @@ generates, with the view's list settings. It holds the pagination
 parameters, the sort parameter, the filter keys that the settings keep, and
 the view's own keys. Restly builds it once, when the view registers.
 
-A route reads the list parameters through a dependency, not as a FastAPI
+A route reads the list params through a dependency, not as a FastAPI
 query model. FastAPI splits a query model into separate parameters only when
 it is the only query parameter of the route. Next to a dependency that reads
 `?api_key=`, the filters would become one required object. So Restly
@@ -916,8 +916,8 @@ Restly validates them against the field when
 {func}`apply_list_params <fastapi_restly.query.apply_list_params>` builds the
 query. A key of your own has the type of its method's value.
 
-The [React Admin](react_admin.md) views read another grammar, with
-their own parameters.
+The [React Admin](react_admin.md) views have list params of their own:
+`sort`, `range` and `filter`, as JSON.
 
 ## See also
 

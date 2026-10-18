@@ -546,7 +546,7 @@ a <code class="docutils literal notranslate"><span class="pre">fastapi.HTTPExcep
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/exc.html#fastapi_restly.exc.BadQueryParam" title="fastapi_restly.exc.BadQueryParam"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.BadQueryParam</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">400</span></code></p></td>
-<td><p>Restly cannot apply a list parameter, such as a filter value that fails the validation of its field.</p></td>
+<td><p>Restly cannot apply a value of the list params, such as a filter value that fails the validation of its field.</p></td>
 </tr>
 </tbody>
 </table>
@@ -591,7 +591,7 @@ are there too.</p>
 status code:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">422</span></code>: the query string does not match the
-<a class="reference internal" href="filtering.html"><span class="std std-doc">list parameters</span></a>. This covers an unknown key,
+<a class="reference internal" href="filtering.html"><span class="std std-doc">list params</span></a>. This covers an unknown key,
 such as <code class="docutils literal notranslate"><span class="pre">?nope=1</span></code>, a sort key that the list does not have, such as
 <code class="docutils literal notranslate"><span class="pre">?sort=nope</span></code>, and a value of the wrong type for a typed parameter, such as
 <code class="docutils literal notranslate"><span class="pre">?page_size=oops</span></code>.</p></li>
@@ -611,10 +611,11 @@ your own, it is Pydantic’s text for your error, such as
 <code class="docutils literal notranslate"><span class="pre">Value</span> <span class="pre">error,</span> <span class="pre">value</span> <span class="pre">is</span> <span class="pre">too</span> <span class="pre">long</span></code>. An exception that is not a validation
 error, such as an <code class="docutils literal notranslate"><span class="pre">AttributeError</span></code> in your validator, is a bug and returns
 <code class="docutils literal notranslate"><span class="pre">500</span></code>, as it does for a request body.</p>
-<p>A react-admin view raises <code class="docutils literal notranslate"><span class="pre">BadQueryParam</span></code> for each bad <code class="docutils literal notranslate"><span class="pre">sort</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code> or
-<code class="docutils literal notranslate"><span class="pre">filter</span></code> parameter too. It checks a filter value against the type of the
-column, with Pydantic, so <code class="docutils literal notranslate"><span class="pre">&quot;2020-01-01&quot;</span></code> filters a date column and <code class="docutils literal notranslate"><span class="pre">&quot;false&quot;</span></code>
-a boolean column. A handler for
+<p>A react-admin view follows the same two steps. JSON in <code class="docutils literal notranslate"><span class="pre">sort</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code> or
+<code class="docutils literal notranslate"><span class="pre">filter</span></code> that does not have their shape gets a <code class="docutils literal notranslate"><span class="pre">422</span></code>. A sort key or a filter
+that the view cannot apply raises <code class="docutils literal notranslate"><span class="pre">BadQueryParam</span></code>. It checks a filter value
+against the type of the column, with Pydantic, so <code class="docutils literal notranslate"><span class="pre">&quot;2020-01-01&quot;</span></code> filters a
+date column and <code class="docutils literal notranslate"><span class="pre">&quot;false&quot;</span></code> a boolean column. A handler for
 <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyHTTPError" title="fastapi_restly.exc.RestlyHTTPError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyHTTPError</span></code></a> shapes all
 these <code class="docutils literal notranslate"><span class="pre">400</span></code> answers; see <a class="reference internal" href="#error-envelope">Change the error body</a>.</p>
 <p>A filter value passes the first step as text. Restly checks it against the
@@ -706,16 +707,15 @@ handler below returns an RFC 9457 problem details body:</p>
 <p>With this handler, a missing row returns
 <code class="docutils literal notranslate"><span class="pre">{&quot;type&quot;:</span> <span class="pre">&quot;about:blank&quot;,</span> <span class="pre">&quot;title&quot;:</span> <span class="pre">&quot;Doc</span> <span class="pre">with</span> <span class="pre">id</span> <span class="pre">999</span> <span class="pre">was</span> <span class="pre">not</span> <span class="pre">found&quot;,</span> <span class="pre">&quot;status&quot;:</span> <span class="pre">404}</span></code>
 with the <code class="docutils literal notranslate"><span class="pre">application/problem+json</span></code> content type. The <code class="docutils literal notranslate"><span class="pre">400</span></code> errors of the
-list routes get the same body, in the standard dialect and in react-admin.</p>
+list routes get the same body, also on a react-admin view.</p>
 <p>Some errors are not a <code class="docutils literal notranslate"><span class="pre">RestlyHTTPError</span></code>, so this handler does not change them:</p>
 <ul class="simple">
 <li><p>A <code class="docutils literal notranslate"><span class="pre">422</span></code> for a request body or a parameter that fails validation, such as
-<code class="docutils literal notranslate"><span class="pre">?page_size=oops</span></code>. This is a <code class="docutils literal notranslate"><span class="pre">fastapi.exceptions.RequestValidationError</span></code>.
-Register a handler for it.</p></li>
-<li><p>A plain <code class="docutils literal notranslate"><span class="pre">fastapi.HTTPException</span></code>. Restly raises one for an unknown list
-parameter (<code class="docutils literal notranslate"><span class="pre">422</span></code>), and for a foreign key and its relationship field that
-name different rows (<code class="docutils literal notranslate"><span class="pre">422</span></code>). Register a handler for
-<code class="docutils literal notranslate"><span class="pre">fastapi.HTTPException</span></code>.</p></li>
+<code class="docutils literal notranslate"><span class="pre">?page_size=oops</span></code>, and for an unknown key of the list params. This is a
+<code class="docutils literal notranslate"><span class="pre">fastapi.exceptions.RequestValidationError</span></code>. Register a handler for it.</p></li>
+<li><p>A plain <code class="docutils literal notranslate"><span class="pre">fastapi.HTTPException</span></code>. Restly raises one for a foreign key and
+its relationship field that name different rows (<code class="docutils literal notranslate"><span class="pre">422</span></code>). Register a
+handler for <code class="docutils literal notranslate"><span class="pre">fastapi.HTTPException</span></code>.</p></li>
 </ul>
 </section>
 <section id="see-also">
@@ -724,8 +724,8 @@ name different rows (<code class="docutils literal notranslate"><span class="pre
 <li><p><a class="reference internal" href="lifecycle.html"><span class="std std-doc">Request Lifecycle &amp; Hooks</span></a>: where
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a> and the business
 methods run, and when the commit happens.</p></li>
-<li><p><a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering &amp; Pagination</span></a>: the list parameters that
-the <code class="docutils literal notranslate"><span class="pre">422</span></code> and <code class="docutils literal notranslate"><span class="pre">400</span></code> errors check.</p></li>
+<li><p><a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering &amp; Pagination</span></a>: the list params that the <code class="docutils literal notranslate"><span class="pre">422</span></code>
+and <code class="docutils literal notranslate"><span class="pre">400</span></code> errors check.</p></li>
 <li><p><a class="reference internal" href="api/exc.html"><span class="doc">Exceptions API</span></a>: every name in <code class="docutils literal notranslate"><span class="pre">fr.exc</span></code>.</p></li>
 </ul>
 </section>

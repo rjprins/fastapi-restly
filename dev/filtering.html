@@ -518,7 +518,7 @@ GET /users?sort=-created_at,name
 GET /users?page=2&amp;page_size=50
 </pre></div>
 </div>
-<p>Restly builds these list parameters when the view registers. It reads the
+<p>Restly builds these list params when the view registers. It reads the
 view’s response class, and gives each field that maps to a column one filter,
 plus filters with an operator suffix such as <code class="docutils literal notranslate"><span class="pre">__gte</span></code>. So a client can filter
 and sort only on fields it can see. By default the response class is the
@@ -747,7 +747,7 @@ and a sort on the same relationship share one join. The joins are inner
 joins: a row without the related row is left out, also for a dotted
 <code class="docutils literal notranslate"><span class="pre">__isnull</span></code> filter.</p>
 <p>Aliases apply to every part of the path, the relationship and the field,
-because the list parameters always use the public names of the response
+because the list params always use the public names of the response
 class:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span>
 
@@ -801,7 +801,7 @@ column in the response class, for example as <code class="docutils literal notra
 </section>
 <section id="use-aliases-in-the-url">
 <span id="public-names"></span><h2>Use aliases in the URL<a class="headerlink" href="#use-aliases-in-the-url" title="Link to this heading">#</a></h2>
-<p>The keys of the list parameters use the <strong>public name</strong> of each field: its
+<p>The keys of the list params use the <strong>public name</strong> of each field: its
 alias when it has one, and its Python name otherwise. The URL accepts only the
 public name. <code class="docutils literal notranslate"><span class="pre">populate_by_name</span></code> changes how Pydantic reads a request body. It
 does not add the Python names to the URL.</p>
@@ -1204,8 +1204,8 @@ see <a class="reference internal" href="#own-list-params">Write the list params 
 query in the method. The override gets the scope as
 its <code class="docutils literal notranslate"><span class="pre">scope</span></code> argument: apply it to the query with <code class="docutils literal notranslate"><span class="pre">fr.apply_clauses</span></code>, as
 <a class="reference internal" href="scopes.html#reading-the-scope"><span class="std std-ref">Use the scope in your own query</span></a> shows.</p>
-<p>A route method with a <code class="docutils literal notranslate"><span class="pre">list_params</span></code> parameter takes the same list parameters
-as <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>. Restly gives it the view’s
+<p>A route method with a <code class="docutils literal notranslate"><span class="pre">list_params</span></code> parameter takes the same list params as
+<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>. Restly gives it the view’s
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_list_params" title="fastapi_restly.views.BaseRestView.schema_list_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_list_params</span></code></a>,
 so filters, sort and page are read and checked in the same way, OpenAPI shows
 them, and an unknown key returns <code class="docutils literal notranslate"><span class="pre">422</span></code>. A custom list route, such as a trash
@@ -1316,8 +1316,8 @@ generated list params, so it declares its own again. The
 </section>
 <section id="internals">
 <h2>Internals<a class="headerlink" href="#internals" title="Link to this heading">#</a></h2>
-<section id="how-restly-builds-the-list-parameters">
-<span id="list-parameters-lifecycle"></span><h3>How Restly builds the list parameters<a class="headerlink" href="#how-restly-builds-the-list-parameters" title="Link to this heading">#</a></h3>
+<section id="how-restly-builds-the-list-params">
+<span id="list-parameters-lifecycle"></span><h3>How Restly builds the list params<a class="headerlink" href="#how-restly-builds-the-list-params" title="Link to this heading">#</a></h3>
 <p>In <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.before_include_view" title="fastapi_restly.views.BaseRestView.before_include_view"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_include_view()</span></code></a>,
 Restly sets one class attribute,
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_list_params" title="fastapi_restly.views.BaseRestView.schema_list_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_list_params</span></code></a>.
@@ -1326,7 +1326,7 @@ It is a Pydantic model that
 generates, with the view’s list settings. It holds the pagination
 parameters, the sort parameter, the filter keys that the settings keep, and
 the view’s own keys. Restly builds it once, when the view registers.</p>
-<p>A route reads the list parameters through a dependency, not as a FastAPI
+<p>A route reads the list params through a dependency, not as a FastAPI
 query model. FastAPI splits a query model into separate parameters only when
 it is the only query parameter of the route. Next to a dependency that reads
 <code class="docutils literal notranslate"><span class="pre">?api_key=</span></code>, the filters would become one required object. So Restly
@@ -1336,8 +1336,8 @@ own parameter in OpenAPI, next to the other parameters of the route.</p>
 Restly validates them against the field when
 <a class="reference internal" href="api/query.html#fastapi_restly.query.apply_list_params" title="fastapi_restly.query.apply_list_params"><code class="xref py py-func docutils literal notranslate"><span class="pre">apply_list_params</span></code></a> builds the
 query. A key of your own has the type of its method’s value.</p>
-<p>The <a class="reference internal" href="react_admin.html"><span class="std std-doc">React Admin</span></a> views read another grammar, with
-their own parameters.</p>
+<p>The <a class="reference internal" href="react_admin.html"><span class="std std-doc">React Admin</span></a> views have list params of their own:
+<code class="docutils literal notranslate"><span class="pre">sort</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code> and <code class="docutils literal notranslate"><span class="pre">filter</span></code>, as JSON.</p>
 </section>
 </section>
 <section id="see-also">
@@ -1425,7 +1425,7 @@ such as <code class="docutils literal notranslate"><span class="pre">/projects/{
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-the-filters-in-a-route-of-your-own">Use the filters in a route of your own</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#write-the-list-params-yourself">Write the list params yourself</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#internals">Internals</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-restly-builds-the-list-parameters">How Restly builds the list parameters</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-restly-builds-the-list-params">How Restly builds the list params</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>

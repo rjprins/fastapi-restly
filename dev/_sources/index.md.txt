@@ -106,7 +106,7 @@ Restly step by step, from the first model to authors, drafts, and tests.
 - **[SQLAlchemy 2.0 support](tutorial.md)**: async-first with modern patterns
 - **[Pydantic v2 integration](schemas.md)**: validation and serialization for public contracts
 - **[Automatic schema generation](#auto-generated-schemas)**: response, create, and update schemas generated automatically
-- **[Filtering](filtering.md)**: filter, sort, and paginate from a stable URL dialect generated from the view's schema
+- **[Filtering](filtering.md)**: filter, sort, and paginate with list params generated from the view's schema
 - **[Request Context](context.md)**: bind values, such as the current user, to a request-local context and read them anywhere in the request
 - **[Scopes](scopes.md)**: control what a view can return with one SQLAlchemy where clause, applied to every read and reference check
 - **[Relationship support](relationships.md)**: handle foreign keys and nested objects

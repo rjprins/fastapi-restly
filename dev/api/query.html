@@ -496,7 +496,7 @@ pagination: <code class="docutils literal notranslate"><span class="pre">derive_
 of the URL parameters, from the view’s response class and its model, and
 <code class="docutils literal notranslate"><span class="pre">apply_list_params()</span></code> applies validated list params to a SQLAlchemy select.</p>
 <p>The view classes call these for you. Call them yourself only in a custom
-endpoint that needs the same list grammar, and pass validated list params, not
+endpoint that needs the same list params, and pass validated list params, not
 raw <code class="docutils literal notranslate"><span class="pre">QueryParams</span></code>. Pass the view’s settings to
 <code class="docutils literal notranslate"><span class="pre">derive_schema_list_params()</span></code>: <code class="docutils literal notranslate"><span class="pre">pagination=self.pagination</span></code>, and
 <code class="docutils literal notranslate"><span class="pre">include_filters</span></code>, <code class="docutils literal notranslate"><span class="pre">exclude_filters</span></code>, <code class="docutils literal notranslate"><span class="pre">include_sort_keys</span></code>,
@@ -617,8 +617,8 @@ parameter has the name of a page parameter.</p>
 
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
-<p><a class="reference internal" href="../filtering.html"><span class="doc">Filtering &amp; Pagination</span></a> documents the URL filter, sort, and
-pagination grammar that these helpers implement.</p>
+<p><a class="reference internal" href="../filtering.html"><span class="doc">Filtering &amp; Pagination</span></a> documents the list params that these helpers build
+and apply: filter, sort and pagination.</p>
 </div>
 </section>
 
