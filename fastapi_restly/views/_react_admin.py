@@ -39,7 +39,7 @@ from fastapi_restly.views import (
     put,
 )
 
-# Private names without a public form yet: fastapi-restly-1kcg.11.
+# Private names without a public form yet.
 from ._base import _how_set, _list_filter_methods, _list_setting, _owner, _set_by
 
 #: Default page size used when the react-admin client does not send a `range`
@@ -387,7 +387,7 @@ class _ReactAdminMixin:
         """``list_params`` as an instance of the view's list params.
 
         A ``QueryParams`` or a mapping holds query values, so it is checked
-        as on the list route. No public form yet: fastapi-restly-1kcg.13.
+        as on the list route. No public form yet.
         """
         return cast(Any, self)._validated_list_params(list_params)
 
@@ -473,7 +473,7 @@ class _ReactAdminMixin:
     @classmethod
     def before_include_view(cls) -> None:
         # At registration, as Restly checks these settings. No public form
-        # yet: fastapi-restly-1kcg.11.
+        # yet.
         _reject_list_settings(cls)
         cast(Any, super()).before_include_view()
 

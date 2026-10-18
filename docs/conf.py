@@ -69,8 +69,7 @@ nitpick_ignore = [
     ("py:class", "fr.ReadOnly"),
     ("py:class", "function"),
     # The markers are type aliases, documented as data in api/views.rst. A
-    # signature links them as classes, which never resolves to data
-    # (fastapi-restly-b59j.39.1).
+    # signature links them as classes, which never resolves to data.
     ("py:class", "fastapi_restly.views.ViewID"),
     ("py:class", "fastapi_restly.views.ViewResponse"),
     ("py:class", "fastapi_restly.views.ViewListResponse"),
