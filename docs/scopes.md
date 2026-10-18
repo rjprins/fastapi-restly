@@ -546,8 +546,12 @@ class ItemView(fr.AsyncRestView):
 ```
 
 An order that you add before `super()` comes first, so a client's `?sort=`
-orders the rows inside it. A join to a to-many relationship here does not
-repeat rows, and it does not make `total_count` too high.
+orders the rows inside it.
+
+For a condition on a to-many relationship, use `EXISTS`, such as
+`query.where(Item.comments.any(Comment.author_id == user_id))`. A join to a
+to-many relationship repeats the item for each comment, as in SQLAlchemy. A
+page would then count comments, not items.
 
 ## See also
 

@@ -321,8 +321,8 @@ class AsyncRestView(
             query = query.options(*loader_options)
         scalar_result = await self.session.scalars(query)
         return ListResult(
-            # unique(): collapse the row fan-out a to-many JOIN in the query
-            # would produce, so the page never repeats the same entity.
+            # unique(): a joined eager load of a collection, from the loader
+            # options, repeats the row for each child
             objects=scalar_result.unique().all(),
             total_count=total_count,
             list_params=list_params,

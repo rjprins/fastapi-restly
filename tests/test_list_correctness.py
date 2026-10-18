@@ -10,12 +10,11 @@ Covers three list-endpoint bugs:
   the PK). These are asserted on the compiled SQL, so they hold regardless of a
   given backend's incidental tie ordering.
 
-* **to-many JOIN fan-out**: a list query that JOINs a to-many relationship
-  fans out (one row per child), which duplicated entities in the page and
-  inflated the total. ``get_many`` now de-duplicates via ``.unique()`` and
-  ``count`` counts the distinct primary keys. (The list params cannot reach
-  it -- dotted filters/sorts only traverse to-one relations -- so the trigger
-  is a collection JOIN in ``apply_list_params``, as exercised here.)
+* **a condition on a to-many relationship**: it goes in ``EXISTS``
+  (``.any()``), and each page then has whole rows. A join would repeat the
+  row for each child, as in SQLAlchemy, and Restly does not page around
+  that. (The list params never join a to-many relationship: dotted filters
+  and sorts only follow to-one relations.)
 
 * **the count's columns**: the count ran ``DISTINCT`` over every column of the
   model, which computed each ``column_property`` for every row. It now counts
@@ -32,7 +31,13 @@ import sqlalchemy.orm
 from fastapi import FastAPI
 from sqlalchemy import ForeignKey, event
 from sqlalchemy.ext.declarative import AbstractConcreteBase
-from sqlalchemy.orm import DeclarativeBase, Mapped, column_property, mapped_column
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    column_property,
+    mapped_column,
+    relationship,
+)
 from starlette.datastructures import QueryParams
 
 import fastapi_restly as fr
@@ -173,13 +178,14 @@ def test_react_admin_sort_appends_every_column_of_a_composite_key():
 
 
 # ---------------------------------------------------------------------------
-# A to-many JOIN in the list query must not duplicate rows / inflate count
+# A condition on a to-many relationship goes in EXISTS
 # ---------------------------------------------------------------------------
 
 
-def test_to_many_join_in_list_query_does_not_duplicate_or_inflate(client):
+def test_to_many_condition_in_exists_gives_whole_pages(client):
     class Author(fr.IDMixin, SharedBase):
         name: Mapped[str]
+        books: Mapped[list["Book"]] = relationship(init=False)
 
     class Book(fr.IDMixin, SharedBase):
         title: Mapped[str]
@@ -199,8 +205,7 @@ def test_to_many_join_in_list_query_does_not_duplicate_or_inflate(client):
         schema = AuthorSchema
 
         async def apply_list_params(self, query, list_params):
-            # A collection JOIN: one row per book -> fan-out without dedup.
-            query = query.join(Book, Book.author_id == Author.id)
+            query = query.where(Author.books.any(Book.title.contains("b")))
             return await super().apply_list_params(query, list_params)
 
     @fr.include_view(client.app)
@@ -210,17 +215,22 @@ def test_to_many_join_in_list_query_does_not_duplicate_or_inflate(client):
         schema = BookSchema
 
     create_tables()
+    for name in ("a1", "a2", "a3"):
+        author = client.post("/authors/", json={"name": name}).json()
+        for i in range(3):
+            client.post("/books/", json={"title": f"b{i}", "author_id": author["id"]})
+    client.post("/authors/", json={"name": "no books"})
 
-    author = client.post("/authors/", json={"name": "A"}).json()
-    for i in range(3):
-        client.post("/books/", json={"title": f"b{i}", "author_id": author["id"]})
+    pages = [
+        client.get("/authors/", params={"page": page, "page_size": 2}).json()
+        for page in (1, 2)
+    ]
 
-    payload = client.get("/authors/").json()
-
-    # Without .unique()/.distinct() this would be 3 duplicate authors, total 3.
-    assert payload["total_count"] == 1
-    assert len(payload["data"]) == 1
-    assert payload["data"][0]["name"] == "A"
+    assert [page["total_count"] for page in pages] == [3, 3]
+    assert [[a["name"] for a in page["data"]] for page in pages] == [
+        ["a1", "a2"],
+        ["a3"],
+    ]
 
 
 # ---------------------------------------------------------------------------
