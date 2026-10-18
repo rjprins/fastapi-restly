@@ -15,14 +15,13 @@ private name that has no public form yet.
 
 import functools
 import json
-from dataclasses import dataclass
-from typing import Annotated, Any, ClassVar, Protocol, cast
+from typing import Annotated, Any, ClassVar, Literal, Protocol, cast
 
 import fastapi
 import pydantic
 import sqlalchemy
+from fastapi.exceptions import RequestValidationError
 from sqlalchemy.orm import RelationshipProperty
-from starlette.datastructures import QueryParams
 
 from fastapi_restly.exc import BadQueryParam, RestlyConfigurationError
 from fastapi_restly.views import (
@@ -77,32 +76,33 @@ _LIST_SETTINGS = (
 )
 
 
-@dataclass(frozen=True)
-class _ParsedListParams:
-    """``sort``, ``range`` and ``filter``, parsed from their JSON."""
+class ReactAdminListParams(pydantic.BaseModel):
+    """The list params of a react-admin view: ``sort``, ``range`` and
+    ``filter``.
 
-    sort: tuple[str, str] | None
-    start: int
-    end: int
-    filters: dict
+    React-admin sends each key as JSON in the query string. The fields are
+    :class:`pydantic.Json <pydantic.types.Json>`, so the view and your
+    overrides get the parsed
+    values: ``sort`` as ``("name", "DESC")``, ``range`` as ``(0, 24)`` and
+    ``filter`` as a dict. JSON that does not have this shape gets a ``422``
+    that names the place, as a bad value of other list params does.
 
+    To add a query key, such as a search key, subclass this class and set the
+    subclass as the view's ``schema_list_params``.
+    """
 
-class _ReactAdminListParams(pydantic.BaseModel):
-    """The list params of a react-admin view: its three query keys, as JSON
-    text. The view parses them when it applies them."""
-
-    sort: str | None = pydantic.Field(
+    sort: pydantic.Json[tuple[str, Literal["ASC", "DESC"]]] | None = pydantic.Field(
         None,
         description='The sort order, as JSON: ["field", "ASC"] or ["field", "DESC"].',
     )
-    range: str | None = pydantic.Field(
+    range: pydantic.Json[tuple[int, int]] | None = pydantic.Field(
         None,
         description=(
             "The rows to return, as JSON: [start, end]. Both rows are "
             "included, and the first row is 0."
         ),
     )
-    filter: str | None = pydantic.Field(
+    filter: pydantic.Json[dict[str, Any]] | None = pydantic.Field(
         None,
         description=(
             'The filters, as JSON: {"field": value}. A list of values, as in '
@@ -110,75 +110,25 @@ class _ReactAdminListParams(pydantic.BaseModel):
         ),
     )
 
+    @pydantic.field_validator("range")
+    @classmethod
+    def _check_range(cls, value: tuple[int, int] | None) -> tuple[int, int] | None:
+        if value is None:
+            return value
+        start, end = value
+        if start < 0:
+            raise ValueError("the start of the range is less than 0")
+        if end < start:
+            raise ValueError("the end of the range comes before its start")
+        if end > _MAX_OFFSET:
+            # The database takes a signed 64-bit offset.
+            raise ValueError(f"the end of the range is more than {_MAX_OFFSET}")
+        return value
+
 
 # ---------------------------------------------------------------------------
-# Query parsing helpers (standalone, analogous to query/_impl.py)
+# Query helpers (standalone, analogous to query/_impl.py)
 # ---------------------------------------------------------------------------
-
-
-def parse_react_admin_sort(sort_raw: str | None) -> tuple[str, str] | None:
-    """
-    Parse a react-admin sort query parameter.
-
-    Expected: '["field","ASC"]' or '["field","DESC"]'
-    Returns (field, direction) or None if absent.
-    Raises BadQueryParam (400) on malformed input.
-    """
-    if not sort_raw:
-        return None
-    try:
-        parsed = json.loads(sort_raw)
-    except json.JSONDecodeError:
-        raise BadQueryParam("Invalid sort parameter: must be a JSON array")
-    if not isinstance(parsed, list) or len(parsed) != 2:
-        raise BadQueryParam("Invalid sort parameter: must be [field, direction]")
-    field, direction = parsed
-    if not isinstance(field, str) or direction not in ("ASC", "DESC"):
-        raise BadQueryParam("Invalid sort parameter: direction must be 'ASC' or 'DESC'")
-    return field, direction
-
-
-def parse_react_admin_range(
-    range_raw: str | None, default_page_size: int = DEFAULT_REACT_ADMIN_PAGE_SIZE
-) -> tuple[int, int]:
-    """
-    Parse a react-admin range query parameter.
-
-    Expected: '[0,24]' (both inclusive).
-    Returns (start, end). Defaults to (0, default_page_size - 1) if absent.
-    Raises BadQueryParam (400) on malformed input.
-    """
-    if not range_raw:
-        return 0, default_page_size - 1
-    try:
-        parsed = json.loads(range_raw)
-    except json.JSONDecodeError:
-        raise BadQueryParam("Invalid range parameter: must be a JSON array")
-    if not isinstance(parsed, list) or len(parsed) != 2:
-        raise BadQueryParam("Invalid range parameter: must be [start, end]")
-    start, end = parsed
-    if not isinstance(start, int) or not isinstance(end, int):
-        raise BadQueryParam("Invalid range parameter: values must be integers")
-    return start, end
-
-
-def parse_react_admin_filter(filter_raw: str | None) -> dict:
-    """
-    Parse a react-admin filter query parameter.
-
-    Expected: '{"field":"value"}' or '{"id":[1,2,3]}' for getMany.
-    Returns a dict. Defaults to {} if absent.
-    Raises BadQueryParam (400) on malformed input.
-    """
-    if not filter_raw:
-        return {}
-    try:
-        parsed = json.loads(filter_raw)
-    except json.JSONDecodeError:
-        raise BadQueryParam("Invalid filter parameter: must be a JSON object")
-    if not isinstance(parsed, dict):
-        raise BadQueryParam("Invalid filter parameter: must be a JSON object")
-    return parsed
 
 
 def _resolve_column(
@@ -343,6 +293,21 @@ def _check_pagination(cls: type) -> None:
         )
 
 
+def _check_list_params(cls: type) -> None:
+    """The view reads the parsed ``sort``, ``range`` and ``filter`` from its
+    list params, so they must be a ``ReactAdminListParams``."""
+    list_params = getattr(cls, "schema_list_params", None)
+    if not (
+        isinstance(list_params, type) and issubclass(list_params, ReactAdminListParams)
+    ):
+        raise RestlyConfigurationError(
+            f"{cls.__name__}.schema_list_params is {list_params!r}. A react-admin "
+            "view reads sort, range and filter from its list params, so they "
+            "must be a subclass of fr.views.ReactAdminListParams. To add a "
+            "query key, subclass ReactAdminListParams."
+        )
+
+
 def _reject_list_settings(cls: type) -> None:
     """React-admin sends its filters and sort order in its own parameters.
     So a list setting other than the default, or a filter method, would be
@@ -418,97 +383,77 @@ class _ReactAdminMixin:
         # params when it sets a schema or a model. So each class declares
         # the list params that it inherits again.
         if "schema_list_params" not in cls.__dict__:
-            inherited = getattr(cls, "schema_list_params", _ReactAdminListParams)
+            inherited = getattr(cls, "schema_list_params", ReactAdminListParams)
             setattr(cls, "schema_list_params", inherited)
+        _check_list_params(cls)
 
     def get_react_admin_range_unit(self) -> str:
         """Return the unit string used in the Content-Range header."""
         return "items"
 
-    def _coerce_react_admin_params(self, list_params: Any) -> _ParsedListParams:
-        """``sort``, ``range`` and ``filter`` of ``list_params``, parsed and
-        checked.
+    def _react_admin_list_params(self, list_params: Any) -> Any:
+        """``list_params`` as an instance of the view's list params.
 
-        ``list_params`` is an instance of the view's list params, a
-        ``QueryParams``, or a dict of JSON text or parsed values.
+        A ``QueryParams`` or a mapping holds query values, so it is checked
+        as on the list route. No public form yet: fastapi-restly-1kcg.13.
         """
-        if isinstance(list_params, _ParsedListParams):
-            return list_params
-        if isinstance(list_params, QueryParams):
-            # The query of a request: a key that the list params do not have
-            # is unknown, as on the list route. No public form yet:
-            # fastapi-restly-1kcg.11.
-            list_params = cast(Any, self)._validated_list_params(list_params)
-        if isinstance(list_params, pydantic.BaseModel):
-            list_params = list_params.model_dump()
+        return cast(Any, self)._validated_list_params(list_params)
 
-        view = cast(_ReactAdminViewProtocol, self)
+    def _react_admin_range(self, list_params: Any) -> tuple[int, int]:
+        """The first and the last row of ``range``, or of the first page
+        when the client sends no ``range``.
+
+        :raises RequestValidationError: the range asks for more rows than
+            ``pagination.max_page_size``.
+        """
         # ``pagination`` is a NumberedPagination on react-admin (see
-        # _check_pagination), and NumberedPagination checks
-        # default_page_size when it is created.
-        pagination = cast(NumberedPagination, view.pagination)
-        default_page_size = pagination.default_page_size
-        has_get = hasattr(list_params, "get")
-        sort_raw = list_params.get("sort") if has_get else None
-        range_raw = list_params.get("range") if has_get else None
-        filter_raw = list_params.get("filter") if has_get else None
-
-        sort = (
-            tuple(sort_raw)
-            if isinstance(sort_raw, list | tuple)
-            else parse_react_admin_sort(sort_raw)
+        # _check_pagination).
+        pagination = cast(
+            NumberedPagination, cast(_ReactAdminViewProtocol, self).pagination
         )
-        if isinstance(range_raw, list | tuple):
-            if len(range_raw) != 2:
-                raise BadQueryParam("Invalid range parameter: must be [start, end]")
-            start, end = range_raw
-            if not isinstance(start, int) or not isinstance(end, int):
-                raise BadQueryParam("Invalid range parameter: values must be integers")
-        else:
-            start, end = parse_react_admin_range(
-                range_raw, default_page_size=default_page_size
-            )
-        filters = (
-            filter_raw
-            if isinstance(filter_raw, dict)
-            else parse_react_admin_filter(filter_raw)
-        )
-        if start < 0 or end < start:
-            raise BadQueryParam(
-                "Invalid range parameter: must be [start, end] with 0 <= start <= end"
-            )
-        if end > _MAX_OFFSET:
-            raise BadQueryParam(
-                f"Invalid range parameter: end must be at most {_MAX_OFFSET}"
-            )
+        row_range = getattr(list_params, "range", None)
+        if row_range is None:
+            return 0, pagination.default_page_size - 1
+        start, end = row_range
         if end - start + 1 > pagination.max_page_size:
-            raise BadQueryParam(
-                "Invalid range parameter: a range can ask for at most "
-                f"{pagination.max_page_size} rows"
+            raise RequestValidationError(
+                [
+                    {
+                        "type": "value_error",
+                        "loc": ("query", "range"),
+                        "msg": (
+                            "Value error, a range can ask for at most "
+                            f"{pagination.max_page_size} rows"
+                        ),
+                        "input": [start, end],
+                    }
+                ]
             )
-        return _ParsedListParams(sort=sort, start=start, end=end, filters=filters)
+        return start, end
 
     def _react_admin_filters(
         self, stmt: sqlalchemy.Select, list_params: Any
     ) -> sqlalchemy.Select:
         view = cast(_ReactAdminViewProtocol, self)
-        params = self._coerce_react_admin_params(list_params)
+        params = self._react_admin_list_params(list_params)
+        filters = getattr(params, "filter", None) or {}
         return _apply_react_admin_filters(
-            stmt, view.model, view.schema_response, params.filters
+            stmt, view.model, view.schema_response, filters
         )
 
     def _react_admin_sort_and_range(
         self, stmt: sqlalchemy.Select, list_params: Any
     ) -> sqlalchemy.Select:
         view = cast(_ReactAdminViewProtocol, self)
-        params = self._coerce_react_admin_params(list_params)
+        params = self._react_admin_list_params(list_params)
+        start, end = self._react_admin_range(params)
         return _apply_react_admin_sort_and_range(
             stmt,
             view.model,
             view.schema_response,
-            params.sort,
-            params.start,
-            params.end,
+            getattr(params, "sort", None),
+            start,
+            end,
         )
 
     def to_list_response(self, list_result: ListResult[Any]) -> fastapi.Response:
@@ -518,10 +463,10 @@ class _ReactAdminMixin:
         # sends it, also when to_single_response returns another model.
         rows = cast(Any, super()).to_list_response(list_result).data
         serialized = [row.model_dump(mode="json", by_alias=True) for row in rows]
-        params = self._coerce_react_admin_params(list_result.list_params)
+        params = self._react_admin_list_params(list_result.list_params)
+        start, _ = self._react_admin_range(params)
         view = cast(_ReactAdminViewProtocol, self)
         unit = view.get_react_admin_range_unit()
-        start = params.start
         last = start + len(serialized) - 1 if serialized else start
         total = list_result.total_count or 0
         return fastapi.Response(

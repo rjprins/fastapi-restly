@@ -61,6 +61,7 @@ nitpick_ignore = [
     ("py:class", "ConfigDict"),
     ("py:class", "DeclarativeBase"),
     ("py:class", "FastAPI"),
+    ("py:class", "Json"),
     ("py:class", "MetaData"),
     ("py:class", "Path"),
     ("py:class", "fastapi.params.Depends"),

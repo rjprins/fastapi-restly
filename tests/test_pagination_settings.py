@@ -847,8 +847,15 @@ def test_react_admin_range_is_checked(client):
         client.post("/gadgets/", json={"name": f"Gadget {i}"})
 
     assert len(client.get("/gadgets/?range=[0,9]").json()) == 10
-    too_wide = client.get("/gadgets/?range=[0,10]", assert_status_code=400)
-    assert "at most 10 rows" in too_wide.json()["detail"]
-    for backwards in ("[0,-5]", "[-3,4]", "[5,2]"):
-        response = client.get(f"/gadgets/?range={backwards}", assert_status_code=400)
-        assert "0 <= start <= end" in response.json()["detail"]
+    too_wide = client.get("/gadgets/?range=[0,10]", assert_status_code=422)
+    assert too_wide.json()["detail"][0]["loc"] == ["query", "range"]
+    assert "at most 10 rows" in too_wide.json()["detail"][0]["msg"]
+    for bad_range, reason in (
+        ("[0,-5]", "comes before its start"),
+        ("[-3,4]", "less than 0"),
+        ("[5,2]", "comes before its start"),
+    ):
+        response = client.get(f"/gadgets/?range={bad_range}", assert_status_code=422)
+        error = response.json()["detail"][0]
+        assert error["loc"] == ["query", "range"]
+        assert reason in error["msg"]

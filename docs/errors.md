@@ -95,10 +95,11 @@ your own, it is Pydantic's text for your error, such as
 error, such as an `AttributeError` in your validator, is a bug and returns
 `500`, as it does for a request body.
 
-A react-admin view raises `BadQueryParam` for each bad `sort`, `range` or
-`filter` parameter too. It checks a filter value against the type of the
-column, with Pydantic, so `"2020-01-01"` filters a date column and `"false"`
-a boolean column. A handler for
+A react-admin view follows the same two steps. JSON in `sort`, `range` or
+`filter` that does not have their shape gets a `422`. A sort key or a filter
+that the view cannot apply raises `BadQueryParam`. It checks a filter value
+against the type of the column, with Pydantic, so `"2020-01-01"` filters a
+date column and `"false"` a boolean column. A handler for
 {class}`RestlyHTTPError <fastapi_restly.exc.RestlyHTTPError>` shapes all
 these `400` answers; see [Change the error body](#error-envelope).
 

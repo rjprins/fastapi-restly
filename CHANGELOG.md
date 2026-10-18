@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `fr.views.ReactAdminListParams`, the list params of a react-admin view,
+  with the fields `sort`, `range` and `filter`. To add a query key, such as
+  a search key, subclass it and set the subclass as the view's
+  `schema_list_params`.
 - Four view settings choose the keys of a list: `include_filters`,
   `exclude_filters`, `include_sort_keys` and `exclude_sort_keys`. An entry is
   a key as the client sends it, or a pattern: `*` matches any characters
@@ -125,12 +129,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   own `filter` parameter. A react-admin view that inherits a setting from a
   base view sets the default again, such as `exclude_filters = ()`.
 - The list route of a react-admin view declares `list_params`, as every list
-  route does. The view's `schema_list_params` has the fields `sort`, `range`
-  and `filter`, as JSON text. `apply_list_params`, `apply_filters` and
-  `to_list_response` read the JSON from these list params. So an override of
-  `apply_list_params` now gets the list params, not the parsed values. A
-  route of your own on a react-admin view gets the list params when it
-  declares `list_params`.
+  route does. Its `schema_list_params` is `fr.views.ReactAdminListParams`.
+  The fields `sort`, `range` and `filter` are `pydantic.Json`, so Pydantic
+  parses the JSON of each key. `apply_list_params`, `apply_filters` and
+  `to_list_response` read the parsed values from these list params: `sort`
+  as `("name", "DESC")`, `range` as `(0, 24)` and `filter` as a dict. So an
+  override of these methods now gets the list params. Before, it got a
+  private object with the same values. A mapping that you pass to these
+  methods holds query values, so `sort`, `range` and `filter` are JSON text,
+  as on the other views. A route of your own on a react-admin view gets the
+  list params when it declares `list_params`. List params that are not a
+  subclass of `ReactAdminListParams` fail when Python defines the class.
 - A react-admin view with pagination that it cannot use now fails when
   Python defines the class, not when the view registers. This is
   `pagination = None`, or pagination settings other than the two page sizes.
@@ -222,7 +231,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   as JSON `null`, so Restly keeps that field required. A `Computed` column
   needs `init=False`, which makes its field `ReadOnly`.
 - The `400` answers of a list request say what is wrong. Before, the
-  standard dialect answered "Invalid attribute in URL query: age" both for a
+  generated list params said "Invalid attribute in URL query: age" both for a
   sort or filter field that does not exist and for a bad filter value. Now
   it is `Unknown sort key: 'nope'`, `Unknown filter key: 'nope'`, or
   `Invalid filter value for 'age': 'old'.` followed by Pydantic's reason,
@@ -231,19 +240,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   error is now a `500`, as for a request body, instead of a `400`. Code or
   tests that compare the old texts must change. The texts for a bad `page`
   or `page_size` changed too.
-- A react-admin view raises `fr.exc.BadQueryParam` for each bad `sort`,
-  `range` or `filter` parameter. Before, most of them were a plain
-  `HTTPException`, so a handler for `fr.exc.RestlyHTTPError` did not shape
-  them. The status stays `400`, and the default body is the same. An unknown
-  sort key now says `Unknown sort key` instead of `Unknown filter field`.
+- A react-admin view answers `422` instead of `400` for JSON in `sort`,
+  `range` or `filter` that does not have their shape. So does a `range` with
+  a negative start, an end before its start, an end past the largest offset
+  that the database takes (before, a `500`), or more rows than
+  `max_page_size`. The error names the place, such as
+  `["query", "sort", 1]`, as for a bad value of other list params. A sort
+  key or a filter that the view cannot apply is still a `400`. It is now a
+  `fr.exc.BadQueryParam`. Before, it was a plain `HTTPException`, so a
+  handler for `fr.exc.RestlyHTTPError` did not shape it. An unknown sort key
+  now says `Unknown sort key` instead of `Unknown filter field`.
 - A react-admin view checks a filter value against the column's type with
-  Pydantic, as the standard dialect does. Before, it called the type on the
+  Pydantic, as the generated list params do. Before, it called the type on the
   value. So `{"active": "false"}` matched the rows where `active` is true,
   a date such as `"2020-01-01"` returned `400`, and a bad decimal or UUID
   returned `500`. A bad value now returns `400` with Pydantic's reason, and
-  names the field as the client wrote it, also with an alias. A `range`
-  past the largest offset that the database takes returns `400` instead of
-  `500`.
+  names the field as the client wrote it, also with an alias.
 
 ### Removed
 

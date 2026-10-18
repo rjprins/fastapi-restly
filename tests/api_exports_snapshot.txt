@@ -148,6 +148,7 @@ fastapi_restly.views:
   - NoPagination
   - NumberedPagination
   - PaginatedEnvelope
+  - ReactAdminListParams
   - ReactAdminView
   - ReadScope
   - ResponseShape
@@ -230,6 +231,7 @@ fastapi_restly.views:
   - BaseRestView
   - Envelope
   - PaginatedEnvelope
+  - ReactAdminListParams
   - ReadScope
   - async_run_write_action
   - run_write_action

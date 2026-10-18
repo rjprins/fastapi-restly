@@ -136,13 +136,34 @@ to `"ignore"`, as on the other views.
 (`GET /products?sort=...`). This is the main path of a Restly collection, so
 no redirect happens.
 
+JSON that does not have the shape of `sort`, `range` or `filter` gets a
+422 that names the place, as a bad value of other list params does.
+
 React-admin uses the `id` array form of `filter` (`{"id": [1, 2, 3]}`) for
 its `getMany` calls. It becomes `WHERE id IN (1, 2, 3)`. Other filter values
 must be equal to the column value. Only fields that the view's response class
 sends are accepted. Other fields, also react-admin's full-text search
 parameter `q`, get a 400. For a search on part of a value, or a full-text
 search, override the view's
-{meth}`apply_filters <fastapi_restly.views.RestView.apply_filters>`.
+{meth}`apply_filters <fastapi_restly.views.RestView.apply_filters>`. It gets
+the list params with `filter` as a dict. Take your keys out, and pass the
+rest on:
+
+```python
+@fr.include_view(app)
+class ProductView(fr.AsyncReactAdminView):
+    prefix = "/products"
+    model = Product
+
+    async def apply_filters(self, stmt, list_params):
+        filters = dict(list_params.filter or {})
+        q = filters.pop("q", None)
+        rest = list_params.model_copy(update={"filter": filters})
+        stmt = await super().apply_filters(stmt, rest)
+        if q:
+            stmt = stmt.where(Product.name.icontains(q))
+        return stmt
+```
 
 The settings that choose the generated list params,
 {attr}`include_filters <fastapi_restly.views.BaseRestView.include_filters>`,
@@ -310,7 +331,7 @@ class ProductView(fr.AsyncReactAdminView):
 A react-admin view uses two pagination settings: `default_page_size`, and
 `max_page_size`, the most rows that one `range` may ask for. A wider
 `range`, or one with a negative start or an end before its start, gets a
-`400`. The view pages with `range` and reports the total in the
+`422`. The view pages with `range` and reports the total in the
 `Content-Range` header, so other settings, such as parameter names or an
 envelope, raise an error when Python defines the view class. So does
 `pagination = None`, because the header needs the total count.
@@ -363,21 +384,29 @@ small subclass of
 {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` with
 [list params of its own](#own-list-params). Its
 {attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`
-is a Pydantic model with three fields: `sort`, `range` and `filter`, each as
-JSON text. The list route declares `list_params`, as every list route does.
-So OpenAPI shows the three keys, and an unknown key gets `422`. A route of
-your own that declares `list_params` gets them too.
+is {class}`ReactAdminListParams <fastapi_restly.views.ReactAdminListParams>`,
+a Pydantic model with three fields: `sort`, `range` and `filter`. React-admin
+sends each one as JSON. The fields are
+{class}`pydantic.Json <pydantic.types.Json>`, so Pydantic parses the JSON.
+The list route declares `list_params`, as every list route does. So OpenAPI
+shows the three keys with the shape of their JSON, and an unknown key gets
+`422`. A route of your own that declares `list_params` gets them too.
 
-The views read the JSON where they apply it: in
+The views use the parsed values where they apply them: in
 {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
 (`sort` and `range`), in
 {meth}`apply_filters <fastapi_restly.views.RestView.apply_filters>`
 (`filter`) and in
 {meth}`to_list_response <fastapi_restly.views.BaseRestView.to_list_response>`
-(a plain array body and `Content-Range`). An override of `apply_filters`
-gets the list params with `filter` as JSON text. These views do not use the
-list params that Restly generates, which
-[Filtering & Pagination](#list-parameters-lifecycle) describes.
+(a plain array body and `Content-Range`). An override of these methods gets
+the same values: `sort` as `("name", "DESC")`, `range` as `(0, 24)` and
+`filter` as a dict. These views do not use the list params that Restly
+generates, which [Filtering & Pagination](#list-parameters-lifecycle)
+describes.
+
+To add a query key, subclass `ReactAdminListParams` and set the subclass as
+`schema_list_params`. A subclass of the view keeps it. List params that are
+not a `ReactAdminListParams` fail when Python defines the view class.
 
 The views [replace the endpoint method](#replace-endpoint-method)
 {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>`,
@@ -390,4 +419,4 @@ The endpoint methods of the other CRUD routes (`GET /{id}`, `POST /`,
 `PATCH /{id}`, `DELETE /{id}`) and the business methods for writes are
 inherited without change.
 
-The helpers that parse the JSON and build the response are internal.
+The helpers that build the query and the response are internal.

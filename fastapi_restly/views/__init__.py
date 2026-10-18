@@ -50,7 +50,7 @@ from ._sync import RestView
 # isort: split
 # Last: the react-admin views import the public names above, as a view of
 # yours does.
-from ._react_admin import AsyncReactAdminView, ReactAdminView
+from ._react_admin import AsyncReactAdminView, ReactAdminListParams, ReactAdminView
 
 # Public API for ``fastapi_restly.views``.
 #
@@ -63,6 +63,7 @@ __all__ = [
     "AsyncRestView",
     "AsyncReactAdminView",
     "ReactAdminView",
+    "ReactAdminListParams",
     "BaseRestView",
     "ListResult",
     "NumberedPagination",

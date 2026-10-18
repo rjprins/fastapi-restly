@@ -33,9 +33,7 @@ from fastapi_restly.exc import RestlyConfigurationError
 from fastapi_restly.testing._client import RestlyTestClient
 from fastapi_restly.views._react_admin import (
     DEFAULT_REACT_ADMIN_PAGE_SIZE,
-    _ReactAdminMixin,
     _resolve_column,
-    parse_react_admin_range,
 )
 
 from ._models import SharedBase
@@ -155,7 +153,7 @@ def test_custom_react_admin_list_uses_its_dialect(
 @pytest.mark.parametrize("parameter", ["filter", "sort", "range"])
 def test_custom_react_admin_list_rejects_invalid_json(custom_list_client, parameter):
     custom_list_client.get(
-        "/custom-items/custom", params={parameter: "bad-json"}, assert_status_code=400
+        "/custom-items/custom", params={parameter: "bad-json"}, assert_status_code=422
     )
 
 
@@ -194,6 +192,12 @@ def test_react_admin_list_shows_its_list_params_in_openapi(flavor, request):
         assert parameter["in"] == "query"
         assert parameter["required"] is False
         assert "as JSON" in parameter["description"]
+        json_text = parameter["schema"]["anyOf"][0]
+        assert json_text["contentMediaType"] == "application/json"
+    assert parameters["range"]["schema"]["anyOf"][0]["contentSchema"]["type"] == "array"
+    assert (
+        parameters["filter"]["schema"]["anyOf"][0]["contentSchema"]["type"] == "object"
+    )
 
 
 # ===========================================================================
@@ -305,44 +309,51 @@ def test_react_admin_filter_id_array_translates_to_in_filter(client):
 # --- Error handling ---
 
 
-def test_react_admin_invalid_sort_json_returns_400(client):
+@pytest.mark.parametrize(
+    ("params", "loc"),
+    [
+        ({"sort": "notjson"}, ["query", "sort"]),
+        ({"sort": '["name"]'}, ["query", "sort", 1]),
+        ({"sort": '["name", "UP"]'}, ["query", "sort", 1]),
+        ({"range": "notjson"}, ["query", "range"]),
+        ({"range": "[1]"}, ["query", "range", 1]),
+        ({"range": '["a", "b"]'}, ["query", "range", 0]),
+        ({"range": "[5,1]"}, ["query", "range"]),
+        ({"range": "[-1,3]"}, ["query", "range"]),
+        ({"range": f"[0,{2**63}]"}, ["query", "range"]),
+        ({"range": "[0,1000]"}, ["query", "range"]),
+        ({"filter": "notjson"}, ["query", "filter"]),
+        ({"filter": "[1, 2]"}, ["query", "filter"]),
+    ],
+)
+def test_react_admin_json_of_the_wrong_shape_returns_422(client, params, loc):
+    """The list params parse the JSON of ``sort``, ``range`` and ``filter``.
+    JSON that does not have their shape gets a 422 that names the place, as a
+    bad value of other list params does. So does a range that asks for more
+    rows than ``max_page_size`` (1000)."""
     _setup_async_item_view(client)
-    client.get("/items/", params={"sort": "notjson"}, assert_status_code=400)
 
+    detail = client.get("/items/", params=params, assert_status_code=422).json()
 
-def test_react_admin_invalid_range_json_returns_400(client):
-    _setup_async_item_view(client)
-    client.get("/items/", params={"range": "notjson"}, assert_status_code=400)
-
-
-def test_react_admin_invalid_filter_json_returns_400(client):
-    _setup_async_item_view(client)
-    client.get("/items/", params={"filter": "notjson"}, assert_status_code=400)
+    assert detail["detail"][0]["loc"] == loc
 
 
 @pytest.mark.parametrize(
     ("params", "detail"),
     [
-        ({"sort": "notjson"}, "Invalid sort parameter: must be a JSON array"),
-        ({"sort": '["name"]'}, "Invalid sort parameter: must be [field, direction]"),
         ({"sort": '["nope","ASC"]'}, "Unknown sort key: 'nope'"),
-        ({"range": "notjson"}, "Invalid range parameter: must be a JSON array"),
-        ({"range": "[0]"}, "Invalid range parameter: must be [start, end]"),
-        ({"range": "[5,1]"}, None),
-        ({"filter": "notjson"}, "Invalid filter parameter: must be a JSON object"),
         ({"filter": '{"nope":1}'}, "Unknown filter key: 'nope'"),
         (
             {"filter": '{"price":"cheap"}'},
             "Invalid filter value for 'price': 'cheap'. "
             "Input should be a valid number, unable to parse string as a number",
         ),
-        ({"range": f"[{2**63},{2**63}]"}, None),
     ],
 )
 def test_react_admin_query_errors_are_bad_query_params(client, params, detail):
-    """Each 400 of the list route is a ``BadQueryParam``, so a handler for
-    ``RestlyHTTPError`` shapes all of them. Before, most of them were plain
-    ``HTTPException`` and skipped the handler."""
+    """A field name or a filter value that the view cannot apply is a 400
+    ``BadQueryParam``, so a handler for ``RestlyHTTPError`` shapes all of
+    them."""
 
     app = FastAPI()
 
@@ -482,10 +493,7 @@ def test_a_react_admin_view_keeps_the_list_params_of_its_base(client):
     """A base view adds a search key to the list params, and its subclass
     keeps them. Before, the subclass got the three keys of react-admin."""
 
-    class SearchParams(pydantic.BaseModel):
-        sort: str | None = None
-        range: str | None = None
-        filter: str | None = None
+    class SearchParams(fr.views.ReactAdminListParams):
         q: str | None = None
 
     class RaNote(fr.IDMixin, SharedBase):
@@ -555,36 +563,6 @@ def test_react_admin_follows_unknown_query_params(client):
     assert client.get("/strict/quiet/raw").json() == ["Desk"]
 
 
-def test_react_admin_sort_wrong_shape_returns_400(client):
-    """Valid JSON that is not a 2-element ``[field, direction]`` array is rejected."""
-    _setup_async_item_view(client)
-    client.get("/items/", params={"sort": '["only_one"]'}, assert_status_code=400)
-
-
-def test_react_admin_sort_bad_direction_returns_400(client):
-    """A direction other than ASC/DESC is rejected."""
-    _setup_async_item_view(client)
-    client.get("/items/", params={"sort": '["name", "UP"]'}, assert_status_code=400)
-
-
-def test_react_admin_range_wrong_shape_returns_400(client):
-    """Valid JSON that is not a 2-element ``[start, end]`` array is rejected."""
-    _setup_async_item_view(client)
-    client.get("/items/", params={"range": "[1]"}, assert_status_code=400)
-
-
-def test_react_admin_range_non_integer_returns_400(client):
-    """Non-integer range bounds are rejected."""
-    _setup_async_item_view(client)
-    client.get("/items/", params={"range": '["a", "b"]'}, assert_status_code=400)
-
-
-def test_react_admin_filter_not_object_returns_400(client):
-    """Valid JSON that is not an object (e.g. an array) is rejected."""
-    _setup_async_item_view(client)
-    client.get("/items/", params={"filter": "[1, 2]"}, assert_status_code=400)
-
-
 def test_react_admin_uncoercible_filter_value_returns_400(client):
     """A filter value that cannot be coerced to the column type yields a 400."""
     _setup_async_item_view(client)
@@ -646,26 +624,62 @@ def test_resolve_column_rejects_a_field_that_never_goes_out(hidden):
     assert "Unknown filter key" in str(exc_info.value.detail)
 
 
-# --- Pre-parsed (programmatic) param coercion ---
+# --- Overrides get the parsed values ---
 
 
-def test_coerce_params_accepts_prebuilt_values():
-    """A handler may pass already-parsed sort/range/filter values directly."""
-    params = _ReactAdminMixin()._coerce_react_admin_params(
-        {"sort": ["name", "ASC"], "range": [5, 9], "filter": {"name": "x"}}
+def test_an_apply_filters_override_gets_the_parsed_values(client):
+    """React-admin sends its search as ``filter={"q": ...}``. An override of
+    ``apply_filters`` gets ``filter`` as a dict, and ``sort`` and ``range`` as
+    tuples, so it can take ``q`` out and pass the rest on."""
+    seen = {}
+
+    class RaMemo(fr.IDMixin, SharedBase):
+        text: Mapped[str]
+
+    @fr.include_view(client.app)
+    class MemoView(fr.AsyncReactAdminView):
+        prefix = "/memos"
+        model = RaMemo
+
+        async def apply_filters(self, stmt, list_params):
+            seen.update(sort=list_params.sort, range=list_params.range)
+            filters = dict(list_params.filter or {})
+            q = filters.pop("q", None)
+            rest = list_params.model_copy(update={"filter": filters})
+            stmt = await super().apply_filters(stmt, rest)
+            if q:
+                stmt = stmt.where(RaMemo.text.icontains(q))
+            return stmt
+
+    create_tables()
+    for text in ("buy milk", "call mom", "milk the goat"):
+        client.post("/memos/", json={"text": text})
+
+    response = client.get(
+        "/memos/",
+        params={
+            "filter": '{"q": "milk", "id": [1, 2]}',
+            "sort": '["text", "ASC"]',
+            "range": "[0, 9]",
+        },
     )
 
-    assert params.sort == ("name", "ASC")
-    assert (params.start, params.end) == (5, 9)
-    assert params.filters == {"name": "x"}
+    assert [row["text"] for row in response.json()] == ["buy milk"]
+    assert seen == {"sort": ("text", "ASC"), "range": (0, 9)}
 
 
-def test_coerce_params_rejects_bad_prebuilt_range():
-    """A pre-parsed range that is not a 2-element sequence is rejected."""
-    with pytest.raises(HTTPException) as exc_info:
-        _ReactAdminMixin()._coerce_react_admin_params({"range": [5]})
+def test_react_admin_list_params_must_be_react_admin_list_params(client):
+    """The view reads the parsed ``sort``, ``range`` and ``filter`` from its
+    list params. Other list params fail when Python defines the class, not
+    with a 500 on the first request."""
 
-    assert exc_info.value.status_code == 400
+    class PlainParams(pydantic.BaseModel):
+        sort: str | None = None
+
+    with pytest.raises(RestlyConfigurationError, match="ReactAdminListParams"):
+
+        class PlainView(fr.AsyncReactAdminView):
+            schema_list_params = PlainParams
 
 
 # --- React-admin specific endpoints (PUT /{id}) ---
@@ -775,19 +789,19 @@ def test_sync_react_admin_filter_id_array(sync_client):
     assert {item["id"] for item in data} == set(ids)
 
 
-def test_sync_react_admin_invalid_sort_json_returns_400(sync_client):
+def test_sync_react_admin_invalid_sort_json_returns_422(sync_client):
     _setup_sync_item_view(sync_client)
-    sync_client.get("/items/", params={"sort": "notjson"}, assert_status_code=400)
+    sync_client.get("/items/", params={"sort": "notjson"}, assert_status_code=422)
 
 
-def test_sync_react_admin_invalid_range_json_returns_400(sync_client):
+def test_sync_react_admin_invalid_range_json_returns_422(sync_client):
     _setup_sync_item_view(sync_client)
-    sync_client.get("/items/", params={"range": "notjson"}, assert_status_code=400)
+    sync_client.get("/items/", params={"range": "notjson"}, assert_status_code=422)
 
 
-def test_sync_react_admin_invalid_filter_json_returns_400(sync_client):
+def test_sync_react_admin_invalid_filter_json_returns_422(sync_client):
     _setup_sync_item_view(sync_client)
-    sync_client.get("/items/", params={"filter": "notjson"}, assert_status_code=400)
+    sync_client.get("/items/", params={"filter": "notjson"}, assert_status_code=422)
 
 
 def test_sync_react_admin_unknown_filter_field_returns_400(sync_client):
@@ -863,12 +877,6 @@ def test_sync_react_admin_delete_endpoint(sync_client):
 def test_default_page_size_is_25():
     """The framework default matches DEFAULT_REACT_ADMIN_PAGE_SIZE."""
     assert DEFAULT_REACT_ADMIN_PAGE_SIZE == 25
-
-
-def test_parse_range_uses_custom_default_page_size():
-    """parse_react_admin_range respects the default_page_size argument."""
-    assert parse_react_admin_range(None, default_page_size=10) == (0, 9)
-    assert parse_react_admin_range(None, default_page_size=50) == (0, 49)
 
 
 def test_default_page_size_setting_overrides_default(client):
