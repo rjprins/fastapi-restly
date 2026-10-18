@@ -857,6 +857,12 @@ fields of the view’s <code class="docutils literal notranslate"><span class="p
 <section id="fixed">
 <h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>On FastAPI 0.115, a module with <code class="docutils literal notranslate"><span class="pre">from</span> <span class="pre">__future__</span> <span class="pre">import</span> <span class="pre">annotations</span></code> can
+now declare a route on a mixin or a parent view, and a custom list route
+that takes <code class="docutils literal notranslate"><span class="pre">list_params</span></code>. Before, when the annotations of such a route
+named a schema, an enum or a type alias from that module, the view failed
+when it registered, or a valid request returned 422. FastAPI 0.128 and
+later were not affected.</p></li>
 <li><p>Restly calls the model’s constructor with the fields that the client sent,
 as code that builds the object itself would. A field that the client
 leaves out, with the value <code class="docutils literal notranslate"><span class="pre">None</span></code>, is no longer passed, unless the
