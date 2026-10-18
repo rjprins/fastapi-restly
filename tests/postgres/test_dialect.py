@@ -1,7 +1,7 @@
-"""fznb.6 -- the dialect-divergent surface, pinned on real PostgreSQL.
+"""The dialect-divergent surface, pinned on real PostgreSQL.
 
 Everything here is invisible on SQLite and only runs when the subtree is pointed
-at PostgreSQL (see ``conftest.py``). Four things are covered:
+at PostgreSQL (see ``conftest.py``). Five things are covered:
 
 * ``contains`` (``LIKE``) is case-sensitive and ``icontains`` (``ILIKE``) folds
   case, for ASCII *and* non-ASCII input. On SQLite ``LIKE`` is
@@ -14,6 +14,10 @@ at PostgreSQL (see ``conftest.py``). Four things are covered:
 * Pagination stays stable across pages when many rows share a sort key, because
   the id tiebreak makes row order deterministic (PostgreSQL gives no stable
   order otherwise, unlike SQLite's rowid).
+* The count of a paginated list of a model with a ``json`` column.
+  PostgreSQL cannot compare ``json`` values (it can compare ``jsonb``
+  values), so ``DISTINCT`` over such a column fails. The count selects only
+  the primary key.
 * The psycopg cross-session connection sharing documented for
   ``restly_session`` / ``restly_async_session`` -- the async session runs over
   the sync fixture's pinned connection, so a write through either is visible to
@@ -26,7 +30,15 @@ from contextlib import asynccontextmanager
 import httpx
 import pytest
 from fastapi import FastAPI
-from sqlalchemy import CheckConstraint, ForeignKey, and_, create_engine, select
+from sqlalchemy import (
+    JSON,
+    CheckConstraint,
+    ForeignKey,
+    and_,
+    create_engine,
+    select,
+    text,
+)
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Mapped, mapped_column, sessionmaker
@@ -80,6 +92,17 @@ class PgPaged(fr.IDMixin, SharedBase):
 class PgPagedSchema(fr.IDSchema):
     label: str
     bucket: int
+
+
+class PgDoc(fr.IDMixin, SharedBase):
+    title: Mapped[str]
+    # sqlalchemy.JSON is ``json`` on PostgreSQL, not ``jsonb``
+    data: Mapped[dict] = mapped_column(JSON, default_factory=dict)
+
+
+class PgDocSchema(fr.IDSchema):
+    title: str
+    data: dict = {}
 
 
 class PgShared(fr.IDMixin, SharedBase):
@@ -147,6 +170,34 @@ class PgPagedView(fr.AsyncRestView):
 
 
 @fr.include_view(_app)
+class PgDocView(fr.AsyncRestView):
+    prefix = "/docs"
+    model = PgDoc
+    schema = PgDocSchema
+
+
+@fr.include_view(_app)
+class PgDocAdminView(fr.views.AsyncReactAdminView):
+    prefix = "/admin/docs"
+    model = PgDoc
+    schema = PgDocSchema
+
+
+@fr.include_view(_app)
+class PgDocSyncView(fr.RestView):
+    prefix = "/sync/docs"
+    model = PgDoc
+    schema = PgDocSchema
+
+
+@fr.include_view(_app)
+class PgDocSyncAdminView(fr.views.ReactAdminView):
+    prefix = "/sync/admin/docs"
+    model = PgDoc
+    schema = PgDocSchema
+
+
+@fr.include_view(_app)
 class PgUniqueView(fr.AsyncRestView):
     prefix = "/unique"
     model = PgUnique
@@ -167,7 +218,17 @@ class PgCheckedView(fr.AsyncRestView):
     schema = PgCheckedSchema
 
 
-_MODELS = [PgWord, PgRanked, PgPaged, PgShared, PgUnique, PgParent, PgChild, PgChecked]
+_MODELS = [
+    PgWord,
+    PgRanked,
+    PgPaged,
+    PgDoc,
+    PgShared,
+    PgUnique,
+    PgParent,
+    PgChild,
+    PgChecked,
+]
 
 
 def _seed() -> None:
@@ -187,6 +248,8 @@ def _seed() -> None:
         )
         # Pagination fixture: five rows sharing one sort key.
         session.add_all([PgPaged(label=f"p{i}", bucket=7) for i in range(5)])
+        # json fixture: three rows, more than one page of two.
+        session.add_all([PgDoc(title=f"d{n}", data={"n": n}) for n in range(3)])
         session.commit()
 
 
@@ -278,6 +341,33 @@ def test_pagination_is_stable_under_duplicate_sort_keys(restly_client):
     assert len(set(seen)) == 5
     # The id tiebreak makes the page order deterministic (ascending id).
     assert seen == sorted(seen)
+
+
+def test_the_doc_column_is_json_not_jsonb():
+    with _sync_engine.connect() as conn:
+        data_type = conn.scalar(
+            text(
+                "SELECT data_type FROM information_schema.columns "
+                "WHERE table_name = 'pg_doc' AND column_name = 'data'"
+            )
+        )
+    assert data_type == "json"
+
+
+@pytest.mark.parametrize("prefix", ["/docs", "/sync/docs"])
+def test_paginated_list_of_a_json_model(restly_client, prefix):
+    # The count ran DISTINCT over every column, and PostgreSQL has no equality
+    # operator for json, so this list failed with a ProgrammingError.
+    payload = restly_client.get(f"{prefix}/", params={"page_size": 2}).json()
+    assert payload["total_count"] == 3
+    assert [doc["data"] for doc in payload["data"]] == [{"n": 0}, {"n": 1}]
+
+
+@pytest.mark.parametrize("prefix", ["/admin/docs", "/sync/admin/docs"])
+def test_react_admin_list_of_a_json_model(restly_client, prefix):
+    response = restly_client.get(f"{prefix}/", params={"range": "[0,1]"})
+    assert response.status_code == 200, response.text
+    assert response.headers["content-range"] == "items 0-1/3"
 
 
 @pytest.mark.asyncio

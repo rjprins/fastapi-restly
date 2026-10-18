@@ -1,9 +1,9 @@
 """Read-path correctness regressions.
 
-Covers two list-endpoint bugs:
+Covers three list-endpoint bugs:
 
-* **lm7** — a paginated list sorted on a *non-unique* column had no PK
-  tiebreaker, so rows could be skipped or repeated across pages. Both the
+* **PK tiebreaker** — a paginated list sorted on a *non-unique* column had no
+  PK tiebreaker, so rows could be skipped or repeated across pages. Both the
   standard dialect (``_apply_sorting``) and the react-admin dialect
   (``_apply_react_admin_sort_and_range``) must append the primary key as the final
   ``ORDER BY`` term (and must not duplicate it when the user already sorts by
@@ -13,26 +13,39 @@ Covers two list-endpoint bugs:
 * **to-many JOIN fan-out**: a list query that JOINs a to-many relationship
   fans out (one row per child), which duplicated entities in the page and
   inflated the total. ``get_many`` now de-duplicates via ``.unique()`` and
-  ``count`` counts a ``DISTINCT`` subquery. (Not reachable through the public
-  URL grammar -- dotted filters/sorts only traverse to-one relations -- so the
-  trigger is a collection JOIN in ``apply_list_params``, as exercised here.)
+  ``count`` counts the distinct primary keys. (The list params cannot reach
+  it -- dotted filters/sorts only traverse to-one relations -- so the trigger
+  is a collection JOIN in ``apply_list_params``, as exercised here.)
+
+* **the count's columns**: the count ran ``DISTINCT`` over every column of the
+  model, which computed each ``column_property`` for every row. It now counts
+  the columns that name a row of the entity: the primary key, and the
+  discriminator of a concrete union.
 """
 
+import asyncio
+
 import pydantic
+import pytest
 import sqlalchemy
-from sqlalchemy import ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column
+import sqlalchemy.orm
+from fastapi import FastAPI
+from sqlalchemy import ForeignKey, event
+from sqlalchemy.ext.declarative import AbstractConcreteBase
+from sqlalchemy.orm import DeclarativeBase, Mapped, column_property, mapped_column
 from starlette.datastructures import QueryParams
 
 import fastapi_restly as fr
+from fastapi_restly.db._globals import _fr_globals
 from fastapi_restly.query._impl import _apply_sorting
+from fastapi_restly.testing._client import RestlyTestClient
 from fastapi_restly.views._react_admin import _apply_react_admin_sort_and_range
 
 from ._models import SharedBase
 from .conftest import create_tables
 
 # ---------------------------------------------------------------------------
-# lm7 -- PK tiebreaker on a non-unique sort (asserted on the compiled SQL)
+# PK tiebreaker on a non-unique sort (asserted on the compiled SQL)
 # ---------------------------------------------------------------------------
 
 
@@ -208,6 +221,216 @@ def test_to_many_join_in_list_query_does_not_duplicate_or_inflate(client):
     assert payload["total_count"] == 1
     assert len(payload["data"]) == 1
     assert payload["data"][0]["name"] == "A"
+
+
+# ---------------------------------------------------------------------------
+# The count counts the rows of the entity the list selects
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(params=["async", "sync"])
+def views(request):
+    """A client, the view base class and the engine, for each kind of view."""
+    if request.param == "async":
+        client = request.getfixturevalue("client")
+        engine = _fr_globals.async_make_session.kw["bind"].sync_engine
+        return client, fr.AsyncRestView, engine, create_tables
+    engine, _ = request.getfixturevalue("sync_db")
+    client = RestlyTestClient(FastAPI())
+    return client, fr.RestView, engine, lambda: SharedBase.metadata.create_all(engine)
+
+
+def test_count_does_not_run_a_column_property(views):
+    """The count leaves out every column except the primary key. So the
+    subquery of a ``column_property`` does not run for every row."""
+    client, view_base, engine, make_tables = views
+
+    class Shelf(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    class Novel(fr.IDMixin, SharedBase):
+        shelf_id: Mapped[int] = mapped_column(ForeignKey(Shelf.id))
+
+    Shelf.novel_count = column_property(
+        sqlalchemy.select(sqlalchemy.func.count(Novel.id))
+        .where(Novel.shelf_id == Shelf.id)
+        .scalar_subquery()
+    )
+
+    class ShelfSchema(fr.IDSchema):
+        name: str
+
+    @fr.include_view(client.app)
+    class ShelfView(view_base):
+        prefix = "/shelves"
+        model = Shelf
+        schema = ShelfSchema
+
+    make_tables()
+    for name in ("a", "b", "c"):
+        client.post("/shelves/", json={"name": name})
+
+    statements: list[str] = []
+
+    def record(conn, cursor, statement, *args):
+        statements.append(statement)
+
+    event.listen(engine, "before_cursor_execute", record)
+    try:
+        payload = client.get("/shelves/", params={"page_size": 2}).json()
+    finally:
+        event.remove(engine, "before_cursor_execute", record)
+
+    assert payload["total_count"] == 3
+    (count_sql,) = [s for s in statements if "count(*)" in s]
+    assert "FROM novel" not in count_sql
+
+
+def test_count_of_a_single_table_subclass(client):
+    """The count of a view on a single-table subclass keeps the WHERE clause
+    of the subclass. So it counts only the rows of that subclass."""
+
+    class Animal(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+        kind: Mapped[str] = mapped_column(init=False)
+        __mapper_args__ = {"polymorphic_on": "kind", "polymorphic_identity": "animal"}
+
+    class Cat(Animal):
+        __tablename__ = None  # type: ignore[assignment]
+        __mapper_args__ = {"polymorphic_identity": "cat"}
+
+    class Dog(Animal):
+        __tablename__ = None  # type: ignore[assignment]
+        __mapper_args__ = {"polymorphic_identity": "dog"}
+
+    class AnimalSchema(fr.IDSchema):
+        name: str
+
+    for prefix, model in (("/animals", Animal), ("/cats", Cat), ("/dogs", Dog)):
+        fr.include_view(
+            client.app,
+            type(
+                f"{model.__name__}View",
+                (fr.AsyncRestView,),
+                {"prefix": prefix, "model": model, "schema": AnimalSchema},
+            ),
+        )
+
+    create_tables()
+    client.post("/cats/", json={"name": "tom"})
+    client.post("/cats/", json={"name": "kit"})
+    client.post("/dogs/", json={"name": "rex"})
+
+    assert client.get("/cats/").json()["total_count"] == 2
+    assert client.get("/dogs/").json()["total_count"] == 1
+    assert client.get("/animals/").json()["total_count"] == 3
+
+
+def test_count_of_a_concrete_union(client):
+    """Each table of a concrete inheritance numbers its own rows, so the same
+    id is in more than one table. The count of the union counts each pair of
+    discriminator and id."""
+
+    # AbstractConcreteBase does not work with MappedAsDataclass
+    class PlainBase(DeclarativeBase):
+        pass
+
+    class Payment(AbstractConcreteBase, PlainBase):
+        strict_attrs = True
+        id: Mapped[int] = mapped_column(primary_key=True)
+        amount: Mapped[int]
+
+    class CardPayment(Payment):
+        __tablename__ = "card_payment"
+        __mapper_args__ = {"polymorphic_identity": "card", "concrete": True}
+
+    class BankPayment(Payment):
+        __tablename__ = "bank_payment"
+        __mapper_args__ = {"polymorphic_identity": "bank", "concrete": True}
+
+    PlainBase.registry.configure()
+
+    class PaymentSchema(fr.IDSchema):
+        amount: int
+
+    for prefix, model in (
+        ("/payments", Payment),
+        ("/card-payments", CardPayment),
+        ("/bank-payments", BankPayment),
+    ):
+        fr.include_view(
+            client.app,
+            type(
+                f"{model.__name__}View",
+                (fr.AsyncRestView,),
+                {"prefix": prefix, "model": model, "schema": PaymentSchema},
+            ),
+        )
+
+    asyncio.run(fr.db.async_create_all(PlainBase))
+    client.post("/card-payments/", json={"amount": 10})
+    client.post("/card-payments/", json={"amount": 20})
+    client.post("/bank-payments/", json={"amount": 30})
+
+    # card 1 and bank 1 are two rows of the list
+    payload = client.get("/payments/").json()
+    assert len(payload["data"]) == 3
+    assert payload["total_count"] == 3
+    filtered = client.get("/payments/", params={"amount__gte": 20}).json()
+    assert filtered["total_count"] == 2
+
+
+def test_count_of_a_statement_of_another_entity(client):
+    """``count`` counts the entity that the statement selects, which need
+    not be the model of the view. A statement of columns counts its distinct
+    rows."""
+
+    class Shelf(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    class Novel(fr.IDMixin, SharedBase):
+        genre: Mapped[str]
+        shelf_id: Mapped[int] = mapped_column(ForeignKey(Shelf.id))
+
+    class ShelfSchema(fr.IDSchema):
+        name: str
+
+    class NovelSchema(fr.IDSchema):
+        genre: str
+        shelf_id: int
+
+    @fr.include_view(client.app)
+    class ShelfView(fr.AsyncRestView):
+        prefix = "/shelves"
+        model = Shelf
+        schema = ShelfSchema
+
+        @fr.get("/{id}/totals")
+        async def totals(self, id: int) -> dict[str, int]:
+            novels = sqlalchemy.select(Novel).where(Novel.shelf_id == id)
+            other = sqlalchemy.orm.aliased(Shelf)
+            return {
+                "novels": await self.count(novels),
+                "genres": await self.count(novels.with_only_columns(Novel.genre)),
+                "other_shelves": await self.count(
+                    sqlalchemy.select(other).where(other.id != id)
+                ),
+            }
+
+    @fr.include_view(client.app)
+    class NovelView(fr.AsyncRestView):
+        prefix = "/novels"
+        model = Novel
+        schema = NovelSchema
+
+    create_tables()
+    shelf = client.post("/shelves/", json={"name": "a"}).json()
+    client.post("/shelves/", json={"name": "b"})
+    for genre in ("crime", "crime", "drama"):
+        client.post("/novels/", json={"genre": genre, "shelf_id": shelf["id"]})
+
+    totals = client.get(f"/shelves/{shelf['id']}/totals").json()
+    assert totals == {"novels": 3, "genres": 2, "other_shelves": 1}
 
 
 def test_default_ordering_belongs_in_apply_list_params(client):

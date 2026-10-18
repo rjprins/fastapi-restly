@@ -403,6 +403,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- On PostgreSQL, a paginated list of a model with a `json` column works.
+  Before, the count of the list failed with "could not identify an equality
+  operator for type json". This happened with every `sqlalchemy.JSON`
+  column. A `JSONB` column was not affected. The count ran `DISTINCT` over
+  every column of the model, and PostgreSQL cannot compare `json` values.
+  Now the count selects only the primary key of the model that the list
+  selects. So the count also no longer runs the subquery of a
+  `column_property` for every row. For a model with concrete table
+  inheritance, the count also selects the discriminator, because each table
+  numbers its own rows.
 - On FastAPI 0.115, a module with `from __future__ import annotations` can
   now declare a route on a mixin or a parent view, and a custom list route
   that takes `list_params`. Before, when the annotations of such a route

@@ -56,7 +56,7 @@ from fastapi.params import Param as _ParamMarker
 from fastapi.security.api_key import APIKeyBase
 from pydantic.fields import FieldInfo
 from sqlalchemy import JSON as _JSONType
-from sqlalchemy import ColumnElement, Select
+from sqlalchemy import ColumnElement, Select, func
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import select as sa_select
 from sqlalchemy.orm import QueryableAttribute, selectinload
@@ -896,6 +896,53 @@ def _relationship_reload_statement(obj: Any, options: list[Any]) -> Any:
         for column, value in zip(mapper.primary_key, state.identity, strict=True)
     ]
     return sa_select(mapper.class_).where(*conditions).options(*options)
+
+
+def _count_statement(query: Select[Any]) -> Select[Any]:
+    """The SELECT that counts the rows of the list query ``query``.
+
+    A list has one object for each row of the entity that ``query`` selects
+    first. So the count counts the distinct values of the columns that name
+    such a row (``_identity_columns``), and a join that repeats a row does
+    not count it twice. The other columns are left out. PostgreSQL cannot
+    compare ``json`` values, so ``DISTINCT`` over a ``json`` column fails.
+    And the subquery of a ``column_property`` would run for every row of the
+    list. A query that does not select an entity first counts its distinct
+    rows.
+    """
+    source = query.order_by(None).limit(None).offset(None)
+    columns = _identity_columns(query)
+    if columns:
+        source = source.with_only_columns(*columns, maintain_column_froms=True)
+    return sa_select(func.count()).select_from(source.distinct().subquery())
+
+
+def _identity_columns(query: Select[Any]) -> list[Any]:
+    """The columns that name a row of the entity that ``query`` selects first.
+
+    These are the primary key columns, as attributes of the entity, so the
+    ORM puts them on the selectable the entity loads from: an alias, or the
+    union of a concrete inheritance. Each table of such a union numbers its
+    own rows, so the discriminator is added too. Empty when the first column
+    of ``query`` is not an entity.
+    """
+    descriptions = query.column_descriptions
+    entity = descriptions[0]["entity"] if descriptions else None
+    if entity is None or descriptions[0]["expr"] is not entity:
+        return []
+    info = sa_inspect(entity)
+    mapper = info.mapper
+    columns = [
+        getattr(entity, mapper.get_property_by_column(column).key)
+        for column in mapper.primary_key
+    ]
+    polymorphic = mapper.with_polymorphic
+    if polymorphic and polymorphic[1] is not None and mapper.polymorphic_on is not None:
+        # the discriminator as a column of what the entity selects from
+        discriminator = info.selectable.corresponding_column(mapper.polymorphic_on)
+        if discriminator is not None:
+            columns.append(discriminator)
+    return columns
 
 
 def _schema_relationships_are_loaded(

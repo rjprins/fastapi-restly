@@ -3,7 +3,7 @@ from typing import Any, cast, final
 
 import fastapi
 import sqlalchemy
-from sqlalchemy import ColumnElement, func, select
+from sqlalchemy import ColumnElement, select
 
 from .._pagination import NumberedPagination
 from ..db import SessionDep
@@ -26,6 +26,7 @@ from ._base import (
     UpdateSchemaT,
     _apply_own_filters,
     _check_list_methods,
+    _count_statement,
     _identity_criterion,
     _not_found_message,
     _ReadWhere,
@@ -461,15 +462,15 @@ class RestView(
     def count(self, query: sqlalchemy.Select[Any]) -> int:
         """Total for the list, ignoring presentation-layer ordering/pagination.
 
-        The stripped query is made ``DISTINCT`` and wrapped as a subquery, so
-        the total is correct across user-provided query shapes, including a
-        query that joins a to-many relationship, whose row fan-out would
-        otherwise inflate the count. Override for estimated counts on huge
-        tables.
+        It counts the distinct primary keys of the model that ``query``
+        selects, without its order and page. So a join to a to-many
+        relationship does not count a row twice. No other column is part of
+        the count, so a ``json`` column works on PostgreSQL, and the subquery
+        of a ``column_property`` does not run for every row. A ``query`` that
+        selects columns, not a model, counts its distinct rows. Override for
+        estimated counts on huge tables.
         """
-        count_source = query.order_by(None).limit(None).offset(None).distinct()
-        count_query = select(func.count()).select_from(count_source.subquery())
-        return int(self.session.scalar(count_query) or 0)
+        return int(self.session.scalar(_count_statement(query)) or 0)
 
     # ====================================================================
     # Domain utilities (final: call from a verb override, never override)
