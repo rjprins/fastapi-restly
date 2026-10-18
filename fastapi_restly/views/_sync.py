@@ -189,11 +189,13 @@ class RestView(
                 w.obj = self.make_new_object(req)
 
         Pass ``obj=None`` for writes with no single object. Exceptions skip the
-        commit. An ``IntegrityError`` from ``authorize`` to the commit becomes
-        :class:`~fastapi_restly.exc.Conflict` (409). Inside
-        :meth:`shared_write_action_commit`, the outermost block owns the
-        commit and the after-hooks, so this bracket returns after its flush
-        but before either one, and an ``IntegrityError`` stays raw.
+        commit. The outermost block on the session owns the commit and the
+        after-hooks. So a handler or a ``write_action`` inside this block, or
+        this block inside :meth:`shared_write_action_commit`, returns after
+        its flush, before either one. An ``IntegrityError`` from ``authorize``
+        to the commit becomes :class:`~fastapi_restly.exc.Conflict` (409)
+        when it leaves the outermost block, and stays raw inside it. A direct
+        ``session.commit()`` inside the block raises ``RuntimeError``.
         """
         return sync_write_action(self, action, obj=obj, data=data)
 

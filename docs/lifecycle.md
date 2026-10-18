@@ -761,7 +761,8 @@ reference fields need the right form: see
 (shared-write-action-commit)=
 ## Commit several writes together
 
-Each handler and each `write_action` block commits on its own. To commit
+A handler or a `write_action` block commits on its own, unless it runs
+inside another `write_action` block, which then owns the commit. To commit
 several of them at once, put them inside a
 {meth}`shared_write_action_commit() <fastapi_restly.views.AsyncRestView.shared_write_action_commit>`
 block. The outermost block commits once. Then the queued `after_action_commit`
@@ -803,6 +804,8 @@ copied tasks are committed together. If any part fails, none of them is
 committed.
 
 Blocks inside each other share the commit when their views share a session.
+A `write_action` block counts as such a block, so a handler that you call
+inside it joins its commit.
 An exception that leaves a block cancels the shared commit and drops the
 queued hooks. This also happens when an outer block catches the exception.
 Rolling back stays the job of the session's owner. A direct `session.commit()`
@@ -864,8 +867,9 @@ bracket: {func}`async_run_write_action <fastapi_restly.views.async_run_write_act
 and {func}`run_write_action <fastapi_restly.views.run_write_action>`. Each one
 calls `authorize`, takes the snapshot, runs a function that makes the change,
 and then runs `before_action_commit`, the commit and `after_action_commit`.
-Inside a `shared_write_action_commit()` block, it flushes instead of
-committing and queues the after-hook for the outermost block.
+The outermost bracket on a session owns the commit. So inside a
+`write_action` or a `shared_write_action_commit()` block, a bracket flushes
+instead of committing and queues its after-hook for the outermost block.
 
 ## See also
 

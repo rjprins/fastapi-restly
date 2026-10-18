@@ -4,7 +4,8 @@ Every write follows the same sequence: authorize, snapshot, mutate,
 before_action_commit, commit, after_action_commit. ``write_action`` exposes
 the commit bracket as a context manager for custom actions. ``run_write_action``
 and ``async_run_write_action`` are the thunk form used by CRUD handlers.
-``shared_write_action_commit`` moves the commit and after-hooks to an outer block.
+The outermost bracket on a session owns the commit and the after-hooks: a
+bracket inside it joins it, as inside ``shared_write_action_commit``.
 """
 
 import contextlib
@@ -89,39 +90,40 @@ async def async_write_action(
     ``obj=<row>`` means an in-place write. ``obj=None`` means a no-object write.
     Omitting ``obj`` means create-shaped; the block must set ``handle.obj``.
 
-    Outside a shared block, an ``IntegrityError`` from ``authorize`` to the
-    commit becomes :class:`~fastapi_restly.exc.Conflict`. Inside one, it stays
-    raw, so a bulk route can catch a failing row.
+    The outermost bracket on a session owns the commit, as a shared commit
+    does. So a bracket or a handler inside it flushes and joins that commit,
+    and its ``after_action_commit`` runs after it. An ``IntegrityError`` from
+    ``authorize`` to the commit becomes :class:`~fastapi_restly.exc.Conflict`
+    when it leaves the outermost block. Inside that block it stays raw, so a
+    bulk route can catch a failing row.
     """
-    owner = _shared_write_action_commit_owner(host.session)
-    if owner is not None:
-        owner.require_active(asynchronous=True)
-    committed = False
-    with translate_integrity_errors(outermost=owner is None):
-        passed = obj is not _UNSET
-        await host.authorize(action, obj=obj if passed else None, data=data)
-        old = host.snapshot(obj) if (passed and obj is not None) else None
-        handle = _WriteHandle(obj)
+    commit = (
+        _async_shared_write_action_commit(host.session)
+        if _shared_write_action_commit_owner(host.session) is None
+        else contextlib.nullcontext()
+    )
+    async with commit, _async_joined_write_action(host, action, obj, data) as handle:
         yield handle
-        _require_deposited_obj(action, handle)
-        await host.before_action_commit(action, new=handle.obj, old=old)
-        owner = _shared_write_action_commit_owner(host.session)
-        if owner is None:
-            await host.session.commit()
-            committed = True
-        else:
-            await host.session.flush()
-            owner.enqueue(
-                host.session.sync_session,
-                host,
-                action,
-                handle.obj,
-                old,
-                asynchronous=True,
-            )
-    if committed:
-        with after_commit():
-            await host.after_action_commit(action, new=handle.obj, old=old)
+
+
+@contextlib.asynccontextmanager
+async def _async_joined_write_action(
+    host: AsyncWriteHost, action: str, obj: Any, data: Any
+) -> AsyncIterator[_WriteHandle]:
+    """One action inside a shared commit: everything up to the flush."""
+    owner = _require_shared_write_action_commit(host.session)
+    owner.require_active(asynchronous=True)
+    passed = obj is not _UNSET
+    await host.authorize(action, obj=obj if passed else None, data=data)
+    old = host.snapshot(obj) if (passed and obj is not None) else None
+    handle = _WriteHandle(obj)
+    yield handle
+    _require_deposited_obj(action, handle)
+    await host.before_action_commit(action, new=handle.obj, old=old)
+    await host.session.flush()
+    owner.enqueue(
+        host.session.sync_session, host, action, handle.obj, old, asynchronous=True
+    )
 
 
 @contextlib.contextmanager
@@ -129,28 +131,31 @@ def sync_write_action(
     host: WriteHost, action: str, *, obj: Any = _UNSET, data: Any = None
 ):
     """Sync variant of :func:`async_write_action`."""
-    owner = _shared_write_action_commit_owner(host.session)
-    if owner is not None:
-        owner.require_active()
-    committed = False
-    with translate_integrity_errors(outermost=owner is None):
-        passed = obj is not _UNSET
-        host.authorize(action, obj=obj if passed else None, data=data)
-        old = host.snapshot(obj) if (passed and obj is not None) else None
-        handle = _WriteHandle(obj)
+    commit = (
+        _shared_write_action_commit(host.session)
+        if _shared_write_action_commit_owner(host.session) is None
+        else contextlib.nullcontext()
+    )
+    with commit, _joined_write_action(host, action, obj, data) as handle:
         yield handle
-        _require_deposited_obj(action, handle)
-        host.before_action_commit(action, new=handle.obj, old=old)
-        owner = _shared_write_action_commit_owner(host.session)
-        if owner is None:
-            host.session.commit()
-            committed = True
-        else:
-            host.session.flush()
-            owner.enqueue(host.session, host, action, handle.obj, old)
-    if committed:
-        with after_commit():
-            host.after_action_commit(action, new=handle.obj, old=old)
+
+
+@contextlib.contextmanager
+def _joined_write_action(
+    host: WriteHost, action: str, obj: Any, data: Any
+) -> Iterator[_WriteHandle]:
+    """Sync variant of :func:`_async_joined_write_action`."""
+    owner = _require_shared_write_action_commit(host.session)
+    owner.require_active()
+    passed = obj is not _UNSET
+    host.authorize(action, obj=obj if passed else None, data=data)
+    old = host.snapshot(obj) if (passed and obj is not None) else None
+    handle = _WriteHandle(obj)
+    yield handle
+    _require_deposited_obj(action, handle)
+    host.before_action_commit(action, new=handle.obj, old=old)
+    host.session.flush()
+    owner.enqueue(host.session, host, action, handle.obj, old)
 
 
 async def async_run_write_action(
@@ -257,13 +262,14 @@ class _SharedWriteActionCommit:
     def require_active(self, *, asynchronous: bool = False) -> None:
         if self.aborted:
             raise RuntimeError(
-                "shared_write_action_commit() was aborted. "
-                "The session owner must roll back before retrying the operation."
+                "The write was aborted: an exception left a write_action() or "
+                "shared_write_action_commit() block. The session owner must "
+                "roll back before retrying the operation."
             )
         if asynchronous and not self.asynchronous:
             raise RuntimeError(
-                "Async write actions require an async outermost "
-                "shared_write_action_commit() block."
+                "An async write action cannot join the commit of a sync "
+                "write_action() or shared_write_action_commit() block."
             )
 
     def abort(self) -> None:
@@ -373,6 +379,15 @@ def _shared_write_action_commit_owner(
     return session.info.get(_SHARED_WRITE_ACTION_COMMIT_KEY)
 
 
+def _require_shared_write_action_commit(
+    session: AsyncSession | Session,
+) -> _SharedWriteActionCommit:
+    owner = _shared_write_action_commit_owner(session)
+    if owner is None:
+        raise RuntimeError("a write action runs only inside a shared commit")
+    return owner
+
+
 @contextlib.contextmanager
 def _join_shared_write_action_commit(
     session: Session, *, asynchronous: bool = False
@@ -380,9 +395,7 @@ def _join_shared_write_action_commit(
     owner = _shared_write_action_commit_owner(session)
     if owner is None:
         owner = _SharedWriteActionCommit(asynchronous=asynchronous)
-        event.listen(session, "after_soft_rollback", _discard_rolled_back_hooks)
-        event.listen(session, "after_transaction_end", _abort_ended_transaction)
-        event.listen(session, "before_commit", _reject_direct_commit)
+        _listen_once(session)
         session.info[_SHARED_WRITE_ACTION_COMMIT_KEY] = owner
     owner.depth += 1
     try:
@@ -395,10 +408,17 @@ def _join_shared_write_action_commit(
         owner.depth -= 1
         if owner.depth == 0:
             session.info.pop(_SHARED_WRITE_ACTION_COMMIT_KEY, None)
-            event.remove(session, "after_soft_rollback", _discard_rolled_back_hooks)
-            event.remove(session, "after_transaction_end", _abort_ended_transaction)
-            event.remove(session, "before_commit", _reject_direct_commit)
             owner.pending.clear()
+
+
+def _listen_once(session: Session) -> None:
+    # every write opens a shared commit, so the listeners stay on the
+    # session; they do nothing while no block is open
+    if event.contains(session, "before_commit", _reject_direct_commit):
+        return
+    event.listen(session, "after_soft_rollback", _discard_rolled_back_hooks)
+    event.listen(session, "after_transaction_end", _abort_ended_transaction)
+    event.listen(session, "before_commit", _reject_direct_commit)
 
 
 def _reject_direct_commit(session: Session) -> None:
@@ -407,8 +427,8 @@ def _reject_direct_commit(session: Session) -> None:
         return
     owner.abort()
     raise RuntimeError(
-        "session.commit() cannot be called inside shared_write_action_commit(). "
-        "The outermost block owns the commit."
+        "session.commit() cannot be called inside a write_action() or "
+        "shared_write_action_commit() block. The outermost block owns the commit."
     )
 
 

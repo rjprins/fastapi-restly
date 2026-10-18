@@ -92,6 +92,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- A handler or a `write_action` inside a `write_action` block joins the
+  commit of that block, as inside `shared_write_action_commit()`. The
+  outermost block commits once, and then the queued `after_action_commit`
+  hooks run. Before, the inner handler committed the session, with the
+  changes of the outer block so far. If the outer block then raised, those
+  changes stayed saved. A direct `session.commit()` inside a `write_action`
+  block now raises `RuntimeError`, because the block owns the commit.
 - A replaced endpoint method gets the view's types only from the markers of
   `fastapi_restly.views`. Before, registration filled them in by parameter
   name where the method had no annotation or `Any`: `id` got the id type,

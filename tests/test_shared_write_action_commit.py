@@ -175,6 +175,63 @@ async def test_handlers_share_one_commit_and_defer_after_hooks(writes):
     assert await _names(writes, writes.audit) == ["create:first", "create:second"]
 
 
+async def test_a_handler_inside_a_write_action_joins_its_commit(writes):
+    view = writes.view
+    async with _enter(view.write_action("import", obj=None)):
+        await _call(view.handle_create(writes.schema(name="inner")))
+        assert await _names(writes, writes.model) == []
+
+    assert writes.events == [
+        ("authorize", "import"),
+        ("authorize", "create"),
+        ("before", "create"),
+        ("before", "import"),
+        ("commit", None),
+        ("after", "create"),
+        ("after", "import"),
+    ]
+    assert await _names(writes, writes.model) == ["inner"]
+
+
+async def test_an_error_after_a_handler_in_a_write_action_commits_nothing(writes):
+    view = writes.view
+    with pytest.raises(LookupError):
+        async with _enter(view.write_action("import", obj=None)):
+            await _call(view.handle_create(writes.schema(name="inner")))
+            raise LookupError
+
+    assert ("commit", None) not in writes.events
+    assert writes.after_calls == []
+    await _call(writes.session.rollback())
+    assert await _names(writes, writes.model) == []
+
+
+async def test_an_integrity_error_stays_raw_until_it_leaves_the_write_action(writes):
+    view = writes.view
+    await _call(view.handle_create(writes.schema(name="taken")))
+    raw = []
+    with pytest.raises(fr.exc.Conflict):
+        async with _enter(view.write_action("import", obj=None)):
+            try:
+                await _call(view.handle_create(writes.schema(name="taken")))
+            except IntegrityError as exc:
+                raw.append(exc)
+                raise
+    assert len(raw) == 1
+
+
+async def test_a_direct_commit_inside_a_write_action_raises(writes):
+    view = writes.view
+    with pytest.raises(RuntimeError, match="inside a write_action"):
+        async with _enter(view.write_action("import", obj=None)):
+            writes.session.add(writes.model(name="direct"))
+            await _call(writes.session.commit())
+
+    assert writes.after_calls == []
+    await _call(writes.session.rollback())
+    assert await _names(writes, writes.model) == []
+
+
 async def test_nested_views_share_the_session_owner(writes):
     outer = writes.view
     inner = type(outer)(request=None, session=outer.session)
@@ -597,7 +654,7 @@ async def test_async_owner_drains_sync_hooks_through_run_sync(writes):
 async def test_sync_owner_rejects_async_work_before_mutation(writes, nested_block):
     from fastapi_restly.views._lifecycle import _shared_write_action_commit
 
-    with pytest.raises(RuntimeError, match="async outermost"):
+    with pytest.raises(RuntimeError, match="cannot join the commit of a sync"):
         with _shared_write_action_commit(writes.target):
             if nested_block:
                 async with writes.view.shared_write_action_commit():
