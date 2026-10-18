@@ -286,39 +286,71 @@ it needs from its view without breaking the view's dependencies.
 ### Declare what a mixin needs from its view
 
 A mixin is a class that you list before the view class in the bases, as in
-`class ProjectView(ArchiveMixin, fr.AsyncRestView)`. Its methods often use
-attributes and methods of the view, and type checkers need to know them. Do
-not write these stubs as normal class members. A stub method is a real
-method, and Python finds it before the view's method:
+`class ProjectView(SoftDeleteMixin, fr.AsyncRestView)`. When its methods read
+attributes of the view, declare them for type checkers with an annotation
+without a value. Such an annotation adds nothing to the class, so it hides
+nothing:
 
 ```python
-# Wrong: this stub is a real method. It hides AsyncRestView.get_one,
-# so `await self.get_one(id)` returns None.
-class ArchiveMixin:
-    async def get_one(self, id): ...
-```
-
-Put the stubs under `if TYPE_CHECKING:`. Type checkers read them, and Python
-does not add them to the class:
-
-```python
-from typing import TYPE_CHECKING, Any
+from datetime import datetime, timezone
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
-class ArchiveMixin:
-    if TYPE_CHECKING:
-        session: AsyncSession
+class SoftDeleteMixin:
+    session: AsyncSession
 
-        async def get_one(self, id: Any) -> Any: ...
+    async def delete(self, obj: Any) -> None:
+        obj.deleted_at = datetime.now(timezone.utc)
+        await self.session.flush()
 ```
 
-An attribute annotation without a value, such as `session: AsyncSession`,
-adds nothing to the class, so it hides nothing. It can also stay outside the
-block, but one block for all stubs is easier to read. The `SoftDeleteMixin`
-of the SaaS example does this
+When the shared code calls methods of the view, such as `get_one` or a
+handler, write a base view instead of a mixin. A base view subclasses the
+view class, so it has the real methods, with their types:
+
+```python
+from fastapi_restly.views import ViewID, ViewResponse
+
+
+class ArchiveView(fr.AsyncRestView):
+    """Base for views with an archive route. Never registered."""
+
+    @fr.post("/{id}/archive", status_code=200)
+    async def archive(self, id: ViewID) -> ViewResponse:
+        obj = await self.get_one(id)
+        async with self.write_action("archive", obj=obj):
+            obj.archived = True
+        return self.to_response(obj)
+
+
+@fr.include_view(app)
+class ProjectView(ArchiveView):
+    prefix = "/projects"
+    model = Project
+```
+
+[Share behavior with base views](#share-behaviour-with-base-views) shows
+more of them.
+
+:::{admonition} Details
+:class: details
+
+Do not declare the view's methods in a mixin, not even as stubs. A stub
+method is a real method, and Python finds it before the view's method, so
+`await self.get_one(id)` returns `None`. Under `if TYPE_CHECKING:`, Python
+does not add the stub to the class, but type checkers still find it before
+the view's method. A stub such as `async def get_one(self, id: Any) -> Any`
+then hides the typed `get_one` in every view that uses the mixin. And mypy
+reports a stub for a final handler, such as `handle_get_many` or
+`save_object`, as an error.
+
+To keep the model's type in each subclass, make the base view generic in the
+model. The `TrashView` of the SaaS example does this, and it binds the model
+to the model mixin that has the `deleted_at` column
 ([`app/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py)).
+:::
 
 (share-behaviour-with-base-views)=
 ## Share behavior with base views

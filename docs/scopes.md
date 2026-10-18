@@ -457,7 +457,7 @@ method. It receives the loaded row. Set the timestamp, flush, and do not call
 
 ```python
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -465,8 +465,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 class SoftDeleteMixin:
     """``delete`` sets ``deleted_at`` instead of removing the row."""
 
-    if TYPE_CHECKING:
-        session: AsyncSession
+    session: AsyncSession
 
     async def delete(self, obj: Any) -> None:
         obj.deleted_at = datetime.now(timezone.utc)

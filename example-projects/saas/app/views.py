@@ -37,7 +37,7 @@ would automatically update each of those routes::
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
+from typing import Any, ClassVar, TypeVar
 
 import fastapi
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -138,9 +138,9 @@ class SoftDeleteMixin:
     different HTTP contract, such as ``200 + body``.
     """
 
-    # Required from the host class.
-    if TYPE_CHECKING:
-        session: AsyncSession
+    # Required from the host class. An annotation without a value adds
+    # nothing to the class, so it does not hide the view's session.
+    session: AsyncSession
 
     async def delete(self, obj: Any) -> None:
         obj.deleted_at = datetime.now(timezone.utc)
