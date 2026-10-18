@@ -1,4 +1,4 @@
-.PHONY: test test-framework test-typing test-postgres test-postgres-asyncpg test-examples test-all clean install-dev lint pre-commit-install pre-commit-run docs docs-serve blog blog-serve build-pages scaffold-check scaffold-matrix scaffold-matrix-sqlite
+.PHONY: test test-framework test-typing test-postgres test-postgres-asyncpg test-examples test-all clean install-dev lint pre-commit-install pre-commit-run docs docs-serve docs-pdf blog blog-serve build-pages scaffold-check scaffold-matrix scaffold-matrix-sqlite
 
 # Default target
 all: test-all
@@ -120,6 +120,11 @@ docs:
 docs-serve:
 	uv run sphinx-autobuild docs site
 
+docs-pdf:
+	uv run sphinx-build -M singlehtml docs site -W --keep-going
+	uv run python scripts/build_docs_pdf.py site/singlehtml site/FastAPI-Restly.pdf
+	@echo "PDF available at site/FastAPI-Restly.pdf"
+
 blog:
 	uv run sphinx-build -M html blog-site site-blog -W --keep-going
 	@echo "Blog available at site-blog/html/index.html"
@@ -163,6 +168,7 @@ help:
 	@echo "  dev-setup       - Setup development environment"
 	@echo "  docs            - Build documentation"
 	@echo "  docs-serve      - Autobuild and serve documentation"
+	@echo "  docs-pdf        - Build a phone-sized PDF of the docs (needs Chromium or Chrome)"
 	@echo "  blog            - Build the blog (published at /blog/)"
 	@echo "  blog-serve      - Autobuild and serve the blog"
 	@echo "  build-pages     - Build docs plus coverage assets for GitHub Pages"
