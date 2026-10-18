@@ -353,8 +353,9 @@ class AsyncRestView(
         :raises sqlalchemy.exc.MultipleResultsFound: more than one row
             matches; an ambiguous key is a bug in the criterion.
         :raises TypeError: ``id`` is a Python bool (a comparison on a
-            loaded object, which would render as ``WHERE true``) or an
-            uncalled clause (a scope, not a row identity).
+            loaded object, which would render as ``WHERE true``), an
+            uncalled clause (a scope, not a row identity), or an expression
+            on a table that the query does not select from.
         :raises NotImplementedError: a plain id on a composite primary
             key; pass a predicate.
         """

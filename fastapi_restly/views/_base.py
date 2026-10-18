@@ -67,7 +67,12 @@ from typing_extensions import TypeVar
 if sys.version_info >= (3, 14):
     import annotationlib
 from ..clauses import UNSCOPED, WhereClause, all_of, apply_clauses, where_clause
-from ..clauses._runtime import _guard_statement_tables
+from ..clauses._runtime import (
+    _display_table_name,
+    _expression_tables,
+    _guard_statement_tables,
+    _statement_tables,
+)
 from ..clauses._scopes import _default_scope
 
 #: A per-read scope: ``None`` for the view's own, a clause that replaces it
@@ -2650,6 +2655,26 @@ def _checked_where(where: Any, label: str) -> WhereClause:
     )
 
 
+def _check_identity_tables(model_cls: type[Any], id: ColumnElement[bool]) -> None:
+    """Raise when the expression in place of an id names another table.
+
+    SQLAlchemy adds such a table to the FROM of the query, which joins every
+    row of it, so ``Shelf.id == 2`` in a view of books picks a book that has
+    nothing to do with shelf 2.
+    """
+    missing = _expression_tables(id) - _statement_tables(sa_select(model_cls))
+    if missing:
+        name = model_cls.__name__
+        shown = ", ".join(sorted(_display_table_name(key) for key in missing))
+        raise TypeError(
+            f"{name}: the expression in place of an id names a table that is "
+            f"not in the query: {shown}. It would join every row of that "
+            f"table, so a wrong row could be loaded. Compare a column of "
+            f"{name}, such as {name}.slug == slug, or use .has() or .any() "
+            "for a related row."
+        )
+
+
 def _identity_criterion(model_cls: type[Any], id: Any) -> ColumnElement[bool]:
     """The predicate that picks the one row ``get_one`` loads.
 
@@ -2660,6 +2685,7 @@ def _identity_criterion(model_cls: type[Any], id: Any) -> ColumnElement[bool]:
     scope; only ``scope=`` replaces what the view can see.
     """
     if isinstance(id, ColumnElement):
+        _check_identity_tables(model_cls, id)
         return id
     if isinstance(id, WhereClause):
         raise TypeError(

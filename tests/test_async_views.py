@@ -656,3 +656,65 @@ def test_get_one_takes_a_predicate_in_place_of_the_id():
         await engine.dispose()
 
     asyncio.run(run())
+
+
+def test_get_one_refuses_an_expression_on_another_table():
+    """An expression in place of an id that names another table would join
+    every row of it, so a wrong row could be loaded and changed. It raises,
+    and nothing is written."""
+
+    class Rack(fr.IDMixin, SharedBase):
+        code: Mapped[str]
+
+    class Box(fr.IDMixin, SharedBase):
+        title: Mapped[str]
+        rack_id: Mapped[int] = mapped_column(ForeignKey(Rack.id))
+        rack: Mapped[Rack] = relationship(init=False)
+
+    class BoxSchema(fr.IDSchema):
+        title: str
+        rack_id: int
+
+    class BoxUpdate(fr.BaseSchema):
+        title: str
+
+    class BoxView(fr.AsyncRestView):
+        prefix = "/boxes"
+        model = Box
+        schema = BoxSchema
+        schema_update = BoxUpdate
+
+    async def run():
+        engine, make_session = _make_engine_and_session()
+        async with engine.begin() as conn:
+            await conn.run_sync(SharedBase.metadata.create_all)
+
+        async with make_session() as session:
+            first, second = Rack(code="a"), Rack(code="b")
+            session.add_all([first, second])
+            await session.flush()
+            session.add_all(
+                [
+                    Box(title="one", rack_id=first.id),
+                    Box(title="two", rack_id=second.id),
+                ]
+            )
+            await session.flush()
+
+            view = BoxView()
+            view.session = session
+
+            with pytest.raises(TypeError, match="not in the query: rack"):
+                await view.get_one(Rack.id == second.id)
+            with pytest.raises(TypeError, match="not in the query: rack"):
+                await view.handle_update(Rack.code == "b", BoxUpdate(title="x"))
+            titles = (await session.scalars(sqlalchemy.select(Box.title))).all()
+            assert sorted(titles) == ["one", "two"]
+
+            # a related row through EXISTS is fine
+            box = await view.get_one(Box.rack.has(Rack.code == "b"))
+            assert box.title == "two"
+
+        await engine.dispose()
+
+    asyncio.run(run())

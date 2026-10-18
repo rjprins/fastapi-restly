@@ -660,6 +660,11 @@ sees. When more than one row matches, Restly raises SQLAlchemy's
 `MultipleResultsFound` and does not return the first row: a key that matches
 several rows is a bug in the expression.
 
+The expression compares columns of the view's model. A column of another
+table raises `TypeError`, because SQL would join every row of that table and
+could pick a wrong row. For a condition on a related row, use `.has()` or
+`.any()`, such as `Book.shelf.has(Shelf.code == code)`.
+
 {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` and
 {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` take the
 same expression. So a custom `PATCH /users/by-email/{email}` route that calls

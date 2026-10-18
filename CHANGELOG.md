@@ -403,6 +403,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- An expression in place of an id that names a column of another table,
+  such as `get_one(Shelf.id == 2)` in a view of books, raises `TypeError`.
+  Before, SQL joined every row of that table, so `get_one`, `handle_update`
+  and `handle_delete` could load, change or delete a wrong row. The only
+  sign was a SQLAlchemy warning. For a condition on a related row, use
+  `.has()` or `.any()`.
 - On PostgreSQL, a paginated list of a model with a `json` column works.
   Before, the count of the list failed with "could not identify an equality
   operator for type json". This happened with every `sqlalchemy.JSON`
