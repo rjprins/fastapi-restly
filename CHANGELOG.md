@@ -7,686 +7,261 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+This release reworks how a view reads and writes. The write business
+methods no longer flush: the commit bracket saves after them. `get_one` and
+`get_many` are final, and two hooks, `where_id` and `not_found`, shape them.
+Restly no longer owns a declarative base. A view that still uses an old name
+or a removed override fails when Python creates the class, and the message
+names the replacement.
+
 ### Added
 
-- `fastapi_restly.views` has markers for the view's own types: `ViewID`,
-  `ViewResponse`, `ViewListResponse`, `ViewCreate` and `ViewUpdate`. A route
-  names them, and when the view registers, Restly puts the view's classes in
-  place of them. So a route on a base view or a mixin gets the classes of
-  each view that uses it. A marker works in a parameter annotation, in the
-  return annotation, in `response_model=`, and inside another type, such as
-  `list[ViewResponse]`. A path parameter annotated `ViewID` gets the
-  converter of the id type, such as `{id:int}`. For a type checker, each
-  marker is `Any`.
-
-  ```python
-  from fastapi_restly.views import ViewID, ViewResponse
-
-
-  class RestoreView(fr.AsyncRestView[Any]):
-      @fr.post("/{id}/restore", status_code=200)
-      async def restore(self, id: ViewID) -> ViewResponse: ...
-  ```
-- `fr.views.ReactAdminListParams`, the list params of a react-admin view,
-  with the fields `sort`, `range` and `filter`. To add a query key, such as
-  a search key, subclass it and set the subclass as the view's
-  `schema_list_params`.
-- Four view settings choose the keys of a list: `include_filters`,
+- Markers for the view's own types in `fastapi_restly.views`: `ViewID`,
+  `ViewResponse`, `ViewListResponse`, `ViewCreate` and `ViewUpdate`. When
+  the view registers, Restly puts the view's classes in their place, so a
+  route on a base view or a mixin gets the classes of each view that uses
+  it. They work in annotations, in `response_model=` and inside other types,
+  such as `list[ViewResponse]`.
+- `self.select(*, scope=None)`: `select(self.model)` with the view's scope
+  and loader options. The loads start from it, and so can a custom route.
+- `where_id(id)` returns the WHERE for an id from the path, such as
+  `Recipe.slug == id`. `not_found(id)` returns the error for an id that names
+  no row. Every item route and `self.get_one(id)` use them.
+- Four list settings choose the keys of a list: `include_filters`,
   `exclude_filters`, `include_sort_keys` and `exclude_sort_keys`. An entry is
-  a key as the client sends it, or a pattern: `*` matches any characters
-  except `.`, and `**` matches any characters, as in a file glob with `.` in
-  place of `/`. So `include_filters = ("status", "created_at__*")` keeps the
-  filter on `status` and every filter on `created_at` with a suffix. An entry
-  that a view sets and that matches no key fails when the view registers, and
-  the message lists the keys of the field. `include_sort_keys = ()` removes
-  the `sort` parameter. `fr.query.derive_schema_list_params` takes the four
-  settings as keywords.
-- `sort_query_param` on a view renames the sort parameter, such as
-  `sort_query_param = "order_by"`, to keep the URLs of another library.
-  `fr.query.derive_schema_list_params` takes it too. The old name is then
-  free: a pagination parameter or a filter of your own can be called
-  `sort`. Before, `sort` was always reserved.
-- `unknown_query_params = "ignore"` on a view leaves out a query key that
-  the route does not read, as FastAPI does. The default, `"forbid"`, rejects
-  such a key with `422`, as before. The two values are those of Pydantic's
-  `extra` setting. A project base view sets it once for every view.
+  a key, or a pattern: `*` matches any characters except `.`, and `**`
+  matches any characters. `fr.query.derive_schema_list_params` takes them
+  too.
+- `sort_query_param` renames the sort parameter, such as `"order_by"`.
+- `unknown_query_params = "ignore"` leaves out a query key that the route
+  does not read, as FastAPI does. The default, `"forbid"`, answers `422`, as
+  before.
 - `@fr.list_filter("key")` makes a view method the filter for a query key.
-  The type of the method's value becomes the type of the key, so OpenAPI
-  shows it and a bad value gets `422`, and the docstring becomes its
-  description. The method returns a condition, a clause or `None`. Without a
-  default on the value, the view calls it when the key has a value; with a
-  default, on every list request. On an async view the method can be
-  `async def`, to load data first. A condition on a table that is not in the
-  statement raises `TypeError`, as `where=` does. The key is always on, and a
-  subclass drops it by setting the method's name to `None`, such as
-  `filter_popular = None`. List params of another class, such as a Pydantic
-  model of your own, do not run the filter methods, and a
-  `RestlySkippedFilterMethodsWarning` says so.
-- `apply_filters(stmt, list_params)` on a view applies the client's filters
-  without the sort and the page. A route that counts per category with
-  `GROUP BY` uses it: `ORDER BY` from `apply_list_params` would fail there.
-  `apply_list_params` calls it first.
-- A clause can go into the condition of another clause, written without a
-  call. A model's scope can then follow a relationship, such as
-  `fr.where_clause(Comment.post.has(PostClauses.default_scope))`: a comment
-  is visible when its post is visible. The outer clause reads the context
-  members of the inner clause each time it is applied. A clause function
-  cannot be placed inside an expression this way, and raises `TypeError`
-  with the alternative.
-- `fr.ModelDefaults` adds Restly's model defaults to a declarative base of your
-  own: `class Base(fr.ModelDefaults, DeclarativeBase)`. The models get
-  dataclass constructors that take keyword arguments only, snake_case table
-  names, timezone-aware datetimes, enums stored as strings, and
-  `awaitable_attrs`. The base keeps its own registry and `MetaData`, so it can
-  set a naming convention, and its own `type_annotation_map` entries win over
-  Restly's. Set dataclass options such as `eq=True` on a model: on the base
-  they raise `RestlyConfigurationError`, because SQLAlchemy would apply them
-  to some models only. `fr.ModelDefaults` on a class below another
-  declarative base also raises.
-- `fr.IDMixin` at the top level. Before, it was only in `fr.models`.
-- With `fr.configure(warn_on_misuse=True)`, Restly warns about a writable
-  field on a column with `init=False` and a default, in a schema that you
-  write. The model sets such a column, as with a tenant or an audit column,
-  so the field must be `fr.ReadOnly`. A writable relationship field warns too
-  when its foreign key is such a column.
+  The type of its parameter is the type of the key, and its docstring is the
+  description. It returns a condition, a clause or `None`, and it may be
+  `async def` on an async view.
+- `apply_filters(stmt, list_params)` applies the client's filters without
+  the sort and the page, for a route with `GROUP BY`.
+- `fr.views.ReactAdminListParams`, the list params of a react-admin view.
+  Subclass it to add a key, such as a search key.
+- A clause can go into the condition of another clause, such as
+  `fr.where_clause(Comment.post.has(PostClauses.default_scope))`.
+- `fr.ModelDefaults` adds Restly's model defaults to a base of your own:
+  `class Base(fr.ModelDefaults, DeclarativeBase)`. The models get
+  keyword-only dataclass constructors, snake_case table names, timezone-aware
+  datetimes, enums stored as strings and `awaitable_attrs`. Set dataclass
+  options such as `eq=True` on a model, not on the base.
+- `fr.IDMixin` at the top level.
+- With `warn_on_misuse=True`, Restly warns about a writable field on a column
+  that the model sets itself (`init=False` with a default), such as a tenant
+  column.
 
 ### Changed
 
-- `get_one` and `get_many` are final loads, as the handlers are. A view
-  class that defines one fails when Python creates the class, with a
-  message that names the place for the change. Each load starts from the
-  new `self.select(*, scope=None)`: `select(self.model)` with the view's
-  scope and loader options. A route of your own starts there too, such as
-  `self.select().where(Item.price > 10)`. Two hooks shape the load of one
-  row:
-
-  - `where_id(id)` returns the WHERE for an id from the path. The default
-    compares the primary key. Override it to find the row by a slug.
-  - `not_found(id)` returns the error for an id that names no row. The
-    default is a 404 that names the model and the id. On an async view it
-    may be `async def`.
-
-  A hook that the loads cannot use fails early. An `async def where_id`,
-  and an `async def not_found` on a sync view, fail when Python creates the
-  class. A `where_id` that returns anything other than a SQL condition, or
-  a condition on another table, such as `Shelf.id == id` in a view of
-  books, raises `TypeError`. So does a `not_found` that returns anything
-  other than an exception.
-
-  ```python
-  class RecipeView(fr.AsyncRestView):
-      id_type = str
-
-      def where_id(self, id: str) -> ColumnElement[bool]:
-          return Recipe.slug == id
-  ```
-
-  `GET`, `PATCH` and `DELETE /{id}` and `self.get_one(id)` all use the
-  hooks. A value on each row of a response goes in `to_single_response`
-  when it needs no query. A value from SQL goes on the model as a
-  `column_property`, or in `get_loader_options` with `with_expression`. A
-  read from another source, such as a cache, replaces `get_one_endpoint` or
-  `get_many_endpoint`. `get_many` takes `where=`, as `handle_get_many`
-  does.
-- A model with a composite primary key needs `where_id` for the item
-  routes, and `id_type = str` for an id such as `3-7`. Without `where_id`,
-  the view fails when it registers, and the message says how to split the
-  id. Or leave the item routes out with `exclude_routes`. Before, the view
-  registered, and each item request raised `NotImplementedError`.
+- `get_one` and `get_many` are final, as the handlers are. A view class that
+  defines one, or `select`, fails when Python creates the class. Change the
+  rows with `scope`, the lookup with `where_id`, the list with
+  `apply_list_params`, and the loads with `get_loader_options`. A value on
+  each row goes in `to_single_response`, or in SQL: a `column_property`, or a
+  `with_expression` in `get_loader_options`. A read from another source
+  replaces the endpoint method. `get_many` takes `where=`.
+- A model with a composite primary key needs `where_id` for its item routes,
+  and `id_type = str` for an id such as `3-7`. Without `where_id`, the view
+  fails when it registers.
 - `get_relationship_loader_options` is now `get_loader_options`. It holds
-  everything that a read loads, a `with_expression` too. A view class that
-  defines the old name fails when Python creates the class, with a message
-  that names the new one.
-- A custom route that declares the view's response answers through the
-  view's response step, as the CRUD routes do. So the route can return the
-  row:
-
-  ```python
-  @fr.post("/{id}/archive")
-  async def archive(self, id: int) -> ViewResponse:
-      project = await self.get_one(id)
-      async with self.write_action("archive", obj=project):
-          project.status = ProjectStatus.ARCHIVED
-      return project
-  ```
-
-  With `ViewResponse`, in the return annotation or in `response_model=`, a
-  row goes through `to_response`. With `list[ViewResponse]`, each row goes
-  through `to_single_response`. With `ViewListResponse`, a `ListResult`
-  goes through `to_response(result, ResponseShape.LIST)`. A return
-  annotation of the view's model, such as `-> Project` or
-  `-> list[Project]`, without `response_model=`, works like
-  `ViewResponse`: the route gets the view's response class. Before,
-  FastAPI built the response from the row's attributes, so
-  `to_single_response` did not run, and `-> Project` failed when the view
-  registered. Anything else that the route returns, such as a `Response`,
-  a dict or a schema instance, goes out as before. A route that names a
-  Pydantic class of its own keeps FastAPI's behaviour. This is different
-  from plain FastAPI, because the view sets its response class.
+  everything that a read loads, a `with_expression` too.
+- A custom route that declares the view's response goes through the view's
+  response step, so it can return the row. A row under `ViewResponse` goes
+  through `to_response`, each row under `list[ViewResponse]` through
+  `to_single_response`, and a `ListResult` under `ViewListResponse` through
+  the list response. `-> Project` or `-> list[Project]` for the view's own
+  model works like `ViewResponse`. A route that names a Pydantic class of its
+  own keeps FastAPI's behaviour.
 - The write business methods no longer flush. `create` and `update` return
-  the object, and `delete` only marks the row. The commit bracket saves the
-  result: it adds a new object, flushes, refreshes it and loads the
-  relationships of the response, before `before_action_commit`. So a change
-  after `super().create()` is in the INSERT:
-
-  ```python
-  async def create(self, data):
-      user = await super().create(data)
-      user.password = hash_password(data.password)
-      return user
-  ```
-
-  Before, the INSERT ran inside `super().create()`, and the change came
-  after it as an UPDATE. For a password, the INSERT stored the plain text.
-  Inside `create`, the new object has no id yet. Code that needs the id runs
-  in `before_action_commit`, or calls `session.flush()` first. A `try` or a
-  `with` around `super().create()` no longer catches an error of the INSERT,
-  because the INSERT runs after `create` returns.
+  the object, and `delete` only marks the row. After them, the commit bracket
+  saves: it adds a new object, flushes, refreshes it and the other rows of
+  the view's model that the action wrote, and loads them with the loader
+  options. So a change after `super().create()` is part of the INSERT. Inside
+  `create`, the new object has no id yet: use `before_action_commit`, or call
+  `session.flush()`. A `try` around `super().create()` no longer catches an
+  error of the INSERT.
 - A business method and a `write_action` block run under
-  `session.no_autoflush`. Nothing is written until the save after them, also
-  on a `RestView`, whose session keeps SQLAlchemy's autoflush. Before, a
-  query after `super().create()` on a sync session wrote the half-built
-  object, so a check such as "is this email taken?" found the new row
-  itself. So a query in the change does not see your unflushed rows: a loop
-  that looks a row up and adds it when it is missing, or a count against a
-  limit, calls `flush()` first. Async views already worked this way, because
-  Restly's async session factory has `autoflush=False`.
-- The save also refreshes every other row of the view's model that the
-  action wrote, with the relationships of the response. So a
-  `write_action(..., obj=None)` block that calls `update()` for several rows
-  returns each row as the database has it, also when a foreign key changed.
-  Rows of other models are written but not refreshed.
-- `write_action(action, *, obj, data=None)`: `obj` is required, and it names
-  the row that the action is about. It is a row from the database, a new
-  object that the action creates, or `None`. For a new object, `authorize`
-  gets `obj=None`, as on `POST /`, and Restly adds the object to the session
-  when the block starts. A detached row is added back; a row that another
-  open session holds raises `TypeError`. The block gets nothing from `as`. A block that set `w.obj` now passes the new object
-  as `obj`:
-
-  ```python
-  upload = Upload(filename=file.filename)
-  async with self.write_action("create", obj=upload):
-      await self.session.flush()  # upload.id, for the lines
-      ...
-  return upload
-  ```
-
-  `write_action("create")` without `obj` raises `TypeError`. A block that
-  changes a foreign key now answers with the new related row, because the
-  save refreshes `obj`. Before, it answered with the old one.
-- `new` and `old` in the hooks come from the row that the action is about.
-  `old` is that row before the action, and `new` is the row after the save,
-  or `None` when the row is gone. So a soft delete through `DELETE /{id}`
-  gives the row as `new`, as a `write_action("delete", obj=row)` block
-  already did, and a block that deletes its `obj`, such as a merge, gives
-  `new=None`.
-- A `create` or `update` that returns `None`, or anything that is not one
-  object of a model, such as a list, raises `TypeError`, and nothing is
-  committed. Before, the change was committed, and the hooks got
-  `new=None`, the shape of a delete.
-- The request body is `data` in every view method, as it already was in
-  `authorize` and `write_action`: `create(self, data)`,
-  `update(self, obj, data)`, `handle_create(data)`, `handle_update(id, data)`,
-  `create_endpoint(self, data)` and `update_endpoint(self, id, data)`.
-  Before, these called it `schema_obj`. Rename the parameter in your
-  overrides too: Pyright reports an override with another name, because a
-  caller could pass the argument by keyword. Nothing changes in the HTTP API.
-- A write action inside a shared commit that raises after it changed
-  objects stops the commit, also when the route catches the error: the commit
-  raises `RuntimeError`, and nothing is committed. Before, the half-done
-  change of a refused row was committed with the others. Put
-  `session.begin_nested()` around each write that may fail, as the docs
-  show: the rollback of the savepoint undoes its change, and the commit goes
-  on. An error from `authorize` or the reference check changed nothing, and
-  does not stop the commit.
-- The write bracket checks the references in the data of a write, after
-  `authorize` and before the business method. So a `create` or `update` of
-  your own that builds the object itself is still checked, and so is the
-  `data=` of `write_action`. The check also covers the schemas nested in the
-  data, such as the lines of an order, and each item of a list. Before, only
-  `make_new_object` and `update_object` checked, and only the top-level
-  fields of their schema. The message names the place of a nested id:
-  `Id not found for lines[1].product_id: 7`. One query checks all the ids of
-  one model, and the builders in `fr.objects` take the rows from that check,
-  so a write runs no extra query.
-- A handler or a `write_action` inside a `write_action` block joins the
-  commit of that block, as inside `shared_write_action_commit()`. The
-  outermost block commits once, and then the queued `after_action_commit`
-  hooks run. Before, the inner handler committed the session, with the
-  changes of the outer block so far. If the outer block then raised, those
-  changes stayed saved. A direct `session.commit()` inside a `write_action`
-  block now raises `RuntimeError`, because the block owns the commit.
-- A replaced endpoint method gets the view's types only from the markers of
-  `fastapi_restly.views`. Before, registration filled them in by parameter
-  name where the method had no annotation or `Any`: `id` got the id type,
-  `schema_obj` got the create or update body, and the return got the
-  response model. The built-in endpoint methods now use the markers, such as
-  `get_one_endpoint(self, id: ViewID) -> ViewResponse`. A replaced method
-  without annotations now gets no types: `schema_obj` becomes a query
-  parameter, and OpenAPI shows an empty response schema. Add the markers:
-
-  ```python
-  # Before
-  @fr.post("/", dependencies=[Depends(require_admin)])
-  async def create_endpoint(self, schema_obj): ...
-
-  # After
-  from fastapi_restly.views import ViewCreate, ViewResponse
-
-
-  @fr.post("/", dependencies=[Depends(require_admin)])
-  async def create_endpoint(self, data: ViewCreate) -> ViewResponse: ...
-  ```
-
-  `list_params` still takes the view's list params by its name.
-- The `422` for an unknown query key is now a `RequestValidationError`, as
-  for a bad query value, so an exception handler for
-  `RequestValidationError` gets it too. Before, it was an `HTTPException`.
-  The response body is the same.
-
-- A list has no dotted filter keys and no dotted sort keys by default, such
-  as `?vendor.name=` or `?sort=vendor.name`. Clients that send them now get
-  `422`. Turn them on with `include_filters = ("**",)` and
-  `include_sort_keys = ("**",)`, or with a narrower pattern such as
-  `("*", "vendor.*")`. Each dotted key is a join that a client can add, and a
-  new field on a nested schema would add keys to every list that nests it.
-  `fr.query.derive_schema_list_params` has the same default. Its model
-  ignores a key that it does not have, so a route of your own that uses it
-  now ignores a dotted key without an error. Pass `include_filters=("**",)`
-  and `include_sort_keys=("**",)` to keep them.
-- A sort key that the list does not have now gets `422` from the list
-  params, not `400`. The description of `sort` in OpenAPI lists the sort
-  keys. A sort key never goes through a to-many relationship.
-- On `AsyncRestView` and `AsyncReactAdminView`, `apply_list_params` is now
-  `async def`: write `await self.apply_list_params(...)`. An override must
-  be `async def` and call `await super().apply_list_params(...)`. A plain
-  `def` override fails when the class is defined, with a message that says
-  so. On a sync view, an `async def` override fails the same way.
-- `apply_list_params` and `apply_filters` on a view validate a
-  `QueryParams` or a mapping through `schema_list_params` first, as the list
-  route does. A bad `sort` or `page_size`, or a bad value for a filter of the
-  view's own, raises `RequestValidationError`, which is a `422`. A key that
-  the list params do not have raises it too, as on the list route. Only in a
-  `QueryParams`, a key that the route reads, such as `?mode=`, is left out.
-  A bad value for a generated filter still raises
-  `BadQueryParam`, a `400`, as on the list route. A mapping without
-  `page_size` gets the default page size, so `view.get_many({})` now returns
-  the first page, not every row.
+  `session.no_autoflush`, also on a sync view. A query there does not see your
+  unflushed changes, so a get-or-create loop or a count against a limit calls
+  `flush()` first.
+- `write_action(action, *, obj, data=None)`: `obj` is required. It is a row
+  from the database, a new object that the action creates, or `None` for an
+  action on several rows. For a new object, Restly adds it to the session,
+  and `authorize` gets `obj=None`. The block gets nothing from `as`: pass the
+  new object as `obj` instead of setting `w.obj`.
+- `new` and `old` in the hooks follow the row that the action is about. So a
+  soft delete through `DELETE /{id}` gives the row as `new`, and a block that
+  deletes its `obj` gives `new=None`.
+- A `create` or `update` that does not return one object of a model raises
+  `TypeError`, and nothing is committed.
+- The request body is `data` in every view method: `create(self, data)`,
+  `update(self, obj, data)`, the handlers and the endpoint methods. Rename the
+  parameter in your overrides; Pyright reports the old name.
+- The write bracket checks the references in the data after `authorize` and
+  before the business method, also in nested schemas and in each item of a
+  list. So a `create` that builds the object itself is checked, and so is the
+  `data=` of `write_action`.
+- A handler or a `write_action` inside a `write_action` block joins its
+  commit, as inside `shared_write_action_commit()`. A direct
+  `session.commit()` inside a block raises `RuntimeError`.
+- Inside a shared commit, a write action that raises after it changed objects
+  stops the commit, also when the route catches the error. Put
+  `session.begin_nested()` around each write that may fail.
+- A database conflict in a write is a `fr.exc.Conflict` (409), raised by the
+  write block, with the `IntegrityError` as its `__cause__`. So a handler or
+  an `except` for `IntegrityError` around a block no longer sees it: catch
+  `fr.exc.Conflict` instead. Inside `shared_write_action_commit()` the error
+  stays raw. A handler for `fr.exc.RestlyHTTPError` now shapes conflicts too.
+  Code outside a write block gets the raw `IntegrityError`.
+- A replaced endpoint method gets the view's types only from the markers,
+  not from its parameter names. Annotate it, such as
+  `create_endpoint(self, data: ViewCreate) -> ViewResponse`. `list_params`
+  still works by its name.
+- A list has no dotted filter keys and no dotted sort keys by default, such as
+  `?vendor.name=`. Turn them on with `include_filters = ("**",)` and
+  `include_sort_keys = ("**",)`, or with a narrower pattern.
+  `fr.query.derive_schema_list_params` has the same default. A sort key never
+  goes through a to-many relationship.
+- An unknown sort key gets `422`, not `400`. The `422` for an unknown query
+  key is a `RequestValidationError`, not an `HTTPException`; the body is the
+  same.
+- The `400` texts of a list name the problem: `Unknown sort key: 'nope'`,
+  `Unknown filter key: 'nope'`, or `Invalid filter value for 'age': 'old'.`
+  with Pydantic's reason. A field validator that raises another exception
+  gives `500`.
+- On async views, `apply_list_params` is `async def`. An override must match
+  its view: `async def` on an async view, `def` on a sync one.
+- `apply_list_params` and `apply_filters` validate a `QueryParams` or a
+  mapping through `schema_list_params` first, as the list route does. A
+  mapping without `page_size` gets the default page size, so
+  `get_many({})` returns the first page, not every row.
 - A response field named like a pagination parameter, such as `page`, fails
   only when it gets a filter key. Leave the key out with
-  `exclude_filters = ("page",)`. Before, such a field always failed when the
-  view registered.
-- A view with a declared `schema_list_params` fails when it registers if the
-  list params do not follow its list settings (the four key settings and
-  `sort_query_param`) and its filter methods. A view that inherits a setting
-  from a base view sets it again, to the value that the list params were
-  created with. Hand-written list params take no list settings and no
-  filter methods. The message says what to change.
-- A subclass that changes `pagination`, a list setting or a filter method
-  gets new `schema_list_params` when its base declares the list params that
-  Restly would generate for the base, made with
-  `fr.query.derive_schema_list_params`, as a subclass with a new `schema`
-  does. Before, the subclass failed when it registered. Other declared list
-  params, such as ones from a narrower schema, stay, and the subclass still
-  fails.
-- React-admin views reject the four key settings, `sort_query_param` and
-  `@fr.list_filter` when they register. React-admin sends its filters in its
-  own `filter` parameter. A react-admin view that inherits a setting from a
-  base view sets the default again, such as `exclude_filters = ()`.
-- The list route of a react-admin view declares `list_params`, as every list
-  route does. Its `schema_list_params` is `fr.views.ReactAdminListParams`.
-  The fields `sort`, `range` and `filter` are `pydantic.Json`, so Pydantic
-  parses the JSON of each key. `apply_list_params`, `apply_filters` and
-  `to_list_response` read the parsed values from these list params: `sort`
-  as `("name", "DESC")`, `range` as `(0, 24)` and `filter` as a dict. So an
-  override of these methods now gets the list params. Before, it got a
-  private object with the same values. A mapping that you pass to these
-  methods holds query values, so `sort`, `range` and `filter` are JSON text,
-  as on the other views. A route of your own on a react-admin view gets the
-  list params when it declares `list_params`. List params that are not a
-  subclass of `ReactAdminListParams` fail when Python defines the class.
-- A react-admin view with pagination that it cannot use now fails when
-  Python defines the class, not when the view registers. This is
-  `pagination = None`, or pagination settings other than the two page sizes.
-- The test clients now accept any success status (2xx) by default. Before,
-  each method expected one status, such as `201` for POST. So a POST action
-  that returns `200` now passes without `assert_status_code`. No test starts
-  to fail, but some checks are looser: to test for an exact status, such as
-  `201` on create, pass it.
-- `assert_status_code=None` now skips the status check. Before, it accepted
-  any status below 400.
-- `fr.clauses.UNSCOPED` is now a `WhereClause`. Its condition is SQL `TRUE`,
-  so it goes everywhere a clause goes: calling it returns `sqlalchemy.true()`,
-  and `Model.relationship.has(UNSCOPED)` works. The type
-  `WhereClause | Unscoped` is now just `WhereClause`, and `fr.all_of`,
-  `fr.any_of` and `fr.none_of` always return a `WhereClause`. So pyright now
-  accepts `Comment.post.has(PostClauses.default_scope)`. Code that uses
-  `isinstance(x, WhereClause)` to mean "a real filter" now also matches
-  `UNSCOPED`: test `x is fr.clauses.UNSCOPED` first.
-- Models compare by identity, as SQLAlchemy models without dataclasses do:
-  two objects are equal only when they are the same object. This holds for
-  `fr.ModelDefaults`, `fr.IDMixin` and `fr.TimestampsMixin`. Before, two
-  objects of a model on `fr.DataclassBase` were equal when their fields were
-  equal, and a model object could not go in a `set`. To compare a model by
-  its fields again, pass `eq=True` on it: `class Post(fr.IDMixin, Base, eq=True)`.
-  A dataclass mixin of your own declares the same options as `fr.IDMixin`:
-  `class Stamped(MappedAsDataclass, kw_only=True, eq=False, repr=False)`. A
-  mixin without `eq=False` makes each model that uses it compare fields, so
-  `fr.ModelDefaults` raises `RestlyConfigurationError` for such a model,
-  unless the model passes `eq=True` or writes its own `__eq__`.
-- The repr of a model on `fr.ModelDefaults` no longer loads anything. It shows
-  the primary key and the other columns that are loaded, such as
-  `Post(id=1, title='Hello')`. `...` stands for columns that are not loaded,
-  and relationships are left out. Before, the dataclass repr read every field,
-  so in async code it raised `MissingGreenlet` for a relationship or a column
-  that was not loaded. Pass `repr=True` on a model for the dataclass repr. A
-  dataclass mixin of your own adds `repr=False`. Without it, the model gets a
-  dataclass repr, so `fr.ModelDefaults` raises `RestlyConfigurationError`,
-  unless the model passes `repr=True` or writes its own `__repr__`. A model
-  that uses `fr.IDMixin` or `fr.TimestampsMixin` on a base without
-  `fr.ModelDefaults` gets Python's default repr.
-- `restly new` generates `app/models.py` with the project's own
-  `class Base(fr.ModelDefaults, DeclarativeBase)`. The models, `alembic/env.py`,
-  the test setup and `create_all` use that `Base` instead of
-  `fr.DataclassBase`.
-- A database conflict in a write is now a `fr.exc.Conflict` (409), raised by
-  Restly's write block instead of an exception handler on the app. A CRUD
-  write or a `write_action` block in a custom route turns an
-  `IntegrityError` into `Conflict`, with the `IntegrityError` as its
-  `__cause__`. Inside a `shared_write_action_commit()` block the error stays
-  raw, so a bulk route can still catch the error of one row. An
-  `IntegrityError` that escapes the outermost block, or that its commit
-  raises, becomes the `409`. The default body
-  is the same as before. With a handler for `fr.exc.RestlyHTTPError`, such as
-  a problem details handler, conflicts now get that handler's body. Code
-  outside a write block, such as a bare `View` route that commits itself,
-  now gets the raw `IntegrityError` instead of a `409`. A route that caught
-  `IntegrityError` around its own `write_action` block catches
-  `fr.exc.Conflict` instead.
-- Each field of the update body keeps the type that it has in the view's
-  schema. The client may still leave out every field, but `null` is valid
-  only where the type allows `None`, as in the create body. Before, the
-  update body made each type `Optional`. So `PATCH {"title": null}` for a
-  field `title: str` passed validation, and the database rejected it with
-  `409`. Now it returns `422`. A field validator in the default `after` mode
-  no longer gets `None` for such a field. A `before` or `wrap` validator
-  still gets the client's `null`, as in the create body. A field typed `str`
-  on a nullable column can no longer be set to `null` with `PATCH`; type it
-  `str | None` for that. In OpenAPI, `title` in the update body is `string`
-  instead of `string | null`.
-- In a schema that Restly generates, for a view without `schema`, a field
-  allows `null` only when its column is nullable. Before,
-  `count: Mapped[int] = mapped_column(default=3)` got the field
-  `int | None`. Then `POST {"count": null}` stored the default, and
-  `PATCH {"count": null}` returned `409` from the database. Both now return
-  `422`. The client may still leave the field out, and then the default
-  applies. In OpenAPI, the field is `integer` instead of `integer | null`.
-  `mapped_column(nullable=...)` now wins over the annotation, as in
-  SQLAlchemy: `Mapped[int]` with `nullable=True` allows `null`.
-- The create body of a generated schema follows the model's constructor, as
-  SQLAlchemy does. The client may leave out a field when its column is
-  nullable, or when the constructor does not require it and the model then
-  still gives the column a value. On a dataclass model, a column with only
-  an `insert_default` or a `server_default` is a required argument of the
-  constructor, so its field is now required too. Add `default=None` to let
-  the client leave it out: `mapped_column(server_default="x", default=None)`.
-  A `default_factory`, or a `default` other than `None`, also lets the client
-  leave the field out. On a JSON column, use `default_factory=list` or
-  `JSON(none_as_null=True)` instead: SQLAlchemy 2.0 stores a `None` default
-  as JSON `null`, so Restly keeps that field required. A `Computed` column
-  needs `init=False`, which makes its field `ReadOnly`.
-- The `400` answers of a list request say what is wrong. Before, the
-  generated list params said "Invalid attribute in URL query: age" both for a
-  sort or filter field that does not exist and for a bad filter value. Now
-  it is `Unknown sort key: 'nope'`, `Unknown filter key: 'nope'`, or
-  `Invalid filter value for 'age': 'old'.` followed by Pydantic's reason,
-  such as `Input should be a valid integer, unable to parse string as an
-  integer`. An exception from a field validator that is not a validation
-  error is now a `500`, as for a request body, instead of a `400`. Code or
-  tests that compare the old texts must change. The texts for a bad `page`
-  or `page_size` changed too.
-- A react-admin view answers `422` instead of `400` for JSON in `sort`,
-  `range` or `filter` that does not have their shape. So does a `range` with
-  a negative start, an end before its start, an end past the largest offset
-  that the database takes (before, a `500`), or more rows than
-  `max_page_size`. The error names the place, such as
-  `["query", "sort", 1]`, as for a bad value of other list params. A sort
-  key or a filter that the view cannot apply is still a `400`. It is now a
-  `fr.exc.BadQueryParam`. Before, it was a plain `HTTPException`, so a
-  handler for `fr.exc.RestlyHTTPError` did not shape it. An unknown sort key
-  now says `Unknown sort key` instead of `Unknown filter field`.
-- A react-admin view checks a filter value against the column's type with
-  Pydantic, as the generated list params do. Before, it called the type on the
-  value. So `{"active": "false"}` matched the rows where `active` is true,
-  a date such as `"2020-01-01"` returned `400`, and a bad decimal or UUID
-  returned `500`. A bad value now returns `400` with Pydantic's reason, and
-  names the field as the client wrote it, also with an alias.
+  `exclude_filters = ("page",)`.
+- A declared `schema_list_params` must follow the view's list settings and
+  filter methods, or the view fails when it registers. A subclass that
+  changes `pagination` or a list setting gets new list params when its base
+  uses generated ones.
+- React-admin views reject the list key settings, `sort_query_param` and
+  `@fr.list_filter`.
+- The list route of a react-admin view declares `list_params`. Overrides of
+  `apply_list_params`, `apply_filters` and `to_list_response` get the parsed
+  values: `sort` as `("name", "DESC")`, `range` as `(0, 24)` and `filter` as
+  a dict.
+- A react-admin view answers `422` instead of `400` for a `sort`, `range` or
+  `filter` with the wrong shape, and for a bad `range`. A sort key or a filter
+  that it cannot apply is a `fr.exc.BadQueryParam` (400).
+- A react-admin view with pagination that it cannot use fails when Python
+  creates the class.
+- Each field of the update body keeps its type from the view's schema, so
+  `null` is valid only where the type allows `None`. `PATCH {"title": null}`
+  for `title: str` gets `422` now, not `409` from the database.
+- In a generated schema, a field allows `null` only when its column is
+  nullable.
+- The create body of a generated schema follows the model's constructor. On a
+  dataclass model, a column with only an `insert_default` or a
+  `server_default` is now a required field. Add `default=None` to let the
+  client leave it out.
+- Models compare by identity, as plain SQLAlchemy models do. Pass `eq=True`
+  on a model to compare its fields. A dataclass mixin of your own declares
+  `kw_only=True, eq=False, repr=False`, as `fr.IDMixin` does.
+- The repr of a model on `fr.ModelDefaults` shows the loaded columns and loads
+  nothing, so it no longer raises `MissingGreenlet`. Pass `repr=True` on a
+  model for the dataclass repr.
+- `restly new` generates the project's own `Base` in `app/models.py`.
+- `fr.clauses.UNSCOPED` is a `WhereClause` with the condition `TRUE`, so it
+  goes everywhere a clause goes. `isinstance(x, WhereClause)` now matches it
+  too.
+- The test clients accept any 2xx status by default. Pass
+  `assert_status_code` for an exact status. `assert_status_code=None` skips
+  the check.
 
 ### Removed
 
 - The view methods `make_new_object`, `update_object` and `save_object`. Use
-  `super().create(data)` and `super().update(obj, data)`; the commit bracket
-  saves. For another model, use the functions in
-  `fr.objects`. A view class that defines one of the old names fails when
-  Python creates the class, with a message that names the replacement.
-- `fastapi_restly.views.run_write_action` and `async_run_write_action`. The
-  commit bracket has one public form, `self.write_action(...)`. The CRUD
-  handlers use a private one. An import of the old names fails.
-- The handle that `write_action` gave to `as`, and its `obj`. Pass the new
-  object as `obj` instead. The `RuntimeError` for a block that did not set
-  `w.obj` is gone with it.
-- `fr.RefExists`, and with it the `scope=` argument of a reference check.
-  Write a reference as `fr.MustExist[int, Post]`. It finds the rows of the
-  model's `default_scope`, under the rules of the session. A tenant rule goes
-  on the session, as the multi-tenancy guide shows. A rule for one caller or
-  one action goes in `authorize`. `fr.RefExists` now raises `AttributeError`
-  with this advice.
-- `fr.MustExist[int]` without a model. It took the model from the foreign
-  key of the column on the model that is written. But a schema can also
-  write another model, as the `data=` of `write_action` can, and then the
-  check used the wrong table. Name the model: `fr.MustExist[int, Project]`.
-  The one-argument form raises `TypeError`, and Pyright and mypy report it
-  too.
-- `fr.DataclassBase` and `fr.IDBase`. Restly no longer owns a declarative
-  base. Every app that used them shared one registry and one `MetaData`
-  inside Restly. So the tables of one package ended up in the migrations of
-  another, and to add a naming convention you had to change Restly's object.
-  Declare one base of your own for the whole app instead. Put it in one
-  module, and import it from there in every module with models. The tables,
-  their names and their column types stay the same, so Alembic finds no
-  difference:
+  `super().create(data)` and `super().update(obj, data)`, and `fr.objects`
+  for another model.
+- `run_write_action` and `async_run_write_action`. Use `self.write_action()`.
+- `fr.RefExists` and the `scope=` of a reference check. Write
+  `fr.MustExist[int, Post]`. A tenant rule goes on the session, and a rule for
+  one caller goes in `authorize`.
+- `fr.MustExist[int]` without a model. Name the model:
+  `fr.MustExist[int, Project]`.
+- `fr.DataclassBase` and `fr.IDBase`. Declare one base of your own for the
+  app:
 
   ```python
-  from sqlalchemy.orm import DeclarativeBase
-
   class Base(fr.ModelDefaults, DeclarativeBase):
       pass
+
 
   class Post(fr.IDMixin, Base):  # was: class Post(fr.IDBase)
       title: Mapped[str]
   ```
 
-  Then use `Base` everywhere you used `fr.DataclassBase` or `fr.IDBase`:
-
-  - `class Tag(fr.DataclassBase)` becomes `class Tag(Base)`.
-  - `sa.Table("post_tag", fr.DataclassBase.metadata, ...)` becomes
-    `sa.Table("post_tag", Base.metadata, ...)`.
-  - `configure_tests(base=Base)`, `create_all(Base)` and
-    `async_create_all(Base)`.
-  - `target_metadata = Base.metadata` in `alembic/env.py`.
+  Use `Base` where you used `fr.DataclassBase`: in the models,
+  `sa.Table(..., Base.metadata, ...)`, `configure_tests(base=Base)`,
+  `create_all(Base)` and `target_metadata` in `alembic/env.py`. The tables
+  stay the same, so Alembic finds no difference.
 - The `install_default_exception_handlers` argument of `fr.configure`, and the
-  `IntegrityError` handler that `fr.configure(app)` and `fr.include_view`
-  installed on the app. The argument did not work: `include_view` installed
-  the handler anyway. Restly no longer installs an exception handler, so
-  there is nothing to turn off. To give conflicts your own body, register a
-  handler for `fr.exc.RestlyHTTPError` or `fr.exc.Conflict`. A handler for
-  `IntegrityError` of your own, as the 0.11 docs showed, no longer runs for a
-  conflict in a CRUD write or a `write_action` block, because the block raises
-  `fr.exc.Conflict` first. Register it for `fr.exc.Conflict` instead; the
-  original error is `exc.__cause__`.
-- `fr.utils.CurrentSettingsMixin`, and the `fr.utils` module with it. An app
-  reads its settings in only two places, the application factory and
-  `alembic/env.py`, so it does not need a shared instance. Use a plain
-  `pydantic-settings` class with a `get_settings()` function, and give the
-  factory an optional `settings` argument:
-
-  ```python
-  class Settings(BaseSettings):  # was: (fr.utils.CurrentSettingsMixin, BaseSettings)
-      database_url: str
-
-
-  def get_settings() -> Settings:
-      return Settings()  # type: ignore[call-arg]
-
-
-  def create_app(settings: Settings | None = None) -> FastAPI:
-      if settings is None:
-          settings = get_settings()  # was: settings = Settings.current
-      ...
-  ```
-
-  Pyright and mypy report `Settings()` as a call with a missing argument,
-  because they do not know that pydantic-settings reads `database_url` from
-  the environment. `get_settings()` keeps that `# type: ignore` in one place,
-  as in the project that `restly new` makes. A test passes its own settings
-  to the factory: `app = create_app(Settings(database_url=..., _env_file=None))`,
-  in place of `Settings.use(...)` and then `create_app()`. In `alembic/env.py`,
-  use `get_settings().database_url` in place of `Settings.current.database_url`.
-- `route_options` on a view. Override the endpoint method instead, and pass
-  the route arguments to its decorator, as in FastAPI. The method calls the
-  method of the base class, so the route works as before, and Restly still
-  fills in the response model and the list params:
-
-  ```python
-  class InvoiceView(fr.AsyncRestView):
-      # was: route_options = {fr.ViewRoute.GET_MANY: {"summary": "List invoices"}}
-      @fr.get("/", summary="List invoices", operation_id="billing_list")
-      async def get_many_endpoint(self, list_params):
-          return await super().get_many_endpoint(list_params)
-  ```
-
-  `route_options` was a second place for the route arguments, and a type
-  checker could not check its keys and values. A subclass that set it
-  replaced the whole mapping of its base, so a `dependencies` entry for one
-  route could disappear without an error. A view that still sets
-  `route_options` raises `RestlyConfigurationError`.
-- `extra_query_params` on a view. The unknown-key check accepts every query
-  key that the route declares. So declare a key of your own where your code
-  uses it. Then it has a type, and OpenAPI shows it. Use the place that fits
-  what the key does:
-
-  - A key that filters the rows: `@fr.list_filter("key")` on a view method.
-  - A key that changes the response: a parameter of the endpoint method, as
-    in `async def get_many_endpoint(self, list_params, as_text: bool = False)`.
-  - A value that other methods or the scope need: a dependency, in a class
-    attribute with `Depends(...)`, or `Current.depends(...)`.
-  - Keys that are only known at run time, such as a family `extra.<name>`
-    that your code reads from `self.request`: `unknown_query_params = "ignore"`.
-
-  React-admin views follow the same rules. A view that still sets
-  `extra_query_params` raises `RestlyConfigurationError`.
-- `react_admin_query_params` on the react-admin views. The three keys are the
-  fields of the view's `schema_list_params`.
+  `IntegrityError` handler that Restly installed. For your own body, register
+  a handler for `fr.exc.Conflict` or `fr.exc.RestlyHTTPError`; the original
+  error is `exc.__cause__`.
+- `fr.utils` with `CurrentSettingsMixin`. Use a plain pydantic-settings class
+  and a `get_settings()` function, as the project from `restly new` does, and
+  pass the settings to your app factory in tests.
+- `route_options`. Replace the endpoint method, pass the route arguments to
+  its decorator, as in FastAPI, and call `super()`.
+- `extra_query_params`. Declare the key where your code reads it: with
+  `@fr.list_filter`, as a parameter of the endpoint method, or as a
+  dependency. For keys that are known only at run time, set
+  `unknown_query_params = "ignore"`.
+- `react_admin_query_params`. The keys are the fields of the view's
+  `schema_list_params`.
 
 ### Fixed
 
-- After a write, the response has the values that the loader options load.
-  On an async view, a `to_single_response` that read a relationship from
-  `get_loader_options` failed with `MissingGreenlet` after `PATCH`, and a
-  `with_expression` value was missing after `POST` and `PATCH`. One reload
-  now covers the row of the write and the other rows of the view's model
-  that the action wrote, with the loader options.
-- Pyright and mypy report an unknown name on `fr`, such as `fr.NotAThing`.
-  Before, the package's module `__getattr__`, which loads `fr.testing` when
-  it is first used, made both accept every name.
-- An expression in place of an id that names a column of another table,
-  such as `get_one(Shelf.id == 2)` in a view of books, raises `TypeError`.
-  Before, SQL joined every row of that table, so `get_one`, `handle_update`
-  and `handle_delete` could load, change or delete a wrong row. The only
-  sign was a SQLAlchemy warning. For a condition on a related row, use
-  `.has()` or `.any()`.
-- On PostgreSQL, a paginated list of a model with a `json` column works.
-  Before, the count of the list failed with "could not identify an equality
-  operator for type json". This happened with every `sqlalchemy.JSON`
-  column. A `JSONB` column was not affected. The count ran `DISTINCT` over
-  every column of the model, and PostgreSQL cannot compare `json` values.
-  Now the count selects only the primary key of the model that the list
-  selects. So the count also no longer runs the subquery of a
-  `column_property` for every row. For a model with concrete table
-  inheritance, the count also selects the discriminator, because each table
-  numbers its own rows.
-- On FastAPI 0.115, a module with `from __future__ import annotations` can
-  now declare a route on a mixin or a parent view, and a custom list route
-  that takes `list_params`. Before, when the annotations of such a route
-  named a schema, an enum or a type alias from that module, the view failed
-  when it registered, or a valid request returned 422. FastAPI 0.128 and
-  later were not affected.
-- On Python 3.14, a `get_many_endpoint` keeps the return type that its
-  author wrote when the view inherits it from a mixin, or from a base view
-  that is not registered. Before, registration replaced it with the list
-  response that Restly generates. OpenAPI showed the wrong response, and a
-  request failed with a `ResponseValidationError`.
-- Restly calls the model's constructor with the fields that the client sent,
-  as code that builds the object itself would. A field that the client
-  leaves out, with the value `None`, is no longer passed, unless the
-  constructor requires it. So the model's default applies. Before, Restly
-  passed `None`: most columns still got their column default, but a JSON
-  column stored JSON `null`, and a `default_factory` of the constructor was
-  lost. This also holds for a reference field, such as
-  `author_id: fr.IDRef[User] | None = None`, on a foreign key column.
-- A validator or serializer for a `ReadOnly` field, or for a primary key that
-  the server generates, no longer makes the view fail when it registers.
-  Before, it needed `check_fields=False`. The request bodies do not have the
-  field, so they do not run the validator. The response class has the field
-  and runs it.
+- On an async view, a `to_single_response` that reads a relationship from
+  `get_loader_options` no longer fails after `PATCH`, and a `with_expression`
+  value is there after `POST` and `PATCH`.
+- An expression in place of an id that names a column of another table, such
+  as `get_one(Shelf.id == 2)` in a view of books, raises `TypeError`. Before,
+  SQL joined every row of that table, so a write could change a wrong row.
+- On PostgreSQL, a paginated list of a model with a `json` column works. The
+  count now counts the primary keys, so it also no longer computes a
+  `column_property` for every row.
+- Restly no longer passes `None` to the model's constructor for a field that
+  the client left out, unless the constructor requires it. So the model's
+  defaults apply. Before, a left-out JSON field stored `null`, and a
+  `default_factory` was lost.
+- A validator for a `ReadOnly` field or for a generated primary key no longer
+  needs `check_fields=False`.
 - A field type with `Annotated` inside `Optional`, such as
-  `Annotated[fr.IDRef[User], Field(...)] | None`, `constr(...) | None` or
-  `fr.MustExist[UUID, Team] | None`, now works like the plain type. Before,
-  Restly did not look inside the `Annotated`:
-  - The list filters gave such a field the range filters (`__gte` and the
-    others) for every type. On a bool they returned `500`. A UUID, a plain
-    `Enum` or an `IDRef` no longer gets them, as with the plain type, so a
-    client that sends one now gets `422`. Such a string now gets `__contains`
-    and `__icontains`. Such a nested schema now gets the dotted filters and
-    sort keys, such as `?author.name=Alice`, when the view turns them on.
-  - Restly did not see such an `IDRef` or `IDSchema` as a reference. A field
-    named after a foreign key column returned `500` on every create or update
-    that sent it. A field named after a relationship returned `500` on create
-    when the foreign key is a required argument of the model. A foreign key
-    and its relationship that name different rows were saved, instead of
-    returning `422` ("Conflicting references"). OpenAPI did not name the
-    referenced resource of a field named after a relationship, and
-    `warn_on_misuse` did not warn about an `IDRef` on a foreign key column.
-  - An async view returned `500` when such a nested schema had a nested
-    schema of its own, because Restly did not load the second level.
-- A schema that names itself in a to-one field, such as
-  `parent: CategorySchema | None` inside `CategorySchema`, no longer makes
-  the view fail with `RecursionError` when it registers. The list filters
-  follow it one step: with dotted keys on, `?parent.name=` works, and
-  `?parent.parent.name=` does not.
-- OpenAPI shows the `sort`, `range` and `filter` parameters of the list
-  route of a react-admin view, each with a description of its JSON. Before,
-  it showed no query parameters for this route.
-- A subclass of a react-admin view keeps the `schema_list_params` that its
-  base view declares, such as list params with a search key. Before, it got
-  the three keys of react-admin again.
+  `fr.MustExist[UUID, Team] | None`, works like the plain type: in the list
+  filters, as a reference, and in the loads of an async view.
+- A schema that names itself in a to-one field no longer fails with
+  `RecursionError`.
+- A react-admin view checks a filter value with Pydantic. Before,
+  `{"active": "false"}` matched the rows where `active` is true, and a bad
+  UUID gave `500`.
+- OpenAPI shows the `sort`, `range` and `filter` parameters of a react-admin
+  list. A subclass of a react-admin view keeps the list params of its base.
+- Pyright and mypy report an unknown name on `fr`.
+- Fixes for FastAPI 0.115 with `from __future__ import annotations`, and for
+  Python 3.14.
 
 ### Security
 
-- A schema that Restly generates, for a view without `schema`, now marks
-  each column with `init=False` as `ReadOnly`. Before, the client could write
-  such a column. For a tenant column with `insert_default=Current.org_id`, a
-  create could put the row in another organization, and a PATCH could move
-  it there. A column that the constructor does not take is set by the model
-  or by the server: with a column default, a mapper event or the view's
-  `create`. So the request bodies no longer have these columns.
-
-  This also applies to a foreign key with `init=False`, such as `author_id`
-  next to an `author` relationship. A generated schema no longer lets the
-  client set it. A client that still sends it gets no error: Restly ignores
-  the value, as for every `ReadOnly` field. To let the client write such a
-  column, remove `init=False`, so that the constructor takes it.
+- A generated schema marks each column with `init=False` as `ReadOnly`,
+  foreign keys too. Before, a client could write such a column, such as a
+  tenant column, and so put a row in another organization. A client that
+  still sends such a field gets no error: Restly ignores the value. To let
+  the client write such a column, remove `init=False`.
 
 ## [0.11.0] - 2026-10-09
 
