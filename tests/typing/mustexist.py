@@ -34,6 +34,7 @@ class Account(Base):
 class CommentSchema(fr.BaseSchema):
     post_id: fr.MustExist[int, Post]  # -> int
     account_id: fr.MustExist[UUID, Account]  # -> UUID
+    related_ids: list[fr.MustExist[int, Post]]  # -> list[int]
 
 
 if TYPE_CHECKING:
@@ -41,3 +42,4 @@ if TYPE_CHECKING:
     _comment = cast(CommentSchema, None)
     assert_type(_comment.post_id, int)
     assert_type(_comment.account_id, UUID)
+    assert_type(_comment.related_ids, list[int])

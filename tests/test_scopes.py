@@ -1715,8 +1715,8 @@ def test_post_hoc_default_scope_corruption_is_loud():
 def test_buried_must_exist_marker_is_rejected():
     with pytest.raises(RestlyConfigurationError, match="unchecked"):
 
-        class _ListRefSchema(fr.BaseSchema):
-            row_ids: list[fr.MustExist[int, SyncRow]]
+        class _DictRefSchema(fr.BaseSchema):
+            row_ids: dict[str, fr.MustExist[int, SyncRow]]
 
 
 class SyncWeird(_SyncBase):

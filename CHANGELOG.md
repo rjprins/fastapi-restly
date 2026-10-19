@@ -53,6 +53,8 @@ replacement, unless it says otherwise.
   The type of its parameter is the type of the key, and its docstring is the
   description. It returns a condition, a clause or `None`, and it may be
   `async def` on an async view.
+- `list[fr.MustExist[int, Model]]` checks each id of a list, such as the ids
+  in the body of a custom route. The message names every missing id.
 - `apply_filters(stmt, list_params)` applies the client's filters without
   the sort and the page, for a route with `GROUP BY`.
 - `fr.views.ReactAdminListParams`, the list params of a react-admin view.

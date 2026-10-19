@@ -144,9 +144,10 @@ field and the id:
 - The check does not autoflush, so it never writes an object that your code
   is still building. So it also does not find a row that your code added
   and did not flush yet. Call `flush()` first for such a row.
-- A reference inside another type, such as `list[fr.MustExist[int, Tag]]`,
-  is refused, because the check cannot see it there. Write a list of rows as
-  `list[fr.IDRef[Tag]]` on a relationship field.
+- A list of ids, such as `list[fr.MustExist[int, Tag]]`, checks each id. The
+  message names every missing id of the list:
+  `Id not found for tag_ids: [7, 9]`. A reference deeper in another type,
+  such as in a `dict`, is refused, because the check cannot see it there.
 - The builders in {mod}`fr.objects <fastapi_restly.objects>` check too, so
   a script that builds objects with them is safe.
 - An id that reaches the database in another way is yours to check, such as
@@ -307,8 +308,9 @@ relationship stores no order: responses show the rows in database order,
 unless the relationship sets `order_by`. The full file is
 [`shop/main.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/shop/shop/main.py).
 
-A list cannot use `MustExist`, which is for one foreign key column. Restly
-rejects `list[fr.MustExist[...]]` when you define the schema.
+A plain list of ids that sets no relationship, such as the projects that a
+route body names, is `list[fr.MustExist[int, Project]]`. Restly checks each
+id in one query, and the list stays a list of ints.
 
 (model-relationship-setup)=
 ## Declare the foreign key and the relationship on the model

@@ -20,7 +20,7 @@ from typing import Any
 import pytest
 from fastapi import Body, FastAPI
 from pydantic import BaseModel
-from sqlalchemy import Engine, ForeignKey, String, event, select
+from sqlalchemy import JSON, Engine, ForeignKey, String, event, select
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
@@ -744,21 +744,84 @@ def test_the_check_does_not_write_an_object_that_is_being_built(api):
     assert [t["title"] for t in client.get("/tasks/").json()["data"]] == ["a"]
 
 
-def test_a_marker_inside_a_type_of_a_plain_model_fails_loudly(sync_db):
-    """``fr.BaseSchema`` refuses ``list[MustExist[...]]`` when the class is
-    defined. A plain pydantic model gets the same error at its first check,
-    so the ids are never written unchecked."""
+def test_a_route_body_with_a_list_of_checked_ids(api):
+    """A plain body with ``list[fr.MustExist[int, Project]]``: the bracket
+    checks each id, in one query, and names every missing id of the list.
+    The ids stay plain ints in the body."""
+    Task = api.models.Task
+    Project = api.models.Project
+
+    class Move(BaseModel):
+        title: str
+        project_ids: list[fr.MustExist[int, Project]]
+
+    def copy(self, body: Move):
+        with self.write_action("copy", obj=None, data=body):
+            for project_id in body.project_ids:
+                self.session.add(Task(title=body.title, project_id=project_id))
+        return {"ok": True}
+
+    async def async_copy(self, body: Move):
+        async with self.write_action("copy", obj=None, data=body):
+            for project_id in body.project_ids:
+                self.session.add(Task(title=body.title, project_id=project_id))
+        return {"ok": True}
+
+    route = fr.post("/copy")(api.pick(copy, async_copy))
+    client = api.make_client(copy=route)
+    ids = _seed(client)
+
+    body = {"title": "a", "project_ids": [ids["project"], 998, ids["archived"]]}
+    response = client.post("/tasks/copy", json=body, assert_status_code=404)
+    assert response.json()["detail"] == (
+        f"Id not found for project_ids: [998, {ids['archived']}]"
+    )
+    assert _task_count(client) == 0
+    client.post("/tasks/copy", json={"title": "b", "project_ids": [ids["project"]]})
+    assert _task_count(client) == 1
+
+
+def test_a_list_of_checked_ids_in_a_schema_and_in_the_builders(sync_db):
+    """``fr.BaseSchema`` takes ``list[MustExist[...]]``, also with
+    ``| None`` and in a tuple, and the builders of ``fr.objects`` check each
+    id, as the bracket does."""
+    engine, make_session = sync_db
+    models = _models()
+
+    class Board(fr.IDMixin, SharedBase):
+        project_ids: Mapped[list[int]] = mapped_column(JSON)
+
+    class BoardIn(fr.BaseSchema):
+        project_ids: list[fr.MustExist[int, models.Project]]
+        extra: tuple[fr.MustExist[int, models.Project], ...] | None = None
+
+    SharedBase.metadata.create_all(engine)
+    with make_session() as session:
+        session.add(models.Project(name="live"))
+        session.flush()
+        with pytest.raises(NotFound, match=r"Id not found for project_ids: \[7\]"):
+            fr.objects.make_new_object(session, Board, BoardIn(project_ids=[1, 7]))
+        with pytest.raises(NotFound, match="Id not found for extra"):
+            _check_body_references(session, BoardIn(project_ids=[1], extra=(1, 8)))
+        board = fr.objects.make_new_object(session, Board, BoardIn(project_ids=[1]))
+        assert board.project_ids == [1]
+
+
+def test_a_marker_deeper_in_a_type_of_a_plain_model_fails_loudly(sync_db):
+    """A marker that the check cannot see, such as in a dict, is refused:
+    ``fr.BaseSchema`` when the class is defined, a plain pydantic model at
+    its first check. So the ids are never written unchecked."""
     engine, make_session = sync_db
     models = _models()
     SharedBase.metadata.create_all(engine)
 
     class Ids(BaseModel):
-        project_ids: list[fr.MustExist[int, models.Project]]
+        project_ids: dict[str, fr.MustExist[int, models.Project]]
 
     with make_session() as session:
         for _ in range(2):
             with pytest.raises(RestlyConfigurationError, match="project_ids"):
-                _check_body_references(session, Ids(project_ids=[1, 999]))
+                _check_body_references(session, Ids(project_ids={"a": 1}))
 
 
 def test_a_single_reference_matches_as_the_database_does(sync_db):

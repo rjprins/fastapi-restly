@@ -6,6 +6,8 @@ import sys
 import types
 import weakref
 from collections.abc import Iterable, Iterator, Mapping
+from collections.abc import Sequence as _AbcSequence
+from collections.abc import Set as _AbcSet
 from datetime import datetime
 from typing import (
     TYPE_CHECKING,
@@ -196,23 +198,25 @@ def _annotation_contains_ref_exists(annotation: Any) -> bool:
 def _reject_buried_ref_exists(model_cls: type[pydantic.BaseModel]) -> None:
     """Raise for a RefExists marker the check machinery cannot see.
 
-    The existence check reads a field's top-level metadata (plus the
-    Optional-unwrapped form); a marker inside a container element
-    (``list[MustExist[int, T]]``) is invisible there, so the field would
-    validate and write with no check at all -- a silent no-op of a check
-    the schema explicitly asks for.
+    The existence check reads the field's type, or the item type of a list
+    (``list[MustExist[int, T]]``), each also with ``| None``. A marker deeper
+    in the type, such as in ``dict[str, MustExist[int, T]]``, is invisible
+    there, so the field would validate and write with no check at all -- a
+    silent no-op of a check the schema explicitly asks for.
     """
     for name, field_info in model_cls.model_fields.items():
         if not _annotation_contains_ref_exists(field_info.annotation):
             continue
         if _ref_exists_marker(field_info) is not None:
             continue
+        if _listed_ref_exists_marker(field_info) is not None:
+            continue
         raise RestlyConfigurationError(
             f"{model_cls.__name__}.{name} buries a MustExist marker "
-            f"inside its type (e.g. list[MustExist[int, T]]), where the "
-            f"existence check cannot see it, so the reference would go "
-            f"unchecked. To reference several rows, use "
-            f"list[IDRef[T]] on a relationship-named field instead."
+            f"inside its type, such as in dict[str, MustExist[int, T]], where "
+            f"the existence check cannot see it, so the reference would go "
+            f"unchecked. Use MustExist as the type of the field, or as the "
+            f"item type of a list: list[MustExist[int, T]]."
         )
 
 
@@ -697,8 +701,15 @@ def _collect_model_references(
             continue
         here = f"{path}.{name}" if path else name
         marker = _ref_exists_marker(field_info)
+        listed = _listed_ref_exists_marker(field_info) if marker is None else None
         if marker is not None:
             references.append(_BodyReference(here, marker.model, value, row=False))
+        elif listed is not None:
+            references.extend(
+                _BodyReference(here, listed.model, item, row=False, listed=True)
+                for item in value
+                if item is not None
+            )
         else:
             _collect_value_references(value, here, references, seen)
 
@@ -953,47 +964,93 @@ def _ref_exists_marker(field_info: FieldInfo) -> RefExists | None:
     return None
 
 
+#: The collections whose items a ``MustExist`` marker may type, as in
+#: ``list[MustExist[int, Tag]]``.
+_ID_COLLECTIONS = (list, tuple, set, frozenset, _AbcSequence, _AbcSet)
+
+
+def _listed_ref_exists_marker(field_info: FieldInfo) -> RefExists | None:
+    """Return the ``RefExists`` marker of the items of a list field, such as
+    ``list[MustExist[int, Tag]]``, or ``None``.
+
+    The field may allow ``None``, and so may each item. A tuple counts only
+    in its form with one item type, ``tuple[MustExist[int, Tag], ...]``.
+    """
+    annotation, _ = _unwrap_type(field_info.annotation)
+    origin = get_origin(annotation)
+    if origin not in _ID_COLLECTIONS:
+        return None
+    args = get_args(annotation)
+    if origin is tuple and not (len(args) == 2 and args[1] is Ellipsis):
+        return None
+    if not args:
+        return None
+    _, metadata = _unwrap_type(args[0])
+    for m in metadata:
+        if isinstance(m, RefExists):
+            return m
+    return None
+
+
 def _ref_exists_fields(
     schema_obj: pydantic.BaseModel,
-) -> dict[type[Any], list[tuple[str, Any]]]:
-    """``{model: [(field_name, id), ...]}`` for the ``MustExist`` fields that
-    the client sent with a value other than ``None``."""
-    by_target: dict[type[Any], list[tuple[str, Any]]] = {}
+) -> dict[type[Any], list[tuple[str, Any, bool]]]:
+    """``{model: [(field_name, id, listed), ...]}`` for the ``MustExist``
+    fields that the client sent with a value other than ``None``. A list of
+    ids gives one entry for each id, with ``listed`` set."""
+    by_target: dict[type[Any], list[tuple[str, Any, bool]]] = {}
     model_fields = type(schema_obj).model_fields
     for field_name in schema_obj.model_fields_set:
         field_info = model_fields.get(field_name)
         if field_info is None:
             continue
-        marker = _ref_exists_marker(field_info)
-        if marker is None:
-            continue
         value = getattr(schema_obj, field_name, None)
         if value is None:
             continue
-        by_target.setdefault(marker.model, []).append((field_name, value))
+        marker = _ref_exists_marker(field_info)
+        if marker is not None:
+            by_target.setdefault(marker.model, []).append((field_name, value, False))
+            continue
+        listed = _listed_ref_exists_marker(field_info)
+        if listed is not None:
+            by_target.setdefault(listed.model, []).extend(
+                (field_name, item, True) for item in value if item is not None
+            )
     return by_target
 
 
 def _unchecked_ref_exists_fields(
     session: SA_Session | SA_AsyncSession, schema_obj: pydantic.BaseModel
-) -> dict[type[Any], list[tuple[str, Any]]]:
+) -> dict[type[Any], list[tuple[str, Any, bool]]]:
     """:func:`_ref_exists_fields` without the ids that the running write
     action has checked."""
     checked = _checked_references(session)
-    unchecked: dict[type[Any], list[tuple[str, Any]]] = {}
+    unchecked: dict[type[Any], list[tuple[str, Any, bool]]] = {}
     for model, items in _ref_exists_fields(schema_obj).items():
-        items = [
-            (name, value) for name, value in items if (model, value) not in checked
-        ]
+        items = [item for item in items if (model, item[1]) not in checked]
         if items:
             unchecked[model] = items
     return unchecked
 
 
-def _raise_for_missing_refs(items: list[tuple[str, Any]], found: set[Any]) -> None:
-    for field_name, value in items:
-        if value not in found:
-            raise NotFound(f"Id not found for {field_name}: {value}")
+def _raise_for_missing_refs(
+    items: list[tuple[str, Any, bool]], found: set[Any]
+) -> None:
+    """Raise ``NotFound`` for the first field with an id that was not found.
+    A list of ids names all its missing ids."""
+    missing: dict[str, list[Any]] = {}
+    listed: set[str] = set()
+    for field_name, value, is_listed in items:
+        if value in found:
+            continue
+        ids = missing.setdefault(field_name, [])
+        if value not in ids:
+            ids.append(value)
+        if is_listed:
+            listed.add(field_name)
+    for field_name, ids in missing.items():
+        shown = ids if field_name in listed else ids[0]
+        raise NotFound(f"Id not found for {field_name}: {shown}")
 
 
 def _check_ref_exists(session: SA_Session, schema_obj: pydantic.BaseModel) -> None:
@@ -1005,7 +1062,7 @@ def _check_ref_exists(session: SA_Session, schema_obj: pydantic.BaseModel) -> No
     write action, an id that the action already checked is not queried again.
     """
     for model, items in _unchecked_ref_exists_fields(session, schema_obj).items():
-        ids = list(dict.fromkeys(value for _, value in items))
+        ids = list(dict.fromkeys(value for _, value, _ in items))
         found: set[Any] = set()
         for stmt, _ in _reference_statements(model, ids, rows=False):
             found.update(session.scalars(stmt))
@@ -1017,7 +1074,7 @@ async def _async_check_ref_exists(
 ) -> None:
     """Async twin of :func:`_check_ref_exists`."""
     for model, items in _unchecked_ref_exists_fields(session, schema_obj).items():
-        ids = list(dict.fromkeys(value for _, value in items))
+        ids = list(dict.fromkeys(value for _, value, _ in items))
         found: set[Any] = set()
         for stmt, _ in _reference_statements(model, ids, rows=False):
             found.update(await session.scalars(stmt))
