@@ -271,7 +271,7 @@ async def test_a_with_expression_value_survives_the_save_of_the_subject(env):
 
 
 async def test_a_with_expression_in_the_views_loader_options_survives(env):
-    """An expression from ``get_relationship_loader_options``: the reload of
+    """An expression from ``get_loader_options``: the reload of
     the other rows carries the view's options, so they keep it."""
     Doc, DocSchema = _expression_models()
 
@@ -288,11 +288,11 @@ async def test_a_with_expression_in_the_views_loader_options_survives(env):
                     "prefix": "/docs",
                     "model": Doc,
                     "schema": DocSchema,
-                    "get_relationship_loader_options": options,
+                    "get_loader_options": options,
                 },
             )
         )(request=None, session=session)
-        stmt = select(Doc).options(*view.get_relationship_loader_options())
+        stmt = select(Doc).options(*view.get_loader_options())
         docs = list(await call(session.scalars(stmt.order_by(Doc.id))))
         async with enter(view.write_action("retitle_all", obj=None)):
             for doc in docs:
@@ -440,7 +440,16 @@ async def test_the_reload_of_rows_with_a_composite_key(env):
             type(
                 "ShelfView",
                 (env.base,),
-                {"prefix": "/shelves", "model": Shelf, "schema": ShelfSchema},
+                {
+                    "prefix": "/shelves",
+                    "model": Shelf,
+                    "schema": ShelfSchema,
+                    "exclude_routes": (
+                        fr.ViewRoute.GET_ONE,
+                        fr.ViewRoute.UPDATE,
+                        fr.ViewRoute.DELETE,
+                    ),
+                },
             )
         )(request=None, session=session)
         rows = list(await call(session.scalars(select(Shelf).where(Shelf.room == "a"))))

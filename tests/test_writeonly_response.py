@@ -12,8 +12,6 @@ Two layers, tested independently:
   WriteOnly stays in the *request* schema (it is write-only, not no-write).
 """
 
-import types
-
 import pydantic
 from sqlalchemy.orm import Mapped
 
@@ -199,11 +197,11 @@ def test_writeonly_keys_in_a_dict_do_not_go_out_as_extra_fields(client):
         model = Vault
         schema = VaultSchema
 
-        async def get_one(self, id, *, scope=None):
-            return types.SimpleNamespace(id=id, name="bob", password="secret")
-
         def to_single_response(self, obj):
             return {"id": obj.id, "name": obj.name, "password": obj.password}
+
+    create_tables()
+    client.post("/vaults/", json={"name": "bob", "password": "secret"})
 
     assert client.get("/vaults/1").json() == {"id": 1, "name": "bob"}
 

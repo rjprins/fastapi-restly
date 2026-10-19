@@ -1149,41 +1149,6 @@ def test_domain_ops_take_a_scope_directly(sync_session):
         assert ids == {1, 2}
 
 
-def test_per_read_scope_passes_through_a_get_one_override(sync_session):
-    """The handlers always forward ``scope=``, so an override declares the
-    parameter, passes it on, and reads the surface the route asked for."""
-    seen: list[int] = []
-
-    class _Overriding(_SyncRowView):
-        def get_one(self, id, *, scope=None):
-            obj = super().get_one(id, scope=scope)
-            seen.append(obj.id)
-            return obj
-
-    view = _Overriding()
-    view.session = sync_session
-    with _SyncContext.bind(tenant_id=1):
-        assert view.handle_get_one(2, scope=fr.clauses.UNSCOPED).id == 2
-        with pytest.raises(NotFound):
-            view.handle_get_one(2)
-    assert seen == [2]
-
-
-def test_a_scope_unaware_get_one_override_fails_loudly(sync_session):
-    """An override without the ``scope`` parameter breaks on the first
-    handler read, not silently on the first route that names a scope."""
-
-    class _ScopeUnaware(_SyncRowView):
-        def get_one(self, id):
-            return super().get_one(id)
-
-    view = _ScopeUnaware()
-    view.session = sync_session
-    with _SyncContext.bind(tenant_id=1):
-        with pytest.raises(TypeError, match="scope"):
-            view.handle_get_one(1)
-
-
 def test_sync_list_handler_narrows_with_where(sync_session):
     """``where=`` is one more ``all_of`` operand on whatever scope the read
     would apply: the resolved one, a per-read one, or none."""
@@ -1236,36 +1201,6 @@ def test_where_counts_the_narrowed_rows(sync_session):
         listed = view.handle_get_many({"page_size": 1}, where=SyncRow.id > 1)
     assert listed.total_count == 2
     assert len(listed.objects) == 1
-
-
-def test_where_is_folded_into_the_scope_get_many_receives(sync_session):
-    """The handler folds ``where=`` into the ``scope`` it forwards, so a
-    ``get_many`` override keeps the ``scope``-only signature."""
-    seen: list[object] = []
-
-    class _Overriding(_SyncRowView):
-        def get_many(self, list_params, *, scope=None):
-            seen.append(scope)
-            return super().get_many(list_params, scope=scope)
-
-    sync_session.add(SyncRow(id=3, tenant_id=1))
-    sync_session.flush()
-    view = _Overriding()
-    view.session = sync_session
-    narrow = fr.where_clause(SyncRow.id > 1)
-    with _SyncContext.bind(tenant_id=1):
-        assert {r.id for r in view.handle_get_many({}).objects} == {1, 3}
-        assert {r.id for r in view.handle_get_many({}, where=narrow).objects} == {3}
-        unscoped = view.handle_get_many({}, scope=fr.clauses.UNSCOPED, where=narrow)
-        assert {r.id for r in unscoped.objects} == {2, 3}
-
-    # no where=: the scope argument passes through untouched, None included
-    assert seen[0] is None
-    # where= on the resolved scope: one clause carrying both
-    assert isinstance(seen[1], fr.clauses.WhereClause)
-    assert seen[1] is not narrow
-    # nothing left to AND it with: the clause itself, as all_of returns it
-    assert seen[2] is narrow
 
 
 def test_where_takes_an_exists_on_a_related_table(sync_session):

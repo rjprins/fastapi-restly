@@ -65,7 +65,10 @@ def test_shell_override_warns():
     messages = _register(ShellArticleView)
     assert len(messages) == 1
     assert "endpoint method 'get_many_endpoint'" in messages[0]
-    assert "'get_many'" in messages[0]
+    # a read has no business method: the message names the seams of a read
+    assert "business method" not in messages[0]
+    assert "'scope'" in messages[0]
+    assert "'apply_list_params'" in messages[0]
     assert "'authorize'" in messages[0]
     # the handler stays in the message as the thing a replacement calls
     assert "Call 'handle_get_many' from the replacement" in messages[0]

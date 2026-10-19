@@ -149,8 +149,9 @@ A custom route reaches `authorize` in one of these ways:
   query does this, as the count route in
   [Use the scope in your own query](#reading-the-scope) does.
 
-The business methods, such as
-{meth}`get_one <fastapi_restly.views.RestView.get_one>`, never call
+The loads and the business methods, such as
+{meth}`get_one <fastapi_restly.views.RestView.get_one>` and
+{meth}`update <fastapi_restly.views.RestView.update>`, never call
 `authorize`. A custom route that only calls them checks nothing.
 
 Write `authorize` so that an action name it does not know gets the strictest

@@ -108,8 +108,8 @@ class UserView(fr.AsyncRestView[User, UserSchema]):
 
 The parameters help most where you override
 [a view method](#view-request-steps), usually a business method:
-`get_many`, `get_one`, `create`, `update` or `delete`. Here is a view with all
-five parameters and typed overrides:
+`create`, `update` or `delete`. Here is a view with all five parameters and
+typed overrides:
 
 ```python
 from sqlalchemy import ColumnElement
@@ -140,10 +140,8 @@ class UserView(
     schema_create = UserCreate
     schema_update = UserUpdate
 
-    async def get_one(
-        self, id: int | ColumnElement[bool], *, scope: fr.views.ReadScope = None
-    ) -> User:
-        return await super().get_one(id, scope=scope)
+    def where_id(self, id: int) -> ColumnElement[bool]:
+        return User.id == id
 
     async def create(self, data: UserCreate) -> User:
         return await super().create(data)
@@ -160,14 +158,13 @@ these points:
   loaded `obj` and the update body. The handler
   {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` loads
   the row, and returns 404 if it does not exist, before `update` runs.
-- The `id` of `get_one` is `int | ColumnElement[bool]`, because a SQLAlchemy
-  expression can take the place of the primary key, as in
-  [Look a row up by another key](#natural-key-route). If you annotate it as
-  `id: int`, the type checker rejects the override, because it accepts less
-  than the base method.
-- `get_one` and `get_many` take a keyword argument `scope`, which the
-  handlers always pass. An override must declare it and pass it on; see
-  [Read other rows on one route](#per-read-scope).
+- `where_id` gets the id from the path, so its type is the id type, the last
+  parameter. It returns a SQL condition, a `ColumnElement[bool]`; see
+  [Look a row up by another key](#natural-key-route).
+- `get_one` and `get_many` are final, so you call them and do not override
+  them. A type checker reports an override, as it does for a handler. Their
+  return types follow the model parameter: `await self.get_one(id)` is a
+  `User`, and so is each row of `self.select()`.
 - For the response type, give the view's schema: the response class that
   Restly builds is a subclass of it. A view that sets its own
   {attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>`

@@ -21,7 +21,7 @@ import sys
 import types
 import warnings
 import weakref
-from collections.abc import Mapping, Set
+from collections.abc import Iterable, Mapping, Set
 from enum import Enum
 from typing import (
     TYPE_CHECKING,
@@ -37,6 +37,7 @@ from typing import (
     Sequence,
     Union,
     cast,
+    final,
     get_args,
     get_origin,
     get_type_hints,
@@ -56,7 +57,7 @@ from fastapi.params import Param as _ParamMarker
 from fastapi.security.api_key import APIKeyBase
 from pydantic.fields import FieldInfo
 from sqlalchemy import JSON as _JSONType
-from sqlalchemy import ColumnElement, Select, func, tuple_
+from sqlalchemy import Boolean, ColumnElement, Select, func, tuple_
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import select as sa_select
 from sqlalchemy.orm import QueryableAttribute, selectinload
@@ -98,6 +99,7 @@ from .._pagination import (
 from .._routes import matched_route
 from ..db._globals import _fr_globals
 from ..exc import (
+    NotFound,
     RestlyConfigurationError,
     RestlyMisuseWarning,
     RestlySkippedFilterMethodsWarning,
@@ -883,26 +885,6 @@ def _build_relationship_loader_options(
     return options
 
 
-def _relationship_reload_statement(obj: Any, options: list[Any]) -> Any:
-    """A primary-key SELECT that fills ``obj``'s unloaded relationships.
-
-    Deliberately *not* ``populate_existing``: that would expire every
-    relationship the options do not name and overwrite the ones they do, so a
-    value the caller had already put there would be replaced by a fresh read.
-    Without it the loaders fill only what is unloaded, which is exactly what
-    serialization would otherwise have lazy-loaded.
-    """
-    state = sa_inspect(obj)
-    if state.identity is None:
-        return None
-    mapper = state.mapper
-    conditions = [
-        column == value
-        for column, value in zip(mapper.primary_key, state.identity, strict=True)
-    ]
-    return sa_select(mapper.class_).where(*conditions).options(*options)
-
-
 #: The most rows that one reload SELECT names, below the parameter limits of
 #: the databases (SQLite allows 32766 in all, older versions 999).
 _RELOAD_CHUNK = 500
@@ -913,25 +895,19 @@ def _rows_reload_statements(
 ) -> list[Any]:
     """The SELECTs that reload saved ``rows`` of ``model``, in chunks.
 
-    For the rows that a write action wrote, other than its subject. Their
-    relationships are expired first, as the subject's refresh expires them,
-    so a changed foreign key is never served from a stale relationship. The
-    SELECT then loads the relationships of the response again through
-    ``options``, and fills nothing else: not ``populate_existing``, which
-    would expire a deferred column that the route loaded, the columns of a
-    subclass, and a change made after the flush.
+    The save expires the relationships of the rows first, so a changed
+    foreign key is never served from a stale relationship. The SELECT then
+    loads the relationships and the expressions of the response through
+    ``options``, and fills only what is unloaded: not ``populate_existing``,
+    which would expire a deferred column that the route loaded, the columns
+    of a subclass, and a change made after the flush.
     """
     mapper = sa_inspect(model)
     statements = []
     for start in range(0, len(rows), _RELOAD_CHUNK):
-        identities = []
-        for row in rows[start : start + _RELOAD_CHUNK]:
-            state = sa_inspect(row)
-            relationships = [rel.key for rel in state.mapper.relationships]
-            # expire(row, []) would expire every attribute
-            if relationships:
-                state.session.expire(row, relationships)
-            identities.append(state.identity)
+        identities = [
+            sa_inspect(row).identity for row in rows[start : start + _RELOAD_CHUNK]
+        ]
         if len(mapper.primary_key) == 1:
             where = mapper.primary_key[0].in_([identity[0] for identity in identities])
         else:
@@ -985,59 +961,6 @@ def _identity_columns(query: Select[Any]) -> list[Any]:
         if discriminator is not None:
             columns.append(discriminator)
     return columns
-
-
-def _schema_relationships_are_loaded(
-    obj: Any,
-    model_cls: type[Any],
-    schema_cls: type[pydantic.BaseModel],
-    seen: set[tuple[int, type[pydantic.BaseModel]]] | None = None,
-) -> bool:
-    """Is every relationship ``schema_cls`` reaches already loaded on ``obj``?
-
-    Walks the same model/schema pairing as
-    :func:`_build_relationship_loader_options`, so it answers exactly the
-    question "would serializing this object need IO?". Reads only the committed
-    attribute dict, never the descriptors, so asking cannot itself emit a query.
-    """
-    if seen is None:
-        seen = set()
-    # Dedup on (instance, schema), not the instance alone: the same object can
-    # be reached under two response sub-schemas that name different
-    # relationships, and each pairing must be checked. Mirrors the
-    # (model, schema) dedup in _build_relationship_loader_options.
-    key = (id(obj), schema_cls)
-    if key in seen:
-        return True
-    seen.add(key)
-
-    state = sa_inspect(obj, raiseerr=False)
-    if state is None:
-        return True
-
-    mapper = sa_inspect(model_cls)
-    for field_name, field_info in schema_cls.model_fields.items():
-        if field_name not in mapper.relationships:
-            continue
-        if field_name in state.unloaded:
-            return False
-
-        nested_schema = _get_nested_schema_annotation(field_info.annotation)
-        if nested_schema is None:
-            continue
-
-        value = state.dict.get(field_name)
-        if value is None:
-            continue
-        relationship_prop = mapper.relationships[field_name]
-        related = value if relationship_prop.uselist else [value]
-        for item in related:
-            if not _schema_relationships_are_loaded(
-                item, relationship_prop.mapper.class_, nested_schema, seen
-            ):
-                return False
-
-    return True
 
 
 class View:
@@ -1311,7 +1234,7 @@ def _apply_own_filters(
     :param results: The label of each method, such as
         ``ItemView.filter_popular``, and what the method returned.
 
-    :raises TypeError: a method returned something else than a condition,
+    :raises TypeError: a method returned anything other than a condition,
         a clause or ``None``, or a condition on a table that is not in the
         statement.
     """
@@ -1434,26 +1357,125 @@ _FINAL_HANDLERS = (
     "handle_update",
     "handle_delete",
 )
+
+# The loads are final: every read and the load of every write go through
+# them, so an override could drop the scope or leak into a write. Each
+# message names the hooks that answer the question an override asked.
+_FINAL_LOADS = {
+    "get_one": (
+        "get_one is the load of every item route: GET, PATCH, DELETE and "
+        "your action routes. It applies the scope and raises the 404. To find "
+        "the row by another key, such as a slug, override where_id(id). To "
+        "change the 404, override not_found(id). To load more relationships "
+        "or a SQL expression, override get_loader_options. To add a value to "
+        "the response, override to_single_response. To read from another "
+        "source on one route, replace get_one_endpoint."
+    ),
+    "get_many": (
+        "get_many is the load of the list. It applies the scope, the list "
+        "params, the page and the count. To filter, sort or page in another "
+        "way, override apply_list_params, or add a filter with "
+        "fr.list_filter. To load more relationships or a SQL expression, "
+        "override get_loader_options. To add a value to each row, override "
+        "to_single_response. To read from another source, replace "
+        "get_many_endpoint."
+    ),
+    "select": (
+        "select is the start of every read: select(model), the scope and the "
+        "loader options. To change the rows, set scope. To change the loads, "
+        "override get_loader_options."
+    ),
+}
+# Hooks that the loads call. A value with one of these names, such as a
+# text, would fail only at the first read.
+_LOAD_HOOKS = ("where_id", "not_found")
 _WRITE_VERBS = ("create", "update", "delete")
+
+
+#: The routes that load one row by the id in the path.
+_ITEM_ROUTES = ("get_one_endpoint", "update_endpoint", "delete_endpoint", "put")
+
+
+def _check_composite_key(cls: Any) -> None:
+    """Refuse item routes on a model with a composite primary key and the
+    default ``where_id``: an id from the path cannot name one row."""
+    if len(sa_inspect(cls.model).primary_key) < 2:
+        return
+    if getattr(cls.where_id, "__module__", "").startswith("fastapi_restly."):
+        routes = [
+            name
+            for name in _ITEM_ROUTES
+            if hasattr(getattr(cls, name, None), "_api_route_args")
+        ]
+        if routes:
+            raise RestlyConfigurationError(
+                f"{cls.__name__}: {cls.model.__name__} has a composite primary "
+                f"key, so an id from the path cannot name one row, and the "
+                f"item routes ({', '.join(routes)}) need it. Set "
+                "id_type = str, and override where_id(id): split the id, and "
+                "return sqlalchemy.and_(Model.a == a, Model.b == b). Or leave "
+                "the item routes out with exclude_routes."
+            )
+
+
+def _check_load_hooks(cls: type) -> None:
+    """Refuse a load hook that the loads cannot call.
+
+    ``where_id`` builds SQL, so it is never ``async``. ``not_found`` may be
+    ``async`` on an async view, which awaits it, but not on a sync one.
+    """
+    is_async = getattr(cls, "_fr_async_view", False)
+    for klass in cls.__mro__:
+        if klass.__module__.startswith("fastapi_restly."):
+            continue
+        origin = _origin(cls, klass)
+        for name in _LOAD_HOOKS:
+            if name not in vars(klass):
+                continue
+            # through the descriptor: a classmethod or a staticmethod is
+            # callable once it is looked up
+            hook = getattr(klass, name)
+            if not callable(hook):
+                raise RestlyConfigurationError(
+                    f"{cls.__name__}.{name}{origin} is a "
+                    f"{type(vars(klass)[name]).__name__}, but the loads call "
+                    f"{name}(id). "
+                    f"Define {name} as a method, or use another name for the "
+                    "value."
+                )
+            if inspect.iscoroutinefunction(hook) and (
+                name == "where_id" or not is_async
+            ):
+                raise RestlyConfigurationError(
+                    f"{cls.__name__}.{name}{origin} is async, but "
+                    + (
+                        "where_id builds SQL, so it runs no query. Define it with def."
+                        if name == "where_id"
+                        else "a sync view cannot await it. Define it with def."
+                    )
+                )
 
 
 def _final_handler_message(view_name: str, name: str, origin: str) -> str:
     """What a subclass that defines ``name`` is told to use instead."""
     verb = name.removeprefix("handle_")
-    message = (
+    if verb not in _WRITE_VERBS:
+        return (
+            f"{view_name} defines {name}{origin}, which is a final handler: it "
+            "handles the steps of the request, and a custom route calls it. "
+            "Put a gate in authorize, the rows in scope, the lookup of an id "
+            "in where_id, the list params in apply_list_params, a response "
+            f"value in to_single_response, and the HTTP contract in "
+            f"{verb}_endpoint."
+        )
+    return (
         f"{view_name} defines {name}{origin}, which is a final handler: it "
         f"handles the steps of the request, and a custom route calls it. Put "
         f"domain logic in the {verb} business method, a gate in authorize, "
+        "a side effect in before_action_commit or after_action_commit, "
+        f"and the HTTP contract in {verb}_endpoint. To put several writes in "
+        f"one commit, call {name} inside shared_write_action_commit()."
     )
-    if verb in _WRITE_VERBS:
-        message += "a side effect in before_action_commit or after_action_commit, "
-    message += f"and the HTTP contract in {verb}_endpoint."
-    if verb in _WRITE_VERBS:
-        message += (
-            f" To put several writes in one commit, call {name} inside "
-            "shared_write_action_commit()."
-        )
-    return message
 
 
 # Replaced by ``pagination``. A view that still sets one is told what to write.
@@ -1650,6 +1672,7 @@ _RENAMED_METHODS = {
     "to_react_admin_listing_response": "to_list_response",
     "to_response_schema": "to_single_response",
     "apply_query_params": "apply_list_params",
+    "get_relationship_loader_options": "get_loader_options",
 }
 _RENAMED_METHOD_HINTS = {
     "to_listing_response": (
@@ -1660,6 +1683,9 @@ _RENAMED_METHOD_HINTS = {
         " The list params are in list_result.list_params."
     ),
     "apply_query_params": " Its arguments are (query, list_params).",
+    "get_relationship_loader_options": (
+        " It holds everything that a read loads, a with_expression too."
+    ),
 }
 # Removed before 1.0, with what to use instead.
 _REMOVED_SETTINGS = {
@@ -1880,7 +1906,7 @@ class BaseRestView(
                     "clause: default_scope on the model's ClauseNamespace, or "
                     "the scope attribute on the view. Reshape a list in "
                     "apply_list_params, and relationship loading in "
-                    "get_relationship_loader_options. See Migrating from "
+                    "get_loader_options. See Migrating from "
                     "build_query in the Scopes guide."
                 )
         # delete_object is removed; a stale soft-delete override would be
@@ -1909,6 +1935,19 @@ class BaseRestView(
                         "every write path must set belongs on the model, as a "
                         "column default or a mapper event."
                     )
+        # the loads are final: an override could drop the scope of a read,
+        # and it was also the load of every write
+        for klass in cls.__mro__:
+            if klass.__module__.startswith("fastapi_restly."):
+                continue
+            for name, instead in _FINAL_LOADS.items():
+                if name in vars(klass):
+                    origin = _origin(cls, klass)
+                    raise RestlyConfigurationError(
+                        f"{cls.__name__} defines {name}{origin}, which is "
+                        f"final. {instead}"
+                    )
+        _check_load_hooks(cls)
         # the handlers are final: an override re-implements the load,
         # authorize and commit order to reach something another seam gives
         # directly, and a generated route could then skip either
@@ -1949,56 +1988,113 @@ class BaseRestView(
             scope = _checked_scope(scope, label, "a per-read scope")
         return all_of(scope, _checked_where(where, label))
 
-    def get_relationship_loader_options(self) -> list[Any]:
-        """Loader options for the relationships the response class names.
+    @final
+    def select(self, *, scope: ReadScope = None) -> Select[tuple[ModelT]]:
+        """The statement of the view's rows: ``select(model)``, the scope,
+        and :meth:`get_loader_options`.
 
-        Returns recursive ``selectinload(...)`` options derived from
-        :attr:`schema_response`, applied on reads (``get_one`` /
-        ``get_many``) and on the reload after the save of a write.
-        Override to eager-load relationships the response class does not
-        name on both paths; append to
-        ``super().get_relationship_loader_options()`` to keep the derived
-        loads. See "Return related objects in a response" on the
-        Relationships guide page.
+        ``get_one`` and ``get_many`` start here, and so does a custom route
+        that builds its own read: ``self.select().where(Item.price > 10)``.
+        The rows are the ones the view shows, and each row loads what the
+        response needs. Final: set ``scope`` to change the rows, and override
+        :meth:`get_loader_options` to change the loads.
+
+        :param scope: a clause that replaces the view scope for this
+            statement; ``fr.clauses.UNSCOPED`` reads past it.
+        """
+        stmt = self._apply_scope(sa_select(self.model), scope)
+        options = self.get_loader_options()
+        return stmt.options(*options) if options else stmt
+
+    def where_id(self, id: Any) -> ColumnElement[bool]:
+        """The WHERE that picks the row an id from a path names.
+
+        The default compares the primary key: ``Item.id == id``. Override
+        to find the row by another key, such as a slug. Every load by id
+        uses it: ``GET``, ``PATCH`` and ``DELETE /{id}``, and
+        ``self.get_one(id)`` in your routes::
+
+            def where_id(self, id: str) -> ColumnElement[bool]:
+                return Recipe.slug == id
+
+        A model with a composite primary key needs an override: set
+        ``id_type = str``, split the id from the path, and return
+        ``and_(...)``. The expression must name
+        the view's model, not another table, and it runs no query, so define
+        it with ``def``, also on an async view.
+        """
+        return _primary_key_criterion(self.model, id)
+
+    def not_found(self, id: Any) -> Exception:
+        """The exception for an id that names no row: a 404 by default.
+
+        ``get_one`` raises what this returns, so an override can change the
+        text or the status, such as ``410`` for a row that was deleted. On
+        an async view it may be ``async def``, and Restly awaits it. ``id``
+        is the id from the path, or ``None`` when a route loaded by an
+        expression, such as ``handle_get_one(Item.slug == slug)``.
+        """
+        return NotFound(_not_found_message(self.model, id))
+
+    def _row_criterion(self, id: Any) -> ColumnElement[bool]:
+        """The WHERE of ``get_one``: an expression that a route passes in
+        place of the id, or :meth:`where_id` of the id."""
+        name = type(self).__name__
+        if isinstance(id, ColumnElement):
+            _check_identity_tables(self.model, id, name)
+            return id
+        _reject_bad_row_identity(name, id)
+        criterion = _clause_element(self.where_id(id))
+        if not (
+            isinstance(criterion, ColumnElement) and isinstance(criterion.type, Boolean)
+        ):
+            raise TypeError(
+                f"{name}.where_id must return a SQL condition, such as "
+                f"Model.slug == id, got {type(criterion).__name__}."
+            )
+        _check_identity_tables(self.model, criterion, f"{name}.where_id")
+        return criterion
+
+    def get_loader_options(self) -> list[Any]:
+        """The loader options of every read: what each row loads.
+
+        The default is a recursive ``selectinload(...)`` for each
+        relationship that :attr:`schema_response` names. :meth:`select`
+        applies them, so ``get_one``, ``get_many`` and your routes load the
+        same, and so does the reload after the save of a write. Override to
+        load more: a relationship that the response class does not name, or
+        a ``query_expression`` through ``with_expression(...)``. Add to
+        ``super().get_loader_options()`` to keep the default loads. See
+        "Return related objects in a response" on the Relationships guide
+        page.
         """
         return _build_relationship_loader_options(
             self.model, _schema_response(type(self))
         )
 
-    def _get_response_reload_statement(self, obj: Any) -> Any:
-        """The SELECT that makes ``obj`` serializable, or ``None`` if it already is.
+    def _get_reload_statements(self, subject: Any, others: list[Any]) -> list[Any]:
+        """The SELECTs that make the saved rows of a write ready for the
+        hooks and the response.
 
-        Called by the save step of the commit bracket *after* the flush and
-        refresh, because the refresh is itself what leaves relationships
-        unloaded; asking earlier would see a value the refresh is about to
-        discard. ``None`` for an object of another model: the view's response
-        class does not describe it.
+        Called by the save step of the commit bracket after the flush and the
+        refresh of the subject. One reload covers the subject, when the view
+        has loader options, and the other rows of the view's model that the
+        action wrote. So a value that only the loader options load, such as
+        a relationship that ``to_single_response`` reads or a
+        ``with_expression``, is there after every write, and a route that
+        changes several rows returns each of them as the database has it.
+        The view's scope does not apply: a row that the write moved out of
+        it, such as a soft-deleted row, is still the row that the action
+        returns.
         """
-        if not isinstance(obj, self.model):
-            return None
-        if _schema_relationships_are_loaded(
-            obj, self.model, _schema_response(type(self))
-        ):
-            return None
-        options = self.get_relationship_loader_options()
-        if not options:
-            return None
-        return _relationship_reload_statement(obj, options)
-
-    def _get_rows_reload_statements(self, rows: list[Any]) -> list[Any]:
-        """The SELECTs that make saved ``rows`` of the view's model fresh and
-        serializable.
-
-        Called by the save step of the commit bracket after the flush, for the
-        rows of the view's model that a write action wrote, other than its
-        subject: a route that changes several rows in one action returns each
-        of them as the database has it.
-        """
+        rows = list(others)
+        options = self.get_loader_options()
+        if options and isinstance(subject, self.model):
+            if sa_inspect(subject).persistent:
+                rows.insert(0, subject)
         if not rows:
             return []
-        return _rows_reload_statements(
-            self.model, rows, self.get_relationship_loader_options()
-        )
+        return _rows_reload_statements(self.model, rows, options)
 
     def _reject_unknown_query_params(self) -> None:
         """Reject any query-string key that neither the list params nor the
@@ -2115,7 +2211,7 @@ class BaseRestView(
         An override that builds :attr:`schema` from the ORM object also reads
         the relationships of its WriteOnly fields. On an async view that fails
         with ``MissingGreenlet``: add them in
-        :meth:`get_relationship_loader_options`, or build the response class
+        :meth:`get_loader_options`, or build the response class
         instead.
 
         The ORM path below validates through the response class, so a view's
@@ -2318,6 +2414,7 @@ class BaseRestView(
                 setattr(cls, name, route)
             _fill_view_types(route, view_types, list_params)
         _exclude_routes(cls)
+        _check_composite_key(cls)
 
 
 #: What registration builds each class of a view from.
@@ -2724,8 +2821,10 @@ def _checked_where(where: Any, label: str) -> WhereClause:
     )
 
 
-def _check_identity_tables(model_cls: type[Any], id: ColumnElement[bool]) -> None:
-    """Raise when the expression in place of an id names another table.
+def _check_identity_tables(
+    model_cls: type[Any], id: ColumnElement[bool], label: str
+) -> None:
+    """Raise when the expression that picks the row names another table.
 
     SQLAlchemy adds such a table to the FROM of the query, which joins every
     row of it, so ``Shelf.id == 2`` in a view of books picks a book that has
@@ -2736,7 +2835,7 @@ def _check_identity_tables(model_cls: type[Any], id: ColumnElement[bool]) -> Non
         name = model_cls.__name__
         shown = ", ".join(sorted(_display_table_name(key) for key in missing))
         raise TypeError(
-            f"{name}: the expression in place of an id names a table that is "
+            f"{label}: the expression that picks the row names a table that is "
             f"not in the query: {shown}. It would join every row of that "
             f"table, so a wrong row could be loaded. Compare a column of "
             f"{name}, such as {name}.slug == slug, or use .has() or .any() "
@@ -2744,21 +2843,11 @@ def _check_identity_tables(model_cls: type[Any], id: ColumnElement[bool]) -> Non
         )
 
 
-def _identity_criterion(model_cls: type[Any], id: Any) -> ColumnElement[bool]:
-    """The predicate that picks the one row ``get_one`` loads.
-
-    The primary key is the default: ``get_one(5)`` means ``pk == 5``. A
-    SQLAlchemy boolean expression replaces that default, so a natural-key
-    route loads through the same scope, loader options and 404, and a
-    composite key is addressable at all. The criterion narrows inside the
-    scope; only ``scope=`` replaces what the view can see.
-    """
-    if isinstance(id, ColumnElement):
-        _check_identity_tables(model_cls, id)
-        return id
+def _reject_bad_row_identity(label: str, id: Any) -> None:
+    """Raise for a value that looks like an id but cannot pick a row."""
     if isinstance(id, WhereClause):
         raise TypeError(
-            f"{model_cls.__name__}: a clause is a scope, not a row identity. "
+            f"{label}: a clause is a scope, not a row identity. "
             "Call it for its expression (ItemClauses.published()), or "
             "pass it as scope= to replace the view scope for this read."
         )
@@ -2766,23 +2855,28 @@ def _identity_criterion(model_cls: type[Any], id: Any) -> ColumnElement[bool]:
         # ``obj.slug == slug`` on a loaded object is a Python bool, and
         # SQLAlchemy renders it as WHERE true, which matches the whole scope
         raise TypeError(
-            f"{model_cls.__name__}: got a bool, not an id or a SQL expression. "
+            f"{label}: got a bool, not an id or a SQL expression. "
             "A comparison on an instance attribute is a bool; compare the "
             "column instead (Model.slug == slug)."
         )
+
+
+def _primary_key_criterion(model_cls: type[Any], id: Any) -> ColumnElement[bool]:
+    """The default :meth:`BaseRestView.where_id`: the primary key is ``id``."""
     pk_cols = sa_inspect(model_cls).primary_key
     if len(pk_cols) != 1:
         raise NotImplementedError(
             f"{model_cls.__name__} has a composite primary key, so an id does "
-            "not name one row; pass a predicate instead, e.g. "
-            "get_one(sqlalchemy.and_(Model.a == a, Model.b == b))."
+            "not name one row. Override where_id(id): split the id from the "
+            "path, and return sqlalchemy.and_(Model.a == a, Model.b == b)."
         )
     return pk_cols[0] == id
 
 
 def _not_found_message(model_cls: type[Any], id: Any) -> str:
-    # a predicate is not echoed: the 404 body is no place for SQL
-    if isinstance(id, ColumnElement):
+    # ``id`` is None for a route that loaded by an expression: the 404 body
+    # is no place for SQL
+    if id is None:
         return f"{model_cls.__name__} was not found"
     return f"{model_cls.__name__} with id {id!r} was not found"
 
@@ -3175,8 +3269,9 @@ def _init_view_cls_and_add_to_router(
 #: named like one of these: it would shadow the verb (which the ``handle_<verb>``
 #: handlers call) and collide with ``<verb>_endpoint`` at the same path.
 #: Override the business method *without* a decorator for domain logic; use
-#: ``<verb>_endpoint`` or a distinct name for a custom route.
-_BARE_VERB_NAMES = frozenset({"get_many", "get_one", "create", "update", "delete"})
+#: ``<verb>_endpoint`` or a distinct name for a custom route. ``get_one`` and
+#: ``get_many`` are final, so the class-definition guard refuses them first.
+_BARE_VERB_NAMES = frozenset({"create", "update", "delete"})
 
 
 def _reject_bare_verb_route_names(view_cls: type[View]) -> None:
@@ -3221,12 +3316,18 @@ def _warn_on_misuse(view_cls: type[View]) -> None:
     if is_crud_view:
         for endpoint in sorted(_ENDPOINT_METHOD_NAMES & own.keys()):
             verb = endpoint.removesuffix("_endpoint")
+            if verb in _WRITE_VERBS:
+                seams = f"For domain logic override the business method '{verb}'"
+                keep = "the bracket"
+            else:
+                lookup = "where_id" if verb == "get_one" else "apply_list_params"
+                seams = f"For the rows override 'scope', for the lookup '{lookup}'"
+                keep = "the gate"
             warnings.warn(
                 f"{name} overrides the endpoint method '{endpoint}'. Override "
-                f"an endpoint method only to change the HTTP contract. For "
-                f"domain logic override the business method '{verb}'; for a gate "
-                f"'authorize'; for the response shape 'to_response'. Call "
-                f"'handle_{verb}' from the replacement to keep the bracket.",
+                f"an endpoint method only to change the HTTP contract. {seams}; "
+                f"for a gate 'authorize'; for the response shape 'to_response'. "
+                f"Call 'handle_{verb}' from the replacement to keep {keep}.",
                 RestlyMisuseWarning,
                 stacklevel=5,
             )
@@ -3742,6 +3843,145 @@ def _view_route_args(
     return path, route_kwargs
 
 
+def _marker_name(annotation: Any) -> str | None:
+    """The name of the marker that ``annotation`` is, such as
+    ``"ViewResponse"``, or ``None`` when it is not a marker."""
+    if get_origin(annotation) is Annotated:
+        for metadata in get_args(annotation)[1:]:
+            if isinstance(metadata, _ViewType):
+                return metadata.name
+    return None
+
+
+def _without_none(annotation: Any) -> tuple[Any, bool]:
+    """``annotation`` without ``None``, and whether it allowed ``None``:
+    ``ViewResponse | None`` gives ``(ViewResponse, True)``."""
+    if get_origin(annotation) in (Union, types.UnionType):
+        args = get_args(annotation)
+        rest = [arg for arg in args if arg is not type(None)]
+        if len(rest) == 1 and len(rest) < len(args):
+            return rest[0], True
+    return annotation, False
+
+
+def _view_response_kind(view_cls: Any, endpoint: Callable) -> tuple[str | None, Any]:
+    """How a route answers with the view's response, and the response model
+    that Restly sets for it, if any.
+
+    The kind is ``"single"`` for one row, ``"many"`` for a list of rows, and
+    ``"list"`` for a ``ListResult``. It comes from the response that the route
+    declares: the ``response_model`` of its decorator, else its return
+    annotation. A marker of the view's response, or the view's model in the
+    return annotation, declares the view's response, also with ``| None``. A
+    class that the route names itself keeps FastAPI's behaviour.
+    """
+    _, route_kwargs = endpoint._api_route_args  # type: ignore[attr-defined]
+    in_decorator = "response_model" in route_kwargs
+    if in_decorator:
+        declared = route_kwargs["response_model"]
+    else:
+        declared = inspect.get_annotations(endpoint).get("return")
+    declared, optional = _without_none(_evaluated(declared, endpoint))
+    kind, response_model = _declared_view_response(view_cls, declared, in_decorator)
+    if optional and response_model is not None:
+        response_model = Union[response_model, None]
+    return kind, response_model
+
+
+def _declared_view_response(
+    view_cls: Any, declared: Any, in_decorator: bool
+) -> tuple[str | None, Any]:
+    """The kind and the response model of :func:`_view_response_kind`, for a
+    declared response without ``None``."""
+    name = _marker_name(declared)
+    if name == "ViewResponse":
+        return "single", None
+    if name == "ViewListResponse":
+        return "list", None
+    if get_origin(declared) is list:
+        (item,) = get_args(declared) or (None,)
+        if _marker_name(item) == "ViewResponse":
+            return "many", None
+        if not in_decorator and item is view_cls.model:
+            return "many", list[view_cls.schema_response]  # type: ignore[name-defined]
+    if not in_decorator and declared is view_cls.model:
+        return "single", view_cls.schema_response
+    return None, None
+
+
+def _with_view_response(
+    view_cls: Any, endpoint: Callable, route_kwargs: dict[str, Any]
+) -> tuple[Callable, dict[str, Any]]:
+    """The endpoint that FastAPI calls, and its route arguments.
+
+    A route that declares the view's response answers through the view's
+    response step, also when it returns the row: a row goes through
+    :meth:`~BaseRestView.to_response`, each row of a list, or of another
+    iterable such as the result of ``session.scalars()``, through
+    :meth:`~BaseRestView.to_single_response`, and a ``ListResult`` through
+    ``to_response(result, ResponseShape.LIST)``. Anything else, such as
+    ``None`` or a response object that the route built itself, goes out as
+    it is.
+    """
+    kind, response_model = _view_response_kind(view_cls, endpoint)
+    if kind is None:
+        return endpoint, route_kwargs
+    if response_model is not None:
+        route_kwargs = {**route_kwargs, "response_model": response_model}
+    signature = inspect.signature(endpoint)
+    self_name = next(iter(signature.parameters))
+
+    def respond(view: Any, result: Any) -> Any:
+        if kind == "single" and isinstance(result, view.model):
+            return view.to_response(result)
+        if kind == "many" and _is_rows(result):
+            rows = list(result)
+            if all(isinstance(row, view.model) for row in rows):
+                return [view.to_single_response(row) for row in rows]
+            # the iterable is used up: send the items that it gave
+            return rows
+        if kind == "list" and isinstance(result, ListResult):
+            return view.to_response(result, ResponseShape.LIST)
+        return result
+
+    if inspect.iscoroutinefunction(endpoint):
+
+        @functools.wraps(endpoint)
+        async def wrapped(*args: Any, **kwargs: Any) -> Any:
+            result = await endpoint(*args, **kwargs)
+            return respond(args[0] if args else kwargs[self_name], result)
+
+    else:
+
+        @functools.wraps(endpoint)
+        def wrapped(*args: Any, **kwargs: Any) -> Any:
+            result = endpoint(*args, **kwargs)
+            return respond(args[0] if args else kwargs[self_name], result)
+
+    # FastAPI reads string annotations in the module of the function it
+    # calls; an older FastAPI does not look through the wrapper
+    wrapped.__signature__ = signature.replace(  # type: ignore[attr-defined]
+        parameters=[
+            param.replace(annotation=_evaluated(param.annotation, endpoint))
+            for param in signature.parameters.values()
+        ],
+        return_annotation=(
+            response_model
+            if response_model is not None
+            else _evaluated(signature.return_annotation, endpoint)
+        ),
+    )
+    return wrapped, route_kwargs
+
+
+def _is_rows(result: Any) -> bool:
+    """Whether ``result`` can be a list of rows: an iterable that is not
+    text, a mapping, a model or a response."""
+    return isinstance(result, Iterable) and not isinstance(
+        result, (str, bytes, Mapping, pydantic.BaseModel, Response)
+    )
+
+
 def _reject_view_types_on_a_plain_view(
     view_cls: type, name: str, endpoint: Callable, route_kwargs: Mapping[str, Any]
 ) -> None:
@@ -3835,6 +4075,10 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
                 ),
             }
         route_kwargs = {**defaults, **route_kwargs}
+        if view_types is not None:
+            endpoint, route_kwargs = _with_view_response(
+                view_cls, endpoint, route_kwargs
+            )
         if getattr(endpoint, "_fr_list_guard", False):
             if list_parameters is None:
                 list_parameters = _list_openapi_parameters(

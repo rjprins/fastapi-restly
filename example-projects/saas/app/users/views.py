@@ -6,19 +6,14 @@ from fastapi import HTTPException
 from pydantic import BaseModel
 
 import fastapi_restly as fr
+from fastapi_restly.views import ViewResponse
 
 from ..auth import hash_password, verify_password
 from ..current import Current
 from ..views import AuthenticatedView, SoftDeleteMixin
 from .models import User
 from .roles import UserRole
-from .schemas import (
-    UserFullResponse,
-    UserPublicResponse,
-    UserResponse,
-    UserSchema,
-    UserUpdate,
-)
+from .schemas import UserFullResponse, UserPublicResponse, UserSchema, UserUpdate
 
 
 class UpdateMeRequest(BaseModel):
@@ -71,8 +66,10 @@ class UserView(SoftDeleteMixin, AuthenticatedView[User]):
             user.password = hash_password(data.password)
         return user
 
-    @fr.post("/{id}/change-password", response_model=UserResponse)
-    async def change_password(self, id: int, request: ChangePasswordRequest) -> Any:
+    @fr.post("/{id}/change-password")
+    async def change_password(
+        self, id: int, request: ChangePasswordRequest
+    ) -> ViewResponse:
         """Change a user's password.
 
         This is an action route because the payload differs from PATCH. The row
@@ -87,7 +84,7 @@ class UserView(SoftDeleteMixin, AuthenticatedView[User]):
 
         async with self.write_action("change_password", obj=user):
             user.password = hash_password(request.new_password)
-        return self.to_single_response(user)
+        return user
 
     @fr.get("/{id}/with-permissions", response_model=dict)
     async def get_user_with_field_permissions(self, id: int) -> dict[str, Any]:
@@ -110,14 +107,13 @@ class UserView(SoftDeleteMixin, AuthenticatedView[User]):
 
         return schema.model_validate(user, from_attributes=True).model_dump()
 
-    @fr.get("/me", response_model=UserResponse)
-    async def get_current_user(self) -> Any:
+    @fr.get("/me")
+    async def get_current_user(self) -> ViewResponse:
         """Get current user's profile."""
-        user = await self.handle_get_one(Current.user_id())
-        return self.to_single_response(user)
+        return await self.handle_get_one(Current.user_id())
 
-    @fr.patch("/me", response_model=UserResponse)
-    async def update_current_user(self, request: UpdateMeRequest) -> Any:
+    @fr.patch("/me")
+    async def update_current_user(self, request: UpdateMeRequest) -> ViewResponse:
         """Update current user's profile.
 
         Delegates to ``handle_update`` so this action route follows the exact
@@ -126,5 +122,4 @@ class UserView(SoftDeleteMixin, AuthenticatedView[User]):
         commits via the bracket. Any future ``update`` override (validation,
         auditing) applies here automatically.
         """
-        user = await self.handle_update(Current.user_id(), request)
-        return self.to_single_response(user)
+        return await self.handle_update(Current.user_id(), request)

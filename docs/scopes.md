@@ -104,7 +104,7 @@ the comments of an item, loads those rows through the relationship, without
 their scope. A filter or sort on a relationship field, such as
 `?items.name=x`, also joins the related table without its scope. Where
 embedded rows must be filtered, shape the view's schema, or override
-{meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`.
+{meth}`get_loader_options <fastapi_restly.views.BaseRestView.get_loader_options>`.
 
 For the same reason, a model does not follow the scope of a related model.
 To make it follow, give the model its own `default_scope` that names the
@@ -195,7 +195,7 @@ class DocumentView(fr.AsyncRestView):
 
 Like every scope, it covers every read of the view: the list, the total and
 `GET /{id}`. The update and delete routes load the row through it too, and so
-does a custom route that calls `get_one(id)`. Declare the rule as the model's
+does a custom route that calls `get_one(id)` or starts from `self.select()`. Declare the rule as the model's
 `default_scope` instead when every view and every reference check must
 follow it.
 
@@ -272,15 +272,14 @@ class ItemView(fr.AsyncRestView):
 
     @fr.get("/trash")
     async def trash(self, list_params) -> ViewListResponse:
-        result = await self.handle_get_many(list_params, scope=ItemClauses.trashed)
-        return self.to_response(result, fr.ResponseShape.LIST)
+        return await self.handle_get_many(list_params, scope=ItemClauses.trashed)
 
     @fr.post("/{id}/restore", status_code=200)
     async def restore(self, id: ViewID) -> ViewResponse:
         item = await self.get_one(id, scope=ItemClauses.trashed)
         async with self.write_action("restore", obj=item):
             item.deleted_at = None
-        return self.to_response(item)
+        return item
 ```
 
 The `list_params` argument gives the route the same filter, sort and page
@@ -304,14 +303,14 @@ read without any scope on one route, pass `scope=fr.clauses.UNSCOPED`.
 
 The markers `ViewListResponse`, `ViewResponse` and `ViewID` give the two
 routes the view's classes, `ItemListResponse` and `ItemResponse`, and its id
-type. So OpenAPI shows the same types as for the CRUD routes.
+type. So OpenAPI shows the same types as for the CRUD routes, and Restly
+sends the list result and the row through the view's response step.
 [Name the view's classes in a custom route](#name-the-response-classes)
 explains the markers.
 
-An override of `get_one` or `get_many` declares the `scope` parameter and
-passes it on to `super()`. The handlers always pass it, so an override without
-the parameter fails on its first call, instead of returning the wrong rows.
-The SaaS example puts a trash and a restore route on a base view,
+`get_one`, `get_many` and `select()` take the same `scope=` argument. A
+custom read that starts from `self.select(scope=ItemClauses.trashed)` sees
+the same rows as the trash route. The SaaS example puts a trash and a restore route on a base view,
 `TrashView`, in
 [`app/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py).
 :::
@@ -326,10 +325,9 @@ the items in one collection still hides deleted items:
 ```python
 @fr.get("/in-collection/{collection_id}")
 async def in_collection(self, collection_id: int, list_params) -> ViewListResponse:
-    result = await self.handle_get_many(
+    return await self.handle_get_many(
         list_params, where=Item.collection_id == collection_id
     )
-    return self.to_response(result, fr.ResponseShape.LIST)
 ```
 
 If you pass the same expression as `scope=fr.where_clause(...)`, it replaces
@@ -344,28 +342,25 @@ would: with the view's scope, or with the `scope=` argument when you pass
 both. The page and `total_count` both apply it, and the client's filters,
 sort and page apply on top.
 
-The handler combines `where=` into the `scope` that it passes on. So a
-`get_many` override receives one combined clause, and it declares no `where`
-parameter. `get_many` itself does not take `where=`. A route that calls
-`get_many` directly combines the clauses itself, with
-`fr.all_of(fr.resolve_scope(self), ...)`. A Python `bool`, such as a
-comparison on a loaded object, raises `TypeError`.
+{meth}`get_many <fastapi_restly.views.RestView.get_many>` takes the same
+`where=`, for a route that lists without `authorize`. A Python `bool`, such
+as a comparison on a loaded object, raises `TypeError`.
 :::
 
 (reading-the-scope)=
 ## Use the scope in your own query
 
-{func}`fr.resolve_scope <fastapi_restly.views.resolve_scope>` returns the
-clause that a view's reads apply. A route that builds its own query applies
-it, and then sees the same rows as `GET /` and `GET /{id}`. This count route
-applies the client's filters to the scoped query:
+A route that builds its own query of the view's model starts from
+{meth}`self.select() <fastapi_restly.views.BaseRestView.select>`. That is
+`select(model)` with the view's scope, so the route sees the same rows as
+`GET /` and `GET /{id}`. This count route applies the client's filters to
+the scoped statement:
 
 ```python
 @fr.get("/count")
 async def total(self, list_params) -> int:
     await self.authorize(fr.Action.GET_MANY)
-    stmt = fr.apply_clauses(sa.select(Task), fr.resolve_scope(self))
-    return await self.count(await self.apply_filters(stmt, list_params))
+    return await self.count(await self.apply_filters(self.select(), list_params))
 ```
 
 {meth}`apply_filters <fastapi_restly.views.RestView.apply_filters>` applies
@@ -374,6 +369,13 @@ the filters without the sort and the page; see
 
 Do not name that route method `count`. It would hide the
 {meth}`count <fastapi_restly.views.RestView.count>` method that it calls.
+
+For a statement that `self.select()` cannot start, such as a select of some
+columns or of another model,
+{func}`fr.resolve_scope <fastapi_restly.views.resolve_scope>` returns the
+clause that a view's reads apply. Apply it with
+{func}`fr.apply_clauses <fastapi_restly.clauses.apply_clauses>`, as in
+`fr.apply_clauses(sa.select(Task.status), fr.resolve_scope(self))`.
 
 Pass another view, as in `fr.resolve_scope(ProjectView)`, to follow the rows
 that view shows. The parent lookup of a nested view does this, so a parent
@@ -502,7 +504,7 @@ class ItemClauses(fr.ClauseNamespace):
 ```
 
 Relationship loading that was in `build_query` goes in
-{meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`.
+{meth}`get_loader_options <fastapi_restly.views.BaseRestView.get_loader_options>`.
 Other changes to the list query, such as a join or a default order, go in an
 {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
 override:

@@ -522,21 +522,26 @@ class UserView(AppView):
 
     @fr.get("/inactive")
     async def inactive(self, list_params) -> ViewListResponse:
-        result = await self.handle_get_many(list_params, where=User.active.is_(False))
-        return self.to_response(result, fr.ResponseShape.LIST)
+        return await self.handle_get_many(list_params, where=User.active.is_(False))
 
     @fr.post("/{id}/activate", status_code=200)
     async def activate(self, id: ViewID) -> ViewResponse:
         user = await self.get_one(id)
         async with self.write_action("activate", obj=user):
             user.active = True
-        return self.to_response(user)
+        return user
 ```
 
 OpenAPI then shows `UserListResponse` and `UserResponse` for these routes,
 as for the CRUD routes. A path parameter annotated `ViewID` gets the path
 converter of the id type, as the item routes do: here `/{id:int}`; see
 [Item paths](#item-route-matching).
+
+The routes return the list result and the row. Because they declare the
+view's response, Restly passes these through
+{meth}`to_response <fastapi_restly.views.BaseRestView.to_response>`, as the
+CRUD routes do; see
+[The response of a custom route](#custom-route-response).
 
 A marker stands for the class of the view that registers. So a route on a
 base view works for each view that subclasses it, with that view's classes.

@@ -436,17 +436,17 @@ def test_async_rest_view_dispatches_to_handle_overrides():
         model = DispatchWidget
         schema = WidgetSchema
 
-        async def get_many(self, list_params, *, scope=None):
-            call_log.append("get_many")
-            return await super().get_many(list_params, scope=scope)
+        async def apply_list_params(self, query, list_params):
+            call_log.append("apply_list_params")
+            return await super().apply_list_params(query, list_params)
 
         def to_list_response(self, list_result):
             call_log.append("to_list_response")
             return super().to_list_response(list_result)
 
-        async def get_one(self, id, *, scope=None):
-            call_log.append("get")
-            return await super().get_one(id, scope=scope)
+        def where_id(self, id):
+            call_log.append("where_id")
+            return super().where_id(id)
 
         async def create(self, schema_obj):
             call_log.append("create")
@@ -483,12 +483,12 @@ def test_async_rest_view_dispatches_to_handle_overrides():
 
     assert call_log == [
         "create",
-        "get_many",
+        "apply_list_params",
         "to_list_response",
-        "get",
-        "get",
+        "where_id",
+        "where_id",
         "update",
-        "get",
+        "where_id",
         "delete",
     ]
 

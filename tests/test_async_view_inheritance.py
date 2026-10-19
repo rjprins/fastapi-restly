@@ -42,14 +42,6 @@ def _model_and_schema():
             lambda c: c.post("/items/", json={"name": "x"}, assert_status_code=201),
         ),
         (
-            "get_one",
-            lambda c: (
-                c.post("/items/", json={"name": "x"}, assert_status_code=201),
-                c.get("/items/1"),
-            )[-1],
-        ),
-        ("get_many", lambda c: c.get("/items/")),
-        (
             "update",
             lambda c: (
                 c.post("/items/", json={"name": "x"}, assert_status_code=201),

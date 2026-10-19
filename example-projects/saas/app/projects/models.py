@@ -36,7 +36,9 @@ class Project(
     model mixins in ``app.models``; the view never touches them.
     ``total_story_points`` is the sum of the story points of the project's
     live tasks. The session event in ``app.tasks.models`` keeps it, on every
-    write path.
+    write path. ``task_count`` and ``completed_task_count`` are SQL
+    expressions in ``app.tasks.models``: every SELECT of a project computes
+    them, and the reload after a write does too.
     """
 
     name: orm.Mapped[str]
@@ -46,6 +48,13 @@ class Project(
 
     # Kept by the session event in app.tasks.models.
     total_story_points: orm.Mapped[int] = orm.mapped_column(default=0)
+
+    if TYPE_CHECKING:
+        # The number of live tasks, and of the done ones: SQL that loads with
+        # the project, set in app.tasks.models after Task. Declared here so
+        # that type checkers know them, and not as constructor arguments.
+        task_count: orm.Mapped[int] = orm.mapped_column(init=False)
+        completed_task_count: orm.Mapped[int] = orm.mapped_column(init=False)
 
     # Relationships
     organization: orm.Mapped["Organization"] = orm.relationship(
@@ -70,12 +79,12 @@ def _unique_slug(
     candidate = base
     n = 1
     while True:
-        query = sa.select(Project.id).where(
+        stmt = sa.select(Project.id).where(
             Project.slug == candidate, Project.organization_id == org_id
         )
         if exclude_id is not None:
-            query = query.where(Project.id != exclude_id)
-        if connection.scalar(query) is None:
+            stmt = stmt.where(Project.id != exclude_id)
+        if connection.scalar(stmt) is None:
             return candidate
         n += 1
         candidate = f"{base}-{n}"

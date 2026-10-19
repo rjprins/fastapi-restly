@@ -17,6 +17,7 @@ from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 from fastapi_restly.exc import RestlyDuplicateSchemaNameWarning
+from fastapi_restly.views import ViewResponse
 
 from ._models import SharedBase
 from ._openapi_spec import Spec
@@ -182,11 +183,12 @@ def _member_app(client, view_body):
     client.post("/members/", json={"name": "Ada", "password": "secret"})
 
 
-def test_a_schema_instance_from_get_one_goes_out_as_the_response(client):
-    async def get_one(self, id, *, scope=None):
+def test_a_schema_instance_from_an_endpoint_goes_out_as_the_response(client):
+    @fr.get("/{id}")
+    async def get_one_endpoint(self, id: int) -> ViewResponse:
         return _Member(id=id, name="Ada", password="secret")
 
-    _member_app(client, {"get_one": get_one})
+    _member_app(client, {"get_one_endpoint": get_one_endpoint})
 
     assert client.get("/members/1").json() == {"id": 1, "name": "Ada"}
 

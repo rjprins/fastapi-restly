@@ -58,6 +58,10 @@ class TestProjectClone:
         assert cloned["description"] == "Original description"
         assert cloned["status"] == "active"
         assert cloned["id"] != project_id
+        # the tasks are added after the clone's first flush, and the
+        # response still counts them
+        assert cloned["task_count"] == 3
+        assert cloned["can_edit"] is True
 
         # Verify tasks were cloned
         response = client.get(f"/tasks?project_id={cloned['id']}")

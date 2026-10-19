@@ -1,10 +1,12 @@
 """The bare verbs (get_many/get_one/create/update/delete) are reserved names.
 
-A ``@route``-decorated method named like a bare verb shadows the verb (which the
-``handle_<verb>`` handlers call) and collides with the ``<verb>_endpoint`` route
-shell at the same path -- the duplicate-route + recursion footgun. Such a
-definition is rejected at registration. Overriding a bare verb *without* a
-decorator (the intended domain-logic path) is unaffected.
+A ``@route``-decorated method named like a bare write verb shadows the verb
+(which the ``handle_<verb>`` handlers call) and collides with the
+``<verb>_endpoint`` route shell at the same path -- the duplicate-route +
+recursion footgun. Such a definition is rejected at registration. Overriding a
+write verb *without* a decorator (the intended domain-logic path) is
+unaffected. ``get_one`` and ``get_many`` are final, so a class that defines
+one fails at class definition.
 """
 
 import pytest
@@ -39,24 +41,26 @@ def test_route_named_like_write_verb_is_rejected():
 
 
 def test_route_named_like_read_verb_is_rejected():
+    """``get_many`` is final, so the class definition already fails."""
+
     class Item(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class ItemSchema(fr.IDSchema):
         name: str
 
-    class ItemView(fr.AsyncRestView):
-        prefix = "/items"
-        model = Item
-        schema = ItemSchema
+    with pytest.raises(
+        fr.exc.RestlyConfigurationError, match="get_many, which is final"
+    ):
 
-        @fr.get("/")
-        async def get_many(self):  # shadows the bare read verb
-            return []
+        class ItemView(fr.AsyncRestView):
+            prefix = "/items"
+            model = Item
+            schema = ItemSchema
 
-    app = FastAPI()
-    with pytest.raises(TypeError, match="business method 'get_many'"):
-        fr.include_view(app, ItemView)
+            @fr.get("/")
+            async def get_many(self):  # shadows the bare read verb
+                return []
 
 
 def test_bare_verb_override_without_route_is_allowed(sync_db):

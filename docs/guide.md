@@ -46,8 +46,10 @@ These are the parts, and the page that explains each one:
   [Schemas & Validation](schemas.md).
 - **Endpoint method, handler and business method**: the three layers of each
   CRUD route. To change what an action does, override the business method,
-  such as `update`. To change the HTTP contract, such as the status code,
-  replace the endpoint method. A handler is final. See
+  such as `update`. A read has a final load, `get_one` or `get_many`, in
+  place of a business method: the scope and the loader options decide what
+  it reads. To change the HTTP contract, such as the status code, replace
+  the endpoint method. A handler is final. See
   [Request Lifecycle & Hooks](lifecycle.md).
 - **Commit**: a write route commits after the business method.
   `before_action_commit` runs just before the commit, and
@@ -102,8 +104,9 @@ set, override or call on a view.
   to leave some routes out, and how to serve a child resource under its
   parent.
 - [Request Lifecycle & Hooks](lifecycle.md): the steps of a request, which
-  method to override for each change, custom routes, what commits when,
-  several writes in one commit, and the same logic in a script or a worker.
+  method to override for each change, a value on each row, a lookup by
+  another key, custom routes, what commits when, several writes in one
+  commit, and the same logic in a script or a worker.
 - [React Admin](react_admin.md): connect react-admin to a view, the list
   format and the routes that react-admin expects, to-many id arrays, CORS,
   and a list that shows no rows.
@@ -125,7 +128,8 @@ filter, sort and page parameters to the URL.
 - [Relationships](relationships.md): accept the id of another row, check
   that the row exists, return related objects, and fix `MissingGreenlet`.
 - [Responses](responses.md): what each route returns, the list envelope,
-  and how to change the shape of one route or of all routes.
+  the response of a custom route, and how to change the shape of one route
+  or of all routes.
 - [Filtering & Pagination](filtering.md): the filters, the sort order and
   the pages that a client can use on a list, the keys that a view chooses,
   filters of your own, and list params that you write yourself.

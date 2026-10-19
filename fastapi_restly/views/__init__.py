@@ -7,15 +7,20 @@ methods. The handler handles the steps, and you override a step:
    signature, ``response_model``, and ``to_response``. Replace only to change
    the HTTP contract.
 2. ``handle_<verb>``, the handler: handles the steps, ``authorize``, the
-   business method, and the commit bracket (``before_action_commit`` ->
-   commit -> ``after_action_commit``). Final: call it from a custom route,
-   never override it.
-3. ``<verb>`` (``get_many``, ``get_one``, ``create``, ``update``, ``delete``),
-   the business method: the domain operation, auth-free and commit-free. The
-   usual override point. A write business method changes objects in the
-   session and returns the object; it does not flush.
+   load or the business method, and the commit bracket
+   (``before_action_commit`` -> commit -> ``after_action_commit``). Final:
+   call it from a custom route, never override it.
+3. ``create``, ``update``, ``delete``, the business method: the domain
+   operation, auth-free and commit-free. The usual override point. It
+   changes objects in the session and returns the object; it does not
+   flush.
 
-Cross-cutting seams: ``scope`` (read visibility), ``authorize`` (policy),
+``get_one`` and ``get_many`` are the loads. They are final and start from
+``select()``: the scope and the loader options.
+
+Cross-cutting seams: ``scope`` (read visibility), ``where_id`` (the row an
+id names), ``not_found`` (the error for a missing row),
+``get_loader_options`` (what a read loads), ``authorize`` (policy),
 ``apply_list_params`` (list params), ``to_response`` (response shape),
 ``write_action`` (custom write actions), ``shared_write_action_commit``
 (one commit over several writes). After a write business method, the

@@ -939,12 +939,13 @@ def test_react_admin_list_respects_build_query_scope(client):
     assert resp.headers["Content-Range"].endswith("/1")  # total respects scope
 
 
-def test_react_admin_list_runs_the_handler_domain_and_response_seams(client):
+def test_react_admin_list_runs_the_handler_load_and_response_seams(client):
     """React Admin list is still an endpoint-method replacement: it should delegate
-    through the standard handler, domain method, and response chokepoint.
+    through the standard handler, the list load, and the response chokepoint.
 
-    The handler is final, so its run is observed through the ``authorize``
-    call it owns, and the total it carries is observed through ``count``.
+    The handler and get_many are final, so their run is observed through the
+    ``authorize`` call and the ``apply_list_params`` and ``count`` calls they
+    own.
     """
 
     events: list[tuple[str, object | None]] = []
@@ -965,9 +966,9 @@ def test_react_admin_list_runs_the_handler_domain_and_response_seams(client):
             events.append(("authorize", action))
             await super().authorize(action, obj, data)
 
-        async def get_many(self, list_params, *, scope=None):
-            events.append(("get_many", None))
-            return await super().get_many(list_params, scope=scope)
+        async def apply_list_params(self, query, list_params):
+            events.append(("apply_list_params", None))
+            return await super().apply_list_params(query, list_params)
 
         async def count(self, query):
             events.append(("count", None))
@@ -985,18 +986,18 @@ def test_react_admin_list_runs_the_handler_domain_and_response_seams(client):
 
     assert [name for name, _ in events] == [
         "authorize",
-        "get_many",
+        "apply_list_params",
         "count",
         "to_response",
     ]
     assert events[0] == ("authorize", "get_many")
     assert events[-1] == ("to_response", fr.ResponseShape.LIST)
     assert response.json()[0]["name"] == "a"
-    # the header reports the total the domain method put in the ListResult
+    # the header reports the total that count put in the ListResult
     assert response.headers["Content-Range"].endswith("/11")
 
 
-def test_sync_react_admin_list_runs_the_handler_domain_and_response_seams(sync_client):
+def test_sync_react_admin_list_runs_the_handler_load_and_response_seams(sync_client):
     events: list[tuple[str, object | None]] = []
 
     class SyncSeamItem(fr.IDMixin, SharedBase):
@@ -1015,9 +1016,9 @@ def test_sync_react_admin_list_runs_the_handler_domain_and_response_seams(sync_c
             events.append(("authorize", action))
             super().authorize(action, obj, data)
 
-        def get_many(self, list_params, *, scope=None):
-            events.append(("get_many", None))
-            return super().get_many(list_params, scope=scope)
+        def apply_list_params(self, query, list_params):
+            events.append(("apply_list_params", None))
+            return super().apply_list_params(query, list_params)
 
         def count(self, query):
             events.append(("count", None))
@@ -1035,7 +1036,7 @@ def test_sync_react_admin_list_runs_the_handler_domain_and_response_seams(sync_c
 
     assert [name for name, _ in events] == [
         "authorize",
-        "get_many",
+        "apply_list_params",
         "count",
         "to_response",
     ]

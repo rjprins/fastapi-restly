@@ -41,20 +41,14 @@ class WidgetView(fr.RestView[Widget, WidgetSchema, WidgetInput, WidgetInput, int
     def health(self) -> dict[str, str]:
         return {"status": "ok"}
 
+    # The loads are final; their hooks shape them, and are typed.
+    def where_id(self, id: int) -> ColumnElement[bool]:
+        return Widget.id == id
+
+    def not_found(self, id: int | None) -> Exception:
+        return fr.exc.NotFound(f"No widget {id}")
+
     # Domain operations (auth-free, commit-free) -- the common override point.
-    # The handlers always forward ``scope=``, so an override declares it.
-    def get_many(
-        self, list_params: Any, *, scope: fr.views.ReadScope = None
-    ) -> fr.ListResult[Widget]:
-        return super().get_many(list_params, scope=scope)
-
-    # ``id`` is the primary key or a predicate that replaces it, so an
-    # override widens the parameter the same way.
-    def get_one(
-        self, id: int | ColumnElement[bool], *, scope: fr.views.ReadScope = None
-    ) -> Widget:
-        return super().get_one(id, scope=scope)
-
     def create(self, data: WidgetInput) -> Widget:
         return super().create(data)
 
@@ -82,8 +76,7 @@ class WidgetView(fr.RestView[Widget, WidgetSchema, WidgetInput, WidgetInput, int
         widget: Widget = self.handle_get_one(Widget.name == name)
         return self.to_single_response(widget)
 
-    # A narrowed list: ``where=`` takes a raw expression or a clause, and
-    # the ``scope``-only ``get_many`` override above stays compatible.
+    # A narrowed list: ``where=`` takes a raw expression or a clause.
     @fr.get("/named/{name}")
     def list_named(self, name: str, list_params: Any) -> Any:
         by_name = self.handle_get_many(list_params, where=Widget.name == name)

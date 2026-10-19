@@ -154,7 +154,7 @@ add it.
    like a method: `schema_create`, `schema_list_params`.
 4. A function starts with a verb. It starts with an action name only if it is
    part of that action: `update_object` is fine, `create_schema_from_model` is
-   not. Getters such as `get_relationship_loader_options` are fine.
+   not. Getters such as `get_loader_options` are fine.
 5. A function that builds one of a view's classes is named `derive_schema`
    plus the role: `derive_schema_response` builds `schema_response`, and
    `derive_schema_list_params` builds `schema_list_params`. A role without a

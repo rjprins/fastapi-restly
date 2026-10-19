@@ -33,11 +33,12 @@ class ProjectSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     # Kept by the session event in app.tasks.models, not by the client.
     total_story_points: fr.ReadOnly[int] = 0
 
-    # Transient response-only field — populated by get_one from permission state.
+    # Whether the caller may edit the project: set by
+    # ProjectView.to_single_response, not stored.
     can_edit: fr.ReadOnly[bool | None] = None
 
-    # Computed fields - populated by the view, not stored in DB
-    # Marked as ReadOnly so they're excluded from create/update
+    # SQL expressions on the model (app.tasks.models), not columns.
+    # ReadOnly keeps them out of the create and update bodies.
     task_count: fr.ReadOnly[int | None] = None
     completed_task_count: fr.ReadOnly[int | None] = None
 
@@ -51,8 +52,3 @@ class ProjectSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
         if self.completed_task_count is None:
             return 0.0
         return round((self.completed_task_count / self.task_count) * 100, 1)
-
-
-# The response class that the view builds from ProjectSchema. A custom route
-# names it, so OpenAPI shows ProjectResponse there, as on the CRUD routes.
-ProjectResponse = fr.schemas.derive_schema_response(ProjectSchema)

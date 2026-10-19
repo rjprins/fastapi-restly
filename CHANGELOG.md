@@ -92,6 +92,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `get_one` and `get_many` are final loads, as the handlers are. A view
+  class that defines one fails when Python creates the class, with a
+  message that names the place for the change. Each load starts from the
+  new `self.select(*, scope=None)`: `select(self.model)` with the view's
+  scope and loader options. A route of your own starts there too, such as
+  `self.select().where(Item.price > 10)`. Two hooks shape the load of one
+  row:
+
+  - `where_id(id)` returns the WHERE for an id from the path. The default
+    compares the primary key. Override it to find the row by a slug.
+  - `not_found(id)` returns the error for an id that names no row. The
+    default is a 404 that names the model and the id. On an async view it
+    may be `async def`.
+
+  A hook that the loads cannot use fails early. An `async def where_id`,
+  and an `async def not_found` on a sync view, fail when Python creates the
+  class. A `where_id` that returns anything other than a SQL condition, or
+  a condition on another table, such as `Shelf.id == id` in a view of
+  books, raises `TypeError`. So does a `not_found` that returns anything
+  other than an exception.
+
+  ```python
+  class RecipeView(fr.AsyncRestView):
+      id_type = str
+
+      def where_id(self, id: str) -> ColumnElement[bool]:
+          return Recipe.slug == id
+  ```
+
+  `GET`, `PATCH` and `DELETE /{id}` and `self.get_one(id)` all use the
+  hooks. A value on each row of a response goes in `to_single_response`
+  when it needs no query. A value from SQL goes on the model as a
+  `column_property`, or in `get_loader_options` with `with_expression`. A
+  read from another source, such as a cache, replaces `get_one_endpoint` or
+  `get_many_endpoint`. `get_many` takes `where=`, as `handle_get_many`
+  does.
+- A model with a composite primary key needs `where_id` for the item
+  routes, and `id_type = str` for an id such as `3-7`. Without `where_id`,
+  the view fails when it registers, and the message says how to split the
+  id. Or leave the item routes out with `exclude_routes`. Before, the view
+  registered, and each item request raised `NotImplementedError`.
+- `get_relationship_loader_options` is now `get_loader_options`. It holds
+  everything that a read loads, a `with_expression` too. A view class that
+  defines the old name fails when Python creates the class, with a message
+  that names the new one.
+- A custom route that declares the view's response answers through the
+  view's response step, as the CRUD routes do. So the route can return the
+  row:
+
+  ```python
+  @fr.post("/{id}/archive")
+  async def archive(self, id: int) -> ViewResponse:
+      project = await self.get_one(id)
+      async with self.write_action("archive", obj=project):
+          project.status = ProjectStatus.ARCHIVED
+      return project
+  ```
+
+  With `ViewResponse`, in the return annotation or in `response_model=`, a
+  row goes through `to_response`. With `list[ViewResponse]`, each row goes
+  through `to_single_response`. With `ViewListResponse`, a `ListResult`
+  goes through `to_response(result, ResponseShape.LIST)`. A return
+  annotation of the view's model, such as `-> Project` or
+  `-> list[Project]`, without `response_model=`, works like
+  `ViewResponse`: the route gets the view's response class. Before,
+  FastAPI built the response from the row's attributes, so
+  `to_single_response` did not run, and `-> Project` failed when the view
+  registered. Anything else that the route returns, such as a `Response`,
+  a dict or a schema instance, goes out as before. A route that names a
+  Pydantic class of its own keeps FastAPI's behaviour. This is different
+  from plain FastAPI, because the view sets its response class.
 - The write business methods no longer flush. `create` and `update` return
   the object, and `delete` only marks the row. The commit bracket saves the
   result: it adds a new object, flushes, refreshes it and loads the
@@ -520,6 +591,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- After a write, the response has the values that the loader options load.
+  On an async view, a `to_single_response` that read a relationship from
+  `get_loader_options` failed with `MissingGreenlet` after `PATCH`, and a
+  `with_expression` value was missing after `POST` and `PATCH`. One reload
+  now covers the row of the write and the other rows of the view's model
+  that the action wrote, with the loader options.
 - Pyright and mypy report an unknown name on `fr`, such as `fr.NotAThing`.
   Before, the package's module `__getattr__`, which loads `fr.testing` when
   it is first used, made both accept every name.

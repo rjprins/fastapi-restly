@@ -362,6 +362,10 @@ def test_composite_primary_key_keeps_the_int_id(base):
         model = Pair
         schema = PairSchema
 
+        def where_id(self, id):
+            # a composite key needs where_id for the item routes
+            return Pair.n == id
+
     app = FastAPI()
     fr.include_view(app, PairView)
 

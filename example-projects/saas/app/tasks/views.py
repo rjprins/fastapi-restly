@@ -7,12 +7,13 @@ from fastapi import HTTPException
 from pydantic import BaseModel
 
 import fastapi_restly as fr
+from fastapi_restly.views import ViewResponse
 
 from ..projects.models import Project
 from ..users.models import User
 from ..views import TrashView
 from .models import Task, TaskClauses, TaskPriority, TaskStatus, TaskType
-from .schemas import TaskResponse, TaskSchema
+from .schemas import TaskSchema
 
 
 class TaskCreate(BaseModel):
@@ -306,22 +307,22 @@ class TaskView(TrashView[Task]):
 
         return BulkResult(success=success, failed=failed, errors=errors)
 
-    @fr.post("/{id}/start", response_model=TaskResponse)
-    async def start_task(self, id: int) -> Task:
+    @fr.post("/{id}/start")
+    async def start_task(self, id: int) -> ViewResponse:
         """Move task from TODO to IN_PROGRESS."""
         return await self._transition_task(
             id, TaskStatus.TODO, TaskStatus.IN_PROGRESS, "start"
         )
 
-    @fr.post("/{id}/complete", response_model=TaskResponse)
-    async def complete_task(self, id: int) -> Task:
+    @fr.post("/{id}/complete")
+    async def complete_task(self, id: int) -> ViewResponse:
         """Move task from IN_PROGRESS to DONE."""
         return await self._transition_task(
             id, TaskStatus.IN_PROGRESS, TaskStatus.DONE, "complete"
         )
 
-    @fr.post("/{id}/reopen", response_model=TaskResponse)
-    async def reopen_task(self, id: int) -> Task:
+    @fr.post("/{id}/reopen")
+    async def reopen_task(self, id: int) -> ViewResponse:
         """Reopen a completed task back to IN_PROGRESS."""
         return await self._transition_task(
             id, TaskStatus.DONE, TaskStatus.IN_PROGRESS, "reopen"

@@ -52,17 +52,14 @@ class AsyncWriteHost(Protocol):
     """Async host interface for the write lifecycle.
 
     ``model`` is the model whose written rows the save refreshes.
-    ``_get_response_reload_statement`` is the SELECT that loads the
-    relationships of the response on a saved object, or ``None``.
-    ``_get_rows_reload_statements`` are the SELECTs that reload other saved
-    rows of the view's model, with those relationships.
+    ``_get_reload_statements`` are the SELECTs that load what the response
+    needs on the saved subject and on the other saved rows of that model.
     """
 
     session: Any
     model: Any
 
-    def _get_response_reload_statement(self, obj: Any) -> Any: ...
-    def _get_rows_reload_statements(self, rows: list[Any]) -> list[Any]: ...
+    def _get_reload_statements(self, subject: Any, others: list[Any]) -> list[Any]: ...
     async def authorize(
         self, action: str, obj: Any = None, data: Any = None
     ) -> None: ...
@@ -81,8 +78,7 @@ class WriteHost(Protocol):
     session: Any
     model: Any
 
-    def _get_response_reload_statement(self, obj: Any) -> Any: ...
-    def _get_rows_reload_statements(self, rows: list[Any]) -> list[Any]: ...
+    def _get_reload_statements(self, subject: Any, others: list[Any]) -> list[Any]: ...
     def authorize(self, action: str, obj: Any = None, data: Any = None) -> None: ...
     def snapshot(self, obj: Any) -> dict[str, Any]: ...
     def before_action_commit(self, action: str, new: Any, old: Any = None) -> None: ...
@@ -277,9 +273,9 @@ async def _async_save(host: AsyncWriteHost, subject: Any, written: _WrittenRows)
     """The save step: flush, then make the subject and the view's other
     written rows ready for the hooks and the response. Returns ``new``.
 
-    The subject gets the refresh of ``fr.objects.save_object`` and then the
-    load of the response's relationships. The other rows are reloaded
-    together, in a few SELECTs.
+    The subject gets the refresh of ``fr.objects.save_object``. Then one
+    reload, with the view's loader options, covers the subject and the other
+    rows.
     """
     session = host.session
     _add_to_session(session, subject)
@@ -287,12 +283,12 @@ async def _async_save(host: AsyncWriteHost, subject: Any, written: _WrittenRows)
     state = _mapped_state(subject)
     if state is not None and state.persistent:
         await _async_refresh_saved(session, subject)
-        stmt = host._get_response_reload_statement(subject)
-        if stmt is not None:
-            # unique(): the loader-options seam is public and may return a
-            # joinedload against a collection, which fans the row set out.
-            (await session.scalars(stmt)).unique().all()
-    for stmt in host._get_rows_reload_statements(written.others(subject)):
+    others = written.others(subject)
+    for row in others:
+        _expire_relationships(row)
+    for stmt in host._get_reload_statements(subject, others):
+        # unique(): the loader-options seam is public and may return a
+        # joinedload against a collection, which fans the row set out.
         (await session.scalars(stmt)).unique().all()
     return _new(subject)
 
@@ -305,12 +301,22 @@ def _save(host: WriteHost, subject: Any, written: _WrittenRows) -> Any:
     state = _mapped_state(subject)
     if state is not None and state.persistent:
         _refresh_saved(session, subject)
-        stmt = host._get_response_reload_statement(subject)
-        if stmt is not None:
-            session.scalars(stmt).unique().all()
-    for stmt in host._get_rows_reload_statements(written.others(subject)):
+    others = written.others(subject)
+    for row in others:
+        _expire_relationships(row)
+    for stmt in host._get_reload_statements(subject, others):
         session.scalars(stmt).unique().all()
     return _new(subject)
+
+
+def _expire_relationships(row: Any) -> None:
+    """Expire the relationships of a saved row, so the reload reads them
+    again: a changed foreign key then never shows the old related row."""
+    state = sa_inspect(row)
+    keys = [rel.key for rel in state.mapper.relationships]
+    # expire(row, []) would expire every attribute
+    if keys:
+        state.session.expire(row, keys)
 
 
 @contextlib.contextmanager

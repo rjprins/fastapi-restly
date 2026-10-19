@@ -355,7 +355,7 @@ def test_the_view_loads_the_relationships_the_response_class_names(members):
     # The view's schema names no relationship. Without this load, the async
     # view could not send the team: it would fail with MissingGreenlet.
     instance = object.__new__(view)
-    assert len(instance.get_relationship_loader_options()) == 1
+    assert len(instance.get_loader_options()) == 1
 
 
 def test_openapi_shows_the_view_s_response_class(members):

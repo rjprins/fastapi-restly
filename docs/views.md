@@ -157,9 +157,11 @@ no method and no status code for you:
         ...
 ```
 
-A route method must not have the name of a business method: `get_many`,
-`get_one`, `create`, `update` or `delete`. Registration raises `TypeError`
-for such a name, also on a plain `View`. Give the route another name. To
+A route method must not have the name of a business method: `create`,
+`update` or `delete`. Registration raises `TypeError` for such a name, also
+on a plain `View`. A CRUD view class that defines `get_one` or `get_many`
+fails when Python creates it, because the loads are final. Give the route
+another name. To
 replace a CRUD route, override its endpoint method, such as
 `create_endpoint`; see
 [Change the status code or headers of one route](#replace-endpoint-method).
@@ -322,7 +324,7 @@ class ArchiveView(fr.AsyncRestView):
         obj = await self.get_one(id)
         async with self.write_action("archive", obj=obj):
             obj.archived = True
-        return self.to_response(obj)
+        return obj
 
 
 @fr.include_view(app)

@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm.attributes import flag_modified
 
 import fastapi_restly as fr
+from fastapi_restly.views import ViewResponse
 
 from ..current import Current
 from ..tasks.models import Task, TaskPriority, TaskStatus, TaskType
@@ -16,7 +17,7 @@ from ..tasks.schemas import TaskResponse
 from ..tasks.views import TaskCreate, TaskView
 from ..views import TrashView
 from .models import Project, ProjectClauses, ProjectStatus
-from .schemas import ProjectResponse, ProjectSchema
+from .schemas import ProjectSchema
 
 
 class CloneRequest(BaseModel):
@@ -64,11 +65,12 @@ class ProjectView(TrashView[Project]):
     and context-bind deps and the ``_emit`` outbox helper; the tenant
     floor on reads is the session listener in ``app.models``.
 
-    The slug and the story-point total are the model's business too (see
-    ``app.projects.models`` and ``app.tasks.models``). This view keeps
-    project-specific logic: response decoration and project-level events.
-    The events are outbox rows in ``before_action_commit``, which runs after
-    the save, so the id and the slug are set there. They follow from ``old``
+    The slug, the story-point total and the task counts are the model's
+    business too (see ``app.projects.models`` and ``app.tasks.models``). This
+    view keeps project-specific logic: ``can_edit`` in the response, and
+    project-level events. The events are outbox rows in
+    ``before_action_commit``, which runs after the save, so the id and the
+    slug are set there. They follow from ``old``
     and ``new``, so every route that creates a project or changes its status
     emits them.
     """
@@ -80,61 +82,15 @@ class ProjectView(TrashView[Project]):
     trash_scope = ProjectClauses.is_deleted
     exclude_routes = [fr.ViewRoute.DELETE]  # replaced by soft_delete below
 
-    async def _decorate_project_response(self, project: Project) -> Project:
-        """Populate transient response fields that are not stored on Project."""
-        # Transient: read by ProjectSchema, not columns on the model.
-        setattr(project, "can_edit", self._can_edit(project))
-        # select_from(Task): a count that names Task only in WHERE gets no
-        # tenant criterion.
-        task_count = (
-            await self.session.scalar(
-                select(func.count())
-                .select_from(Task)
-                .where(Task.project_id == project.id, Task.deleted_at.is_(None))
-            )
-            or 0
-        )
-        completed_task_count = (
-            await self.session.scalar(
-                select(func.count())
-                .select_from(Task)
-                .where(
-                    Task.project_id == project.id,
-                    Task.status == TaskStatus.DONE,
-                    Task.deleted_at.is_(None),
-                )
-            )
-            or 0
-        )
-        setattr(project, "task_count", task_count)
-        setattr(project, "completed_task_count", completed_task_count)
-        return project
+    def to_single_response(self, obj: Any) -> Any:
+        """The response, with ``can_edit`` for the caller.
 
-    async def get_many(
-        self, list_params: Any, *, scope: fr.views.ReadScope = None
-    ) -> fr.ListResult[Project]:
-        # The session enforces tenancy. The default scope hides deleted rows.
-        # Here we only do project-specific response decoration on each row
-        # in the page.
-        result = await super().get_many(list_params, scope=scope)
-        decorated = [
-            await self._decorate_project_response(project) for project in result.objects
-        ]
-        return fr.ListResult(
-            objects=decorated,
-            total_count=result.total_count,
-            list_params=result.list_params,
-        )
-
-    async def get_one(
-        self, id: int | sa.ColumnElement[bool], *, scope: fr.views.ReadScope = None
-    ) -> Project:
-        # The session enforces tenancy. The default scope hides deleted rows.
-        # ``get_one`` is the auth-free load+scope+404 override point; we layer only
-        # project-specific response decoration on top. ``handle_get_one``
-        # (and therefore every read path) routes through here.
-        project = await super().get_one(id, scope=scope)
-        return await self._decorate_project_response(project)
+        Every response of the view passes here: ``GET``, the list items, the
+        writes and the custom routes below. The task counts need no code
+        here: they load with the project.
+        """
+        response = super().to_single_response(obj)
+        return response.model_copy(update={"can_edit": self._can_edit(obj)})
 
     def _can_edit(self, project: Project) -> bool:
         """Whether the current user may edit this project.
@@ -144,28 +100,12 @@ class ProjectView(TrashView[Project]):
         """
         return Current.is_admin() or project.organization_id == Current.org_id()
 
-    async def create(self, data: BaseModel) -> Project:
-        """Build the project, and fill the response fields that are not columns.
-
-        ``organization_id``, the audit stamps and the slug are the model's
-        business (``app.models``, ``app.projects.models``), set at the
-        flush. The response fields need the id and the organization, so this
-        method flushes early, as in plain SQLAlchemy. The commit bracket
-        saves the project after it returns.
-        """
-        project = await super().create(data)
-        await self.session.flush()  # the id and the stamps, for the counts below
-        return await self._decorate_project_response(project)
-
     async def update(self, obj: Project, data: BaseModel) -> Project:
         """Keep a slug that the client sent.
 
-        ``handle_update`` loads ``obj`` through ``get_one``, which also fills
-        the response fields. An update cannot change them: the organization
-        is read-only, and the task counts do not depend on the project's own
-        columns. Audit-stamping (``updated_by_id``) is the column's
-        ``onupdate`` (``AuditStamped`` in ``app.models``), and a new name
-        gives a new slug through the mapper event in ``app.projects.models``.
+        Audit-stamping (``updated_by_id``) is the column's ``onupdate``
+        (``AuditStamped`` in ``app.models``), and a new name gives a new slug
+        through the mapper event in ``app.projects.models``.
         """
         project = await super().update(obj, data)
         if getattr(data, "slug", None):
@@ -195,8 +135,8 @@ class ProjectView(TrashView[Project]):
                 {"from": old["status"].value, "to": new.status.value},
             )
 
-    @fr.delete("/{id}", status_code=200, response_model=ProjectResponse)
-    async def soft_delete(self, id: int) -> Project:
+    @fr.delete("/{id}", status_code=200)
+    async def soft_delete(self, id: int) -> ViewResponse:
         """Soft delete: sets deleted_at instead of removing the row.
 
         ``SoftDeleteMixin.delete`` performs the mutation. This route
@@ -206,10 +146,10 @@ class ProjectView(TrashView[Project]):
 
         async with self.write_action("delete", obj=project):
             await self.delete(project)
-        return await self._decorate_project_response(project)
+        return project
 
-    @fr.post("/{id}/archive", response_model=ProjectResponse)
-    async def archive_project(self, id: int) -> Project:
+    @fr.post("/{id}/archive")
+    async def archive_project(self, id: int) -> ViewResponse:
         """Archive a project (prevents new task creation).
 
         Loads through ``get_one``; ``write_action("archive")`` gates the
@@ -222,17 +162,17 @@ class ProjectView(TrashView[Project]):
 
         async with self.write_action("archive", obj=project):
             project.status = ProjectStatus.ARCHIVED
-        return await self._decorate_project_response(project)
+        return project
 
-    @fr.post("/{id}/clone", response_model=ProjectResponse)
-    async def clone_project(self, id: int, request: CloneRequest) -> Project:
+    @fr.post("/{id}/clone")
+    async def clone_project(self, id: int, request: CloneRequest) -> ViewResponse:
         """Clone a project with all its tasks.
 
         One write action: the new project is its subject, under the name
         ``create``, so ``authorize`` and the outbox event see a new project,
         as on ``POST /projects``. The project, its outbox event and the copied
         tasks share one commit. The save refreshes the clone, so the response
-        has the story-point total that the tasks add.
+        has the story-point total and the task count that the tasks add.
         """
         original = await self.get_one(id)  # the scope and the 404
         tasks = await original.awaitable_attrs.tasks if request.include_tasks else []
@@ -259,23 +199,25 @@ class ProjectView(TrashView[Project]):
                     )
                     for task in tasks
                 )
-        return await self._decorate_project_response(clone)
+        return clone
 
-    @fr.get("/by-slug/{slug}", response_model=ProjectResponse)
-    async def get_by_slug(self, slug: str) -> Project:
+    @fr.get("/by-slug/{slug}")
+    async def get_by_slug(self, slug: str) -> ViewResponse:
         """Retrieve by the natural key instead of the id.
 
         ``handle_get_one`` takes a predicate in place of the id, so this
         route is ``GET /{id}`` under another key: the same scope, the same
-        404, the same read-auth, and ``get_one``'s response decoration.
+        404, the same read-auth, and the same response.
         The key is (organization, slug), not the slug alone: slugs are
         unique inside an organization, and an admin reads across tenants,
         so a bare slug could match a row per tenant.
         """
         return await self.handle_get_one(self._by_slug(slug))
 
-    @fr.patch("/by-slug/{slug}", response_model=ProjectResponse)
-    async def update_by_slug(self, slug: str, request: ProjectPatchRequest) -> Project:
+    @fr.patch("/by-slug/{slug}")
+    async def update_by_slug(
+        self, slug: str, request: ProjectPatchRequest
+    ) -> ViewResponse:
         """Update by the natural key, through the standard commit bracket.
 
         ``handle_update`` takes the same predicate, so this loads,
@@ -348,10 +290,10 @@ class ProjectView(TrashView[Project]):
         checked the project itself.
         """
         await self.handle_get_one(id)
-        query = fr.apply_clauses(
+        stmt = fr.apply_clauses(
             select(Task).where(Task.project_id == id), fr.resolve_scope(TaskView)
         )
-        return list((await self.session.scalars(query)).all())
+        return list((await self.session.scalars(stmt)).all())
 
     @fr.post("/{id}/tasks", response_model=TaskResponse, status_code=201)
     async def create_project_task(self, id: int, request: "TaskCreateRequest") -> Task:

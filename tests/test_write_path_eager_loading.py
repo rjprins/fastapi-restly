@@ -1,16 +1,17 @@
 """Writes eager-load the relationships the response schema names.
 
-Reads build loader options from the response schema and apply them in
-``get_one`` / ``get_many``. Writes used to flush-and-refresh with none, so
-``to_single_response``'s ``getattr`` reached an unloaded relationship at
-serialization time: a lazy load in the endpoint coroutine, where SQLAlchemy's
-asyncio layer has no greenlet to suspend into. Every create and update whose
-response schema embedded a relationship returned 500 for a row that had already
-committed (y2zx).
+Reads build loader options from the response schema, and ``select()``
+applies them in ``get_one`` / ``get_many``. Writes used to flush-and-refresh
+with none, so ``to_single_response``'s ``getattr`` reached an unloaded
+relationship at serialization time: a lazy load in the endpoint coroutine,
+where SQLAlchemy's asyncio layer has no greenlet to suspend into. Every
+create and update whose response schema embedded a relationship returned
+500 for a row that had already committed.
 
-``save_object`` now applies the same loader options reads use. It fills only
-what is *unloaded*: a relationship the caller left loaded keeps its value,
-because the reload runs without ``populate_existing``.
+The save of the commit bracket now reloads the saved rows with the same
+loader options. It fills only what is *unloaded*: a relationship the caller
+left loaded keeps its value, because the reload runs without
+``populate_existing``.
 """
 
 import asyncio
@@ -34,10 +35,7 @@ from sqlalchemy.orm.attributes import set_committed_value
 import fastapi_restly as fr
 from fastapi_restly.db._globals import _fr_globals
 from fastapi_restly.testing._client import RestlyTestClient
-from fastapi_restly.views._base import (
-    _relationship_reload_statement,
-    _schema_relationships_are_loaded,
-)
+from fastapi_restly.views._base import _rows_reload_statements
 
 from ._models import SharedBase
 from .conftest import create_tables
@@ -142,7 +140,7 @@ def _build_nested_app(app):
 
 
 def test_async_create_serializes_nested_relationship(client):
-    """The y2zx regression: POST used to 500 after committing the row."""
+    """POST used to answer 500 after it committed the row."""
     _build_nested_app(client.app)
 
     response = client.post("/docs/", json={"title": "created"})
@@ -395,7 +393,9 @@ def test_reload_preserves_an_already_loaded_relationship(sync_db):
         # How an eager loader populates a relationship: loaded, not dirty.
         set_committed_value(doc, "tags", [keep])
 
-        statement = _relationship_reload_statement(doc, [selectinload(ScopedDoc.tags)])
+        (statement,) = _rows_reload_statements(
+            ScopedDoc, [doc], [selectinload(ScopedDoc.tags)]
+        )
         session.scalars(statement).unique().all()
 
         assert [t.label for t in doc.tags] == ["keep"]
@@ -583,7 +583,9 @@ def test_reload_fills_an_unloaded_relationship(sync_db):
         doc = session.scalars(select(ScopedDoc)).one()
         assert "tags" in sa_inspect(doc).unloaded
 
-        statement = _relationship_reload_statement(doc, [selectinload(ScopedDoc.tags)])
+        (statement,) = _rows_reload_statements(
+            ScopedDoc, [doc], [selectinload(ScopedDoc.tags)]
+        )
         session.scalars(statement).unique().all()
 
         assert "tags" not in sa_inspect(doc).unloaded
@@ -591,18 +593,16 @@ def test_reload_fills_an_unloaded_relationship(sync_db):
 
 
 # ---------------------------------------------------------------------------
-# The gate must key its recursion on (instance, schema), not the instance
-# alone -- the same object can be reached under two sub-schemas naming
-# different relationships.
+# The same object can be reached under two sub-schemas naming different
+# relationships, and the reload must load both.
 # ---------------------------------------------------------------------------
 
 
 def test_divergent_schemas_same_instance_reload(client):
     """One instance reached under two nested schemas that name *different*
-    relationships. The gate has to check both pairings; deduping the instance
-    away after the first lets the second schema's unloaded relationship slip
-    through, and the async serializer 500s on it -- the y2zx regression, this
-    time inside the reload gate rather than the write path as a whole.
+    relationships. The reload must load both; if it loaded only the first,
+    the async serializer would fail on the second schema's unloaded
+    relationship with a 500.
     """
 
     class Company(fr.IDMixin, SharedBase):
@@ -614,12 +614,12 @@ def test_divergent_schemas_same_instance_reload(client):
     class Person(fr.IDMixin, SharedBase):
         name: Mapped[str]
         company_id: Mapped[int] = mapped_column(ForeignKey("company.id"), init=False)
-        # eager: survives the write's refresh, so the gate sees it loaded
+        # eager: survives the write's refresh, so it stays loaded
         company: Mapped[Company] = relationship(init=False, lazy="joined")
         department_id: Mapped[int] = mapped_column(
             ForeignKey("department.id"), init=False
         )
-        # default lazy: unloaded after refresh -- the one the gate must not skip
+        # default lazy: unloaded after refresh -- the one the reload must load
         department: Mapped[Department] = relationship(init=False)
 
     class Doc(fr.IDMixin, SharedBase):
@@ -786,7 +786,7 @@ def test_write_reload_unique_guards_a_joinedload_collection(client):
         schema = DocSchema
         schema_create = DocCreate
 
-        def get_relationship_loader_options(self) -> list[Any]:
+        def get_loader_options(self) -> list[Any]:
             # a joinedload-to-many fans out rows; without .unique() the reload's
             # .all() would raise InvalidRequestError
             return [joinedload(JoinedDoc.tags)]
@@ -812,21 +812,32 @@ def test_write_reload_unique_guards_a_joinedload_collection(client):
 
 
 # ---------------------------------------------------------------------------
-# Gate / reload-statement unit branches
+# Reload-statement unit branches
 # ---------------------------------------------------------------------------
 
 
 def test_transient_object_yields_no_reload_statement():
     """A transient (never-flushed) object has no identity, so there is nothing
-    to reload by primary key: the statement builder returns None."""
+    to reload by primary key: the view builds no statement for it."""
 
     class Widget(fr.IDMixin, SharedBase):
         name: Mapped[str]
+        parts: Mapped[list["WidgetPart"]] = relationship(default_factory=list)
+
+    class WidgetPart(fr.IDMixin, SharedBase):
+        widget_id: Mapped[int] = mapped_column(ForeignKey("widget.id"), init=False)
+
+    class WidgetView(fr.RestView):
+        model = Widget
+
+        def get_loader_options(self):
+            return [selectinload(Widget.parts)]
 
     transient = Widget(name="unsaved")
+    view = object.__new__(WidgetView)
 
     assert sa_inspect(transient).identity is None
-    assert _relationship_reload_statement(transient, []) is None
+    assert view._get_reload_statements(transient, []) == []
 
 
 def test_composite_pk_reload_statement_targets_all_key_columns(sync_db):
@@ -844,7 +855,7 @@ def test_composite_pk_reload_statement_targets_all_key_columns(sync_db):
         session.add(Ledger(tenant="acme", sku="x1", name="Widget"))
         session.commit()
         row = session.scalars(select(Ledger)).one()
-        statement = _relationship_reload_statement(row, [])
+        (statement,) = _rows_reload_statements(Ledger, [row], [])
         # inspect the WHERE clause specifically: the column names appear in the
         # SELECT list regardless, so only their presence in WHERE is meaningful
         where = str(
@@ -853,69 +864,6 @@ def test_composite_pk_reload_statement_targets_all_key_columns(sync_db):
 
     assert "tenant" in where and "sku" in where
     assert "acme" in where and "x1" in where
-
-
-def test_gate_skips_a_nullable_relationship_loaded_as_none(sync_db):
-    """A to-one relationship loaded as None needs no reload: it is present (just
-    null), so the gate reports it satisfied rather than asking for a reload."""
-
-    class Owner(fr.IDMixin, SharedBase):
-        name: Mapped[str]
-
-    class Doc(fr.IDMixin, SharedBase):
-        title: Mapped[str]
-        owner_id: Mapped[int | None] = mapped_column(
-            ForeignKey("owner.id"), init=False, nullable=True
-        )
-        owner: Mapped[Owner | None] = relationship(init=False)
-
-    class OwnerRef(fr.IDSchema):
-        name: str
-
-    class DocSchema(fr.IDSchema):
-        title: str
-        owner: OwnerRef | None = None
-
-    _create_sync_tables()
-    _, make_session = sync_db
-    with make_session() as session:
-        doc = Doc(title="orphan")
-        session.add(doc)
-        session.flush()
-        set_committed_value(doc, "owner", None)  # loaded, and it is None
-
-        assert "owner" not in sa_inspect(doc).unloaded
-        assert _schema_relationships_are_loaded(doc, Doc, DocSchema) is True
-
-
-def test_gate_terminates_on_a_self_referential_cycle(sync_db):
-    """The (instance, schema) dedup still breaks a genuine cycle: an object
-    reached again under the *same* schema is not re-descended, so a node that is
-    its own parent does not recurse forever."""
-
-    class Node(fr.IDMixin, SharedBase):
-        name: Mapped[str]
-        parent_id: Mapped[int | None] = mapped_column(
-            ForeignKey("node.id"), init=False, nullable=True
-        )
-        parent: Mapped["Node | None"] = relationship(init=False, remote_side="Node.id")
-
-    class NodeSchema(fr.IDSchema):
-        name: str
-        parent: "NodeSchema | None" = None
-
-    NodeSchema.model_rebuild()
-
-    _create_sync_tables()
-    _, make_session = sync_db
-    with make_session() as session:
-        node = Node(name="root")
-        session.add(node)
-        session.flush()
-        set_committed_value(node, "parent", node)  # its own parent -> a cycle
-
-        # Must terminate rather than RecursionError; parent is loaded (itself).
-        assert _schema_relationships_are_loaded(node, Node, NodeSchema) is True
 
 
 @contextmanager

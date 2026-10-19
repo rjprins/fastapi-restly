@@ -122,7 +122,13 @@ def test_composite_key_stays_in_the_derived_create_schema(base):
         group_id: int
         role: str
 
-    view = _register(base, Membership, MembershipSchema)
+    # a composite key has no item routes by default: an id cannot name a row
+    view = _register(
+        base,
+        Membership,
+        MembershipSchema,
+        exclude_routes=(fr.ViewRoute.GET_ONE, fr.ViewRoute.UPDATE, fr.ViewRoute.DELETE),
+    )
 
     assert set(view.schema_create.model_fields) == {"user_id", "group_id", "role"}
 

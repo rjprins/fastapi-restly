@@ -19,10 +19,11 @@ configuration and the model around such a view, in one file that runs.
 `include_view` also works as a direct call; see
 [Register a view](#register-a-view).
 
-Each route runs an endpoint method, a final handler and a business method.
-To change what a route does, you override the endpoint method or the business
-method; [Which method do I override](#which-method-to-override) maps each
-change to its method.
+Each route runs an endpoint method, a final handler, and a business method
+or, for a read, a final load. To change what a route does, you override the
+endpoint method or the business method, or set what the load reads;
+[Which method do I override](#which-method-to-override) maps each change to
+its method.
 
 (choose-async-or-sync)=
 ## Choose async or sync
@@ -544,9 +545,11 @@ The default CRUD routes have these limits:
 - A row is identified by one primary key column. The `{id}` path parameter
   takes the Python type of the key, so a UUID or string key needs no
   configuration. Reference fields such as `fr.MustExist[UUID, Model]` accept
-  these keys too. For a composite key, write a custom route that loads the
-  row by a condition ([Look a row up by another key](#natural-key-route)), or
-  use a {class}`View <fastapi_restly.views.View>` with explicit paths.
+  these keys too. For a composite key, set `id_type = str` and override
+  `where_id` to read the parts of the key from the path; see
+  [Look a row up by another key](#natural-key-route). Without `where_id`, a
+  view of such a model fails when it registers, unless it leaves out the
+  item routes.
 - Responses can contain nested objects, and lists can filter on
   relationships. Request bodies with nested objects are not supported in
   general. Use `MustExist`, `IDRef` or `IDSchema` to refer to other rows, or

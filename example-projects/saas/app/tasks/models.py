@@ -141,6 +141,26 @@ class Task(AuditStamped, SoftDeletable, fr.TimestampsMixin, fr.IDMixin, Base):
     )
 
 
+def _live_tasks_of_project(*where: sa.ColumnElement[bool]) -> sa.ScalarSelect[int]:
+    """The number of the project's live tasks that match ``where``: a
+    subquery that a SELECT of a project computes for each row."""
+    return (
+        sa.select(sa.func.count(Task.id))
+        .where(Task.project_id == Project.id, Task.deleted_at.is_(None), *where)
+        .correlate_except(Task)
+        .scalar_subquery()
+    )
+
+
+# Here and not on Project, because this module imports Project. The
+# response reads them as plain attributes, so a list of projects needs no
+# query per row, and the reload after a write loads them again.
+Project.task_count = orm.column_property(_live_tasks_of_project())
+Project.completed_task_count = orm.column_property(
+    _live_tasks_of_project(Task.status == TaskStatus.DONE)
+)
+
+
 # Task has no organization_id: its tenant is its project's.
 restrict_to_tenant(
     Task,

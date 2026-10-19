@@ -2,7 +2,7 @@
 to-many relationship on the shared loader seam.
 
 ``get_many`` and ``get_one`` share their eager loading through one seam,
-``get_relationship_loader_options()``. SQLAlchemy documents ``.unique()`` as
+``get_loader_options()``. SQLAlchemy documents ``.unique()`` as
 required for results with joined eager loads against collections; ``.all()``
 (the ``get_many`` fetch) enforces it with ``InvalidRequestError``, while
 ``.first()`` (the ``get_one`` fetch) currently happens not to — an
@@ -48,7 +48,7 @@ def _register_library(app, view_base):
         model = LoaderAuthor
         schema = AuthorSchema
 
-        def get_relationship_loader_options(self):
+        def get_loader_options(self):
             return [joinedload(LoaderAuthor.books)]
 
     @fr.include_view(app)

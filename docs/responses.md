@@ -22,6 +22,8 @@ around the fields, and where each change goes:
 
 - the envelope of every list: the pagination's envelope; see
   [Change the list envelope](#change-list-envelope);
+- the response of a custom route that returns a row; see
+  [The response of a custom route](#custom-route-response);
 - the shape of one route, such as an envelope around a single object: a
   replaced endpoint method; see [Change the shape of one route](#one-route-shape);
 - the shape of every route: `to_response`; see
@@ -198,6 +200,70 @@ class TagView(fr.AsyncRestView):
     pagination = fr.NoPagination(envelope=Items)
     # Response: [ /* every TagResponse */ ]
 ```
+
+(custom-route-response)=
+## The response of a custom route
+
+A custom route that declares the view's response class goes through the same
+response step as the CRUD routes. So it can return the row itself:
+
+```python
+from fastapi_restly.views import ViewID, ViewResponse
+
+
+@fr.include_view(app)
+class ProjectView(fr.AsyncRestView):
+    prefix = "/projects"
+    model = Project
+    schema = ProjectSchema
+
+    @fr.post("/{id}/archive")
+    async def archive(self, id: ViewID) -> ViewResponse:
+        project = await self.get_one(id)
+        async with self.write_action("archive", obj=project):
+            project.archived = True
+        return project
+```
+
+Restly passes the row to
+{meth}`to_response <fastapi_restly.views.BaseRestView.to_response>`, as
+`PATCH /{id}` does. So an override of
+{meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>`
+changes this response too, and OpenAPI shows `ProjectResponse`.
+
+What Restly does depends on what the route declares, in its return
+annotation or in `response_model=`:
+
+| The route declares | The route returns | Restly sends |
+|---|---|---|
+| {data}`ViewResponse <fastapi_restly.views.ViewResponse>` | a row of the view's model | `to_response(row)` |
+| `list[ViewResponse]` | a list of rows | `to_single_response(row)` for each row |
+| {data}`ViewListResponse <fastapi_restly.views.ViewListResponse>` | a {class}`ListResult <fastapi_restly.views.ListResult>` | `to_response(result, ResponseShape.LIST)` |
+| the view's model, as in `-> Project` | a row | the same as for `ViewResponse` |
+| `list[Project]` | a list of rows | the same as for `list[ViewResponse]` |
+
+Any other value goes out as it is: a dict, an instance of a schema, or a
+`fastapi.Response`. So a route that calls `self.to_response(row)` itself
+works the same way.
+
+:::{admonition} Details
+:class: details
+
+A route that names a class of its own, such as
+`response_model=ProjectSummary`, keeps FastAPI's behaviour. FastAPI builds
+the response from the value that the route returns, and
+`to_single_response` does not run.
+
+The view's model counts only in the return annotation, not in
+`response_model=`. Restly then sets the view's response class as the
+`response_model`. This is not what plain FastAPI does: FastAPI cannot use a
+SQLAlchemy class as a response model. But the view sets the response class
+for its model, so a route that returns the model returns the view's
+response.
+
+The markers also give a custom route the view's types in OpenAPI; see
+[Name the view's classes in a custom route](#name-the-response-classes).
+:::
 
 (one-route-shape)=
 ## Change the shape of one route

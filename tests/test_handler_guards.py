@@ -66,7 +66,7 @@ def test_sync_view_defining_a_handler_fails_at_class_definition(name):
 
 
 @pytest.mark.parametrize("base", [fr.RestView, fr.AsyncRestView])
-@pytest.mark.parametrize("name", HANDLERS)
+@pytest.mark.parametrize("name", WRITE_HANDLERS)
 def test_the_message_names_the_business_method_the_gate_and_the_contract(base, name):
     """Domain logic, a gate, and the HTTP contract each get their own seam."""
     verb = name.removeprefix("handle_")
@@ -78,6 +78,22 @@ def test_the_message_names_the_business_method_the_gate_and_the_contract(base, n
     assert "it handles the steps of the request" in message
     assert f"{verb} business method" in message
     assert "authorize" in message
+    assert f"{verb}_endpoint" in message
+
+
+@pytest.mark.parametrize("base", [fr.RestView, fr.AsyncRestView])
+@pytest.mark.parametrize("name", ["handle_get_many", "handle_get_one"])
+def test_a_read_handler_message_names_the_read_seams(base, name):
+    """A read has no business method: the guard names the seams of a read."""
+    verb = name.removeprefix("handle_")
+
+    with pytest.raises(fr.exc.RestlyConfigurationError) as info:
+        _define(base, name, lambda self, *args, **kwargs: None)
+
+    message = str(info.value)
+    assert "business method" not in message
+    for seam in ("authorize", "scope", "where_id", "apply_list_params"):
+        assert seam in message
     assert f"{verb}_endpoint" in message
 
 

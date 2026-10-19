@@ -524,12 +524,14 @@ schema, or override the {meth}`create() <fastapi_restly.views.RestView.create>`
 and {meth}`update() <fastapi_restly.views.RestView.update>` business methods
 to build the related objects yourself.
 
+(eager-load-extra-relationships)=
 ### Load a relationship that the response does not name
 
 Some code needs a relationship that is not part of the response: a
-`@property`, an `after_action_commit` hook, or a custom read that would
-otherwise run one query per row. Override
-{meth}`get_relationship_loader_options() <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`
+`@property`, an `after_action_commit` hook, a value in
+{meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>`,
+or a custom read that would otherwise run one query per row. Override
+{meth}`get_loader_options() <fastapi_restly.views.BaseRestView.get_loader_options>`
 and add to its result:
 
 ```python
@@ -541,11 +543,17 @@ class ArticleView(fr.AsyncRestView):
     model = Article
     schema = ArticleSchema
 
-    def get_relationship_loader_options(self):
-        return super().get_relationship_loader_options() + [
+    def get_loader_options(self):
+        return super().get_loader_options() + [
             selectinload(Article.comments).selectinload(Comment.reactions)
         ]
 ```
+
+Every read of the view starts from
+{meth}`select() <fastapi_restly.views.BaseRestView.select>`, which applies
+these options: `GET /`, `GET /{id}`, the load of `PATCH` and `DELETE`, and
+your own routes. The save after a write applies them too, so the create and
+update responses have the same loads.
 
 :::{admonition} Details
 :class: details
@@ -554,40 +562,20 @@ The default returns the loads that the response class needs. Adding to it
 keeps those loads. To replace them, return a new list, for example to use
 `joinedload` instead of `selectinload`.
 
-The reads, `get_one` and `get_many`, always apply these options. A create or
-an update applies them only when it reloads the row, and it reloads only when a
-relationship that the response class names is not loaded. So if the response
-class names no relationship, your extra loads do not run after a write. Then
-load the relationship where you use it, as
-[Read a relationship in a hook or a business method](#read-unnamed-relationship)
-shows.
+The method holds every loader option of a read, not only relationships. A
+`query_expression()` on the model gets its value here, with
+`with_expression(...)`; see [Add a value to each row](#value-on-each-row).
 
 For a load that only the list needs, add `.options(...)` in
 {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`.
-It does not change `get_one`, or the create and update responses.
+It does not change `GET /{id}`, or the create and update responses. A load
+that only one custom route needs goes in that route: await the relationship
+after the load, as the next section shows.
+
+Up to 0.11, this method was named `get_relationship_loader_options`. A view
+class that still defines that name fails when Python creates the class, with
+a message that names the new one.
 :::
-
-(eager-load-extra-relationships)=
-### Load a relationship in `get_one` only
-
-If one read needs one more relationship, override
-{meth}`get_one <fastapi_restly.views.RestView.get_one>`. Call `super()` first,
-so the scope, the loads and the `404` stay as they are. Then load the extra
-relationship. `handle_get_one` passes `scope=` to `get_one`, so the override
-must take it and pass it on:
-
-```python
-    async def get_one(self, id, *, scope=None):
-        obj = await super().get_one(id, scope=scope)   # scope, loads and 404
-        await obj.awaitable_attrs.audit_log
-        return obj
-```
-
-Update and delete load their row through `get_one` too, so the extra query
-also runs there. But the refresh after a write unloads the relationship
-again. To load it on the create and update responses as well, override
-`get_relationship_loader_options` instead, with the limit that the previous
-section describes.
 
 (read-unnamed-relationship)=
 ### Read a relationship in a hook or a business method
@@ -607,7 +595,7 @@ async def after_action_commit(self, action, new, old=None):
 ```
 
 Use `awaitable_attrs` for one read. If every request needs the relationship,
-add it to the response class or to `get_relationship_loader_options`
+add it to the response class or to `get_loader_options`
 instead. Then it loads in one query for all rows, not with one query per
 attribute.
 
@@ -629,12 +617,12 @@ in a `ValidationError`. Check these in order:
    is enough to load it. A `WriteOnly` field is not in the response class, so
    its relationship does not load. A field that should load but does not
    usually has the wrong name; see the note below.
-2. **Does a hook or a property read it?** Load it with
+2. **Does a hook, a property or `to_single_response` read it?** Load it with
    `await obj.awaitable_attrs.<name>`. If every request needs it, add it to
-   `get_relationship_loader_options`.
-3. **Did you add the load only in `get_one`, `get_many` or
-   `apply_list_params`?** The create and update responses do not get loads
-   from them. Move the load to `get_relationship_loader_options`.
+   `get_loader_options`.
+3. **Did you add the load only in `apply_list_params` or in a custom
+   route?** The other routes and the create and update responses do not get
+   loads from there. Move the load to `get_loader_options`.
 
 :::{note}
 A relationship field in a response must keep the Python name of the
@@ -667,21 +655,22 @@ SQLAlchemy's
 (nested-response-internals)=
 ### How Restly loads the relationships of a response
 
-{meth}`get_relationship_loader_options() <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`
+{meth}`get_loader_options() <fastapi_restly.views.BaseRestView.get_loader_options>`
 walks the fields of the response class. For each field whose name is a
 relationship of the model, it adds a `selectinload(...)` option. When the
 field type is a nested schema, it walks that schema against the related
 model in the same way, and adds the result as child options.
 
-`get_one` and `get_many` add these options to their query. On a write, the
-save after the business method flushes and then refreshes the object. The
-refresh reloads the columns, but it unloads the relationships that load
-lazily, so a changed foreign key never shows an old related row. Then the
-save checks whether each relationship that the response class reaches is
-loaded. If one is not,
-it runs one query by primary key with all the loader options. That query does
-not use `populate_existing`, so it fills only what is not loaded. A related
-object that is already in the session keeps the values it has.
+{meth}`select() <fastapi_restly.views.BaseRestView.select>` adds these
+options to every read. On a write, the save after the business method
+flushes and then refreshes the object. The refresh reloads the columns, but
+it unloads the relationships that load lazily, so a changed foreign key never
+shows an old related row. The save also unloads the relationships of the
+other rows of the view's model that the action wrote. Then one query by
+primary key reloads those rows with all the loader options, and the object
+too when the view has loader options. It does not apply the scope, and it
+does not use `populate_existing`, so it fills only what is not loaded. A related object
+that is already in the session keeps the values it has.
 
 ### How Restly writes a reference
 

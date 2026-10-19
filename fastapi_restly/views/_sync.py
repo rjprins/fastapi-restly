@@ -3,11 +3,10 @@ from typing import Any, cast, final
 
 import fastapi
 import sqlalchemy
-from sqlalchemy import ColumnElement, select
+from sqlalchemy import ColumnElement
 
 from .._pagination import NumberedPagination
 from ..db import SessionDep
-from ..exc import NotFound
 from ..objects import make_new_object as object_make_new_object
 from ..objects import update_object as object_update_object
 from ..query._impl import _apply_filters, _apply_sort_and_page, _keep_joins
@@ -25,8 +24,6 @@ from ._base import (
     _apply_own_filters,
     _check_list_methods,
     _count_statement,
-    _identity_criterion,
-    _not_found_message,
     _ReadWhere,
     _schema_response,
     delete,
@@ -62,13 +59,19 @@ class RestView(
       ``response_model``, and ``to_response``. Override it to change the
       HTTP contract.
     * ``handle_<verb>``: the handler. Handles the steps: ``authorize``, the
-      business method, and the commit bracket (``before_action_commit`` ->
-      commit -> ``after_action_commit``); returns the domain object. Final:
-      call it from a custom route to run the same steps, never override it.
-    * ``<verb>`` (``get_many`` / ``get_one`` / ``create`` / ``update`` /
-      ``delete``): the business method. Auth-free, commit-free; the common
-      override point (hash a password, ...). A write business method changes
-      objects in the session and does not flush: the commit bracket saves.
+      load or the business method, and the commit bracket
+      (``before_action_commit`` -> commit -> ``after_action_commit``);
+      returns the domain object. Final: call it from a custom route to run
+      the same steps, never override it.
+    * ``create`` / ``update`` / ``delete``: the business method. Auth-free,
+      commit-free; the common override point (hash a password, ...). It
+      changes objects in the session and does not flush: the commit bracket
+      saves.
+
+    ``get_one`` and ``get_many`` are the loads. They are final, as the
+    handlers are, and start from :meth:`~fastapi_restly.views.BaseRestView.select`: the scope and the loader
+    options. Change a load through ``scope``, ``where_id``, ``not_found``,
+    ``apply_list_params`` and ``get_loader_options``.
     """
 
     session: SessionDep
@@ -83,17 +86,19 @@ class RestView(
 
     @get("/")
     def get_many_endpoint(self, list_params: Any) -> ViewListResponse:
-        """``GET /`` endpoint method. Override ``get_many`` for domain
-        logic, ``to_response`` for the response shape; replace this method only
-        to change the HTTP contract."""
+        """``GET /`` endpoint method. Put the rows in ``scope``, the list
+        params in ``apply_list_params``, and the response shape in
+        ``to_response``; replace this method only to change the HTTP
+        contract."""
         result = self.handle_get_many(list_params)
         return self.to_response(result, ResponseShape.LIST)
 
     @get("/{id}")
     def get_one_endpoint(self, id: ViewID) -> ViewResponse:
-        """``GET /{id}`` endpoint method. Override ``get_one`` for domain
-        logic (visibility lives in the scope), ``to_response`` for the response
-        shape; replace this method only to change the HTTP contract."""
+        """``GET /{id}`` endpoint method. Put the rows in ``scope``, the
+        lookup of the id in ``where_id``, and the response shape in
+        ``to_response``; replace this method only to change the HTTP
+        contract."""
         obj = self.handle_get_one(id)
         return self.to_response(obj)
 
@@ -130,10 +135,11 @@ class RestView(
     def handle_get_many(
         self, list_params: Any, *, scope: ReadScope = None, where: _ReadWhere = None
     ) -> ListResult[ModelT]:
-        """List handler: ``authorize`` then the ``get_many`` business method.
+        """List handler: ``authorize``, then the ``get_many`` load.
 
-        Final, like every handler: override ``get_many`` for the query and
-        ``authorize`` for the gate. Call it from a custom list route.
+        Final, like every handler: ``authorize`` is the gate, and the list
+        params and the scope decide the rows. Call it from a custom list
+        route.
 
         :param scope: a clause that replaces the view scope for this read,
             so a custom route can list another surface of the same model
@@ -142,14 +148,13 @@ class RestView(
         :param where: a SQLAlchemy boolean expression or a clause that
             narrows this read inside the scope, so a nested list
             keeps the visibility rules (``where=Task.project_id == id``).
-            It is ANDed into the scope as ``fr.all_of`` would, and
-            ``get_many`` receives the result as ``scope``. The page and
-            ``total_count`` both apply it.
+            The page and ``total_count`` both apply it. Forwarded to
+            ``get_many``.
         :raises TypeError: ``where`` is a Python bool (a comparison on a
             loaded object), or neither an expression nor a clause.
         """
         self.authorize(Action.GET_MANY)
-        return self.get_many(list_params, scope=self._narrowed_scope(scope, where))
+        return self.get_many(list_params, scope=scope, where=where)
 
     @final
     def handle_get_one(
@@ -157,15 +162,16 @@ class RestView(
     ) -> ModelT:
         """Retrieve handler: scoped load (404 by visibility) then read-auth.
 
-        Final: override ``get_one`` for the load and ``authorize`` for the
-        gate. Call it from a custom read route as "load with scope + 404 +
+        Final: ``authorize`` is the gate, and ``where_id`` and ``not_found``
+        shape the load. Call it from a custom read route as "load with scope + 404 +
         read-auth". A write action instead loads with ``get_one(id,
         scope=...)`` and gates only its own action, the way
         ``handle_update`` and ``handle_delete`` do.
 
-        :param id: the primary key, or a SQLAlchemy boolean expression
-            that picks the row instead, so a natural-key route is this
-            handler with ``Item.slug == slug``. Forwarded to ``get_one``.
+        :param id: the id from the path, which ``where_id`` turns into the
+            WHERE, or a SQLAlchemy boolean expression that picks the row
+            instead, so a natural-key route is this handler with
+            ``Item.slug == slug``. Forwarded to ``get_one``.
         :param scope: a clause that replaces the view scope for this read,
             so a restore route can load the row the view scope hides.
             Forwarded to ``get_one``.
@@ -323,48 +329,47 @@ class RestView(
             self.delete(obj)
 
     # ====================================================================
-    # Business methods (auth-free, commit-free): the common override point
+    # Loads (final, auth-free): change them through the read seams
     # ====================================================================
 
+    @final
     def get_many(
-        self, list_params: Any, *, scope: ReadScope = None
+        self, list_params: Any, *, scope: ReadScope = None, where: _ReadWhere = None
     ) -> ListResult[ModelT]:
-        """List the rows the scope allows, filtered and paged by ``list_params``.
+        """The load of the list: the rows the scope allows, filtered and paged
+        by ``list_params``.
 
-        Auth-free: ``handle_get_many`` adds ``authorize``. The query is the
-        resolved scope (``fr.resolve_scope(self)``, or ``scope`` when given)
-        plus :meth:`apply_list_params`. A paginated view also runs
-        :meth:`count` for ``total_count``; a view without pagination
-        returns every matching row with ``total_count=None``. Relationships
-        the response class names are eager-loaded.
-
-        The handlers always forward ``scope=``, so an override must declare
-        the parameter and pass it on to ``super()``. A route's ``where=``
-        arrives inside ``scope``: ``handle_get_many`` folds it in, and there
-        is no separate parameter to declare.
+        Final, and auth-free: ``handle_get_many`` adds ``authorize``. The
+        statement is :meth:`~fastapi_restly.views.BaseRestView.select`, then :meth:`apply_list_params`. A
+        paginated view also runs :meth:`count` for ``total_count``; a view
+        without pagination returns every matching row with
+        ``total_count=None``. Override ``apply_list_params`` to filter, sort
+        or page in another way, and ``to_single_response`` to add a value to
+        each row.
 
         :param list_params: the list params (filter, sort, page) as the
             endpoint receives them. A ``QueryParams`` or a mapping goes
             through
             :attr:`~fastapi_restly.views.BaseRestView.schema_list_params`
             first, as on the list route.
-        :param scope: a clause that replaces the resolved scope for this
-            read; ``fr.clauses.UNSCOPED`` reads unscoped.
+        :param scope: a clause that replaces the view scope for this read;
+            ``fr.clauses.UNSCOPED`` reads unscoped.
+        :param where: a SQLAlchemy boolean expression or a clause that
+            narrows this read inside the scope.
+        :raises TypeError: ``where`` is a Python bool (a comparison on a
+            loaded object), or neither an expression nor a clause.
         """
-        # once here, so an override of apply_list_params and the response
-        # get the list params as the list route gives them
+        # once here, so apply_list_params and the response get the list
+        # params as the list route gives them
         list_params = self._validated_list_params(list_params)
-        query = self._apply_scope(select(self.model), scope)
-        query = self.apply_list_params(query, list_params)
+        stmt = self.select(scope=self._narrowed_scope(scope, where))
+        stmt = self.apply_list_params(stmt, list_params)
         total_count = (
-            self.count(query)
+            (self.count(stmt))
             if isinstance(self.pagination, NumberedPagination)
             else None
         )
-        loader_options = self.get_relationship_loader_options()
-        if loader_options:
-            query = query.options(*loader_options)
-        scalar_result = self.session.scalars(query)
+        scalar_result = self.session.scalars(stmt)
         return ListResult(
             # unique(): a joined eager load of a collection, from the loader
             # options, repeats the row for each child
@@ -373,50 +378,56 @@ class RestView(
             list_params=list_params,
         )
 
+    @final
     def get_one(
         self, id: IdT | ColumnElement[bool], *, scope: ReadScope = None
     ) -> ModelT:
-        """Load the one row ``id`` names, through the scope, or raise 404.
+        """The load of one row: the row ``id`` names, through the scope, or
+        the exception of :meth:`~fastapi_restly.views.BaseRestView.not_found`.
 
-        Auth-free: ``handle_get_one`` adds ``authorize``; a write action
-        calls this directly and gates its own action. Visibility is the
-        resolved scope (``fr.resolve_scope(self)``, or ``scope`` when
-        given), so a row outside it is a 404 for every caller.
-        Relationships the response class names are eager-loaded.
+        Final, and auth-free: ``handle_get_one`` adds ``authorize``; a write
+        action calls this directly and gates its own action. The statement
+        is :meth:`~fastapi_restly.views.BaseRestView.select` with :meth:`~fastapi_restly.views.BaseRestView.where_id`, so a row outside the scope
+        is a 404 for every caller. Override ``where_id`` to find the row by
+        another key, and ``not_found`` to change the 404.
 
-        The handlers always forward ``scope=``, so an override must declare
-        the parameter and pass it on to ``super()``.
-
-        :param id: the primary key, or a SQLAlchemy boolean expression that
-            picks the row instead (``get_one(Item.slug == slug)``), which
-            is also how a composite key is addressed. A criterion narrows
-            inside the scope; only ``scope=`` replaces it.
-        :param scope: a clause that replaces the resolved scope for this
-            read; ``fr.clauses.UNSCOPED`` reads unscoped.
+        :param id: the id from the path, or a SQLAlchemy boolean expression
+            that picks the row instead (``get_one(Item.slug == slug)``). An
+            expression narrows inside the scope; only ``scope=`` replaces it.
+        :param scope: a clause that replaces the view scope for this read;
+            ``fr.clauses.UNSCOPED`` reads unscoped.
         :raises fastapi_restly.exc.NotFound: no row matches inside the
-            scope. The message names an id, never a predicate.
+            scope, or the exception that ``not_found`` returns.
         :raises sqlalchemy.exc.MultipleResultsFound: more than one row
             matches; an ambiguous key is a bug in the criterion.
         :raises TypeError: ``id`` is a Python bool (a comparison on a
             loaded object, which would render as ``WHERE true``), an
             uncalled clause (a scope, not a row identity), or an expression
-            on a table that the query does not select from.
-        :raises NotImplementedError: a plain id on a composite primary
-            key; pass a predicate.
+            on a table that the query does not select from; or ``where_id``
+            or ``not_found`` returned a value of the wrong kind.
         """
-        query = self._apply_scope(select(self.model), scope).where(
-            _identity_criterion(self.model, id)
-        )
-        loader_options = self.get_relationship_loader_options()
-        if loader_options:
-            query = query.options(*loader_options)
+        stmt = self.select(scope=scope).where(self._row_criterion(id))
         # unique(): the public loader-options seam may return a joined eager
         # load against a collection, and that row fan-out would otherwise
         # read as several matches for one entity.
-        obj = self.session.scalars(query).unique().one_or_none()
+        obj = (self.session.scalars(stmt)).unique().one_or_none()
         if obj is None:
-            raise NotFound(_not_found_message(self.model, id))
+            raise self._not_found_error(id)
         return cast(ModelT, obj)
+
+    def _not_found_error(self, id: Any) -> BaseException:
+        """What :meth:`~fastapi_restly.views.BaseRestView.not_found` returns for ``id``, checked."""
+        error = self.not_found(None if isinstance(id, ColumnElement) else id)
+        if not isinstance(error, BaseException):
+            raise TypeError(
+                f"{type(self).__name__}.not_found must return an exception, "
+                f"such as fr.exc.NotFound(...), got {type(error).__name__}."
+            )
+        return error
+
+    # ====================================================================
+    # Business methods (auth-free, commit-free): the common override point
+    # ====================================================================
 
     def create(self, data: CreateSchemaT) -> ModelT:
         """Build a new object from ``data`` and return it.
@@ -498,7 +509,7 @@ class RestView(
         For a route that reads the client's filters but has its own order or
         no rows to page, such as a count per category with ``GROUP BY``.
         Like every custom read route, such a route calls :meth:`authorize`
-        and applies the scope itself. :meth:`apply_list_params` calls this
+        and starts from :meth:`~fastapi_restly.views.BaseRestView.select`, which applies the scope. :meth:`apply_list_params` calls this
         method first. A ``QueryParams`` or a mapping goes through
         :attr:`~fastapi_restly.views.BaseRestView.schema_list_params` first,
         as on the list route. In a ``QueryParams``, a key that the route
