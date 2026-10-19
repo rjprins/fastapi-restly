@@ -23,6 +23,10 @@ replacement, unless it says otherwise.
    `as w` and `w.obj`.
 6. Write each reference as `fr.MustExist[int, Model]`, in place of
    `fr.MustExist[int]` and `fr.RefExists`.
+7. Declare the names of your custom actions in a class `Action` on the view,
+   such as `class Action(fr.Action): PUBLISH = "publish"`, and pass
+   `self.Action.PUBLISH` to `write_action`. A name that you miss fails when
+   the route runs, not when Python creates the class.
 
 ### Added
 
@@ -119,6 +123,13 @@ replacement, unless it says otherwise.
   gets `obj=None`. A detached row is added back, and a row
   that another open session holds raises `TypeError`. The block gets nothing
   from `as`: pass the new object as `obj` instead of setting `w.obj`.
+- Each view has a class `Action` that lists all its actions. It is
+  `fr.Action`, with the five CRUD actions, until the view declares a subclass
+  with actions of its own. `write_action` takes only a name that the view's
+  `Action` declares, and raises `ValueError` for another name. A view whose
+  `Action` leaves out an action of a base class, such as a mixin's, fails
+  when Python creates the class. So `PostView.Action` shows every name that
+  `authorize` and the hooks can get, also in your editor.
 - `new` and `old` in the hooks follow the row that the action is about. So a
   soft delete through `DELETE /{id}` gives the row as `new`, and a block that
   deletes its `obj` gives `new=None`.

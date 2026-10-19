@@ -85,17 +85,20 @@ class PostView(AuthoredView):
     model = Post
     schema = PostSchema
 
+    class Action(fr.Action):
+        PUBLISH = "publish"
+
     @fr.post("/{id}/publish", status_code=200)
     async def publish(self, id: int) -> Post:
         post = await self.get_one(id)
-        async with self.write_action("publish", obj=post):
+        async with self.write_action(self.Action.PUBLISH, obj=post):
             if post.published:
                 raise fr.exc.Conflict("Already published")
             post.published = True
         return post
 
     async def after_action_commit(self, action, new, old=None):
-        if action == "publish":
+        if action == self.Action.PUBLISH:
             await notify_subscribers(new)
 
 

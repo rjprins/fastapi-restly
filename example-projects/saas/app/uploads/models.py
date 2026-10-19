@@ -4,7 +4,7 @@ The multipart upload route needs ``Upload.id`` before it can insert
 ``UploadLine`` rows. The flow is::
 
     upload = Upload(filename=...)
-    async with self.write_action("create", obj=upload):
+    async with self.write_action(self.Action.CREATE, obj=upload):
         await self.session.flush()        # the INSERT: upload.id is set
         self.session.add_all(UploadLine(upload_id=upload.id, ...) ...)
 

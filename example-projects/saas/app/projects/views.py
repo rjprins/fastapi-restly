@@ -82,6 +82,9 @@ class ProjectView(TrashView[Project]):
     trash_scope = ProjectClauses.is_deleted
     exclude_routes = [fr.ViewRoute.DELETE]  # replaced by soft_delete below
 
+    class Action(TrashView.Action):
+        ARCHIVE = "archive"
+
     def to_single_response(self, obj: Any) -> Any:
         """The response, with ``can_edit`` for the caller.
 
@@ -144,7 +147,7 @@ class ProjectView(TrashView[Project]):
         """
         project = await self.get_one(id)
 
-        async with self.write_action("delete", obj=project):
+        async with self.write_action(self.Action.DELETE, obj=project):
             await self.delete(project)
         return project
 
@@ -152,7 +155,7 @@ class ProjectView(TrashView[Project]):
     async def archive_project(self, id: int) -> ViewResponse:
         """Archive a project (prevents new task creation).
 
-        Loads through ``get_one``; ``write_action("archive")`` gates the
+        Loads through ``get_one``; ``write_action(self.Action.ARCHIVE)`` gates the
         action and commits the status change. The status changes, so
         ``before_action_commit`` writes a ``project.status_changed`` event.
         """
@@ -160,7 +163,7 @@ class ProjectView(TrashView[Project]):
         if project.status == ProjectStatus.ARCHIVED:
             raise HTTPException(status_code=400, detail="Project is already archived")
 
-        async with self.write_action("archive", obj=project):
+        async with self.write_action(self.Action.ARCHIVE, obj=project):
             project.status = ProjectStatus.ARCHIVED
         return project
 

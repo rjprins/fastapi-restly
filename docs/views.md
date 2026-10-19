@@ -318,10 +318,13 @@ from fastapi_restly.views import ViewID, ViewResponse
 class ArchiveView(fr.AsyncRestView):
     """Base for views with an archive route. Never registered."""
 
+    class Action(fr.Action):
+        ARCHIVE = "archive"
+
     @fr.post("/{id}/archive", status_code=200)
     async def archive(self, id: ViewID) -> ViewResponse:
         obj = await self.get_one(id)
-        async with self.write_action("archive", obj=obj):
+        async with self.write_action(self.Action.ARCHIVE, obj=obj):
             obj.archived = True
         return obj
 

@@ -111,11 +111,22 @@ async def subject(request, tmp_path):
     async def async_soft_delete(self, obj):
         soft_delete(self, obj)
 
+    class Action(fr.Action):
+        RENAME = "rename"
+        ENROL = "enrol"
+        RECOUNT = "recount"
+        MERGE = "merge"
+        MOVE = "move"
+        MOVE_ALL = "move_all"
+        RENAME_TEAM = "rename_team"
+        UPDATE_MANY = "update_many"
+
     asynchronous = request.param == "async"
     base = fr.AsyncRestView if asynchronous else fr.RestView
     namespace = {
         "model": Member,
         "schema": MemberSchema,
+        "Action": Action,
         "authorize": async_authorize if asynchronous else authorize,
         "after_action_commit": async_after if asynchronous else after,
     }
@@ -165,6 +176,7 @@ async def subject(request, tmp_path):
             "prefix": "/cookbooks",
             "model": Cookbook,
             "schema": CookbookSchema,
+            "Action": Action,
             "update": async_cookbook_update if asynchronous else cookbook_update,
         },
     )

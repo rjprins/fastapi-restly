@@ -32,6 +32,14 @@ Restly does not check who the caller is. Your app does that with FastAPI's
 security tools, and binds the caller with
 [Request Context](#current-request-binding).
 
+So a rule goes in one of two places. A rule about who the caller is, such as
+"the caller is logged in" or "the caller is an admin", goes in a FastAPI
+dependency: on the app, on a router, or in the view's
+{attr}`dependencies <fastapi_restly.views.View.dependencies>`. A rule that
+depends on the action, the row or the request body goes in `authorize`. A
+dependency runs for every route of the view, and before Restly loads the row,
+so it cannot see the row.
+
 (authorize-gate)=
 ## Allow or refuse an action
 
@@ -105,8 +113,8 @@ only when the task is assigned to them
 (action-names)=
 ## Action names and `fr.Action`
 
-`action` is a string. {class}`fr.Action <fastapi_restly.views.Action>` has a
-constant for each CRUD action:
+Each view has a class `Action` that lists all its actions.
+{class}`fr.Action <fastapi_restly.views.Action>` has the five CRUD actions:
 
 | Constant | Value |
 |---|---|
@@ -116,12 +124,44 @@ constant for each CRUD action:
 | {attr}`fr.Action.UPDATE <fastapi_restly.views.Action.UPDATE>` | `"update"` |
 | {attr}`fr.Action.DELETE <fastapi_restly.views.Action.DELETE>` | `"delete"` |
 
-`fr.Action` is a class of string constants, not an `Enum`. The constants are
-plain strings, so they compare equal to `"get_many"` and the other names. A
-custom action can use any other name, such as `"publish"`. Prefer the
-constants in your own code: a typo in a constant raises `AttributeError`, and
-a type checker reports it, but a typo in a string only makes a rule never
-match. Give your custom action names constants too, for the same reason.
+A view without actions of its own has this class. A view that adds an action
+declares a subclass with the same name. The blog's `PostView` adds
+`publish`:
+
+```{literalinclude} ../example-projects/blog/blog/main.py
+:language: python
+:start-at: class PostView(AuthoredView):
+:end-at: PUBLISH = "publish"
+```
+
+{meth}`write_action <fastapi_restly.views.RestView.write_action>` takes only a
+name that the view's `Action` declares. Another name raises `ValueError`. So
+the class shows every action that can reach `authorize` and the hooks. Use the
+constants in your code, such as `self.Action.PUBLISH` in a route and in
+`authorize`. Your editor completes them, and a type checker reports a typo.
+The constants are plain strings, so `self.Action.PUBLISH == "publish"`.
+
+A mixin or a base view with actions of its own declares its `Action` class in
+the same way. A view that adds more actions inherits from the `Action` class
+of each such base:
+
+```python
+class TrashMixin:
+    class Action(fr.Action):
+        RESTORE = "restore"
+
+
+class PostView(TrashMixin, AuthoredView):
+    class Action(TrashMixin.Action):
+        PUBLISH = "publish"
+```
+
+Restly checks this when it creates the class. When the view's `Action` leaves
+out an action of a base, it raises
+{class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
+and names the base. This also catches a view without an `Action` of its own
+and with two bases that each have one. Python would take the `Action` of the
+first base and drop the other.
 
 The transaction hooks get the same name as their `action` argument:
 {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`
@@ -136,8 +176,8 @@ Reads do not call the hooks, so the hooks only see write actions. See
 A custom route reaches `authorize` in one of these ways:
 
 - A {meth}`write_action <fastapi_restly.views.RestView.write_action>` block
-  calls it with the block's name: `write_action("publish", obj=post)` calls
-  `authorize("publish", obj=post, data=None)`. For a new object, such as the
+  calls it with the block's name: `write_action(self.Action.PUBLISH, obj=post)`
+  calls `authorize("publish", obj=post, data=None)`. For a new object, such as the
   copy that a clone route creates, `authorize` gets `obj=None`, as on
   `POST /`; pass the request as `data=`, so a create rule sees what is
   created. If `authorize` raises, the block does not run.
@@ -147,7 +187,9 @@ A custom route reaches `authorize` in one of these ways:
   `authorize("get_one", ...)`.
 - The route calls `self.authorize(...)` itself. A route that builds its own
   query does this, as the count route in
-  [Use the scope in your own query](#reading-the-scope) does.
+  [Use the scope in your own query](#reading-the-scope) does. This is a call
+  to your own method, so Restly does not check the name. Use a name from the
+  view's `Action` here too.
 
 The loads and the business methods, such as
 {meth}`get_one <fastapi_restly.views.RestView.get_one>` and

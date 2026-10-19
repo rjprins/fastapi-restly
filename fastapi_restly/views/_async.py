@@ -193,7 +193,7 @@ class AsyncRestView(
         - A row from the database, such as one from ``get_one``. The block
           changes it. ``authorize`` gets the row, and ``old`` is its snapshot::
 
-              async with self.write_action("publish", obj=post):
+              async with self.write_action(self.Action.PUBLISH, obj=post):
                   post.published = True
 
         - A new object that is not in the database yet: the action creates
@@ -203,7 +203,7 @@ class AsyncRestView(
           so that ``authorize`` sees what the action creates::
 
               upload = Upload(filename=file.filename)
-              async with self.write_action("create", obj=upload, data=form):
+              async with self.write_action(self.Action.CREATE, obj=upload, data=form):
                   await self.session.flush()  # upload.id, for the lines
                   self.session.add_all(UploadLine(upload_id=upload.id) ...)
 
@@ -211,7 +211,9 @@ class AsyncRestView(
           rows. ``authorize`` gets ``obj=None``, and the hooks get
           ``new=None`` and ``old=None``.
 
-        ``action`` is the name that ``authorize`` and the hooks get. ``data``
+        ``action`` is the name that ``authorize`` and the hooks get. It is
+        one of the names that the view's ``Action`` class declares, such as
+        ``self.Action.PUBLISH``. ``data``
         goes to ``authorize``, and Restly checks the references in it, as a
         CRUD write does: the ``MustExist``, ``IDRef`` and ``IDSchema`` fields,
         also in nested schemas and in each item of a list. A missing row
@@ -242,6 +244,7 @@ class AsyncRestView(
         it leaves the outermost block, and stays raw inside it. A direct
         ``session.commit()`` inside the block raises ``RuntimeError``.
 
+        :raises ValueError: the view's ``Action`` does not declare ``action``.
         :raises TypeError: ``obj`` is neither ``None`` nor an object of a
             SQLAlchemy model.
         """

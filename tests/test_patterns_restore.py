@@ -44,6 +44,9 @@ def client(request: pytest.FixtureRequest) -> Iterator[RestlyTestClient]:
             schema = ItemSchema
             scope = fr.none_of(is_deleted)
 
+            class Action(fr.Action):
+                RESTORE = "restore"
+
             def delete(self, obj):
                 obj.deleted_at = datetime.now(timezone.utc)
 
@@ -65,6 +68,9 @@ def client(request: pytest.FixtureRequest) -> Iterator[RestlyTestClient]:
             model = Item
             schema = ItemSchema
             scope = fr.none_of(is_deleted)
+
+            class Action(fr.Action):
+                RESTORE = "restore"
 
             async def delete(self, obj):
                 obj.deleted_at = datetime.now(timezone.utc)

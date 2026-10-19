@@ -156,6 +156,9 @@ class TrashView(SoftDeleteMixin, AuthenticatedView[SoftDeletableT]):
 
     trash_scope: ClassVar[fr.WhereClause]
 
+    class Action(fr.Action):
+        RESTORE = "restore"
+
     @fr.get("/trash")
     async def trash(self, list_params: Any) -> ViewListResponse:
         """The trash: the deleted rows the caller may see, with the list params."""
@@ -166,6 +169,6 @@ class TrashView(SoftDeleteMixin, AuthenticatedView[SoftDeletableT]):
     async def restore(self, id: ViewID) -> ViewResponse:
         """Restore a soft-deleted row, loaded through the trash."""
         obj = await self.get_one(id, scope=self.trash_scope)
-        async with self.write_action("restore", obj=obj):
+        async with self.write_action(self.Action.RESTORE, obj=obj):
             obj.deleted_at = None
         return self.to_response(obj)

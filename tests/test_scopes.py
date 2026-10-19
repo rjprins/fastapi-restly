@@ -287,6 +287,9 @@ def test_a_route_reads_through_its_own_scope(client):
         schema = ScopeNoteSchema
         dependencies = [Depends(bind_tenant)]
 
+        class Action(fr.Action):
+            RESTORE = "restore"
+
         # a route declaring `list_params` takes the view's list params
         @fr.get("/trash")
         async def trash(self, list_params):

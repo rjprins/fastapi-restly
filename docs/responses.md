@@ -217,10 +217,13 @@ class ProjectView(fr.AsyncRestView):
     model = Project
     schema = ProjectSchema
 
+    class Action(fr.Action):
+        ARCHIVE = "archive"
+
     @fr.post("/{id}/archive")
     async def archive(self, id: ViewID) -> ViewResponse:
         project = await self.get_one(id)
-        async with self.write_action("archive", obj=project):
+        async with self.write_action(self.Action.ARCHIVE, obj=project):
             project.archived = True
         return project
 ```

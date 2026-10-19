@@ -1000,8 +1000,14 @@ example publishes a post:
 
 ```{literalinclude} ../example-projects/blog/blog/main.py
 :language: python
-:pyobject: PostView.publish
+:start-at: class Action(fr.Action):
+:end-at: return post
 ```
+
+The view's `Action` class lists its actions: the five CRUD actions of
+{class}`fr.Action <fastapi_restly.views.Action>`, and `PUBLISH`.
+`write_action` takes only a name that this class declares; see
+[Action names](#action-names).
 
 When the block starts, Restly calls `authorize("publish", obj=post)` and takes
 the snapshot of the row. With `data=`, it also checks the references in the
@@ -1047,7 +1053,7 @@ such as a parent row and its child rows. Build the new object, and pass it to
     @fr.post("/with-lines", status_code=201)
     async def create_with_lines(self, data: OrderWithLines) -> ViewResponse:
         order = Order(customer_id=data.customer_id)
-        async with self.write_action("create", obj=order, data=data):
+        async with self.write_action(self.Action.CREATE, obj=order, data=data):
             order.lines = [OrderLine(sku=line.sku) for line in data.lines]
         return order
 ```
@@ -1075,7 +1081,7 @@ options, so each row comes back as the database has it:
     @fr.put("/positions")
     async def reorder(self, items: list[CookbookPosition]) -> list[ViewResponse]:
         cookbooks = []
-        async with self.write_action("reorder", obj=None, data=items):
+        async with self.write_action(self.Action.REORDER, obj=None, data=items):
             for item in items:
                 cookbook = await self.get_one(item.id)
                 cookbooks.append(await self.update(cookbook, item))

@@ -34,6 +34,21 @@ def anyio_backend():
     return "asyncio"
 
 
+class _Action(fr.Action):
+    """The actions of the blocks in these tests."""
+
+    RENAME = "rename"
+    RENAME_ALL = "rename_all"
+    RETITLE = "retitle"
+    RETITLE_ALL = "retitle_all"
+    IMPORT = "import"
+    RELABEL = "relabel"
+    SWAP = "swap"
+    MOVE_TEAM = "move_team"
+    TRY_EXTRA = "try_extra"
+    X = "x"
+
+
 def _models():
     class Team(fr.IDMixin, SharedBase):
         name: Mapped[str]
@@ -87,6 +102,7 @@ def _view(env, Member, MemberSchema, **namespace):
                 "prefix": "/members",
                 "model": Member,
                 "schema": MemberSchema,
+                "Action": _Action,
                 **namespace,
             },
         )
@@ -179,7 +195,12 @@ async def test_subclass_columns_of_other_rows_stay_loaded(env):
             type(
                 "AnimalView",
                 (env.base,),
-                {"prefix": "/animals", "model": Animal, "schema": AnimalSchema},
+                {
+                    "prefix": "/animals",
+                    "model": Animal,
+                    "schema": AnimalSchema,
+                    "Action": _Action,
+                },
             )
         )(request=None, session=session)
         dogs = list(await call(session.scalars(select(Dog).order_by(Dog.id))))
@@ -256,7 +277,12 @@ async def test_a_with_expression_value_survives_the_save_of_the_subject(env):
             type(
                 "DocView",
                 (env.base,),
-                {"prefix": "/docs", "model": Doc, "schema": DocSchema},
+                {
+                    "prefix": "/docs",
+                    "model": Doc,
+                    "schema": DocSchema,
+                    "Action": _Action,
+                },
             )
         )(request=None, session=session)
         stmt = (
@@ -289,6 +315,7 @@ async def test_a_with_expression_in_the_views_loader_options_survives(env):
                     "prefix": "/docs",
                     "model": Doc,
                     "schema": DocSchema,
+                    "Action": _Action,
                     "get_loader_options": options,
                 },
             )
@@ -364,7 +391,12 @@ def test_a_bulk_insert_in_one_block_and_the_parameter_limit(tmp_path):
         type(
             "MemberView",
             (fr.RestView,),
-            {"prefix": "/members", "model": Member, "schema": MemberSchema},
+            {
+                "prefix": "/members",
+                "model": Member,
+                "schema": MemberSchema,
+                "Action": _Action,
+            },
         )
     )
     try:
@@ -447,6 +479,7 @@ async def test_the_reload_of_rows_with_a_composite_key(env):
                     "prefix": "/shelves",
                     "model": Shelf,
                     "schema": ShelfSchema,
+                    "Action": _Action,
                     "exclude_routes": (
                         fr.ViewRoute.GET_ONE,
                         fr.ViewRoute.UPDATE,
@@ -502,7 +535,12 @@ async def test_a_nested_row_shows_the_new_related_row_after_a_foreign_key_change
         type(
             "OrderView",
             (env.base,),
-            {"prefix": "/orders", "model": Order, "schema": OrderSchema},
+            {
+                "prefix": "/orders",
+                "model": Order,
+                "schema": OrderSchema,
+                "Action": _Action,
+            },
         )
     )
     await env.create_all()

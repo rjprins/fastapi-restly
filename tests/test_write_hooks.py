@@ -44,6 +44,15 @@ def _doc_models():
     return Owner, Doc, DocSchema
 
 
+class _Action(fr.Action):
+    """The actions of the blocks in these tests."""
+
+    REVISE = "revise"
+    RENAME = "rename"
+    RENAME_ALL = "rename_all"
+    MOVE = "move"
+
+
 def _hooked(env, Doc, DocSchema, calls, **namespace):
     def before(self, action, new, old=None):
         calls.append(("before", action, new, old))
@@ -65,6 +74,7 @@ def _hooked(env, Doc, DocSchema, calls, **namespace):
                 "prefix": "/docs",
                 "model": Doc,
                 "schema": DocSchema,
+                "Action": _Action,
                 "before_action_commit": env.pick(before, async_before),
                 "after_action_commit": env.pick(after, async_after),
                 **namespace,
@@ -572,7 +582,7 @@ async def test_two_views_of_one_model_in_a_shared_commit(env):
         type(
             "BareDocView",
             (env.base,),
-            {"prefix": "/b", "model": Doc, "schema": BareDocSchema},
+            {"prefix": "/b", "model": Doc, "schema": BareDocSchema, "Action": _Action},
         ),
     )
     session = await _seed(env, Owner, Doc)

@@ -197,13 +197,20 @@ class ResponseShape(str, Enum):
 
 
 class Action:
-    """Canonical CRUD action names passed to ``authorize`` / ``before_action_commit``
-    / ``after_action_commit``.
+    """The names of the five CRUD actions: the ``action`` that ``authorize``,
+    ``before_action_commit`` and ``after_action_commit`` get.
 
-    This is a constants class, not an ``Enum``: custom actions and mixins add
-    their own names. Use the constants rather than strings: a misspelled
-    constant raises ``AttributeError`` when the line runs, and a type checker
-    reports it before that.
+    Each view has a class ``Action`` that lists all its actions. It is this
+    class, until a view adds actions of its own in a subclass::
+
+        class PostView(fr.AsyncRestView):
+            class Action(fr.Action):
+                PUBLISH = "publish"
+
+    ``write_action`` takes only a name that the view's ``Action`` declares.
+    A view with base classes that declare actions, such as a mixin, inherits
+    from their ``Action`` classes too. The names are plain strings, not an
+    ``Enum``, so a subclass can add names.
     """
 
     GET_MANY = "get_many"
@@ -1456,6 +1463,85 @@ def _check_load_hooks(cls: type) -> None:
                 )
 
 
+def _action_names(action: type) -> frozenset[str]:
+    """The names that an ``Action`` class declares: the string values of its
+    public attributes, those of its base classes included."""
+    return frozenset(
+        value
+        for key in dir(action)
+        if not key.startswith("_") and isinstance(value := getattr(action, key), str)
+    )
+
+
+def _check_actions(cls: type) -> None:
+    """Refuse a view whose ``Action`` leaves out an action of a base class.
+
+    Each class that declares ``Action`` adds actions, and a view's ``Action``
+    must list all of them: the view's own class, or a mixin's, or two bases
+    that each declare one, where Python takes the first and drops the other.
+    """
+    action = cls.Action  # type: ignore[attr-defined]
+    origin = _set_by(cls, "Action")
+    if not isinstance(action, type):
+        raise RestlyConfigurationError(
+            f"{cls.__name__}.Action{origin} is a {type(action).__name__}. "
+            "Declare it as a class that inherits from fr.Action."
+        )
+    names = _action_names(action)
+    declared = [
+        (klass, vars(klass)["Action"])
+        for klass in cls.__mro__
+        if isinstance(vars(klass).get("Action"), type)
+    ]
+    missing = [
+        (klass, base) for klass, base in declared if not _action_names(base) <= names
+    ]
+    if not missing:
+        return
+    left_out = sorted(
+        set().union(*(_action_names(base) for _, base in missing)) - names
+    )
+    # the classes to inherit from: each declared one that no other covers
+    bases = [
+        _action_class_name(klass, base)
+        for klass, base in declared
+        if klass is not cls
+        and not any(
+            other is not base and issubclass(other, base) for _, other in declared
+        )
+    ]
+    raise RestlyConfigurationError(
+        f"{cls.__name__}.Action{origin} leaves out the actions "
+        f"{', '.join(map(repr, left_out))} of "
+        f"{', '.join(_action_class_name(klass, base) for klass, base in missing)}. "
+        f"A view's Action lists all its actions. Declare it on "
+        f"{cls.__name__} with every base: class Action({', '.join(bases)})."
+    )
+
+
+def _action_class_name(klass: type, action: type) -> str:
+    """How a message names the ``Action`` that ``klass`` declares."""
+    return "fr.Action" if action is Action else f"{klass.__name__}.Action"
+
+
+def _check_action_name(view: Any, action: Any) -> None:
+    """Raise ``ValueError`` when ``write_action`` gets a name that the view's
+    ``Action`` does not declare."""
+    if action in _action_names(type(view).Action):
+        return
+    name = type(view).__name__
+    example = (
+        f", such as {action.upper()} = {action!r}"
+        if isinstance(action, str) and action.isidentifier()
+        else ""
+    )
+    raise ValueError(
+        f"{name}.write_action({action!r}, ...): {name}.Action does not "
+        f"declare {action!r}. Add the action to the view's Action "
+        f"class{example}, so the class lists every action of the view."
+    )
+
+
 def _final_handler_message(view_name: str, name: str, origin: str) -> str:
     """What a subclass that defines ``name`` is told to use instead."""
     verb = name.removeprefix("handle_")
@@ -1793,6 +1879,12 @@ class BaseRestView(
         404: {"description": "Not found"}
     }
 
+    #: The view's actions: the names that ``authorize`` and the transaction
+    #: hooks get. :class:`Action` has the five CRUD actions. A view with
+    #: actions of its own declares a subclass with the same name, and
+    #: ``write_action`` takes only a name that it declares.
+    Action = Action
+
     #: The view's schema: the Pydantic class that lists the fields of the
     #: resource. Restly builds :attr:`schema_response`, :attr:`schema_create`
     #: and :attr:`schema_update` from it. When a view sets none, Restly
@@ -1997,6 +2089,7 @@ class BaseRestView(
         _check_list_settings(cls)
         _check_unknown_query_params(cls)
         _check_renamed_names(cls)
+        _check_actions(cls)
 
     def _apply_scope(self, query: Select[Any], scope: ReadScope) -> Select[Any]:
         # the one path every read takes, so retrieve, list and count cannot

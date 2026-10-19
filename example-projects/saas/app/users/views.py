@@ -56,6 +56,9 @@ class UserView(SoftDeleteMixin, AuthenticatedView[User]):
     schema_update = UserUpdate
     # No scope declared: reads apply UserClauses.default_scope.
 
+    class Action(fr.Action):
+        CHANGE_PASSWORD = "change_password"
+
     def _can_see_salary(self) -> bool:
         return Current.role() in (UserRole.HR, UserRole.OWNER)
 
@@ -82,7 +85,7 @@ class UserView(SoftDeleteMixin, AuthenticatedView[User]):
         if not request.new_password:
             raise HTTPException(422, "new_password is required")
 
-        async with self.write_action("change_password", obj=user):
+        async with self.write_action(self.Action.CHANGE_PASSWORD, obj=user):
             user.password = hash_password(request.new_password)
         return user
 

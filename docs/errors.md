@@ -159,7 +159,7 @@ catches `fr.exc.Conflict`:
     async def rename(self, id: int, name: str):
         tag = await self.get_one(id)
         try:
-            async with self.write_action("rename", obj=tag):
+            async with self.write_action(self.Action.RENAME, obj=tag):
                 tag.name = name
         except fr.exc.Conflict:
             raise fr.exc.Conflict(f"A tag named {name!r} already exists")

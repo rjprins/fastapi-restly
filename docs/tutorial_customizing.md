@@ -221,13 +221,18 @@ the post does not exist. When he can see the post but may not change it,
 
 ## Publish a draft
 
-Publishing is an action, not a field edit. Add a route for it to `PostView`:
+Publishing is an action, not a field edit. Add the action and a route for it
+to `PostView`:
 
 ```{literalinclude} ../example-projects/blog/blog/main.py
 :language: python
-:pyobject: PostView.publish
+:start-at: class Action(fr.Action):
+:end-at: return post
 ```
 
+- `Action` lists the actions of the view. It inherits the five CRUD actions
+  from {class}`fr.Action <fastapi_restly.views.Action>` and adds `PUBLISH`.
+  `write_action` takes only a name from this list, so the list is complete.
 - {func}`@fr.post <fastapi_restly.views.post>` adds a route to the view,
   beside the CRUD routes.
 - {meth}`get_one <fastapi_restly.views.AsyncRestView.get_one>` loads the post

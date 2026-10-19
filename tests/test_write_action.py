@@ -25,6 +25,9 @@ def _publish_view(client, **attrs):
         title: str
         published: bool
 
+    class Action(fr.Action):
+        PUBLISH = "publish"
+
     async def publish_endpoint(self, id: int):
         doc = await self.handle_get_one(id)  # scope + 404 + read-auth
         async with self.write_action("publish", obj=doc):
@@ -42,6 +45,7 @@ def _publish_view(client, **attrs):
         "prefix": "/docs",
         "model": Doc,
         "schema": DocSchema,
+        "Action": Action,
         "publish_endpoint": fr.post("/{id}/publish")(publish_endpoint),
         "boom_endpoint": fr.post("/{id}/boom")(boom_endpoint),
         **attrs,
@@ -184,6 +188,9 @@ def test_write_action_refuses_a_value_that_is_not_a_row(client):
         model = Box
         schema = BoxSchema
 
+        class Action(fr.Action):
+            PACK = "pack"
+
         @fr.post("/several")
         async def several(self):
             boxes = [Box(name="a"), Box(name="b")]
@@ -212,6 +219,9 @@ def test_explicit_no_object_write_is_allowed(client):
         prefix = "/widgets"
         model = Widget
         schema = WidgetSchema
+
+        class Action(fr.Action):
+            RECOMPUTE = "recompute"
 
         async def after_action_commit(self, action, new, old=None):
             seen["action"] = action

@@ -59,6 +59,9 @@ def test_custom_route_write_action_conflict_is_409(client):
         model = Tag
         schema = TagSchema
 
+        class Action(fr.Action):
+            RENAME = "rename"
+
         @fr.post("/{id}/rename", status_code=200)
         async def rename(self, id: int, name: str):
             tag = await self.get_one(id)
@@ -287,6 +290,9 @@ def test_a_conflict_in_a_hook_before_the_commit_is_409(client, hook):
         model = Tag
         schema = TagSchema
 
+        class Action(fr.Action):
+            RENAME = "rename"
+
         @fr.post("/{id}/rename", status_code=200)
         async def rename(self, id: int, name: str):
             tag = await self.get_one(id)
@@ -330,6 +336,9 @@ def test_an_after_hook_inside_another_block_stays_raw(client, outer):
         prefix = "/tags"
         model = Tag
         schema = TagSchema
+
+        class Action(fr.Action):
+            OUTER = "outer"
 
         async def after_action_commit(self, action, new, old=None):
             if action == "create":
@@ -387,6 +396,9 @@ def test_sync_crud_and_write_action_conflicts_are_409(sync_db):
         prefix = "/tags"
         model = Tag
         schema = TagSchema
+
+        class Action(fr.Action):
+            RENAME = "rename"
 
         @fr.post("/{id}/rename", status_code=200)
         def rename(self, id: int, name: str):

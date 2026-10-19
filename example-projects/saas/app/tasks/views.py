@@ -89,6 +89,11 @@ class TaskView(TrashView[Task]):
     scope = TaskClauses.visible
     trash_scope = TaskClauses.trashed
 
+    class Action(TrashView.Action):
+        START = "start"
+        COMPLETE = "complete"
+        REOPEN = "reopen"
+
     async def _validate_cross_resource(self, data: dict[str, Any]) -> None:
         """Validate cross-resource constraints (assignee must be in same org as project)."""
         from ..projects.models import Project
@@ -311,19 +316,19 @@ class TaskView(TrashView[Task]):
     async def start_task(self, id: int) -> ViewResponse:
         """Move task from TODO to IN_PROGRESS."""
         return await self._transition_task(
-            id, TaskStatus.TODO, TaskStatus.IN_PROGRESS, "start"
+            id, TaskStatus.TODO, TaskStatus.IN_PROGRESS, self.Action.START
         )
 
     @fr.post("/{id}/complete")
     async def complete_task(self, id: int) -> ViewResponse:
         """Move task from IN_PROGRESS to DONE."""
         return await self._transition_task(
-            id, TaskStatus.IN_PROGRESS, TaskStatus.DONE, "complete"
+            id, TaskStatus.IN_PROGRESS, TaskStatus.DONE, self.Action.COMPLETE
         )
 
     @fr.post("/{id}/reopen")
     async def reopen_task(self, id: int) -> ViewResponse:
         """Reopen a completed task back to IN_PROGRESS."""
         return await self._transition_task(
-            id, TaskStatus.DONE, TaskStatus.IN_PROGRESS, "reopen"
+            id, TaskStatus.DONE, TaskStatus.IN_PROGRESS, self.Action.REOPEN
         )

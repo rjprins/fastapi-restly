@@ -74,6 +74,14 @@ async def writes(request, tmp_path):
     async def async_after(self, action, new, old=None):
         after(self, action, new, old)
 
+    class Action(fr.Action):
+        IMPORT = "import"
+        COPY = "copy"
+        RENAME = "rename"
+        RECOMPUTE = "recompute"
+        REJECTED = "rejected"
+        NOOP = "noop"
+
     asynchronous = request.param == "async"
     view_type = type(
         "EntryView",
@@ -82,6 +90,7 @@ async def writes(request, tmp_path):
             "model": Entry,
             "schema": EntrySchema,
             "prefix": "/entries",
+            "Action": Action,
             "authorize": async_authorize if asynchronous else authorize,
             "before_action_commit": async_before if asynchronous else before,
             "after_action_commit": async_after if asynchronous else after,

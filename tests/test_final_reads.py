@@ -211,6 +211,9 @@ def test_where_id_serves_every_item_route(client):
         schema = BookSchema
         id_type = str
 
+        class Action(fr.Action):
+            HIDE = "hide"
+
         def where_id(self, id: str) -> sa.ColumnElement[bool]:
             asked.append(id)
             if id.isdigit():
@@ -589,6 +592,9 @@ def test_a_route_that_declares_view_response_returns_the_row(client):
     Shelf, Book, ShelfSchema, BookSchema = _models()
 
     class BookView(_marked_book_view(client, Book, BookSchema)):
+        class Action(fr.Action):
+            TOUCH = "touch"
+
         @fr.get("/{id}/plain")
         async def plain(self, id: int) -> ViewResponse:
             return await self.get_one(id)

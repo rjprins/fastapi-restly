@@ -83,6 +83,19 @@ def _models() -> _Models:
     return _Models(Project, Owner, Task, Label, TaskSchema, TaskIn)
 
 
+class _TaskAction(fr.Action):
+    """The actions of the custom routes that the tests give the task view."""
+
+    IMPORT = "import"
+    BULK = "bulk"
+    ATTACH = "attach"
+    ADD_LINES = "add_lines"
+    OUTER = "outer"
+    INNER = "inner"
+    RENAME = "rename"
+    COPY = "copy"
+
+
 @dataclass
 class _Api:
     kind: type
@@ -135,7 +148,7 @@ def api(request: pytest.FixtureRequest) -> Iterator[_Api]:
         task_view = type(
             "TaskView",
             (request.param,),
-            {"prefix": "/tasks", **namespace, **task_view_attrs},
+            {"prefix": "/tasks", "Action": _TaskAction, **namespace, **task_view_attrs},
         )
         fr.include_view(app, task_view)
         return RestlyTestClient(app)

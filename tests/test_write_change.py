@@ -24,6 +24,15 @@ def anyio_backend():
     return "asyncio"
 
 
+class _Action(fr.Action):
+    """The actions of the blocks in these tests."""
+
+    IMPORT = "import"
+    ADD_THREE = "add_three"
+    BULK = "bulk"
+    MOVE = "move"
+
+
 # ---------------------------------------------------------------------------
 # no_autoflush
 # ---------------------------------------------------------------------------
@@ -55,7 +64,12 @@ async def test_get_or_create_in_a_block_finds_the_row_after_a_flush(env):
         type(
             "PostView",
             (env.base,),
-            {"prefix": "/posts", "model": Post, "schema": PostSchema},
+            {
+                "prefix": "/posts",
+                "model": Post,
+                "schema": PostSchema,
+                "Action": _Action,
+            },
         )
     )
     session = env.make_session()
@@ -88,7 +102,12 @@ async def test_a_limit_check_in_a_block_counts_the_rows_after_a_flush(env):
         type(
             "PostView",
             (env.base,),
-            {"prefix": "/posts", "model": Post, "schema": PostSchema},
+            {
+                "prefix": "/posts",
+                "model": Post,
+                "schema": PostSchema,
+                "Action": _Action,
+            },
         )
     )
     session = env.make_session()
@@ -215,7 +234,12 @@ async def test_data_without_reference_fields_is_not_checked(env):
         type(
             "MemberView",
             (env.base,),
-            {"prefix": "/m", "model": Member, "schema": MemberSchema},
+            {
+                "prefix": "/m",
+                "model": Member,
+                "schema": MemberSchema,
+                "Action": _Action,
+            },
         )
     )
     async with enter(session):
@@ -238,7 +262,12 @@ async def test_a_row_that_the_block_deletes_and_then_references(env):
         type(
             "MemberView",
             (env.base,),
-            {"prefix": "/m", "model": Member, "schema": MemberSchema},
+            {
+                "prefix": "/m",
+                "model": Member,
+                "schema": MemberSchema,
+                "Action": _Action,
+            },
         )
     )
     async with enter(session):
@@ -273,7 +302,12 @@ async def test_an_idref_to_a_row_that_the_block_deleted(env):
         type(
             "MemberView",
             (env.base,),
-            {"prefix": "/m", "model": MemberWithTeam, "schema": MemberRefSchema},
+            {
+                "prefix": "/m",
+                "model": MemberWithTeam,
+                "schema": MemberRefSchema,
+                "Action": _Action,
+            },
         )
     )
     async with enter(session):

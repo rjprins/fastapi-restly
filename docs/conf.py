@@ -235,6 +235,9 @@ def _skip_envelope_alias(app, what, name, obj, skip, options):
     # comment. The class docstrings describe the setting instead.
     if name == "envelope" and isinstance(obj, type):
         return True
+    # A view's Action is fr.Action, which the module documents already.
+    if what == "class" and name == "Action" and isinstance(obj, type):
+        return True
     return None
 
 
