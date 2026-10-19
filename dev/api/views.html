@@ -529,12 +529,20 @@ primitive for non-CRUD endpoint groups (auth flows, webhooks, RPC).</p>
 <dt class="sig sig-object py" id="fastapi_restly.views.Action">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">Action</span></span><a class="headerlink" href="#fastapi_restly.views.Action" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
-<p>Canonical CRUD action names passed to <code class="docutils literal notranslate"><span class="pre">authorize</span></code> / <code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code>
-/ <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>.</p>
-<p>This is a constants class, not an <code class="docutils literal notranslate"><span class="pre">Enum</span></code>: custom actions and mixins add
-their own names. Use the constants rather than strings: a misspelled
-constant raises <code class="docutils literal notranslate"><span class="pre">AttributeError</span></code> when the line runs, and a type checker
-reports it before that.</p>
+<p>The names of the five CRUD actions: the <code class="docutils literal notranslate"><span class="pre">action</span></code> that <code class="docutils literal notranslate"><span class="pre">authorize</span></code>,
+<code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code> and <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> get.</p>
+<p>Each view has a class <code class="docutils literal notranslate"><span class="pre">Action</span></code> that lists all its actions. It is this
+class, until a view adds actions of its own in a subclass:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">PostView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="k">class</span><span class="w"> </span><span class="nc">Action</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="p">):</span>
+        <span class="n">PUBLISH</span> <span class="o">=</span> <span class="s2">&quot;publish&quot;</span>
+</pre></div>
+</div>
+<p>An <code class="docutils literal notranslate"><span class="pre">Action</span></code> class has only actions. An action has an UPPER_CASE name,
+and its value is that name in lower case. <code class="docutils literal notranslate"><span class="pre">write_action</span></code> takes only a
+value that the view’s <code class="docutils literal notranslate"><span class="pre">Action</span></code> declares. A view with base classes that
+declare actions, such as a mixin, inherits from their <code class="docutils literal notranslate"><span class="pre">Action</span></code> classes
+too.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.Action.CREATE">
 <span class="sig-name descname"><span class="pre">CREATE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'create'</span></em><a class="headerlink" href="#fastapi_restly.views.Action.CREATE" title="Link to this definition">#</a></dt>
@@ -953,7 +961,7 @@ the object that <code class="docutils literal notranslate"><span class="pre">upd
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.AsyncRestView.session">
-<span class="sig-name descname"><span class="pre">session</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">_AsyncSessionDependency</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x7f814183f3b0&gt;,</span> <span class="pre">use_cache=True,</span> <span class="pre">scope=function)]</span></em><a class="headerlink" href="#fastapi_restly.views.AsyncRestView.session" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">session</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">_AsyncSessionDependency</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x7f454972f800&gt;,</span> <span class="pre">use_cache=True,</span> <span class="pre">scope=function)]</span></em><a class="headerlink" href="#fastapi_restly.views.AsyncRestView.session" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -1017,7 +1025,7 @@ check, your change, the save and the commit.</p>
 <ul>
 <li><p>A row from the database, such as one from <code class="docutils literal notranslate"><span class="pre">get_one</span></code>. The block
 changes it. <code class="docutils literal notranslate"><span class="pre">authorize</span></code> gets the row, and <code class="docutils literal notranslate"><span class="pre">old</span></code> is its snapshot:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="s2">&quot;publish&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">post</span><span class="p">):</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">PUBLISH</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">post</span><span class="p">):</span>
     <span class="n">post</span><span class="o">.</span><span class="n">published</span> <span class="o">=</span> <span class="kc">True</span>
 </pre></div>
 </div>
@@ -1028,7 +1036,7 @@ in the block gives it an id. <code class="docutils literal notranslate"><span cl
 <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code>, and <code class="docutils literal notranslate"><span class="pre">old</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code>. Pass the request as <code class="docutils literal notranslate"><span class="pre">data</span></code>,
 so that <code class="docutils literal notranslate"><span class="pre">authorize</span></code> sees what the action creates:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">upload</span> <span class="o">=</span> <span class="n">Upload</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="n">file</span><span class="o">.</span><span class="n">filename</span><span class="p">)</span>
-<span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="s2">&quot;create&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">upload</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">form</span><span class="p">):</span>
+<span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">CREATE</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">upload</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">form</span><span class="p">):</span>
     <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>  <span class="c1"># upload.id, for the lines</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">add_all</span><span class="p">(</span><span class="n">UploadLine</span><span class="p">(</span><span class="n">upload_id</span><span class="o">=</span><span class="n">upload</span><span class="o">.</span><span class="n">id</span><span class="p">)</span> <span class="o">...</span><span class="p">)</span>
 </pre></div>
@@ -1038,7 +1046,9 @@ so that <code class="docutils literal notranslate"><span class="pre">authorize</
 rows. <code class="docutils literal notranslate"><span class="pre">authorize</span></code> gets <code class="docutils literal notranslate"><span class="pre">obj=None</span></code>, and the hooks get
 <code class="docutils literal notranslate"><span class="pre">new=None</span></code> and <code class="docutils literal notranslate"><span class="pre">old=None</span></code>.</p></li>
 </ul>
-<p><code class="docutils literal notranslate"><span class="pre">action</span></code> is the name that <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and the hooks get. <code class="docutils literal notranslate"><span class="pre">data</span></code>
+<p><code class="docutils literal notranslate"><span class="pre">action</span></code> is the name that <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and the hooks get. It is
+one of the names that the view’s <code class="docutils literal notranslate"><span class="pre">Action</span></code> class declares, such as
+<code class="docutils literal notranslate"><span class="pre">self.Action.PUBLISH</span></code>. <code class="docutils literal notranslate"><span class="pre">data</span></code>
 goes to <code class="docutils literal notranslate"><span class="pre">authorize</span></code>, and Restly checks the references in it, as a
 CRUD write does: the <code class="docutils literal notranslate"><span class="pre">MustExist</span></code>, <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> and <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> fields,
 also in nested schemas and in each item of a list. A missing row
@@ -1068,8 +1078,11 @@ it leaves the outermost block, and stays raw inside it. A direct
 <code class="docutils literal notranslate"><span class="pre">session.commit()</span></code> inside the block raises <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#TypeError" title="(in Python v3.15)"><strong>TypeError</strong></a> – <code class="docutils literal notranslate"><span class="pre">obj</span></code> is neither <code class="docutils literal notranslate"><span class="pre">None</span></code> nor an object of a
-SQLAlchemy model.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.15)"><strong>ValueError</strong></a> – the view’s <code class="docutils literal notranslate"><span class="pre">Action</span></code> does not declare <code class="docutils literal notranslate"><span class="pre">action</span></code>.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#TypeError" title="(in Python v3.15)"><strong>TypeError</strong></a> – <code class="docutils literal notranslate"><span class="pre">obj</span></code> is neither <code class="docutils literal notranslate"><span class="pre">None</span></code> nor an object of a
+SQLAlchemy model.</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
@@ -2031,7 +2044,7 @@ the object that <code class="docutils literal notranslate"><span class="pre">upd
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.RestView.session">
-<span class="sig-name descname"><span class="pre">session</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">_SyncSessionDependency</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x7f814183f260&gt;,</span> <span class="pre">use_cache=True,</span> <span class="pre">scope=function)]</span></em><a class="headerlink" href="#fastapi_restly.views.RestView.session" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">session</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">_SyncSessionDependency</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x7f454972f6b0&gt;,</span> <span class="pre">use_cache=True,</span> <span class="pre">scope=function)]</span></em><a class="headerlink" href="#fastapi_restly.views.RestView.session" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -2095,7 +2108,7 @@ check, your change, the save and the commit.</p>
 <ul>
 <li><p>A row from the database, such as one from <code class="docutils literal notranslate"><span class="pre">get_one</span></code>. The block
 changes it. <code class="docutils literal notranslate"><span class="pre">authorize</span></code> gets the row, and <code class="docutils literal notranslate"><span class="pre">old</span></code> is its snapshot:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="s2">&quot;publish&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">post</span><span class="p">):</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">PUBLISH</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">post</span><span class="p">):</span>
     <span class="n">post</span><span class="o">.</span><span class="n">published</span> <span class="o">=</span> <span class="kc">True</span>
 </pre></div>
 </div>
@@ -2106,7 +2119,7 @@ in the block gives it an id. <code class="docutils literal notranslate"><span cl
 <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code>, and <code class="docutils literal notranslate"><span class="pre">old</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code>. Pass the request as <code class="docutils literal notranslate"><span class="pre">data</span></code>,
 so that <code class="docutils literal notranslate"><span class="pre">authorize</span></code> sees what the action creates:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">upload</span> <span class="o">=</span> <span class="n">Upload</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="n">file</span><span class="o">.</span><span class="n">filename</span><span class="p">)</span>
-<span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="s2">&quot;create&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">upload</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">form</span><span class="p">):</span>
+<span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">CREATE</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">upload</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">form</span><span class="p">):</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>  <span class="c1"># upload.id, for the lines</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">add_all</span><span class="p">(</span><span class="n">UploadLine</span><span class="p">(</span><span class="n">upload_id</span><span class="o">=</span><span class="n">upload</span><span class="o">.</span><span class="n">id</span><span class="p">)</span> <span class="o">...</span><span class="p">)</span>
 </pre></div>
@@ -2116,7 +2129,9 @@ so that <code class="docutils literal notranslate"><span class="pre">authorize</
 rows. <code class="docutils literal notranslate"><span class="pre">authorize</span></code> gets <code class="docutils literal notranslate"><span class="pre">obj=None</span></code>, and the hooks get
 <code class="docutils literal notranslate"><span class="pre">new=None</span></code> and <code class="docutils literal notranslate"><span class="pre">old=None</span></code>.</p></li>
 </ul>
-<p><code class="docutils literal notranslate"><span class="pre">action</span></code> is the name that <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and the hooks get. <code class="docutils literal notranslate"><span class="pre">data</span></code>
+<p><code class="docutils literal notranslate"><span class="pre">action</span></code> is the name that <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and the hooks get. It is
+one of the names that the view’s <code class="docutils literal notranslate"><span class="pre">Action</span></code> class declares, such as
+<code class="docutils literal notranslate"><span class="pre">self.Action.PUBLISH</span></code>. <code class="docutils literal notranslate"><span class="pre">data</span></code>
 goes to <code class="docutils literal notranslate"><span class="pre">authorize</span></code>, and Restly checks the references in it, as a
 CRUD write does: the <code class="docutils literal notranslate"><span class="pre">MustExist</span></code>, <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> and <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> fields,
 also in nested schemas and in each item of a list. A missing row
@@ -2146,8 +2161,11 @@ it leaves the outermost block, and stays raw inside it. A direct
 <code class="docutils literal notranslate"><span class="pre">session.commit()</span></code> inside the block raises <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#TypeError" title="(in Python v3.15)"><strong>TypeError</strong></a> – <code class="docutils literal notranslate"><span class="pre">obj</span></code> is neither <code class="docutils literal notranslate"><span class="pre">None</span></code> nor an object of a
-SQLAlchemy model.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.15)"><strong>ValueError</strong></a> – the view’s <code class="docutils literal notranslate"><span class="pre">Action</span></code> does not declare <code class="docutils literal notranslate"><span class="pre">action</span></code>.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#TypeError" title="(in Python v3.15)"><strong>TypeError</strong></a> – <code class="docutils literal notranslate"><span class="pre">obj</span></code> is neither <code class="docutils literal notranslate"><span class="pre">None</span></code> nor an object of a
+SQLAlchemy model.</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>

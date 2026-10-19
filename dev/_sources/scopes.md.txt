@@ -270,6 +270,9 @@ class ItemView(fr.AsyncRestView):
     schema = ItemSchema
     # no scope declared: reads apply ItemClauses.default_scope
 
+    class Action(fr.Action):
+        RESTORE = "restore"
+
     @fr.get("/trash")
     async def trash(self, list_params) -> ViewListResponse:
         return await self.handle_get_many(list_params, scope=ItemClauses.trashed)
@@ -277,7 +280,7 @@ class ItemView(fr.AsyncRestView):
     @fr.post("/{id}/restore", status_code=200)
     async def restore(self, id: ViewID) -> ViewResponse:
         item = await self.get_one(id, scope=ItemClauses.trashed)
-        async with self.write_action("restore", obj=item):
+        async with self.write_action(self.Action.RESTORE, obj=item):
             item.deleted_at = None
         return item
 ```

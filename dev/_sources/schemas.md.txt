@@ -520,6 +520,9 @@ class UserView(AppView):
     model = User
     schema = UserSchema
 
+    class Action(fr.Action):
+        ACTIVATE = "activate"
+
     @fr.get("/inactive")
     async def inactive(self, list_params) -> ViewListResponse:
         return await self.handle_get_many(list_params, where=User.active.is_(False))
@@ -527,7 +530,7 @@ class UserView(AppView):
     @fr.post("/{id}/activate", status_code=200)
     async def activate(self, id: ViewID) -> ViewResponse:
         user = await self.get_one(id)
-        async with self.write_action("activate", obj=user):
+        async with self.write_action(self.Action.ACTIVATE, obj=user):
             user.active = True
         return user
 ```

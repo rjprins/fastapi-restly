@@ -567,17 +567,23 @@ exist, use a <a class="reference internal" href="scopes.html"><span class="std s
 <p>Restly does not check who the caller is. Your app does that with FastAPI’s
 security tools, and binds the caller with
 <a class="reference internal" href="context.html#current-request-binding"><span class="std std-ref">Request Context</span></a>.</p>
+<p>So a rule goes in one of two places. A rule about who the caller is, such as
+“the caller is logged in” or “the caller is an admin”, goes in a FastAPI
+dependency: on the app, on a router, or in the view’s
+<a class="reference internal" href="api/views.html#fastapi_restly.views.View.dependencies" title="fastapi_restly.views.View.dependencies"><code class="xref py py-attr docutils literal notranslate"><span class="pre">dependencies</span></code></a>. A rule that
+depends on the action, the row or the request body goes in <code class="docutils literal notranslate"><span class="pre">authorize</span></code>. A
+dependency runs before Restly loads the row, so it cannot see the row.</p>
 <section id="allow-or-refuse-an-action">
 <span id="authorize-gate"></span><h2>Allow or refuse an action<a class="headerlink" href="#allow-or-refuse-an-action" title="Link to this heading">#</a></h2>
 <p>The blog example lets everyone read, lets every user create, and lets only the
 author change a post or a comment:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">AuthoredView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">authorize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">action</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;get_many&quot;</span><span class="p">,</span> <span class="s2">&quot;get_one&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="ow">in</span> <span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">GET_MANY</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">GET_ONE</span><span class="p">):</span>
             <span class="k">return</span>
         <span class="k">if</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">fastapi</span><span class="o">.</span><span class="n">HTTPException</span><span class="p">(</span><span class="mi">401</span><span class="p">,</span> <span class="s2">&quot;Log in to write&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="s2">&quot;create&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">CREATE</span><span class="p">:</span>
             <span class="k">return</span>
         <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">obj</span><span class="o">.</span><span class="n">author_id</span> <span class="o">!=</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">():</span>
             <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">Forbidden</span><span class="p">(</span><span class="s2">&quot;Only the author can change this&quot;</span><span class="p">)</span>
@@ -640,8 +646,8 @@ only when the task is assigned to them
 </section>
 <section id="action-names-and-fr-action">
 <span id="action-names"></span><h2>Action names and <code class="docutils literal notranslate"><span class="pre">fr.Action</span></code><a class="headerlink" href="#action-names-and-fr-action" title="Link to this heading">#</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">action</span></code> is a string. <a class="reference internal" href="api/views.html#fastapi_restly.views.Action" title="fastapi_restly.views.Action"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.Action</span></code></a> has a
-constant for each CRUD action:</p>
+<p>Each view has a class <code class="docutils literal notranslate"><span class="pre">Action</span></code> that lists all its actions.
+<a class="reference internal" href="api/views.html#fastapi_restly.views.Action" title="fastapi_restly.views.Action"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.Action</span></code></a> has the five CRUD actions:</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>
 <tr class="row-odd"><th class="head"><p>Constant</p></th>
@@ -667,26 +673,69 @@ constant for each CRUD action:</p>
 </tbody>
 </table>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">fr.Action</span></code> is a class of string constants, not an <code class="docutils literal notranslate"><span class="pre">Enum</span></code>. The constants are
-plain strings, so they compare equal to <code class="docutils literal notranslate"><span class="pre">&quot;get_many&quot;</span></code> and the other names. A
-custom action can use any other name, such as <code class="docutils literal notranslate"><span class="pre">&quot;publish&quot;</span></code>. Prefer the
-constants in your own code: a typo in a constant raises <code class="docutils literal notranslate"><span class="pre">AttributeError</span></code>, and
-a type checker reports it, but a typo in a string only makes a rule never
-match. Give your custom action names constants too, for the same reason.</p>
+<p>A view without actions of its own has this class. A view that adds an action
+declares a subclass with the same name. The blog’s <code class="docutils literal notranslate"><span class="pre">PostView</span></code> adds
+<code class="docutils literal notranslate"><span class="pre">publish</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">PostView</span><span class="p">(</span><span class="n">AuthoredView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/posts&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Post</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">PostSchema</span>
+
+    <span class="k">class</span><span class="w"> </span><span class="nc">Action</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="p">):</span>
+        <span class="n">PUBLISH</span> <span class="o">=</span> <span class="s2">&quot;publish&quot;</span>
+</pre></div>
+</div>
+<p>An <code class="docutils literal notranslate"><span class="pre">Action</span></code> class has only actions. An action has an UPPER_CASE name, and its
+value is that name in lower case: <code class="docutils literal notranslate"><span class="pre">PUBLISH</span> <span class="pre">=</span> <span class="pre">&quot;publish&quot;</span></code>. Any other attribute
+raises
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>
+when Python creates the class.</p>
+<p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.write_action" title="fastapi_restly.views.RestView.write_action"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_action</span></code></a> takes only an
+action that the view’s <code class="docutils literal notranslate"><span class="pre">Action</span></code> declares. Another value raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code>.
+So the class shows every action that <code class="docutils literal notranslate"><span class="pre">write_action</span></code> and the CRUD routes pass
+to <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and the hooks. Use the constants in your code, such as
+<code class="docutils literal notranslate"><span class="pre">self.Action.PUBLISH</span></code> in a route. Your editor completes them, and a type
+checker reports a typo.</p>
 <p>The transaction hooks get the same name as their <code class="docutils literal notranslate"><span class="pre">action</span></code> argument:
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.before_action_commit" title="fastapi_restly.views.RestView.before_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_action_commit</span></code></a>
 and
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_action_commit" title="fastapi_restly.views.RestView.after_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_action_commit</span></code></a>.
 Reads do not call the hooks, so the hooks only see write actions. See
 <a class="reference internal" href="lifecycle.html#transaction-hooks"><span class="std std-ref">Run code before or after the commit</span></a>.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>A mixin or a base view with actions of its own declares its <code class="docutils literal notranslate"><span class="pre">Action</span></code> class in
+the same way. A view that adds more actions inherits from the <code class="docutils literal notranslate"><span class="pre">Action</span></code> class
+of each such base:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">TrashMixin</span><span class="p">:</span>
+    <span class="k">class</span><span class="w"> </span><span class="nc">Action</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="p">):</span>
+        <span class="n">RESTORE</span> <span class="o">=</span> <span class="s2">&quot;restore&quot;</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">PostView</span><span class="p">(</span><span class="n">TrashMixin</span><span class="p">,</span> <span class="n">AuthoredView</span><span class="p">):</span>
+    <span class="k">class</span><span class="w"> </span><span class="nc">Action</span><span class="p">(</span><span class="n">TrashMixin</span><span class="o">.</span><span class="n">Action</span><span class="p">):</span>
+        <span class="n">PUBLISH</span> <span class="o">=</span> <span class="s2">&quot;publish&quot;</span>
+</pre></div>
+</div>
+<p>Restly checks this when it creates the view. When the view’s <code class="docutils literal notranslate"><span class="pre">Action</span></code> does
+not inherit from the <code class="docutils literal notranslate"><span class="pre">Action</span></code> of a base, it raises <code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code>
+and names the base. This also catches a view without an <code class="docutils literal notranslate"><span class="pre">Action</span></code> of its own and with two
+bases that each have one. Python would take the <code class="docutils literal notranslate"><span class="pre">Action</span></code> of the first base
+and drop the other.</p>
+<p>An <code class="docutils literal notranslate"><span class="pre">authorize</span></code> on a base view, such as the blog’s <code class="docutils literal notranslate"><span class="pre">AuthoredView</span></code>, runs for
+each view that inherits it. For a type checker, <code class="docutils literal notranslate"><span class="pre">self.Action</span></code> there has only
+the actions of the base. So compare an action of a subclass with its value,
+such as <code class="docutils literal notranslate"><span class="pre">action</span> <span class="pre">==</span> <span class="pre">&quot;publish&quot;</span></code>, or put that rule on the subclass. Keep the
+rule strict for an action that it does not know, as the blog does.</p>
+</div>
 </section>
 <section id="authorize-a-custom-action">
 <span id="authorize-custom-actions"></span><h2>Authorize a custom action<a class="headerlink" href="#authorize-a-custom-action" title="Link to this heading">#</a></h2>
 <p>A custom route reaches <code class="docutils literal notranslate"><span class="pre">authorize</span></code> in one of these ways:</p>
 <ul class="simple">
 <li><p>A <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.write_action" title="fastapi_restly.views.RestView.write_action"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_action</span></code></a> block
-calls it with the block’s name: <code class="docutils literal notranslate"><span class="pre">write_action(&quot;publish&quot;,</span> <span class="pre">obj=post)</span></code> calls
-<code class="docutils literal notranslate"><span class="pre">authorize(&quot;publish&quot;,</span> <span class="pre">obj=post,</span> <span class="pre">data=None)</span></code>. For a new object, such as the
+calls it with the block’s name: <code class="docutils literal notranslate"><span class="pre">write_action(self.Action.PUBLISH,</span> <span class="pre">obj=post)</span></code>
+calls <code class="docutils literal notranslate"><span class="pre">authorize(&quot;publish&quot;,</span> <span class="pre">obj=post,</span> <span class="pre">data=None)</span></code>. For a new object, such as the
 copy that a clone route creates, <code class="docutils literal notranslate"><span class="pre">authorize</span></code> gets <code class="docutils literal notranslate"><span class="pre">obj=None</span></code>, as on
 <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code>; pass the request as <code class="docutils literal notranslate"><span class="pre">data=</span></code>, so a create rule sees what is
 created. If <code class="docutils literal notranslate"><span class="pre">authorize</span></code> raises, the block does not run.</p></li>
@@ -696,7 +745,9 @@ another path. <code class="docutils literal notranslate"><span class="pre">handl
 <code class="docutils literal notranslate"><span class="pre">authorize(&quot;get_one&quot;,</span> <span class="pre">...)</span></code>.</p></li>
 <li><p>The route calls <code class="docutils literal notranslate"><span class="pre">self.authorize(...)</span></code> itself. A route that builds its own
 query does this, as the count route in
-<a class="reference internal" href="scopes.html#reading-the-scope"><span class="std std-ref">Use the scope in your own query</span></a> does.</p></li>
+<a class="reference internal" href="scopes.html#reading-the-scope"><span class="std std-ref">Use the scope in your own query</span></a> does. This is a call
+to your own method, so Restly does not check the name. Use a name from the
+view’s <code class="docutils literal notranslate"><span class="pre">Action</span></code> here too.</p></li>
 </ul>
 <p>The loads and the business methods, such as
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> and

@@ -732,10 +732,13 @@ response step as the CRUD routes. So it can return the row itself:</p>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Project</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">ProjectSchema</span>
 
+    <span class="k">class</span><span class="w"> </span><span class="nc">Action</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="p">):</span>
+        <span class="n">ARCHIVE</span> <span class="o">=</span> <span class="s2">&quot;archive&quot;</span>
+
     <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/archive&quot;</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">archive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="n">ViewID</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewResponse</span><span class="p">:</span>
         <span class="n">project</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
-        <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="s2">&quot;archive&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">project</span><span class="p">):</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">ARCHIVE</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">project</span><span class="p">):</span>
             <span class="n">project</span><span class="o">.</span><span class="n">archived</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="k">return</span> <span class="n">project</span>
 </pre></div>

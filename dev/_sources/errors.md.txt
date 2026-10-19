@@ -155,11 +155,14 @@ A custom route that catches the conflict of its own `write_action` block
 catches `fr.exc.Conflict`:
 
 ```python
+    class Action(fr.Action):
+        RENAME = "rename"
+
     @fr.post("/{id}/rename", status_code=200)
     async def rename(self, id: int, name: str):
         tag = await self.get_one(id)
         try:
-            async with self.write_action("rename", obj=tag):
+            async with self.write_action(self.Action.RENAME, obj=tag):
                 tag.name = name
         except fr.exc.Conflict:
             raise fr.exc.Conflict(f"A tag named {name!r} already exists")

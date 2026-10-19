@@ -514,6 +514,13 @@ Rename <code class="docutils literal notranslate"><span class="pre">schema_obj</
 <code class="docutils literal notranslate"><span class="pre">as</span> <span class="pre">w</span></code> and <code class="docutils literal notranslate"><span class="pre">w.obj</span></code>.</p></li>
 <li><p>Write each reference as <code class="docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code>, in place of
 <code class="docutils literal notranslate"><span class="pre">fr.MustExist[int]</span></code> and <code class="docutils literal notranslate"><span class="pre">fr.RefExists</span></code>.</p></li>
+<li><p>Declare the names of your custom actions in a class <code class="docutils literal notranslate"><span class="pre">Action</span></code> on the view,
+such as <code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">Action(fr.Action):</span> <span class="pre">PUBLISH</span> <span class="pre">=</span> <span class="pre">&quot;publish&quot;</span></code>, and pass
+<code class="docutils literal notranslate"><span class="pre">self.Action.PUBLISH</span></code> to <code class="docutils literal notranslate"><span class="pre">write_action</span></code>. A mixin whose route calls
+<code class="docutils literal notranslate"><span class="pre">write_action</span></code> with an action of its own declares its own <code class="docutils literal notranslate"><span class="pre">Action</span></code>, and
+the view inherits from it. An action that you miss fails when the route
+runs, not when Python creates the class. <code class="docutils literal notranslate"><span class="pre">Action</span></code> is now a reserved name
+on a view and on the classes it inherits from.</p></li>
 </ol>
 <section id="added">
 <h3>Added<a class="headerlink" href="#added" title="Link to this heading">#</a></h3>
@@ -615,6 +622,15 @@ block starts, so a <code class="docutils literal notranslate"><span class="pre">
 gets <code class="docutils literal notranslate"><span class="pre">obj=None</span></code>. A detached row is added back, and a row
 that another open session holds raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code>. The block gets nothing
 from <code class="docutils literal notranslate"><span class="pre">as</span></code>: pass the new object as <code class="docutils literal notranslate"><span class="pre">obj</span></code> instead of setting <code class="docutils literal notranslate"><span class="pre">w.obj</span></code>.</p></li>
+<li><p>Each view has a class <code class="docutils literal notranslate"><span class="pre">Action</span></code> that lists all its actions. It is
+<code class="docutils literal notranslate"><span class="pre">fr.Action</span></code>, with the five CRUD actions, until the view declares a subclass
+with actions of its own. An action has an UPPER_CASE name, and its value is
+that name in lower case: <code class="docutils literal notranslate"><span class="pre">PUBLISH</span> <span class="pre">=</span> <span class="pre">&quot;publish&quot;</span></code>. <code class="docutils literal notranslate"><span class="pre">write_action</span></code> takes only an
+action that the view’s <code class="docutils literal notranslate"><span class="pre">Action</span></code> declares, and raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> for
+another value. A view whose <code class="docutils literal notranslate"><span class="pre">Action</span></code> does not inherit from the <code class="docutils literal notranslate"><span class="pre">Action</span></code> of
+a base class, such as a mixin’s, fails when Python creates the class. So
+<code class="docutils literal notranslate"><span class="pre">PostView.Action</span></code> shows every action that <code class="docutils literal notranslate"><span class="pre">write_action</span></code> and the CRUD routes
+pass to <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and the hooks, also in your editor.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">new</span></code> and <code class="docutils literal notranslate"><span class="pre">old</span></code> in the hooks follow the row that the action is about. So a
 soft delete through <code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/{id}</span></code> gives the row as <code class="docutils literal notranslate"><span class="pre">new</span></code>, and a block that
 deletes its <code class="docutils literal notranslate"><span class="pre">obj</span></code> gives <code class="docutils literal notranslate"><span class="pre">new=None</span></code>.</p></li>

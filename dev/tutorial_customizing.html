@@ -646,19 +646,20 @@ add <code class="docutils literal notranslate"><span class="pre">authorize</span
     <span class="n">schema</span> <span class="o">=</span> <span class="n">PostSchema</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">authorize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">action</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;get_many&quot;</span><span class="p">,</span> <span class="s2">&quot;get_one&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="ow">in</span> <span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">GET_MANY</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">GET_ONE</span><span class="p">):</span>
             <span class="k">return</span>
         <span class="k">if</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">fastapi</span><span class="o">.</span><span class="n">HTTPException</span><span class="p">(</span><span class="mi">401</span><span class="p">,</span> <span class="s2">&quot;Log in to write&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="s2">&quot;create&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">CREATE</span><span class="p">:</span>
             <span class="k">return</span>
         <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">obj</span><span class="o">.</span><span class="n">author_id</span> <span class="o">!=</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">():</span>
             <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">Forbidden</span><span class="p">(</span><span class="s2">&quot;Only the author can change this&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">action</span></code> names the action. The CRUD actions are <code class="docutils literal notranslate"><span class="pre">get_many</span></code>, <code class="docutils literal notranslate"><span class="pre">get_one</span></code>,
-<code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code> and <code class="docutils literal notranslate"><span class="pre">delete</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">action</span></code> names the action. <a class="reference internal" href="api/views.html#fastapi_restly.views.Action" title="fastapi_restly.views.Action"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.Action</span></code></a>
+has a constant for each CRUD action: <code class="docutils literal notranslate"><span class="pre">GET_MANY</span></code>, <code class="docutils literal notranslate"><span class="pre">GET_ONE</span></code>, <code class="docutils literal notranslate"><span class="pre">CREATE</span></code>,
+<code class="docutils literal notranslate"><span class="pre">UPDATE</span></code> and <code class="docutils literal notranslate"><span class="pre">DELETE</span></code>.</p></li>
 <li><p>Everyone may read. The scope already decides which posts they see.</p></li>
 <li><p>Every write needs a user, and every user may create a post.</p></li>
 <li><p>Every other write changes one post, and <code class="docutils literal notranslate"><span class="pre">obj</span></code> is that post. Only its
@@ -683,11 +684,15 @@ the post does not exist. When he can see the post but may not change it,
 </section>
 <section id="publish-a-draft">
 <h2>Publish a draft<a class="headerlink" href="#publish-a-draft" title="Link to this heading">#</a></h2>
-<p>Publishing is an action, not a field edit. Add a route for it to <code class="docutils literal notranslate"><span class="pre">PostView</span></code>:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/publish&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+<p>Publishing is an action, not a field edit. Add the action and a route for it
+to <code class="docutils literal notranslate"><span class="pre">PostView</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">class</span><span class="w"> </span><span class="nc">Action</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="p">):</span>
+        <span class="n">PUBLISH</span> <span class="o">=</span> <span class="s2">&quot;publish&quot;</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/publish&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">publish</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Post</span><span class="p">:</span>
         <span class="n">post</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
-        <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="s2">&quot;publish&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">post</span><span class="p">):</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">PUBLISH</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">post</span><span class="p">):</span>
             <span class="k">if</span> <span class="n">post</span><span class="o">.</span><span class="n">published</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">Conflict</span><span class="p">(</span><span class="s2">&quot;Already published&quot;</span><span class="p">)</span>
             <span class="n">post</span><span class="o">.</span><span class="n">published</span> <span class="o">=</span> <span class="kc">True</span>
@@ -695,6 +700,10 @@ the post does not exist. When he can see the post but may not change it,
 </pre></div>
 </div>
 <ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Action</span></code> lists the actions of the view. It inherits the five CRUD actions
+from <a class="reference internal" href="api/views.html#fastapi_restly.views.Action" title="fastapi_restly.views.Action"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.Action</span></code></a> and adds <code class="docutils literal notranslate"><span class="pre">PUBLISH</span></code>.
+<code class="docutils literal notranslate"><span class="pre">write_action</span></code> takes only a name from this class. See
+<a class="reference internal" href="authorization.html#action-names"><span class="std std-ref">Action names</span></a>.</p></li>
 <li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.post" title="fastapi_restly.views.post"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.post</span></code></a> adds a route to the view,
 beside the CRUD routes.</p></li>
 <li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView.get_one" title="fastapi_restly.views.AsyncRestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> loads the post
@@ -733,7 +742,7 @@ function above <code class="docutils literal notranslate"><span class="pre">Post
 </div>
 <p>Add this method to <code class="docutils literal notranslate"><span class="pre">PostView</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">after_action_commit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">new</span><span class="p">,</span> <span class="n">old</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="s2">&quot;publish&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">PUBLISH</span><span class="p">:</span>
             <span class="k">await</span> <span class="n">notify_subscribers</span><span class="p">(</span><span class="n">new</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -805,11 +814,11 @@ detail.</p>
 base class, and put the base class below the <code class="docutils literal notranslate"><span class="pre">app</span> <span class="pre">=</span> <span class="pre">FastAPI(...)</span></code> line:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">AuthoredView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">authorize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">action</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;get_many&quot;</span><span class="p">,</span> <span class="s2">&quot;get_one&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="ow">in</span> <span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">GET_MANY</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">GET_ONE</span><span class="p">):</span>
             <span class="k">return</span>
         <span class="k">if</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">fastapi</span><span class="o">.</span><span class="n">HTTPException</span><span class="p">(</span><span class="mi">401</span><span class="p">,</span> <span class="s2">&quot;Log in to write&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="s2">&quot;create&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">CREATE</span><span class="p">:</span>
             <span class="k">return</span>
         <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">obj</span><span class="o">.</span><span class="n">author_id</span> <span class="o">!=</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">():</span>
             <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">Forbidden</span><span class="p">(</span><span class="s2">&quot;Only the author can change this&quot;</span><span class="p">)</span>
@@ -821,7 +830,7 @@ base class, and put the base class below the <code class="docutils literal notra
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/posts&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Post</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">PostSchema</span>
-    <span class="c1"># publish and after_action_commit as above</span>
+    <span class="c1"># Action, publish and after_action_commit as above</span>
 
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
@@ -979,11 +988,11 @@ build their configuration in a factory.</p>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">AuthoredView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">authorize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">action</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;get_many&quot;</span><span class="p">,</span> <span class="s2">&quot;get_one&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="ow">in</span> <span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">GET_MANY</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">GET_ONE</span><span class="p">):</span>
             <span class="k">return</span>
         <span class="k">if</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">fastapi</span><span class="o">.</span><span class="n">HTTPException</span><span class="p">(</span><span class="mi">401</span><span class="p">,</span> <span class="s2">&quot;Log in to write&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="s2">&quot;create&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">CREATE</span><span class="p">:</span>
             <span class="k">return</span>
         <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">obj</span><span class="o">.</span><span class="n">author_id</span> <span class="o">!=</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">():</span>
             <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">Forbidden</span><span class="p">(</span><span class="s2">&quot;Only the author can change this&quot;</span><span class="p">)</span>
@@ -1024,17 +1033,20 @@ build their configuration in a factory.</p>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Post</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">PostSchema</span>
 
+    <span class="k">class</span><span class="w"> </span><span class="nc">Action</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="p">):</span>
+        <span class="n">PUBLISH</span> <span class="o">=</span> <span class="s2">&quot;publish&quot;</span>
+
     <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/publish&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">publish</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Post</span><span class="p">:</span>
         <span class="n">post</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
-        <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="s2">&quot;publish&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">post</span><span class="p">):</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">PUBLISH</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">post</span><span class="p">):</span>
             <span class="k">if</span> <span class="n">post</span><span class="o">.</span><span class="n">published</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">Conflict</span><span class="p">(</span><span class="s2">&quot;Already published&quot;</span><span class="p">)</span>
             <span class="n">post</span><span class="o">.</span><span class="n">published</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="k">return</span> <span class="n">post</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">after_action_commit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">new</span><span class="p">,</span> <span class="n">old</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="s2">&quot;publish&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">PUBLISH</span><span class="p">:</span>
             <span class="k">await</span> <span class="n">notify_subscribers</span><span class="p">(</span><span class="n">new</span><span class="p">)</span>
 
 
