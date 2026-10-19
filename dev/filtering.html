@@ -1194,15 +1194,16 @@ view can set <code class="docutils literal notranslate"><span class="pre">unknow
 <span id="change-list-query"></span><h2>Change the list query of a view<a class="headerlink" href="#change-the-list-query-of-a-view" title="Link to this heading">#</a></h2>
 <p>The filters apply inside the view’s scope. To limit the rows of a view,
 declare its <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.scope" title="fastapi_restly.views.BaseRestView.scope"><code class="xref py py-attr docutils literal notranslate"><span class="pre">scope</span></code></a>, as
-<a class="reference internal" href="scopes.html#view-scope"><span class="std std-ref">Give one view other rows</span></a> shows. <code class="docutils literal notranslate"><span class="pre">get_many</span></code> takes no <code class="docutils literal notranslate"><span class="pre">query</span></code>
-argument, so put base query changes in the scope.</p>
+<a class="reference internal" href="scopes.html#view-scope"><span class="std std-ref">Give one view other rows</span></a> shows. <code class="docutils literal notranslate"><span class="pre">get_many</span></code> is final and takes
+no statement, so put base query changes in the scope.</p>
 <div class="details admonition">
 <p class="admonition-title">Details</p>
 <p>For list params of another form, such as those of another client library,
-see <a class="reference internal" href="#own-list-params">Write the list params yourself</a>. Override
-<code class="docutils literal notranslate"><span class="pre">get_many()</span></code> itself only for a list that has another <em>result</em>, and build the
-query in the method. The override gets the scope as
-its <code class="docutils literal notranslate"><span class="pre">scope</span></code> argument: apply it to the query with <code class="docutils literal notranslate"><span class="pre">fr.apply_clauses</span></code>, as
+see <a class="reference internal" href="#own-list-params">Write the list params yourself</a>. A join or a default
+order goes in an
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_list_params" title="fastapi_restly.views.RestView.apply_list_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_list_params</span></code></a>
+override. For a list that has another <em>result</em>, write a route of your own
+that starts from <code class="docutils literal notranslate"><span class="pre">self.select()</span></code>, as
 <a class="reference internal" href="scopes.html#reading-the-scope"><span class="std std-ref">Use the scope in your own query</span></a> shows.</p>
 <p>A route method with a <code class="docutils literal notranslate"><span class="pre">list_params</span></code> parameter takes the same list params as
 <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>. Restly gives it the view’s

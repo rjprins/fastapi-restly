@@ -522,10 +522,11 @@ under <code class="docutils literal notranslate"><span class="pre">/users</span>
 configuration and the model around such a view, in one file that runs.
 <code class="docutils literal notranslate"><span class="pre">include_view</span></code> also works as a direct call; see
 <a class="reference internal" href="views.html#register-a-view"><span class="std std-ref">Register a view</span></a>.</p>
-<p>Each route runs an endpoint method, a final handler and a business method.
-To change what a route does, you override the endpoint method or the business
-method; <a class="reference internal" href="lifecycle.html#which-method-to-override"><span class="std std-ref">Which method do I override</span></a> maps each
-change to its method.</p>
+<p>Each route runs an endpoint method, a final handler, and a business method
+or, for a read, a final load. To change what a route does, you override the
+endpoint method or the business method, or set what the load reads;
+<a class="reference internal" href="lifecycle.html#which-method-to-override"><span class="std std-ref">Which method do I override</span></a> maps each change to
+its method.</p>
 <section id="choose-async-or-sync">
 <span id="id1"></span><h2>Choose async or sync<a class="headerlink" href="#choose-async-or-sync" title="Link to this heading">#</a></h2>
 <p>Use <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> for a new
@@ -649,10 +650,14 @@ works when you register it after the view.</p>
 route matches it. So a negative integer id does not match, even when the row
 exists. OpenAPI still shows the path as <code class="docutils literal notranslate"><span class="pre">/users/{id}</span></code>, with an integer or UUID
 parameter.</p>
-<p>A route that you declare yourself keeps the path you give it. To accept
-negative integer ids, replace each item endpoint you need with an untyped
-path such as <code class="docutils literal notranslate"><span class="pre">&#64;fr.get(&quot;/{id}&quot;)</span></code>, and annotate its <code class="docutils literal notranslate"><span class="pre">id</span></code> parameter as <code class="docutils literal notranslate"><span class="pre">int</span></code>;
-see <a class="reference internal" href="lifecycle.html#replace-endpoint-method"><span class="std std-ref">Change the status code or headers of one route</span></a>.</p>
+<p>A route that you declare yourself keeps the path you give it. Restly adds
+the converter only to a path parameter annotated
+<a class="reference internal" href="api/views.html#fastapi_restly.views.ViewID" title="fastapi_restly.views.ViewID"><code class="xref py py-data docutils literal notranslate"><span class="pre">ViewID</span></code></a>; see
+<a class="reference internal" href="schemas.html#name-the-response-classes"><span class="std std-ref">Name the view’s classes in a custom route</span></a>. To
+accept negative integer ids, replace each item endpoint you need with an
+untyped path such as <code class="docutils literal notranslate"><span class="pre">&#64;fr.get(&quot;/{id}&quot;)</span></code>, and annotate its <code class="docutils literal notranslate"><span class="pre">id</span></code> parameter as
+<code class="docutils literal notranslate"><span class="pre">int</span></code>; see
+<a class="reference internal" href="lifecycle.html#replace-endpoint-method"><span class="std std-ref">Change the status code or headers of one route</span></a>.</p>
 </div>
 </section>
 </section>
@@ -855,10 +860,10 @@ Nest the view when the nested URL is part of your API.</p>
         <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span><span class="n">Task</span><span class="o">.</span><span class="n">project_id</span> <span class="o">==</span> <span class="n">Parent</span><span class="o">.</span><span class="n">project_id</span><span class="p">),</span>
     <span class="p">)</span>
 
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
-        <span class="n">task</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_new_object</span><span class="p">(</span><span class="n">schema_obj</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="n">task</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
         <span class="n">task</span><span class="o">.</span><span class="n">project_id</span> <span class="o">=</span> <span class="n">Parent</span><span class="o">.</span><span class="n">project_id</span><span class="p">()</span>
-        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_object</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">task</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">ProjectTaskView</span></code> differs from a flat view in these places:</p>
@@ -903,10 +908,9 @@ override as a plain <code class="docutils literal notranslate"><span class="pre"
 <p>The project id comes from the path, not from the request body. <code class="docutils literal notranslate"><span class="pre">TaskSchema</span></code>
 marks <code class="docutils literal notranslate"><span class="pre">project_id</span></code> as <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code></a>,
 so the generated create and update schemas leave it out. The <code class="docutils literal notranslate"><span class="pre">create</span></code>
-override sets it from <code class="docutils literal notranslate"><span class="pre">Parent</span></code> after
-<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView.make_new_object" title="fastapi_restly.views.AsyncRestView.make_new_object"><code class="xref py py-meth docutils literal notranslate"><span class="pre">make_new_object</span></code></a>
-builds the task.</p>
-<p>Declare the foreign key with <code class="docutils literal notranslate"><span class="pre">init=False</span></code>. <code class="docutils literal notranslate"><span class="pre">make_new_object</span></code> builds the task
+override sets it from <code class="docutils literal notranslate"><span class="pre">Parent</span></code> after <code class="docutils literal notranslate"><span class="pre">super().create()</span></code> builds the task. The
+INSERT has the id, because Restly saves after <code class="docutils literal notranslate"><span class="pre">create</span></code> returns.</p>
+<p>Declare the foreign key with <code class="docutils literal notranslate"><span class="pre">init=False</span></code>. <code class="docutils literal notranslate"><span class="pre">super().create()</span></code> builds the task
 from the request body, which has no <code class="docutils literal notranslate"><span class="pre">project_id</span></code>. Without <code class="docutils literal notranslate"><span class="pre">init=False</span></code>, the
 model requires <code class="docutils literal notranslate"><span class="pre">project_id</span></code> in its constructor, and the create returns <code class="docutils literal notranslate"><span class="pre">500</span></code>.</p>
 <p>Keep the parent id out of every write schema of the nested view. If
@@ -1015,10 +1019,10 @@ example, and its own <code class="docutils literal notranslate"><span class="pre
         <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span><span class="n">Task</span><span class="o">.</span><span class="n">project_id</span> <span class="o">==</span> <span class="n">Parent</span><span class="o">.</span><span class="n">project_id</span><span class="p">),</span>
     <span class="p">)</span>
 
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
-        <span class="n">task</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_new_object</span><span class="p">(</span><span class="n">schema_obj</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="n">task</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
         <span class="n">task</span><span class="o">.</span><span class="n">project_id</span> <span class="o">=</span> <span class="n">Parent</span><span class="o">.</span><span class="n">project_id</span><span class="p">()</span>
-        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_object</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">task</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">project_from_path</span></code> gets the company id from <code class="docutils literal notranslate"><span class="pre">company_from_path</span></code> as a FastAPI
@@ -1075,9 +1079,11 @@ resource name.</p></li>
 <li><p>A row is identified by one primary key column. The <code class="docutils literal notranslate"><span class="pre">{id}</span></code> path parameter
 takes the Python type of the key, so a UUID or string key needs no
 configuration. Reference fields such as <code class="docutils literal notranslate"><span class="pre">fr.MustExist[UUID,</span> <span class="pre">Model]</span></code> accept
-these keys too. For a composite key, write a custom route that loads the
-row by a condition (<a class="reference internal" href="lifecycle.html#natural-key-route"><span class="std std-ref">Look a row up by another key</span></a>), or
-use a <a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a> with explicit paths.</p></li>
+these keys too. For a composite key, set <code class="docutils literal notranslate"><span class="pre">id_type</span> <span class="pre">=</span> <span class="pre">str</span></code> and override
+<code class="docutils literal notranslate"><span class="pre">where_id</span></code> to read the parts of the key from the path; see
+<a class="reference internal" href="lifecycle.html#natural-key-route"><span class="std std-ref">Look a row up by another key</span></a>. Without <code class="docutils literal notranslate"><span class="pre">where_id</span></code>, a
+view of such a model fails when it registers, unless it leaves out the
+item routes.</p></li>
 <li><p>Responses can contain nested objects, and lists can filter on
 relationships. Request bodies with nested objects are not supported in
 general. Use <code class="docutils literal notranslate"><span class="pre">MustExist</span></code>, <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> or <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> to refer to other rows, or

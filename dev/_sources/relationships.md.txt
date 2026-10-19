@@ -131,18 +131,32 @@ field and the id:
 :::{admonition} Details
 :class: details
 
-Restly checks the `MustExist` ids of a request in batches: one query for
-each referenced model and scope, not one query for each id. It checks only
-the fields that the client sent, and it skips a `null` value.
-
-`MustExist[int]`, without a model, takes the model from the `ForeignKey` of
-the column. This works when the column has exactly one foreign key. For
-another primary key type, name that type first: `fr.MustExist[UUID, Account]`.
-
-`MustExist` is short for a field with the
-{class}`fr.RefExists <fastapi_restly.schemas.RefExists>` marker:
-`Annotated[int, fr.RefExists(User)]`. Write the marker yourself to check
-against another clause, as the next section shows.
+- Restly checks the references after `authorize` and before your `create` or
+  `update`. So the errors come in this order: the row in the URL (`404`),
+  then the permission (`403`), then the references (`404`).
+- Restly checks the data of every write: the CRUD routes, and
+  `write_action(data=...)`. It also checks the schemas inside the data, such
+  as the lines of an order, and each item when the data is a list. The
+  message then names the place: `Id not found for lines[1].product_id: 7`.
+- One query checks all the ids of one model. Restly checks only the fields
+  that the client sent, and it skips a `null` value. In one write, Restly
+  does not look up the same row twice.
+- The check does not autoflush, so it never writes an object that your code
+  is still building. So it also does not find a row that your code added
+  and did not flush yet. Call `flush()` first for such a row.
+- A list of ids, such as `list[fr.MustExist[int, Tag]]`, checks each id. The
+  message names every missing id of the list:
+  `Id not found for tag_ids: [7, 9]`. A reference deeper in another type,
+  such as in a `dict`, is refused, because the check cannot see it there.
+- The builders in {mod}`fr.objects <fastapi_restly.objects>` check too, so
+  a script that builds objects with them is safe.
+- An id that reaches the database in another way is yours to check, such as
+  a value that your code sets in a `write_action` block without `data=`. The
+  foreign key in the database still refuses an id that does not exist.
+- For another primary key type, name that type first:
+  `fr.MustExist[UUID, Account]`. Restly does not take the model from the
+  foreign key, because a schema can also write another model, and then the
+  check would use the wrong table.
 :::
 
 (visibility-and-multi-tenancy)=
@@ -155,25 +169,24 @@ that the scope hides returns `404`, as a missing row does. So if the scope of
 article.
 
 A session rule, such as the [tenant rule](#tenant-row-scoping),
-also reaches every reference check. This includes `MustExist`, and the
-`session.get()` that Restly uses for an `IDRef` or `IDSchema` field when the
-model has no default scope. The one exception is an object that is already in
-the session: `session.get()` returns it without a query, so the rule does not
-run.
+also reaches every reference check.
 
 A model without a default scope is checked by its primary key alone. Then a
 reference can reach a soft-deleted row, or a row that the caller cannot read.
 To hide such rows, give the model a default scope.
 
+The `scope` of a view does not apply to references. It is a rule for the
+reads of that one view. If a rule must also hold for references, make it the
+`default_scope` of the model.
+
 :::{admonition} Details
 :class: details
 
-On a `MustExist` field, `RefExists` can check against another clause, or
-against no clause; see [Check a reference against another scope](#reference-scopes).
-An `IDRef` or `IDSchema` field always uses the default scope. The SaaS example
-lets a member attach labels only to a task that is assigned to them, with
-`RefExists(Task, scope=TaskClauses.visible)` in
-[`app/labels/schemas.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/labels/schemas.py).
+A script that calls the {mod}`fr.objects <fastapi_restly.objects>` builders
+by itself loads an `IDRef` or `IDSchema` row of a model without a default
+scope with `session.get()`. For an object that is already in the session,
+`session.get()` returns it without a query, so a session rule does not run
+there. Inside a write, Restly always runs the query.
 
 A rule that is neither a scope nor a session rule goes in
 {meth}`authorize <fastapi_restly.views.RestView.authorize>` (see
@@ -203,6 +216,10 @@ class ArticleView(fr.AsyncRestView):
 `authorize` does not have the row itself. If a rule needs it, read it in
 {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`,
 for example with `await self.session.get(User, new.author_id)`.
+
+The SaaS example lets a member attach labels only to a task that is assigned
+to them. That is a permission, so it is in `TaskLabelView.authorize`, in
+[`app/labels/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/labels/views.py).
 :::
 
 (reference-field-names)=
@@ -291,8 +308,9 @@ relationship stores no order: responses show the rows in database order,
 unless the relationship sets `order_by`. The full file is
 [`shop/main.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/shop/shop/main.py).
 
-A list cannot use `MustExist`, which is for one foreign key column. Restly
-rejects `list[fr.MustExist[...]]` when you define the schema.
+A plain list of ids that sets no relationship, such as the projects that a
+route body names, is `list[fr.MustExist[int, Project]]`. Restly checks each
+id in one query, and the list stays a list of ints.
 
 (model-relationship-setup)=
 ## Declare the foreign key and the relationship on the model
@@ -377,8 +395,8 @@ that each one gets.
 (idref-custom-routes)=
 ## Build references in a custom route
 
-The default `POST` and `PATCH` routes validate the body first. So when Restly
-calls `make_new_object()` or `update_object()`, every reference field has the
+The default `POST` and `PATCH` routes validate the body first. So when the
+default `create` or `update` builds the object, every reference field has the
 right type: a `MustExist` field holds a plain id, and an `IDRef` or `IDSchema`
 field holds a reference object.
 
@@ -405,8 +423,10 @@ task_label = await async_make_new_object(
 ```
 
 `async_make_new_object` still checks that the rows exist, and writes the
-foreign key columns. The SaaS example runs this code in its
-`POST /task-labels/create-and-attach` route, in
+foreign key columns. A schema that validates, such as
+`self.schema_create(task_id=..., label_id=...)`, needs none of this, and a
+handler can take it. The SaaS example's `POST /task-labels/create-and-attach`
+route does that, in
 [`app/labels/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/labels/views.py).
 
 :::{admonition} Details
@@ -506,12 +526,14 @@ schema, or override the {meth}`create() <fastapi_restly.views.RestView.create>`
 and {meth}`update() <fastapi_restly.views.RestView.update>` business methods
 to build the related objects yourself.
 
+(eager-load-extra-relationships)=
 ### Load a relationship that the response does not name
 
 Some code needs a relationship that is not part of the response: a
-`@property`, an `after_action_commit` hook, or a custom read that would
-otherwise run one query per row. Override
-{meth}`get_relationship_loader_options() <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`
+`@property`, an `after_action_commit` hook, a value in
+{meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>`,
+or a custom read that would otherwise run one query per row. Override
+{meth}`get_loader_options() <fastapi_restly.views.BaseRestView.get_loader_options>`
 and add to its result:
 
 ```python
@@ -523,11 +545,17 @@ class ArticleView(fr.AsyncRestView):
     model = Article
     schema = ArticleSchema
 
-    def get_relationship_loader_options(self):
-        return super().get_relationship_loader_options() + [
+    def get_loader_options(self):
+        return super().get_loader_options() + [
             selectinload(Article.comments).selectinload(Comment.reactions)
         ]
 ```
+
+Every read of the view starts from
+{meth}`select() <fastapi_restly.views.BaseRestView.select>`, which applies
+these options: `GET /`, `GET /{id}`, the load of `PATCH` and `DELETE`, and
+your own routes. The save after a write applies them too, so the create and
+update responses have the same loads.
 
 :::{admonition} Details
 :class: details
@@ -536,40 +564,20 @@ The default returns the loads that the response class needs. Adding to it
 keeps those loads. To replace them, return a new list, for example to use
 `joinedload` instead of `selectinload`.
 
-The reads, `get_one` and `get_many`, always apply these options. A create or
-an update applies them only when it reloads the row, and it reloads only when a
-relationship that the response class names is not loaded. So if the response
-class names no relationship, your extra loads do not run after a write. Then
-load the relationship where you use it, as
-[Read a relationship in a hook or a business method](#read-unnamed-relationship)
-shows.
+The method holds every loader option of a read, not only relationships. A
+`query_expression()` on the model gets its value here, with
+`with_expression(...)`; see [Add a value to each row](#value-on-each-row).
 
 For a load that only the list needs, add `.options(...)` in
 {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`.
-It does not change `get_one`, or the create and update responses.
+It does not change `GET /{id}`, or the create and update responses. A load
+that only one custom route needs goes in that route: await the relationship
+after the load, as the next section shows.
+
+Up to 0.11, this method was named `get_relationship_loader_options`. A view
+class that still defines that name fails when Python creates the class, with
+a message that names the new one.
 :::
-
-(eager-load-extra-relationships)=
-### Load a relationship in `get_one` only
-
-If one read needs one more relationship, override
-{meth}`get_one <fastapi_restly.views.RestView.get_one>`. Call `super()` first,
-so the scope, the loads and the `404` stay as they are. Then load the extra
-relationship. `handle_get_one` passes `scope=` to `get_one`, so the override
-must take it and pass it on:
-
-```python
-    async def get_one(self, id, *, scope=None):
-        obj = await super().get_one(id, scope=scope)   # scope, loads and 404
-        await obj.awaitable_attrs.audit_log
-        return obj
-```
-
-Update and delete load their row through `get_one` too, so the extra query
-also runs there. But the refresh after a write unloads the relationship
-again. To load it on the create and update responses as well, override
-`get_relationship_loader_options` instead, with the limit that the previous
-section describes.
 
 (read-unnamed-relationship)=
 ### Read a relationship in a hook or a business method
@@ -589,7 +597,7 @@ async def after_action_commit(self, action, new, old=None):
 ```
 
 Use `awaitable_attrs` for one read. If every request needs the relationship,
-add it to the response class or to `get_relationship_loader_options`
+add it to the response class or to `get_loader_options`
 instead. Then it loads in one query for all rows, not with one query per
 attribute.
 
@@ -611,12 +619,17 @@ in a `ValidationError`. Check these in order:
    is enough to load it. A `WriteOnly` field is not in the response class, so
    its relationship does not load. A field that should load but does not
    usually has the wrong name; see the note below.
-2. **Does a hook or a property read it?** Load it with
+2. **Does a hook, a property or `to_single_response` read it?** Load it with
    `await obj.awaitable_attrs.<name>`. If every request needs it, add it to
-   `get_relationship_loader_options`.
-3. **Did you add the load only in `get_one`, `get_many` or
-   `apply_list_params`?** The create and update responses do not get loads
-   from them. Move the load to `get_relationship_loader_options`.
+   `get_loader_options`.
+3. **Did you add the load only in `apply_list_params` or in a custom
+   route?** The other routes and the create and update responses do not get
+   loads from there. Move the load to `get_loader_options`.
+4. **Does a route read it after a `write_action` block?** The save after the
+   block unloads every relationship that the loader options do not load and
+   the model does not load eagerly, also one that the route loaded before
+   the block. Read it with
+   `await obj.awaitable_attrs.<name>`, or add it to `get_loader_options`.
 
 :::{note}
 A relationship field in a response must keep the Python name of the
@@ -649,20 +662,22 @@ SQLAlchemy's
 (nested-response-internals)=
 ### How Restly loads the relationships of a response
 
-{meth}`get_relationship_loader_options() <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`
+{meth}`get_loader_options() <fastapi_restly.views.BaseRestView.get_loader_options>`
 walks the fields of the response class. For each field whose name is a
 relationship of the model, it adds a `selectinload(...)` option. When the
 field type is a nested schema, it walks that schema against the related
 model in the same way, and adds the result as child options.
 
-`get_one` and `get_many` add these options to their query. On a write,
-`save_object` flushes and then refreshes the object. The refresh reloads the
-columns, but it unloads the relationships that load lazily, so a changed
-foreign key never shows an old related row. Then `save_object` checks whether
-each relationship that the response class reaches is loaded. If one is not,
-it runs one query by primary key with all the loader options. That query does
-not use `populate_existing`, so it fills only what is not loaded. A related
-object that is already in the session keeps the values it has.
+{meth}`select() <fastapi_restly.views.BaseRestView.select>` adds these
+options to every read. On a write, the save after the business method
+flushes and then refreshes the object. The refresh reloads the columns, but
+it unloads the relationships that load lazily, so a changed foreign key never
+shows an old related row. The save also unloads the relationships of the
+other rows of the view's model that the action wrote. Then one query by
+primary key reloads those rows with all the loader options, and the object
+too when the view has loader options. It does not apply the scope, and it
+does not use `populate_existing`, so it fills only what is not loaded. A related object
+that is already in the session keeps the values it has.
 
 ### How Restly writes a reference
 
@@ -686,6 +701,5 @@ it, and is set on the object after the constructor otherwise.
   running app.
 - {doc}`api/schemas`: the signatures of
   {class}`MustExist <fastapi_restly.schemas.MustExist>`,
-  {class}`RefExists <fastapi_restly.schemas.RefExists>`,
   {class}`IDRef <fastapi_restly.schemas.IDRef>` and
   {class}`IDSchema <fastapi_restly.schemas.IDSchema>`.

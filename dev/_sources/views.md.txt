@@ -157,11 +157,12 @@ no method and no status code for you:
         ...
 ```
 
-A route method must not have the name of a business method: `get_many`,
-`get_one`, `create`, `update` or `delete`. Registration raises `TypeError`
-for such a name, also on a plain `View`. Give the route another name. To
-replace a CRUD route, override its endpoint method, such as
-`create_endpoint`; see
+A route method must not have the name of a business method: `create`,
+`update` or `delete`. Registration raises `TypeError` for such a name, also
+on a plain `View`. A CRUD view class that defines `get_one`, `get_many` or
+`select` fails when Python creates it, because the loads are final. Give the
+route another name. To replace a CRUD route, override its endpoint method,
+such as `create_endpoint`; see
 [Change the status code or headers of one route](#replace-endpoint-method).
 :::
 
@@ -286,39 +287,73 @@ it needs from its view without breaking the view's dependencies.
 ### Declare what a mixin needs from its view
 
 A mixin is a class that you list before the view class in the bases, as in
-`class ProjectView(ArchiveMixin, fr.AsyncRestView)`. Its methods often use
-attributes and methods of the view, and type checkers need to know them. Do
-not write these stubs as normal class members. A stub method is a real
-method, and Python finds it before the view's method:
+`class ProjectView(SoftDeleteMixin, fr.AsyncRestView)`. When its methods read
+attributes of the view, declare them for type checkers with an annotation
+without a value. Such an annotation adds nothing to the class, so it hides
+nothing:
 
 ```python
-# Wrong: this stub is a real method. It hides AsyncRestView.get_one,
-# so `await self.get_one(id)` returns None.
-class ArchiveMixin:
-    async def get_one(self, id): ...
-```
-
-Put the stubs under `if TYPE_CHECKING:`. Type checkers read them, and Python
-does not add them to the class:
-
-```python
-from typing import TYPE_CHECKING, Any
+from datetime import datetime, timezone
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
-class ArchiveMixin:
-    if TYPE_CHECKING:
-        session: AsyncSession
+class SoftDeleteMixin:
+    session: AsyncSession
 
-        async def get_one(self, id: Any) -> Any: ...
+    async def delete(self, obj: Any) -> None:
+        obj.deleted_at = datetime.now(timezone.utc)
+        self.session.add(DeletionLog(row_id=obj.id))  # a model of your own
 ```
 
-An attribute annotation without a value, such as `session: AsyncSession`,
-adds nothing to the class, so it hides nothing. It can also stay outside the
-block, but one block for all stubs is easier to read. The `SoftDeleteMixin`
-of the SaaS example does this
+When the shared code calls methods of the view, such as `get_one` or a
+handler, write a base view instead of a mixin. A base view subclasses the
+view class, so it has the real methods, with their types:
+
+```python
+from fastapi_restly.views import ViewID, ViewResponse
+
+
+class ArchiveView(fr.AsyncRestView):
+    """Base for views with an archive route. Never registered."""
+
+    @fr.post("/{id}/archive", status_code=200)
+    async def archive(self, id: ViewID) -> ViewResponse:
+        obj = await self.get_one(id)
+        async with self.write_action("archive", obj=obj):
+            obj.archived = True
+        return obj
+
+
+@fr.include_view(app)
+class ProjectView(ArchiveView):
+    prefix = "/projects"
+    model = Project
+```
+
+[Share behavior with base views](#share-behaviour-with-base-views) shows
+more of them.
+
+:::{admonition} Details
+:class: details
+
+Do not declare the view's methods in a mixin, not even as stubs. A stub
+method is a real method, and Python finds it before the view's method, so
+`await self.update(obj, data)` returns `None`. Under `if TYPE_CHECKING:`,
+Python does not add the stub to the class, but type checkers still find it
+before the view's method. A stub such as
+`async def update(self, obj: Any, data: Any) -> Any` then hides the typed
+`update` in every view that uses the mixin. A stub of a load or a handler,
+such as `get_one` or `handle_get_many`, makes the view class fail when
+Python creates it. Under `if TYPE_CHECKING:`, mypy reports it as an
+error.
+
+To keep the model's type in each subclass, make the base view generic in the
+model. The `TrashView` of the SaaS example does this, and it binds the model
+to the model mixin that has the `deleted_at` column
 ([`app/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py)).
+:::
 
 (share-behaviour-with-base-views)=
 ## Share behavior with base views
@@ -333,6 +368,10 @@ A base view overrides the same methods as a single view.
 override for each change. Two shared concerns have their own sections:
 [values that every write path must set](#write-path-values), such as an
 owner id, on Models, and [soft delete](#soft-delete-mixin) on Scopes.
+
+A route on a base view names the classes of each subclass with markers, such
+as `ViewResponse`; see
+[Name the view's classes in a custom route](#name-the-response-classes).
 
 (app-wide-base-view)=
 ### One base view for the whole app
@@ -499,16 +538,16 @@ Here, two resources store a password hash:
 class PasswordHashingView(fr.AsyncRestView):
     """Base for resources that store a password hash. Never registered."""
 
-    async def create(self, schema_obj):
-        obj = await self.make_new_object(schema_obj)
-        obj.password = hash_password(schema_obj.password)
-        return await self.save_object(obj)
+    async def create(self, data):
+        obj = await super().create(data)
+        obj.password = hash_password(data.password)
+        return obj
 
-    async def update(self, obj, schema_obj):
-        obj = await self.update_object(obj, schema_obj)
-        if "password" in schema_obj.model_fields_set:
-            obj.password = hash_password(schema_obj.password)
-        return await self.save_object(obj)
+    async def update(self, obj, data):
+        obj = await super().update(obj, data)
+        if "password" in data.model_fields_set:
+            obj.password = hash_password(data.password)
+        return obj
 
 
 @fr.include_view(app)

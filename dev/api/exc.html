@@ -664,7 +664,7 @@ the warning off with <code class="docutils literal notranslate"><span class="pre
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#UserWarning" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">UserWarning</span></code></a></p>
 <p>Emitted when a request finishes with uncommitted changes in the session.</p>
 <p>The write handlers own the commit, so a custom write route that flushes
-(e.g. via <code class="docutils literal notranslate"><span class="pre">save_object</span></code>) but never commits has its changes silently
+(e.g. with <code class="docutils literal notranslate"><span class="pre">session.flush()</span></code>) but never commits has its changes silently
 rolled back when the session closes. The fix is almost always to commit:
 bracket the mutation with <code class="docutils literal notranslate"><span class="pre">write_action(...)</span></code> (the framework then runs
 the commit), or reuse a <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> handler. A route that

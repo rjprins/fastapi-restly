@@ -661,11 +661,12 @@ no method and no status code for you:</p>
         <span class="o">...</span>
 </pre></div>
 </div>
-<p>A route method must not have the name of a business method: <code class="docutils literal notranslate"><span class="pre">get_many</span></code>,
-<code class="docutils literal notranslate"><span class="pre">get_one</span></code>, <code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code> or <code class="docutils literal notranslate"><span class="pre">delete</span></code>. Registration raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code>
-for such a name, also on a plain <code class="docutils literal notranslate"><span class="pre">View</span></code>. Give the route another name. To
-replace a CRUD route, override its endpoint method, such as
-<code class="docutils literal notranslate"><span class="pre">create_endpoint</span></code>; see
+<p>A route method must not have the name of a business method: <code class="docutils literal notranslate"><span class="pre">create</span></code>,
+<code class="docutils literal notranslate"><span class="pre">update</span></code> or <code class="docutils literal notranslate"><span class="pre">delete</span></code>. Registration raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> for such a name, also
+on a plain <code class="docutils literal notranslate"><span class="pre">View</span></code>. A CRUD view class that defines <code class="docutils literal notranslate"><span class="pre">get_one</span></code>, <code class="docutils literal notranslate"><span class="pre">get_many</span></code> or
+<code class="docutils literal notranslate"><span class="pre">select</span></code> fails when Python creates it, because the loads are final. Give the
+route another name. To replace a CRUD route, override its endpoint method,
+such as <code class="docutils literal notranslate"><span class="pre">create_endpoint</span></code>; see
 <a class="reference internal" href="lifecycle.html#replace-endpoint-method"><span class="std std-ref">Change the status code or headers of one route</span></a>.</p>
 </div>
 </section>
@@ -773,35 +774,66 @@ it needs from its view without breaking the view’s dependencies.</p>
 <section id="declare-what-a-mixin-needs-from-its-view">
 <span id="mixin-type-stubs"></span><h3>Declare what a mixin needs from its view<a class="headerlink" href="#declare-what-a-mixin-needs-from-its-view" title="Link to this heading">#</a></h3>
 <p>A mixin is a class that you list before the view class in the bases, as in
-<code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">ProjectView(ArchiveMixin,</span> <span class="pre">fr.AsyncRestView)</span></code>. Its methods often use
-attributes and methods of the view, and type checkers need to know them. Do
-not write these stubs as normal class members. A stub method is a real
-method, and Python finds it before the view’s method:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Wrong: this stub is a real method. It hides AsyncRestView.get_one,</span>
-<span class="c1"># so `await self.get_one(id)` returns None.</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">ArchiveMixin</span><span class="p">:</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_one</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">):</span> <span class="o">...</span>
-</pre></div>
-</div>
-<p>Put the stubs under <code class="docutils literal notranslate"><span class="pre">if</span> <span class="pre">TYPE_CHECKING:</span></code>. Type checkers read them, and Python
-does not add them to the class:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span>
+<code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">ProjectView(SoftDeleteMixin,</span> <span class="pre">fr.AsyncRestView)</span></code>. When its methods read
+attributes of the view, declare them for type checkers with an annotation
+without a value. Such an annotation adds nothing to the class, so it hides
+nothing:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.ext.asyncio</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncSession</span>
 
 
-<span class="k">class</span><span class="w"> </span><span class="nc">ArchiveMixin</span><span class="p">:</span>
-    <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
-        <span class="n">session</span><span class="p">:</span> <span class="n">AsyncSession</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">SoftDeleteMixin</span><span class="p">:</span>
+    <span class="n">session</span><span class="p">:</span> <span class="n">AsyncSession</span>
 
-        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_one</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span> <span class="o">...</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">deleted_at</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">DeletionLog</span><span class="p">(</span><span class="n">row_id</span><span class="o">=</span><span class="n">obj</span><span class="o">.</span><span class="n">id</span><span class="p">))</span>  <span class="c1"># a model of your own</span>
 </pre></div>
 </div>
-<p>An attribute annotation without a value, such as <code class="docutils literal notranslate"><span class="pre">session:</span> <span class="pre">AsyncSession</span></code>,
-adds nothing to the class, so it hides nothing. It can also stay outside the
-block, but one block for all stubs is easier to read. The <code class="docutils literal notranslate"><span class="pre">SoftDeleteMixin</span></code>
-of the SaaS example does this
+<p>When the shared code calls methods of the view, such as <code class="docutils literal notranslate"><span class="pre">get_one</span></code> or a
+handler, write a base view instead of a mixin. A base view subclasses the
+view class, so it has the real methods, with their types:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">ViewID</span><span class="p">,</span> <span class="n">ViewResponse</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ArchiveView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base for views with an archive route. Never registered.&quot;&quot;&quot;</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/archive&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">archive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="n">ViewID</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewResponse</span><span class="p">:</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="s2">&quot;archive&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">obj</span><span class="p">):</span>
+            <span class="n">obj</span><span class="o">.</span><span class="n">archived</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="n">obj</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ProjectView</span><span class="p">(</span><span class="n">ArchiveView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/projects&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Project</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="#share-behaviour-with-base-views">Share behavior with base views</a> shows
+more of them.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>Do not declare the view’s methods in a mixin, not even as stubs. A stub
+method is a real method, and Python finds it before the view’s method, so
+<code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">self.update(obj,</span> <span class="pre">data)</span></code> returns <code class="docutils literal notranslate"><span class="pre">None</span></code>. Under <code class="docutils literal notranslate"><span class="pre">if</span> <span class="pre">TYPE_CHECKING:</span></code>,
+Python does not add the stub to the class, but type checkers still find it
+before the view’s method. A stub such as
+<code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">def</span> <span class="pre">update(self,</span> <span class="pre">obj:</span> <span class="pre">Any,</span> <span class="pre">data:</span> <span class="pre">Any)</span> <span class="pre">-&gt;</span> <span class="pre">Any</span></code> then hides the typed
+<code class="docutils literal notranslate"><span class="pre">update</span></code> in every view that uses the mixin. A stub of a load or a handler,
+such as <code class="docutils literal notranslate"><span class="pre">get_one</span></code> or <code class="docutils literal notranslate"><span class="pre">handle_get_many</span></code>, makes the view class fail when
+Python creates it. Under <code class="docutils literal notranslate"><span class="pre">if</span> <span class="pre">TYPE_CHECKING:</span></code>, mypy reports it as an
+error.</p>
+<p>To keep the model’s type in each subclass, make the base view generic in the
+model. The <code class="docutils literal notranslate"><span class="pre">TrashView</span></code> of the SaaS example does this, and it binds the model
+to the model mixin that has the <code class="docutils literal notranslate"><span class="pre">deleted_at</span></code> column
 (<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py"><code class="docutils literal notranslate"><span class="pre">app/views.py</span></code></a>).</p>
+</div>
 </section>
 </section>
 <section id="share-behavior-with-base-views">
@@ -815,6 +847,9 @@ Register only the subclasses.</p>
 override for each change. Two shared concerns have their own sections:
 <a class="reference internal" href="models.html#write-path-values"><span class="std std-ref">values that every write path must set</span></a>, such as an
 owner id, on Models, and <a class="reference internal" href="scopes.html#soft-delete-mixin"><span class="std std-ref">soft delete</span></a> on Scopes.</p>
+<p>A route on a base view names the classes of each subclass with markers, such
+as <code class="docutils literal notranslate"><span class="pre">ViewResponse</span></code>; see
+<a class="reference internal" href="schemas.html#name-the-response-classes"><span class="std std-ref">Name the view’s classes in a custom route</span></a>.</p>
 <section id="one-base-view-for-the-whole-app">
 <span id="app-wide-base-view"></span><h3>One base view for the whole app<a class="headerlink" href="#one-base-view-for-the-whole-app" title="Link to this heading">#</a></h3>
 <p>A base view for the whole app declares the request context once. Every view
@@ -966,16 +1001,16 @@ Here, two resources store a password hash:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">PasswordHashingView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Base for resources that store a password hash. Never registered.&quot;&quot;&quot;</span>
 
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
-        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_new_object</span><span class="p">(</span><span class="n">schema_obj</span><span class="p">)</span>
-        <span class="n">obj</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="n">hash_password</span><span class="p">(</span><span class="n">schema_obj</span><span class="o">.</span><span class="n">password</span><span class="p">)</span>
-        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_object</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="n">hash_password</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">password</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">obj</span>
 
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
-        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">update_object</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">)</span>
-        <span class="k">if</span> <span class="s2">&quot;password&quot;</span> <span class="ow">in</span> <span class="n">schema_obj</span><span class="o">.</span><span class="n">model_fields_set</span><span class="p">:</span>
-            <span class="n">obj</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="n">hash_password</span><span class="p">(</span><span class="n">schema_obj</span><span class="o">.</span><span class="n">password</span><span class="p">)</span>
-        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_object</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;password&quot;</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">model_fields_set</span><span class="p">:</span>
+            <span class="n">obj</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="n">hash_password</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">password</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">obj</span>
 
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>

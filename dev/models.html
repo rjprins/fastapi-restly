@@ -806,10 +806,8 @@ request body.</p></li>
 </ul>
 <p>A view cannot set a value for every write path. A <code class="docutils literal notranslate"><span class="pre">create</span></code> override often
 builds the row itself, without <code class="docutils literal notranslate"><span class="pre">super()</span></code>. Then a value that a view mixin sets
-in <code class="docutils literal notranslate"><span class="pre">create</span></code> is lost. The <a class="reference internal" href="lifecycle.html#domain-utilities"><span class="std std-ref">domain utilities</span></a>
-<code class="docutils literal notranslate"><span class="pre">make_new_object</span></code>, <code class="docutils literal notranslate"><span class="pre">update_object</span></code> and <code class="docutils literal notranslate"><span class="pre">save_object</span></code> are final, so a view
-cannot change them either. And a script that builds a row, or calls the
-<code class="docutils literal notranslate"><span class="pre">fr.objects</span></code> helpers, never runs a view.</p>
+in <code class="docutils literal notranslate"><span class="pre">create</span></code> is lost. And a script that builds a row, or calls the
+<a class="reference internal" href="lifecycle.html#domain-utilities"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">fr.objects</span></code> functions</span></a>, never runs a view.</p>
 <p>A value from <code class="docutils literal notranslate"><span class="pre">Current</span></code>, such as the author, is a column default:
 <a class="reference internal" href="#server-stamped-fields">Stamp the fields the server owns</a> shows how. A value
 computed from other columns, such as a slug from the title, is a SQLAlchemy

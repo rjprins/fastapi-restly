@@ -1035,19 +1035,42 @@ OpenAPI then shows them as one.</p>
 </section>
 <section id="name-the-view-s-classes-in-a-custom-route">
 <span id="name-the-response-classes"></span><h2>Name the view’s classes in a custom route<a class="headerlink" href="#name-the-view-s-classes-in-a-custom-route" title="Link to this heading">#</a></h2>
-<p>A custom route that returns a single object or a list can show the same
-types in OpenAPI as the CRUD routes. A route decorator runs in the class
-body, before Restly builds the response classes. So a custom route gets the
-classes from two functions, at module level. Each returns the same class that
-the view uses:
-<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.derive_schema_response" title="fastapi_restly.schemas.derive_schema_response"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_schema_response(schema)</span></code></a>
-and
-<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.derive_schema_list_response" title="fastapi_restly.schemas.derive_schema_list_response"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_schema_list_response(schema_response,</span> <span class="pre">pagination=...)</span></code></a>.
-Pass the view’s pagination as it is, also when it is <code class="docutils literal notranslate"><span class="pre">None</span></code>:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">UserResponse</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">derive_schema_response</span><span class="p">(</span><span class="n">UserSchema</span><span class="p">)</span>
-<span class="n">UserListResponse</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">derive_schema_list_response</span><span class="p">(</span>
-    <span class="n">UserResponse</span><span class="p">,</span> <span class="n">pagination</span><span class="o">=</span><span class="n">AppView</span><span class="o">.</span><span class="n">pagination</span>
-<span class="p">)</span>
+<p>A custom route can show the same types in OpenAPI as the CRUD routes. A route
+decorator runs in the class body, before Restly builds the view’s classes.
+So a custom route names them with markers from <code class="docutils literal notranslate"><span class="pre">fastapi_restly.views</span></code>. When
+the view registers, Restly puts the view’s class in place of each marker:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Marker</p></th>
+<th class="head"><p>The view’s class</p></th>
+<th class="head"><p>On <code class="docutils literal notranslate"><span class="pre">UserView</span></code></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.ViewResponse" title="fastapi_restly.views.ViewResponse"><code class="xref py py-data docutils literal notranslate"><span class="pre">ViewResponse</span></code></a></p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_response" title="fastapi_restly.views.BaseRestView.schema_response"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_response</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UserResponse</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.ViewListResponse" title="fastapi_restly.views.ViewListResponse"><code class="xref py py-data docutils literal notranslate"><span class="pre">ViewListResponse</span></code></a></p></td>
+<td><p>the list response, with the view’s pagination</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UserListResponse</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.ViewCreate" title="fastapi_restly.views.ViewCreate"><code class="xref py py-data docutils literal notranslate"><span class="pre">ViewCreate</span></code></a></p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UserCreate</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.ViewUpdate" title="fastapi_restly.views.ViewUpdate"><code class="xref py py-data docutils literal notranslate"><span class="pre">ViewUpdate</span></code></a></p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UserUpdate</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.ViewID" title="fastapi_restly.views.ViewID"><code class="xref py py-data docutils literal notranslate"><span class="pre">ViewID</span></code></a></p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.id_type" title="fastapi_restly.views.BaseRestView.id_type"><code class="xref py py-attr docutils literal notranslate"><span class="pre">id_type</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">ViewID</span><span class="p">,</span> <span class="n">ViewListResponse</span><span class="p">,</span> <span class="n">ViewResponse</span>
 
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
@@ -1056,36 +1079,58 @@ Pass the view’s pagination as it is, also when it is <code class="docutils lit
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
 
-    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/inactive&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">UserListResponse</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">inactive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">):</span>
-        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span><span class="n">list_params</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="n">User</span><span class="o">.</span><span class="n">active</span><span class="o">.</span><span class="n">is_</span><span class="p">(</span><span class="kc">False</span><span class="p">))</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">ResponseShape</span><span class="o">.</span><span class="n">LIST</span><span class="p">)</span>
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/inactive&quot;</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">inactive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewListResponse</span><span class="p">:</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span><span class="n">list_params</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="n">User</span><span class="o">.</span><span class="n">active</span><span class="o">.</span><span class="n">is_</span><span class="p">(</span><span class="kc">False</span><span class="p">))</span>
 
-    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/activate&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">UserResponse</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">activate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/activate&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">activate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="n">ViewID</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewResponse</span><span class="p">:</span>
         <span class="n">user</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
         <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="s2">&quot;activate&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">user</span><span class="p">):</span>
             <span class="n">user</span><span class="o">.</span><span class="n">active</span> <span class="o">=</span> <span class="kc">True</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">user</span>
 </pre></div>
 </div>
 <p>OpenAPI then shows <code class="docutils literal notranslate"><span class="pre">UserListResponse</span></code> and <code class="docutils literal notranslate"><span class="pre">UserResponse</span></code> for these routes,
-as for the CRUD routes. The SaaS example names its classes this way in
-<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py"><code class="docutils literal notranslate"><span class="pre">app/projects/views.py</span></code></a>.</p>
+as for the CRUD routes. A path parameter annotated <code class="docutils literal notranslate"><span class="pre">ViewID</span></code> gets the path
+converter of the id type, as the item routes do: here <code class="docutils literal notranslate"><span class="pre">/{id:int}</span></code>; see
+<a class="reference internal" href="crud_routes.html#item-route-matching"><span class="std std-ref">Item paths</span></a>.</p>
+<p>The routes return the list result and the row. Because they declare the
+view’s response, Restly passes these through
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response" title="fastapi_restly.views.BaseRestView.to_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_response</span></code></a>, as the
+CRUD routes do; see
+<a class="reference internal" href="responses.html#custom-route-response"><span class="std std-ref">The response of a custom route</span></a>.</p>
+<p>A marker stands for the class of the view that registers. So a route on a
+base view works for each view that subclasses it, with that view’s classes.
+The <code class="docutils literal notranslate"><span class="pre">TrashView</span></code> of the SaaS example adds a trash list and a restore route to
+two views this way, in
+<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py"><code class="docutils literal notranslate"><span class="pre">app/views.py</span></code></a>.</p>
 <div class="details admonition">
 <p class="admonition-title">Details</p>
-<p>A view with its own <code class="docutils literal notranslate"><span class="pre">schema_response</span></code> passes that class to
-<code class="docutils literal notranslate"><span class="pre">derive_schema_list_response</span></code> instead.</p>
-<p>A function builds these classes, so type checkers do not accept them in an
-annotation, as in <code class="docutils literal notranslate"><span class="pre">data:</span> <span class="pre">UserResponse</span></code>. mypy also does not accept them inside
-a type in other places, as in <code class="docutils literal notranslate"><span class="pre">response_model=list[UserResponse]</span></code>. At runtime
-they are normal classes, so add <code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">type:</span> <span class="pre">ignore[valid-type]</span></code> on such a line.</p>
+<p>A marker works wherever the class could go: in a parameter annotation, in the
+return annotation, in <code class="docutils literal notranslate"><span class="pre">response_model=</span></code>, and inside another type, such as
+<code class="docutils literal notranslate"><span class="pre">list[ViewResponse]</span></code> or <code class="docutils literal notranslate"><span class="pre">ViewResponse</span> <span class="pre">|</span> <span class="pre">None</span></code>. <code class="docutils literal notranslate"><span class="pre">Annotated[ViewID,</span> <span class="pre">Path(ge=1)]</span></code>
+keeps the <code class="docutils literal notranslate"><span class="pre">Path(ge=1)</span></code>. A path that gives a converter, such as <code class="docutils literal notranslate"><span class="pre">/{id:str}</span></code>,
+keeps it.</p>
+<p>For a type checker, each marker is <code class="docutils literal notranslate"><span class="pre">Any</span></code>, so it accepts a marker in any
+annotation. A plain <a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a> has no model and
+no schema, so a route on it cannot use the markers: registration raises
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>.</p>
+<p>To use the classes outside a route, or the classes of another view, build
+them with
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.derive_schema_response" title="fastapi_restly.schemas.derive_schema_response"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_schema_response(schema)</span></code></a>
+and
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.derive_schema_list_response" title="fastapi_restly.schemas.derive_schema_list_response"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_schema_list_response(schema_response,</span> <span class="pre">pagination=...)</span></code></a>.
+They return the same classes that the view uses. Pass the view’s pagination
+as it is, also when it is <code class="docutils literal notranslate"><span class="pre">None</span></code>. A list response with another envelope than
+the view’s has another shape, for example <code class="docutils literal notranslate"><span class="pre">data</span></code> without <code class="docutils literal notranslate"><span class="pre">total_count</span></code>.
+There are then two classes named <code class="docutils literal notranslate"><span class="pre">UserListResponse</span></code>, and Restly warns; see
+<a class="reference internal" href="#name-your-schemas">Name your schemas</a>. A function builds these classes, so
+type checkers do not accept them in an annotation, as in
+<code class="docutils literal notranslate"><span class="pre">data:</span> <span class="pre">UserResponse</span></code>. At runtime they are normal classes, so add
+<code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">type:</span> <span class="pre">ignore[valid-type]</span></code> on such a line.</p>
 <p>A custom route that names <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code> or <code class="docutils literal notranslate"><span class="pre">PaginatedEnvelope[UserSchema]</span></code>
-sends the same JSON, but shows a type of its own in OpenAPI. A route that
-passes a pagination with another envelope than the view’s gets a list
-response of another shape, for example <code class="docutils literal notranslate"><span class="pre">data</span></code> without <code class="docutils literal notranslate"><span class="pre">total_count</span></code>. There
-are then two classes named <code class="docutils literal notranslate"><span class="pre">UserListResponse</span></code>, and Restly warns; see
-<a class="reference internal" href="#name-your-schemas">Name your schemas</a>.</p>
+sends the same JSON, but shows a type of its own in OpenAPI.</p>
 </div>
 </section>
 <section id="validate-the-document-in-a-json-column">

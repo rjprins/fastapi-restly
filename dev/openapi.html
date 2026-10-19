@@ -627,18 +627,23 @@ decorator of the endpoint method; see the next section.</p>
 <p>Override the endpoint method, and pass the keyword arguments to its
 decorator, as in FastAPI. The method calls the method of the base class, so
 the route works as before:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">InvoiceView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">ViewListResponse</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">InvoiceView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/invoices&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Invoice</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">InvoiceSchema</span>
 
     <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="n">summary</span><span class="o">=</span><span class="s2">&quot;List invoices&quot;</span><span class="p">,</span> <span class="n">operation_id</span><span class="o">=</span><span class="s2">&quot;billing_list_invoices&quot;</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_many_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_many_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewListResponse</span><span class="p">:</span>
         <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_many_endpoint</span><span class="p">(</span><span class="n">list_params</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Restly still fills in the rest of the route: the response model, the list
-params, and the name and the summary that you do not pass. A keyword argument
+<p><code class="docutils literal notranslate"><span class="pre">ViewListResponse</span></code> keeps the view’s list response as the response model; see
+<a class="reference internal" href="schemas.html#name-the-response-classes"><span class="std std-ref">Name the view’s classes in a custom route</span></a>.
+Restly still fills in the rest of the route: the list params, and the name
+and the summary that you do not pass. A keyword argument
 that you pass wins over Restly’s default. The table in
 <a class="reference internal" href="#default-route-metadata">The names and operation IDs of the CRUD routes</a>
 lists the endpoint methods.</p>
@@ -647,13 +652,13 @@ lists the endpoint methods.</p>
 <p>The decorator passes its keyword arguments to FastAPI, so every option of a
 FastAPI route works. For example, <code class="docutils literal notranslate"><span class="pre">dependencies</span></code> adds a check to one route:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="n">dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">Depends</span><span class="p">(</span><span class="n">require_admin</span><span class="p">)])</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">):</span>
-        <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">create_endpoint</span><span class="p">(</span><span class="n">schema_obj</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">ViewCreate</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewResponse</span><span class="p">:</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">create_endpoint</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>An item route that you declare, such as <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code>, keeps the path that you
-give it. Restly does not add the <code class="docutils literal notranslate"><span class="pre">int</span></code> or <code class="docutils literal notranslate"><span class="pre">uuid</span></code> converter to it; see
-<a class="reference internal" href="crud_routes.html#item-route-matching"><span class="std std-ref">Item paths and static routes</span></a>.</p>
+give it. Restly adds the <code class="docutils literal notranslate"><span class="pre">int</span></code> or <code class="docutils literal notranslate"><span class="pre">uuid</span></code> converter only to a path parameter
+annotated <code class="docutils literal notranslate"><span class="pre">ViewID</span></code>; see <a class="reference internal" href="crud_routes.html#item-route-matching"><span class="std std-ref">Item paths and static routes</span></a>.</p>
 <p>A subclass inherits the method and its decorator, so it also inherits an
 explicit <code class="docutils literal notranslate"><span class="pre">operation_id</span></code>. Each <code class="docutils literal notranslate"><span class="pre">operation_id</span></code> must be unique in the app’s
 spec.</p>

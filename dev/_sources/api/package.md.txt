@@ -42,7 +42,6 @@ through `fr`.
 | {func}`fr.put <fastapi_restly.views.put>` | Decorate a PUT endpoint method. |
 | {class}`fr.ReactAdminView <fastapi_restly.views.ReactAdminView>` | Synchronous CRUD view for the react-admin simple REST protocol. |
 | {data}`fr.ReadOnly <fastapi_restly.schemas.ReadOnly>` | Mark a field as excluded from generated create and update schemas. |
-| {class}`fr.RefExists <fastapi_restly.schemas.RefExists>` | Validate a reference against a model with an optional scope override. |
 | {func}`fr.resolve_scope <fastapi_restly.views.resolve_scope>` | Resolve the read scope for a view or model. |
 | {class}`fr.ResponseShape <fastapi_restly.views.ResponseShape>` | Response forms for one object, a list, or an empty body. |
 | {class}`fr.RestView <fastapi_restly.views.RestView>` | CRUD view using a synchronous SQLAlchemy session. |

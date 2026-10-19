@@ -13,11 +13,13 @@ FastAPI first checks the request body against the update body,
 
 ```
 PATCH /projects/1
-  └─ update_endpoint(id, schema_obj)      # endpoint method: HTTP contract
-       ├─ handle_update(id, schema_obj)   # handler: runs the steps
+  └─ update_endpoint(id, data)            # endpoint method: HTTP contract
+       ├─ handle_update(id, data)         # handler: runs the steps
        │    ├─ get_one(id)                # loads through the scope, or 404
        │    ├─ authorize("update", ...)   # may the caller do this? Or 403
-       │    ├─ update(obj, schema_obj)    # business method: the change
+       │    ├─ check the references       # an id that does not exist: 404
+       │    ├─ update(obj, data)          # business method: the change
+       │    ├─ save                       # flush and refresh the row
        │    ├─ before_action_commit(...)
        │    ├─ commit
        │    └─ after_action_commit(...)
@@ -42,8 +44,10 @@ These are the parts, and the page that explains each one:
   [Schemas & Validation](https://www.fastapi-restly.org/dev/schemas.html).
 - **Endpoint method, handler and business method**: the three layers of each
   CRUD route. To change what an action does, override the business method,
-  such as `update`. To change the HTTP contract, such as the status code,
-  replace the endpoint method. A handler is final. See
+  such as `update`. A read has a final load, `get_one` or `get_many`, in
+  place of a business method: the scope and the loader options decide what
+  it reads. To change the HTTP contract, such as the status code, replace
+  the endpoint method. A handler is final. See
   [Request Lifecycle & Hooks](https://www.fastapi-restly.org/dev/lifecycle.html).
 - **Commit**: a write route commits after the business method.
   `before_action_commit` runs just before the commit, and
@@ -80,7 +84,7 @@ These are the parts, and the page that explains each one:
 
 - [Views](https://www.fastapi-restly.org/dev/views.html): the view classes, how to declare routes and register a view, routes that are not CRUD, such as login and webhooks, and how views share behavior through base classes.
 - [CRUD Routes](https://www.fastapi-restly.org/dev/crud_routes.html): the five default routes, async or sync, how to leave some routes out, and how to serve a child resource under its parent.
-- [Request Lifecycle & Hooks](https://www.fastapi-restly.org/dev/lifecycle.html): the steps of a request, which method to override for each change, custom routes, what commits when, several writes in one commit, and the same logic in a script or a worker.
+- [Request Lifecycle & Hooks](https://www.fastapi-restly.org/dev/lifecycle.html): the steps of a request, which method to override for each change, a value on each row, a lookup by another key, custom routes, what commits when, several writes in one commit, and the same logic in a script or a worker.
 - [React Admin](https://www.fastapi-restly.org/dev/react_admin.html): connect react-admin to a view, the list format and the routes that react-admin expects, to-many id arrays, CORS, and a list that shows no rows.
 - [Type Annotations](https://www.fastapi-restly.org/dev/typing.html): type the schema, the methods that you override and your custom routes.
 
@@ -88,7 +92,7 @@ These are the parts, and the page that explains each one:
 
 - [Schemas & Validation](https://www.fastapi-restly.org/dev/schemas.html): generate the schema or write it, keep a field out of the requests or the responses, validate input, and use other field names in JSON, such as camelCase.
 - [Relationships](https://www.fastapi-restly.org/dev/relationships.html): accept the id of another row, check that the row exists, return related objects, and fix `MissingGreenlet`.
-- [Responses](https://www.fastapi-restly.org/dev/responses.html): what each route returns, the list envelope, and how to change the shape of one route or of all routes.
+- [Responses](https://www.fastapi-restly.org/dev/responses.html): what each route returns, the list envelope, the response of a custom route, and how to change the shape of one route or of all routes.
 - [Filtering & Pagination](https://www.fastapi-restly.org/dev/filtering.html): the filters, the sort order and the pages that a client can use on a list, the keys that a view chooses, filters of your own, and list params that you write yourself.
 - [Errors](https://www.fastapi-restly.org/dev/errors.html): raise a 404 or a 403, see why a duplicate value gives a 409, and change the error body.
 - [OpenAPI](https://www.fastapi-restly.org/dev/openapi.html): the tags, names and operation IDs of the routes, and how to document a custom route.

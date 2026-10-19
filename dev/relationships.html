@@ -647,16 +647,34 @@ field and the id:</p>
 </div>
 <div class="details admonition">
 <p class="admonition-title">Details</p>
-<p>Restly checks the <code class="docutils literal notranslate"><span class="pre">MustExist</span></code> ids of a request in batches: one query for
-each referenced model and scope, not one query for each id. It checks only
-the fields that the client sent, and it skips a <code class="docutils literal notranslate"><span class="pre">null</span></code> value.</p>
-<p><code class="docutils literal notranslate"><span class="pre">MustExist[int]</span></code>, without a model, takes the model from the <code class="docutils literal notranslate"><span class="pre">ForeignKey</span></code> of
-the column. This works when the column has exactly one foreign key. For
-another primary key type, name that type first: <code class="docutils literal notranslate"><span class="pre">fr.MustExist[UUID,</span> <span class="pre">Account]</span></code>.</p>
-<p><code class="docutils literal notranslate"><span class="pre">MustExist</span></code> is short for a field with the
-<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.RefExists" title="fastapi_restly.schemas.RefExists"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.RefExists</span></code></a> marker:
-<code class="docutils literal notranslate"><span class="pre">Annotated[int,</span> <span class="pre">fr.RefExists(User)]</span></code>. Write the marker yourself to check
-against another clause, as the next section shows.</p>
+<ul class="simple">
+<li><p>Restly checks the references after <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and before your <code class="docutils literal notranslate"><span class="pre">create</span></code> or
+<code class="docutils literal notranslate"><span class="pre">update</span></code>. So the errors come in this order: the row in the URL (<code class="docutils literal notranslate"><span class="pre">404</span></code>),
+then the permission (<code class="docutils literal notranslate"><span class="pre">403</span></code>), then the references (<code class="docutils literal notranslate"><span class="pre">404</span></code>).</p></li>
+<li><p>Restly checks the data of every write: the CRUD routes, and
+<code class="docutils literal notranslate"><span class="pre">write_action(data=...)</span></code>. It also checks the schemas inside the data, such
+as the lines of an order, and each item when the data is a list. The
+message then names the place: <code class="docutils literal notranslate"><span class="pre">Id</span> <span class="pre">not</span> <span class="pre">found</span> <span class="pre">for</span> <span class="pre">lines[1].product_id:</span> <span class="pre">7</span></code>.</p></li>
+<li><p>One query checks all the ids of one model. Restly checks only the fields
+that the client sent, and it skips a <code class="docutils literal notranslate"><span class="pre">null</span></code> value. In one write, Restly
+does not look up the same row twice.</p></li>
+<li><p>The check does not autoflush, so it never writes an object that your code
+is still building. So it also does not find a row that your code added
+and did not flush yet. Call <code class="docutils literal notranslate"><span class="pre">flush()</span></code> first for such a row.</p></li>
+<li><p>A list of ids, such as <code class="docutils literal notranslate"><span class="pre">list[fr.MustExist[int,</span> <span class="pre">Tag]]</span></code>, checks each id. The
+message names every missing id of the list:
+<code class="docutils literal notranslate"><span class="pre">Id</span> <span class="pre">not</span> <span class="pre">found</span> <span class="pre">for</span> <span class="pre">tag_ids:</span> <span class="pre">[7,</span> <span class="pre">9]</span></code>. A reference deeper in another type,
+such as in a <code class="docutils literal notranslate"><span class="pre">dict</span></code>, is refused, because the check cannot see it there.</p></li>
+<li><p>The builders in <a class="reference internal" href="api/objects.html#module-fastapi_restly.objects" title="fastapi_restly.objects"><code class="xref py py-mod docutils literal notranslate"><span class="pre">fr.objects</span></code></a> check too, so
+a script that builds objects with them is safe.</p></li>
+<li><p>An id that reaches the database in another way is yours to check, such as
+a value that your code sets in a <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block without <code class="docutils literal notranslate"><span class="pre">data=</span></code>. The
+foreign key in the database still refuses an id that does not exist.</p></li>
+<li><p>For another primary key type, name that type first:
+<code class="docutils literal notranslate"><span class="pre">fr.MustExist[UUID,</span> <span class="pre">Account]</span></code>. Restly does not take the model from the
+foreign key, because a schema can also write another model, and then the
+check would use the wrong table.</p></li>
+</ul>
 </div>
 </section>
 <section id="which-rows-can-a-reference-reach">
@@ -667,22 +685,20 @@ that the scope hides returns <code class="docutils literal notranslate"><span cl
 <code class="docutils literal notranslate"><span class="pre">User</span></code> hides deleted users, a deleted user cannot become the author of a new
 article.</p>
 <p>A session rule, such as the <a class="reference internal" href="tenancy.html#tenant-row-scoping"><span class="std std-ref">tenant rule</span></a>,
-also reaches every reference check. This includes <code class="docutils literal notranslate"><span class="pre">MustExist</span></code>, and the
-<code class="docutils literal notranslate"><span class="pre">session.get()</span></code> that Restly uses for an <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> or <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> field when the
-model has no default scope. The one exception is an object that is already in
-the session: <code class="docutils literal notranslate"><span class="pre">session.get()</span></code> returns it without a query, so the rule does not
-run.</p>
+also reaches every reference check.</p>
 <p>A model without a default scope is checked by its primary key alone. Then a
 reference can reach a soft-deleted row, or a row that the caller cannot read.
 To hide such rows, give the model a default scope.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">scope</span></code> of a view does not apply to references. It is a rule for the
+reads of that one view. If a rule must also hold for references, make it the
+<code class="docutils literal notranslate"><span class="pre">default_scope</span></code> of the model.</p>
 <div class="details admonition">
 <p class="admonition-title">Details</p>
-<p>On a <code class="docutils literal notranslate"><span class="pre">MustExist</span></code> field, <code class="docutils literal notranslate"><span class="pre">RefExists</span></code> can check against another clause, or
-against no clause; see <a class="reference internal" href="scopes.html#reference-scopes"><span class="std std-ref">Check a reference against another scope</span></a>.
-An <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> or <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> field always uses the default scope. The SaaS example
-lets a member attach labels only to a task that is assigned to them, with
-<code class="docutils literal notranslate"><span class="pre">RefExists(Task,</span> <span class="pre">scope=TaskClauses.visible)</span></code> in
-<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/labels/schemas.py"><code class="docutils literal notranslate"><span class="pre">app/labels/schemas.py</span></code></a>.</p>
+<p>A script that calls the <a class="reference internal" href="api/objects.html#module-fastapi_restly.objects" title="fastapi_restly.objects"><code class="xref py py-mod docutils literal notranslate"><span class="pre">fr.objects</span></code></a> builders
+by itself loads an <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> or <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> row of a model without a default
+scope with <code class="docutils literal notranslate"><span class="pre">session.get()</span></code>. For an object that is already in the session,
+<code class="docutils literal notranslate"><span class="pre">session.get()</span></code> returns it without a query, so a session rule does not run
+there. Inside a write, Restly always runs the query.</p>
 <p>A rule that is neither a scope nor a session rule goes in
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a> (see
 <a class="reference internal" href="authorization.html#authorize-gate"><span class="std std-ref">Authorization</span></a>). There, <code class="docutils literal notranslate"><span class="pre">data</span></code> holds the requested id,
@@ -709,6 +725,9 @@ of references.</p>
 <p><code class="docutils literal notranslate"><span class="pre">authorize</span></code> does not have the row itself. If a rule needs it, read it in
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.before_action_commit" title="fastapi_restly.views.RestView.before_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_action_commit</span></code></a>,
 for example with <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">self.session.get(User,</span> <span class="pre">new.author_id)</span></code>.</p>
+<p>The SaaS example lets a member attach labels only to a task that is assigned
+to them. That is a permission, so it is in <code class="docutils literal notranslate"><span class="pre">TaskLabelView.authorize</span></code>, in
+<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/labels/views.py"><code class="docutils literal notranslate"><span class="pre">app/labels/views.py</span></code></a>.</p>
 </div>
 </section>
 <section id="name-the-field-after-the-model-attribute">
@@ -781,8 +800,9 @@ sets the relationship to those rows. A repeated id counts once. A list
 relationship stores no order: responses show the rows in database order,
 unless the relationship sets <code class="docutils literal notranslate"><span class="pre">order_by</span></code>. The full file is
 <a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/shop/shop/main.py"><code class="docutils literal notranslate"><span class="pre">shop/main.py</span></code></a>.</p>
-<p>A list cannot use <code class="docutils literal notranslate"><span class="pre">MustExist</span></code>, which is for one foreign key column. Restly
-rejects <code class="docutils literal notranslate"><span class="pre">list[fr.MustExist[...]]</span></code> when you define the schema.</p>
+<p>A plain list of ids that sets no relationship, such as the projects that a
+route body names, is <code class="docutils literal notranslate"><span class="pre">list[fr.MustExist[int,</span> <span class="pre">Project]]</span></code>. Restly checks each
+id in one query, and the list stays a list of ints.</p>
 </section>
 <section id="declare-the-foreign-key-and-the-relationship-on-the-model">
 <span id="model-relationship-setup"></span><h2>Declare the foreign key and the relationship on the model<a class="headerlink" href="#declare-the-foreign-key-and-the-relationship-on-the-model" title="Link to this heading">#</a></h2>
@@ -855,8 +875,8 @@ that each one gets.</p>
 </section>
 <section id="build-references-in-a-custom-route">
 <span id="idref-custom-routes"></span><h2>Build references in a custom route<a class="headerlink" href="#build-references-in-a-custom-route" title="Link to this heading">#</a></h2>
-<p>The default <code class="docutils literal notranslate"><span class="pre">POST</span></code> and <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> routes validate the body first. So when Restly
-calls <code class="docutils literal notranslate"><span class="pre">make_new_object()</span></code> or <code class="docutils literal notranslate"><span class="pre">update_object()</span></code>, every reference field has the
+<p>The default <code class="docutils literal notranslate"><span class="pre">POST</span></code> and <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> routes validate the body first. So when the
+default <code class="docutils literal notranslate"><span class="pre">create</span></code> or <code class="docutils literal notranslate"><span class="pre">update</span></code> builds the object, every reference field has the
 right type: a <code class="docutils literal notranslate"><span class="pre">MustExist</span></code> field holds a plain id, and an <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> or <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code>
 field holds a reference object.</p>
 <p>A <a class="reference internal" href="lifecycle.html#custom-action-route"><span class="std std-ref">custom route</span></a> that builds a schema object itself must
@@ -880,8 +900,10 @@ the plain id:</p>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">async_make_new_object</span></code> still checks that the rows exist, and writes the
-foreign key columns. The SaaS example runs this code in its
-<code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/task-labels/create-and-attach</span></code> route, in
+foreign key columns. A schema that validates, such as
+<code class="docutils literal notranslate"><span class="pre">self.schema_create(task_id=...,</span> <span class="pre">label_id=...)</span></code>, needs none of this, and a
+handler can take it. The SaaS example’s <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/task-labels/create-and-attach</span></code>
+route does that, in
 <a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/labels/views.py"><code class="docutils literal notranslate"><span class="pre">app/labels/views.py</span></code></a>.</p>
 <div class="details admonition">
 <p class="admonition-title">Details</p>
@@ -966,11 +988,12 @@ and <a class="reference internal" href="api/views.html#fastapi_restly.views.Rest
 to build the related objects yourself.</p>
 </section>
 <section id="load-a-relationship-that-the-response-does-not-name">
-<h3>Load a relationship that the response does not name<a class="headerlink" href="#load-a-relationship-that-the-response-does-not-name" title="Link to this heading">#</a></h3>
+<span id="eager-load-extra-relationships"></span><h3>Load a relationship that the response does not name<a class="headerlink" href="#load-a-relationship-that-the-response-does-not-name" title="Link to this heading">#</a></h3>
 <p>Some code needs a relationship that is not part of the response: a
-<code class="docutils literal notranslate"><span class="pre">&#64;property</span></code>, an <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> hook, or a custom read that would
-otherwise run one query per row. Override
-<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.get_relationship_loader_options" title="fastapi_restly.views.BaseRestView.get_relationship_loader_options"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_relationship_loader_options()</span></code></a>
+<code class="docutils literal notranslate"><span class="pre">&#64;property</span></code>, an <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> hook, a value in
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_single_response" title="fastapi_restly.views.BaseRestView.to_single_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_single_response</span></code></a>,
+or a custom read that would otherwise run one query per row. Override
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.get_loader_options" title="fastapi_restly.views.BaseRestView.get_loader_options"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_loader_options()</span></code></a>
 and add to its result:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">selectinload</span>
 
@@ -980,47 +1003,34 @@ and add to its result:</p>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Article</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">ArticleSchema</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">get_relationship_loader_options</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_relationship_loader_options</span><span class="p">()</span> <span class="o">+</span> <span class="p">[</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_loader_options</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_loader_options</span><span class="p">()</span> <span class="o">+</span> <span class="p">[</span>
             <span class="n">selectinload</span><span class="p">(</span><span class="n">Article</span><span class="o">.</span><span class="n">comments</span><span class="p">)</span><span class="o">.</span><span class="n">selectinload</span><span class="p">(</span><span class="n">Comment</span><span class="o">.</span><span class="n">reactions</span><span class="p">)</span>
         <span class="p">]</span>
 </pre></div>
 </div>
+<p>Every read of the view starts from
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.select" title="fastapi_restly.views.BaseRestView.select"><code class="xref py py-meth docutils literal notranslate"><span class="pre">select()</span></code></a>, which applies
+these options: <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>, <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code>, the load of <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> and <code class="docutils literal notranslate"><span class="pre">DELETE</span></code>, and
+your own routes. The save after a write applies them too, so the create and
+update responses have the same loads.</p>
 <div class="details admonition">
 <p class="admonition-title">Details</p>
 <p>The default returns the loads that the response class needs. Adding to it
 keeps those loads. To replace them, return a new list, for example to use
 <code class="docutils literal notranslate"><span class="pre">joinedload</span></code> instead of <code class="docutils literal notranslate"><span class="pre">selectinload</span></code>.</p>
-<p>The reads, <code class="docutils literal notranslate"><span class="pre">get_one</span></code> and <code class="docutils literal notranslate"><span class="pre">get_many</span></code>, always apply these options. A create or
-an update applies them only when it reloads the row, and it reloads only when a
-relationship that the response class names is not loaded. So if the response
-class names no relationship, your extra loads do not run after a write. Then
-load the relationship where you use it, as
-<a class="reference internal" href="#read-unnamed-relationship">Read a relationship in a hook or a business method</a>
-shows.</p>
+<p>The method holds every loader option of a read, not only relationships. A
+<code class="docutils literal notranslate"><span class="pre">query_expression()</span></code> on the model gets its value here, with
+<code class="docutils literal notranslate"><span class="pre">with_expression(...)</span></code>; see <a class="reference internal" href="lifecycle.html#value-on-each-row"><span class="std std-ref">Add a value to each row</span></a>.</p>
 <p>For a load that only the list needs, add <code class="docutils literal notranslate"><span class="pre">.options(...)</span></code> in
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_list_params" title="fastapi_restly.views.RestView.apply_list_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_list_params</span></code></a>.
-It does not change <code class="docutils literal notranslate"><span class="pre">get_one</span></code>, or the create and update responses.</p>
+It does not change <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code>, or the create and update responses. A load
+that only one custom route needs goes in that route: await the relationship
+after the load, as the next section shows.</p>
+<p>Up to 0.11, this method was named <code class="docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code>. A view
+class that still defines that name fails when Python creates the class, with
+a message that names the new one.</p>
 </div>
-</section>
-<section id="load-a-relationship-in-get-one-only">
-<span id="eager-load-extra-relationships"></span><h3>Load a relationship in <code class="docutils literal notranslate"><span class="pre">get_one</span></code> only<a class="headerlink" href="#load-a-relationship-in-get-one-only" title="Link to this heading">#</a></h3>
-<p>If one read needs one more relationship, override
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a>. Call <code class="docutils literal notranslate"><span class="pre">super()</span></code> first,
-so the scope, the loads and the <code class="docutils literal notranslate"><span class="pre">404</span></code> stay as they are. Then load the extra
-relationship. <code class="docutils literal notranslate"><span class="pre">handle_get_one</span></code> passes <code class="docutils literal notranslate"><span class="pre">scope=</span></code> to <code class="docutils literal notranslate"><span class="pre">get_one</span></code>, so the override
-must take it and pass it on:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_one</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">scope</span><span class="p">)</span>   <span class="c1"># scope, loads and 404</span>
-        <span class="k">await</span> <span class="n">obj</span><span class="o">.</span><span class="n">awaitable_attrs</span><span class="o">.</span><span class="n">audit_log</span>
-        <span class="k">return</span> <span class="n">obj</span>
-</pre></div>
-</div>
-<p>Update and delete load their row through <code class="docutils literal notranslate"><span class="pre">get_one</span></code> too, so the extra query
-also runs there. But the refresh after a write unloads the relationship
-again. To load it on the create and update responses as well, override
-<code class="docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code> instead, with the limit that the previous
-section describes.</p>
 </section>
 <section id="read-a-relationship-in-a-hook-or-a-business-method">
 <span id="read-unnamed-relationship"></span><h3>Read a relationship in a hook or a business method<a class="headerlink" href="#read-a-relationship-in-a-hook-or-a-business-method" title="Link to this heading">#</a></h3>
@@ -1037,7 +1047,7 @@ to your base, so you can await such an attribute:</p>
 </pre></div>
 </div>
 <p>Use <code class="docutils literal notranslate"><span class="pre">awaitable_attrs</span></code> for one read. If every request needs the relationship,
-add it to the response class or to <code class="docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code>
+add it to the response class or to <code class="docutils literal notranslate"><span class="pre">get_loader_options</span></code>
 instead. Then it loads in one query for all rows, not with one query per
 attribute.</p>
 </section>
@@ -1058,12 +1068,17 @@ in a <code class="docutils literal notranslate"><span class="pre">ValidationErro
 is enough to load it. A <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> field is not in the response class, so
 its relationship does not load. A field that should load but does not
 usually has the wrong name; see the note below.</p></li>
-<li><p><strong>Does a hook or a property read it?</strong> Load it with
+<li><p><strong>Does a hook, a property or <code class="docutils literal notranslate"><span class="pre">to_single_response</span></code> read it?</strong> Load it with
 <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">obj.awaitable_attrs.&lt;name&gt;</span></code>. If every request needs it, add it to
-<code class="docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code>.</p></li>
-<li><p><strong>Did you add the load only in <code class="docutils literal notranslate"><span class="pre">get_one</span></code>, <code class="docutils literal notranslate"><span class="pre">get_many</span></code> or
-<code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code>?</strong> The create and update responses do not get loads
-from them. Move the load to <code class="docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code>.</p></li>
+<code class="docutils literal notranslate"><span class="pre">get_loader_options</span></code>.</p></li>
+<li><p><strong>Did you add the load only in <code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code> or in a custom
+route?</strong> The other routes and the create and update responses do not get
+loads from there. Move the load to <code class="docutils literal notranslate"><span class="pre">get_loader_options</span></code>.</p></li>
+<li><p><strong>Does a route read it after a <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block?</strong> The save after the
+block unloads every relationship that the loader options do not load and
+the model does not load eagerly, also one that the route loaded before
+the block. Read it with
+<code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">obj.awaitable_attrs.&lt;name&gt;</span></code>, or add it to <code class="docutils literal notranslate"><span class="pre">get_loader_options</span></code>.</p></li>
 </ol>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -1094,19 +1109,21 @@ SQLAlchemy’s
 <h2>Internals<a class="headerlink" href="#internals" title="Link to this heading">#</a></h2>
 <section id="how-restly-loads-the-relationships-of-a-response">
 <span id="nested-response-internals"></span><h3>How Restly loads the relationships of a response<a class="headerlink" href="#how-restly-loads-the-relationships-of-a-response" title="Link to this heading">#</a></h3>
-<p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.get_relationship_loader_options" title="fastapi_restly.views.BaseRestView.get_relationship_loader_options"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_relationship_loader_options()</span></code></a>
+<p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.get_loader_options" title="fastapi_restly.views.BaseRestView.get_loader_options"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_loader_options()</span></code></a>
 walks the fields of the response class. For each field whose name is a
 relationship of the model, it adds a <code class="docutils literal notranslate"><span class="pre">selectinload(...)</span></code> option. When the
 field type is a nested schema, it walks that schema against the related
 model in the same way, and adds the result as child options.</p>
-<p><code class="docutils literal notranslate"><span class="pre">get_one</span></code> and <code class="docutils literal notranslate"><span class="pre">get_many</span></code> add these options to their query. On a write,
-<code class="docutils literal notranslate"><span class="pre">save_object</span></code> flushes and then refreshes the object. The refresh reloads the
-columns, but it unloads the relationships that load lazily, so a changed
-foreign key never shows an old related row. Then <code class="docutils literal notranslate"><span class="pre">save_object</span></code> checks whether
-each relationship that the response class reaches is loaded. If one is not,
-it runs one query by primary key with all the loader options. That query does
-not use <code class="docutils literal notranslate"><span class="pre">populate_existing</span></code>, so it fills only what is not loaded. A related
-object that is already in the session keeps the values it has.</p>
+<p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.select" title="fastapi_restly.views.BaseRestView.select"><code class="xref py py-meth docutils literal notranslate"><span class="pre">select()</span></code></a> adds these
+options to every read. On a write, the save after the business method
+flushes and then refreshes the object. The refresh reloads the columns, but
+it unloads the relationships that load lazily, so a changed foreign key never
+shows an old related row. The save also unloads the relationships of the
+other rows of the view’s model that the action wrote. Then one query by
+primary key reloads those rows with all the loader options, and the object
+too when the view has loader options. It does not apply the scope, and it
+does not use <code class="docutils literal notranslate"><span class="pre">populate_existing</span></code>, so it fills only what is not loaded. A related object
+that is already in the session keeps the values it has.</p>
 </section>
 <section id="how-restly-writes-a-reference">
 <h3>How Restly writes a reference<a class="headerlink" href="#how-restly-writes-a-reference" title="Link to this heading">#</a></h3>
@@ -1132,7 +1149,6 @@ to-one and to-many references, and integer and UUID primary keys, in a
 running app.</p></li>
 <li><p><a class="reference internal" href="api/schemas.html"><span class="doc">Schemas API</span></a>: the signatures of
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">MustExist</span></code></a>,
-<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.RefExists" title="fastapi_restly.schemas.RefExists"><code class="xref py py-class docutils literal notranslate"><span class="pre">RefExists</span></code></a>,
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDRef</span></code></a> and
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a>.</p></li>
 </ul>
@@ -1200,7 +1216,6 @@ running app.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#what-restly-loads-for-you">What Restly loads for you</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#embedded-objects-are-read-only">Embedded objects are read-only</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#load-a-relationship-that-the-response-does-not-name">Load a relationship that the response does not name</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#load-a-relationship-in-get-one-only">Load a relationship in <code class="docutils literal notranslate"><span class="pre">get_one</span></code> only</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#read-a-relationship-in-a-hook-or-a-business-method">Read a relationship in a hook or a business method</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fix-missinggreenlet">Fix <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code></a></li>
 </ul>

@@ -412,8 +412,8 @@ The views [replace the endpoint method](#replace-endpoint-method)
 {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>`,
 so that OpenAPI does not show the envelope as the response. It calls the
 standard {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>`
-and {meth}`get_many <fastapi_restly.views.RestView.get_many>`. The views also
-add a `PUT /{id}` route that calls the standard
+and the {meth}`get_many <fastapi_restly.views.RestView.get_many>` load. The
+views also add a `PUT /{id}` route that calls the standard
 {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` handler.
 The endpoint methods of the other CRUD routes (`GET /{id}`, `POST /`,
 `PATCH /{id}`, `DELETE /{id}`) and the business methods for writes are

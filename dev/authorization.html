@@ -549,7 +549,7 @@ an action. The client then gets a 403.</p>
 </tr>
 <tr class="row-odd"><td><p>a <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block</p></td>
 <td><p>its name, such as <code class="docutils literal notranslate"><span class="pre">&quot;publish&quot;</span></code></p></td>
-<td><p>the <code class="docutils literal notranslate"><span class="pre">obj</span></code> it gets, or <code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>the <code class="docutils literal notranslate"><span class="pre">obj</span></code> it gets when that is a row from the database; <code class="docutils literal notranslate"><span class="pre">None</span></code> for a new object or no object</p></td>
 <td><p>the <code class="docutils literal notranslate"><span class="pre">data</span></code> it gets</p></td>
 </tr>
 </tbody>
@@ -686,8 +686,10 @@ Reads do not call the hooks, so the hooks only see write actions. See
 <ul class="simple">
 <li><p>A <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.write_action" title="fastapi_restly.views.RestView.write_action"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_action</span></code></a> block
 calls it with the block’s name: <code class="docutils literal notranslate"><span class="pre">write_action(&quot;publish&quot;,</span> <span class="pre">obj=post)</span></code> calls
-<code class="docutils literal notranslate"><span class="pre">authorize(&quot;publish&quot;,</span> <span class="pre">obj=post,</span> <span class="pre">data=None)</span></code>. If <code class="docutils literal notranslate"><span class="pre">authorize</span></code> raises, the
-block does not run.</p></li>
+<code class="docutils literal notranslate"><span class="pre">authorize(&quot;publish&quot;,</span> <span class="pre">obj=post,</span> <span class="pre">data=None)</span></code>. For a new object, such as the
+copy that a clone route creates, <code class="docutils literal notranslate"><span class="pre">authorize</span></code> gets <code class="docutils literal notranslate"><span class="pre">obj=None</span></code>, as on
+<code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code>; pass the request as <code class="docutils literal notranslate"><span class="pre">data=</span></code>, so a create rule sees what is
+created. If <code class="docutils literal notranslate"><span class="pre">authorize</span></code> raises, the block does not run.</p></li>
 <li><p>A handler that the route calls authorizes its CRUD action, also under
 another path. <code class="docutils literal notranslate"><span class="pre">handle_update(...)</span></code> calls <code class="docutils literal notranslate"><span class="pre">authorize(&quot;update&quot;,</span> <span class="pre">...)</span></code>, and
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_one" title="fastapi_restly.views.RestView.handle_get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_one</span></code></a> calls
@@ -696,8 +698,9 @@ another path. <code class="docutils literal notranslate"><span class="pre">handl
 query does this, as the count route in
 <a class="reference internal" href="scopes.html#reading-the-scope"><span class="std std-ref">Use the scope in your own query</span></a> does.</p></li>
 </ul>
-<p>The business methods, such as
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a>, never call
+<p>The loads and the business methods, such as
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> and
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a>, never call
 <code class="docutils literal notranslate"><span class="pre">authorize</span></code>. A custom route that only calls them checks nothing.</p>
 <p>Write <code class="docutils literal notranslate"><span class="pre">authorize</span></code> so that an action name it does not know gets the strictest
 rule, not no rule. The blog example does this: every action that is not a

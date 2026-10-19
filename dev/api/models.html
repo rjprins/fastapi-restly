@@ -586,7 +586,7 @@ SQLAlchemy makes each model that uses it a dataclass.</p>
 <code class="docutils literal notranslate"><span class="pre">CASCADE_ALL_DELETE_ORPHAN_ASYNC</span></code> adds <code class="docutils literal notranslate"><span class="pre">&quot;delete-orphan&quot;</span></code>. SQLAlchemy’s
 <code class="docutils literal notranslate"><span class="pre">&quot;all&quot;</span></code> also includes <code class="docutils literal notranslate"><span class="pre">&quot;refresh-expire&quot;</span></code>: then a plain
 <code class="docutils literal notranslate"><span class="pre">session.refresh(obj)</span></code> expires the related objects, and they lazy-load on the
-next access, which fails on an async session. Restly’s own <code class="docutils literal notranslate"><span class="pre">save_object</span></code>
+next access, which fails on an async session. Restly’s save after a write
 refreshes by attribute name and does not cascade, so <code class="docutils literal notranslate"><span class="pre">&quot;all&quot;</span></code> is safe on
 Restly’s write paths. Use these constants where your own code refreshes an
 object on an async session.</p>

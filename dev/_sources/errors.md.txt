@@ -36,7 +36,7 @@ action, so the write is not committed:
 ```{literalinclude} ../example-projects/blog/blog/main.py
 :language: python
 :start-at: '@fr.post("/{id}/publish", status_code=200)'
-:end-at: return self.to_response(post)
+:end-at: return post
 :dedent: 4
 ```
 

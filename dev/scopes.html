@@ -615,7 +615,7 @@ the comments of an item, loads those rows through the relationship, without
 their scope. A filter or sort on a relationship field, such as
 <code class="docutils literal notranslate"><span class="pre">?items.name=x</span></code>, also joins the related table without its scope. Where
 embedded rows must be filtered, shape the view’s schema, or override
-<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.get_relationship_loader_options" title="fastapi_restly.views.BaseRestView.get_relationship_loader_options"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code></a>.</p>
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.get_loader_options" title="fastapi_restly.views.BaseRestView.get_loader_options"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_loader_options</span></code></a>.</p>
 <p>For the same reason, a model does not follow the scope of a related model.
 To make it follow, give the model its own <code class="docutils literal notranslate"><span class="pre">default_scope</span></code> that names the
 other scope. Here a comment is visible when its post is visible:</p>
@@ -693,7 +693,7 @@ user only the documents that the user owns:</p>
 </div>
 <p>Like every scope, it covers every read of the view: the list, the total and
 <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code>. The update and delete routes load the row through it too, and so
-does a custom route that calls <code class="docutils literal notranslate"><span class="pre">get_one(id)</span></code>. Declare the rule as the model’s
+does a custom route that calls <code class="docutils literal notranslate"><span class="pre">get_one(id)</span></code> or starts from <code class="docutils literal notranslate"><span class="pre">self.select()</span></code>. Declare the rule as the model’s
 <code class="docutils literal notranslate"><span class="pre">default_scope</span></code> instead when every view and every reference check must
 follow it.</p>
 <div class="details admonition">
@@ -748,8 +748,7 @@ each value.</p>
 <p>A custom route can pass a clause as <code class="docutils literal notranslate"><span class="pre">scope=</span></code> to the handler. That clause
 replaces the view’s scope for this one read. So the trash list and the
 restore action can be routes on the same view, not a second view class:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">ItemResponse</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">derive_schema_response</span><span class="p">(</span><span class="n">ItemSchema</span><span class="p">)</span>
-<span class="n">ItemListResponse</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">derive_schema_list_response</span><span class="p">(</span><span class="n">ItemResponse</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">ViewID</span><span class="p">,</span> <span class="n">ViewListResponse</span><span class="p">,</span> <span class="n">ViewResponse</span>
 
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
@@ -759,17 +758,16 @@ restore action can be routes on the same view, not a second view class:</p>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">ItemSchema</span>
     <span class="c1"># no scope declared: reads apply ItemClauses.default_scope</span>
 
-    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/trash&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">ItemListResponse</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">trash</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">):</span>
-        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span><span class="n">list_params</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">ItemClauses</span><span class="o">.</span><span class="n">trashed</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">ResponseShape</span><span class="o">.</span><span class="n">LIST</span><span class="p">)</span>
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/trash&quot;</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">trash</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewListResponse</span><span class="p">:</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span><span class="n">list_params</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">ItemClauses</span><span class="o">.</span><span class="n">trashed</span><span class="p">)</span>
 
-    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/restore&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">ItemResponse</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">restore</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/restore&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">restore</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="n">ViewID</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewResponse</span><span class="p">:</span>
         <span class="n">item</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">ItemClauses</span><span class="o">.</span><span class="n">trashed</span><span class="p">)</span>
         <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="s2">&quot;restore&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">item</span><span class="p">):</span>
             <span class="n">item</span><span class="o">.</span><span class="n">deleted_at</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">item</span>
 </pre></div>
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">list_params</span></code> argument gives the route the same filter, sort and page
@@ -786,29 +784,28 @@ never be replaced belongs on the session, like the
 the action itself; see <a class="reference internal" href="lifecycle.html#custom-action-route"><span class="std std-ref">Add a custom action route</span></a>. The
 route reads only the trash, so a row that is not deleted returns 404 here. To
 read without any scope on one route, pass <code class="docutils literal notranslate"><span class="pre">scope=fr.clauses.UNSCOPED</span></code>.</p>
-<p>The two routes use the view’s response classes, <code class="docutils literal notranslate"><span class="pre">ItemListResponse</span></code> and
-<code class="docutils literal notranslate"><span class="pre">ItemResponse</span></code>, so OpenAPI shows the same types as for the CRUD routes. A view
-with other pagination passes it, as in
-<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.derive_schema_list_response" title="fastapi_restly.schemas.derive_schema_list_response"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_schema_list_response(ItemResponse,</span> <span class="pre">pagination=AppView.pagination)</span></code></a>.
-<a class="reference internal" href="schemas.html#name-the-response-classes"><span class="std std-ref">Name the view’s classes in a custom route</span></a> explains
-this.</p>
-<p>An override of <code class="docutils literal notranslate"><span class="pre">get_one</span></code> or <code class="docutils literal notranslate"><span class="pre">get_many</span></code> declares the <code class="docutils literal notranslate"><span class="pre">scope</span></code> parameter and
-passes it on to <code class="docutils literal notranslate"><span class="pre">super()</span></code>. The handlers always pass it, so an override without
-the parameter fails on its first call, instead of returning the wrong rows.
-The SaaS example runs a trash and a restore route in
-<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py"><code class="docutils literal notranslate"><span class="pre">app/projects/views.py</span></code></a>.</p>
+<p>The markers <code class="docutils literal notranslate"><span class="pre">ViewListResponse</span></code>, <code class="docutils literal notranslate"><span class="pre">ViewResponse</span></code> and <code class="docutils literal notranslate"><span class="pre">ViewID</span></code> give the two
+routes the view’s classes, <code class="docutils literal notranslate"><span class="pre">ItemListResponse</span></code> and <code class="docutils literal notranslate"><span class="pre">ItemResponse</span></code>, and its id
+type. So OpenAPI shows the same types as for the CRUD routes, and Restly
+sends the list result and the row through the view’s response step.
+<a class="reference internal" href="schemas.html#name-the-response-classes"><span class="std std-ref">Name the view’s classes in a custom route</span></a>
+explains the markers.</p>
+<p><code class="docutils literal notranslate"><span class="pre">get_one</span></code>, <code class="docutils literal notranslate"><span class="pre">get_many</span></code> and <code class="docutils literal notranslate"><span class="pre">select()</span></code> take the same <code class="docutils literal notranslate"><span class="pre">scope=</span></code> argument. A
+custom read that starts from <code class="docutils literal notranslate"><span class="pre">self.select(scope=ItemClauses.trashed)</span></code> sees
+the same rows as the trash route. The SaaS example puts a trash and a restore route on a base view,
+<code class="docutils literal notranslate"><span class="pre">TrashView</span></code>, in
+<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py"><code class="docutils literal notranslate"><span class="pre">app/views.py</span></code></a>.</p>
 </div>
 <section id="list-a-subset-inside-the-scope">
 <span id="per-read-where"></span><h3>List a subset inside the scope<a class="headerlink" href="#list-a-subset-inside-the-scope" title="Link to this heading">#</a></h3>
 <p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_many" title="fastapi_restly.views.RestView.handle_get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_many</span></code></a>
 also takes <code class="docutils literal notranslate"><span class="pre">where=</span></code>. It narrows the read and keeps the scope. Here a list of
 the items in one collection still hides deleted items:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/in-collection/</span><span class="si">{collection_id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">ItemListResponse</span><span class="p">)</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">in_collection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">collection_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">list_params</span><span class="p">):</span>
-    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/in-collection/</span><span class="si">{collection_id}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">in_collection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">collection_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">list_params</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewListResponse</span><span class="p">:</span>
+    <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span>
         <span class="n">list_params</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="n">Item</span><span class="o">.</span><span class="n">collection_id</span> <span class="o">==</span> <span class="n">collection_id</span>
     <span class="p">)</span>
-    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">ResponseShape</span><span class="o">.</span><span class="n">LIST</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>If you pass the same expression as <code class="docutils literal notranslate"><span class="pre">scope=fr.where_clause(...)</span></code>, it replaces
@@ -820,26 +817,23 @@ it with the scope, as <a class="reference internal" href="api/clauses.html#fasta
 would: with the view’s scope, or with the <code class="docutils literal notranslate"><span class="pre">scope=</span></code> argument when you pass
 both. The page and <code class="docutils literal notranslate"><span class="pre">total_count</span></code> both apply it, and the client’s filters,
 sort and page apply on top.</p>
-<p>The handler combines <code class="docutils literal notranslate"><span class="pre">where=</span></code> into the <code class="docutils literal notranslate"><span class="pre">scope</span></code> that it passes on. So a
-<code class="docutils literal notranslate"><span class="pre">get_many</span></code> override receives one combined clause, and it declares no <code class="docutils literal notranslate"><span class="pre">where</span></code>
-parameter. <code class="docutils literal notranslate"><span class="pre">get_many</span></code> itself does not take <code class="docutils literal notranslate"><span class="pre">where=</span></code>. A route that calls
-<code class="docutils literal notranslate"><span class="pre">get_many</span></code> directly combines the clauses itself, with
-<code class="docutils literal notranslate"><span class="pre">fr.all_of(fr.resolve_scope(self),</span> <span class="pre">...)</span></code>. A Python <code class="docutils literal notranslate"><span class="pre">bool</span></code>, such as a
-comparison on a loaded object, raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code>.</p>
+<p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a> takes the same
+<code class="docutils literal notranslate"><span class="pre">where=</span></code>, for a route that lists without <code class="docutils literal notranslate"><span class="pre">authorize</span></code>. A Python <code class="docutils literal notranslate"><span class="pre">bool</span></code>, such
+as a comparison on a loaded object, raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code>.</p>
 </div>
 </section>
 </section>
 <section id="use-the-scope-in-your-own-query">
 <span id="reading-the-scope"></span><h2>Use the scope in your own query<a class="headerlink" href="#use-the-scope-in-your-own-query" title="Link to this heading">#</a></h2>
-<p><a class="reference internal" href="api/views.html#fastapi_restly.views.resolve_scope" title="fastapi_restly.views.resolve_scope"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.resolve_scope</span></code></a> returns the
-clause that a view’s reads apply. A route that builds its own query applies
-it, and then sees the same rows as <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code> and <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code>. This count route
-applies the client’s filters to the scoped query:</p>
+<p>A route that builds its own query of the view’s model starts from
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.select" title="fastapi_restly.views.BaseRestView.select"><code class="xref py py-meth docutils literal notranslate"><span class="pre">self.select()</span></code></a>. That is
+<code class="docutils literal notranslate"><span class="pre">select(model)</span></code> with the view’s scope, so the route sees the same rows as
+<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code> and <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code>. This count route applies the client’s filters to
+the scoped statement:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/count&quot;</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">total</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
     <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">authorize</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">GET_MANY</span><span class="p">)</span>
-    <span class="n">stmt</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">apply_clauses</span><span class="p">(</span><span class="n">sa</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">Task</span><span class="p">),</span> <span class="n">fr</span><span class="o">.</span><span class="n">resolve_scope</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
-    <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply_filters</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="n">list_params</span><span class="p">))</span>
+    <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply_filters</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">select</span><span class="p">(),</span> <span class="n">list_params</span><span class="p">))</span>
 </pre></div>
 </div>
 <p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_filters" title="fastapi_restly.views.RestView.apply_filters"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_filters</span></code></a> applies
@@ -847,6 +841,12 @@ the filters without the sort and the page; see
 <a class="reference internal" href="filtering.html#filters-in-own-route"><span class="std std-ref">Use the filters in a route of your own</span></a>.</p>
 <p>Do not name that route method <code class="docutils literal notranslate"><span class="pre">count</span></code>. It would hide the
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.count" title="fastapi_restly.views.RestView.count"><code class="xref py py-meth docutils literal notranslate"><span class="pre">count</span></code></a> method that it calls.</p>
+<p>For a statement that <code class="docutils literal notranslate"><span class="pre">self.select()</span></code> cannot start, such as a select of some
+columns or of another model,
+<a class="reference internal" href="api/views.html#fastapi_restly.views.resolve_scope" title="fastapi_restly.views.resolve_scope"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.resolve_scope</span></code></a> returns the
+clause that a view’s reads apply. Apply it with
+<a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.apply_clauses" title="fastapi_restly.clauses.apply_clauses"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.apply_clauses</span></code></a>, as in
+<code class="docutils literal notranslate"><span class="pre">fr.apply_clauses(sa.select(Task.status),</span> <span class="pre">fr.resolve_scope(self))</span></code>.</p>
 <p>Pass another view, as in <code class="docutils literal notranslate"><span class="pre">fr.resolve_scope(ProjectView)</span></code>, to follow the rows
 that view shows. The parent lookup of a nested view does this, so a parent
 that its own view hides is also a 404 under the child’s path; see
@@ -861,32 +861,6 @@ what the API shows passes the view.</p>
 <p>The result is a clause or <code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code>, never <code class="docutils literal notranslate"><span class="pre">None</span></code>. So it goes
 straight into <code class="docutils literal notranslate"><span class="pre">fr.apply_clauses</span></code> or into a composition, without an <code class="docutils literal notranslate"><span class="pre">if</span></code>.</p>
 </div>
-</section>
-<section id="check-a-reference-against-another-scope">
-<span id="reference-scopes"></span><h2>Check a reference against another scope<a class="headerlink" href="#check-a-reference-against-another-scope" title="Link to this heading">#</a></h2>
-<p>A reference field checks the row against the <code class="docutils literal notranslate"><span class="pre">default_scope</span></code> of the target
-model. <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.RefExists" title="fastapi_restly.schemas.RefExists"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.RefExists</span></code></a> names the
-target model, and its <code class="docutils literal notranslate"><span class="pre">scope</span></code> argument changes the check for one field:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">OrderCreate</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">BaseSchema</span><span class="p">):</span>
-    <span class="n">item_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">MustExist</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>                <span class="c1"># default_scope of Item (from the foreign key)</span>
-
-    <span class="n">restore_id</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">RefExists</span><span class="p">(</span><span class="n">Item</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">ItemClauses</span><span class="o">.</span><span class="n">trashed</span><span class="p">)]</span>
-
-    <span class="n">audit_item_id</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">RefExists</span><span class="p">(</span><span class="n">Item</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">clauses</span><span class="o">.</span><span class="n">UNSCOPED</span><span class="p">)]</span>
-</pre></div>
-</div>
-<ul class="simple">
-<li><p><strong>No <code class="docutils literal notranslate"><span class="pre">scope</span></code></strong>: the <code class="docutils literal notranslate"><span class="pre">default_scope</span></code> of the target applies.</p></li>
-<li><p><strong><code class="docutils literal notranslate"><span class="pre">scope=&lt;WhereClause&gt;</span></code></strong>: that clause applies instead. Here <code class="docutils literal notranslate"><span class="pre">restore_id</span></code>
-accepts exactly the ids that the trash shows.</p></li>
-<li><p><strong><code class="docutils literal notranslate"><span class="pre">scope=fr.clauses.UNSCOPED</span></code></strong>: the check uses no scope. <code class="docutils literal notranslate"><span class="pre">scope=None</span></code>
-raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code>, so a variable that is <code class="docutils literal notranslate"><span class="pre">None</span></code> by mistake can never turn
-the check off, and a search for <code class="docutils literal notranslate"><span class="pre">UNSCOPED</span></code> finds every place.</p></li>
-</ul>
-<p><code class="docutils literal notranslate"><span class="pre">IDRef</span></code> and <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> references always use the <code class="docutils literal notranslate"><span class="pre">default_scope</span></code> of the
-target. Only the scalar marker <code class="docutils literal notranslate"><span class="pre">RefExists</span></code> can change it.
-<a class="reference internal" href="relationships.html#visibility-and-multi-tenancy"><span class="std std-ref">Relationships</span></a> covers which rows a
-reference can reach.</p>
 </section>
 <section id="soft-delete-rows">
 <span id="soft-delete-mixin"></span><h2>Soft-delete rows<a class="headerlink" href="#soft-delete-rows" title="Link to this heading">#</a></h2>
@@ -913,28 +887,24 @@ removing the row.</p></li>
 <section id="make-delete-set-a-timestamp">
 <span id="soft-delete-recipe"></span><h3>Make <code class="docutils literal notranslate"><span class="pre">DELETE</span></code> set a timestamp<a class="headerlink" href="#make-delete-set-a-timestamp" title="Link to this heading">#</a></h3>
 <p>Override the <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete" title="fastapi_restly.views.RestView.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a> business
-method. It receives the loaded row. Set the timestamp, flush, and do not call
+method. It receives the loaded row. Set the timestamp, and do not call
 <code class="docutils literal notranslate"><span class="pre">super()</span></code>, because that would remove the row:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span>
-
-<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.ext.asyncio</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncSession</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">SoftDeleteMixin</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;``delete`` sets ``deleted_at`` instead of removing the row.&quot;&quot;&quot;</span>
 
-    <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
-        <span class="n">session</span><span class="p">:</span> <span class="n">AsyncSession</span>
-
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">obj</span><span class="o">.</span><span class="n">deleted_at</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
 </pre></div>
 </div>
-<p>If only one view needs it, put the same <code class="docutils literal notranslate"><span class="pre">delete</span></code> method on that view. The
-mixin has no <code class="docutils literal notranslate"><span class="pre">hasattr</span></code> check and no fallback to <code class="docutils literal notranslate"><span class="pre">super()</span></code>. It goes on views of
-<code class="docutils literal notranslate"><span class="pre">SoftDeletable</span></code> models, so the column is always there.</p>
+<p>The handler saves the change after <code class="docutils literal notranslate"><span class="pre">delete</span></code> returns, as after every business
+method, and the hooks get the row as <code class="docutils literal notranslate"><span class="pre">new</span></code>. If only one view needs it, put
+the same <code class="docutils literal notranslate"><span class="pre">delete</span></code> method on that view. The mixin has no <code class="docutils literal notranslate"><span class="pre">hasattr</span></code> check and
+no fallback to <code class="docutils literal notranslate"><span class="pre">super()</span></code>. It goes on views of <code class="docutils literal notranslate"><span class="pre">SoftDeletable</span></code> models, so the
+column is always there.</p>
 <p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_delete" title="fastapi_restly.views.RestView.handle_delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_delete</span></code></a> still
 loads the row through the scope, calls <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and commits. The mixin only
 changes what “delete” does. A query parameter can never widen a scope, so a
@@ -970,8 +940,7 @@ restore route on the same view.</p>
 cause problems. It decides only which rows reads and reference checks see. It
 does not set column values when you create a row. And nothing reads past it
 without saying so. A view declares a replacement scope or
-<code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code> in its class body, and a reference check uses the same
-word <code class="docutils literal notranslate"><span class="pre">UNSCOPED</span></code>, so a search finds every place.</p>
+<code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code> in its class body, so a search finds every place.</p>
 <p>Phoenix passes its <code class="docutils literal notranslate"><span class="pre">Scope</span></code> as an argument to each context function. Restly
 binds <code class="docutils literal notranslate"><span class="pre">Current</span></code> once per request, and code reads it where it needs it.</p>
 <p>A tenant rule that is a scope in your old framework is a
@@ -997,7 +966,7 @@ each other. So a chain of filters becomes one combined clause:</p>
 </pre></div>
 </div>
 <p>Relationship loading that was in <code class="docutils literal notranslate"><span class="pre">build_query</span></code> goes in
-<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.get_relationship_loader_options" title="fastapi_restly.views.BaseRestView.get_relationship_loader_options"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code></a>.
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.get_loader_options" title="fastapi_restly.views.BaseRestView.get_loader_options"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_loader_options</span></code></a>.
 Other changes to the list query, such as a join or a default order, go in an
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_list_params" title="fastapi_restly.views.RestView.apply_list_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_list_params</span></code></a>
 override:</p>
@@ -1010,8 +979,11 @@ override:</p>
 </pre></div>
 </div>
 <p>An order that you add before <code class="docutils literal notranslate"><span class="pre">super()</span></code> comes first, so a client’s <code class="docutils literal notranslate"><span class="pre">?sort=</span></code>
-orders the rows inside it. A join to a to-many relationship here does not
-repeat rows, and it does not make <code class="docutils literal notranslate"><span class="pre">total_count</span></code> too high.</p>
+orders the rows inside it.</p>
+<p>For a condition on a to-many relationship, use <code class="docutils literal notranslate"><span class="pre">EXISTS</span></code>, such as
+<code class="docutils literal notranslate"><span class="pre">query.where(Item.comments.any(Comment.author_id</span> <span class="pre">==</span> <span class="pre">user_id))</span></code>. A join to a
+to-many relationship repeats the item for each comment, as in SQLAlchemy. A
+page would then count comments, not items.</p>
 </section>
 <section id="see-also">
 <h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
@@ -1087,7 +1059,6 @@ rows that the scope shows.</p></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-the-scope-in-your-own-query">Use the scope in your own query</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#check-a-reference-against-another-scope">Check a reference against another scope</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#soft-delete-rows">Soft-delete rows</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#make-delete-set-a-timestamp">Make <code class="docutils literal notranslate"><span class="pre">DELETE</span></code> set a timestamp</a></li>
 </ul>

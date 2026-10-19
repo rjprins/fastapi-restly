@@ -753,17 +753,18 @@ view can set `unknown_query_params` once for every view.
 
 The filters apply inside the view's scope. To limit the rows of a view,
 declare its {attr}`scope <fastapi_restly.views.BaseRestView.scope>`, as
-[Give one view other rows](#view-scope) shows. `get_many` takes no `query`
-argument, so put base query changes in the scope.
+[Give one view other rows](#view-scope) shows. `get_many` is final and takes
+no statement, so put base query changes in the scope.
 
 :::{admonition} Details
 :class: details
 
 For list params of another form, such as those of another client library,
-see [Write the list params yourself](#own-list-params). Override
-`get_many()` itself only for a list that has another *result*, and build the
-query in the method. The override gets the scope as
-its `scope` argument: apply it to the query with `fr.apply_clauses`, as
+see [Write the list params yourself](#own-list-params). A join or a default
+order goes in an
+{meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
+override. For a list that has another *result*, write a route of your own
+that starts from `self.select()`, as
 [Use the scope in your own query](#reading-the-scope) shows.
 
 A route method with a `list_params` parameter takes the same list params as

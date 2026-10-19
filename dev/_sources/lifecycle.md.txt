@@ -23,21 +23,22 @@ Take `POST /`, the create route. FastAPI calls
 
 ```
 POST /
-  └─ create_endpoint(schema_obj)                 # endpoint method: the HTTP contract
-       ├─ handle_create(schema_obj)              # handler: runs the steps (final)
-       │    ├─ authorize("create", data=schema_obj)
-       │    ├─ create(schema_obj)                 # business method: the change
-       │    │    ├─ make_new_object(schema_obj)   # build the ORM object (final)
-       │    │    └─ save_object(obj)              # flush and refresh, no commit (final)
-       │    ├─ before_action_commit("create", new=obj)
+  └─ create_endpoint(data)                # endpoint method: the HTTP contract
+       ├─ handle_create(data)             # handler: runs the steps (final)
+       │    ├─ authorize("create", data=data)
+       │    ├─ check the references in data   # an id that does not exist: 404
+       │    ├─ create(data)               # business method: builds the object;
+       │    │                             #   nothing is written yet
+       │    ├─ save: flush, refresh obj, load it with the loader options
+       │    ├─ before_action_commit("create", new=obj, old=None)
        │    ├─ commit
-       │    └─ after_action_commit("create", new=obj)
+       │    └─ after_action_commit("create", new=obj, old=None)
        └─ to_response(obj)
 ```
 
 Every CRUD route has these three methods. The names follow one pattern for
 all five actions: `update_endpoint` calls `handle_update`, which calls
-`update`, and so on.
+`update`, and so on. A read has a load in the place of the business method.
 
 - The **endpoint method**, `<verb>_endpoint`, is the method that FastAPI
   calls. It owns the HTTP contract: the route decorator, the parameters, the
@@ -46,23 +47,30 @@ all five actions: `update_endpoint` calls `handle_update`, which calls
   Replace it only to change that contract, such as the status code. See
   [Change the status code, headers or response of one route](#replace-endpoint-method).
 - The **handler**, `handle_<verb>`, runs the steps. It calls
-  {meth}`authorize <fastapi_restly.views.RestView.authorize>` and then the
-  business method. On a write, it ends with the **commit bracket**:
+  {meth}`authorize <fastapi_restly.views.RestView.authorize>`, checks the
+  [references](#reference-exists) in the data, and then calls the business
+  method. On a write, it ends with the **commit bracket**: it saves the
+  object, runs
   {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`,
-  the commit, then
+  commits, then runs
   {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>`.
   It returns the object. Only the delete handler returns nothing. A handler
   is final: a view class that defines one fails when Python creates the
   class. A custom route calls a handler to run the same steps.
-- The **business method** is the bare verb:
+- The **business method** of a write is the bare verb:
   {meth}`create <fastapi_restly.views.RestView.create>`,
-  {meth}`update <fastapi_restly.views.RestView.update>`,
-  {meth}`delete <fastapi_restly.views.RestView.delete>`,
+  {meth}`update <fastapi_restly.views.RestView.update>` or
+  {meth}`delete <fastapi_restly.views.RestView.delete>`. It makes the
+  change: it builds the object or applies the input to it, and returns it. It
+  does not check permissions, does not flush and does not commit. So when your
+  override runs, `authorize` and the reference checks have already passed.
+  Nothing is written while it runs. The save after it writes the change, and
+  then the commit follows.
+- A read has a **load**:
   {meth}`get_one <fastapi_restly.views.RestView.get_one>` or
-  {meth}`get_many <fastapi_restly.views.RestView.get_many>`. It makes the
-  change: it builds the object, applies the input and saves. It does not check
-  permissions and does not commit. So when your override runs, `authorize` has
-  already passed, and the commit comes after it.
+  {meth}`get_many <fastapi_restly.views.RestView.get_many>`. A load is
+  final, as a handler is. You change it through the scope, the list params,
+  the loader options and two small hooks. See [A read](#read-request-steps).
 
 :::{admonition} Details
 :class: details
@@ -70,45 +78,92 @@ all five actions: `update_endpoint` calls `handle_update`, which calls
 Update and delete have the same steps, with a load first. Their handlers load
 the row through {meth}`get_one <fastapi_restly.views.RestView.get_one>`, so a
 row that the caller cannot see is a 404. Then they call `authorize` with the
-loaded row and take a
+loaded row, check the references in the data, and take a
 {meth}`snapshot <fastapi_restly.views.BaseRestView.snapshot>` of it as `old`.
-The business method runs next, then the commit bracket. The hooks receive both
-`new` and `old`, so they can see what changed.
+The business method runs next, then the commit bracket. The delete business
+method only marks the row for deletion.
+
+The row that an action is about is its **subject**: the object that `create`
+or `update` returns, or the row that `delete` gets. `old` is the subject
+before the action, and `new` is the subject after it. So the hooks can see
+what changed. After a delete, the row is gone and `new` is `None`. A soft
+delete keeps the row, so `new` is the row.
+
+The save is the step that `session.flush()` and `session.refresh()` do in
+plain SQLAlchemy. It flushes the session. Then it refreshes the subject, and
+every other row of the view's model that the action wrote. It loads them
+with the view's
+[loader options](#eager-load-extra-relationships), as a read does: the
+relationships that the response shows, and any value that you add there. So
+the hooks and the response see the saved rows. Rows of other models are
+written, but not refreshed.
+
+The business method runs under SQLAlchemy's
+{attr}`session.no_autoflush <sqlalchemy.orm.Session.no_autoflush>`.
+So a query inside it does not write a half-built object, also on a
+{class}`RestView <fastapi_restly.views.RestView>`, whose session flushes
+before each query everywhere else.
 :::
 
 (read-request-steps)=
 ### A read: visibility, then policy
 
-A read has no commit bracket. Two steps decide whether the caller gets the
-row:
+A read has no commit bracket and no business method. Its load is final. Each
+step of the load comes from a declaration or from a small hook:
 
 ```
 GET /{id}
-  └─ get_one_endpoint(id)            # endpoint method
-       ├─ handle_get_one(id)         # handler
-       │    ├─ get_one(id)           # business method
-       │    │    └─ the view scope   # VISIBILITY: soft delete, role, row-level
-       │    │                        #   a hidden row is a 404 for every caller
-       │    └─ authorize("get_one", obj=obj)   # POLICY: checks the loaded row
+  └─ get_one_endpoint(id)                     # endpoint method
+       ├─ handle_get_one(id)                  # handler
+       │    ├─ get_one(id)                    # the load (final)
+       │    │    ├─ select()                  # select(model), the scope, the loader options
+       │    │    │                            #   VISIBILITY: a hidden row is a 404 for every caller
+       │    │    ├─ .where(where_id(id))      # hook: the primary key by default
+       │    │    └─ no row: raise not_found(id)   # hook: a 404 by default
+       │    └─ authorize("get_one", obj=obj)  # POLICY: checks the loaded row
        └─ to_response(obj)
+            └─ to_single_response(obj)        # the response of the row
+
+GET /
+  └─ get_many_endpoint(list_params)
+       ├─ handle_get_many(list_params)
+       │    ├─ authorize("get_many")          # POLICY: no row yet
+       │    └─ get_many(list_params)          # the load (final)
+       │         ├─ select()                  # the same start as get_one
+       │         ├─ apply_list_params(stmt, list_params)   # filters, sort, page
+       │         └─ count(stmt)               # on a paginated view
+       └─ to_response(result, LIST)
+            └─ to_single_response(row)        # for each row
 ```
 
-- **Visibility.** The business method
-  {meth}`get_one <fastapi_restly.views.RestView.get_one>` loads the row
-  through the view's scope. A row outside the scope is a 404 for every caller,
-  as if the row did not exist. See [Scopes](scopes.md).
-- **Policy.** The handler then calls `authorize("get_one", obj=obj)` with the
-  loaded row. A refusal is a 403. See [Authorization](authorization.md).
+- **Visibility.** The load starts from
+  {meth}`select() <fastapi_restly.views.BaseRestView.select>`: the model with
+  the view's scope. A row outside the scope is a 404 for every caller, as if
+  the row did not exist. See [Scopes](scopes.md).
+- **Policy.** The handler calls `authorize`. For one row, it gets the loaded
+  row, and a refusal is a 403. See [Authorization](authorization.md).
 
-`get_one` itself does not call `authorize`: the handler does. A list has the
-same two steps in the other order.
-{meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>` first
-calls `authorize("get_many")`, with no row. Then
-{meth}`get_many <fastapi_restly.views.RestView.get_many>` applies the scope
-and the client's filters, sort and page
-({meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`).
-On a paginated view, it also counts the total
-({meth}`count <fastapi_restly.views.RestView.count>`).
+`PATCH /{id}`, `DELETE /{id}` and your action routes load their row with the
+same `get_one`. So the scope,
+{meth}`where_id <fastapi_restly.views.BaseRestView.where_id>` and
+{meth}`not_found <fastapi_restly.views.BaseRestView.not_found>` apply to them
+too.
+
+:::{admonition} Details
+:class: details
+
+The loads are final: a view class that defines `get_one`, `get_many` or
+`select` fails when Python creates the class. The message names the place
+for each change. An override of a load could leave out the scope, or the
+`scope=` that a route asked for, and nothing would tell you. With final
+loads, the scope always applies.
+
+`select()` also adds the options of
+{meth}`get_loader_options <fastapi_restly.views.BaseRestView.get_loader_options>`,
+so the rows are ready for the response. A custom read starts from it too, as
+in `self.select().where(Item.price > 10)`. In a count, a subquery or a select
+of some columns, SQLAlchemy leaves the loader options out.
+:::
 
 (which-method-to-override)=
 ## Which method do I override
@@ -119,33 +174,40 @@ On a paginated view, it also counts the total
 | A value that every write path must set: a slug, the author | a column default or a mapper event on the model ([Models](#write-path-values)) |
 | Who may perform an action | {meth}`authorize <fastapi_restly.views.RestView.authorize>` ([Authorization](#authorize-gate)) |
 | Which rows a caller can see | {attr}`scope <fastapi_restly.views.BaseRestView.scope>` ([Scopes](#view-scope)) |
+| How the item routes find their row: a slug, a composite key | {meth}`where_id <fastapi_restly.views.BaseRestView.where_id>` ([below](#natural-key-route)) |
+| The error for a row that does not exist | {meth}`not_found <fastapi_restly.views.BaseRestView.not_found>` ([below](#natural-key-route)) |
+| A value on each row of the response | {meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>`, or SQL on the model ([below](#value-on-each-row)) |
+| What each row loads: a relationship, a SQL expression | {meth}`get_loader_options <fastapi_restly.views.BaseRestView.get_loader_options>` ([Relationships](#eager-load-extra-relationships)) |
+| A read from another source: a cache, a service | the endpoint method, `get_one_endpoint` or `get_many_endpoint` ([below](#value-on-each-row)) |
 | The keys that a list has | {attr}`include_filters <fastapi_restly.views.BaseRestView.include_filters>` / {attr}`include_sort_keys <fastapi_restly.views.BaseRestView.include_sort_keys>` ([Choose the keys of a list](#choose-list-keys)) |
 | A list filter that is not a comparison with a column | {func}`fr.list_filter <fastapi_restly.views.list_filter>` ([Add a filter of your own](#own-list-filter)) |
 | How the list params filter, sort and page | {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>` ([Filtering & Pagination](filtering.md)) |
 | The list total | {meth}`count <fastapi_restly.views.RestView.count>` |
-| A side effect inside the commit: an outbox or audit row | {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>` ([below](#transaction-hooks)) |
+| A side effect inside the commit: an outbox or audit row, or other work that needs the new id | {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>` ([below](#transaction-hooks)) |
 | A side effect after the commit: an email, a webhook | {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>` ([below](#transaction-hooks)) |
 | The response shape of every route | {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>` ([Responses](#to-response)) |
 | The HTTP contract of one route: status, headers, parameters | `<verb>_endpoint` ([below](#replace-endpoint-method)) |
 | A path that is not CRUD: a lookup, an action such as publish | a method with {func}`@fr.get <fastapi_restly.views.get>` or {func}`@fr.post <fastapi_restly.views.post>` ([read route](#custom-read-route), [action route](#custom-action-route)) |
 | A lookup by another key, such as a slug or an email | {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>` with an expression, in a custom route ([below](#natural-key-route)) |
 | A list of a subset, such as one project's tasks | {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>` with `where=`, in a custom route ([Scopes](#per-read-where)) |
+| One action that changes several rows, such as a new order of the rows | a {meth}`write_action <fastapi_restly.views.RestView.write_action>` block with `obj=None`, in a custom route ([below](#write-several-rows)) |
 | One commit over several writes | {meth}`shared_write_action_commit <fastapi_restly.views.RestView.shared_write_action_commit>` in a custom route ([below](#shared-write-action-commit)) |
 | The same change on several views | a base view or a mixin ([Views](#share-behaviour-with-base-views)) |
 
-Start at the business method. Move a side effect that depends on the commit to
-a hook. Replace the endpoint method only when the HTTP contract changes.
+Start at the business method of a write, or at the declarations of a read.
+Move a side effect that depends on the commit to a hook. Replace the endpoint
+method only when the HTTP contract changes.
 
 (business-methods)=
 ## Change what an action does
 
 Override the business method of the action:
 {meth}`create <fastapi_restly.views.RestView.create>`,
-{meth}`update <fastapi_restly.views.RestView.update>`,
-{meth}`delete <fastapi_restly.views.RestView.delete>`,
-{meth}`get_one <fastapi_restly.views.RestView.get_one>` or
-{meth}`get_many <fastapi_restly.views.RestView.get_many>`. Override only the
+{meth}`update <fastapi_restly.views.RestView.update>` or
+{meth}`delete <fastapi_restly.views.RestView.delete>`. Override only the
 one you need. The handler still checks permissions and commits around it.
+The reads have no business method; see
+[Add a value to each row](#value-on-each-row).
 
 Before you set a value in `create` or `update`, ask which write paths must set
 it, as [Set a value on every write path](#write-path-values) explains:
@@ -196,38 +258,87 @@ class UserView(fr.AsyncRestView):
     model = User
     schema = UserSchema
 
-    async def create(self, schema_obj):
-        obj = await self.make_new_object(schema_obj)
-        obj.password = hash_password(schema_obj.password)
-        return await self.save_object(obj)
+    async def create(self, data):
+        user = await super().create(data)
+        user.password = hash_password(data.password)
+        return user
 ```
 
 {meth}`handle_create <fastapi_restly.views.RestView.handle_create>` still calls
-`authorize` and commits. The override only changes how the object is built.
-The schema field and the column have the same name, because
-{meth}`make_new_object <fastapi_restly.views.RestView.make_new_object>` passes
-every writable schema field that the client sent to the model's constructor.
-So the plain password goes into `password` first, and the override replaces
-it with the hash before the flush. `fr.WriteOnly` keeps the field out of every response.
+`authorize`, saves and commits. The override only changes the object before
+the save. The schema field and the column have the same name, because the
+default `create` passes every writable schema field that the client sent to
+the model's constructor. So the plain password goes into `password` first, and
+the override replaces it with the hash. The save comes after `create`
+returns, so the database only gets the hash. `fr.WriteOnly` keeps the field
+out of every response.
 
 The generated update body takes `password` too. Without more code,
 `PATCH /users/{id}` stores a new password as plain text. So hash it in
 `update` as well:
 
 ```python
-    async def update(self, obj, schema_obj):
-        obj = await self.update_object(obj, schema_obj)
-        if "password" in schema_obj.model_fields_set:
-            obj.password = hash_password(schema_obj.password)
-        return await self.save_object(obj)
+    async def update(self, obj, data):
+        user = await super().update(obj, data)
+        if "password" in data.model_fields_set:
+            user.password = hash_password(data.password)
+        return user
 ```
 
-{meth}`update_object <fastapi_restly.views.RestView.update_object>` writes
-only the fields that the request sends, so the check uses the same set. The
-other way is an [explicit update schema](#explicit-write-schemas) without
-`password`, with a separate route that changes the password. The SaaS example
-does this: its change-password route checks the current password first
+The default `update` writes only the fields that the request sends, so the
+check uses the same set. The other way is an
+[explicit update schema](#explicit-write-schemas) without `password`, with a
+separate route that changes the password. The SaaS example does this: its
+change-password route checks the current password first
 ([`app/users/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/users/views.py)).
+
+(no-id-in-create)=
+### The new object has no id in `create`
+
+`create` returns the object before the save. So inside `create`, the new
+object has no primary key yet. The values that the database or a mapper event
+sets at the flush, such as a slug or a tenant id, are not there either. Code
+that reads them gets `None`, not an error.
+
+Most code that needs these values runs after the save. An outbox row goes in
+[`before_action_commit`](#transaction-hooks), which gets the saved object.
+When `create` itself needs the id, flush, as in plain SQLAlchemy:
+
+```python
+    async def create(self, data):
+        report = await super().create(data)
+        await self.session.flush()  # report.id is set now
+        report.file_path = f"reports/{report.id}.pdf"
+        return report
+```
+
+The flush writes the row, and the save writes the path with an `UPDATE`.
+
+:::{admonition} Details
+:class: details
+
+- Nothing is written before the save, so a query inside `create` does not
+  see the new object. A check such as "is this email taken?" after
+  `super().create()` finds only the rows that are already in the database,
+  as it should. Restly runs the business method under
+  {attr}`session.no_autoflush <sqlalchemy.orm.Session.no_autoflush>` for
+  this. Without it, a sync session would write the half-built object before
+  the query.
+- For the same reason, a query in a business method or a `write_action`
+  block does not see any of your unflushed changes. A loop that looks a row
+  up and adds it when it is missing, or a count of rows against a limit,
+  must call `flush()` before the query.
+- A `try` or a `with` around `super().create()` catches no error of the
+  INSERT, because the INSERT runs at the save, after `create` returns. To
+  catch it in `create`, flush inside the `try`.
+- "Nothing is written" is about the objects in the session. A statement that
+  you run yourself, such as
+  `await self.session.execute(update(Product).values(...))`, goes to the
+  database at once. It is part of the same transaction, so the commit
+  of the action commits it, and an error rolls it back.
+- Often you do not need the id at all. Link the objects with a
+  relationship, such as `line.order = order`, and the flush copies the key.
+:::
 
 ### Refuse a change in `update`
 
@@ -237,11 +348,10 @@ already loaded through the scope, not the id. A rule that needs the stored row
 or the database goes here:
 
 ```python
-    async def update(self, obj, schema_obj):
+    async def update(self, obj, data):
         if obj.locked:
             raise fr.exc.Conflict("This record is locked")
-        obj = await self.update_object(obj, schema_obj)
-        return await self.save_object(obj)
+        return await super().update(obj, data)
 ```
 
 A rule about who may make the change goes in
@@ -249,17 +359,19 @@ A rule about who may make the change goes in
 validator on the schema: see [Validation](#validation).
 [Errors](errors.md) lists the exceptions to raise.
 
-### Add a value to each row of a list
+(value-on-each-row)=
+### Add a value to each row
 
-To change the rows after the query, override
-{meth}`get_many <fastapi_restly.views.RestView.get_many>` and call `super()`:
+A value that needs no query, such as whether the caller may edit the row,
+goes in
+{meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>`.
+Every response of the view passes there: one row, each row of a list, the
+row after a write, and a custom route that returns the row:
 
 ```python
-    async def get_many(self, list_params, *, scope=None):
-        result = await super().get_many(list_params, scope=scope)
-        for project in result.objects:
-            project.can_edit = project.owner_id == Current.user_id()
-        return result
+    def to_single_response(self, obj):
+        response = super().to_single_response(obj)
+        return response.model_copy(update={"can_edit": obj.owner_id == Current.user_id()})
 ```
 
 `Current.user_id()` is the id of the caller
@@ -273,49 +385,142 @@ field:
 It is not a column, so `ReadOnly` keeps it out of the create and update
 bodies.
 
+A value that needs a query, such as the number of tasks of a project, is SQL
+on the model. A `column_property` loads with the row, in the same SELECT. So
+a list of 50 projects still runs one query for the page:
+
+```python
+from sqlalchemy import func, select
+from sqlalchemy.orm import column_property
+
+Project.task_count = column_property(
+    select(func.count(Task.id))
+    .where(Task.project_id == Project.id)
+    .correlate_except(Task)
+    .scalar_subquery()
+)
+```
+
+Declare `task_count: fr.ReadOnly[int] = 0` in the view's schema, as for
+`can_edit`. The save after a write loads the value again, so the create and
+update responses show it too. The SaaS example sets two task counts on its
+projects this way
+([`app/tasks/models.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/tasks/models.py)),
+and `can_edit` in `ProjectView.to_single_response`
+([`app/projects/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py)).
+
 Other changes to a list have their own place. A [scope](#view-scope) hides
 rows.
 {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
 changes how the list params filter, sort and page
 ([Filtering & Pagination](filtering.md)).
-{meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`
-loads more relationships ([Relationships](#eager-load-extra-relationships)).
+{meth}`get_loader_options <fastapi_restly.views.BaseRestView.get_loader_options>`
+loads more for each row ([Relationships](#eager-load-extra-relationships)).
 
 :::{admonition} Details
 :class: details
 
-The handlers always pass `scope=`, so the `get_many` override declares it and
-passes it on. To change the single-row read too, override
-{meth}`get_one <fastapi_restly.views.RestView.get_one>` the same way, as the
-[SaaS example](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py)
-does.
+The `column_property` is set after both classes, because the expression names
+`Task`. Place it in the module of `Task` when that module imports `Project`.
+For type checkers, declare it on the class under `if TYPE_CHECKING:`, as
+`task_count: Mapped[int] = mapped_column(init=False)`. Every SELECT of the
+model computes a `column_property`, also `session.get()`. The list count does
+not: it counts the primary keys.
+
+A value that only one view shows can be a `query_expression()` on the model
+instead. The view fills it with `with_expression(...)` in
+{meth}`get_loader_options <fastapi_restly.views.BaseRestView.get_loader_options>`.
+Every read of the view applies the loader options, and so does the save after
+a write. So the value is there in every response of the view, also after
+`POST`. Another view of the model, or `session.get()`, leaves it unloaded.
+
+A custom route that names another class in `response_model=` skips
+`to_single_response`: FastAPI builds the response from the object, so the
+value is missing. Declare the view's response instead, as
+[The response of a custom route](#custom-route-response) explains.
+
+For a value from another service, or from a cache, replace the endpoint
+method. It calls the handler, gets the values for the whole page in one
+call, and builds the response:
+
+```python
+from fastapi_restly.views import ViewListResponse
+
+
+@fr.get("/")
+async def get_many_endpoint(self, list_params) -> ViewListResponse:
+    result = await self.handle_get_many(list_params)
+    ratings = await rating_service.for_ids([p.id for p in result.objects])
+    for project in result.objects:
+        project.rating = ratings.get(project.id)
+    return result
+```
+
+A read that does not come from the database at all replaces the endpoint
+method in the same way, and calls `authorize` itself.
 :::
 
 (domain-utilities)=
 ## Build and save objects
 
-The business methods are built from three utilities. Call them from your
-`create` and `update` overrides. They are final: a view class that defines
-one, itself or through a mixin, fails when Python creates the class.
+A write business method changes objects in the session and returns the
+object. The handler saves what it returns. The defaults use the functions in
+{mod}`fr.objects <fastapi_restly.objects>`:
 
-| Method | What it does |
+| Business method | Default |
 |---|---|
-| {meth}`self.make_new_object(schema_obj) <fastapi_restly.views.RestView.make_new_object>` | Builds a new ORM object from the schema and adds it to the session. It resolves references and skips the fields that the schema marks read-only. It does not flush. |
-| {meth}`self.update_object(obj, schema_obj) <fastapi_restly.views.RestView.update_object>` | Writes the writable fields that the client sent onto an existing object, and resolves references. It does not flush. |
-| {meth}`self.save_object(obj) <fastapi_restly.views.RestView.save_object>` | Flushes and refreshes `obj`, then loads the relationships that the response class names. It does not commit. |
+| `create(data)` | {func}`async_make_new_object(self.session, self.model, data) <fastapi_restly.objects.async_make_new_object>`: builds a new ORM object from the schema and adds it to the session. It skips the fields that the schema marks read-only. |
+| `update(obj, data)` | {func}`async_update_object(self.session, obj, data) <fastapi_restly.objects.async_update_object>`: writes the writable fields that the client sent onto the object. |
+| `delete(obj)` | `await self.session.delete(obj)`: marks the row for deletion. |
 
-None of them commits. The handler, or a `write_action` block, commits.
+None of them flushes or commits. After the business method, the commit
+bracket saves the object that it returns. It adds the object to the session
+when it is new, flushes, refreshes the object and loads it with the view's
+loader options. Then it runs `before_action_commit`, commits and runs
+`after_action_commit`.
 
-The same operations are functions in {mod}`fr.objects <fastapi_restly.objects>`,
-for code outside a view:
+So an override calls `super()`, and changes the object before or after that
+call. To build the object in another way, build it yourself and return it:
+
+```python
+    async def create(self, data):
+        # this model's constructor takes the values in another form
+        return Product.from_catalog_entry(data.catalog_entry)
+```
+
+The handler has already checked the references in `data`
+(`fr.IDRef` and `fr.MustExist`, see [Relationships](relationships.md)). So an object that you build yourself
+keeps those rules, and the bracket adds and saves it.
+
+:::{admonition} Details
+:class: details
+
+The functions in {mod}`fr.objects <fastapi_restly.objects>` are for another
+model and for code outside a view:
 {func}`async_make_new_object <fastapi_restly.objects.async_make_new_object>`,
 {func}`async_update_object <fastapi_restly.objects.async_update_object>`,
 {func}`async_save_object <fastapi_restly.objects.async_save_object>` and
 {func}`async_delete_object <fastapi_restly.objects.async_delete_object>`, and
 their sync versions. See
-[The same operations outside a view](#advanced-object-helpers). These
-functions do not call `authorize` or the hooks. They only build, change, save
-or delete.
+[The same operations outside a view](#advanced-object-helpers). They do not
+call `authorize` or the hooks. `async_make_new_object` and
+`async_update_object` check the references too. In a CRUD route the handler
+has checked them first, and the second check does not query the database
+again.
+
+The save writes every change in the session. It refreshes the object that the
+business method returns, and every other row of the view's model that the
+action wrote. A row of another model that the method changes, such as a line
+of an order, is written but not refreshed. When the change set a foreign key
+column of such a row, such as `line.product_id`, the save unloads that
+relationship. So a response that nests the line loads the new product, not
+the old one. A business method that you call yourself, outside a handler or a
+`write_action` block, writes nothing: the handler does the save.
+
+Up to 0.11, views had the methods `make_new_object`, `update_object` and
+`save_object`. They are removed. A view class that defines one fails when
+Python creates the class, with a message that names the replacement.
+:::
 
 (logic-outside-a-view)=
 ### Run the same logic in a script or a worker
@@ -339,10 +544,10 @@ class UserView(fr.AsyncRestView):
     model = User
     schema = UserSchema
 
-    async def create(self, schema_obj):
-        user = await self.make_new_object(schema_obj)
-        set_password(user, schema_obj.password)
-        return await self.save_object(user)
+    async def create(self, data):
+        user = await super().create(data)
+        set_password(user, data.password)
+        return user
 
 
 async def import_user(session, payload) -> User:
@@ -353,8 +558,8 @@ async def import_user(session, payload) -> User:
     return user
 ```
 
-The script owns its transaction, so it commits itself. Do not move logic out
-of the view before there is a second caller.
+The script has no handler, so it saves and commits itself. Do not move logic
+out of the view before there is a second caller.
 
 A value that every write path must set does not need this. Put it on the
 model ([Models](#write-path-values)), and every path gets it.
@@ -408,16 +613,22 @@ not call them, and neither do the `fr.objects` functions. The arguments are:
 
 - `action`: the name of the action, such as `"create"`, or the name that a
   custom route gives `write_action`. See [Action names](#action-names).
-- `new`: the saved object. On a delete, it is `None`.
-- `old`: a dict of the row's column values before the change, from
+- `new`: the row that the action is about, after the save. It is `None` when
+  the action removed the row, as a delete does, or when the action has no
+  single row.
+- `old`: a dict of that row's column values before the action, from
   {meth}`snapshot <fastapi_restly.views.BaseRestView.snapshot>`. It holds only
-  the columns that were loaded. On a create, it is `None`.
+  the columns that were loaded. It is `None` when the row is new, as on a
+  create, or when the action has no single row.
 
-With `old`, a hook can check what changed:
+So `old` and `new` tell what happened: a new row has no `old`, a removed row
+has no `new`, and a changed row has both. This is the same for the CRUD
+handlers and for every `write_action` block. So a hook can check what changed
+without a list of routes:
 
 ```python
     async def after_action_commit(self, action, new, old=None):
-        if action == "update" and old["status"] != new.status:
+        if old and new and old["status"] != new.status:  # PATCH, archive, ...
             await notify_status_change(new.id, new.status)
 ```
 
@@ -429,20 +640,40 @@ business method or in `before_action_commit`.
 :::{admonition} Details
 :class: details
 
-On a delete, `new` is `None` and `old` holds the columns of the removed row. A
-delete that must finish outside the request can mark the row in `delete`, as a
-[soft delete](#soft-delete-recipe) does. After the commit,
+After a delete, `new` is `None` and `old` holds the columns of the removed
+row. A [soft delete](#soft-delete-recipe) keeps the row, so `new` is the row
+with its new timestamp. A delete that must finish outside the request can
+mark the row in `delete` in the same way. After the commit,
 `after_action_commit` starts the real delete:
 
 ```python
     async def delete(self, obj):
-        obj.status = "pending_deletion"
-        await self.session.flush()  # no super(): the row stays
+        obj.status = "pending_deletion"  # no super(): the row stays
 
     async def after_action_commit(self, action, new, old=None):
         if action == "delete":
-            await enqueue_async_delete(old["id"])  # a worker deletes the row
+            await enqueue_async_delete(new.id)  # a worker deletes the row
 ```
+
+`old` comes from the action, not from the database. A create always gives
+`old=None`, also when your `create` returns a row that exists already, such
+as a tag with the same name. A hook that reads `old is None` as "a new row"
+is wrong on that path. To give the hooks the stored values, look the row up
+in a custom route, and change it in a `write_action` block with the row as
+`obj`.
+
+Code that a route runs after its `write_action` block also runs after the
+commit, but only when the block commits itself. Inside
+[`shared_write_action_commit()`](#shared-write-action-commit), or inside the
+block of another action, that code runs before the commit. A hook runs after
+the commit in both cases. So work that reads the committed row, such as
+starting a job, goes in `after_action_commit`.
+
+Restly finds `new` from the state of the row after the flush, as SQLAlchemy
+reports it. A row that the action deleted with `session.delete()` or with an
+ORM statement such as `delete(Post)` is gone. A Core `delete()` on the table
+does not tell the session, so the refresh of the row fails with SQLAlchemy's
+`InvalidRequestError`. Delete the row that `obj` names through the ORM.
 :::
 
 (after-action-commit-raises)=
@@ -507,14 +738,13 @@ When Restly registers the view, an endpoint method that the class defines
 replaces the inherited method with the same name. The other inherited
 endpoint methods stay.
 
-Registration also fills in the view's types where your method has no
-annotation, or `Any`. `id` gets
-{attr}`id_type <fastapi_restly.views.BaseRestView.id_type>`, `schema_obj`
-gets {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>`
-or {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>`,
-and the return annotation gets the route's default response model. Restly
-keeps an annotation that you write, so `schema_obj: ProductReplace` validates
-the request body against `ProductReplace`. `list_params` is the exception: it
+The built-in endpoint methods get the view's types from markers, such as
+`get_one_endpoint(self, id: ViewID) -> ViewResponse`. A replacement gets the
+view's types only where it uses the markers too; see
+[Name the view's classes in a custom route](#name-the-response-classes). A
+parameter or a return without an annotation gets no type. Restly keeps an
+annotation that you write, so `data: ProductReplace` validates the
+request body against `ProductReplace`. `list_params` is the exception: it
 always gets the view's
 {attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`.
 :::
@@ -531,7 +761,7 @@ header. Keep the `list_params` parameter to keep Restly's
 import fastapi
 import json
 
-ProductResponse = fr.schemas.derive_schema_response(ProductSchema)
+from fastapi_restly.views import ViewResponse
 
 
 @fr.include_view(app)
@@ -540,7 +770,7 @@ class ProductView(fr.AsyncRestView):
     model = Product
     schema = ProductSchema
 
-    @fr.get("/", response_model=list[ProductResponse])
+    @fr.get("/", response_model=list[ViewResponse])
     async def get_many_endpoint(self, list_params):
         result = await self.handle_get_many(list_params)
         serialized = [
@@ -555,10 +785,10 @@ class ProductView(fr.AsyncRestView):
 ```
 
 The route sends a plain list, not the default envelope, so it names its
-`response_model`. Without it, registration documents the envelope in
-OpenAPI, and generated clients expect the wrong body.
+`response_model`: a list of the view's response class. Without it, OpenAPI
+shows no schema for the response.
 [Name the view's classes in a custom route](#name-the-response-classes)
-explains `derive_schema_response`.
+explains the markers, such as `ViewResponse`.
 
 ### Share a changed route across views
 
@@ -566,9 +796,12 @@ When several views need the same contract, put the replacement in a mixin.
 List the mixin before the view class, so Python finds its method first:
 
 ```python
+from fastapi_restly.views import ViewID, ViewResponse
+
+
 class DeleteReturnsObjectMixin:
     @fr.delete("/{id}", status_code=200)
-    async def delete_endpoint(self, id):
+    async def delete_endpoint(self, id: ViewID) -> ViewResponse:
         obj = await self.get_one(id)
         serialized = self.to_single_response(obj).model_dump(mode="json")
         await self.handle_delete(id)
@@ -582,10 +815,13 @@ class ProductView(DeleteReturnsObjectMixin, fr.AsyncRestView):
     schema = ProductSchema
 ```
 
+`ViewID` and `ViewResponse` give each view that uses the mixin its own id
+type and response class.
+
 The [React Admin](react_admin.md) views use this pattern. They replace
 {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>`
-for the `ra-data-simple-rest` contract, and keep the handlers and business
-methods.
+for the `ra-data-simple-rest` contract, and keep the handlers, the loads and
+the business methods.
 
 (custom-read-route)=
 ## Add a custom read route
@@ -598,6 +834,25 @@ loads the row through the scope, so a row that the caller cannot see is a
 404. Then it calls `authorize("get_one", obj=row)`, as `GET /{id}` does.
 {meth}`get_one <fastapi_restly.views.RestView.get_one>` alone also loads
 through the scope, but it does not call `authorize`.
+
+A read of your own starts from
+{meth}`self.select() <fastapi_restly.views.BaseRestView.select>`: the view's
+model with its scope and its loader options. So the rows are the ones that
+the view shows, and each row loads what the response needs:
+
+```python
+    @fr.get("/recent")
+    async def recent(self) -> list[ViewResponse]:
+        await self.authorize(fr.Action.GET_MANY)
+        stmt = self.select().order_by(Post.created_at.desc()).limit(5)
+        return list(await self.session.scalars(stmt))
+```
+
+`ViewResponse` from `fastapi_restly.views` stands for the view's response
+class. The route declares a list of it, so Restly passes each row through
+`to_single_response`, as the list route does; see
+[The response of a custom route](#custom-route-response). The route builds
+its own read, so it calls `authorize` itself.
 
 The SaaS example's `GET /users/me` returns the caller's own row:
 
@@ -612,9 +867,10 @@ The SaaS example's `GET /users/me` returns the caller's own row:
 :::{admonition} Details
 :class: details
 
-`UserResponse` is the view's response class, so OpenAPI shows the same type
-as for `GET /users/{id}`. See
-[Name the view's classes in a custom route](#name-the-response-classes). The
+`ViewResponse` stands for the view's response class, `UserResponse`, so
+OpenAPI shows the same type as for `GET /users/{id}`, and the row goes
+through the view's response step
+([The response of a custom route](#custom-route-response)). The
 route `/me` works beside `/{id}`, because the item routes match only an
 integer id ([Item paths and static routes](#item-route-matching)).
 
@@ -632,21 +888,78 @@ project's tasks.
 {meth}`get_one <fastapi_restly.views.RestView.get_one>` take a SQLAlchemy
 boolean expression in place of the id. The expression picks the row instead
 of the primary key. Everything else about the load stays the same: the view's
-[scope](#view-scope), the relationships that the response loads, and the 404.
+[scope](#view-scope), the loader options, and the 404.
 
 ```python
-    @fr.get("/by-email/{email}", response_model=UserResponse)
-    async def get_by_email(self, email: str):
-        user = await self.handle_get_one(User.email == email)
-        return self.to_response(user)
+    @fr.get("/by-email/{email}")
+    async def get_by_email(self, email: str) -> ViewResponse:
+        return await self.handle_get_one(User.email == email)
+```
+
+When every item route takes the other key, override
+{meth}`where_id <fastapi_restly.views.BaseRestView.where_id>` instead. It
+gets the id from the path and returns the WHERE that picks the row. Set
+{attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` to the type of
+the value in the path:
+
+```python
+from sqlalchemy import ColumnElement
+
+
+@fr.include_view(app)
+class RecipeView(fr.AsyncRestView):
+    prefix = "/recipes"
+    model = Recipe
+    schema = RecipeSchema
+    id_type = str
+
+    def where_id(self, id: str) -> ColumnElement[bool]:
+        return Recipe.slug == id
+```
+
+Now `GET`, `PATCH` and `DELETE /recipes/{slug}` find the recipe by its slug,
+and so does `self.get_one(slug)` in your own routes. To change the error for
+a row that does not exist, override
+{meth}`not_found <fastapi_restly.views.BaseRestView.not_found>`. It returns
+the exception that `get_one` raises:
+
+```python
+    def not_found(self, id: str | None) -> Exception:
+        return fr.exc.NotFound(f"No recipe has the slug {id!r}")
 ```
 
 :::{admonition} Details
 :class: details
 
-Combine columns with `sqlalchemy.and_(...)`. This is also how a custom route
-reaches a row of a model with a composite primary key. A plain id cannot name
-such a row, and passing one raises `NotImplementedError`.
+`where_id` is a plain `def`, also on an async view: it builds SQL and runs
+no query. `not_found` may be `async def` on an async view, and Restly awaits
+it. When a route loads by an expression, `not_found` gets `None`, because the
+404 body is no place for SQL. A hook that returns the wrong kind of value
+raises `TypeError`.
+
+Combine columns with `sqlalchemy.and_(...)`. This is how a route reaches a
+row of a model with a composite primary key. A plain id cannot name such a
+row, so a view of such a model must override `where_id` to read the parts
+from the path, such as `"3-7"`. Set `id_type = str` too: without it, the
+path takes only an integer, and `/seats/3-7` is a 404 before `where_id`
+runs. Then the default item routes work for the model:
+
+```python
+class SeatView(fr.AsyncRestView):
+    prefix = "/seats"
+    model = Seat
+    id_type = str  # the id in the path is "3-7"
+
+    def where_id(self, id: str) -> ColumnElement[bool]:
+        row, _, number = id.partition("-")
+        if not (row.isdigit() and number.isdigit()):
+            raise self.not_found(id)
+        return sqlalchemy.and_(Seat.row == int(row), Seat.number == int(number))
+```
+
+A view that keeps the default `where_id` fails when it registers, unless it
+leaves the item routes out with
+{attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>`.
 
 The expression narrows the read inside the scope. It never reaches past it,
 so a row that the view hides stays a 404 under any key. Only
@@ -655,12 +968,19 @@ sees. When more than one row matches, Restly raises SQLAlchemy's
 `MultipleResultsFound` and does not return the first row: a key that matches
 several rows is a bug in the expression.
 
+The expression, and the one that `where_id` returns, compares columns of the
+view's model. A column of another table raises `TypeError`, because SQL would join every row of that table and
+could pick a wrong row. For a condition on a related row, use `.has()` or
+`.any()`, such as `Book.shelf.has(Shelf.code == code)`.
+
 {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` and
 {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` take the
 same expression. So a custom `PATCH /users/by-email/{email}` route that calls
-`handle_update(User.email == email, schema_obj)` runs the same steps as
+`handle_update(User.email == email, data)` runs the same steps as
 `PATCH /users/{id}`. The SaaS example reads and updates projects by slug in
-[`app/projects/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py).
+[`app/projects/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py),
+next to the routes by id. That is why it passes an expression, and does not
+override `where_id`.
 :::
 
 (custom-action-route)=
@@ -670,12 +990,13 @@ An action changes state: publish, archive, recalculate. Declare it with
 {func}`@fr.post <fastapi_restly.views.post>`, or with
 {func}`@fr.patch <fastapi_restly.views.patch>` or
 {func}`@fr.delete <fastapi_restly.views.delete>`. Most actions take one of
-three forms.
+four forms.
 
 **Change one row in a `write_action` block.** Load the row with
 {meth}`get_one <fastapi_restly.views.RestView.get_one>`. Then change it inside
 {meth}`write_action <fastapi_restly.views.RestView.write_action>`, under the
-name of the action. The blog example publishes a post:
+name of the action. `obj` names the row that the action is about. The blog
+example publishes a post:
 
 ```{literalinclude} ../example-projects/blog/blog/main.py
 :language: python
@@ -683,13 +1004,16 @@ name of the action. The blog example publishes a post:
 ```
 
 When the block starts, Restly calls `authorize("publish", obj=post)` and takes
-the snapshot of the row. When the block ends, Restly runs
-`before_action_commit`, commits, and runs `after_action_commit`, each with the
-action name `"publish"`. If the block raises, as it does here for a post that
-is already published, nothing is committed. The route loads with `get_one`,
-not with `handle_get_one`, because `write_action` authorizes the action
-itself. [Authorize a custom action](#authorize-custom-actions) shows how
-`authorize` handles a new name.
+the snapshot of the row. With `data=`, it also checks the references in the
+data, as a CRUD write does. When the block ends, Restly saves, as after a
+business method: it flushes, refreshes `post` and loads it with the view's
+loader options. Then it runs `before_action_commit`, commits, and runs
+`after_action_commit`, each with the action name `"publish"`. So the block
+only changes the row. If the block raises, as it does here for a post that is
+already published, nothing is committed. The route loads with `get_one`, not
+with `handle_get_one`, because `write_action` authorizes the action itself.
+[Authorize a custom action](#authorize-custom-actions) shows how `authorize`
+handles a new name.
 
 The SaaS example uses this form for the task changes `POST /tasks/{id}/start`,
 `complete` and `reopen`
@@ -705,44 +1029,101 @@ route then runs every step of that CRUD action, with `authorize` and the
 commit. The SaaS example's `PATCH /users/me` updates the caller's own row:
 
 ```python
-    @fr.patch("/me", response_model=UserResponse)
-    async def update_current_user(self, request: UpdateMeRequest) -> Any:
-        user = await self.handle_update(Current.user_id(), request)
-        return self.to_single_response(user)
+    @fr.patch("/me")
+    async def update_current_user(self, request: UpdateMeRequest) -> ViewResponse:
+        return await self.handle_update(Current.user_id(), request)
 ```
 
 `UpdateMeRequest` has only `name` and `email`, so this route cannot change
-other fields.
-{meth}`update_object <fastapi_restly.views.RestView.update_object>` writes
-the fields of the schema it receives, and only the fields that the client
-sent. A change to the `update` business method applies here too.
+other fields. The default `update` writes the fields of the schema it
+receives, and only the fields that the client sent. A change to the `update`
+business method applies here too.
 
 **Create in a block of your own.** Some creates need more than `create` does,
-such as a parent row and its child rows. Use a `write_action` block without
-`obj`, and set the new object on the handle before the block ends:
+such as a parent row and its child rows. Build the new object, and pass it to
+`write_action` as `obj`:
 
 ```python
-    async with self.write_action("create", data=schema_obj) as w:
-        obj = await self.make_new_object(schema_obj)
-        w.obj = await self.save_object(obj)
-    return self.to_response(w.obj)
+    @fr.post("/with-lines", status_code=201)
+    async def create_with_lines(self, data: OrderWithLines) -> ViewResponse:
+        order = Order(customer_id=data.customer_id)
+        async with self.write_action("create", obj=order, data=data):
+            order.lines = [OrderLine(sku=line.sku) for line in data.lines]
+        return order
 ```
 
-The hooks receive `w.obj` as `new`. If the block ends without it, Restly
-raises `RuntimeError`. For a write that has no single object, pass `obj=None`
-instead. The SaaS example's `POST /uploads` saves an upload and its lines this
-way
-([`app/uploads/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/uploads/views.py)).
-`POST /task-labels/create-and-attach` saves a label and its link to a task in
-one block
-([`app/labels/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/labels/views.py)).
+The order is not in the database yet, so `authorize` gets `obj=None`, as on
+`POST /`, and `old` is `None`. Pass the request as `data=`: then
+`authorize` gets it, so a create rule that reads the payload works here too.
+Restly checks the references in `data` before the block, as the create
+handler does. Then it adds the order to the session. When the block ends, it
+saves the order with the lines that its relationship holds, and the hooks
+receive the order as `new`.
+
+The route builds the order before the block, so before `authorize` and the
+reference check. That is safe, because building an object writes nothing. A
+check of the built object, such as a rule about its lines, goes inside the
+block, where `authorize` has already passed.
+
+(write-several-rows)=
+**Change several rows in one action.** Pass `obj=None`: the action has no
+single row. When the block ends, Restly saves every row of the view's model
+that the block changed. It reloads them together, with the view's loader
+options, so each row comes back as the database has it:
+
+```python
+    @fr.put("/positions")
+    async def reorder(self, items: list[CookbookPosition]) -> list[ViewResponse]:
+        cookbooks = []
+        async with self.write_action("reorder", obj=None, data=items):
+            for item in items:
+                cookbook = await self.get_one(item.id)
+                cookbooks.append(await self.update(cookbook, item))
+        return cookbooks
+```
+
+`authorize` gets `obj=None`, once, and the hooks get `new=None` and
+`old=None`. The block calls the business method `update`, so a change to it
+applies here too. Restly checks the references in each schema of the list.
+The reload runs one query for each 500 rows, also for rows that the route
+does not return.
 
 :::{admonition} Details
 :class: details
 
-Name the view's response classes in `response_model`, so OpenAPI shows the
-same types as for the CRUD routes: see
-[Name the view's classes in a custom route](#name-the-response-classes). A route
+A block that needs the id of the new row before it ends, for rows that refer
+to it by a plain id, calls `await self.session.flush()`. Restly has added the
+new object to the session, so the flush inserts it. The SaaS example's
+`POST /uploads` does this for an upload and its lines, and
+`POST /projects/{id}/clone` does it for a project and its copied tasks
+([`app/uploads/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/uploads/views.py),
+[`app/projects/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py)).
+Rows of another model, such as the lines, are written but not refreshed.
+
+When each row of several needs its own `authorize` call and its own hooks,
+call the handler for each row inside
+[`shared_write_action_commit()`](#shared-write-action-commit) instead. Or call
+`authorize("update", obj=cookbook, data=item)` in the loop yourself.
+
+A block does not take a list as `obj`. Inside the block, nothing is written
+until it ends, so a query there does not see your changes. When the query
+must see them, call `session.flush()` first.
+
+After the block, `obj` has the relationships of the view's loader options,
+and the ones that the model loads eagerly, such as with `lazy="selectin"`.
+The save unloads the rest, so a changed foreign key never shows the old
+related row. This holds also for a relationship that the
+route loaded before the block. On an async view, read such a relationship
+after the block with `await obj.awaitable_attrs.<name>`, or add it to
+{meth}`get_loader_options <fastapi_restly.views.BaseRestView.get_loader_options>`.
+
+Restly checks the references in `data`, also in the schemas nested in it and
+in each item of a list; see [Check that the referenced row exists](#reference-exists).
+
+The routes above declare `ViewResponse`, or a list of it. So Restly sends
+the rows that they return through the view's response step, and OpenAPI
+shows the same types as for the CRUD routes; see
+[The response of a custom route](#custom-route-response). A route
 that builds a schema with `model_construct()` skips validation, so its
 reference fields need the right form: see
 [Build references in a custom route](#idref-custom-routes).
@@ -751,7 +1132,8 @@ reference fields need the right form: see
 (shared-write-action-commit)=
 ## Commit several writes together
 
-Each handler and each `write_action` block commits on its own. To commit
+A handler or a `write_action` block commits on its own, unless it runs
+inside another `write_action` block, which then owns the commit. To commit
 several of them at once, put them inside a
 {meth}`shared_write_action_commit() <fastapi_restly.views.AsyncRestView.shared_write_action_commit>`
 block. The outermost block commits once. Then the queued `after_action_commit`
@@ -759,42 +1141,49 @@ hooks run:
 
 ```python
     @fr.post("/bulk", status_code=201)
-    async def bulk_create(self, items: list[OrderCreate]):
+    async def bulk_create(self, items: list[OrderCreate]) -> list[ViewResponse]:
         async with self.shared_write_action_commit():
             orders = [await self.handle_create(item) for item in items]
-        return [self.to_response(order) for order in orders]
+        return orders
 ```
 
 Inside the block, each action still calls `authorize`, takes the snapshot,
 makes its change and runs `before_action_commit`. Then it flushes and returns.
 Its changes are not committed yet, and its `after_action_commit` has not run.
-So build the responses after the block, as in the example. Do the same for
-code that needs an after-hook to have run. On `fr.RestView`, use `with` and
-the sync handlers. The method has the same name.
+So code after a handler call inside the block runs before the commit. Code
+that needs the commit, or an after-hook that has run, goes after the block,
+or in `after_action_commit`. The route above returns the orders after the
+block, so Restly builds their responses after the commit. On `fr.RestView`, use
+`with` and the sync handlers. The method has the same name.
 
 :::{admonition} Details
 :class: details
 
-The block can also hold other writes, for an operation on more than one
-model:
+The block can also hold the handlers of other views, for an operation on more
+than one model. Each create runs the steps of its own view: `authorize`, the
+reference checks, the save and the hooks. The SaaS example creates a label and
+attaches it to a task:
 
-```python
-    async with self.shared_write_action_commit():
-        project = await self.handle_create(project_data)
-        self.session.add_all(
-            Task(project_id=project.id, title=task.title)
-            for task in source_tasks
-        )
-    return self.to_response(project)
+```{literalinclude} ../example-projects/saas/app/labels/views.py
+:language: python
+:pyobject: TaskLabelView.create_and_attach
 ```
 
-The new project, the rows that its `before_action_commit` writes, and the
-copied tasks are committed together. If any part fails, none of them is
-committed.
+The label's handler saves the label, so the link gets its id. The label, the
+link and the rows that their `before_action_commit` hooks write are committed
+together. If any part fails, none of them is committed. Code that only
+belongs to one action, such as copied child rows, goes in that action's
+`write_action` block instead, as the clone route does.
 
 Blocks inside each other share the commit when their views share a session.
-An exception that leaves a block cancels the shared commit and drops the
-queued hooks. This also happens when an outer block catches the exception.
+A `write_action` block counts as such a block, so a handler that you call
+inside it joins its commit. The handler saves, so it also writes the changes
+of the outer block so far: set the required values of the block's objects
+before you call it.
+An exception that leaves a `shared_write_action_commit()` block cancels the
+shared commit and drops the queued hooks. This also happens when an outer
+block catches the exception. For a write action that raises inside the
+block, see the savepoint below.
 Rolling back stays the job of the session's owner. A direct `session.commit()`
 inside the block raises `RuntimeError`, because the outermost block owns the
 commit.
@@ -817,7 +1206,12 @@ that savepoint:
 
 The savepoint holds the row's change and the rows that its
 `before_action_commit` wrote. So a failed row rolls back both, and its queued
-after-hook is dropped. Inside the shared block, the row's error stays a raw
+after-hook is dropped. Without the savepoint, a row that failed after its
+change began, such as a `create` that refuses after `super().create()`, would
+leave a half-done change in the session. So when the route catches such an
+error without a savepoint, the commit raises `RuntimeError`, and nothing is
+committed. An error before the change, from `authorize` or the reference
+check, changed nothing, and the commit goes on. Inside the shared block, the row's error stays a raw
 `IntegrityError`, so the route can catch it. An `IntegrityError` that escapes
 the shared block, or that its commit raises, becomes a `409`; see
 [Unique values and other database conflicts: 409](#default-exception-handling). After the shared commit, the after-hooks of the saved
@@ -827,9 +1221,8 @@ The SaaS example runs both forms. `POST /tasks/bulk`, `/tasks/bulk-delete`
 and `/tasks/import-csv` put a savepoint around each row inside one
 `shared_write_action_commit()` block
 ([`app/tasks/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/tasks/views.py)).
-`POST /projects/{id}/clone` commits a project, its outbox event and the copied
-tasks together
-([`app/projects/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py)).
+`POST /task-labels/create-and-attach` commits a label and its link together
+([`app/labels/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/labels/views.py)).
 :::
 
 ## What is available on `self`
@@ -849,13 +1242,19 @@ as the current user, is also set on `self` for each request. See
 
 ## Internals
 
-The CRUD handlers and `write_action` share one implementation of the commit
-bracket: {func}`async_run_write_action <fastapi_restly.views.async_run_write_action>`
-and {func}`run_write_action <fastapi_restly.views.run_write_action>`. Each one
-calls `authorize`, takes the snapshot, runs a function that makes the change,
-and then runs `before_action_commit`, the commit and `after_action_commit`.
-Inside a `shared_write_action_commit()` block, it flushes instead of
-committing and queues the after-hook for the outermost block.
+The CRUD handlers and `write_action` share one private implementation of the
+commit bracket. It calls `authorize`, checks the references in `data`, takes
+the snapshot, and runs the change under `session.no_autoflush`. Then it
+saves: it flushes and refreshes the subject. Then one reload with the view's
+loader options covers the subject and the other written rows of the view's
+model. It does not apply the scope, so a row that the action moved out of it,
+such as a soft-deleted row, still comes back. Then it runs
+`before_action_commit`, the commit and `after_action_commit`. The outermost
+bracket on a session owns the commit. So inside a `write_action` or a
+`shared_write_action_commit()` block, a bracket flushes instead of
+committing and queues its after-hook for the outermost block. A handler
+hands the object that `create` or `update` returns to the bracket as the
+subject. `write_action` gets its subject from `obj`.
 
 ## See also
 

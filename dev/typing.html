@@ -616,11 +616,11 @@ in this order:</p>
 <td><p><code class="docutils literal notranslate"><span class="pre">BaseSchema</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p>the create body</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">schema_obj</span></code> in <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">data</span></code> in <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">pydantic.BaseModel</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p>the update body</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">schema_obj</span></code> in <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">data</span></code> in <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">pydantic.BaseModel</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p>the id type</p></td>
@@ -641,8 +641,8 @@ starter project names the model and the schema
 </div>
 <p>The parameters help most where you override
 <a class="reference internal" href="lifecycle.html#view-request-steps"><span class="std std-ref">a view method</span></a>, usually a business method:
-<code class="docutils literal notranslate"><span class="pre">get_many</span></code>, <code class="docutils literal notranslate"><span class="pre">get_one</span></code>, <code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code> or <code class="docutils literal notranslate"><span class="pre">delete</span></code>. Here is a view with all
-five parameters and typed overrides:</p>
+<code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code> or <code class="docutils literal notranslate"><span class="pre">delete</span></code>. Here is a view with all five parameters and
+typed overrides:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnElement</span>
 
 
@@ -671,19 +671,17 @@ five parameters and typed overrides:</p>
     <span class="n">schema_create</span> <span class="o">=</span> <span class="n">UserCreate</span>
     <span class="n">schema_update</span> <span class="o">=</span> <span class="n">UserUpdate</span>
 
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_one</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="n">ColumnElement</span><span class="p">[</span><span class="nb">bool</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">scope</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">views</span><span class="o">.</span><span class="n">ReadScope</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">User</span><span class="p">:</span>
-        <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">scope</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">where_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColumnElement</span><span class="p">[</span><span class="nb">bool</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="n">User</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="nb">id</span>
 
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">:</span> <span class="n">UserCreate</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">User</span><span class="p">:</span>
-        <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">schema_obj</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">UserCreate</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">User</span><span class="p">:</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
 
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">:</span> <span class="n">User</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">:</span> <span class="n">UserUpdate</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">User</span><span class="p">:</span>
-        <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">schema_obj</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">:</span> <span class="n">User</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">UserUpdate</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">User</span><span class="p">:</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>With these parameters, <code class="docutils literal notranslate"><span class="pre">schema_obj</span></code> in <code class="docutils literal notranslate"><span class="pre">create</span></code> is a <code class="docutils literal notranslate"><span class="pre">UserCreate</span></code>, <code class="docutils literal notranslate"><span class="pre">obj</span></code> in
+<p>With these parameters, <code class="docutils literal notranslate"><span class="pre">data</span></code> in <code class="docutils literal notranslate"><span class="pre">create</span></code> is a <code class="docutils literal notranslate"><span class="pre">UserCreate</span></code>, <code class="docutils literal notranslate"><span class="pre">obj</span></code> in
 <code class="docutils literal notranslate"><span class="pre">update</span></code> is a <code class="docutils literal notranslate"><span class="pre">User</span></code>, and the type checker checks the return types too. Note
 these points:</p>
 <ul class="simple">
@@ -691,14 +689,13 @@ these points:</p>
 loaded <code class="docutils literal notranslate"><span class="pre">obj</span></code> and the update body. The handler
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update</span></code></a> loads
 the row, and returns 404 if it does not exist, before <code class="docutils literal notranslate"><span class="pre">update</span></code> runs.</p></li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">id</span></code> of <code class="docutils literal notranslate"><span class="pre">get_one</span></code> is <code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">|</span> <span class="pre">ColumnElement[bool]</span></code>, because a SQLAlchemy
-expression can take the place of the primary key, as in
-<a class="reference internal" href="lifecycle.html#natural-key-route"><span class="std std-ref">Look a row up by another key</span></a>. If you annotate it as
-<code class="docutils literal notranslate"><span class="pre">id:</span> <span class="pre">int</span></code>, the type checker rejects the override, because it accepts less
-than the base method.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">get_one</span></code> and <code class="docutils literal notranslate"><span class="pre">get_many</span></code> take a keyword argument <code class="docutils literal notranslate"><span class="pre">scope</span></code>, which the
-handlers always pass. An override must declare it and pass it on; see
-<a class="reference internal" href="scopes.html#per-read-scope"><span class="std std-ref">Read other rows on one route</span></a>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">where_id</span></code> gets the id from the path, so its type is the id type, the last
+parameter. It returns a SQL condition, a <code class="docutils literal notranslate"><span class="pre">ColumnElement[bool]</span></code>; see
+<a class="reference internal" href="lifecycle.html#natural-key-route"><span class="std std-ref">Look a row up by another key</span></a>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">get_one</span></code> and <code class="docutils literal notranslate"><span class="pre">get_many</span></code> are final, so you call them and do not override
+them. A type checker reports an override, as it does for a handler. Their
+return types follow the model parameter: <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">self.get_one(id)</span></code> is a
+<code class="docutils literal notranslate"><span class="pre">User</span></code>, and so is each row of <code class="docutils literal notranslate"><span class="pre">self.select()</span></code>.</p></li>
 <li><p>For the response type, give the view’s schema: the response class that
 Restly builds is a subclass of it. A view that sets its own
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_response" title="fastapi_restly.views.BaseRestView.schema_response"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_response</span></code></a>
@@ -742,11 +739,13 @@ enough:</p>
 <p>When a custom route calls the view’s methods, the parameters type those
 calls too: <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one(id)</span></code></a>
 returns the model, and
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update(id,</span> <span class="pre">schema_obj)</span></code></a>
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update(id,</span> <span class="pre">data)</span></code></a>
 takes the update body.</p>
 <p>The classes that
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.derive_schema_response" title="fastapi_restly.schemas.derive_schema_response"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_schema_response()</span></code></a>
-returns cannot be used in an annotation; see
+returns cannot be used in an annotation. In a route, use the markers of
+<code class="docutils literal notranslate"><span class="pre">fastapi_restly.views</span></code> instead, such as <code class="docutils literal notranslate"><span class="pre">ViewResponse</span></code>: a type checker reads
+each marker as <code class="docutils literal notranslate"><span class="pre">Any</span></code>. See
 <a class="reference internal" href="schemas.html#name-the-response-classes"><span class="std std-ref">Name the view’s classes in a custom route</span></a>.</p>
 </section>
 <section id="what-a-type-checker-cannot-see">

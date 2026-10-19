@@ -514,11 +514,13 @@ FastAPI routes. This is what happens when a client sends <code class="docutils l
 FastAPI first checks the request body against the update body,
 <code class="docutils literal notranslate"><span class="pre">ProjectUpdate</span></code>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>PATCH /projects/1
-  └─ update_endpoint(id, schema_obj)      # endpoint method: HTTP contract
-       ├─ handle_update(id, schema_obj)   # handler: runs the steps
+  └─ update_endpoint(id, data)            # endpoint method: HTTP contract
+       ├─ handle_update(id, data)         # handler: runs the steps
        │    ├─ get_one(id)                # loads through the scope, or 404
        │    ├─ authorize(&quot;update&quot;, ...)   # may the caller do this? Or 403
-       │    ├─ update(obj, schema_obj)    # business method: the change
+       │    ├─ check the references       # an id that does not exist: 404
+       │    ├─ update(obj, data)          # business method: the change
+       │    ├─ save                       # flush and refresh the row
        │    ├─ before_action_commit(...)
        │    ├─ commit
        │    └─ after_action_commit(...)
@@ -543,8 +545,10 @@ that Restly generates from the model. See
 <a class="reference internal" href="schemas.html"><span class="std std-doc">Schemas &amp; Validation</span></a>.</p></li>
 <li><p><strong>Endpoint method, handler and business method</strong>: the three layers of each
 CRUD route. To change what an action does, override the business method,
-such as <code class="docutils literal notranslate"><span class="pre">update</span></code>. To change the HTTP contract, such as the status code,
-replace the endpoint method. A handler is final. See
+such as <code class="docutils literal notranslate"><span class="pre">update</span></code>. A read has a final load, <code class="docutils literal notranslate"><span class="pre">get_one</span></code> or <code class="docutils literal notranslate"><span class="pre">get_many</span></code>, in
+place of a business method: the scope and the loader options decide what
+it reads. To change the HTTP contract, such as the status code, replace
+the endpoint method. A handler is final. See
 <a class="reference internal" href="lifecycle.html"><span class="std std-doc">Request Lifecycle &amp; Hooks</span></a>.</p></li>
 <li><p><strong>Commit</strong>: a write route commits after the business method.
 <code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code> runs just before the commit, and
@@ -601,8 +605,9 @@ share behavior through base classes.</p></li>
 to leave some routes out, and how to serve a child resource under its
 parent.</p></li>
 <li><p><a class="reference internal" href="lifecycle.html"><span class="std std-doc">Request Lifecycle &amp; Hooks</span></a>: the steps of a request, which
-method to override for each change, custom routes, what commits when,
-several writes in one commit, and the same logic in a script or a worker.</p></li>
+method to override for each change, a value on each row, a lookup by
+another key, custom routes, what commits when, several writes in one
+commit, and the same logic in a script or a worker.</p></li>
 <li><p><a class="reference internal" href="react_admin.html"><span class="std std-doc">React Admin</span></a>: connect react-admin to a view, the list
 format and the routes that react-admin expects, to-many id arrays, CORS,
 and a list that shows no rows.</p></li>
@@ -625,7 +630,8 @@ field names in JSON, such as camelCase.</p></li>
 <li><p><a class="reference internal" href="relationships.html"><span class="std std-doc">Relationships</span></a>: accept the id of another row, check
 that the row exists, return related objects, and fix <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>.</p></li>
 <li><p><a class="reference internal" href="responses.html"><span class="std std-doc">Responses</span></a>: what each route returns, the list envelope,
-and how to change the shape of one route or of all routes.</p></li>
+the response of a custom route, and how to change the shape of one route
+or of all routes.</p></li>
 <li><p><a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering &amp; Pagination</span></a>: the filters, the sort order and
 the pages that a client can use on a list, the keys that a view chooses,
 filters of your own, and list params that you write yourself.</p></li>

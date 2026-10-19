@@ -19,10 +19,11 @@ configuration and the model around such a view, in one file that runs.
 `include_view` also works as a direct call; see
 [Register a view](#register-a-view).
 
-Each route runs an endpoint method, a final handler and a business method.
-To change what a route does, you override the endpoint method or the business
-method; [Which method do I override](#which-method-to-override) maps each
-change to its method.
+Each route runs an endpoint method, a final handler, and a business method
+or, for a read, a final load. To change what a route does, you override the
+endpoint method or the business method, or set what the load reads;
+[Which method do I override](#which-method-to-override) maps each change to
+its method.
 
 (choose-async-or-sync)=
 ## Choose async or sync
@@ -110,10 +111,14 @@ route matches it. So a negative integer id does not match, even when the row
 exists. OpenAPI still shows the path as `/users/{id}`, with an integer or UUID
 parameter.
 
-A route that you declare yourself keeps the path you give it. To accept
-negative integer ids, replace each item endpoint you need with an untyped
-path such as `@fr.get("/{id}")`, and annotate its `id` parameter as `int`;
-see [Change the status code or headers of one route](#replace-endpoint-method).
+A route that you declare yourself keeps the path you give it. Restly adds
+the converter only to a path parameter annotated
+{data}`ViewID <fastapi_restly.views.ViewID>`; see
+[Name the view's classes in a custom route](#name-the-response-classes). To
+accept negative integer ids, replace each item endpoint you need with an
+untyped path such as `@fr.get("/{id}")`, and annotate its `id` parameter as
+`int`; see
+[Change the status code or headers of one route](#replace-endpoint-method).
 :::
 
 (crud-model-and-schemas)=
@@ -302,10 +307,10 @@ class ProjectTaskView(fr.AsyncRestView):
         fr.where_clause(Task.project_id == Parent.project_id),
     )
 
-    async def create(self, schema_obj):
-        task = await self.make_new_object(schema_obj)
+    async def create(self, data):
+        task = await super().create(data)
         task.project_id = Parent.project_id()
-        return await self.save_object(task)
+        return task
 ```
 
 `ProjectTaskView` differs from a flat view in these places:
@@ -354,11 +359,10 @@ override as a plain `def` without `await`.
 The project id comes from the path, not from the request body. `TaskSchema`
 marks `project_id` as {data}`fr.ReadOnly <fastapi_restly.schemas.ReadOnly>`,
 so the generated create and update schemas leave it out. The `create`
-override sets it from `Parent` after
-{meth}`make_new_object <fastapi_restly.views.AsyncRestView.make_new_object>`
-builds the task.
+override sets it from `Parent` after `super().create()` builds the task. The
+INSERT has the id, because Restly saves after `create` returns.
 
-Declare the foreign key with `init=False`. `make_new_object` builds the task
+Declare the foreign key with `init=False`. `super().create()` builds the task
 from the request body, which has no `project_id`. Without `init=False`, the
 model requires `project_id` in its constructor, and the create returns `500`.
 
@@ -476,10 +480,10 @@ class ProjectTaskView(ProjectScoped):
         fr.where_clause(Task.project_id == Parent.project_id),
     )
 
-    async def create(self, schema_obj):
-        task = await self.make_new_object(schema_obj)
+    async def create(self, data):
+        task = await super().create(data)
         task.project_id = Parent.project_id()
-        return await self.save_object(task)
+        return task
 ```
 
 `project_from_path` gets the company id from `company_from_path` as a FastAPI
@@ -541,9 +545,11 @@ The default CRUD routes have these limits:
 - A row is identified by one primary key column. The `{id}` path parameter
   takes the Python type of the key, so a UUID or string key needs no
   configuration. Reference fields such as `fr.MustExist[UUID, Model]` accept
-  these keys too. For a composite key, write a custom route that loads the
-  row by a condition ([Look a row up by another key](#natural-key-route)), or
-  use a {class}`View <fastapi_restly.views.View>` with explicit paths.
+  these keys too. For a composite key, set `id_type = str` and override
+  `where_id` to read the parts of the key from the path; see
+  [Look a row up by another key](#natural-key-route). Without `where_id`, a
+  view of such a model fails when it registers, unless it leaves out the
+  item routes.
 - Responses can contain nested objects, and lists can filter on
   relationships. Request bodies with nested objects are not supported in
   general. Use `MustExist`, `IDRef` or `IDSchema` to refer to other rows, or

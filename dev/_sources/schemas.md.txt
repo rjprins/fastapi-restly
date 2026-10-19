@@ -497,21 +497,21 @@ OpenAPI then shows them as one.
 (name-the-response-classes)=
 ## Name the view's classes in a custom route
 
-A custom route that returns a single object or a list can show the same
-types in OpenAPI as the CRUD routes. A route decorator runs in the class
-body, before Restly builds the response classes. So a custom route gets the
-classes from two functions, at module level. Each returns the same class that
-the view uses:
-{func}`derive_schema_response(schema) <fastapi_restly.schemas.derive_schema_response>`
-and
-{func}`derive_schema_list_response(schema_response, pagination=...) <fastapi_restly.schemas.derive_schema_list_response>`.
-Pass the view's pagination as it is, also when it is `None`:
+A custom route can show the same types in OpenAPI as the CRUD routes. A route
+decorator runs in the class body, before Restly builds the view's classes.
+So a custom route names them with markers from `fastapi_restly.views`. When
+the view registers, Restly puts the view's class in place of each marker:
+
+| Marker | The view's class | On `UserView` |
+|---|---|---|
+| {data}`ViewResponse <fastapi_restly.views.ViewResponse>` | {attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>` | `UserResponse` |
+| {data}`ViewListResponse <fastapi_restly.views.ViewListResponse>` | the list response, with the view's pagination | `UserListResponse` |
+| {data}`ViewCreate <fastapi_restly.views.ViewCreate>` | {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` | `UserCreate` |
+| {data}`ViewUpdate <fastapi_restly.views.ViewUpdate>` | {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` | `UserUpdate` |
+| {data}`ViewID <fastapi_restly.views.ViewID>` | {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` | `int` |
 
 ```python
-UserResponse = fr.schemas.derive_schema_response(UserSchema)
-UserListResponse = fr.schemas.derive_schema_list_response(
-    UserResponse, pagination=AppView.pagination
-)
+from fastapi_restly.views import ViewID, ViewListResponse, ViewResponse
 
 
 @fr.include_view(app)
@@ -520,40 +520,65 @@ class UserView(AppView):
     model = User
     schema = UserSchema
 
-    @fr.get("/inactive", response_model=UserListResponse)
-    async def inactive(self, list_params):
-        result = await self.handle_get_many(list_params, where=User.active.is_(False))
-        return self.to_response(result, fr.ResponseShape.LIST)
+    @fr.get("/inactive")
+    async def inactive(self, list_params) -> ViewListResponse:
+        return await self.handle_get_many(list_params, where=User.active.is_(False))
 
-    @fr.post("/{id}/activate", response_model=UserResponse, status_code=200)
-    async def activate(self, id: int):
+    @fr.post("/{id}/activate", status_code=200)
+    async def activate(self, id: ViewID) -> ViewResponse:
         user = await self.get_one(id)
         async with self.write_action("activate", obj=user):
             user.active = True
-        return self.to_response(user)
+        return user
 ```
 
 OpenAPI then shows `UserListResponse` and `UserResponse` for these routes,
-as for the CRUD routes. The SaaS example names its classes this way in
-[`app/projects/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py).
+as for the CRUD routes. A path parameter annotated `ViewID` gets the path
+converter of the id type, as the item routes do: here `/{id:int}`; see
+[Item paths](#item-route-matching).
+
+The routes return the list result and the row. Because they declare the
+view's response, Restly passes these through
+{meth}`to_response <fastapi_restly.views.BaseRestView.to_response>`, as the
+CRUD routes do; see
+[The response of a custom route](#custom-route-response).
+
+A marker stands for the class of the view that registers. So a route on a
+base view works for each view that subclasses it, with that view's classes.
+The `TrashView` of the SaaS example adds a trash list and a restore route to
+two views this way, in
+[`app/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py).
 
 :::{admonition} Details
 :class: details
 
-A view with its own `schema_response` passes that class to
-`derive_schema_list_response` instead.
+A marker works wherever the class could go: in a parameter annotation, in the
+return annotation, in `response_model=`, and inside another type, such as
+`list[ViewResponse]` or `ViewResponse | None`. `Annotated[ViewID, Path(ge=1)]`
+keeps the `Path(ge=1)`. A path that gives a converter, such as `/{id:str}`,
+keeps it.
 
-A function builds these classes, so type checkers do not accept them in an
-annotation, as in `data: UserResponse`. mypy also does not accept them inside
-a type in other places, as in `response_model=list[UserResponse]`. At runtime
-they are normal classes, so add `# type: ignore[valid-type]` on such a line.
+For a type checker, each marker is `Any`, so it accepts a marker in any
+annotation. A plain {class}`View <fastapi_restly.views.View>` has no model and
+no schema, so a route on it cannot use the markers: registration raises
+{class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`.
+
+To use the classes outside a route, or the classes of another view, build
+them with
+{func}`derive_schema_response(schema) <fastapi_restly.schemas.derive_schema_response>`
+and
+{func}`derive_schema_list_response(schema_response, pagination=...) <fastapi_restly.schemas.derive_schema_list_response>`.
+They return the same classes that the view uses. Pass the view's pagination
+as it is, also when it is `None`. A list response with another envelope than
+the view's has another shape, for example `data` without `total_count`.
+There are then two classes named `UserListResponse`, and Restly warns; see
+[Name your schemas](#name-your-schemas). A function builds these classes, so
+type checkers do not accept them in an annotation, as in
+`data: UserResponse`. At runtime they are normal classes, so add
+`# type: ignore[valid-type]` on such a line.
 
 A custom route that names `UserSchema` or `PaginatedEnvelope[UserSchema]`
-sends the same JSON, but shows a type of its own in OpenAPI. A route that
-passes a pagination with another envelope than the view's gets a list
-response of another shape, for example `data` without `total_count`. There
-are then two classes named `UserListResponse`, and Restly warns; see
-[Name your schemas](#name-your-schemas).
+sends the same JSON, but shows a type of its own in OpenAPI.
 :::
 
 (json-document-columns)=

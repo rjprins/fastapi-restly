@@ -104,7 +104,7 @@ the comments of an item, loads those rows through the relationship, without
 their scope. A filter or sort on a relationship field, such as
 `?items.name=x`, also joins the related table without its scope. Where
 embedded rows must be filtered, shape the view's schema, or override
-{meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`.
+{meth}`get_loader_options <fastapi_restly.views.BaseRestView.get_loader_options>`.
 
 For the same reason, a model does not follow the scope of a related model.
 To make it follow, give the model its own `default_scope` that names the
@@ -195,7 +195,7 @@ class DocumentView(fr.AsyncRestView):
 
 Like every scope, it covers every read of the view: the list, the total and
 `GET /{id}`. The update and delete routes load the row through it too, and so
-does a custom route that calls `get_one(id)`. Declare the rule as the model's
+does a custom route that calls `get_one(id)` or starts from `self.select()`. Declare the rule as the model's
 `default_scope` instead when every view and every reference check must
 follow it.
 
@@ -260,8 +260,7 @@ replaces the view's scope for this one read. So the trash list and the
 restore action can be routes on the same view, not a second view class:
 
 ```python
-ItemResponse = fr.schemas.derive_schema_response(ItemSchema)
-ItemListResponse = fr.schemas.derive_schema_list_response(ItemResponse)
+from fastapi_restly.views import ViewID, ViewListResponse, ViewResponse
 
 
 @fr.include_view(app)
@@ -271,17 +270,16 @@ class ItemView(fr.AsyncRestView):
     schema = ItemSchema
     # no scope declared: reads apply ItemClauses.default_scope
 
-    @fr.get("/trash", response_model=ItemListResponse)
-    async def trash(self, list_params):
-        result = await self.handle_get_many(list_params, scope=ItemClauses.trashed)
-        return self.to_response(result, fr.ResponseShape.LIST)
+    @fr.get("/trash")
+    async def trash(self, list_params) -> ViewListResponse:
+        return await self.handle_get_many(list_params, scope=ItemClauses.trashed)
 
-    @fr.post("/{id}/restore", response_model=ItemResponse, status_code=200)
-    async def restore(self, id: int):
+    @fr.post("/{id}/restore", status_code=200)
+    async def restore(self, id: ViewID) -> ViewResponse:
         item = await self.get_one(id, scope=ItemClauses.trashed)
         async with self.write_action("restore", obj=item):
             item.deleted_at = None
-        return self.to_response(item)
+        return item
 ```
 
 The `list_params` argument gives the route the same filter, sort and page
@@ -303,18 +301,18 @@ the action itself; see [Add a custom action route](#custom-action-route). The
 route reads only the trash, so a row that is not deleted returns 404 here. To
 read without any scope on one route, pass `scope=fr.clauses.UNSCOPED`.
 
-The two routes use the view's response classes, `ItemListResponse` and
-`ItemResponse`, so OpenAPI shows the same types as for the CRUD routes. A view
-with other pagination passes it, as in
-{func}`derive_schema_list_response(ItemResponse, pagination=AppView.pagination) <fastapi_restly.schemas.derive_schema_list_response>`.
-[Name the view's classes in a custom route](#name-the-response-classes) explains
-this.
+The markers `ViewListResponse`, `ViewResponse` and `ViewID` give the two
+routes the view's classes, `ItemListResponse` and `ItemResponse`, and its id
+type. So OpenAPI shows the same types as for the CRUD routes, and Restly
+sends the list result and the row through the view's response step.
+[Name the view's classes in a custom route](#name-the-response-classes)
+explains the markers.
 
-An override of `get_one` or `get_many` declares the `scope` parameter and
-passes it on to `super()`. The handlers always pass it, so an override without
-the parameter fails on its first call, instead of returning the wrong rows.
-The SaaS example runs a trash and a restore route in
-[`app/projects/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py).
+`get_one`, `get_many` and `select()` take the same `scope=` argument. A
+custom read that starts from `self.select(scope=ItemClauses.trashed)` sees
+the same rows as the trash route. The SaaS example puts a trash and a restore route on a base view,
+`TrashView`, in
+[`app/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py).
 :::
 
 (per-read-where)=
@@ -325,12 +323,11 @@ also takes `where=`. It narrows the read and keeps the scope. Here a list of
 the items in one collection still hides deleted items:
 
 ```python
-@fr.get("/in-collection/{collection_id}", response_model=ItemListResponse)
-async def in_collection(self, collection_id: int, list_params):
-    result = await self.handle_get_many(
+@fr.get("/in-collection/{collection_id}")
+async def in_collection(self, collection_id: int, list_params) -> ViewListResponse:
+    return await self.handle_get_many(
         list_params, where=Item.collection_id == collection_id
     )
-    return self.to_response(result, fr.ResponseShape.LIST)
 ```
 
 If you pass the same expression as `scope=fr.where_clause(...)`, it replaces
@@ -345,28 +342,25 @@ would: with the view's scope, or with the `scope=` argument when you pass
 both. The page and `total_count` both apply it, and the client's filters,
 sort and page apply on top.
 
-The handler combines `where=` into the `scope` that it passes on. So a
-`get_many` override receives one combined clause, and it declares no `where`
-parameter. `get_many` itself does not take `where=`. A route that calls
-`get_many` directly combines the clauses itself, with
-`fr.all_of(fr.resolve_scope(self), ...)`. A Python `bool`, such as a
-comparison on a loaded object, raises `TypeError`.
+{meth}`get_many <fastapi_restly.views.RestView.get_many>` takes the same
+`where=`, for a route that lists without `authorize`. A Python `bool`, such
+as a comparison on a loaded object, raises `TypeError`.
 :::
 
 (reading-the-scope)=
 ## Use the scope in your own query
 
-{func}`fr.resolve_scope <fastapi_restly.views.resolve_scope>` returns the
-clause that a view's reads apply. A route that builds its own query applies
-it, and then sees the same rows as `GET /` and `GET /{id}`. This count route
-applies the client's filters to the scoped query:
+A route that builds its own query of the view's model starts from
+{meth}`self.select() <fastapi_restly.views.BaseRestView.select>`. That is
+`select(model)` with the view's scope, so the route sees the same rows as
+`GET /` and `GET /{id}`. This count route applies the client's filters to
+the scoped statement:
 
 ```python
 @fr.get("/count")
 async def total(self, list_params) -> int:
     await self.authorize(fr.Action.GET_MANY)
-    stmt = fr.apply_clauses(sa.select(Task), fr.resolve_scope(self))
-    return await self.count(await self.apply_filters(stmt, list_params))
+    return await self.count(await self.apply_filters(self.select(), list_params))
 ```
 
 {meth}`apply_filters <fastapi_restly.views.RestView.apply_filters>` applies
@@ -375,6 +369,13 @@ the filters without the sort and the page; see
 
 Do not name that route method `count`. It would hide the
 {meth}`count <fastapi_restly.views.RestView.count>` method that it calls.
+
+For a statement that `self.select()` cannot start, such as a select of some
+columns or of another model,
+{func}`fr.resolve_scope <fastapi_restly.views.resolve_scope>` returns the
+clause that a view's reads apply. Apply it with
+{func}`fr.apply_clauses <fastapi_restly.clauses.apply_clauses>`, as in
+`fr.apply_clauses(sa.select(Task.status), fr.resolve_scope(self))`.
 
 Pass another view, as in `fr.resolve_scope(ProjectView)`, to follow the rows
 that view shows. The parent lookup of a nested view does this, so a parent
@@ -393,34 +394,6 @@ what the API shows passes the view.
 The result is a clause or `fr.clauses.UNSCOPED`, never `None`. So it goes
 straight into `fr.apply_clauses` or into a composition, without an `if`.
 :::
-
-(reference-scopes)=
-## Check a reference against another scope
-
-A reference field checks the row against the `default_scope` of the target
-model. {class}`fr.RefExists <fastapi_restly.schemas.RefExists>` names the
-target model, and its `scope` argument changes the check for one field:
-
-```python
-class OrderCreate(fr.BaseSchema):
-    item_id: fr.MustExist[int]                # default_scope of Item (from the foreign key)
-
-    restore_id: Annotated[int, fr.RefExists(Item, scope=ItemClauses.trashed)]
-
-    audit_item_id: Annotated[int, fr.RefExists(Item, scope=fr.clauses.UNSCOPED)]
-```
-
-- **No `scope`**: the `default_scope` of the target applies.
-- **`scope=<WhereClause>`**: that clause applies instead. Here `restore_id`
-  accepts exactly the ids that the trash shows.
-- **`scope=fr.clauses.UNSCOPED`**: the check uses no scope. `scope=None`
-  raises `TypeError`, so a variable that is `None` by mistake can never turn
-  the check off, and a search for `UNSCOPED` finds every place.
-
-`IDRef` and `IDSchema` references always use the `default_scope` of the
-target. Only the scalar marker `RefExists` can change it.
-[Relationships](#visibility-and-multi-tenancy) covers which rows a
-reference can reach.
 
 (soft-delete-mixin)=
 
@@ -453,30 +426,26 @@ class SoftDeletable(orm.MappedAsDataclass, kw_only=True, eq=False, repr=False):
 ### Make `DELETE` set a timestamp
 
 Override the {meth}`delete <fastapi_restly.views.RestView.delete>` business
-method. It receives the loaded row. Set the timestamp, flush, and do not call
+method. It receives the loaded row. Set the timestamp, and do not call
 `super()`, because that would remove the row:
 
 ```python
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any
-
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Any
 
 
 class SoftDeleteMixin:
     """``delete`` sets ``deleted_at`` instead of removing the row."""
 
-    if TYPE_CHECKING:
-        session: AsyncSession
-
     async def delete(self, obj: Any) -> None:
         obj.deleted_at = datetime.now(timezone.utc)
-        await self.session.flush()
 ```
 
-If only one view needs it, put the same `delete` method on that view. The
-mixin has no `hasattr` check and no fallback to `super()`. It goes on views of
-`SoftDeletable` models, so the column is always there.
+The handler saves the change after `delete` returns, as after every business
+method, and the hooks get the row as `new`. If only one view needs it, put
+the same `delete` method on that view. The mixin has no `hasattr` check and
+no fallback to `super()`. It goes on views of `SoftDeletable` models, so the
+column is always there.
 
 {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` still
 loads the row through the scope, calls `authorize` and commits. The mixin only
@@ -501,8 +470,7 @@ Restly's `default_scope` leaves out the parts of Rails' `default_scope` that
 cause problems. It decides only which rows reads and reference checks see. It
 does not set column values when you create a row. And nothing reads past it
 without saying so. A view declares a replacement scope or
-`fr.clauses.UNSCOPED` in its class body, and a reference check uses the same
-word `UNSCOPED`, so a search finds every place.
+`fr.clauses.UNSCOPED` in its class body, so a search finds every place.
 
 Phoenix passes its `Scope` as an argument to each context function. Restly
 binds `Current` once per request, and code reads it where it needs it.
@@ -533,7 +501,7 @@ class ItemClauses(fr.ClauseNamespace):
 ```
 
 Relationship loading that was in `build_query` goes in
-{meth}`get_relationship_loader_options <fastapi_restly.views.BaseRestView.get_relationship_loader_options>`.
+{meth}`get_loader_options <fastapi_restly.views.BaseRestView.get_loader_options>`.
 Other changes to the list query, such as a join or a default order, go in an
 {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
 override:
@@ -548,8 +516,12 @@ class ItemView(fr.AsyncRestView):
 ```
 
 An order that you add before `super()` comes first, so a client's `?sort=`
-orders the rows inside it. A join to a to-many relationship here does not
-repeat rows, and it does not make `total_count` too high.
+orders the rows inside it.
+
+For a condition on a to-many relationship, use `EXISTS`, such as
+`query.where(Item.comments.any(Comment.author_id == user_id))`. A join to a
+to-many relationship repeats the item for each comment, as in SQLAlchemy. A
+page would then count comments, not items.
 
 ## See also
 
