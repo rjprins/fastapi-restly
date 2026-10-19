@@ -236,8 +236,9 @@ Publishing is an action, not a field edit. Add a route for it to `PostView`:
   calls `authorize("publish", post)`. The `authorize` method above lets only
   the author pass. When the block ends, Restly commits the change. If the
   block raises an exception, Restly does not commit.
-- {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>`
-  returns the post in the same shape as the CRUD routes.
+- The route returns the post. Its return type is the view's model, `Post`,
+  so Restly sends the post in the same shape as the CRUD routes, and `/docs`
+  shows that shape for the new route.
 
 Anna publishes her post. Then everyone can read it, and Ben gets 403 when he
 tries to edit it:

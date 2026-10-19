@@ -237,14 +237,15 @@ annotation or in `response_model=`:
 | The route declares | The route returns | Restly sends |
 |---|---|---|
 | {data}`ViewResponse <fastapi_restly.views.ViewResponse>` | a row of the view's model | `to_response(row)` |
-| `list[ViewResponse]` | a list of rows | `to_single_response(row)` for each row |
+| `list[ViewResponse]` | a list of rows, or another iterable of rows, such as `await self.session.scalars(stmt)` | `to_single_response(row)` for each row |
 | {data}`ViewListResponse <fastapi_restly.views.ViewListResponse>` | a {class}`ListResult <fastapi_restly.views.ListResult>` | `to_response(result, ResponseShape.LIST)` |
 | the view's model, as in `-> Project` | a row | the same as for `ViewResponse` |
 | `list[Project]` | a list of rows | the same as for `list[ViewResponse]` |
 
-Any other value goes out as it is: a dict, an instance of a schema, or a
-`fastapi.Response`. So a route that calls `self.to_response(row)` itself
-works the same way.
+Each of these may allow `None`, as in `-> ViewResponse | None`, and a `None`
+goes out as `null`. Any other value goes out as it is: a dict, an instance
+of a schema, or a `fastapi.Response`. So a route that calls
+`self.to_response(row)` itself works the same way.
 
 :::{admonition} Details
 :class: details
@@ -252,7 +253,11 @@ works the same way.
 A route that names a class of its own, such as
 `response_model=ProjectSummary`, keeps FastAPI's behaviour. FastAPI builds
 the response from the value that the route returns, and
-`to_single_response` does not run.
+`to_single_response` does not run. So a value that `to_single_response`
+adds is missing, and a change that it makes does not happen. When it cleans
+up a stored value, such as an old color code, the stored value can fail the
+validation of the response, and the client gets a `500`. To run
+`to_single_response`, declare the view's response.
 
 The view's model counts only in the return annotation, not in
 `response_model=`. Restly then sets the view's response class as the

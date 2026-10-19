@@ -159,11 +159,10 @@ no method and no status code for you:
 
 A route method must not have the name of a business method: `create`,
 `update` or `delete`. Registration raises `TypeError` for such a name, also
-on a plain `View`. A CRUD view class that defines `get_one` or `get_many`
-fails when Python creates it, because the loads are final. Give the route
-another name. To
-replace a CRUD route, override its endpoint method, such as
-`create_endpoint`; see
+on a plain `View`. A CRUD view class that defines `get_one`, `get_many` or
+`select` fails when Python creates it, because the loads are final. Give the
+route another name. To replace a CRUD route, override its endpoint method,
+such as `create_endpoint`; see
 [Change the status code or headers of one route](#replace-endpoint-method).
 :::
 
@@ -341,11 +340,13 @@ more of them.
 
 Do not declare the view's methods in a mixin, not even as stubs. A stub
 method is a real method, and Python finds it before the view's method, so
-`await self.get_one(id)` returns `None`. Under `if TYPE_CHECKING:`, Python
-does not add the stub to the class, but type checkers still find it before
-the view's method. A stub such as `async def get_one(self, id: Any) -> Any`
-then hides the typed `get_one` in every view that uses the mixin. And mypy
-reports a stub for a final handler, such as `handle_get_many`, as an
+`await self.update(obj, data)` returns `None`. Under `if TYPE_CHECKING:`,
+Python does not add the stub to the class, but type checkers still find it
+before the view's method. A stub such as
+`async def update(self, obj: Any, data: Any) -> Any` then hides the typed
+`update` in every view that uses the mixin. A stub of a load or a handler,
+such as `get_one` or `handle_get_many`, makes the view class fail when
+Python creates it. Under `if TYPE_CHECKING:`, mypy reports it as an
 error.
 
 To keep the model's type in each subclass, make the base view generic in the

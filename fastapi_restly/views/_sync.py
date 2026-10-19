@@ -197,7 +197,8 @@ class RestView(
         - A new object that is not in the database yet: the action creates
           it. Restly adds it to the session when the block starts, so a flush
           in the block gives it an id. ``authorize`` gets ``obj=None``, as on
-          ``POST /``, and ``old`` is ``None``::
+          ``POST /``, and ``old`` is ``None``. Pass the request as ``data``,
+          so that ``authorize`` sees what the action creates::
 
               upload = Upload(filename=file.filename)
               with self.write_action("create", obj=upload, data=form):
@@ -218,12 +219,15 @@ class RestView(
         until the block ends, and a query in the block does not see your
         unflushed changes. When the block ends, Restly flushes the session.
         Then it refreshes ``obj`` and every other row of the view's model that
-        the action wrote, and loads the relationships of the view's response
-        on them, so the route can return them. When the block deleted ``obj``,
+        the action wrote, and loads them with
+        :meth:`~fastapi_restly.views.BaseRestView.get_loader_options`, so the
+        route can return them. When the block deleted ``obj``,
         as a merge deletes its source, ``new`` is ``None``. Then Restly runs
         ``before_action_commit(action, new, old)``, commits, and runs
         ``after_action_commit(action, new, old)``. The block gets nothing
-        from ``as``.
+        from ``as``. Code after the block runs after the commit, but not when
+        the block runs inside another block: then it runs before the commit.
+        Work that needs the commit goes in ``after_action_commit``.
 
         An exception in the block skips the save and the commit. The
         outermost block on the session owns the commit and the after-hooks.

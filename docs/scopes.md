@@ -426,29 +426,26 @@ class SoftDeletable(orm.MappedAsDataclass, kw_only=True, eq=False, repr=False):
 ### Make `DELETE` set a timestamp
 
 Override the {meth}`delete <fastapi_restly.views.RestView.delete>` business
-method. It receives the loaded row. Set the timestamp, flush, and do not call
+method. It receives the loaded row. Set the timestamp, and do not call
 `super()`, because that would remove the row:
 
 ```python
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 
 class SoftDeleteMixin:
     """``delete`` sets ``deleted_at`` instead of removing the row."""
-
-    session: AsyncSession
 
     async def delete(self, obj: Any) -> None:
         obj.deleted_at = datetime.now(timezone.utc)
 ```
 
 The handler saves the change after `delete` returns, as after every business
-method, and the hooks get the row as `new`. If only one view needs it, put the same `delete` method on that view. The
-mixin has no `hasattr` check and no fallback to `super()`. It goes on views of
-`SoftDeletable` models, so the column is always there.
+method, and the hooks get the row as `new`. If only one view needs it, put
+the same `delete` method on that view. The mixin has no `hasattr` check and
+no fallback to `super()`. It goes on views of `SoftDeletable` models, so the
+column is always there.
 
 {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` still
 loads the row through the scope, calls `authorize` and commits. The mixin only

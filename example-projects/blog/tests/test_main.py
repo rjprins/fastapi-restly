@@ -45,6 +45,13 @@ def test_routes() -> None:
     ]
 
 
+def test_the_publish_route_documents_the_post_response() -> None:
+    """``-> Post`` declares the view's response, as on the CRUD routes."""
+    publish = app.openapi()["paths"]["/posts/{id}/publish"]["post"]
+    body = publish["responses"]["200"]["content"]["application/json"]["schema"]
+    assert body == {"$ref": "#/components/schemas/PostResponse"}
+
+
 def test_a_new_post_is_a_draft_by_the_caller(restly_client: RestlyTestClient) -> None:
     post = restly_client.post(
         "/posts",

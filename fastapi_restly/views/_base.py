@@ -1343,7 +1343,7 @@ _REMOVED_DOMAIN_UTILITIES = {
     "save_object": (
         "The commit bracket saves the object that create or update returns, "
         "and the obj of a write_action block: it adds it, flushes, refreshes "
-        "it and loads the relationships of the response. Call "
+        "it and loads it with the loader options. Call "
         "session.flush() when you need an id earlier."
     ),
 }

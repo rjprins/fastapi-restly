@@ -26,9 +26,9 @@ id names), ``not_found`` (the error for a missing row),
 (one commit over several writes). After a write business method, the
 commit bracket saves: it adds a new object, flushes, refreshes the object
 and every other row of the view's model that the action wrote, and loads
-the relationships of the response on them. ``fr.objects`` has the
-schema-to-ORM functions, for another model and for code outside a view; a
-server-stamped field is a column default on the model. ``View`` is the bare class-based
+them with the loader options. ``fr.objects`` has the schema-to-ORM
+functions, for another model and for code outside a view; a server-stamped
+field is a column default on the model. ``View`` is the bare class-based
 primitive for non-CRUD endpoint groups (auth flows, webhooks, RPC).
 """
 

@@ -623,6 +623,10 @@ in a `ValidationError`. Check these in order:
 3. **Did you add the load only in `apply_list_params` or in a custom
    route?** The other routes and the create and update responses do not get
    loads from there. Move the load to `get_loader_options`.
+4. **Does a route read it after a `write_action` block?** The save after the
+   block unloads every relationship that the loader options do not load,
+   also one that the route loaded before the block. Read it with
+   `await obj.awaitable_attrs.<name>`, or add it to `get_loader_options`.
 
 :::{note}
 A relationship field in a response must keep the Python name of the

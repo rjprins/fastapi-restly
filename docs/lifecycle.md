@@ -331,6 +331,11 @@ The flush writes the row, and the save writes the path with an `UPDATE`.
 - A `try` or a `with` around `super().create()` catches no error of the
   INSERT, because the INSERT runs at the save, after `create` returns. To
   catch it in `create`, flush inside the `try`.
+- "Nothing is written" is about the objects in the session. A statement that
+  you run yourself, such as
+  `await self.session.execute(update(Product).values(...))`, goes to the
+  database at once. It is part of the same transaction, so the commit
+  of the action commits it, and an error rolls it back.
 - Often you do not need the id at all. Link the objects with a
   relationship, such as `line.order = order`, and the flush copies the key.
 :::
@@ -430,8 +435,8 @@ a write. So the value is there in every response of the view, also after
 `POST`. Another view of the model, or `session.get()`, leaves it unloaded.
 
 A custom route that names a class of its own in `response_model=` skips
-`to_single_response`: FastAPI builds the response from the object. Declare
-the view's response instead, as
+`to_single_response`: FastAPI builds the response from the object, so the
+value is missing. Declare the view's response instead, as
 [The response of a custom route](#custom-route-response) explains.
 
 For a value from another service, or from a cache, replace the endpoint
@@ -647,6 +652,20 @@ mark the row in `delete` in the same way. After the commit,
         if action == "delete":
             await enqueue_async_delete(new.id)  # a worker deletes the row
 ```
+
+`old` comes from the action, not from the database. A create always gives
+`old=None`, also when your `create` returns a row that exists already, such
+as a tag with the same name. A hook that reads `old is None` as "a new row"
+is wrong on that path. To give the hooks the stored values, look the row up
+in a custom route, and change it in a `write_action` block with the row as
+`obj`.
+
+Code that a route runs after its `write_action` block also runs after the
+commit, but only when the block commits itself. Inside
+[`shared_write_action_commit()`](#shared-write-action-commit), or inside the
+block of another action, that code runs before the commit. A hook runs after
+the commit in both cases. So work that reads the committed row, such as
+starting a job, goes in `after_action_commit`.
 
 Restly finds `new` from the state of the row after the flush, as SQLAlchemy
 reports it. A row that the action deleted with `session.delete()` or with an
@@ -1032,10 +1051,17 @@ such as a parent row and its child rows. Build the new object, and pass it to
 ```
 
 The order is not in the database yet, so `authorize` gets `obj=None`, as on
-`POST /`, and `old` is `None`. Restly checks the references in `data` before
-the block, as the create handler does. Then it adds the order to the session.
-When the block ends, it saves the order with the lines that its relationship
-holds, and the hooks receive the order as `new`.
+`POST /`, and `old` is `None`. Pass the request as `data=`: then
+`authorize` gets it, so a create rule that reads the payload works here too.
+Restly checks the references in `data` before the block, as the create
+handler does. Then it adds the order to the session. When the block ends, it
+saves the order with the lines that its relationship holds, and the hooks
+receive the order as `new`.
+
+The route builds the order before the block, so before `authorize` and the
+reference check. That is safe, because building an object writes nothing. A
+check of the built object, such as a rule about its lines, goes inside the
+block, where `authorize` has already passed.
 
 (write-several-rows)=
 **Change several rows in one action.** Pass `obj=None`: the action has no
@@ -1057,6 +1083,8 @@ options, so each row comes back as the database has it:
 `authorize` gets `obj=None`, once, and the hooks get `new=None` and
 `old=None`. The block calls the business method `update`, so a change to it
 applies here too. Restly checks the references in each schema of the list.
+The reload runs one query for each 500 rows, also for rows that the route
+does not return.
 
 :::{admonition} Details
 :class: details
@@ -1078,6 +1106,13 @@ call the handler for each row inside
 A block does not take a list as `obj`. Inside the block, nothing is written
 until it ends, so a query there does not see your changes. When the query
 must see them, call `session.flush()` first.
+
+After the block, `obj` has the relationships of the view's loader options,
+and no others. The save unloads the rest, so a changed foreign key never
+shows the old related row. This holds also for a relationship that the
+route loaded before the block. On an async view, read such a relationship
+after the block with `await obj.awaitable_attrs.<name>`, or add it to
+{meth}`get_loader_options <fastapi_restly.views.BaseRestView.get_loader_options>`.
 
 Restly checks the references in `data`, also in the schemas nested in it and
 in each item of a list; see [Check that the referenced row exists](#reference-exists).
@@ -1103,18 +1138,20 @@ hooks run:
 
 ```python
     @fr.post("/bulk", status_code=201)
-    async def bulk_create(self, items: list[OrderCreate]):
+    async def bulk_create(self, items: list[OrderCreate]) -> list[ViewResponse]:
         async with self.shared_write_action_commit():
             orders = [await self.handle_create(item) for item in items]
-        return [self.to_response(order) for order in orders]
+        return orders
 ```
 
 Inside the block, each action still calls `authorize`, takes the snapshot,
 makes its change and runs `before_action_commit`. Then it flushes and returns.
 Its changes are not committed yet, and its `after_action_commit` has not run.
-So build the responses after the block, as in the example. Do the same for
-code that needs an after-hook to have run. On `fr.RestView`, use `with` and
-the sync handlers. The method has the same name.
+So code after a handler call inside the block runs before the commit. Code
+that needs the commit, or an after-hook that has run, goes after the block,
+or in `after_action_commit`. The route above returns the orders after the
+block, so Restly builds their responses after the commit. On `fr.RestView`, use
+`with` and the sync handlers. The method has the same name.
 
 :::{admonition} Details
 :class: details
