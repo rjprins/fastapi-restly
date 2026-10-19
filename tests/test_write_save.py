@@ -7,6 +7,8 @@ the route loaded or that SQLAlchemy changed after the flush. These tests run
 on a SQLite file, sync and async.
 """
 
+import sqlite3
+
 import pytest
 from sqlalchemy import ForeignKey, delete, event, func, inspect, literal, select, update
 from sqlalchemy.orm import (
@@ -334,6 +336,10 @@ async def test_a_change_from_after_flush_postexec_on_a_written_row_is_kept(env):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skipif(
+    not hasattr(sqlite3.Connection, "setlimit"),
+    reason="sqlite3.Connection.setlimit is new in Python 3.11",
+)
 def test_a_bulk_insert_in_one_block_and_the_parameter_limit(tmp_path):
     """A bulk import in one block: ``session.add_all`` of many rows of the
     view's model, with ``obj=None``.
@@ -344,8 +350,6 @@ def test_a_bulk_insert_in_one_block_and_the_parameter_limit(tmp_path):
     old limit of 999 on the connection, so 1000 rows show what 33000 rows
     would do on a default SQLite.
     """
-    import sqlite3
-
     from sqlalchemy import create_engine
     from sqlalchemy.orm import Session
 
