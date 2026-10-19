@@ -62,3 +62,7 @@ class ItemView(fr.RestView):
 
 # A view without actions of its own has the five CRUD actions.
 delete: str = ItemView.Action.DELETE
+
+# The class lists its actions, and tests a name.
+all_actions: list[str] = list(PostView.Action)
+has_publish: bool = "publish" in PostView.Action

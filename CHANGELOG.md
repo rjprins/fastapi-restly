@@ -25,8 +25,9 @@ replacement, unless it says otherwise.
    `fr.MustExist[int]` and `fr.RefExists`.
 7. Declare the names of your custom actions in a class `Action` on the view,
    such as `class Action(fr.Action): PUBLISH = "publish"`, and pass
-   `self.Action.PUBLISH` to `write_action`. A name that you miss fails when
-   the route runs, not when Python creates the class.
+   `self.Action.PUBLISH` to `write_action`. A mixin with a `write_action`
+   declares its own `Action`, and the view inherits from it. A name that you
+   miss fails when the route runs, not when Python creates the class.
 
 ### Added
 
@@ -129,7 +130,9 @@ replacement, unless it says otherwise.
   `Action` declares, and raises `ValueError` for another name. A view whose
   `Action` leaves out an action of a base class, such as a mixin's, fails
   when Python creates the class. So `PostView.Action` shows every name that
-  `authorize` and the hooks can get, also in your editor.
+  `write_action` and the CRUD routes pass to `authorize` and the hooks, also
+  in your editor. An `Action` class does not change after Python creates it,
+  and a subclass cannot give an action another value.
 - `new` and `old` in the hooks follow the row that the action is about. So a
   soft delete through `DELETE /{id}` gives the row as `new`, and a block that
   deletes its `obj` gives `new=None`.

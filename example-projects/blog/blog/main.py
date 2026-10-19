@@ -40,11 +40,11 @@ app = FastAPI(lifespan=lifespan, dependencies=[Current.depends(user_id=get_user_
 
 class AuthoredView(fr.AsyncRestView):
     async def authorize(self, action, obj=None, data=None):
-        if action in ("get_many", "get_one"):
+        if action in (fr.Action.GET_MANY, fr.Action.GET_ONE):
             return
         if Current.user_id() is None:
             raise fastapi.HTTPException(401, "Log in to write")
-        if action == "create":
+        if action == fr.Action.CREATE:
             return
         if obj is None or obj.author_id != Current.user_id():
             raise fr.exc.Forbidden("Only the author can change this")

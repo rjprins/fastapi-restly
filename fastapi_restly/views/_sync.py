@@ -22,6 +22,7 @@ from ._base import (
     ResponseShape,
     UpdateSchemaT,
     _apply_own_filters,
+    _check_action_name,
     _check_list_methods,
     _count_statement,
     _ReadWhere,
@@ -246,6 +247,7 @@ class RestView(
         :raises TypeError: ``obj`` is neither ``None`` nor an object of a
             SQLAlchemy model.
         """
+        _check_action_name(self, action)
         return sync_write_action(self, action, obj=obj, data=data)
 
     def shared_write_action_commit(self) -> AbstractContextManager[None]:

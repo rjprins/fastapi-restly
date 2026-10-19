@@ -136,10 +136,28 @@ declares a subclass with the same name. The blog's `PostView` adds
 
 {meth}`write_action <fastapi_restly.views.RestView.write_action>` takes only a
 name that the view's `Action` declares. Another name raises `ValueError`. So
-the class shows every action that can reach `authorize` and the hooks. Use the
-constants in your code, such as `self.Action.PUBLISH` in a route and in
-`authorize`. Your editor completes them, and a type checker reports a typo.
-The constants are plain strings, so `self.Action.PUBLISH == "publish"`.
+the class shows every action that `write_action` and the CRUD routes pass to
+`authorize` and the hooks. `list(PostView.Action)` gives them all. Use the
+constants in your code, such as `self.Action.PUBLISH` in a route. Your editor
+completes them, and a type checker reports a typo. The constants are plain
+strings, so `self.Action.PUBLISH == "publish"`.
+
+The transaction hooks get the same name as their `action` argument:
+{meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`
+and
+{meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>`.
+Reads do not call the hooks, so the hooks only see write actions. See
+[Run code before or after the commit](#transaction-hooks).
+
+:::{admonition} Details
+:class: details
+
+An action is an UPPER_CASE name with a string value. An `Action` class does
+not change after Python creates it, and a subclass cannot give an action
+another value: `UPDATE = "edit"` raises
+{class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`.
+A type checker reports it too, because `fr.Action` declares the five CRUD
+names as `Final`.
 
 A mixin or a base view with actions of its own declares its `Action` class in
 the same way. A view that adds more actions inherits from the `Action` class
@@ -156,19 +174,17 @@ class PostView(TrashMixin, AuthoredView):
         PUBLISH = "publish"
 ```
 
-Restly checks this when it creates the class. When the view's `Action` leaves
-out an action of a base, it raises
-{class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
-and names the base. This also catches a view without an `Action` of its own
-and with two bases that each have one. Python would take the `Action` of the
-first base and drop the other.
+Restly checks this when it creates the view. When the view's `Action` leaves
+out an action of a base, it raises `RestlyConfigurationError` and names the
+base. This also catches a view without an `Action` of its own and with two
+bases that each have one. Python would take the `Action` of the first base
+and drop the other.
 
-The transaction hooks get the same name as their `action` argument:
-{meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`
-and
-{meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>`.
-Reads do not call the hooks, so the hooks only see write actions. See
-[Run code before or after the commit](#transaction-hooks).
+An `authorize` on a base view, such as the blog's `AuthoredView`, runs for
+each view that inherits it. There, `self.Action` has only the base's
+actions for a type checker, so compare a subclass's action with its string,
+or move that rule to the subclass.
+:::
 
 (authorize-custom-actions)=
 ## Authorize a custom action

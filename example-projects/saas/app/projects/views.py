@@ -184,7 +184,7 @@ class ProjectView(TrashView[Project]):
             description=original.description,
             status=ProjectStatus.ACTIVE,
         )
-        async with self.write_action(fr.Action.CREATE, obj=clone):
+        async with self.write_action(self.Action.CREATE, obj=clone):
             if tasks:
                 await self.session.flush()  # clone.id, for the copied tasks
                 self.session.add_all(

@@ -103,10 +103,13 @@ def test_write_action_method_does_not_warn():
         prefix = "/publish-articles"
         model = PublishArticle
 
+        class Action(fr.Action):
+            PUBLISH = "publish"
+
         @fr.post("/{id}/publish")
         async def publish(self, id: int) -> Any:
             obj: Any = await self.get_one(id)
-            async with self.write_action("publish", obj=obj):
+            async with self.write_action(self.Action.PUBLISH, obj=obj):
                 obj.title = "published"
             return obj
 

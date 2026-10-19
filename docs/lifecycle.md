@@ -651,7 +651,7 @@ mark the row in `delete` in the same way. After the commit,
         obj.status = "pending_deletion"  # no super(): the row stays
 
     async def after_action_commit(self, action, new, old=None):
-        if action == "delete":
+        if action == self.Action.DELETE:
             await enqueue_async_delete(new.id)  # a worker deletes the row
 ```
 
@@ -685,7 +685,7 @@ an effect that may fail without harm, catch and log the error in the hook:
 
 ```python
     async def after_action_commit(self, action, new, old=None):
-        if action == "create":
+        if action == self.Action.CREATE:
             try:
                 await send_confirmation_email(new.id)
             except Exception:  # the order is saved; don't fail the request
@@ -1078,6 +1078,9 @@ that the block changed. It reloads them together, with the view's loader
 options, so each row comes back as the database has it:
 
 ```python
+    class Action(fr.Action):
+        REORDER = "reorder"
+
     @fr.put("/positions")
     async def reorder(self, items: list[CookbookPosition]) -> list[ViewResponse]:
         cookbooks = []

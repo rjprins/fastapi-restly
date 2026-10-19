@@ -67,7 +67,7 @@ class UploadView(AuthenticatedView[Upload]):
         )
         # The new upload is the subject: the parent, the lines and the outbox
         # event are committed together.
-        async with self.write_action(fr.Action.CREATE, obj=upload):
+        async with self.write_action(self.Action.CREATE, obj=upload):
             await self.session.flush()  # upload.id, for the lines
             self.session.add_all(
                 UploadLine(

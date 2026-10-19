@@ -29,6 +29,7 @@ from typing import (
     Any,
     Callable,
     ClassVar,
+    Final,
     Generic,
     Iterable,
     Iterator,
@@ -196,7 +197,96 @@ class ResponseShape(str, Enum):
     EMPTY = "empty"  # 204 No Content
 
 
-class Action:
+def _is_action_name(key: str) -> bool:
+    """An action constant has an UPPER_CASE name, such as ``PUBLISH``."""
+    return not key.startswith("_") and key.isupper()
+
+
+class _ActionMeta(type):
+    """The metaclass of :class:`Action`: it fixes the actions of each class.
+
+    Like an ``Enum``, an ``Action`` class does not change after Python creates
+    it. Unlike an ``Enum``, a subclass can add actions, also from several
+    bases at once. An action keeps its value in every subclass.
+    """
+
+    _fr_actions: Mapping[str, str]
+
+    def __new__(
+        mcs,
+        name: str,
+        bases: tuple[type, ...],
+        namespace: dict[str, Any],
+        **kwargs: Any,
+    ) -> "_ActionMeta":
+        actions: dict[str, str] = {}
+        owners: dict[str, str] = {}
+        inherited = [base for base in bases if isinstance(base, _ActionMeta)]
+        for base in inherited:
+            for key, value in base._fr_actions.items():
+                _add_action(actions, owners, key, value, _action_label(base))
+        qualname = namespace.get("__qualname__", name)
+        for key, value in namespace.items():
+            if not _is_action_name(key):
+                continue
+            if not isinstance(value, str):
+                raise RestlyConfigurationError(
+                    f"{qualname}.{key} is {value!r}, not a string. An action "
+                    "is a string, such as PUBLISH = 'publish'."
+                )
+            _add_action(actions, owners, key, value, qualname)
+        cls = super().__new__(mcs, name, bases, namespace, **kwargs)
+        type.__setattr__(cls, "_fr_actions", types.MappingProxyType(actions))
+        return cls
+
+    def __setattr__(cls, key: str, value: Any) -> None:
+        if not key.startswith("_"):
+            raise AttributeError(
+                f"{_action_label(cls)} cannot change after Python creates it. "
+                f"Declare {key} in the class body."
+            )
+        super().__setattr__(key, value)
+
+    def __delattr__(cls, key: str) -> None:
+        if not key.startswith("_"):
+            raise AttributeError(
+                f"{_action_label(cls)} cannot change after Python creates it."
+            )
+        super().__delattr__(key)
+
+    def __iter__(cls) -> Iterator[str]:
+        """The actions, such as ``"get_many"``: those of the bases first."""
+        return iter(cls._fr_actions.values())
+
+    def __len__(cls) -> int:
+        return len(cls._fr_actions)
+
+    def __contains__(cls, action: object) -> bool:
+        return isinstance(action, str) and action in cls._fr_actions.values()
+
+
+def _action_label(action: type) -> str:
+    """How a message names an ``Action`` class: ``fr.Action`` for Restly's."""
+    if action.__module__ == __name__ and action.__qualname__ == "Action":
+        return "fr.Action"
+    return action.__qualname__
+
+
+def _add_action(
+    actions: dict[str, str], owners: dict[str, str], key: str, value: str, owner: str
+) -> None:
+    """Add one action, or refuse a name that already has another value."""
+    if key in actions and actions[key] != value:
+        raise RestlyConfigurationError(
+            f"{owner}.{key} is {value!r}, but {owners[key]}.{key} is "
+            f"{actions[key]!r}. An action keeps its value in every subclass. "
+            "Give the new action a name of its own."
+        )
+    actions.setdefault(key, value)
+    owners.setdefault(key, owner)
+
+
+class Action(metaclass=_ActionMeta):
     """The names of the five CRUD actions: the ``action`` that ``authorize``,
     ``before_action_commit`` and ``after_action_commit`` get.
 
@@ -207,17 +297,21 @@ class Action:
             class Action(fr.Action):
                 PUBLISH = "publish"
 
-    ``write_action`` takes only a name that the view's ``Action`` declares.
-    A view with base classes that declare actions, such as a mixin, inherits
-    from their ``Action`` classes too. The names are plain strings, not an
-    ``Enum``, so a subclass can add names.
+    An action is an UPPER_CASE name with a string value. ``write_action``
+    takes only a name that the view's ``Action`` declares. A view with base
+    classes that declare actions, such as a mixin, inherits from their
+    ``Action`` classes too. The names are plain strings, so a subclass can
+    add names, as an ``Enum`` cannot. Like an ``Enum``, the class cannot
+    change after Python creates it, and a subclass cannot give an action
+    another value. ``list(PostView.Action)`` gives all actions, and
+    ``"publish" in PostView.Action`` tests one.
     """
 
-    GET_MANY = "get_many"
-    GET_ONE = "get_one"
-    CREATE = "create"
-    UPDATE = "update"
-    DELETE = "delete"
+    GET_MANY: Final = "get_many"
+    GET_ONE: Final = "get_one"
+    CREATE: Final = "create"
+    UPDATE: Final = "update"
+    DELETE: Final = "delete"
 
 
 def _accepts_init_kwarg(model_cls: type, attr_name: str) -> bool:
@@ -1463,16 +1557,6 @@ def _check_load_hooks(cls: type) -> None:
                 )
 
 
-def _action_names(action: type) -> frozenset[str]:
-    """The names that an ``Action`` class declares: the string values of its
-    public attributes, those of its base classes included."""
-    return frozenset(
-        value
-        for key in dir(action)
-        if not key.startswith("_") and isinstance(value := getattr(action, key), str)
-    )
-
-
 def _check_actions(cls: type) -> None:
     """Refuse a view whose ``Action`` leaves out an action of a base class.
 
@@ -1482,40 +1566,41 @@ def _check_actions(cls: type) -> None:
     """
     action = cls.Action  # type: ignore[attr-defined]
     origin = _set_by(cls, "Action")
-    if not isinstance(action, type):
-        raise RestlyConfigurationError(
-            f"{cls.__name__}.Action{origin} is a {type(action).__name__}. "
-            "Declare it as a class that inherits from fr.Action."
-        )
-    names = _action_names(action)
-    declared = [
-        (klass, vars(klass)["Action"])
-        for klass in cls.__mro__
-        if isinstance(vars(klass).get("Action"), type)
-    ]
-    missing = [
-        (klass, base) for klass, base in declared if not _action_names(base) <= names
-    ]
+    declared: list[tuple[type, Any]] = []
+    for klass in cls.__mro__:
+        if "Action" not in vars(klass):
+            continue
+        value = vars(klass)["Action"]
+        if all(value is not seen for _, seen in declared):
+            declared.append((klass, value))
+    for klass, value in declared:
+        if not isinstance(value, _ActionMeta):
+            shown = value.__qualname__ if isinstance(value, type) else repr(value)
+            raise RestlyConfigurationError(
+                f"{cls.__name__}.Action{_origin(cls, klass)} is {shown}, which "
+                "does not inherit from fr.Action. Declare it as "
+                "class Action(fr.Action)."
+            )
+    names = set(action)
+    missing = [(klass, base) for klass, base in declared if not set(base) <= names]
     if not missing:
         return
-    left_out = sorted(
-        set().union(*(_action_names(base) for _, base in missing)) - names
-    )
-    # the classes to inherit from: each declared one that no other covers
-    bases = [
+    left_out = sorted({value for _, base in missing for value in base} - names)
+    # the classes to inherit from: the bases' Action classes, without one
+    # that another of them already inherits from
+    bases = [(klass, base) for klass, base in declared if klass is not cls]
+    keep = [
         _action_class_name(klass, base)
-        for klass, base in declared
-        if klass is not cls
-        and not any(
-            other is not base and issubclass(other, base) for _, other in declared
-        )
+        for klass, base in bases
+        if not any(other is not base and issubclass(other, base) for _, other in bases)
     ]
     raise RestlyConfigurationError(
         f"{cls.__name__}.Action{origin} leaves out the actions "
         f"{', '.join(map(repr, left_out))} of "
         f"{', '.join(_action_class_name(klass, base) for klass, base in missing)}. "
-        f"A view's Action lists all its actions. Declare it on "
-        f"{cls.__name__} with every base: class Action({', '.join(bases)})."
+        "A view's Action lists all its actions. "
+        f"Declare it on {cls.__name__} with every base: "
+        f"class Action({', '.join(keep)})."
     )
 
 
@@ -1527,12 +1612,14 @@ def _action_class_name(klass: type, action: type) -> str:
 def _check_action_name(view: Any, action: Any) -> None:
     """Raise ``ValueError`` when ``write_action`` gets a name that the view's
     ``Action`` does not declare."""
-    if action in _action_names(type(view).Action):
+    if action in type(view).Action:
         return
     name = type(view).__name__
     example = (
         f", such as {action.upper()} = {action!r}"
-        if isinstance(action, str) and action.isidentifier()
+        if isinstance(action, str)
+        and action.isidentifier()
+        and _is_action_name(action.upper())
         else ""
     )
     raise ValueError(
@@ -1879,10 +1966,9 @@ class BaseRestView(
         404: {"description": "Not found"}
     }
 
-    #: The view's actions: the names that ``authorize`` and the transaction
-    #: hooks get. :class:`Action` has the five CRUD actions. A view with
-    #: actions of its own declares a subclass with the same name, and
-    #: ``write_action`` takes only a name that it declares.
+    # The view's actions: the names that authorize and the transaction hooks
+    # get. A view with actions of its own declares a subclass of fr.Action
+    # with this name. (The docs show fr.Action, not this attribute.)
     Action = Action
 
     #: The view's schema: the Pydantic class that lists the fields of the
@@ -3476,7 +3562,7 @@ def _warn_on_misuse(view_cls: type[View]) -> None:
             warnings.warn(
                 f"{name}.{attr} calls session.commit() directly. The framework "
                 f"owns the commit: reuse handle_<verb>(), or bracket the "
-                f"mutation with write_action('<action>', ...) so authorize / "
+                f"mutation with write_action(self.Action.<NAME>, ...) so authorize / "
                 f"before_action_commit / after_action_commit run.",
                 RestlyMisuseWarning,
                 stacklevel=5,

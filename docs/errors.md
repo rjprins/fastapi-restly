@@ -155,6 +155,9 @@ A custom route that catches the conflict of its own `write_action` block
 catches `fr.exc.Conflict`:
 
 ```python
+    class Action(fr.Action):
+        RENAME = "rename"
+
     @fr.post("/{id}/rename", status_code=200)
     async def rename(self, id: int, name: str):
         tag = await self.get_one(id)

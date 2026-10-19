@@ -46,7 +46,6 @@ from ..schemas._base import (
     _check_body_references,
     _remember_checked_references,
 )
-from ._base import _check_action_name
 
 
 class AsyncWriteHost(Protocol):
@@ -482,7 +481,6 @@ async def async_write_action(
 ) -> AsyncIterator[None]:
     """The commit bracket of ``AsyncRestView.write_action``. The block gets
     nothing from ``as``."""
-    _check_action_name(host, action)
     _check_subject(host.session, action, obj)
     async with _async_bracket(host, action, obj, data):
         yield
@@ -493,7 +491,6 @@ def sync_write_action(
     host: WriteHost, action: str, *, obj: Any, data: Any = None
 ) -> Iterator[None]:
     """The commit bracket of ``RestView.write_action``."""
-    _check_action_name(host, action)
     _check_subject(host.session, action, obj)
     with _bracket(host, action, obj, data):
         yield

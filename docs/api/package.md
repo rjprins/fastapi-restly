@@ -10,7 +10,7 @@ through `fr`.
 
 | Name | Description |
 |---|---|
-| {class}`fr.Action <fastapi_restly.views.Action>` | CRUD action names used by authorization and commit hooks. |
+| {class}`fr.Action <fastapi_restly.views.Action>` | The five CRUD action names, and the base of a view's own `Action` class. |
 | {func}`fr.all_of <fastapi_restly.clauses.all_of>` | Combine query clauses with AND. |
 | {func}`fr.any_of <fastapi_restly.clauses.any_of>` | Combine query clauses with OR. |
 | {func}`fr.apply_clauses <fastapi_restly.clauses.apply_clauses>` | Apply query clauses to a SQLAlchemy statement. |

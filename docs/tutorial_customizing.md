@@ -183,18 +183,19 @@ class PostView(fr.AsyncRestView):
     schema = PostSchema
 
     async def authorize(self, action, obj=None, data=None):
-        if action in ("get_many", "get_one"):
+        if action in (fr.Action.GET_MANY, fr.Action.GET_ONE):
             return
         if Current.user_id() is None:
             raise fastapi.HTTPException(401, "Log in to write")
-        if action == "create":
+        if action == fr.Action.CREATE:
             return
         if obj is None or obj.author_id != Current.user_id():
             raise fr.exc.Forbidden("Only the author can change this")
 ```
 
-- `action` names the action. The CRUD actions are `get_many`, `get_one`,
-  `create`, `update` and `delete`.
+- `action` names the action. {class}`fr.Action <fastapi_restly.views.Action>`
+  has a constant for each CRUD action: `GET_MANY`, `GET_ONE`, `CREATE`,
+  `UPDATE` and `DELETE`.
 - Everyone may read. The scope already decides which posts they see.
 - Every write needs a user, and every user may create a post.
 - Every other write changes one post, and `obj` is that post. Only its
@@ -232,7 +233,8 @@ to `PostView`:
 
 - `Action` lists the actions of the view. It inherits the five CRUD actions
   from {class}`fr.Action <fastapi_restly.views.Action>` and adds `PUBLISH`.
-  `write_action` takes only a name from this list, so the list is complete.
+  `write_action` takes only a name from this class. See
+  [Action names](#action-names).
 - {func}`@fr.post <fastapi_restly.views.post>` adds a route to the view,
   beside the CRUD routes.
 - {meth}`get_one <fastapi_restly.views.AsyncRestView.get_one>` loads the post
@@ -348,7 +350,7 @@ class PostView(AuthoredView):
     prefix = "/posts"
     model = Post
     schema = PostSchema
-    # publish and after_action_commit as above
+    # Action, publish and after_action_commit as above
 
 
 @fr.include_view(app)

@@ -62,5 +62,5 @@ class OrganizationView(fr.AsyncRestView[Organization]):
     async def authorize(
         self, action: str, obj: Organization | None = None, data: Any = None
     ) -> None:
-        if action == "delete" and not Current.is_admin():
+        if action == fr.Action.DELETE and not Current.is_admin():
             raise fr.exc.Forbidden("Deleting an organization requires a platform admin")
