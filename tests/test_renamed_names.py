@@ -216,6 +216,55 @@ def test_the_check_does_not_evaluate_route_annotations(client):
     assert client.post("/things/echo", json={"text": "hi"}).json() == {"text": "hi"}
 
 
+@pytest.mark.parametrize("base", [fr.AsyncRestView, fr.RestView])
+@pytest.mark.parametrize(
+    "name, says",
+    [
+        ("make_new_object", "super().create(data) builds the new object"),
+        ("update_object", "super().update(obj, data) applies the data"),
+        ("save_object", "The commit bracket saves the object"),
+        ("get_relationship_loader_options", "is now get_loader_options."),
+    ],
+)
+def test_a_call_of_a_removed_method_names_the_replacement(base, name, says):
+    """Code from 0.11, such as ``await self.make_new_object(data)`` inside
+    ``create``, defines nothing that the class check sees. Its call fails at
+    once, with the replacement."""
+    view = object.__new__(type("GadgetView", (base,), {}))
+
+    with pytest.raises(AttributeError, match=re.escape(says)):
+        getattr(view, name)
+
+
+def test_an_unknown_name_and_a_failing_property_keep_their_errors():
+    class GadgetView(fr.RestView):
+        @property
+        def broken(self):
+            raise AttributeError("the real error")
+
+    view = object.__new__(GadgetView)
+
+    with pytest.raises(AttributeError, match="'GadgetView' object has no attribute"):
+        view.nope  # noqa: B018
+    with pytest.raises(AttributeError, match="the real error"):
+        view.broken  # noqa: B018
+
+
+@pytest.mark.parametrize(
+    "lookup, says",
+    [
+        (lambda: fr.DataclassBase, "Restly no longer owns a declarative base"),
+        (lambda: fr.IDBase, "class Post(fr.IDMixin, Base)"),
+        (lambda: fr.models.IDBase, "class Post(fr.IDMixin, Base)"),
+        (lambda: fr.utils, "a get_settings() function"),
+    ],
+    ids=["DataclassBase", "IDBase", "models.IDBase", "utils"],
+)
+def test_a_removed_module_name_names_the_replacement(lookup, says):
+    with pytest.raises(AttributeError, match=re.escape(says)):
+        lookup()
+
+
 def test_the_new_names_define_a_view():
     class NewView(fr.AsyncRestView):
         def to_list_response(self, list_result):

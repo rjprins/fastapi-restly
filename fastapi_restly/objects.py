@@ -19,9 +19,9 @@ _T = _TypeVar("_T")
 
 
 def make_new_object(
-    session: _Session, model_cls: type[_T], schema_obj: _pydantic.BaseModel
+    session: _Session, model: type[_T], data: _pydantic.BaseModel
 ) -> _T:
-    """Build ``model_cls`` from ``schema_obj`` and add it to ``session``.
+    """Build an object of ``model`` from ``data`` and add it to ``session``.
 
     This is the schema-to-ORM mapping primitive. It resolves Restly reference
     fields, skips read-only inputs, applies schema defaults, and stages the
@@ -30,7 +30,7 @@ def make_new_object(
     flush, so the object has no id yet. The default ``create`` of a view
     calls this with the view's model.
 
-    ``schema_obj``'s own schema decides what is written: every field it
+    The schema of ``data`` decides what is written: every field it
     declares, except those it marks ``ReadOnly``.
     """
     from .views._base import (
@@ -39,22 +39,22 @@ def make_new_object(
         validate_resolved_reference_consistency,
     )
 
-    resolved = _resolve_ids_to_sqlalchemy_objects(session, schema_obj)
-    _check_ref_exists(session, schema_obj)
-    validate_resolved_reference_consistency(model_cls, schema_obj, resolved)
-    create_plan = build_create_plan(model_cls, schema_obj, resolved)
-    obj = model_cls(**create_plan.kwargs)
+    resolved = _resolve_ids_to_sqlalchemy_objects(session, data)
+    _check_ref_exists(session, data)
+    validate_resolved_reference_consistency(model, data, resolved)
+    create_plan = build_create_plan(model, data, resolved)
+    obj = model(**create_plan.kwargs)
     apply_create_assignments(obj, create_plan)
     session.add(obj)
     return obj
 
 
-def update_object(session: _Session, obj: _T, schema_obj: _pydantic.BaseModel) -> _T:
-    """Apply writable fields from ``schema_obj`` to ``obj``.
+def update_object(session: _Session, obj: _T, data: _pydantic.BaseModel) -> _T:
+    """Apply writable fields from ``data`` to ``obj``.
 
     This is the schema-to-ORM update primitive. It resolves Restly reference
     fields and applies only writable inputs: the fields the client sent that
-    ``schema_obj``'s own schema does not mark ``ReadOnly``. It does not flush.
+    the schema of ``data`` does not mark ``ReadOnly``. It does not flush.
     The default ``update`` of a view calls this.
     """
     from .views._base import (
@@ -62,13 +62,13 @@ def update_object(session: _Session, obj: _T, schema_obj: _pydantic.BaseModel) -
         validate_resolved_reference_consistency,
     )
 
-    resolved = _resolve_ids_to_sqlalchemy_objects(session, schema_obj)
-    _check_ref_exists(session, schema_obj)
-    validate_resolved_reference_consistency(type(obj), schema_obj, resolved)
-    unloaded = _unloaded_written_collections(obj, schema_obj)
+    resolved = _resolve_ids_to_sqlalchemy_objects(session, data)
+    _check_ref_exists(session, data)
+    validate_resolved_reference_consistency(type(obj), data, resolved)
+    unloaded = _unloaded_written_collections(obj, data)
     if unloaded:
         session.refresh(obj, unloaded)
-    apply_update_to_object(obj, schema_obj, resolved)
+    apply_update_to_object(obj, data, resolved)
     return obj
 
 
@@ -145,7 +145,7 @@ def snapshot(obj: _Any) -> dict[str, _Any]:
 
 
 async def async_make_new_object(
-    session: _AsyncSession, model_cls: type[_T], schema_obj: _pydantic.BaseModel
+    session: _AsyncSession, model: type[_T], data: _pydantic.BaseModel
 ) -> _T:
     """Async equivalent of :func:`make_new_object`."""
     from .views._base import (
@@ -154,18 +154,18 @@ async def async_make_new_object(
         validate_resolved_reference_consistency,
     )
 
-    resolved = await _async_resolve_ids_to_sqlalchemy_objects(session, schema_obj)
-    await _async_check_ref_exists(session, schema_obj)
-    validate_resolved_reference_consistency(model_cls, schema_obj, resolved)
-    create_plan = build_create_plan(model_cls, schema_obj, resolved)
-    obj = model_cls(**create_plan.kwargs)
+    resolved = await _async_resolve_ids_to_sqlalchemy_objects(session, data)
+    await _async_check_ref_exists(session, data)
+    validate_resolved_reference_consistency(model, data, resolved)
+    create_plan = build_create_plan(model, data, resolved)
+    obj = model(**create_plan.kwargs)
     apply_create_assignments(obj, create_plan)
     session.add(obj)
     return obj
 
 
 async def async_update_object(
-    session: _AsyncSession, obj: _T, schema_obj: _pydantic.BaseModel
+    session: _AsyncSession, obj: _T, data: _pydantic.BaseModel
 ) -> _T:
     """Async equivalent of :func:`update_object`."""
     from .views._base import (
@@ -173,20 +173,18 @@ async def async_update_object(
         validate_resolved_reference_consistency,
     )
 
-    resolved = await _async_resolve_ids_to_sqlalchemy_objects(session, schema_obj)
-    await _async_check_ref_exists(session, schema_obj)
-    validate_resolved_reference_consistency(type(obj), schema_obj, resolved)
-    unloaded = _unloaded_written_collections(obj, schema_obj)
+    resolved = await _async_resolve_ids_to_sqlalchemy_objects(session, data)
+    await _async_check_ref_exists(session, data)
+    validate_resolved_reference_consistency(type(obj), data, resolved)
+    unloaded = _unloaded_written_collections(obj, data)
     if unloaded:
         await session.refresh(obj, unloaded)
-    apply_update_to_object(obj, schema_obj, resolved)
+    apply_update_to_object(obj, data, resolved)
     return obj
 
 
-def _unloaded_written_collections(
-    obj: object, schema_obj: _pydantic.BaseModel
-) -> list[str]:
-    """The collections that ``schema_obj`` writes and that are not loaded on
+def _unloaded_written_collections(obj: object, data: _pydantic.BaseModel) -> list[str]:
+    """The collections that ``data`` writes and that are not loaded on
     ``obj``. The update loads them first.
 
     To replace a collection, SQLAlchemy first reads the old one. On an async
@@ -209,7 +207,7 @@ def _unloaded_written_collections(
     unloaded = state.unloaded
     return [
         name
-        for name in _get_writable_inputs(schema_obj)
+        for name in _get_writable_inputs(data)
         if name in relationships
         and name in unloaded
         and (relationships[name].uselist or relationships[name].active_history)

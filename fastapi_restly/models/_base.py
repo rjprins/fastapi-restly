@@ -341,3 +341,15 @@ class ModelDefaults(
                     if annotation not in own
                 }
             )
+
+
+# Removed before 1.0. An old name gets this advice, not a bare AttributeError.
+_REMOVED_BASES = {
+    name: (
+        f"fr.{name} was removed: Restly no longer owns a declarative base. "
+        "Declare one for your app, class Base(fr.ModelDefaults, "
+        "DeclarativeBase): pass, and use it in every model, as in "
+        "class Post(fr.IDMixin, Base)."
+    )
+    for name in ("DataclassBase", "IDBase")
+}

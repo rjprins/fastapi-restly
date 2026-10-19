@@ -466,6 +466,66 @@ async def test_the_reload_of_rows_with_a_composite_key(env):
         assert any("IN (VALUES" in s for s in reloads), reloads
 
 
+async def test_a_nested_row_shows_the_new_related_row_after_a_foreign_key_change(env):
+    """A block sets the foreign key column of a row of another model, which
+    the response nests: an order's line gets another product. The save
+    unloads that relationship of the line, so the reload loads the new
+    product, not the old one."""
+
+    class Product(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    class Order(fr.IDMixin, SharedBase):
+        note: Mapped[str]
+        lines: Mapped[list["Line"]] = relationship(
+            default_factory=list, back_populates="order"
+        )
+
+    class Line(fr.IDMixin, SharedBase):
+        order_id: Mapped[int] = mapped_column(ForeignKey("order.id"), init=False)
+        product_id: Mapped[int] = mapped_column(ForeignKey("product.id"))
+        order: Mapped[Order] = relationship(init=False, back_populates="lines")
+        product: Mapped[Product] = relationship(init=False)
+
+    class ProductSchema(fr.IDSchema):
+        name: str
+
+    class LineSchema(fr.IDSchema):
+        product_id: int
+        product: ProductSchema
+
+    class OrderSchema(fr.IDSchema):
+        note: str
+        lines: fr.ReadOnly[list[LineSchema]] = []
+
+    view_type = registered(
+        type(
+            "OrderView",
+            (env.base,),
+            {"prefix": "/orders", "model": Order, "schema": OrderSchema},
+        )
+    )
+    await env.create_all()
+    session = env.make_session()
+    async with enter(session):
+        session.add_all([Product(name="p1"), Product(name="p2")])
+        order = Order(note="o")
+        order.lines = [Line(product_id=1)]
+        session.add(order)
+        await call(session.commit())
+        session.expunge_all()
+        view = view_type(request=None, session=session)
+        order = await call(view.get_one(1))
+        line = order.lines[0]
+        assert line.product.name == "p1"
+        async with enter(view.write_action("swap", obj=order)):
+            line.product_id = 2
+        response = view.to_single_response(order).model_dump()
+    assert response["lines"] == [
+        {"id": 1, "product_id": 2, "product": {"id": 2, "name": "p2"}}
+    ]
+
+
 async def test_a_subject_of_another_model(env):
     Team, Member, MemberSchema = _models()
     calls = []

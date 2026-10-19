@@ -36,7 +36,7 @@ from typing import Any, Protocol
 from sqlalchemy import event
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import InstanceState, Session, SessionTransaction
+from sqlalchemy.orm import MANYTOONE, InstanceState, Session, SessionTransaction
 from sqlalchemy.orm.collections import collection_adapter
 
 from .._integrity import after_commit, translate_integrity_errors
@@ -187,8 +187,9 @@ class _WrittenRows:
 
     The save refreshes them, so a route that changes several rows of its
     model in one action returns each of them as the database has it. Rows of
-    other models are flushed, but not refreshed: the view's response does not
-    describe them.
+    other models are flushed, but not refreshed. Only their relationships
+    whose foreign key changed are unloaded, so a response that nests them
+    never shows the old related row.
     """
 
     def __init__(self, model: Any) -> None:
@@ -196,8 +197,14 @@ class _WrittenRows:
         self.rows: dict[int, Any] = {}
         #: A flush ran while the action was open, so it wrote something.
         self.flushed = False
+        #: A statement that is not a SELECT ran while the action was open,
+        #: such as ``session.execute(update(...))``.
+        self.executed = False
         #: What was pending in the session when the change began.
         self.before: _Pending | None = None
+        #: The many-to-one relationships, by row, that a changed foreign key
+        #: left holding the old related row.
+        self.stale: dict[int, tuple[Any, set[str]]] = {}
 
     def others(self, subject: Any) -> list[Any]:
         """The written rows, other than the subject, that are still rows."""
@@ -236,9 +243,58 @@ def _remember_written_rows(session: Session, flush_context: Any) -> None:
     for obj in chain(new, session.dirty):
         if obj not in new and not session.is_modified(obj):
             continue
+        stale = [] if obj in new else _stale_relationships(obj)
         for written in recorders:
             if written.model is not None and isinstance(obj, written.model):
                 written.rows.setdefault(id(obj), obj)
+            if stale:
+                written.stale.setdefault(id(obj), (obj, set()))[1].update(stale)
+
+
+def _stale_relationships(obj: Any) -> list[str]:
+    """The many-to-one relationships of ``obj`` that still hold the old
+    related row: the flush changes their foreign key, but the code set the
+    column, not the relationship. Read in ``after_flush``, while the history
+    of the flush is still there."""
+    state = sa_inspect(obj)
+    stale = []
+    for rel in state.mapper.relationships:
+        if rel.direction is not MANYTOONE or rel.key in state.unloaded:
+            continue
+        if state.attrs[rel.key].history.has_changes():
+            continue
+        columns = [
+            attr.key
+            for attr in state.mapper.column_attrs
+            if set(attr.columns) & rel.local_columns
+        ]
+        if any(state.attrs[key].history.has_changes() for key in columns):
+            stale.append(rel.key)
+    return stale
+
+
+def _expire_stale(session: Session, written: _WrittenRows, saved: list[Any]) -> None:
+    """Unload the stale relationships of the written rows of other models.
+    The rows in ``saved`` are refreshed already."""
+    skip = {id(row) for row in saved}
+    for key, (obj, names) in written.stale.items():
+        if key not in skip and sa_inspect(obj).persistent:
+            session.expire(obj, list(names))
+
+
+def _remember_written_statements(orm_execute_state: Any) -> None:
+    """Tell each running write action that a statement may have written.
+
+    A statement such as ``session.execute(update(...))`` writes at once,
+    without a flush, so the refused-write rule must see it too.
+    """
+    if orm_execute_state.is_select:
+        return
+    recorders: list[_WrittenRows] | None = orm_execute_state.session.info.get(
+        _WRITTEN_ROWS_KEY
+    )
+    for written in recorders or ():
+        written.executed = True
 
 
 @dataclass(frozen=True)
@@ -286,6 +342,7 @@ async def _async_save(host: AsyncWriteHost, subject: Any, written: _WrittenRows)
     others = written.others(subject)
     for row in others:
         _expire_relationships(row)
+    _expire_stale(session.sync_session, written, [subject, *others])
     for stmt in host._get_reload_statements(subject, others):
         # unique(): the loader-options seam is public and may return a
         # joinedload against a collection, which fans the row set out.
@@ -304,6 +361,7 @@ def _save(host: WriteHost, subject: Any, written: _WrittenRows) -> Any:
     others = written.others(subject)
     for row in others:
         _expire_relationships(row)
+    _expire_stale(session, written, [subject, *others])
     for stmt in host._get_reload_statements(subject, others):
         session.scalars(stmt).unique().all()
     return _new(subject)
@@ -547,7 +605,7 @@ class _SharedWriteActionCommit:
         changed = written.before is not None and written.before.grew(
             _Pending.of(session)
         )
-        if written.flushed or changed:
+        if written.flushed or written.executed or changed:
             self.refused.append(transaction)
 
     def require_unrefused(self) -> None:
@@ -709,6 +767,7 @@ def _listen_once(session: Session) -> None:
     event.listen(session, "after_transaction_end", _abort_ended_transaction)
     event.listen(session, "before_commit", _reject_direct_commit)
     event.listen(session, "after_flush", _remember_written_rows)
+    event.listen(session, "do_orm_execute", _remember_written_statements)
 
 
 def _reject_direct_commit(session: Session) -> None:

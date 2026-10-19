@@ -152,4 +152,14 @@ else:
             from .schemas._base import _REF_EXISTS_REMOVED
 
             raise AttributeError(_REF_EXISTS_REMOVED)
+        from .models._base import _REMOVED_BASES
+
+        if name in _REMOVED_BASES:
+            raise AttributeError(_REMOVED_BASES[name])
+        if name == "utils":
+            raise AttributeError(
+                "fr.utils was removed, with CurrentSettingsMixin. Use a plain "
+                "pydantic-settings class and a get_settings() function, and "
+                "pass the settings to your app factory in tests."
+            )
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

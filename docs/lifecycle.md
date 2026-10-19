@@ -511,8 +511,10 @@ again.
 The save writes every change in the session. It refreshes the object that the
 business method returns, and every other row of the view's model that the
 action wrote. A row of another model that the method changes, such as a line
-of an order, is written but not refreshed, because the view's response does
-not show it. A business method that you call yourself, outside a handler or a
+of an order, is written but not refreshed. When the change set a foreign key
+column of such a row, such as `line.product_id`, the save unloads that
+relationship. So a response that nests the line loads the new product, not
+the old one. A business method that you call yourself, outside a handler or a
 `write_action` block, writes nothing: the handler does the save.
 
 Up to 0.11, views had the methods `make_new_object`, `update_object` and
@@ -1108,8 +1110,9 @@ until it ends, so a query there does not see your changes. When the query
 must see them, call `session.flush()` first.
 
 After the block, `obj` has the relationships of the view's loader options,
-and no others. The save unloads the rest, so a changed foreign key never
-shows the old related row. This holds also for a relationship that the
+and the ones that the model loads eagerly, such as with `lazy="selectin"`.
+The save unloads the rest, so a changed foreign key never shows the old
+related row. This holds also for a relationship that the
 route loaded before the block. On an async view, read such a relationship
 after the block with `await obj.awaitable_attrs.<name>`, or add it to
 {meth}`get_loader_options <fastapi_restly.views.BaseRestView.get_loader_options>`.

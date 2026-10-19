@@ -1674,6 +1674,25 @@ _RENAMED_METHODS = {
     "apply_query_params": "apply_list_params",
     "get_relationship_loader_options": "get_loader_options",
 }
+
+
+def _missing_view_attribute(view_name: str, name: str) -> str:
+    """The message for a view attribute that does not exist: the
+    replacement when it is a removed or renamed method."""
+    if name in _REMOVED_DOMAIN_UTILITIES:
+        return (
+            f"{view_name}.{name} was removed from the view. "
+            f"{_REMOVED_DOMAIN_UTILITIES[name]} For another model, use "
+            f"fr.objects.{name} or async_{name}."
+        )
+    if name in _RENAMED_METHODS:
+        return (
+            f"{view_name}.{name} is now {_RENAMED_METHODS[name]}."
+            f"{_RENAMED_METHOD_HINTS.get(name, '')}"
+        )
+    return f"{view_name!r} object has no attribute {name!r}"
+
+
 _RENAMED_METHOD_HINTS = {
     "to_listing_response": (
         " It takes only the list result: the list params are in "
@@ -1875,6 +1894,20 @@ class BaseRestView(
     schema_list_params: ClassVar[type[pydantic.BaseModel]]
 
     request: fastapi.Request
+
+    if not TYPE_CHECKING:
+        # Hidden from type checkers, which report an unknown name themselves.
+
+        def __getattr__(self, name: str) -> Any:
+            """Name the replacement of a removed or renamed view method, so an
+            old call such as ``self.make_new_object(data)`` says what to use."""
+            if inspect.getattr_static(type(self), name, None) is not None:
+                # the name exists: its own getter raised AttributeError, so
+                # raise that error again rather than hide it
+                return object.__getattribute__(self, name)
+            raise AttributeError(
+                _missing_view_attribute(type(self).__name__, name), name=name, obj=self
+            )
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)

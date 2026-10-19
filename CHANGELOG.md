@@ -7,12 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-This release reworks how a view reads and writes. The write business
-methods no longer flush: the commit bracket saves after them. `get_one` and
-`get_many` are final, and two hooks, `where_id` and `not_found`, shape them.
-Restly no longer owns a declarative base. A view that still uses an old name
-or a removed override fails when Python creates the class, and the message
-names the replacement.
+This release reworks how a view reads and writes. To upgrade, work through
+these steps. A step that you miss fails with a message that names the
+replacement, unless it says otherwise.
+
+1. Declare a base of your own, `class Base(fr.ModelDefaults, DeclarativeBase)`,
+   in place of `fr.DataclassBase` and `fr.IDBase`.
+2. Replace `fr.utils.CurrentSettingsMixin` with a `get_settings()` function.
+3. In `create` and `update`, call `super()`, change the object and return
+   it. Drop `make_new_object`, `save_object` and each flush that only saved.
+   Rename `schema_obj` to `data`.
+4. Move a `get_one` or `get_many` override to its new place: `scope`,
+   `where_id`, `not_found`, `to_single_response`, or SQL on the model.
+5. In a custom route, drop a `response_model=` of the view's response class,
+   and annotate `-> ViewResponse` or the model. Nothing reports a route that
+   you miss: it skips `to_single_response`.
+6. Pass `obj=` to `write_action`, also for a new object, instead of
+   `as w` and `w.obj`.
+7. Write each reference as `fr.MustExist[int, Model]`, in place of
+   `fr.MustExist[int]` and `fr.RefExists`.
 
 ### Added
 
@@ -58,13 +71,17 @@ names the replacement.
 
 ### Changed
 
+#### Reads
+
 - `get_one` and `get_many` are final, as the handlers are. A view class that
   defines one, or `select`, fails when Python creates the class. Change the
   rows with `scope`, the lookup with `where_id`, the list with
   `apply_list_params`, and the loads with `get_loader_options`. A value on
-  each row goes in `to_single_response`, or in SQL: a `column_property`, or a
-  `with_expression` in `get_loader_options`. A read from another source
-  replaces the endpoint method. `get_many` takes `where=`.
+  each row that needs no query goes in `to_single_response`, as
+  `super().to_single_response(obj).model_copy(update={...})`. A value from
+  SQL goes on the model as a `column_property`, or in `get_loader_options`
+  as a `with_expression`. A read from another source replaces the endpoint
+  method. `get_many` takes `where=`.
 - A model with a composite primary key needs `where_id` for its item routes,
   and `id_type = str` for an id such as `3-7`. Without `where_id`, the view
   fails when it registers.
@@ -75,14 +92,20 @@ names the replacement.
   through `to_response`, each row under `list[ViewResponse]` through
   `to_single_response`, and a `ListResult` under `ViewListResponse` through
   the list response. `-> Project` or `-> list[Project]` for the view's own
-  model works like `ViewResponse`. A route that names a Pydantic class of its
-  own keeps FastAPI's behaviour.
+  model works like `ViewResponse`. A route that names a Pydantic class in
+  `response_model=` keeps FastAPI's behaviour and skips `to_single_response`,
+  also for the 0.11 form `fr.schemas.derive_schema_response(ProjectSchema)`.
+  Nothing reports this: drop `response_model=` and annotate the route.
+
+#### Writes
+
 - The write business methods no longer flush. `create` and `update` return
   the object, and `delete` only marks the row. After them, the commit bracket
   saves: it adds a new object, flushes, refreshes it and the other rows of
   the view's model that the action wrote, and loads them with the loader
   options. So a change after `super().create()` is part of the INSERT. Inside
-  `create`, the new object has no id yet: use `before_action_commit`, or call
+  `create`, the new object has no id yet: code that needs it goes in
+  `before_action_commit`, which runs after the save, or calls
   `session.flush()`. A `try` around `super().create()` no longer catches an
   error of the INSERT.
 - A business method and a `write_action` block run under
@@ -91,9 +114,11 @@ names the replacement.
   `flush()` first.
 - `write_action(action, *, obj, data=None)`: `obj` is required. It is a row
   from the database, a new object that the action creates, or `None` for an
-  action on several rows. For a new object, Restly adds it to the session,
-  and `authorize` gets `obj=None`. The block gets nothing from `as`: pass the
-  new object as `obj` instead of setting `w.obj`.
+  action on several rows. Restly adds a new object to the session when the
+  block starts, so a `flush()` in the block gives it an id, and `authorize`
+  gets `obj=None`. A detached row is added back, and a row
+  that another open session holds raises `TypeError`. The block gets nothing
+  from `as`: pass the new object as `obj` instead of setting `w.obj`.
 - `new` and `old` in the hooks follow the row that the action is about. So a
   soft delete through `DELETE /{id}` gives the row as `new`, and a block that
   deletes its `obj` gives `new=None`.
@@ -101,7 +126,9 @@ names the replacement.
   `TypeError`, and nothing is committed.
 - The request body is `data` in every view method: `create(self, data)`,
   `update(self, obj, data)`, the handlers and the endpoint methods. Rename the
-  parameter in your overrides; Pyright reports the old name.
+  parameter in your overrides; Pyright reports the old name. The functions in
+  `fr.objects` take `model` and `data` too, not `model_cls` and
+  `schema_obj`.
 - The write bracket checks the references in the data after `authorize` and
   before the business method, also in nested schemas and in each item of a
   list. So a `create` that builds the object itself is checked, and so is the
@@ -109,8 +136,9 @@ names the replacement.
 - A handler or a `write_action` inside a `write_action` block joins its
   commit, as inside `shared_write_action_commit()`. A direct
   `session.commit()` inside a block raises `RuntimeError`.
-- Inside a shared commit, a write action that raises after it changed objects
-  stops the commit, also when the route catches the error. Put
+- Inside a shared commit, a write action that raises after it changed objects,
+  or after it ran a statement such as `session.execute(update(...))`, stops
+  the commit, also when the route catches the error. Put
   `session.begin_nested()` around each write that may fail.
 - A database conflict in a write is a `fr.exc.Conflict` (409), raised by the
   write block, with the `IntegrityError` as its `__cause__`. So a handler or
@@ -122,6 +150,9 @@ names the replacement.
   not from its parameter names. Annotate it, such as
   `create_endpoint(self, data: ViewCreate) -> ViewResponse`. `list_params`
   still works by its name.
+
+#### Lists
+
 - A list has no dotted filter keys and no dotted sort keys by default, such as
   `?vendor.name=`. Turn them on with `include_filters = ("**",)` and
   `include_sort_keys = ("**",)`, or with a narrower pattern.
@@ -147,6 +178,9 @@ names the replacement.
   filter methods, or the view fails when it registers. A subclass that
   changes `pagination` or a list setting gets new list params when its base
   uses generated ones.
+
+#### React-admin
+
 - React-admin views reject the list key settings, `sort_query_param` and
   `@fr.list_filter`.
 - The list route of a react-admin view declares `list_params`. Overrides of
@@ -158,6 +192,9 @@ names the replacement.
   that it cannot apply is a `fr.exc.BadQueryParam` (400).
 - A react-admin view with pagination that it cannot use fails when Python
   creates the class.
+
+#### Schemas and models
+
 - Each field of the update body keeps its type from the view's schema, so
   `null` is valid only where the type allows `None`. `PATCH {"title": null}`
   for `title: str` gets `422` now, not `409` from the database.
@@ -174,6 +211,9 @@ names the replacement.
   nothing, so it no longer raises `MissingGreenlet`. Pass `repr=True` on a
   model for the dataclass repr.
 - `restly new` generates the project's own `Base` in `app/models.py`.
+
+#### Other
+
 - `fr.clauses.UNSCOPED` is a `WhereClause` with the condition `TRUE`, so it
   goes everywhere a clause goes. `isinstance(x, WhereClause)` now matches it
   too.
@@ -188,8 +228,9 @@ names the replacement.
   for another model.
 - `run_write_action` and `async_run_write_action`. Use `self.write_action()`.
 - `fr.RefExists` and the `scope=` of a reference check. Write
-  `fr.MustExist[int, Post]`. A tenant rule goes on the session, and a rule for
-  one caller goes in `authorize`.
+  `fr.MustExist[int, Post]`. A tenant rule goes on the session. A rule for one
+  caller goes in `authorize`: raise `fr.exc.NotFound` there to keep the
+  404.
 - `fr.MustExist[int]` without a model. Name the model:
   `fr.MustExist[int, Project]`.
 - `fr.DataclassBase` and `fr.IDBase`. Declare one base of your own for the
@@ -204,7 +245,8 @@ names the replacement.
       title: Mapped[str]
   ```
 
-  Use `Base` where you used `fr.DataclassBase`: in the models,
+  Mixins, such as `fr.TimestampsMixin`, go before `Base`. Use `Base` where
+  you used `fr.DataclassBase`: in the models,
   `sa.Table(..., Base.metadata, ...)`, `configure_tests(base=Base)`,
   `create_all(Base)` and `target_metadata` in `alembic/env.py`. The tables
   stay the same, so Alembic finds no difference.
@@ -213,8 +255,10 @@ names the replacement.
   a handler for `fr.exc.Conflict` or `fr.exc.RestlyHTTPError`; the original
   error is `exc.__cause__`.
 - `fr.utils` with `CurrentSettingsMixin`. Use a plain pydantic-settings class
-  and a `get_settings()` function, as the project from `restly new` does, and
-  pass the settings to your app factory in tests.
+  and a `get_settings()` function, as the project from `restly new` does.
+  Replace `Settings.current` with `get_settings()` in the app factory, and
+  `Settings.use(x)` in tests with an argument of the factory, as in
+  `create_app(x)`.
 - `route_options`. Replace the endpoint method, pass the route arguments to
   its decorator, as in FastAPI, and call `super()`.
 - `extra_query_params`. Declare the key where your code reads it: with
@@ -226,6 +270,9 @@ names the replacement.
 
 ### Fixed
 
+- A response that nests a row of another model, such as the lines of an
+  order, shows the new related row after a write set a foreign key column of
+  that row. Before, it showed the old one.
 - On an async view, a `to_single_response` that reads a relationship from
   `get_loader_options` no longer fails after `PATCH`, and a `with_expression`
   value is there after `POST` and `PATCH`.

@@ -5,7 +5,7 @@ These tests run on a SQLite file, sync and async.
 """
 
 import pytest
-from sqlalchemy import ForeignKey, event, func, select
+from sqlalchemy import ForeignKey, event, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Mapped, make_transient, mapped_column, relationship
 
@@ -460,6 +460,44 @@ async def test_a_refused_create_block_in_a_shared_commit_is_not_written(env, sav
         assert (afters, names) == (["good"], ["d1", "d2", "good"])
     else:
         assert (afters, names) == ([], ["d1", "d2"])
+
+
+@pytest.mark.parametrize("savepoint", [False, True], ids=["plain", "savepoint"])
+async def test_a_refused_statement_in_a_shared_commit_is_not_written(env, savepoint):
+    """A block runs ``session.execute(update(...))``, which writes at once,
+    without a flush, and then raises. The route catches the error. Without a
+    savepoint, the outer commit refuses to run, so the half-done statement is
+    not committed. With one, its rollback undoes the statement."""
+    Owner, Doc, DocSchema = _doc_models()
+    calls = []
+    session = await _seed(env, Owner, Doc)
+    async with enter(session):
+        view = _hooked(env, Doc, DocSchema, calls)(request=None, session=session)
+
+        async def rename_all():
+            async with enter(view.write_action("rename_all", obj=None)):
+                await call(session.execute(update(Doc).values(name="renamed")))
+                raise fr.exc.Conflict("stop")
+
+        async def bulk():
+            async with enter(view.shared_write_action_commit()):
+                try:
+                    if savepoint:
+                        async with enter(session.begin_nested()):
+                            await rename_all()
+                    else:
+                        await rename_all()
+                except fr.exc.Conflict:
+                    pass
+
+        if savepoint:
+            await bulk()
+        else:
+            with pytest.raises(RuntimeError, match="The write was not committed"):
+                await bulk()
+    check = env.make_session()
+    async with enter(check):
+        assert sorted(await call(check.scalars(select(Doc.name)))) == ["d1", "d2"]
 
 
 @pytest.mark.parametrize("savepoint", [False, True], ids=["plain", "savepoint"])
