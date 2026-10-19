@@ -131,18 +131,31 @@ field and the id:
 :::{admonition} Details
 :class: details
 
-Restly checks the `MustExist` ids of a request in batches: one query for
-each referenced model and scope, not one query for each id. It checks only
-the fields that the client sent, and it skips a `null` value.
-
-`MustExist[int]`, without a model, takes the model from the `ForeignKey` of
-the column. This works when the column has exactly one foreign key. For
-another primary key type, name that type first: `fr.MustExist[UUID, Account]`.
-
-`MustExist` is short for a field with the
-{class}`fr.RefExists <fastapi_restly.schemas.RefExists>` marker:
-`Annotated[int, fr.RefExists(User)]`. Write the marker yourself to check
-against another clause, as the next section shows.
+- Restly checks the references after `authorize` and before your `create` or
+  `update`. So the errors come in this order: the row in the URL (`404`),
+  then the permission (`403`), then the references (`404`).
+- Restly checks the data of every write: the CRUD routes, and
+  `write_action(data=...)`. It also checks the schemas inside the data, such
+  as the lines of an order, and each item when the data is a list. The
+  message then names the place: `Id not found for lines[1].product_id: 7`.
+- One query checks all the ids of one model. Restly checks only the fields
+  that the client sent, and it skips a `null` value. In one write, Restly
+  does not look up the same row twice.
+- The check does not autoflush, so it never writes an object that your code
+  is still building. So it also does not find a row that your code added
+  and did not flush yet. Call `flush()` first for such a row.
+- A reference inside another type, such as `list[fr.MustExist[int, Tag]]`,
+  is refused, because the check cannot see it there. Write a list of rows as
+  `list[fr.IDRef[Tag]]` on a relationship field.
+- The builders in {mod}`fr.objects <fastapi_restly.objects>` check too, so
+  a script that builds objects with them is safe.
+- An id that reaches the database in another way is yours to check, such as
+  a value that your code sets in a `write_action` block without `data=`. The
+  foreign key in the database still refuses an id that does not exist.
+- For another primary key type, name that type first:
+  `fr.MustExist[UUID, Account]`. Restly does not take the model from the
+  foreign key, because a schema can also write another model, and then the
+  check would use the wrong table.
 :::
 
 (visibility-and-multi-tenancy)=
@@ -155,25 +168,24 @@ that the scope hides returns `404`, as a missing row does. So if the scope of
 article.
 
 A session rule, such as the [tenant rule](#tenant-row-scoping),
-also reaches every reference check. This includes `MustExist`, and the
-`session.get()` that Restly uses for an `IDRef` or `IDSchema` field when the
-model has no default scope. The one exception is an object that is already in
-the session: `session.get()` returns it without a query, so the rule does not
-run.
+also reaches every reference check.
 
 A model without a default scope is checked by its primary key alone. Then a
 reference can reach a soft-deleted row, or a row that the caller cannot read.
 To hide such rows, give the model a default scope.
 
+The `scope` of a view does not apply to references. It is a rule for the
+reads of that one view. If a rule must also hold for references, make it the
+`default_scope` of the model.
+
 :::{admonition} Details
 :class: details
 
-On a `MustExist` field, `RefExists` can check against another clause, or
-against no clause; see [Check a reference against another scope](#reference-scopes).
-An `IDRef` or `IDSchema` field always uses the default scope. The SaaS example
-lets a member attach labels only to a task that is assigned to them, with
-`RefExists(Task, scope=TaskClauses.visible)` in
-[`app/labels/schemas.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/labels/schemas.py).
+A script that calls the {mod}`fr.objects <fastapi_restly.objects>` builders
+by itself loads an `IDRef` or `IDSchema` row of a model without a default
+scope with `session.get()`. For an object that is already in the session,
+`session.get()` returns it without a query, so a session rule does not run
+there. Inside a write, Restly always runs the query.
 
 A rule that is neither a scope nor a session rule goes in
 {meth}`authorize <fastapi_restly.views.RestView.authorize>` (see
@@ -203,6 +215,10 @@ class ArticleView(fr.AsyncRestView):
 `authorize` does not have the row itself. If a rule needs it, read it in
 {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`,
 for example with `await self.session.get(User, new.author_id)`.
+
+The SaaS example lets a member attach labels only to a task that is assigned
+to them. That is a permission, so it is in `TaskLabelView.authorize`, in
+[`app/labels/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/labels/views.py).
 :::
 
 (reference-field-names)=
@@ -686,6 +702,5 @@ it, and is set on the object after the constructor otherwise.
   running app.
 - {doc}`api/schemas`: the signatures of
   {class}`MustExist <fastapi_restly.schemas.MustExist>`,
-  {class}`RefExists <fastapi_restly.schemas.RefExists>`,
   {class}`IDRef <fastapi_restly.schemas.IDRef>` and
   {class}`IDSchema <fastapi_restly.schemas.IDSchema>`.

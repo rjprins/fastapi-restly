@@ -1,10 +1,12 @@
+import typing as _typing
+
 from ._base import (
+    _REF_EXISTS_REMOVED,
     BaseSchema,
     IDRef,
     IDSchema,
     MustExist,
     ReadOnly,
-    RefExists,
     TimestampsSchemaMixin,
     WriteOnly,
     derive_schema_list_response,
@@ -28,10 +30,16 @@ __all__ = [
     "IDRef",
     "IDSchema",
     "ReadOnly",
-    "RefExists",
     "TimestampsSchemaMixin",
     "WriteOnly",
     "derive_schema",
     "derive_schema_list_response",
     "derive_schema_response",
 ]
+
+if not _typing.TYPE_CHECKING:
+
+    def __getattr__(name: str):
+        if name == "RefExists":
+            raise AttributeError(_REF_EXISTS_REMOVED)
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

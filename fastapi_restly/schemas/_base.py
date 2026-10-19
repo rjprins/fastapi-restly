@@ -1,9 +1,11 @@
+import contextlib
 import dataclasses
 import functools
 import inspect
 import sys
 import types
-from collections.abc import Iterable, Mapping
+import weakref
+from collections.abc import Iterable, Iterator, Mapping
 from datetime import datetime
 from typing import (
     TYPE_CHECKING,
@@ -15,7 +17,6 @@ from typing import (
     Literal,
     Union,
     cast,
-    final,
     get_args,
     get_origin,
 )
@@ -36,7 +37,7 @@ from .._pagination import (
     NoPagination,
     NumberedPagination,
 )
-from ..clauses import UNSCOPED, WhereClause, apply_clauses
+from ..clauses import apply_clauses
 from ..clauses._scopes import _default_scope
 from ..exc import NotFound, RestlyConfigurationError
 
@@ -157,82 +158,33 @@ def _reject_buried_markers(model_cls: type[pydantic.BaseModel]) -> None:
     _reject_buried_ref_exists(model_cls)
 
 
-@final
-class _Infer:
-    """Static-only sentinel: the default ``MustExist`` model argument.
-
-    ``MustExist[int]`` supplies no target model, so the second type parameter
-    defaults to ``_Infer`` (a PEP 696 default that keeps Pyright happy about
-    "supply all params"). It carries no runtime meaning of its own: one type
-    argument is already unambiguous, and the runtime reads it as "resolve the
-    target model from the column's ``ForeignKey``".
-    """
-
-
-@final
-class _NotGiven:
-    """Static-only sentinel: ``RefExists`` received no ``scope`` argument.
-
-    Not given means the target model's ``default_scope`` applies; the
-    explicit opt-out is ``fr.clauses.UNSCOPED``, and ``None`` is rejected
-    so a variable that happens to be ``None`` can never silently unscope.
-    """
-
-
-_NOT_GIVEN = _NotGiven()
+#: The message for code that still uses the removed public ``RefExists``.
+_REF_EXISTS_REMOVED = (
+    "fr.RefExists was removed. Declare a reference as "
+    "fr.MustExist[<id type>, <Model>], such as fr.MustExist[int, Post]. It "
+    "finds the rows of the model's default_scope, under the rules of the "
+    "session. A tenant rule goes on the session. A rule for one caller or one "
+    "action goes in authorize."
+)
 
 
 class RefExists:
     """Marker for an existence-checked scalar foreign key.
 
-    Built by ``MustExist[pk]`` / ``MustExist[pk, Model]`` (or written directly as
-    ``Annotated[pk, RefExists(Model)]``). On write, Restly batch-checks that each
-    marked id exists in the target table and raises ``NotFound`` (404) on a miss.
-    The field stays a plain scalar -- this only adds the check; it does not wrap
-    the value or do any relationship routing.
+    Built by ``MustExist[pk, Model]``. On write, Restly checks that each
+    marked id is a row of ``model`` and raises ``NotFound`` (404) on a miss.
+    The field stays a plain scalar: the marker only adds the check.
 
-    The check applies the target model's ``default_scope``, like
-    ``IDRef``/``IDSchema`` resolution: a reference to a row the scope hides
-    is a miss. ``scope`` overrides that per field: a ``WhereClause`` checks
-    against that clause instead (``RefExists(Item, scope=ItemClauses.trashed)``
-    for a restore target), and ``scope=fr.clauses.UNSCOPED`` checks
-    unscoped, greppably; ``None`` is rejected. A model without a
-    ``default_scope`` is checked unscoped, as before.
-
-    ``model`` is the target ORM model, or ``_Infer`` when it should be resolved
-    from the marked column's ``ForeignKey`` (the ``MustExist[pk]`` form).
+    The check finds the rows of the model's ``default_scope``, under the
+    rules of the session, as ``IDRef`` and ``IDSchema`` do. A model without a
+    ``default_scope`` is checked by primary key alone.
     """
 
-    def __init__(
-        self,
-        model: type[Any] | type[_Infer],
-        scope: WhereClause | _NotGiven = _NOT_GIVEN,
-    ) -> None:
-        if scope is None:
-            raise TypeError(
-                "RefExists scope=None says nothing; opt out explicitly with "
-                "scope=fr.clauses.UNSCOPED, so a variable that happens to be "
-                "None can never silently unscope the check"
-            )
-        if not isinstance(scope, (WhereClause, _NotGiven)):
-            raise TypeError(
-                f"RefExists scope must be a WhereClause or UNSCOPED, got "
-                f"{type(scope).__name__}; wrap a raw expression with "
-                "where_clause(), and express a join-dependent predicate "
-                "as EXISTS (.any()/.has())"
-            )
+    def __init__(self, model: type[Any]) -> None:
         self.model = model
-        self.scope = scope
 
     def __repr__(self) -> str:
-        name = (
-            "infer"
-            if self.model is _Infer
-            else getattr(self.model, "__name__", self.model)
-        )
-        if isinstance(self.scope, _NotGiven):
-            return f"RefExists({name})"
-        return f"RefExists({name}, scope={self.scope!r})"
+        return f"RefExists({getattr(self.model, '__name__', self.model)})"
 
 
 def _annotation_contains_ref_exists(annotation: Any) -> bool:
@@ -256,7 +208,7 @@ def _reject_buried_ref_exists(model_cls: type[pydantic.BaseModel]) -> None:
         if _ref_exists_marker(field_info) is not None:
             continue
         raise RestlyConfigurationError(
-            f"{model_cls.__name__}.{name} buries a RefExists/MustExist marker "
+            f"{model_cls.__name__}.{name} buries a MustExist marker "
             f"inside its type (e.g. list[MustExist[int, T]]), where the "
             f"existence check cannot see it, so the reference would go "
             f"unchecked. To reference several rows, use "
@@ -507,36 +459,42 @@ class IDRef(IDSchema[SQLAlchemyModel], Generic[SQLAlchemyModel]):
 
 if TYPE_CHECKING:
     _MustExistPK = TypeVar("_MustExistPK")
-    _MustExistModel = TypeVar("_MustExistModel", default=_Infer)
+    _MustExistModel = TypeVar("_MustExistModel")
 
-    # Static view: ``MustExist[pk]`` and ``MustExist[pk, Model]`` both read as the
-    # pk scalar (the alias value is the first param), so a field stays a plain
-    # scalar -- ``data.post_id`` is an ``int``, not a wrapper. The target model is
-    # a runtime-only concern (second param, defaulting to ``_Infer``); the runtime
-    # ``MustExist`` is defined below.
+    # Static view: ``MustExist[pk, Model]`` reads as the pk scalar (the alias
+    # value is the first param), so a field stays a plain scalar --
+    # ``data.post_id`` is an ``int``, not a wrapper. The model is a runtime
+    # concern; the runtime ``MustExist`` is defined below.
     MustExist = TypeAliasType(
         "MustExist", _MustExistPK, type_params=(_MustExistPK, _MustExistModel)
     )
 else:
 
     class MustExist:
-        """Existence-checked scalar foreign key.
+        """Existence-checked scalar foreign key: ``MustExist[int, Post]``.
 
-        ``MustExist[int]`` is a checked ``int`` foreign key; the target model is
-        inferred from the column's ``ForeignKey``. Spell the model out with a
-        second argument when you want it explicit (``MustExist[int, Post]``), and
-        use the first for a non-int primary key (``MustExist[UUID, Account]``).
-
-        Unlike ``IDRef``/``IDSchema`` this is **not** a wrapper: the field stays
-        the pk scalar everywhere (JSON, column, ``data.<field>``), plus a batched
-        existence check on write (404 on a miss). The check applies the target
-        model's ``default_scope``; check against another clause, or none, by
-        writing the marker form ``Annotated[<pk>, RefExists(Model, scope=...)]``
-        directly (see :class:`RefExists`).
+        The first argument is the type of the id, the second the model of the
+        row. The field stays the id everywhere (JSON, column,
+        ``data.<field>``). On write, Restly checks that the row exists (404 on
+        a miss), among the rows of the model's ``default_scope``.
         """
 
         def __class_getitem__(cls, params: Any) -> Any:
-            pk_type, model = params if isinstance(params, tuple) else (params, _Infer)
+            if not isinstance(params, tuple) or len(params) != 2:
+                raise TypeError(
+                    "MustExist takes the type of the id and the model of the "
+                    "row: MustExist[int, Post]. Restly does not take the model "
+                    "from the foreign key, because a schema can also write "
+                    "another model, and then the check would use the wrong "
+                    "table."
+                )
+            pk_type, model = params
+            if not isinstance(model, type):
+                raise TypeError(
+                    f"MustExist[{getattr(pk_type, '__name__', pk_type)}, "
+                    f"{model!r}]: the second argument must be the model class, "
+                    "such as MustExist[int, Post]."
+                )
             return Annotated[pk_type, RefExists(model)]
 
 
@@ -630,160 +588,363 @@ def reference_origin_and_target(annotation: Any) -> tuple[type, type | None] | N
     return (origin, target)
 
 
+_CHECKED_REFERENCES_KEY = "_fr_checked_references"
+
+#: The value in the record for a reference whose row was not loaded: the
+#: check of a ``MustExist`` field reads only the primary key.
+_NO_ROW: Any = object()
+
+#: The most ids in one ``IN`` list, below the parameter limits of the
+#: databases (SQLite allows 32766 in all, older versions 999).
+_IN_CHUNK = 500
+
+
+def _checked_references(
+    session: SA_Session | SA_AsyncSession,
+) -> dict[tuple[type[Any], Any], Any]:
+    """The references that the running write action has checked, as
+    ``{(model, id): row}``. Empty outside a write action."""
+    return session.info.get(_CHECKED_REFERENCES_KEY) or {}
+
+
+@contextlib.contextmanager
+def _remember_checked_references(
+    session: SA_Session | SA_AsyncSession, checked: dict[tuple[type[Any], Any], Any]
+) -> Iterator[None]:
+    """Keep ``checked`` on the session until the block ends.
+
+    The builders of :mod:`fastapi_restly.objects` read it, so a reference that
+    the write action checked is not queried again. An id that code changes
+    after the check is not in the record, so the builder checks it.
+    """
+    previous = session.info.get(_CHECKED_REFERENCES_KEY)
+    session.info[_CHECKED_REFERENCES_KEY] = checked
+    try:
+        yield
+    finally:
+        if previous is None:
+            session.info.pop(_CHECKED_REFERENCES_KEY, None)
+        else:
+            session.info[_CHECKED_REFERENCES_KEY] = previous
+
+
+def _recorded_rows(
+    checked: Mapping[tuple[type[Any], Any], Any], model: type[Any], ids: list[Any]
+) -> list[Any] | None:
+    """The rows that the write action loaded for ``ids``, or ``None`` when one
+    of them is not in the record."""
+    rows = [checked.get((model, id_), _NO_ROW) for id_ in ids]
+    return None if any(row is _NO_ROW for row in rows) else rows
+
+
+@dataclasses.dataclass(frozen=True)
+class _BodyReference:
+    """One reference in the data of a write action."""
+
+    #: Where the id is, such as ``post_id`` or ``lines[2].product_id``.
+    path: str
+    model: type[Any]
+    id: Any
+    #: An ``IDRef`` or ``IDSchema``: the builder needs the row itself.
+    row: bool
+    #: One id of a list of references, such as ``tags: list[IDRef[Tag]]``.
+    listed: bool = False
+
+
+def _body_references(data: Any) -> list[_BodyReference]:
+    """Every reference in ``data``, in the order of the fields.
+
+    ``data`` is a schema object, or a list, tuple or dict of them. The walk
+    goes into the fields that hold other schema objects, so a reference in
+    an order line is found too. It reads only the fields that were set, and
+    skips ``None``.
+    """
+    references: list[_BodyReference] = []
+    seen: set[int] = set()
+    if isinstance(data, pydantic.BaseModel):
+        _collect_model_references(data, "", references, seen)
+    elif isinstance(data, (list, tuple)):
+        for index, item in enumerate(data):
+            _collect_value_references(item, f"[{index}]", references, seen)
+    elif isinstance(data, dict):
+        for key, item in data.items():
+            _collect_value_references(item, f"[{key!r}]", references, seen)
+    return references
+
+
+#: The classes of the data whose ``MustExist`` markers are known to be
+#: where the check can see them.
+_MARKERS_CHECKED: "weakref.WeakSet[type[pydantic.BaseModel]]" = weakref.WeakSet()
+
+
+def _collect_model_references(
+    obj: pydantic.BaseModel, path: str, references: list[_BodyReference], seen: set[int]
+) -> None:
+    if id(obj) in seen:
+        return
+    seen.add(id(obj))
+    cls = type(obj)
+    if cls not in _MARKERS_CHECKED:
+        # fr.BaseSchema raises this when the class is defined; a plain
+        # pydantic model only gets here
+        _reject_buried_ref_exists(cls)
+        _MARKERS_CHECKED.add(cls)
+    for name, field_info in type(obj).model_fields.items():
+        if name not in obj.model_fields_set:
+            continue
+        value = getattr(obj, name, None)
+        if value is None:
+            continue
+        here = f"{path}.{name}" if path else name
+        marker = _ref_exists_marker(field_info)
+        if marker is not None:
+            references.append(_BodyReference(here, marker.model, value, row=False))
+        else:
+            _collect_value_references(value, here, references, seen)
+
+
+def _reference_model(value: Any) -> type[Any] | None:
+    """The model that ``value`` refers to, when it is an ``IDRef`` or
+    ``IDSchema`` reference."""
+    if isinstance(value, IDSchema):
+        return value.get_sql_model_annotation()
+    return None
+
+
+def _collect_value_references(
+    value: Any, path: str, references: list[_BodyReference], seen: set[int]
+) -> None:
+    model = _reference_model(value)
+    if model is not None:
+        references.append(_BodyReference(path, model, value.id, row=True))
+    elif isinstance(value, pydantic.BaseModel):
+        _collect_model_references(value, path, references, seen)
+    elif isinstance(value, (list, tuple)):
+        for index, item in enumerate(value):
+            item_model = _reference_model(item)
+            if item_model is not None:
+                references.append(
+                    _BodyReference(path, item_model, item.id, row=True, listed=True)
+                )
+            else:
+                _collect_value_references(item, f"{path}[{index}]", references, seen)
+    elif isinstance(value, dict):
+        for key, item in value.items():
+            _collect_value_references(item, f"{path}[{key!r}]", references, seen)
+
+
+def _reference_lookups(
+    references: list[_BodyReference],
+) -> dict[type[Any], tuple[list[Any], bool]]:
+    """``{model: (ids, rows)}``: the ids of each model, without repeats, and
+    whether a reference to it needs the rows."""
+    lookups: dict[type[Any], tuple[dict[Any, None], bool]] = {}
+    for reference in references:
+        ids, rows = lookups.get(reference.model, ({}, False))
+        ids[reference.id] = None
+        lookups[reference.model] = (ids, rows or reference.row)
+    return {model: (list(ids), rows) for model, (ids, rows) in lookups.items()}
+
+
+def _reference_statements(
+    model: type[Any], ids: list[Any], rows: bool
+) -> Iterator[tuple[Any, str]]:
+    """The statements that find the rows of ``model`` for ``ids``, in chunks,
+    and the name of its primary key attribute.
+
+    The statements are ORM statements over the mapped attribute, so a rule of
+    the session (``with_loader_criteria``) reaches them too.
+    """
+    mapper = sa_inspect(model)
+    key = mapper.get_property_by_column(mapper.primary_key[0]).key
+    pk = getattr(model, key)
+    scope = _default_scope(model)
+    for start in range(0, len(ids), _IN_CHUNK):
+        stmt = select(model if rows else pk).where(
+            pk.in_(ids[start : start + _IN_CHUNK])
+        )
+        if scope is not None:
+            stmt = apply_clauses(stmt, scope)
+        yield stmt, key
+
+
+def _found_references(
+    model: type[Any], ids: list[Any], rows: bool, key: str, results: Iterable[Any]
+) -> dict[tuple[type[Any], Any], Any]:
+    """``{(model, id): row}`` for what one statement found.
+
+    A row is keyed by the id that the client sent when the statement asked
+    for one id: the database matched it, and its key can differ in Python,
+    as with a case-insensitive key.
+    """
+    found = list(results)
+    if len(ids) == 1 and len(found) == 1:
+        return {(model, ids[0]): found[0] if rows else _NO_ROW}
+    if rows:
+        return {(model, getattr(row, key)): row for row in found}
+    return {(model, id_): _NO_ROW for id_ in found}
+
+
+def _raise_for_missing_references(
+    references: list[_BodyReference], found: Mapping[tuple[type[Any], Any], Any]
+) -> None:
+    """Raise ``NotFound`` for the first field that names a row that was not
+    found. A list of references names all its missing ids."""
+    missing: dict[str, list[Any]] = {}
+    listed: set[str] = set()
+    for reference in references:
+        if (reference.model, reference.id) in found:
+            continue
+        ids = missing.setdefault(reference.path, [])
+        if reference.id not in ids:
+            ids.append(reference.id)
+        if reference.listed:
+            listed.add(reference.path)
+    for path, ids in missing.items():
+        shown = ids if path in listed else ids[0]
+        raise NotFound(f"Id not found for {path}: {shown}")
+
+
+def _check_body_references(
+    session: SA_Session, data: Any
+) -> dict[tuple[type[Any], Any], Any]:
+    """Check every reference in ``data``, and return what was found as
+    ``{(model, id): row}``.
+
+    One query per referenced model (in chunks for a long list). A reference
+    to a row that the model's ``default_scope`` or the session hides is a
+    miss, and raises ``NotFound`` (404) with the field and the id.
+    """
+    references = _body_references(data)
+    found: dict[tuple[type[Any], Any], Any] = {}
+    # the query must not write an object that the code is still building
+    with session.no_autoflush:
+        for model, (ids, rows) in _reference_lookups(references).items():
+            for stmt, key in _reference_statements(model, ids, rows):
+                results = session.scalars(stmt).unique()
+                found.update(_found_references(model, ids, rows, key, results))
+    _raise_for_missing_references(references, found)
+    return found
+
+
+async def _async_check_body_references(
+    session: SA_AsyncSession, data: Any
+) -> dict[tuple[type[Any], Any], Any]:
+    """Async twin of :func:`_check_body_references`."""
+    references = _body_references(data)
+    found: dict[tuple[type[Any], Any], Any] = {}
+    with session.no_autoflush:
+        for model, (ids, rows) in _reference_lookups(references).items():
+            for stmt, key in _reference_statements(model, ids, rows):
+                results = (await session.scalars(stmt)).unique()
+                found.update(_found_references(model, ids, rows, key, results))
+    _raise_for_missing_references(references, found)
+    return found
+
+
+def _id_schema_fields(
+    schema_obj: pydantic.BaseModel,
+) -> Iterator[tuple[str, type[Any], list[Any], bool]]:
+    """``(field, model, ids, is_list)`` for each ``IDRef`` or ``IDSchema``
+    field that the client sent. ``ids`` keeps the client's order, without
+    repeats, so a repeated id cannot give a false 404."""
+    for field in schema_obj.model_fields_set:
+        value = getattr(schema_obj, field, None)
+        model = _reference_model(value)
+        if model is not None:
+            yield field, model, [value.id], False
+        elif isinstance(value, list) and any(isinstance(i, IDSchema) for i in value):
+            # Assume all IdSchemas are for the same model
+            model = value[0].get_sql_model_annotation()
+            if model is not None:
+                yield field, model, list(dict.fromkeys(i.id for i in value)), True
+
+
+def _id_schema_rows(
+    field: str, ids: list[Any], found: list[Any], key: str, is_list: bool
+) -> Any:
+    """The resolved value of ``field``, from the rows that were ``found``.
+    Raises ``NotFound`` for an id that has no row."""
+    if not is_list:
+        if not found:
+            raise NotFound(f"Id not found for {field}: {ids[0]}")
+        return found[0]
+    by_id = {getattr(row, key): row for row in found}
+    missing = [id_ for id_ in ids if id_ not in by_id]
+    if missing:
+        raise NotFound(f"Id not found for {field}: {missing}")
+    return [by_id[id_] for id_ in ids]
+
+
 async def _async_resolve_ids_to_sqlalchemy_objects(
     session: SA_AsyncSession, schema_obj: pydantic.BaseModel
 ) -> dict[str, Any]:
-    """
-    Resolve any IDSchema reference fields on ``schema_obj`` to SQLAlchemy rows.
-    A database request is made for each IDSchema to look up the related row in the database.
-    If an id is not found in the database `sqlalchemy.orm.exc.NoResultFound` is raised.
-
-    Returns a ``{field_name: resolved_object_or_list}`` mapping for the fields
-    that referenced a model; ``schema_obj`` itself is left unmodified, so it
-    keeps the validated request values (``IDRef[T]``, not ORM rows). The
-    write path consumes the returned mapping.
-
-    The lookup applies the referenced model's ``default_scope``, so a
-    reference to a row the scope hides is ``NotFound``. A
-    model without a ``default_scope`` resolves by bare primary key, as before;
-    see the ``IDRef`` docstring.
-    """
-    # Go over all Pydantic fields and check if any of them are an IDSchema object or
-    # a list of IDSchema objects.
+    """Async twin of :func:`_resolve_ids_to_sqlalchemy_objects`."""
+    checked = _checked_references(session)
     resolved: dict[str, Any] = {}
-    for field in schema_obj.model_fields_set:
-        value = getattr(schema_obj, field, None)
-
-        if isinstance(value, IDSchema):
-            sql_model = value.get_sql_model_annotation()
-            if not sql_model:
-                continue
-
-            scope = _default_scope(sql_model)
-            if scope is None:
-                # unscoped: keep get_one, which serves identity-map hits
-                try:
-                    sql_model_obj = await session.get_one(sql_model, value.id)
-                except NoResultFound as e:
-                    raise NotFound(f"Id not found for {field}: {value.id}") from e
-            else:
-                # mapper pk, not `.id`: the pk attribute can be named anything
-                pk_col = sa_inspect(sql_model).primary_key[0]
-                query = apply_clauses(
-                    select(sql_model).where(pk_col == value.id), scope
-                )
-                sql_model_obj = (await session.scalars(query)).first()
-                if sql_model_obj is None:
-                    raise NotFound(f"Id not found for {field}: {value.id}")
-            resolved[field] = sql_model_obj
-
-        elif isinstance(value, list) and any(isinstance(i, IDSchema) for i in value):
-            # Assume all IdSchemas are for the same model
-            sql_model = value[0].get_sql_model_annotation()
-            if not sql_model:
-                continue
-
-            # Resolve via an id -> row map: keeps the client's order (first
-            # appearance, deduped) and makes a missing id one absent from the map,
-            # so a repeated id can't spuriously 404 (``IN`` dedups and reorders).
-            ids = [obj.id for obj in value]
-            unique_ids = list(dict.fromkeys(ids))
-            query = select(sql_model).where(sql_model.id.in_(unique_ids))
-            scope = _default_scope(sql_model)
-            if scope is not None:
-                query = apply_clauses(query, scope)
-            by_id = {o.id: o for o in await session.scalars(query)}
-
-            missing = [i for i in unique_ids if i not in by_id]
-            if missing:
-                raise NotFound(f"Id not found for {field}: {missing}")
-
-            resolved[field] = [by_id[i] for i in unique_ids]
-
+    for field, model, ids, is_list in _id_schema_fields(schema_obj):
+        rows = _recorded_rows(checked, model, ids)
+        if rows is not None:
+            resolved[field] = rows if is_list else rows[0]
+            continue
+        if not is_list and _default_scope(model) is None:
+            # unscoped: keep get_one, which serves identity-map hits
+            try:
+                resolved[field] = await session.get_one(model, ids[0])
+            except NoResultFound as e:
+                raise NotFound(f"Id not found for {field}: {ids[0]}") from e
+            continue
+        found: list[Any] = []
+        for stmt, key in _reference_statements(model, ids, rows=True):
+            found.extend((await session.scalars(stmt)).unique())
+        resolved[field] = _id_schema_rows(field, ids, found, key, is_list)
     return resolved
 
 
 def _resolve_ids_to_sqlalchemy_objects(
     session: SA_Session, schema_obj: pydantic.BaseModel
 ) -> dict[str, Any]:
-    """
-    Resolve any IDSchema reference fields on ``schema_obj`` to SQLAlchemy rows.
-    A database request is made for each IDSchema to look up the related row in the database.
-    If an id is not found in the database `sqlalchemy.orm.exc.NoResultFound` is raised.
+    """Resolve the ``IDRef`` and ``IDSchema`` fields of ``schema_obj`` to rows.
 
-    Returns a ``{field_name: resolved_object_or_list}`` mapping for the fields
-    that referenced a model; ``schema_obj`` itself is left unmodified, so it
-    keeps the validated request values (``IDRef[T]``, not ORM rows). The
-    write path consumes the returned mapping.
+    Returns ``{field_name: row_or_rows}`` for the fields that refer to a
+    model. ``schema_obj`` itself is left unchanged, so it keeps the validated
+    request values (``IDRef[T]``, not ORM rows).
 
     The lookup applies the referenced model's ``default_scope``, so a
-    reference to a row the scope hides is ``NotFound``. A
-    model without a ``default_scope`` resolves by bare primary key, as before;
-    see the ``IDRef`` docstring.
+    reference to a row that the scope hides is ``NotFound``, as a missing row
+    is. A model without a ``default_scope`` resolves by primary key alone.
+    Inside a write action, a reference that the action already checked is
+    taken from its record, without a query.
     """
-    # Go over all Pydantic fields and check if any of them are an IDSchema object or
-    # a list of IDSchema objects.
+    checked = _checked_references(session)
     resolved: dict[str, Any] = {}
-    for field in schema_obj.model_fields_set:
-        value = getattr(schema_obj, field, None)
-
-        if isinstance(value, IDSchema):
-            sql_model = value.get_sql_model_annotation()
-            if not sql_model:
-                continue
-
-            scope = _default_scope(sql_model)
-            if scope is None:
-                # unscoped: keep get_one, which serves identity-map hits
-                try:
-                    sql_model_obj = session.get_one(sql_model, value.id)
-                except NoResultFound as e:
-                    raise NotFound(f"Id not found for {field}: {value.id}") from e
-            else:
-                # mapper pk, not `.id`: the pk attribute can be named anything
-                pk_col = sa_inspect(sql_model).primary_key[0]
-                query = apply_clauses(
-                    select(sql_model).where(pk_col == value.id), scope
-                )
-                sql_model_obj = session.scalars(query).first()
-                if sql_model_obj is None:
-                    raise NotFound(f"Id not found for {field}: {value.id}")
-            resolved[field] = sql_model_obj
-
-        elif isinstance(value, list) and any(isinstance(i, IDSchema) for i in value):
-            # Assume all IdSchemas are for the same model
-            sql_model = value[0].get_sql_model_annotation()
-            if not sql_model:
-                continue
-
-            # Resolve via an id -> row map: keeps the client's order (first
-            # appearance, deduped) and makes a missing id one absent from the map,
-            # so a repeated id can't spuriously 404 (``IN`` dedups and reorders).
-            ids = [obj.id for obj in value]
-            unique_ids = list(dict.fromkeys(ids))
-            query = select(sql_model).where(sql_model.id.in_(unique_ids))
-            scope = _default_scope(sql_model)
-            if scope is not None:
-                query = apply_clauses(query, scope)
-            by_id = {o.id: o for o in session.scalars(query)}
-
-            missing = [i for i in unique_ids if i not in by_id]
-            if missing:
-                raise NotFound(f"Id not found for {field}: {missing}")
-
-            resolved[field] = [by_id[i] for i in unique_ids]
-
+    for field, model, ids, is_list in _id_schema_fields(schema_obj):
+        rows = _recorded_rows(checked, model, ids)
+        if rows is not None:
+            resolved[field] = rows if is_list else rows[0]
+            continue
+        if not is_list and _default_scope(model) is None:
+            # unscoped: keep get_one, which serves identity-map hits
+            try:
+                resolved[field] = session.get_one(model, ids[0])
+            except NoResultFound as e:
+                raise NotFound(f"Id not found for {field}: {ids[0]}") from e
+            continue
+        found: list[Any] = []
+        for stmt, key in _reference_statements(model, ids, rows=True):
+            found.extend(session.scalars(stmt).unique())
+        resolved[field] = _id_schema_rows(field, ids, found, key, is_list)
     return resolved
 
 
 def _ref_exists_marker(field_info: FieldInfo) -> RefExists | None:
     """Return the ``RefExists`` marker on a field, or ``None``.
 
-    Found at the field's top level (``MustExist[pk, M]`` / ``Annotated[pk,
-    RefExists(M)]``), or recovered from the union member for an optional field
-    (``MustExist[pk, M] | None``), where Pydantic keeps the marker on the inner
-    annotation rather than ``field_info.metadata`` -- so an optional checked FK
-    is checked like the plain form (parity with ``Optional[IDRef]``).
+    Found at the field's top level (``MustExist[pk, M]``), or recovered from
+    the union member for an optional field (``MustExist[pk, M] | None``),
+    where Pydantic keeps the marker on the inner annotation rather than
+    ``field_info.metadata`` -- so an optional checked FK is checked like the
+    plain form (parity with ``Optional[IDRef]``).
     """
     _, metadata = _unwrap_type(field_info.annotation)
     for m in (*field_info.metadata, *metadata):
@@ -792,64 +953,12 @@ def _ref_exists_marker(field_info: FieldInfo) -> RefExists | None:
     return None
 
 
-def _infer_ref_model(model_cls: type[Any], field_name: str) -> type[Any]:
-    """Resolve the target model for a ``MustExist[pk]`` field from its FK column.
-
-    ``MustExist[pk]`` (one argument) leaves the model to be inferred: the column
-    named by the field must carry exactly one ``ForeignKey``, whose table maps to
-    the target model. Raises ``RestlyConfigurationError`` when the field does not
-    map to a single-FK column -- name the model explicitly (``MustExist[pk,
-    Model]``) there.
-    """
-    model_mapper = sa_inspect(model_cls)
-    column = model_mapper.columns.get(field_name)
-    foreign_keys = list(column.foreign_keys) if column is not None else []
-    if len(foreign_keys) == 1:
-        target_table = foreign_keys[0].column.table
-        for mapper in model_mapper.registry.mappers:
-            if mapper.local_table is target_table:
-                return mapper.class_
-        raise RestlyConfigurationError(
-            f"{model_cls.__name__}.{field_name}: MustExist[...] with one argument "
-            f"infers the target model from the column's ForeignKey, but its FK "
-            f"target table '{target_table.name}' has no mapped model. "
-            f"Name it explicitly: MustExist[<pk>, <Model>]."
-        )
-    raise RestlyConfigurationError(
-        f"{model_cls.__name__}.{field_name}: MustExist[...] with one argument "
-        f"infers the target model from the column's ForeignKey, but "
-        f"'{field_name}' does not map to a column with exactly one foreign key. "
-        f"Name it explicitly: MustExist[<pk>, <Model>]."
-    )
-
-
-def _effective_ref_scope(marker: RefExists, model: type[Any]) -> WhereClause | None:
-    """The scope a ``RefExists`` check applies: the marker's own ``scope``
-    when given (``UNSCOPED`` meaning explicitly none), the target model's
-    ``default_scope`` otherwise."""
-    if isinstance(marker.scope, _NotGiven):
-        return _default_scope(model)
-    if marker.scope is UNSCOPED:
-        return None
-    return marker.scope
-
-
 def _ref_exists_fields(
-    model_cls: type[Any], schema_obj: pydantic.BaseModel
-) -> dict[tuple[type[Any], WhereClause | None], list[tuple[str, Any]]]:
-    """Group provided, non-``None`` ``RefExists``-marked scalar fields by
-    target model and effective scope.
-
-    Returns ``{(model, scope): [(field_name, id), ...]}`` for fields whose
-    annotation carries a ``RefExists`` marker (``MustExist[pk]`` /
-    ``MustExist[pk, Model]``, or an explicit ``Annotated[pk, RefExists(Model)]``).
-    A marker left to infer (``MustExist[pk]``) is resolved to the model behind
-    the column's ``ForeignKey`` on ``model_cls``; the scope is resolved per
-    field (see :func:`_effective_ref_scope`), so two fields on one model can
-    check against different scopes. Only fields actually supplied
-    (``model_fields_set``) with a non-``None`` value are included.
-    """
-    by_target: dict[tuple[type[Any], WhereClause | None], list[tuple[str, Any]]] = {}
+    schema_obj: pydantic.BaseModel,
+) -> dict[type[Any], list[tuple[str, Any]]]:
+    """``{model: [(field_name, id), ...]}`` for the ``MustExist`` fields that
+    the client sent with a value other than ``None``."""
+    by_target: dict[type[Any], list[tuple[str, Any]]] = {}
     model_fields = type(schema_obj).model_fields
     for field_name in schema_obj.model_fields_set:
         field_info = model_fields.get(field_name)
@@ -861,12 +970,24 @@ def _ref_exists_fields(
         value = getattr(schema_obj, field_name, None)
         if value is None:
             continue
-        model = marker.model
-        if model is _Infer:
-            model = _infer_ref_model(model_cls, field_name)
-        scope = _effective_ref_scope(marker, model)
-        by_target.setdefault((model, scope), []).append((field_name, value))
+        by_target.setdefault(marker.model, []).append((field_name, value))
     return by_target
+
+
+def _unchecked_ref_exists_fields(
+    session: SA_Session | SA_AsyncSession, schema_obj: pydantic.BaseModel
+) -> dict[type[Any], list[tuple[str, Any]]]:
+    """:func:`_ref_exists_fields` without the ids that the running write
+    action has checked."""
+    checked = _checked_references(session)
+    unchecked: dict[type[Any], list[tuple[str, Any]]] = {}
+    for model, items in _ref_exists_fields(schema_obj).items():
+        items = [
+            (name, value) for name, value in items if (model, value) not in checked
+        ]
+        if items:
+            unchecked[model] = items
+    return unchecked
 
 
 def _raise_for_missing_refs(items: list[tuple[str, Any]], found: set[Any]) -> None:
@@ -875,43 +996,31 @@ def _raise_for_missing_refs(items: list[tuple[str, Any]], found: set[Any]) -> No
             raise NotFound(f"Id not found for {field_name}: {value}")
 
 
-def _ref_exists_query(
-    model: type[Any], scope: WhereClause | None, items: list[tuple[str, Any]]
-) -> Any:
-    unique = list(dict.fromkeys(value for _, value in items))
-    mapper = sa_inspect(model)
-    # the mapped attribute, not the Core column: an ORM statement, so a
-    # session-level rule (with_loader_criteria) reaches this check too
-    pk = getattr(model, mapper.get_property_by_column(mapper.primary_key[0]).key)
-    query = select(pk).where(pk.in_(unique))
-    if scope is not None:
-        query = apply_clauses(query, scope)
-    return query
+def _check_ref_exists(session: SA_Session, schema_obj: pydantic.BaseModel) -> None:
+    """Check that every ``MustExist`` id of ``schema_obj`` exists (sync).
 
-
-def _check_ref_exists(
-    session: SA_Session, model_cls: type[Any], schema_obj: pydantic.BaseModel
-) -> None:
-    """Batch-validate that every ``RefExists``-marked id exists (sync).
-
-    One ``SELECT pk WHERE pk IN (...)`` per (referenced model, scope) pair
-    (no N+1); raises ``NotFound`` (404) naming the field and id on a miss.
-    The scope is the marker's own when given, the target model's
-    ``default_scope`` otherwise, so a row the scope hides is a miss.
-    ``model_cls`` is the model being written, used to infer the target of a
-    ``MustExist[pk]`` field.
+    One ``SELECT pk WHERE pk IN (...)`` per referenced model (no N+1); raises
+    ``NotFound`` (404) naming the field and id on a miss. The model's
+    ``default_scope`` applies, so a row the scope hides is a miss. Inside a
+    write action, an id that the action already checked is not queried again.
     """
-    for (model, scope), items in _ref_exists_fields(model_cls, schema_obj).items():
-        found = set(session.scalars(_ref_exists_query(model, scope, items)))
+    for model, items in _unchecked_ref_exists_fields(session, schema_obj).items():
+        ids = list(dict.fromkeys(value for _, value in items))
+        found: set[Any] = set()
+        for stmt, _ in _reference_statements(model, ids, rows=False):
+            found.update(session.scalars(stmt))
         _raise_for_missing_refs(items, found)
 
 
 async def _async_check_ref_exists(
-    session: SA_AsyncSession, model_cls: type[Any], schema_obj: pydantic.BaseModel
+    session: SA_AsyncSession, schema_obj: pydantic.BaseModel
 ) -> None:
     """Async twin of :func:`_check_ref_exists`."""
-    for (model, scope), items in _ref_exists_fields(model_cls, schema_obj).items():
-        found = set(await session.scalars(_ref_exists_query(model, scope, items)))
+    for model, items in _unchecked_ref_exists_fields(session, schema_obj).items():
+        ids = list(dict.fromkeys(value for _, value in items))
+        found: set[Any] = set()
+        for stmt, _ in _reference_statements(model, ids, rows=False):
+            found.update(await session.scalars(stmt))
         _raise_for_missing_refs(items, found)
 
 

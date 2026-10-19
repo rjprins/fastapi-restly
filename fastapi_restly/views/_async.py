@@ -191,7 +191,11 @@ class AsyncRestView(
             async with self.write_action("create", data=req) as w:
                 w.obj = await self.make_new_object(req)
 
-        Pass ``obj=None`` for writes with no single object. Exceptions skip the
+        Pass ``obj=None`` for writes with no single object. After
+        ``authorize``, the block checks the references in ``data``, as a CRUD
+        write does: the ``MustExist``, ``IDRef`` and ``IDSchema`` fields, also
+        in nested schemas and in each item of a list. A missing row raises
+        :class:`~fastapi_restly.exc.NotFound` (404). Exceptions skip the
         commit. The outermost block on the session owns the commit and the
         after-hooks. So a handler or a ``write_action`` inside this block, or
         this block inside :meth:`shared_write_action_commit`, returns after
@@ -233,7 +237,7 @@ class AsyncRestView(
 
     @final
     async def handle_create(self, schema_obj: CreateSchemaT) -> ModelT:
-        """Create handler: ``authorize``, the ``create`` business method, commit bracket.
+        """Create handler: ``authorize``, the reference check, ``create``, commit bracket.
 
         Final: override ``create`` for the domain change, ``authorize`` for
         the gate, and ``before_action_commit`` / ``after_action_commit`` for

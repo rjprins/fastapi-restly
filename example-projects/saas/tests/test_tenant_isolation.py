@@ -3,7 +3,6 @@
 import io
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, replace
-from typing import Annotated
 
 import pydantic
 import pytest
@@ -446,17 +445,15 @@ async def test_unscoped_view_reads_keep_tenant_restriction(tenants, view_type, f
     assert row.id == getattr(own, field)
 
 
-class UnscopedLinkSchema(pydantic.BaseModel):
-    """Reference checks that opt out of ``default_scope``, not of tenancy."""
+class LinkSchema(pydantic.BaseModel):
+    """Reference checks, which run under the tenant rule of the session."""
 
-    task_id: Annotated[int, fr.RefExists(Task, scope=fr.clauses.UNSCOPED)]
-    label_id: Annotated[int, fr.RefExists(Label, scope=fr.clauses.UNSCOPED)]
+    task_id: fr.MustExist[int, Task]
+    label_id: fr.MustExist[int, Label]
 
 
 @pytest.mark.parametrize("foreign_field", [None, "task_id", "label_id"])
-async def test_unscoped_reference_checks_keep_tenant_restriction(
-    tenants, foreign_field
-):
+async def test_reference_checks_keep_tenant_restriction(tenants, foreign_field):
     own, foreign = tenants
     ids = {"task_id": own.task, "label_id": own.label}
     if foreign_field:
@@ -465,12 +462,10 @@ async def test_unscoped_reference_checks_keep_tenant_restriction(
         async with fr.open_async_session() as session:
             if foreign_field:
                 with pytest.raises(fr.exc.NotFound):
-                    await async_make_new_object(
-                        session, TaskLabel, UnscopedLinkSchema(**ids)
-                    )
+                    await async_make_new_object(session, TaskLabel, LinkSchema(**ids))
             else:
                 link = await async_make_new_object(
-                    session, TaskLabel, UnscopedLinkSchema(**ids)
+                    session, TaskLabel, LinkSchema(**ids)
                 )
                 session.expunge(link)
 

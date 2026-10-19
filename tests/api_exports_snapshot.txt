@@ -17,7 +17,6 @@ fastapi_restly:
   - NumberedPagination
   - ReactAdminView
   - ReadOnly
-  - RefExists
   - ResponseShape
   - RestView
   - SessionDep
@@ -128,7 +127,6 @@ fastapi_restly.schemas:
   - IDSchema
   - MustExist
   - ReadOnly
-  - RefExists
   - TimestampsSchemaMixin
   - WriteOnly
   - derive_schema

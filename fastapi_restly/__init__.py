@@ -1,3 +1,4 @@
+import typing as _typing
 from importlib.metadata import PackageNotFoundError as _PackageNotFoundError
 from importlib.metadata import version as _version
 
@@ -36,7 +37,6 @@ from .schemas import (
     IDSchema,
     MustExist,
     ReadOnly,
-    RefExists,
     TimestampsSchemaMixin,
     WriteOnly,
 )
@@ -112,7 +112,6 @@ __all__ = [
     "IDSchema",
     "MustExist",
     "ReadOnly",
-    "RefExists",
     "WriteOnly",
     "TimestampsSchemaMixin",
     # Views
@@ -140,11 +139,21 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str):
-    # ``fr.testing`` on demand: importing it eagerly would drag the HTTP test
-    # client (and httpx) into every production import of fastapi_restly.
-    if name == "testing":
-        import fastapi_restly.testing as testing_module
+if _typing.TYPE_CHECKING:
+    from . import testing as testing
+else:
 
-        return testing_module
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    def __getattr__(name: str):
+        # ``fr.testing`` on demand: importing it eagerly would drag the HTTP
+        # test client (and httpx) into every production import of
+        # fastapi_restly. Type checkers see the import above instead, so
+        # they still report an unknown name.
+        if name == "testing":
+            import fastapi_restly.testing as testing_module
+
+            return testing_module
+        if name == "RefExists":
+            from .schemas._base import _REF_EXISTS_REMOVED
+
+            raise AttributeError(_REF_EXISTS_REMOVED)
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

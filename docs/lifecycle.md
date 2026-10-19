@@ -26,6 +26,7 @@ POST /
   └─ create_endpoint(schema_obj)                 # endpoint method: the HTTP contract
        ├─ handle_create(schema_obj)              # handler: runs the steps (final)
        │    ├─ authorize("create", data=schema_obj)
+       │    ├─ check the references in schema_obj # 404 for a missing row
        │    ├─ create(schema_obj)                 # business method: the change
        │    │    ├─ make_new_object(schema_obj)   # build the ORM object (final)
        │    │    └─ save_object(obj)              # flush and refresh, no commit (final)
@@ -46,8 +47,9 @@ all five actions: `update_endpoint` calls `handle_update`, which calls
   Replace it only to change that contract, such as the status code. See
   [Change the status code, headers or response of one route](#replace-endpoint-method).
 - The **handler**, `handle_<verb>`, runs the steps. It calls
-  {meth}`authorize <fastapi_restly.views.RestView.authorize>` and then the
-  business method. On a write, it ends with the **commit bracket**:
+  {meth}`authorize <fastapi_restly.views.RestView.authorize>`, checks the
+  [references](#reference-exists) in the data, and then calls the business
+  method. On a write, it ends with the **commit bracket**:
   {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`,
   the commit, then
   {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>`.
@@ -62,7 +64,7 @@ all five actions: `update_endpoint` calls `handle_update`, which calls
   {meth}`get_many <fastapi_restly.views.RestView.get_many>`. It makes the
   change: it builds the object, applies the input and saves. It does not check
   permissions and does not commit. So when your override runs, `authorize` has
-  already passed, and the commit comes after it.
+  already passed and the references exist, and the commit comes after it.
 
 :::{admonition} Details
 :class: details
@@ -70,7 +72,7 @@ all five actions: `update_endpoint` calls `handle_update`, which calls
 Update and delete have the same steps, with a load first. Their handlers load
 the row through {meth}`get_one <fastapi_restly.views.RestView.get_one>`, so a
 row that the caller cannot see is a 404. Then they call `authorize` with the
-loaded row and take a
+loaded row, check the references in the data, and take a
 {meth}`snapshot <fastapi_restly.views.BaseRestView.snapshot>` of it as `old`.
 The business method runs next, then the commit bracket. The hooks receive both
 `new` and `old`, so they can see what changed.
@@ -693,7 +695,8 @@ name of the action. The blog example publishes a post:
 ```
 
 When the block starts, Restly calls `authorize("publish", obj=post)` and takes
-the snapshot of the row. When the block ends, Restly runs
+the snapshot of the row. With `data=`, it also checks the references in the
+data, as a CRUD write does. When the block ends, Restly runs
 `before_action_commit`, commits, and runs `after_action_commit`, each with the
 action name `"publish"`. If the block raises, as it does here for a post that
 is already published, nothing is committed. The route loads with `get_one`,

@@ -39,7 +39,7 @@ def make_new_object(
     )
 
     resolved = _resolve_ids_to_sqlalchemy_objects(session, schema_obj)
-    _check_ref_exists(session, model_cls, schema_obj)
+    _check_ref_exists(session, schema_obj)
     validate_resolved_reference_consistency(model_cls, schema_obj, resolved)
     create_plan = build_create_plan(model_cls, schema_obj, resolved)
     obj = model_cls(**create_plan.kwargs)
@@ -62,7 +62,7 @@ def update_object(session: _Session, obj: _T, schema_obj: _pydantic.BaseModel) -
     )
 
     resolved = _resolve_ids_to_sqlalchemy_objects(session, schema_obj)
-    _check_ref_exists(session, type(obj), schema_obj)
+    _check_ref_exists(session, schema_obj)
     validate_resolved_reference_consistency(type(obj), schema_obj, resolved)
     unloaded = _unloaded_written_collections(obj, schema_obj)
     if unloaded:
@@ -145,7 +145,7 @@ async def async_make_new_object(
     )
 
     resolved = await _async_resolve_ids_to_sqlalchemy_objects(session, schema_obj)
-    await _async_check_ref_exists(session, model_cls, schema_obj)
+    await _async_check_ref_exists(session, schema_obj)
     validate_resolved_reference_consistency(model_cls, schema_obj, resolved)
     create_plan = build_create_plan(model_cls, schema_obj, resolved)
     obj = model_cls(**create_plan.kwargs)
@@ -164,7 +164,7 @@ async def async_update_object(
     )
 
     resolved = await _async_resolve_ids_to_sqlalchemy_objects(session, schema_obj)
-    await _async_check_ref_exists(session, type(obj), schema_obj)
+    await _async_check_ref_exists(session, schema_obj)
     validate_resolved_reference_consistency(type(obj), schema_obj, resolved)
     unloaded = _unloaded_written_collections(obj, schema_obj)
     if unloaded:

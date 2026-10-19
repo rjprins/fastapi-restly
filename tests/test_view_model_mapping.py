@@ -256,7 +256,7 @@ def test_foreign_key_checks_on_an_imperative_mapping(client):
 
     class ToolSchema(fr.IDSchema):
         name: str
-        maker_id: fr.MustExist[int] | None = None
+        maker_id: fr.MustExist[int, Maker] | None = None
 
     @fr.include_view(client.app)
     class MakerView(fr.AsyncRestView):

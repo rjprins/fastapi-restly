@@ -1,20 +1,18 @@
 """``MustExist``: existence-checked scalar foreign keys.
 
-``MustExist[int]`` is a checked ``int`` foreign key -- a plain scalar everywhere
-(wire, column, ``data.<field>``) plus a batched existence check on write (404 on a
-missing id), with the target model inferred from the column's ``ForeignKey``.
-``MustExist[int, Post]`` names the model explicitly; ``MustExist[UUID, Account]``
-covers a non-int pk. Unlike ``IDRef`` / ``IDSchema`` it is NOT a wrapper.
+``MustExist[int, Post]`` is a checked ``int`` foreign key -- a plain scalar
+everywhere (wire, column, ``data.<field>``) plus a batched existence check on
+write (404 on a missing id). ``MustExist[UUID, Account]`` covers a non-int pk.
+Unlike ``IDRef`` / ``IDSchema`` it is NOT a wrapper.
 
-These pin: the desugaring (inferred vs explicit model, non-int pk), the scalar
-identity, that the write path does not treat it as a reference, the batched check
-(sync + async, one query per model), the FK-model inference (and its clear failure
-on a non-FK column), optional fields, the explicit marker form, and the e2e flat
-wire.
+These pin: the desugaring (non-int pk), the scalar identity, that the write
+path does not treat it as a reference, the batched check (sync + async, one
+query per model), that the model must be named, optional fields, the removed
+public ``RefExists``, and the e2e flat wire.
 """
 
 import asyncio
-from typing import Annotated, get_args
+from typing import get_args
 from uuid import UUID, uuid4
 
 import pytest
@@ -31,11 +29,9 @@ from sqlalchemy.orm import (
 )
 
 import fastapi_restly as fr
-from fastapi_restly.exc import RestlyConfigurationError
 from fastapi_restly.objects import async_make_new_object, make_new_object, update_object
 from fastapi_restly.schemas._base import (
     RefExists,
-    _Infer,
     create_model_without_read_only_fields,
     is_reference_annotation,
 )
@@ -52,16 +48,26 @@ def test_mustexist_desugars_to_checked_scalar():
     class Post(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
-    # One arg: pk type in the slot, model left to infer.
-    pk_type, marker = get_args(fr.MustExist[int])
+    pk_type, marker = get_args(fr.MustExist[int, Post])
     assert pk_type is int
     assert isinstance(marker, RefExists)
-    assert marker.model is _Infer
+    assert marker.model is Post
 
-    # Two args: pk type + explicit model.
-    pk_type2, marker2 = get_args(fr.MustExist[int, Post])
-    assert pk_type2 is int
-    assert marker2.model is Post
+
+def test_mustexist_needs_the_model():
+    # the same schema can write another model, so a model taken from a
+    # foreign key could check the wrong table
+    with pytest.raises(TypeError, match=r"MustExist\[int, Post\]"):
+        fr.MustExist[int]  # type: ignore[misc]
+    with pytest.raises(TypeError, match="the model class"):
+        fr.MustExist[int, "Post"]  # type: ignore[misc]
+
+
+def test_ref_exists_is_not_public():
+    with pytest.raises(AttributeError, match=r"fr\.MustExist\[int, Post\]"):
+        fr.RefExists  # type: ignore[attr-defined]  # noqa: B018
+    with pytest.raises(AttributeError, match="authorize"):
+        fr.schemas.RefExists  # type: ignore[attr-defined]  # noqa: B018
 
 
 def test_mustexist_non_int_pk_type_is_the_first_arg():
@@ -80,7 +86,7 @@ def test_mustexist_field_stays_scalar_and_is_not_a_reference():
 
     class CommentSchema(fr.BaseSchema):
         content: str
-        post_id: fr.MustExist[int]
+        post_id: fr.MustExist[int, Post]
 
     field_info = CommentSchema.model_fields["post_id"]
     assert field_info.annotation is int
@@ -96,7 +102,7 @@ def test_mustexist_field_stays_scalar_and_is_not_a_reference():
 
 
 # ---------------------------------------------------------------------------
-# Existence check (sync) -- model inferred from the column's ForeignKey
+# Existence check (sync)
 # ---------------------------------------------------------------------------
 
 
@@ -110,7 +116,7 @@ def _post_comment_models():
 
     class CommentSchema(fr.BaseSchema):
         content: str
-        post_id: fr.MustExist[int]  # target Post inferred from the FK
+        post_id: fr.MustExist[int, Post]
 
     return Post, Comment, CommentSchema
 
@@ -197,28 +203,8 @@ def test_sync_explicit_model_second_arg(sync_db):
         assert exc.value.status_code == 404
 
 
-def test_sync_infer_fails_clearly_on_non_fk_column(sync_db):
-    """``MustExist[int]`` on a field that does not map to a single-FK column raises
-    a configuration error steering to the explicit form."""
-    engine, make_session = sync_db
-
-    class Widget(fr.IDMixin, SharedBase):
-        count: Mapped[int]  # a plain int column, no ForeignKey
-
-    class WidgetSchema(fr.BaseSchema):
-        count: fr.MustExist[int]
-
-    SharedBase.metadata.create_all(engine)
-
-    with make_session() as session:
-        with pytest.raises(RestlyConfigurationError) as exc:
-            make_new_object(session, Widget, WidgetSchema(count=1))
-        assert "count" in str(exc.value)
-        assert "MustExist[<pk>, <Model>]" in str(exc.value)
-
-
 def test_sync_check_is_batched_one_query_per_model(sync_db):
-    """Two inferred ``MustExist[int]`` fields to the same model trigger a single
+    """Two ``MustExist[int, Post]`` fields to the same model trigger a single
     ``SELECT ... WHERE id IN (...)`` -- no N+1."""
     engine, make_session = sync_db
 
@@ -230,8 +216,8 @@ def test_sync_check_is_batched_one_query_per_model(sync_db):
         right_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
 
     class PairingSchema(fr.BaseSchema):
-        left_id: fr.MustExist[int]
-        right_id: fr.MustExist[int]
+        left_id: fr.MustExist[int, Post]
+        right_id: fr.MustExist[int, Post]
 
     SharedBase.metadata.create_all(engine)
 
@@ -285,7 +271,7 @@ def test_sync_check_is_an_orm_statement_so_a_session_rule_applies(sync_db):
         post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
 
     class CommentSchema(fr.BaseSchema):
-        post_id: fr.MustExist[int]
+        post_id: fr.MustExist[int, Post]
 
     SharedBase.metadata.create_all(engine)
     restrict = _restrict_to_tenant(Post, tenant=1)
@@ -317,7 +303,7 @@ def test_async_check_is_an_orm_statement_so_a_session_rule_applies():
             post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
 
         class CommentSchema(fr.BaseSchema):
-            post_id: fr.MustExist[int]
+            post_id: fr.MustExist[int, Post]
 
         async with engine.begin() as conn:
             await conn.run_sync(SharedBase.metadata.create_all)
@@ -346,7 +332,7 @@ def test_async_check_is_an_orm_statement_so_a_session_rule_applies():
 
 
 def test_sync_uuid_pk_existence_check(sync_db):
-    """A UUID FK: ``MustExist[UUID]`` infers the model, same as the int case."""
+    """A UUID FK: ``MustExist[UUID, Account]``, same as the int case."""
     engine, make_session = sync_db
 
     class Account(SharedBase):
@@ -359,7 +345,7 @@ def test_sync_uuid_pk_existence_check(sync_db):
         )
 
     class MembershipSchema(fr.BaseSchema):
-        account_id: fr.MustExist[UUID]
+        account_id: fr.MustExist[UUID, Account]
 
     SharedBase.metadata.create_all(engine)
 
@@ -380,41 +366,8 @@ def test_sync_uuid_pk_existence_check(sync_db):
         assert exc.value.status_code == 404
 
 
-def test_explicit_marker_form_behaves_like_mustexist(sync_db):
-    """``Annotated[int, RefExists(Model)]`` (no sugar) is equivalent."""
-    engine, make_session = sync_db
-
-    class Post(fr.IDMixin, SharedBase):
-        title: Mapped[str]
-
-    class Comment(fr.IDMixin, SharedBase):
-        content: Mapped[str]
-        post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
-
-    class CommentSchema(fr.BaseSchema):
-        content: str
-        post_id: Annotated[int, RefExists(Post)]
-
-    SharedBase.metadata.create_all(engine)
-
-    with make_session() as session:
-        post = Post(title="p")
-        session.add(post)
-        session.flush()
-
-        comment = make_new_object(
-            session, Comment, CommentSchema(content="hi", post_id=post.id)
-        )
-        session.flush()
-        assert comment.post_id == post.id
-
-        with pytest.raises(HTTPException) as exc:
-            make_new_object(session, Comment, CommentSchema(content="x", post_id=12345))
-        assert exc.value.status_code == 404
-
-
 def test_optional_mustexist_checks_when_provided_and_skips_none(sync_db):
-    """``MustExist[int] | None`` buries the marker in the union, but the check is
+    """``MustExist[int, Post] | None`` buries the marker in the union, but the check is
     recovered from the annotation: a provided id is still verified, ``None`` is
     skipped."""
     engine, make_session = sync_db
@@ -428,7 +381,7 @@ def test_optional_mustexist_checks_when_provided_and_skips_none(sync_db):
 
     class CommentSchema(fr.BaseSchema):
         content: str
-        post_id: fr.MustExist[int] | None = None
+        post_id: fr.MustExist[int, Post] | None = None
 
     SharedBase.metadata.create_all(engine)
 
@@ -475,7 +428,7 @@ def test_async_existence_check_parity():
 
         class CommentSchema(fr.BaseSchema):
             content: str
-            post_id: fr.MustExist[int]
+            post_id: fr.MustExist[int, Post]
 
         async with engine.begin() as conn:
             await conn.run_sync(SharedBase.metadata.create_all)
@@ -518,7 +471,7 @@ def test_mustexist_e2e_flat_wire_and_404(client):
 
     class CommentSchema(fr.IDSchema):
         content: str
-        post_id: fr.MustExist[int]
+        post_id: fr.MustExist[int, Post]
 
     @fr.include_view(client.app)
     class PostView(fr.AsyncRestView):

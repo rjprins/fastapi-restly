@@ -393,34 +393,6 @@ The result is a clause or `fr.clauses.UNSCOPED`, never `None`. So it goes
 straight into `fr.apply_clauses` or into a composition, without an `if`.
 :::
 
-(reference-scopes)=
-## Check a reference against another scope
-
-A reference field checks the row against the `default_scope` of the target
-model. {class}`fr.RefExists <fastapi_restly.schemas.RefExists>` names the
-target model, and its `scope` argument changes the check for one field:
-
-```python
-class OrderCreate(fr.BaseSchema):
-    item_id: fr.MustExist[int]                # default_scope of Item (from the foreign key)
-
-    restore_id: Annotated[int, fr.RefExists(Item, scope=ItemClauses.trashed)]
-
-    audit_item_id: Annotated[int, fr.RefExists(Item, scope=fr.clauses.UNSCOPED)]
-```
-
-- **No `scope`**: the `default_scope` of the target applies.
-- **`scope=<WhereClause>`**: that clause applies instead. Here `restore_id`
-  accepts exactly the ids that the trash shows.
-- **`scope=fr.clauses.UNSCOPED`**: the check uses no scope. `scope=None`
-  raises `TypeError`, so a variable that is `None` by mistake can never turn
-  the check off, and a search for `UNSCOPED` finds every place.
-
-`IDRef` and `IDSchema` references always use the `default_scope` of the
-target. Only the scalar marker `RefExists` can change it.
-[Relationships](#visibility-and-multi-tenancy) covers which rows a
-reference can reach.
-
 (soft-delete-mixin)=
 
 ## Soft-delete rows
@@ -499,8 +471,7 @@ Restly's `default_scope` leaves out the parts of Rails' `default_scope` that
 cause problems. It decides only which rows reads and reference checks see. It
 does not set column values when you create a row. And nothing reads past it
 without saying so. A view declares a replacement scope or
-`fr.clauses.UNSCOPED` in its class body, and a reference check uses the same
-word `UNSCOPED`, so a search finds every place.
+`fr.clauses.UNSCOPED` in its class body, so a search finds every place.
 
 Phoenix passes its `Scope` as an argument to each context function. Restly
 binds `Current` once per request, and code reads it where it needs it.

@@ -17,7 +17,7 @@ from .schemas import LabelSchema, TaskLabelResponse, TaskLabelSchema
 class CreateAndAttachLabelRequest(BaseModel):
     """Request body for the sibling-creation custom endpoint."""
 
-    task_id: int
+    task_id: fr.MustExist[int, Task]
     label_name: str
     color: str = "#808080"
 
@@ -52,22 +52,26 @@ class TaskLabelView(AuthenticatedView[TaskLabel]):
     async def authorize(
         self, action: str, obj: TaskLabel | None = None, data: Any = None
     ) -> None:
-        """A member changes or removes a link only on a task assigned to them.
+        """A member changes labels only on a task that is assigned to them.
 
-        The schema's reference scope covers the task a request names. This
-        covers the task an existing link already points at. Reads stay open
-        inside the organization: a member lists the labels of a task they
-        cannot open.
+        This covers the task that a request names and the task that an
+        existing link points at. Reads stay open inside the organization: a
+        member lists the labels of a task they cannot open. A task that does
+        not exist is left to the reference check, which answers 404.
         """
-        if action not in (fr.Action.UPDATE, fr.Action.DELETE) or obj is None:
+        task_ids = set()
+        if obj is not None and action in (fr.Action.UPDATE, fr.Action.DELETE):
+            task_ids.add(obj.task_id)
+        bodies = (TaskLabelSchema, CreateAndAttachLabelRequest)
+        if isinstance(data, bodies) and "task_id" in data.model_fields_set:
+            task_ids.add(data.task_id)
+        if not task_ids:
             return
-        task_id = await self.session.scalar(
-            fr.apply_clauses(
-                sa.select(Task.id).where(Task.id == obj.task_id),
-                TaskClauses.assigned_to_current_user,
-            )
+        # each named task, and whether the caller may change it
+        stmt = sa.select(Task.id, TaskClauses.assigned_to_current_user()).where(
+            Task.id.in_(task_ids)
         )
-        if task_id is None:
+        if not all(allowed for _, allowed in await self.session.execute(stmt)):
             raise fr.exc.Forbidden("Changing a task's labels requires the task")
 
     @fr.post("/create-and-attach", response_model=TaskLabelResponse, status_code=201)
@@ -78,12 +82,10 @@ class TaskLabelView(AuthenticatedView[TaskLabel]):
 
         The Label lands in the organization the request acts in:
         ``organization_id`` is the model's stamp, not an argument here.
-        The Label is flushed first so its id can pass the TaskLabel schema's
-        reference checks. The tenant criteria restrict those checks to the
-        caller's organization, and ``task_id`` is checked in
-        ``TaskClauses.visible``. A foreign task, a deleted task, or a task
-        the member is not assigned to returns 404, rolling back the flushed
-        Label with the request.
+        Before the block runs, ``authorize`` refuses a task that the member
+        is not assigned to (403), and the reference check refuses a foreign
+        or deleted task (404). The Label is flushed first so its id can pass
+        the TaskLabel schema's reference checks.
         """
         # Commit the Label + TaskLabel pair atomically.
         async with self.write_action("create", data=request) as w:
@@ -92,8 +94,7 @@ class TaskLabelView(AuthenticatedView[TaskLabel]):
             self.session.add(label)
             await self.session.flush()  # <-- existence check needs the PK to exist
 
-            # 2) Build TaskLabel with plain ids so references are checked,
-            #    each inside the scope its schema field names.
+            # 2) Build TaskLabel with plain ids so references are checked.
             link_schema = TaskLabelSchema.model_construct(
                 task_id=request.task_id, label_id=label.id
             )

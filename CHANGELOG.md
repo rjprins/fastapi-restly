@@ -92,6 +92,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The write bracket checks the references in the data of a write, after
+  `authorize` and before the business method. So a `create` or `update` of
+  your own that builds the object itself is still checked, and so is the
+  `data=` of `write_action`. The check also covers the schemas nested in the
+  data, such as the lines of an order, and each item of a list. Before, only
+  `make_new_object` and `update_object` checked, and only the top-level
+  fields of their schema. The message names the place of a nested id:
+  `Id not found for lines[1].product_id: 7`. One query checks all the ids of
+  one model, and the builders in `fr.objects` take the rows from that check,
+  so a write runs no extra query.
 - A handler or a `write_action` inside a `write_action` block joins the
   commit of that block, as inside `shared_write_action_commit()`. The
   outermost block commits once, and then the queued `after_action_commit`
@@ -307,6 +317,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- `fr.RefExists`, and with it the `scope=` argument of a reference check.
+  Write a reference as `fr.MustExist[int, Post]`. It finds the rows of the
+  model's `default_scope`, under the rules of the session. A tenant rule goes
+  on the session, as the multi-tenancy guide shows. A rule for one caller or
+  one action goes in `authorize`. `fr.RefExists` now raises `AttributeError`
+  with this advice.
+- `fr.MustExist[int]` without a model. It took the model from the foreign
+  key of the column on the model that is written. But a schema can also
+  write another model, as the `data=` of `write_action` can, and then the
+  check used the wrong table. Name the model: `fr.MustExist[int, Project]`.
+  The one-argument form raises `TypeError`, and Pyright and mypy report it
+  too.
 - `fr.DataclassBase` and `fr.IDBase`. Restly no longer owns a declarative
   base. Every app that used them shared one registry and one `MetaData`
   inside Restly. So the tables of one package ended up in the migrations of
@@ -410,6 +432,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Pyright and mypy report an unknown name on `fr`, such as `fr.NotAThing`.
+  Before, the package's module `__getattr__`, which loads `fr.testing` when
+  it is first used, made both accept every name.
 - An expression in place of an id that names a column of another table,
   such as `get_one(Shelf.id == 2)` in a view of books, raises `TypeError`.
   Before, SQL joined every row of that table, so `get_one`, `handle_update`

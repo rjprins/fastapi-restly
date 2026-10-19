@@ -1,9 +1,9 @@
 """Typing fixture: ``MustExist`` is statically the pk scalar, not a wrapper.
 
-``MustExist[pk]`` and ``MustExist[pk, Model]`` both read as ``pk`` -- so a
-reference field reads and writes as a plain scalar (``data.post_id`` is an
-``int``), unlike the ``IDRef``/``IDSchema`` wrappers. ``assert_type`` makes Pyright
-fail if either stops resolving to the scalar.
+``MustExist[pk, Model]`` reads as ``pk`` -- so a reference field reads and
+writes as a plain scalar (``data.post_id`` is an ``int``), unlike the
+``IDRef``/``IDSchema`` wrappers. ``assert_type`` makes Pyright fail if a field
+stops resolving to the scalar.
 """
 
 from typing import TYPE_CHECKING, cast
@@ -20,6 +20,11 @@ class Base(DeclarativeBase):
     pass
 
 
+class Post(Base):
+    __tablename__ = "typing_mustexist_post"
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+
 class Account(Base):
     __tablename__ = "typing_mustexist_account"
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
@@ -27,8 +32,8 @@ class Account(Base):
 
 
 class CommentSchema(fr.BaseSchema):
-    post_id: fr.MustExist[int]  # -> int (target model inferred from the FK)
-    account_id: fr.MustExist[UUID, Account]  # -> UUID (explicit model)
+    post_id: fr.MustExist[int, Post]  # -> int
+    account_id: fr.MustExist[UUID, Account]  # -> UUID
 
 
 if TYPE_CHECKING:

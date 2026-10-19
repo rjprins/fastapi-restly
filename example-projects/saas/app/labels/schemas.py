@@ -1,10 +1,8 @@
 """Label and TaskLabel schemas."""
 
-from typing import Annotated
-
 import fastapi_restly as fr
 
-from ..tasks.models import Task, TaskClauses
+from ..tasks.models import Task
 from .models import Label
 
 
@@ -22,14 +20,12 @@ class TaskLabelSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
 
     ``task_id`` and ``label_id`` are existence-checked foreign keys: the JSON
     value is a plain integer (``"task_id": 5``) on both request and
-    response, and the framework validates the referenced row exists.
-    ``label_id`` is checked in Label's default scope. ``task_id`` names its
-    own scope, ``TaskClauses.visible``, so a member attaches labels only to
-    a task assigned to them. Another task answers 404, as it does on
-    ``GET /tasks``.
+    response. Restly checks that the row exists among the rows of its
+    model's default scope, in the caller's organization. Which tasks a
+    member may label is a permission, so it is in ``TaskLabelView.authorize``.
     """
 
-    task_id: Annotated[int, fr.RefExists(Task, scope=TaskClauses.visible)]
+    task_id: fr.MustExist[int, Task]
     label_id: fr.MustExist[int, Label]
     added_by_id: fr.ReadOnly[int | None] = None  # stamped from Current.user_id
 

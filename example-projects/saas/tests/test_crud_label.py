@@ -64,14 +64,14 @@ class TestMemberLabelPolicy:
         client.post(
             "/task-labels",
             json={"task_id": member_rows.other_task, "label_id": member_rows.label},
-            assert_status_code=404,
+            assert_status_code=403,
         )
 
     def test_member_cannot_create_and_attach_to_another_task(self, client, member_rows):
         client.post(
             "/task-labels/create-and-attach",
             json={"task_id": member_rows.other_task, "label_name": "rolled-back"},
-            assert_status_code=404,
+            assert_status_code=403,
         )
         names = {label["name"] for label in client.get("/labels").json()["data"]}
         assert "rolled-back" not in names
@@ -84,7 +84,7 @@ class TestMemberLabelPolicy:
         client.patch(
             f"/task-labels/{link['id']}",
             json={"task_id": member_rows.other_task},
-            assert_status_code=404,
+            assert_status_code=403,
         )
 
     def test_member_reads_links_of_another_task(self, client, member_rows):

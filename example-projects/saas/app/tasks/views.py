@@ -8,6 +8,8 @@ from pydantic import BaseModel
 
 import fastapi_restly as fr
 
+from ..projects.models import Project
+from ..users.models import User
 from ..views import TrashView
 from .models import Task, TaskClauses, TaskPriority, TaskStatus, TaskType
 from .schemas import TaskResponse, TaskSchema
@@ -25,9 +27,9 @@ class TaskCreate(BaseModel):
     status: TaskStatus = TaskStatus.TODO
     priority: TaskPriority = TaskPriority.MEDIUM
     task_type: TaskType = TaskType.TASK
-    project_id: fr.MustExist[int]
-    assignee_id: fr.MustExist[int] | None = None
-    parent_id: fr.MustExist[int] | None = None
+    project_id: fr.MustExist[int, Project]
+    assignee_id: fr.MustExist[int, User] | None = None
+    parent_id: fr.MustExist[int, Task] | None = None
     severity: int | None = None
     steps_to_reproduce: str | None = None
     story_points: int | None = None

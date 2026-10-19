@@ -1,7 +1,7 @@
 """Shared write lifecycle.
 
-Every write follows the same sequence: authorize, snapshot, mutate,
-before_action_commit, commit, after_action_commit. ``write_action`` exposes
+Every write follows the same sequence: authorize, check the references in
+the data, snapshot, mutate, before_action_commit, commit, after_action_commit. ``write_action`` exposes
 the commit bracket as a context manager for custom actions. ``run_write_action``
 and ``async_run_write_action`` are the thunk form used by CRUD handlers.
 The outermost bracket on a session owns the commit and the after-hooks: a
@@ -21,6 +21,11 @@ from sqlalchemy.orm import Session, SessionTransaction
 from sqlalchemy.orm.collections import collection_adapter
 
 from .._integrity import after_commit, translate_integrity_errors
+from ..schemas._base import (
+    _async_check_body_references,
+    _check_body_references,
+    _remember_checked_references,
+)
 
 T = TypeVar("T")
 
@@ -115,9 +120,11 @@ async def _async_joined_write_action(
     owner.require_active(asynchronous=True)
     passed = obj is not _UNSET
     await host.authorize(action, obj=obj if passed else None, data=data)
+    checked = await _async_check_body_references(host.session, data)
     old = host.snapshot(obj) if (passed and obj is not None) else None
     handle = _WriteHandle(obj)
-    yield handle
+    with _remember_checked_references(host.session, checked):
+        yield handle
     _require_deposited_obj(action, handle)
     await host.before_action_commit(action, new=handle.obj, old=old)
     await host.session.flush()
@@ -149,9 +156,11 @@ def _joined_write_action(
     owner.require_active()
     passed = obj is not _UNSET
     host.authorize(action, obj=obj if passed else None, data=data)
+    checked = _check_body_references(host.session, data)
     old = host.snapshot(obj) if (passed and obj is not None) else None
     handle = _WriteHandle(obj)
-    yield handle
+    with _remember_checked_references(host.session, checked):
+        yield handle
     _require_deposited_obj(action, handle)
     host.before_action_commit(action, new=handle.obj, old=old)
     host.session.flush()

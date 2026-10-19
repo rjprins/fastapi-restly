@@ -4,10 +4,8 @@ A model's declared ``default_scope`` arms every view read (list,
 retrieve, count)
 and every reference check on the model. A view's ``scope`` attribute
 replaces that default; ``fr.clauses.UNSCOPED`` opts out explicitly. Reference
-checks (``MustExist`` / ``RefExists`` / ``IDRef`` / ``IDSchema``) apply
-the scope's predicate, and ``RefExists(scope=...)``
-overrides per field, with ``fr.clauses.UNSCOPED`` the one explicit
-unscoped spelling, system-wide.
+checks (``MustExist`` / ``IDRef`` / ``IDSchema``) apply the model's
+``default_scope``, never a view's ``scope``.
 """
 
 from typing import Annotated
@@ -28,10 +26,7 @@ from sqlalchemy.orm import (
 import fastapi_restly as fr
 from fastapi_restly.clauses._scopes import _default_scope
 from fastapi_restly.exc import NotFound, RestlyConfigurationError
-from fastapi_restly.schemas._base import (
-    _check_ref_exists,
-    _resolve_ids_to_sqlalchemy_objects,
-)
+from fastapi_restly.schemas._base import _resolve_ids_to_sqlalchemy_objects
 
 from ._models import SharedBase
 from .conftest import create_tables
@@ -857,7 +852,7 @@ def test_a_sync_route_takes_the_list_params(sync_db):
     assert guard_calls.count("/sync-listed/") == 2
 
 
-def test_reference_checks_apply_scopes_over_http(client):
+def test_reference_checks_apply_the_default_scope_over_http(client):
     class ScopeOwner(fr.IDMixin, SharedBase):
         tenant_id: Mapped[int]
         active: Mapped[bool]
@@ -875,8 +870,6 @@ def test_reference_checks_apply_scopes_over_http(client):
     class ScopeTask(fr.IDMixin, SharedBase):
         title: Mapped[str]
         owner_id: Mapped[int] = mapped_column(ForeignKey(ScopeOwner.id))
-        tenant_owner_id: Mapped[int | None] = mapped_column(default=None)
-        audit_owner_id: Mapped[int | None] = mapped_column(default=None)
 
     class ScopeOwnerSchema(fr.IDSchema):
         tenant_id: int
@@ -884,16 +877,7 @@ def test_reference_checks_apply_scopes_over_http(client):
 
     class ScopeTaskSchema(fr.IDSchema):
         title: str
-        owner_id: fr.MustExist[int]  # target inferred from the FK
-        tenant_owner_id: (
-            Annotated[
-                int, fr.RefExists(ScopeOwner, scope=ScopeOwnerClauses.owned_by_tenant)
-            ]
-            | None
-        ) = None
-        audit_owner_id: (
-            Annotated[int, fr.RefExists(ScopeOwner, scope=fr.clauses.UNSCOPED)] | None
-        ) = None
+        owner_id: fr.MustExist[int, ScopeOwner]
 
     async def bind_tenant(tenant: Annotated[int, Header(alias="x-tenant-id")]):
         with Current.bind(tenant_id=tenant):
@@ -939,13 +923,6 @@ def test_reference_checks_apply_scopes_over_http(client):
     assert "owner_id" in response.json()["detail"]
     post_task(owner_id=mine_inactive, assert_status_code=404)
     post_task(owner_id=mine)
-
-    # scope= override: tenant-bound but active or not
-    post_task(tenant_owner_id=mine_inactive)
-    post_task(tenant_owner_id=theirs, assert_status_code=404)
-
-    # scope=UNSCOPED: the explicit unscoped escape
-    post_task(audit_owner_id=theirs)
 
 
 def test_idref_resolution_applies_default_scope_over_http(client):
@@ -1341,7 +1318,7 @@ def test_apply_clauses_accepts_unscoped_as_nothing():
 
 
 @pytest.mark.parametrize("op", [fr.all_of, fr.any_of, fr.none_of])
-def test_composed_unscoped_controls_sync_reads_and_references(sync_session, op):
+def test_composed_unscoped_controls_sync_reads(sync_session, op):
     scope = op(fr.clauses.UNSCOPED)
 
     class ComposedView(_SyncRowView):
@@ -1351,22 +1328,16 @@ def test_composed_unscoped_controls_sync_reads_and_references(sync_session, op):
     view = ComposedView()
     view.session = sync_session
 
-    class RefSchema(fr.BaseSchema):
-        row_id: Annotated[int, fr.RefExists(SyncRow, scope=scope)]
-
     listed = view.handle_get_many({})
     if op is fr.none_of:
         assert listed.objects == []
         assert listed.total_count == 0
         with pytest.raises(NotFound):
             view.handle_get_one(1)
-        with pytest.raises(NotFound):
-            _check_ref_exists(sync_session, SyncRow, RefSchema(row_id=1))
     else:
         assert {row.id for row in listed.objects} == {1, 2}
         assert listed.total_count == 2
         assert view.handle_get_one(1).id == 1
-        _check_ref_exists(sync_session, SyncRow, RefSchema(row_id=1))
 
 
 def test_negated_unscoped_default_hides_async_reads_and_references(client):
@@ -1384,7 +1355,7 @@ def test_negated_unscoped_default_hides_async_reads_and_references(client):
         target_id: Mapped[int] = mapped_column(ForeignKey(HiddenRow.id))
 
     class RefRowSchema(fr.IDSchema):
-        target_id: fr.MustExist[int]
+        target_id: fr.MustExist[int, HiddenRow]
 
     @fr.include_view(client.app)
     class HiddenRowView(fr.AsyncRestView):
@@ -1436,9 +1407,9 @@ def test_a_view_scope_replaces_the_default_and_a_per_read_scope_replaces_both(
                 view.handle_get_one(1, scope=other)
 
 
-def test_a_sync_session_rule_holds_under_unscoped_reads_and_references(sync_session):
+def test_a_sync_session_rule_holds_under_unscoped_reads(sync_session):
     """The sync leg of the session rule: ``UNSCOPED`` on the view and per
-    read, and an explicitly unscoped reference check, all stay under it."""
+    read both stay under it."""
 
     def restrict(state: ORMExecuteState) -> None:
         if not state.is_select or state.is_column_load or state.is_relationship_load:
@@ -1455,9 +1426,6 @@ def test_a_sync_session_rule_holds_under_unscoped_reads_and_references(sync_sess
     class _OptedOut(_SyncRowView):
         scope = fr.clauses.UNSCOPED
 
-    class RefSchema(fr.BaseSchema):
-        row_id: Annotated[int, fr.RefExists(SyncRow, scope=fr.clauses.UNSCOPED)]
-
     view = _OptedOut()
     view.session = sync_session
     event.listen(Session, "do_orm_execute", restrict)
@@ -1473,10 +1441,6 @@ def test_a_sync_session_rule_holds_under_unscoped_reads_and_references(sync_sess
             with pytest.raises(NotFound):
                 view.handle_get_one(2, scope=fr.where_clause(SyncRow.id == 2))
             assert view.handle_get_one(1).id == 1
-            # an explicitly unscoped reference check is under the rule too
-            _check_ref_exists(sync_session, SyncRow, RefSchema(row_id=1))
-            with pytest.raises(NotFound):
-                _check_ref_exists(sync_session, SyncRow, RefSchema(row_id=2))
     finally:
         event.remove(Session, "do_orm_execute", restrict)
 
@@ -1651,61 +1615,6 @@ def test_idref_resolution_applies_default_scope_sync(sync_session):
 
         with pytest.raises(NotFound, match="rows"):
             _resolve_ids_to_sqlalchemy_objects(sync_session, _RefSchema(rows=[1, 2]))
-
-
-# ---------------------------------------------------------------------------
-# reference scopes reject predicates on tables outside the query
-# ---------------------------------------------------------------------------
-
-
-class SyncRanked(_SyncBase):
-    __tablename__ = "scope_sync_ranked"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    tenant_id: Mapped[int]
-    rank: Mapped[int]
-
-
-class SyncSide(_SyncBase):
-    __tablename__ = "scope_sync_side"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    ranked_id: Mapped[int] = mapped_column(ForeignKey(SyncRanked.id))
-
-
-class SyncRankedClauses(fr.ClauseNamespace):
-    model = SyncRanked
-
-    owned_by_tenant = fr.where_clause(SyncRanked.tenant_id == _SyncContext.tenant_id)
-    default_scope = owned_by_tenant
-
-
-def test_join_dependent_reference_scope_fails_loudly(sync_session):
-    # a predicate on a table the probe does not select from would be a
-    # cartesian product; the table validation rejects it and points at EXISTS
-    class _JoinSchema(fr.BaseSchema):
-        ranked_id: Annotated[
-            int,
-            fr.RefExists(SyncRanked, scope=fr.where_clause(SyncSide.id.is_not(None))),
-        ]
-
-    with pytest.raises(TypeError, match="not in the statement"):
-        _check_ref_exists(sync_session, SyncRanked, _JoinSchema(ranked_id=1))
-
-
-def test_ref_exists_rejects_a_non_clause_scope():
-    with pytest.raises(TypeError, match="where_clause"):
-        fr.RefExists(SyncRow, scope=SyncRow.tenant_id == 1)
-    with pytest.raises(TypeError, match="ContextParam"):
-
-        class _SlotContext(fr.ContextNamespace):
-            x: fr.ContextParam[int]
-
-        fr.RefExists(SyncRow, scope=_SlotContext.x)
-    # None says nothing: a variable that happens to be None must not
-    # silently unscope; the escape is the loud word
-    with pytest.raises(TypeError, match="UNSCOPED"):
-        fr.RefExists(SyncRow, scope=None)
 
 
 # ---------------------------------------------------------------------------

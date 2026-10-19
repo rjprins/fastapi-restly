@@ -98,7 +98,6 @@ def unscoped_composition(
     assert_type(scoped(), ColumnElement[bool])
     assert_type(fr.apply_clauses(update(Ticket), scoped), Update)
     assert_type(fr.apply_clauses(delete(Ticket), scoped), Delete)
-    fr.RefExists(Ticket, scope=scoped)
     # UNSCOPED goes uncalled into a condition, as SQL TRUE
     _any_note = select(TicketNote).where(TicketNote.ticket.has(fr.clauses.UNSCOPED))
 
