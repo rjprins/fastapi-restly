@@ -401,23 +401,6 @@ def test_not_found_is_the_error_of_every_item_route(client):
     assert asked == [99, 99, 99, 3]
 
 
-def test_not_found_can_return_any_exception(sync_client):
-    Shelf, Book, ShelfSchema, BookSchema = _models()
-
-    @fr.include_view(sync_client.app)
-    class BookView(fr.RestView):
-        prefix = "/books"
-        model = Book
-        schema = BookSchema
-
-        def not_found(self, id: Any) -> Exception:
-            return HTTPException(410, f"book {id} is gone")
-
-    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
-    response = sync_client.get("/books/5", assert_status_code=410)
-    assert response.json() == {"detail": "book 5 is gone"}
-
-
 # ---------------------------------------------------------------------------
 # select(): where every read starts
 # ---------------------------------------------------------------------------

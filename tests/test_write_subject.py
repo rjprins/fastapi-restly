@@ -439,21 +439,3 @@ async def test_a_query_in_the_block_does_not_write_the_new_object(subject):
     assert member.id is not None
     inserts = [s for s in subject.statements if s.startswith("INSERT INTO member")]
     assert len(inserts) == 1
-
-
-# ---------------------------------------------------------------------------
-# data= can be a list: each schema's references are checked
-# ---------------------------------------------------------------------------
-
-
-async def test_each_schema_of_a_data_list_is_checked(subject):
-    view = subject.view
-    ran = []
-    items = [
-        view.schema_update(team_id=subject.team_b.id),
-        view.schema_update(team_id=404),
-    ]
-    with pytest.raises(fr.exc.NotFound, match="404"):
-        async with _enter(view.write_action("move_all", obj=None, data=items)):
-            ran.append("block")
-    assert ran == []

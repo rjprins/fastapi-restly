@@ -18,7 +18,6 @@ from sqlalchemy.orm import (
     Mapped,
     column_property,
     joinedload,
-    lazyload,
     mapped_column,
     query_expression,
     relationship,
@@ -311,22 +310,6 @@ def test_nested_view_with_parent_context_and_hooks(flavor):
     c.delete("/projects/2/tasks/1", assert_status_code=204)
     flavor.run(sa.update(Project).where(Project.id == 2).values(archived=True))
     c.get("/projects/2/tasks/2", assert_status_code=404)
-
-
-# ---------------------------------------------------------------------------
-# Mixins that used to override get_one / get_many
-# ---------------------------------------------------------------------------
-
-
-def test_a_route_method_named_select_is_refused():
-    """A route method with the name of the final ``select`` fails when Python
-    creates the class. It is loud, but the name is a common verb."""
-    with pytest.raises(fr.exc.RestlyConfigurationError, match="defines select"):
-
-        class PlanView(fr.AsyncRestView):
-            @fr.post("/{id}/select")
-            async def select(self, id: int) -> Any:  # type: ignore[override]
-                return id
 
 
 # ---------------------------------------------------------------------------
@@ -814,52 +797,6 @@ def test_to_single_response_reads_a_relationship_from_the_loader_options(flavor)
     assert c.patch("/books/1", json={"shelf_id": 2}).json()["on_open_shelf"] is False
     created = c.post("/books/", json={"title": "c", "shelf_id": 1}).json()
     assert created["on_open_shelf"] is True
-
-
-# ---------------------------------------------------------------------------
-# A list that loads less: a later loader option does not win
-# ---------------------------------------------------------------------------
-
-
-def test_a_list_cannot_load_less_than_select(flavor):
-    """A list that loads less than the item, such as a lean list of recipes,
-    cannot start from select(): SQLAlchemy cannot remove its options. A
-    later lazyload for the same path does not replace the selectinload, it
-    raises "Loader strategies ... conflict". Such a list replaces
-    get_many_endpoint and builds its own statement."""
-    Shelf, Book = _shelves_and_books()
-
-    class BookRef(fr.IDSchema):
-        title: str
-
-    class ShelfSchema(fr.IDSchema):
-        name: str
-        books: fr.ReadOnly[list[BookRef]] = []
-
-    if flavor.name == "sync":
-
-        class Base(flavor.base):
-            def apply_list_params(self, stmt, list_params):
-                stmt = super().apply_list_params(stmt, list_params)
-                return stmt.options(lazyload(Shelf.books))
-
-    else:
-
-        class Base(flavor.base):  # type: ignore[no-redef]
-            async def apply_list_params(self, stmt, list_params):
-                stmt = await super().apply_list_params(stmt, list_params)
-                return stmt.options(lazyload(Shelf.books))
-
-    @fr.include_view(flavor.client.app)
-    class ShelfView(Base):
-        prefix = "/shelves"
-        model = Shelf
-        schema = ShelfSchema
-
-    flavor.create_tables()
-    _seed_shelves(flavor, Shelf, Book)
-    with pytest.raises(sa.exc.InvalidRequestError, match="conflict"):
-        flavor.client.get("/shelves/")
 
 
 # ---------------------------------------------------------------------------

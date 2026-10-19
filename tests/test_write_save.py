@@ -191,14 +191,14 @@ async def test_subclass_columns_of_other_rows_stay_loaded(env):
         ]
 
 
-def test_building_the_reload_expires_only_relationships(tmp_path):
-    """The reload expires the relationships of each row. For a model with no
-    relationships, it expires nothing: SQLAlchemy reads
+def test_the_save_expires_only_relationships(tmp_path):
+    """The save expires the relationships of each other written row. For a
+    model with no relationships, it expires nothing: SQLAlchemy reads
     ``session.expire(row, [])`` as "every attribute"."""
     from sqlalchemy import create_engine
     from sqlalchemy.orm import Session
 
-    from fastapi_restly.views._base import _rows_reload_statements
+    from fastapi_restly.views._lifecycle import _expire_relationships
 
     class Note(fr.IDMixin, SharedBase):
         text: Mapped[str]
@@ -209,8 +209,7 @@ def test_building_the_reload_expires_only_relationships(tmp_path):
         note = Note(text="a")
         session.add(note)
         session.flush()
-        statements = _rows_reload_statements(Note, [note], [])
-        assert len(statements) == 1
+        _expire_relationships(note)
         assert sorted(inspect(note).expired_attributes) == []
     engine.dispose()
 

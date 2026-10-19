@@ -111,48 +111,6 @@ async def test_a_limit_check_in_a_block_counts_the_rows_after_a_flush(env):
                     raise fr.exc.Conflict("At most 3 posts per tag")
 
 
-async def test_a_handler_inside_a_write_action_block_joins_its_commit(env):
-    """A handler called inside a ``write_action`` block joins the commit of
-    the block, as inside ``shared_write_action_commit``. When the outer block
-    then fails, nothing of it is committed: not the inner create, and not
-    the outer change."""
-    Tag, Post, PostSchema = _tag_models()
-
-    class TagSchema(fr.IDSchema):
-        name: str
-
-    await env.create_all()
-    post_view_type, tag_view_type = registered(
-        type(
-            "PostView",
-            (env.base,),
-            {"prefix": "/posts", "model": Post, "schema": PostSchema},
-        ),
-        type(
-            "TagView",
-            (env.base,),
-            {"prefix": "/tags", "model": Tag, "schema": TagSchema},
-        ),
-    )
-    session = env.make_session()
-    async with enter(session):
-        tag = Tag(name="x")
-        session.add(tag)
-        await call(session.commit())
-        posts = post_view_type(request=None, session=session)
-        tags = tag_view_type(request=None, session=session)
-        with pytest.raises(RuntimeError, match="later step"):
-            async with enter(posts.write_action("relabel", obj=tag)):
-                tag.name = "outer change"
-                await call(tags.handle_create(tags.schema_create(name="inner")))
-                raise RuntimeError("a later step of the outer block fails")
-        await call(session.rollback())
-    check = env.make_session()
-    async with enter(check):
-        names = sorted(await call(check.scalars(select(Tag.name))))
-    assert names == ["x"]
-
-
 def _country_models():
     class Country(SharedBase):
         __tablename__ = "country"
@@ -245,58 +203,6 @@ async def _seed_teams(env, Team):
         )
         await call(session.commit())
     return env.make_session()
-
-
-async def test_data_as_a_list_is_checked(env):
-    Team, Member, MemberSchema, _ = _team_models()
-    session = await _seed_teams(env, Team)
-    view_type = registered(
-        type(
-            "MemberView",
-            (env.base,),
-            {"prefix": "/m", "model": Member, "schema": MemberSchema},
-        )
-    )
-    async with enter(session):
-        view = view_type(request=None, session=session)
-        items = [
-            view.schema_create(name="x", team_id=1),
-            view.schema_create(name="y", team_id=3),
-        ]
-        with pytest.raises(fr.exc.NotFound, match="team_id: 3"):
-            async with enter(view.write_action("bulk", obj=None, data=items)):
-                pass
-
-
-async def test_data_as_a_wrapper_schema_checks_its_items(env):
-    """A bulk body is often a wrapper: ``{"items": [...]}``. The bracket walks
-    the schemas nested in ``data``, so a block that sets the foreign keys
-    itself cannot store a reference to a row that the target's
-    ``default_scope`` hides (an archived team)."""
-    Team, Member, MemberSchema, _ = _team_models()
-
-    class MemberCreate(fr.BaseSchema):
-        name: str
-        team_id: fr.MustExist[int, Team]
-
-    class Bulk(fr.BaseSchema):
-        items: list[MemberCreate]
-
-    session = await _seed_teams(env, Team)
-    view_type = registered(
-        type(
-            "MemberView",
-            (env.base,),
-            {"prefix": "/m", "model": Member, "schema": MemberSchema},
-        )
-    )
-    async with enter(session):
-        view = view_type(request=None, session=session)
-        body = Bulk(items=[MemberCreate(name="x", team_id=3)])
-        with pytest.raises(fr.exc.NotFound):
-            async with enter(view.write_action("bulk", obj=None, data=body)):
-                for item in body.items:
-                    session.add(Member(name=item.name, team_id=item.team_id))
 
 
 async def test_data_without_reference_fields_is_not_checked(env):

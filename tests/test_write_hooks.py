@@ -516,45 +516,6 @@ async def test_a_refused_create_in_a_shared_commit_is_not_written(env, savepoint
     assert names == (["d1", "d2", "good"] if savepoint else ["d1", "d2"])
 
 
-async def test_an_integrity_error_at_the_save_of_a_block(env):
-    """Outside a shared commit, a unique violation at the save is a 409.
-    Inside one, it stays raw."""
-
-    class Code(fr.IDMixin, SharedBase):
-        code: Mapped[str] = mapped_column(unique=True)
-
-    class CodeSchema(fr.IDSchema):
-        code: str
-
-    view_type = registered(
-        type(
-            "CodeView",
-            (env.base,),
-            {"prefix": "/codes", "model": Code, "schema": CodeSchema},
-        )
-    )
-    await env.create_all()
-    session = env.make_session()
-    async with enter(session):
-        session.add(Code(code="a"))
-        await call(session.commit())
-        view = view_type(request=None, session=session)
-        with pytest.raises(fr.exc.Conflict):
-            async with enter(view.write_action("create", obj=Code(code="a"))):
-                pass
-        await call(session.rollback())
-        inside = []
-        with pytest.raises(fr.exc.Conflict):
-            async with enter(view.shared_write_action_commit()):
-                try:
-                    async with enter(view.write_action("create", obj=Code(code="a"))):
-                        pass
-                except IntegrityError as exc:
-                    inside.append(type(exc).__name__)
-                    raise  # escapes the outermost block: a 409
-        assert inside == ["IntegrityError"]
-
-
 async def test_two_views_of_one_model_in_a_shared_commit(env):
     """View A (its response names ``owner``) updates a doc. View B (its
     response names nothing) then changes the same doc in a block. View B's

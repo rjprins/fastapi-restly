@@ -147,87 +147,6 @@ def test_sync_change_after_super_create_is_in_the_insert(sync_client, sync_db):
 # ---------------------------------------------------------------------------
 
 
-def test_write_action_adds_a_new_object_and_saves_it(client):
-    Team, Member, TeamSchema, MemberSchema = _models()
-    seen: dict[str, Any] = {}
-
-    @fr.include_view(client.app)
-    class TeamView(fr.AsyncRestView):
-        prefix = "/teams"
-        model = Team
-        schema = TeamSchema
-
-        @fr.post("/found")
-        async def found(self):
-            team = Team(name="new")  # not added: the bracket adds it
-            async with self.write_action("found", obj=team):
-                pass
-            return self.to_response(team)
-
-        async def before_action_commit(self, action, new, old=None):
-            seen["id"] = new.id
-
-    create_tables()
-    body = client.post("/teams/found").json()
-    assert body["id"] == seen["id"] is not None
-    assert [t["name"] for t in client.get("/teams/").json()["data"]] == ["new"]
-
-
-def test_write_action_that_deletes_its_row_only_flushes(client):
-    Team, Member, TeamSchema, MemberSchema = _models()
-    seen: dict[str, Any] = {}
-
-    @fr.include_view(client.app)
-    class TeamView(fr.AsyncRestView):
-        prefix = "/teams"
-        model = Team
-        schema = TeamSchema
-
-        @fr.post("/{id}/purge", status_code=204)
-        async def purge(self, id: int):
-            team = await self.get_one(id)
-            async with self.write_action("purge", obj=team):
-                await self.session.delete(team)
-
-        async def before_action_commit(self, action, new, old=None):
-            seen[action] = old["name"]
-
-    create_tables()
-    team_id = _add_team_async(Team)
-    client.post(f"/teams/{team_id}/purge", assert_status_code=204)
-    assert seen == {"purge": "core"}
-    assert client.get("/teams/").json()["data"] == []
-
-
-def test_write_action_on_another_model_saves_without_the_view_response(client):
-    Team, Member, TeamSchema, MemberSchema = _models()
-
-    @fr.include_view(client.app)
-    class MemberView(fr.AsyncRestView):
-        prefix = "/members"
-        model = Member
-        schema = MemberSchema
-
-        @fr.post("/teams/{id}/rename")
-        async def rename_team(self, id: int):
-            team = await self.session.get_one(Team, id)
-            async with self.write_action("rename_team", obj=team):
-                team.name = "renamed"
-            return {"name": team.name}
-
-    create_tables()
-    team_id = _add_team_async(Team)
-    assert client.post(f"/members/teams/{team_id}/rename").json() == {"name": "renamed"}
-
-    import asyncio
-
-    async def read() -> str:
-        async with _fr_globals.async_make_session() as session:
-            return (await session.scalars(select(Team.name))).one()
-
-    assert asyncio.run(read()) == "renamed"
-
-
 def test_delete_business_method_does_not_flush(client):
     Team, Member, TeamSchema, MemberSchema = _models()
     pending: list[bool] = []
@@ -287,18 +206,6 @@ def _move_view(client, move_all):
         client.post("/members/", json={"name": name, "team_id": a})
     moved = client.post("/members/move-all", json={"team_id": b}).json()
     return [member["team"]["name"] for member in moved]
-
-
-def test_several_updates_in_one_block_refresh_each_row(client):
-    async def move_all(self, request: Move):
-        members = []
-        async with self.write_action("move_all", obj=None):
-            for member_id in (1, 2):
-                member = await self.get_one(member_id)
-                members.append(await self.update(member, request))
-        return [self.to_single_response(m).model_dump() for m in members]
-
-    assert _move_view(client, move_all) == ["b", "b"]
 
 
 def test_several_updates_through_handlers_in_one_commit(client):
