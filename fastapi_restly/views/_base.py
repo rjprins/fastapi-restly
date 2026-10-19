@@ -2022,7 +2022,7 @@ class BaseRestView(
         return all_of(scope, _checked_where(where, label))
 
     @final
-    def select(self, *, scope: ReadScope = None) -> Select[tuple[ModelT]]:
+    def select(self, *, scope: ReadScope = None) -> Select[Any]:
         """The statement of the view's rows: ``select(model)``, the scope,
         and :meth:`get_loader_options`.
 
