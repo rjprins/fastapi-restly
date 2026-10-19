@@ -37,8 +37,7 @@ So a rule goes in one of two places. A rule about who the caller is, such as
 dependency: on the app, on a router, or in the view's
 {attr}`dependencies <fastapi_restly.views.View.dependencies>`. A rule that
 depends on the action, the row or the request body goes in `authorize`. A
-dependency runs for every route of the view, and before Restly loads the row,
-so it cannot see the row.
+dependency runs before Restly loads the row, so it cannot see the row.
 
 (authorize-gate)=
 ## Allow or refuse an action
@@ -134,13 +133,18 @@ declares a subclass with the same name. The blog's `PostView` adds
 :end-at: PUBLISH = "publish"
 ```
 
-{meth}`write_action <fastapi_restly.views.RestView.write_action>` takes only a
-name that the view's `Action` declares. Another name raises `ValueError`. So
-the class shows every action that `write_action` and the CRUD routes pass to
-`authorize` and the hooks. `list(PostView.Action)` gives them all. Use the
-constants in your code, such as `self.Action.PUBLISH` in a route. Your editor
-completes them, and a type checker reports a typo. The constants are plain
-strings, so `self.Action.PUBLISH == "publish"`.
+An `Action` class has only actions. An action has an UPPER_CASE name, and its
+value is that name in lower case: `PUBLISH = "publish"`. Any other attribute
+raises
+{class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
+when Python creates the class.
+
+{meth}`write_action <fastapi_restly.views.RestView.write_action>` takes only an
+action that the view's `Action` declares. Another value raises `ValueError`.
+So the class shows every action that `write_action` and the CRUD routes pass
+to `authorize` and the hooks. Use the constants in your code, such as
+`self.Action.PUBLISH` in a route. Your editor completes them, and a type
+checker reports a typo.
 
 The transaction hooks get the same name as their `action` argument:
 {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`
@@ -151,13 +155,6 @@ Reads do not call the hooks, so the hooks only see write actions. See
 
 :::{admonition} Details
 :class: details
-
-An action is an UPPER_CASE name with a string value. An `Action` class does
-not change after Python creates it, and a subclass cannot give an action
-another value: `UPDATE = "edit"` raises
-{class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`.
-A type checker reports it too, because `fr.Action` declares the five CRUD
-names as `Final`.
 
 A mixin or a base view with actions of its own declares its `Action` class in
 the same way. A view that adds more actions inherits from the `Action` class
@@ -174,16 +171,17 @@ class PostView(TrashMixin, AuthoredView):
         PUBLISH = "publish"
 ```
 
-Restly checks this when it creates the view. When the view's `Action` leaves
-out an action of a base, it raises `RestlyConfigurationError` and names the
-base. This also catches a view without an `Action` of its own and with two
+Restly checks this when it creates the view. When the view's `Action` does
+not inherit from the `Action` of a base, it raises `RestlyConfigurationError`
+and names the base. This also catches a view without an `Action` of its own and with two
 bases that each have one. Python would take the `Action` of the first base
 and drop the other.
 
 An `authorize` on a base view, such as the blog's `AuthoredView`, runs for
-each view that inherits it. There, `self.Action` has only the base's
-actions for a type checker, so compare a subclass's action with its string,
-or move that rule to the subclass.
+each view that inherits it. For a type checker, `self.Action` there has only
+the actions of the base. So compare an action of a subclass with its value,
+such as `action == "publish"`, or put that rule on the subclass. Keep the
+rule strict for an action that it does not know, as the blog does.
 :::
 
 (authorize-custom-actions)=

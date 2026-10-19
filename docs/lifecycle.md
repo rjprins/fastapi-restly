@@ -1005,8 +1005,7 @@ example publishes a post:
 ```
 
 The view's `Action` class lists its actions: the five CRUD actions of
-{class}`fr.Action <fastapi_restly.views.Action>`, and `PUBLISH`.
-`write_action` takes only a name that this class declares; see
+{class}`fr.Action <fastapi_restly.views.Action>`, and `PUBLISH`. See
 [Action names](#action-names).
 
 When the block starts, Restly calls `authorize("publish", obj=post)` and takes

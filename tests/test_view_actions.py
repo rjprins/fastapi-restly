@@ -70,10 +70,7 @@ def test_a_view_that_leaves_out_a_mixin_action_fails():
                 PUBLISH = "publish"
 
     message = str(info.value)
-    assert (
-        "PostView.Action leaves out the actions 'restore' of TrashMixin.Action"
-        in message
-    )
+    assert "PostView.Action does not inherit from TrashMixin.Action" in message
     assert "class Action(TrashMixin.Action)" in message
 
 
@@ -86,7 +83,8 @@ def test_two_bases_with_actions_need_an_own_action_class():
 
     message = str(info.value)
     assert (
-        "PostView.Action (from TrashMixin) leaves out the actions 'review'" in message
+        "PostView.Action (from TrashMixin) does not inherit from AuditMixin.Action"
+        in message
     )
     assert "class Action(TrashMixin.Action, AuditMixin.Action)" in message
 
@@ -107,7 +105,7 @@ def test_the_suggestion_keeps_a_base_that_the_own_action_already_has():
                 PUBLISH = "publish"
 
     message = str(info.value)
-    assert "leaves out the actions 'restore' of TrashMixin.Action" in message
+    assert "does not inherit from TrashMixin.Action" in message
     assert "class Action(TrashMixin.Action, AuditMixin.Action)" in message
 
 
@@ -136,7 +134,7 @@ def test_an_action_class_that_does_not_inherit_fr_action_fails():
 def test_an_action_that_is_not_a_class_fails():
     with pytest.raises(
         RestlyConfigurationError,
-        match=r"PostView.Action is \('publish',\), which does not inherit",
+        match="PostView.Action does not inherit from fr.Action",
     ):
 
         class PostView(fr.RestView):
@@ -144,61 +142,38 @@ def test_an_action_that_is_not_a_class_fails():
 
 
 # ---------------------------------------------------------------------------
-# An Action class does not change
+# An action is an UPPER_CASE name with its name in lower case as the value
 # ---------------------------------------------------------------------------
 
 
-def test_a_subclass_cannot_give_an_action_another_value():
+def test_the_value_of_an_action_is_its_name_in_lower_case():
     with pytest.raises(RestlyConfigurationError) as info:
 
         class Action(fr.Action):
-            UPDATE = "publish"
+            PUBLISH = "create"
 
-    assert "Action.UPDATE is 'publish', but fr.Action.UPDATE is 'update'" in str(
-        info.value
+    assert str(info.value).endswith(
+        "Action.PUBLISH is 'create'. The value of an action is its name in "
+        "lower case: PUBLISH = 'publish'."
     )
 
 
-def test_two_bases_cannot_give_one_name_two_values():
-    class Undo(fr.Action):
-        RESTORE = "undelete"
+def test_an_action_class_has_only_actions():
+    with pytest.raises(RestlyConfigurationError, match=r"Action.label: an Action"):
 
-    with pytest.raises(
-        RestlyConfigurationError, match="is 'undelete', but .*RESTORE is 'restore'"
-    ):
+        class Action(fr.Action):
+            PUBLISH = "publish"
+            label = "not an action"
 
-        class Action(TrashMixin.Action, Undo):
+
+def test_a_plain_base_cannot_change_an_action():
+    class Shadow:
+        UPDATE = "edit"
+
+    with pytest.raises(RestlyConfigurationError, match="UPDATE is 'edit'"):
+
+        class Action(Shadow, fr.Action):
             pass
-
-
-def test_an_action_class_cannot_change_after_creation():
-    with pytest.raises(AttributeError, match="cannot change"):
-        TrashMixin.Action.PURGE = "purge"  # type: ignore[misc]
-    with pytest.raises(AttributeError, match="fr.Action cannot change"):
-        del fr.Action.UPDATE  # type: ignore[misc]
-    assert list(TrashMixin.Action)[-1] == "restore"
-
-
-def test_an_action_is_an_upper_case_string():
-    class Action(fr.Action):
-        PUBLISH = "publish"
-        label = "not an action"
-
-    assert list(Action) == [
-        "get_many",
-        "get_one",
-        "create",
-        "update",
-        "delete",
-        "publish",
-    ]
-    assert "publish" in Action
-    assert "not an action" not in Action
-    assert ["publish"] not in Action
-    with pytest.raises(RestlyConfigurationError, match="LIMIT is 3, not a string"):
-
-        class Limits(fr.Action):
-            LIMIT = 3
 
 
 # ---------------------------------------------------------------------------
@@ -252,9 +227,8 @@ async def test_write_action_refuses_an_undeclared_name(env):
             async with enter(view.write_action("retitel", obj=note)):
                 note.title = "changed"
     assert str(info.value) == (
-        "NoteView.write_action('retitel', ...): NoteView.Action does not declare "
-        "'retitel'. Add the action to the view's Action class, such as "
-        "RETITEL = 'retitel', so the class lists every action of the view."
+        "NoteView.write_action('retitel', ...): unknown action 'retitel'. "
+        "NoteView.Action does not declare it."
     )
     # refused before authorize and before the block ran
     assert calls == []
@@ -280,20 +254,14 @@ async def test_write_action_takes_a_declared_name_and_a_crud_name(env):
     assert titles == ["final!"]
 
 
-async def test_the_refusal_suggests_only_a_name_that_can_be_declared(env):
+async def test_write_action_takes_only_the_value_of_an_action(env):
     Note, NoteSchema = _models()
     view_cls, _ = _note_view(env, Note, NoteSchema)
     view = view_cls(request=None, session=None)
-    for action, example in (
-        ("_draft", False),
-        ("two words", False),
-        (["retitle"], False),
-        ("archive", True),
-    ):
-        with pytest.raises(ValueError) as info:
+    for action in ("RETITLE", "Retitle", None, ["retitle"]):
+        with pytest.raises(ValueError, match="unknown action"):
             async with enter(view.write_action(action, obj=None)):
                 pass
-        assert ("such as" in str(info.value)) is example
 
 
 def test_a_view_with_a_base_view_and_a_mixin_inherits_both():
@@ -311,4 +279,4 @@ def test_a_view_with_a_base_view_and_a_mixin_inherits_both():
         class Action(AuditMixin.Action, TrashMixin.Action):
             pass
 
-    assert {"restore", "review"} <= set(FixedView.Action)
+    assert (FixedView.Action.RESTORE, FixedView.Action.REVIEW) == ("restore", "review")

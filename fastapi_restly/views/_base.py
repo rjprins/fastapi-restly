@@ -29,7 +29,6 @@ from typing import (
     Any,
     Callable,
     ClassVar,
-    Final,
     Generic,
     Iterable,
     Iterator,
@@ -197,96 +196,7 @@ class ResponseShape(str, Enum):
     EMPTY = "empty"  # 204 No Content
 
 
-def _is_action_name(key: str) -> bool:
-    """An action constant has an UPPER_CASE name, such as ``PUBLISH``."""
-    return not key.startswith("_") and key.isupper()
-
-
-class _ActionMeta(type):
-    """The metaclass of :class:`Action`: it fixes the actions of each class.
-
-    Like an ``Enum``, an ``Action`` class does not change after Python creates
-    it. Unlike an ``Enum``, a subclass can add actions, also from several
-    bases at once. An action keeps its value in every subclass.
-    """
-
-    _fr_actions: Mapping[str, str]
-
-    def __new__(
-        mcs,
-        name: str,
-        bases: tuple[type, ...],
-        namespace: dict[str, Any],
-        **kwargs: Any,
-    ) -> "_ActionMeta":
-        actions: dict[str, str] = {}
-        owners: dict[str, str] = {}
-        inherited = [base for base in bases if isinstance(base, _ActionMeta)]
-        for base in inherited:
-            for key, value in base._fr_actions.items():
-                _add_action(actions, owners, key, value, _action_label(base))
-        qualname = namespace.get("__qualname__", name)
-        for key, value in namespace.items():
-            if not _is_action_name(key):
-                continue
-            if not isinstance(value, str):
-                raise RestlyConfigurationError(
-                    f"{qualname}.{key} is {value!r}, not a string. An action "
-                    "is a string, such as PUBLISH = 'publish'."
-                )
-            _add_action(actions, owners, key, value, qualname)
-        cls = super().__new__(mcs, name, bases, namespace, **kwargs)
-        type.__setattr__(cls, "_fr_actions", types.MappingProxyType(actions))
-        return cls
-
-    def __setattr__(cls, key: str, value: Any) -> None:
-        if not key.startswith("_"):
-            raise AttributeError(
-                f"{_action_label(cls)} cannot change after Python creates it. "
-                f"Declare {key} in the class body."
-            )
-        super().__setattr__(key, value)
-
-    def __delattr__(cls, key: str) -> None:
-        if not key.startswith("_"):
-            raise AttributeError(
-                f"{_action_label(cls)} cannot change after Python creates it."
-            )
-        super().__delattr__(key)
-
-    def __iter__(cls) -> Iterator[str]:
-        """The actions, such as ``"get_many"``: those of the bases first."""
-        return iter(cls._fr_actions.values())
-
-    def __len__(cls) -> int:
-        return len(cls._fr_actions)
-
-    def __contains__(cls, action: object) -> bool:
-        return isinstance(action, str) and action in cls._fr_actions.values()
-
-
-def _action_label(action: type) -> str:
-    """How a message names an ``Action`` class: ``fr.Action`` for Restly's."""
-    if action.__module__ == __name__ and action.__qualname__ == "Action":
-        return "fr.Action"
-    return action.__qualname__
-
-
-def _add_action(
-    actions: dict[str, str], owners: dict[str, str], key: str, value: str, owner: str
-) -> None:
-    """Add one action, or refuse a name that already has another value."""
-    if key in actions and actions[key] != value:
-        raise RestlyConfigurationError(
-            f"{owner}.{key} is {value!r}, but {owners[key]}.{key} is "
-            f"{actions[key]!r}. An action keeps its value in every subclass. "
-            "Give the new action a name of its own."
-        )
-    actions.setdefault(key, value)
-    owners.setdefault(key, owner)
-
-
-class Action(metaclass=_ActionMeta):
+class Action:
     """The names of the five CRUD actions: the ``action`` that ``authorize``,
     ``before_action_commit`` and ``after_action_commit`` get.
 
@@ -297,21 +207,44 @@ class Action(metaclass=_ActionMeta):
             class Action(fr.Action):
                 PUBLISH = "publish"
 
-    An action is an UPPER_CASE name with a string value. ``write_action``
-    takes only a name that the view's ``Action`` declares. A view with base
-    classes that declare actions, such as a mixin, inherits from their
-    ``Action`` classes too. The names are plain strings, so a subclass can
-    add names, as an ``Enum`` cannot. Like an ``Enum``, the class cannot
-    change after Python creates it, and a subclass cannot give an action
-    another value. ``list(PostView.Action)`` gives all actions, and
-    ``"publish" in PostView.Action`` tests one.
+    An ``Action`` class has only actions. An action has an UPPER_CASE name,
+    and its value is that name in lower case. ``write_action`` takes only a
+    value that the view's ``Action`` declares. A view with base classes that
+    declare actions, such as a mixin, inherits from their ``Action`` classes
+    too.
     """
 
-    GET_MANY: Final = "get_many"
-    GET_ONE: Final = "get_one"
-    CREATE: Final = "create"
-    UPDATE: Final = "update"
-    DELETE: Final = "delete"
+    GET_MANY = "get_many"
+    GET_ONE = "get_one"
+    CREATE = "create"
+    UPDATE = "update"
+    DELETE = "delete"
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        for key in dir(cls):
+            if key.startswith("_"):
+                continue
+            if not key.isupper():
+                raise RestlyConfigurationError(
+                    f"{cls.__qualname__}.{key}: an Action class has only "
+                    "actions, and an action has an UPPER_CASE name, such as "
+                    "PUBLISH = 'publish'."
+                )
+            value = getattr(cls, key)
+            if value != key.lower():
+                raise RestlyConfigurationError(
+                    f"{cls.__qualname__}.{key} is {value!r}. The value of an "
+                    f"action is its name in lower case: {key} = {key.lower()!r}."
+                )
+
+
+def _declares(action_class: type, action: object) -> bool:
+    """Whether ``action_class`` declares ``action``, such as ``"publish"``."""
+    return (
+        isinstance(action, str)
+        and getattr(action_class, action.upper(), None) == action
+    )
 
 
 def _accepts_init_kwarg(model_cls: type, attr_name: str) -> bool:
@@ -1558,14 +1491,14 @@ def _check_load_hooks(cls: type) -> None:
 
 
 def _check_actions(cls: type) -> None:
-    """Refuse a view whose ``Action`` leaves out an action of a base class.
+    """Refuse a view whose ``Action`` does not inherit from the ``Action`` of
+    a base class.
 
     Each class that declares ``Action`` adds actions, and a view's ``Action``
-    must list all of them: the view's own class, or a mixin's, or two bases
+    must have all of them: the view's own class, or a mixin's, or two bases
     that each declare one, where Python takes the first and drops the other.
     """
     action = cls.Action  # type: ignore[attr-defined]
-    origin = _set_by(cls, "Action")
     declared: list[tuple[type, Any]] = []
     for klass in cls.__mro__:
         if "Action" not in vars(klass):
@@ -1574,18 +1507,16 @@ def _check_actions(cls: type) -> None:
         if all(value is not seen for _, seen in declared):
             declared.append((klass, value))
     for klass, value in declared:
-        if not isinstance(value, _ActionMeta):
-            shown = value.__qualname__ if isinstance(value, type) else repr(value)
+        if not (isinstance(value, type) and issubclass(value, Action)):
             raise RestlyConfigurationError(
-                f"{cls.__name__}.Action{_origin(cls, klass)} is {shown}, which "
-                "does not inherit from fr.Action. Declare it as "
-                "class Action(fr.Action)."
+                f"{cls.__name__}.Action{_origin(cls, klass)} does not inherit "
+                "from fr.Action. Declare it as class Action(fr.Action)."
             )
-    names = set(action)
-    missing = [(klass, base) for klass, base in declared if not set(base) <= names]
+    missing = [
+        (klass, base) for klass, base in declared if not issubclass(action, base)
+    ]
     if not missing:
         return
-    left_out = sorted({value for _, base in missing for value in base} - names)
     # the classes to inherit from: the bases' Action classes, without one
     # that another of them already inherits from
     bases = [(klass, base) for klass, base in declared if klass is not cls]
@@ -1595,10 +1526,9 @@ def _check_actions(cls: type) -> None:
         if not any(other is not base and issubclass(other, base) for _, other in bases)
     ]
     raise RestlyConfigurationError(
-        f"{cls.__name__}.Action{origin} leaves out the actions "
-        f"{', '.join(map(repr, left_out))} of "
+        f"{cls.__name__}.Action{_set_by(cls, 'Action')} does not inherit from "
         f"{', '.join(_action_class_name(klass, base) for klass, base in missing)}. "
-        "A view's Action lists all its actions. "
+        "A view's Action has all the actions of its bases. "
         f"Declare it on {cls.__name__} with every base: "
         f"class Action({', '.join(keep)})."
     )
@@ -1610,22 +1540,14 @@ def _action_class_name(klass: type, action: type) -> str:
 
 
 def _check_action_name(view: Any, action: Any) -> None:
-    """Raise ``ValueError`` when ``write_action`` gets a name that the view's
-    ``Action`` does not declare."""
-    if action in type(view).Action:
+    """Raise ``ValueError`` when ``write_action`` gets an action that the
+    view's ``Action`` does not declare."""
+    if _declares(type(view).Action, action):
         return
     name = type(view).__name__
-    example = (
-        f", such as {action.upper()} = {action!r}"
-        if isinstance(action, str)
-        and action.isidentifier()
-        and _is_action_name(action.upper())
-        else ""
-    )
     raise ValueError(
-        f"{name}.write_action({action!r}, ...): {name}.Action does not "
-        f"declare {action!r}. Add the action to the view's Action "
-        f"class{example}, so the class lists every action of the view."
+        f"{name}.write_action({action!r}, ...): unknown action {action!r}. "
+        f"{name}.Action does not declare it."
     )
 
 
