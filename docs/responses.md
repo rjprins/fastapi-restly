@@ -239,6 +239,7 @@ annotation or in `response_model=`:
 | {data}`ViewResponse <fastapi_restly.views.ViewResponse>` | a row of the view's model | `to_response(row)` |
 | `list[ViewResponse]` | a list of rows, or another iterable of rows, such as `await self.session.scalars(stmt)` | `to_single_response(row)` for each row |
 | {data}`ViewListResponse <fastapi_restly.views.ViewListResponse>` | a {class}`ListResult <fastapi_restly.views.ListResult>` | `to_response(result, ResponseShape.LIST)` |
+| the view's response class itself, as in `response_model=ProjectResponse` | a row | the same as for `ViewResponse` |
 | the view's model, as in `-> Project` | a row | the same as for `ViewResponse` |
 | `list[Project]` | a list of rows | the same as for `list[ViewResponse]` |
 
@@ -250,7 +251,7 @@ of a schema, or a `fastapi.Response`. So a route that calls
 :::{admonition} Details
 :class: details
 
-A route that names a class of its own, such as
+A route that names another class, such as
 `response_model=ProjectSummary`, keeps FastAPI's behaviour. FastAPI builds
 the response from the value that the route returns, and
 `to_single_response` does not run. So a value that `to_single_response`

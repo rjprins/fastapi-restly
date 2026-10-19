@@ -19,12 +19,9 @@ replacement, unless it says otherwise.
    Rename `schema_obj` to `data`.
 4. Move a `get_one` or `get_many` override to its new place: `scope`,
    `where_id`, `not_found`, `to_single_response`, or SQL on the model.
-5. In a custom route, drop a `response_model=` of the view's response class,
-   and annotate `-> ViewResponse` or the model. Nothing reports a route that
-   you miss: it skips `to_single_response`.
-6. Pass `obj=` to `write_action`, also for a new object, instead of
+5. Pass `obj=` to `write_action`, also for a new object, instead of
    `as w` and `w.obj`.
-7. Write each reference as `fr.MustExist[int, Model]`, in place of
+6. Write each reference as `fr.MustExist[int, Model]`, in place of
    `fr.MustExist[int]` and `fr.RefExists`.
 
 ### Added
@@ -94,10 +91,11 @@ replacement, unless it says otherwise.
   through `to_response`, each row under `list[ViewResponse]` through
   `to_single_response`, and a `ListResult` under `ViewListResponse` through
   the list response. `-> Project` or `-> list[Project]` for the view's own
-  model works like `ViewResponse`. A route that names a Pydantic class in
-  `response_model=` keeps FastAPI's behaviour and skips `to_single_response`,
-  also for the 0.11 form `fr.schemas.derive_schema_response(ProjectSchema)`.
-  Nothing reports this: drop `response_model=` and annotate the route.
+  model works like `ViewResponse`, and so does the view's own response
+  class, such as the 0.11 form
+  `response_model=fr.schemas.derive_schema_response(ProjectSchema)`. A route
+  that names another Pydantic class keeps FastAPI's behaviour and skips
+  `to_single_response`.
 
 #### Writes
 

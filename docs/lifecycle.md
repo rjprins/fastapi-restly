@@ -434,7 +434,7 @@ Every read of the view applies the loader options, and so does the save after
 a write. So the value is there in every response of the view, also after
 `POST`. Another view of the model, or `session.get()`, leaves it unloaded.
 
-A custom route that names a class of its own in `response_model=` skips
+A custom route that names another class in `response_model=` skips
 `to_single_response`: FastAPI builds the response from the object, so the
 value is missing. Declare the view's response instead, as
 [The response of a custom route](#custom-route-response) explains.

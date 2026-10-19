@@ -3904,9 +3904,10 @@ def _view_response_kind(view_cls: Any, endpoint: Callable) -> tuple[str | None, 
     The kind is ``"single"`` for one row, ``"many"`` for a list of rows, and
     ``"list"`` for a ``ListResult``. It comes from the response that the route
     declares: the ``response_model`` of its decorator, else its return
-    annotation. A marker of the view's response, or the view's model in the
-    return annotation, declares the view's response, also with ``| None``. A
-    class that the route names itself keeps FastAPI's behaviour.
+    annotation. A marker of the view's response, the view's own response
+    class, or the view's model in the return annotation, declares the view's
+    response, also with ``| None``. Another class that the route names keeps
+    FastAPI's behaviour.
     """
     _, route_kwargs = endpoint._api_route_args  # type: ignore[attr-defined]
     in_decorator = "response_model" in route_kwargs
@@ -3925,15 +3926,22 @@ def _declared_view_response(
     view_cls: Any, declared: Any, in_decorator: bool
 ) -> tuple[str | None, Any]:
     """The kind and the response model of :func:`_view_response_kind`, for a
-    declared response without ``None``."""
+    declared response without ``None``.
+
+    A marker declares the view's response, and so does the view's own
+    response class or list response class, such as the one from
+    :func:`~fastapi_restly.schemas.derive_schema_response`: each call with
+    the same schema returns that same class.
+    """
+    own = _view_types(view_cls)
     name = _marker_name(declared)
-    if name == "ViewResponse":
+    if name == "ViewResponse" or declared is own["ViewResponse"]:
         return "single", None
-    if name == "ViewListResponse":
+    if name == "ViewListResponse" or declared is own["ViewListResponse"]:
         return "list", None
     if get_origin(declared) is list:
         (item,) = get_args(declared) or (None,)
-        if _marker_name(item) == "ViewResponse":
+        if _marker_name(item) == "ViewResponse" or item is own["ViewResponse"]:
             return "many", None
         if not in_decorator and item is view_cls.model:
             return "many", list[view_cls.schema_response]  # type: ignore[name-defined]

@@ -735,6 +735,40 @@ def test_a_route_may_return_the_result_of_scalars_or_none(client):
     assert client.get("/books/1/maybe").json()["title"] == "DUNE"
 
 
+def test_a_route_that_names_the_views_own_response_class(client):
+    """The 0.11 form ``response_model=fr.schemas.derive_schema_response(...)``
+    names the view's own response class: each call returns that same class.
+    So the route declares the view's response, as with ``ViewResponse``, and
+    ``to_single_response`` runs. The list response class works the same."""
+    Shelf, Book, ShelfSchema, BookSchema = _models()
+    BookResponse = fr.schemas.derive_schema_response(BookSchema)
+    # the view keeps the default pagination, so the default envelope
+    BookListResponse = fr.schemas.derive_schema_list_response(BookResponse)
+
+    class BookView(_marked_book_view(client, Book, BookSchema)):
+        @fr.get("/{id}/named", response_model=BookResponse)
+        async def named(self, id: int) -> Any:
+            return await self.get_one(id)
+
+        @fr.get("/named-list", response_model=list[BookResponse])
+        async def named_list(self) -> Any:
+            return await self.session.scalars(self.select().order_by(Book.id))
+
+        @fr.get("/named-page", response_model=BookListResponse)
+        async def named_page(self, list_params) -> Any:
+            return await self.handle_get_many(list_params)
+
+    fr.include_view(client.app, BookView)
+    create_tables()
+    _seed(client)
+
+    assert client.get("/books/1/named").json()["title"] == "DUNE"
+    titles = [b["title"] for b in client.get("/books/named-list").json()]
+    assert titles == ["DUNE", "EMMA"]
+    page = client.get("/books/named-page").json()
+    assert [b["title"] for b in page["data"]] == ["DUNE", "EMMA"]
+
+
 def test_a_route_that_names_its_own_class_keeps_fastapi_behaviour(client):
     """A Pydantic class that the route names itself is the route's choice:
     FastAPI validates the row against it, and ``to_single_response`` does
