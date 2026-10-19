@@ -42,10 +42,6 @@ from .schemas import (
 )
 
 # Views
-# (run_write_action / async_run_write_action are intentionally NOT re-exported at
-# the top level: they're the self-free primitive the CRUD handlers and
-# write_action share, and the off-HTTP use case that would justify a public name
-# isn't built yet. They remain importable from fastapi_restly.views.)
 from .views import (
     Action,
     AsyncReactAdminView,

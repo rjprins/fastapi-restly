@@ -512,8 +512,8 @@ class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
         return self._react_admin_filters(stmt, list_params)
 
     @put("/{id}")
-    async def put(self, id: ViewID, schema_obj: ViewUpdate) -> ViewResponse:
-        obj = await self.handle_update(id, schema_obj)
+    async def put(self, id: ViewID, data: ViewUpdate) -> ViewResponse:
+        obj = await self.handle_update(id, data)
         return self.to_response(obj)
 
 
@@ -546,6 +546,6 @@ class ReactAdminView(_ReactAdminMixin, RestView):
         return self._react_admin_filters(stmt, list_params)
 
     @put("/{id}")
-    def put(self, id: ViewID, schema_obj: ViewUpdate) -> ViewResponse:
-        obj = self.handle_update(id, schema_obj)
+    def put(self, id: ViewID, data: ViewUpdate) -> ViewResponse:
+        obj = self.handle_update(id, data)
         return self.to_response(obj)

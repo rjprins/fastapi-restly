@@ -132,8 +132,8 @@ FastAPI route works. For example, `dependencies` adds a check to one route:
 
 ```python
     @fr.post("/", dependencies=[Depends(require_admin)])
-    async def create_endpoint(self, schema_obj: ViewCreate) -> ViewResponse:
-        return await super().create_endpoint(schema_obj)
+    async def create_endpoint(self, data: ViewCreate) -> ViewResponse:
+        return await super().create_endpoint(data)
 ```
 
 An item route that you declare, such as `GET /{id}`, keeps the path that you

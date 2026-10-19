@@ -123,16 +123,16 @@ def projects(request: pytest.FixtureRequest) -> Iterator[_Nested]:
         if sync:
 
             def create(self, schema_obj):
-                task = self.make_new_object(schema_obj)
+                task = super().create(schema_obj)
                 task.project_id = Parent.project_id()
-                return self.save_object(task)
+                return task
 
         else:
 
             async def create(self, schema_obj):  # type: ignore[misc]
-                task = await self.make_new_object(schema_obj)
+                task = await super().create(schema_obj)
                 task.project_id = Parent.project_id()
-                return await self.save_object(task)
+                return task
 
     fr.include_view(app, ProjectTaskView)
 
@@ -353,16 +353,16 @@ def companies(request: pytest.FixtureRequest) -> Iterator[_Nested]:
         if sync:
 
             def create(self, schema_obj):
-                task = self.make_new_object(schema_obj)
+                task = super().create(schema_obj)
                 task.project_id = Parent.project_id()
-                return self.save_object(task)
+                return task
 
         else:
 
             async def create(self, schema_obj):  # type: ignore[misc]
-                task = await self.make_new_object(schema_obj)
+                task = await super().create(schema_obj)
                 task.project_id = Parent.project_id()
-                return await self.save_object(task)
+                return task
 
     app = FastAPI()
     fr.include_view(app, TaskView)

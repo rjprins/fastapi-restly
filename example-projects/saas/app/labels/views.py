@@ -6,7 +6,6 @@ import sqlalchemy as sa
 from pydantic import BaseModel
 
 import fastapi_restly as fr
-from fastapi_restly.objects import async_make_new_object, async_save_object
 
 from ..tasks.models import Task, TaskClauses
 from ..views import AuthenticatedView
@@ -17,7 +16,7 @@ from .schemas import LabelSchema, TaskLabelResponse, TaskLabelSchema
 class CreateAndAttachLabelRequest(BaseModel):
     """Request body for the sibling-creation custom endpoint."""
 
-    task_id: fr.MustExist[int, Task]
+    task_id: int
     label_name: str
     color: str = "#808080"
 
@@ -62,8 +61,7 @@ class TaskLabelView(AuthenticatedView[TaskLabel]):
         task_ids = set()
         if obj is not None and action in (fr.Action.UPDATE, fr.Action.DELETE):
             task_ids.add(obj.task_id)
-        bodies = (TaskLabelSchema, CreateAndAttachLabelRequest)
-        if isinstance(data, bodies) and "task_id" in data.model_fields_set:
+        if isinstance(data, TaskLabelSchema) and "task_id" in data.model_fields_set:
             task_ids.add(data.task_id)
         if not task_ids:
             return
@@ -80,27 +78,22 @@ class TaskLabelView(AuthenticatedView[TaskLabel]):
     ) -> TaskLabel:
         """Sibling-creation: build a Label *and* a TaskLabel in one request.
 
-        The Label lands in the organization the request acts in:
-        ``organization_id`` is the model's stamp, not an argument here.
-        Before the block runs, ``authorize`` refuses a task that the member
-        is not assigned to (403), and the reference check refuses a foreign
-        or deleted task (404). The Label is flushed first so its id can pass
-        the TaskLabel schema's reference checks.
+        Two creates, each through the handler of its own view, inside one
+        ``shared_write_action_commit()``. So each runs its own steps:
+        ``authorize``, the reference checks, the save and the hooks. The
+        label's handler saves the label, so the link gets its id. The Label
+        lands in the organization the request acts in: ``organization_id`` is
+        the model's stamp, not an argument here. The link's ``authorize``
+        refuses a task that the member is not assigned to (403), and its
+        reference check refuses a foreign or deleted task (404). Then nothing
+        is committed, the label included.
         """
-        # Commit the Label + TaskLabel pair atomically.
-        async with self.write_action("create", data=request) as w:
-            # 1) Build Label and flush so its PK exists for the existence check.
-            label = Label(name=request.label_name, color=request.color)
-            self.session.add(label)
-            await self.session.flush()  # <-- existence check needs the PK to exist
-
-            # 2) Build TaskLabel with plain ids so references are checked.
-            link_schema = TaskLabelSchema.model_construct(
-                task_id=request.task_id, label_id=label.id
+        labels = LabelView(session=self.session, request=self.request)
+        async with self.shared_write_action_commit():
+            label = await labels.handle_create(
+                LabelView.schema_create(name=request.label_name, color=request.color)
             )
-            task_label = await async_make_new_object(
-                self.session, TaskLabel, link_schema
+            link = await self.handle_create(
+                self.schema_create(task_id=request.task_id, label_id=label.id)
             )
-            task_label = await async_save_object(self.session, task_label)
-            w.obj = task_label
-        return task_label
+        return link

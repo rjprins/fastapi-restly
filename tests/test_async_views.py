@@ -27,7 +27,7 @@ def _make_engine_and_session():
 
 
 def test_async_object_helpers_handle_readonly_and_relationship_inputs():
-    """Directly call make_new_object and update_object to cover the IDSchema and
+    """Directly call the default create and update to cover the IDSchema and
     DeclarativeBase FK resolution branches, mirroring test_sync_views.py."""
 
     class Author(fr.IDMixin, SharedBase):
@@ -76,7 +76,7 @@ def test_async_object_helpers_handle_readonly_and_relationship_inputs():
             create_payload = ArticleSchema(
                 id=999, title="Draft", author_id={"id": original_author.id}
             )
-            article = await article_view.make_new_object(create_payload)
+            article = await article_view.create(create_payload)
             await session.flush()
 
             assert article.id != 999
@@ -86,7 +86,7 @@ def test_async_object_helpers_handle_readonly_and_relationship_inputs():
             update_payload = ArticleSchema(
                 id=12345, title="Published", author_id={"id": replacement_author.id}
             )
-            updated_article = await article_view.update_object(article, update_payload)
+            updated_article = await article_view.update(article, update_payload)
 
             assert updated_article.id == article.id
             assert updated_article.title == "Published"
@@ -97,13 +97,13 @@ def test_async_object_helpers_handle_readonly_and_relationship_inputs():
             assign_view = AssignmentView()
             assign_view.session = session
 
-            assignment = await assign_view.make_new_object(
+            assignment = await assign_view.create(
                 AssignmentSchema(owner_id=fr.IDSchema(id=original_author.id))
             )
             await session.flush()
             assert assignment.owner_id == original_author.id
 
-            updated_assignment = await assign_view.update_object(
+            updated_assignment = await assign_view.update(
                 assignment,
                 AssignmentSchema(owner_id=fr.IDSchema(id=replacement_author.id)),
             )
@@ -380,12 +380,12 @@ def test_async_rest_view_crud_and_pagination():
             view = OrderView()
             view.session = session
 
-            first = await view.create(
+            first = await view.handle_create(
                 OrderInputSchema(
                     item_name="Keyboard", quantity=1, customer_id=customer_id
                 )
             )
-            second = await view.create(
+            second = await view.handle_create(
                 OrderInputSchema(item_name="Mouse", quantity=2, customer_id=customer_id)
             )
 

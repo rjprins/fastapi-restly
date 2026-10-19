@@ -91,8 +91,8 @@ in this order:
 |---|---|---|
 | the model | the objects that the methods load, build and return | `Any` |
 | the response type | the return value of {meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>` | `BaseSchema` |
-| the create body | `schema_obj` in {meth}`create <fastapi_restly.views.RestView.create>` | `pydantic.BaseModel` |
-| the update body | `schema_obj` in {meth}`update <fastapi_restly.views.RestView.update>` | `pydantic.BaseModel` |
+| the create body | `data` in {meth}`create <fastapi_restly.views.RestView.create>` | `pydantic.BaseModel` |
+| the update body | `data` in {meth}`update <fastapi_restly.views.RestView.update>` | `pydantic.BaseModel` |
 | the id type | `id` in {meth}`get_one <fastapi_restly.views.RestView.get_one>` and the handlers | `int` |
 
 Each parameter has a default, so you can stop after the ones you need. The
@@ -145,14 +145,14 @@ class UserView(
     ) -> User:
         return await super().get_one(id, scope=scope)
 
-    async def create(self, schema_obj: UserCreate) -> User:
-        return await super().create(schema_obj)
+    async def create(self, data: UserCreate) -> User:
+        return await super().create(data)
 
-    async def update(self, obj: User, schema_obj: UserUpdate) -> User:
-        return await super().update(obj, schema_obj)
+    async def update(self, obj: User, data: UserUpdate) -> User:
+        return await super().update(obj, data)
 ```
 
-With these parameters, `schema_obj` in `create` is a `UserCreate`, `obj` in
+With these parameters, `data` in `create` is a `UserCreate`, `obj` in
 `update` is a `User`, and the type checker checks the return types too. Note
 these points:
 
@@ -215,7 +215,7 @@ class UserView(fr.AsyncRestView):
 When a custom route calls the view's methods, the parameters type those
 calls too: {meth}`get_one(id) <fastapi_restly.views.RestView.get_one>`
 returns the model, and
-{meth}`handle_update(id, schema_obj) <fastapi_restly.views.RestView.handle_update>`
+{meth}`handle_update(id, data) <fastapi_restly.views.RestView.handle_update>`
 takes the update body.
 
 The classes that

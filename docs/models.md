@@ -315,10 +315,8 @@ To decide where a value is set, ask which write paths must set it:
 
 A view cannot set a value for every write path. A `create` override often
 builds the row itself, without `super()`. Then a value that a view mixin sets
-in `create` is lost. The [domain utilities](#domain-utilities)
-`make_new_object`, `update_object` and `save_object` are final, so a view
-cannot change them either. And a script that builds a row, or calls the
-`fr.objects` helpers, never runs a view.
+in `create` is lost. And a script that builds a row, or calls the
+[`fr.objects` functions](#domain-utilities), never runs a view.
 
 A value from `Current`, such as the author, is a column default:
 [Stamp the fields the server owns](#server-stamped-fields) shows how. A value

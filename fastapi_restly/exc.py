@@ -74,7 +74,7 @@ class RestlyUncommittedChangesWarning(UserWarning):
     """Emitted when a request finishes with uncommitted changes in the session.
 
     The write handlers own the commit, so a custom write route that flushes
-    (e.g. via ``save_object``) but never commits has its changes silently
+    (e.g. with ``session.flush()``) but never commits has its changes silently
     rolled back when the session closes. The fix is almost always to commit:
     bracket the mutation with ``write_action(...)`` (the framework then runs
     the commit), or reuse a ``handle_<verb>`` handler. A route that

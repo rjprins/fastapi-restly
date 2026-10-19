@@ -158,7 +158,6 @@ fastapi_restly.views:
   - ViewResponse
   - ViewRoute
   - ViewUpdate
-  - async_run_write_action
   - delete
   - get
   - include_view
@@ -168,7 +167,6 @@ fastapi_restly.views:
   - put
   - resolve_scope
   - route
-  - run_write_action
 
 submodule-only exports:
 fastapi_restly.clauses:
@@ -241,5 +239,3 @@ fastapi_restly.views:
   - ViewListResponse
   - ViewResponse
   - ViewUpdate
-  - async_run_write_action
-  - run_write_action

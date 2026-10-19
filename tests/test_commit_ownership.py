@@ -76,14 +76,13 @@ def test_custom_route_must_commit_explicitly(client):
         async def bump_uncommitted(self, id: int):
             obj = await self.get_one(id)
             obj.value += 1
-            await self.save_object(obj)  # flush only -- no commit
+            await self.session.flush()  # flush only -- no commit
             return self.to_response(obj)
 
         @fr.post("/{id}/bump")
         async def bump(self, id: int):
             obj = await self.get_one(id)
             obj.value += 1
-            await self.save_object(obj)
             await self.session.commit()  # the custom route owns the commit
             return self.to_response(obj)
 

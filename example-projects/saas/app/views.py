@@ -40,7 +40,6 @@ from datetime import datetime, timezone
 from typing import Any, ClassVar, TypeVar
 
 import fastapi
-from sqlalchemy.ext.asyncio import AsyncSession
 
 import fastapi_restly as fr
 from fastapi_restly.views import ViewID, ViewListResponse, ViewResponse
@@ -107,8 +106,10 @@ class AuthenticatedView(fr.AsyncRestView[ModelT]):
     ) -> None:
         """Write an outbox row in the current session.
 
-        Call after ``save_object`` so ``aggregate.id`` is populated. The outbox
-        row joins the same transaction as the aggregate.
+        Call it where ``aggregate.id`` is set: in ``before_action_commit``,
+        which runs after the save, or after an explicit flush. Inside
+        ``create``, the new object has no id yet. The outbox row joins the
+        same transaction as the aggregate.
 
         Do not replace this with a direct ``await email_service.send(...)``
         before commit: if the transaction rolls back, the email still goes out
@@ -138,13 +139,8 @@ class SoftDeleteMixin:
     different HTTP contract, such as ``200 + body``.
     """
 
-    # Required from the host class. An annotation without a value adds
-    # nothing to the class, so it does not hide the view's session.
-    session: AsyncSession
-
     async def delete(self, obj: Any) -> None:
         obj.deleted_at = datetime.now(timezone.utc)
-        await self.session.flush()
 
 
 class TrashView(SoftDeleteMixin, AuthenticatedView[SoftDeletableT]):
@@ -172,5 +168,4 @@ class TrashView(SoftDeleteMixin, AuthenticatedView[SoftDeletableT]):
         obj = await self.get_one(id, scope=self.trash_scope)
         async with self.write_action("restore", obj=obj):
             obj.deleted_at = None
-            await self.save_object(obj)
         return self.to_response(obj)

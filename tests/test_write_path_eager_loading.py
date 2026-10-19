@@ -117,9 +117,9 @@ def _build_nested_app(app):
         schema_create = DocCreate
 
         async def create(self, schema_obj) -> Any:
-            obj: Any = await self.make_new_object(schema_obj)
+            obj: Any = await super().create(schema_obj)
             obj.owner_id = owner_id["id"]
-            return await self.save_object(obj)
+            return obj
 
     create_tables()
 
@@ -184,9 +184,9 @@ def test_sync_create_serializes_nested_relationship(sync_client):
         schema_create = DocCreate
 
         def create(self, schema_obj) -> Any:
-            obj: Any = self.make_new_object(schema_obj)
+            obj: Any = super().create(schema_obj)
             obj.owner_id = owner_id["id"]
-            return self.save_object(obj)
+            return obj
 
     _create_sync_tables()
     with _fr_globals.make_session() as session:
@@ -284,10 +284,10 @@ def test_async_create_serializes_assigned_collection(client):
         schema_create = DocCreate
 
         async def create(self, schema_obj) -> Any:
-            obj: Any = await self.make_new_object(schema_obj)
+            obj: Any = await super().create(schema_obj)
             tags = (await self.session.scalars(select(Tag))).all()
             obj.tags = list(tags)
-            return await self.save_object(obj)
+            return obj
 
     create_tables()
 
@@ -435,9 +435,9 @@ def test_indirection_over_a_named_relationship_rides_along(client):
         schema_create = DocCreate
 
         async def create(self, schema_obj) -> Any:
-            obj: Any = await self.make_new_object(schema_obj)
+            obj: Any = await super().create(schema_obj)
             obj.owner_id = owner_id["id"]
-            return await self.save_object(obj)
+            return obj
 
     create_tables()
 
@@ -495,9 +495,9 @@ def test_indirection_over_an_unnamed_relationship_fails_alike_on_read_and_write(
         schema_create = DocCreate
 
         async def create(self, schema_obj) -> Any:
-            obj: Any = await self.make_new_object(schema_obj)
+            obj: Any = await super().create(schema_obj)
             obj.owner_id = 1
-            return await self.save_object(obj)
+            return obj
 
     create_tables()
 
@@ -663,11 +663,11 @@ def test_divergent_schemas_same_instance_reload(client):
         schema_create = DocCreate
 
         async def create(self, schema_obj) -> Any:
-            obj: Any = await self.make_new_object(schema_obj)
+            obj: Any = await super().create(schema_obj)
             # author and reviewer are the *same* person row
             obj.author_id = 1
             obj.reviewer_id = 1
-            return await self.save_object(obj)
+            return obj
 
     create_tables()
 
@@ -728,9 +728,9 @@ def test_sync_create_serializes_assigned_collection(sync_client):
         schema_create = DocCreate
 
         def create(self, schema_obj) -> Any:
-            obj: Any = self.make_new_object(schema_obj)
+            obj: Any = super().create(schema_obj)
             obj.tags = list(self.session.scalars(select(Tag)).all())
-            return self.save_object(obj)
+            return obj
 
         def to_response(self, result, *args, **kwargs) -> Any:
             # snapshot load state after save_object, before serialization reads it
@@ -792,9 +792,9 @@ def test_write_reload_unique_guards_a_joinedload_collection(client):
             return [joinedload(JoinedDoc.tags)]
 
         async def create(self, schema_obj) -> Any:
-            obj: Any = await self.make_new_object(schema_obj)
+            obj: Any = await super().create(schema_obj)
             obj.tags = list((await self.session.scalars(select(Tag))).all())
-            return await self.save_object(obj)
+            return obj
 
     create_tables()
 

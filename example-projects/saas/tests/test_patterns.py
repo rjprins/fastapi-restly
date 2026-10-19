@@ -1,4 +1,4 @@
-"""Tests for the use-case-matrix patterns from rut-notes/discussion_save_object.md.
+"""Tests for the patterns of the use-case matrix: one test per customization.
 
 These exercise every row of the matrix that the SaaS example covers,
 locking the expected behavior down so future helper/handler design experiments
@@ -243,6 +243,17 @@ class TestProjectMeta:
         got = client.get(f"/projects/{p['id']}").json()
         assert got["can_edit"] is True
 
+    def test_decoration_present_on_create_and_update(self, client):
+        """The response fields need the id and the organization, which a new
+        project gets at the flush."""
+        p = client.post("/projects", json={"name": "Decorate New"}).json()
+        assert p["can_edit"] is True
+        assert p["task_count"] == 0
+        client.post("/tasks", json={"title": "t", "project_id": p["id"]})
+        patched = client.patch(f"/projects/{p['id']}", json={"name": "Renamed"}).json()
+        assert patched["can_edit"] is True
+        assert patched["task_count"] == 1
+
 
 # ---------------------------------------------------------------------------
 # Outbox events written transactionally
@@ -253,7 +264,7 @@ class TestOutbox:
     async def test_project_create_emits_outbox(self, async_client, async_actor):
         from app.outbox import OutboxEvent
 
-        await async_client.post("/projects", json={"name": "Outboxed"})
+        response = await async_client.post("/projects", json={"name": "Outboxed"})
         async with _async_session(async_actor) as session:
             events = (
                 await session.scalars(
@@ -264,7 +275,9 @@ class TestOutbox:
             ).all()
         assert len(events) == 1
         assert events[0].aggregate_type == "Project"
-        assert events[0].payload["name"] == "Outboxed"
+        # the event is written after the save: the id and the slug exist
+        assert events[0].aggregate_id == response.json()["id"]
+        assert events[0].payload == {"name": "Outboxed", "slug": "outboxed"}
 
     async def test_status_transition_emits_event(self, async_client, async_actor):
         from app.outbox import OutboxEvent
@@ -281,6 +294,31 @@ class TestOutbox:
             ).all()
         assert len(events) == 1
         assert events[0].payload == {"from": "active", "to": "archived"}
+
+    async def test_clone_and_archive_emit_through_the_same_hook(
+        self, async_client, async_actor
+    ):
+        """The events follow from ``old`` and ``new``: a clone is a new
+        project, and archive changes the status."""
+        from app.outbox import OutboxEvent
+
+        p = (await async_client.post("/projects", json={"name": "Source"})).json()
+        clone = (await async_client.post(f"/projects/{p['id']}/clone", json={})).json()
+        await async_client.post(f"/projects/{p['id']}/archive")
+        async with _async_session(async_actor) as session:
+            events = (
+                await session.scalars(
+                    select(OutboxEvent)
+                    .where(OutboxEvent.aggregate_type == "Project")
+                    .order_by(OutboxEvent.id)
+                )
+            ).all()
+        assert [(e.event_type, e.aggregate_id) for e in events] == [
+            ("project.created", p["id"]),
+            ("project.created", clone["id"]),
+            ("project.status_changed", p["id"]),
+        ]
+        assert events[1].payload == {"name": "Source (Copy)", "slug": "source-copy"}
 
     async def test_no_event_for_idempotent_update(self, async_client, async_actor):
         """Updating with the same status should NOT emit a transition event."""

@@ -328,14 +328,12 @@ async def test_create_update_and_delete_handlers_share_the_commit(writes):
 async def test_context_brackets_keep_snapshots_and_live_new_objects(writes):
     view = writes.view
     async with _enter(view.shared_write_action_commit()):
-        async with _enter(view.write_action("copy")) as handle:
-            handle.obj = writes.model(name="first")
-            writes.session.add(handle.obj)
-        obj = handle.obj
+        obj = writes.model(name="first")
+        async with _enter(view.write_action("copy", obj=obj)):
+            pass  # a new object: the bracket adds it and saves it
         assert obj.id is not None
         for name in ("middle", "last"):
-            async with _enter(view.write_action("rename", obj=obj)) as handle:
-                assert handle.obj is obj
+            async with _enter(view.write_action("rename", obj=obj)):
                 obj.name = name
         async with _enter(view.write_action("recompute", obj=None)):
             pass
@@ -360,13 +358,13 @@ async def test_context_brackets_keep_snapshots_and_live_new_objects(writes):
     ]
 
 
-async def test_missing_create_deposit_still_fails_before_hooks(writes):
-    with pytest.raises(RuntimeError, match="create-shaped"):
+async def test_write_action_without_obj_fails_before_authorize(writes):
+    with pytest.raises(TypeError, match="obj"):
         async with _enter(writes.view.shared_write_action_commit()):
-            async with _enter(writes.view.write_action("create")):
+            async with _enter(writes.view.write_action("create")):  # type: ignore[call-arg]
                 writes.session.add(writes.model(name="forgotten"))
                 await _call(writes.session.flush())
-    assert writes.events == [("authorize", "create")]
+    assert writes.events == []
     assert await _names(writes, writes.model) == []
 
 
@@ -402,9 +400,8 @@ async def test_row_failure_keeps_other_rows_and_their_audits(
             _replace_hook(writes, monkeypatch, phase, reject)
         with pytest.raises(ValueError, match="row rejected"):
             async with _enter(writes.session.begin_nested()):
-                async with _enter(view.write_action("rejected")) as handle:
-                    handle.obj = writes.model(name="discarded")
-                    writes.session.add(handle.obj)
+                discarded = writes.model(name="discarded")
+                async with _enter(view.write_action("rejected", obj=discarded)):
                     writes.session.add(writes.audit(name="discarded audit"))
                     await _call(writes.session.flush())
                     if phase == "body":

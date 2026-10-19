@@ -64,6 +64,23 @@ class TestProjectClone:
         cloned_tasks = response.json()["data"]
         assert len(cloned_tasks) == 3
 
+    def test_clone_carries_the_story_point_total(self, client):
+        """The copied tasks add their points to the clone's total, and the
+        save refreshes the clone, so the response shows the total."""
+        project = client.post("/projects", json={"name": "Pointed"}).json()
+        client.post(
+            "/tasks",
+            json={
+                "title": "Feature",
+                "project_id": project["id"],
+                "task_type": "feature",
+                "story_points": 5,
+            },
+        )
+        cloned = client.post(f"/projects/{project['id']}/clone", json={}).json()
+        assert cloned["total_story_points"] == 5
+        assert client.get(f"/projects/{cloned['id']}").json()["total_story_points"] == 5
+
     def test_clone_project_default_name(self, client):
         """Test cloning with default name appends (Copy)."""
         # Create project
@@ -98,17 +115,18 @@ class TestProjectClone:
     def test_clone_rolls_back_project_when_copying_tasks_fails(
         self, client, monkeypatch
     ):
-        import fastapi_restly.objects as objects
+        from app.tasks.models import Task
 
         original = client.post("/projects", json={"name": "Clone source"}).json()
         client.post(
             "/tasks", json={"title": "Task to copy", "project_id": original["id"]}
         )
 
-        async def fail_child_save(session, obj):
+        def fail_child_copy(self, *args, **kwargs):
             raise RuntimeError("child copy failed")
 
-        monkeypatch.setattr(objects, "async_save_object", fail_child_save)
+        # The copy fails after the clone's early flush, inside the action.
+        monkeypatch.setattr(Task, "__init__", fail_child_copy)
         with pytest.raises(RuntimeError, match="child copy failed"):
             client.post(
                 f"/projects/{original['id']}/clone",

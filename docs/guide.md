@@ -15,11 +15,13 @@ FastAPI first checks the request body against the update body,
 
 ```
 PATCH /projects/1
-  └─ update_endpoint(id, schema_obj)      # endpoint method: HTTP contract
-       ├─ handle_update(id, schema_obj)   # handler: runs the steps
+  └─ update_endpoint(id, data)            # endpoint method: HTTP contract
+       ├─ handle_update(id, data)         # handler: runs the steps
        │    ├─ get_one(id)                # loads through the scope, or 404
        │    ├─ authorize("update", ...)   # may the caller do this? Or 403
-       │    ├─ update(obj, schema_obj)    # business method: the change
+       │    ├─ check the references       # an id that does not exist: 404
+       │    ├─ update(obj, data)          # business method: the change
+       │    ├─ save                       # flush and refresh the row
        │    ├─ before_action_commit(...)
        │    ├─ commit
        │    └─ after_action_commit(...)

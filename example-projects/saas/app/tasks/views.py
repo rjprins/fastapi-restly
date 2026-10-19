@@ -118,16 +118,18 @@ class TaskView(TrashView[Task]):
                 status_code=422, detail="severity is required for bug tasks"
             )
 
-    async def create(self, schema_obj: BaseModel) -> Task:
-        """Validate against the project and the assignee, then build and save.
+    async def create(self, data: BaseModel) -> Task:
+        """Validate against the project and the assignee, then build the task.
 
-        The project's story-point total follows by itself: the session
-        event in ``app.tasks.models`` keeps it on every write path.
+        The handler has already checked that ``project_id`` and
+        ``assignee_id`` name visible rows. The project's story-point total
+        follows by itself: the session event in ``app.tasks.models`` keeps it
+        on every write path.
         """
         from ..projects.models import Project, ProjectStatus
 
-        data = schema_obj.model_dump()
-        project_id = data.get("project_id")
+        values = data.model_dump()
+        project_id = values.get("project_id")
 
         project = None
         if project_id:
@@ -138,15 +140,14 @@ class TaskView(TrashView[Task]):
                 )
 
         # Validate conditional required fields
-        self._validate_conditional_fields(data)
+        self._validate_conditional_fields(values)
 
         # Validate cross-resource constraints
-        await self._validate_cross_resource(data)
+        await self._validate_cross_resource(values)
 
-        task = await self.make_new_object(schema_obj)
-        return await self.save_object(task)
+        return await super().create(data)
 
-    async def update(self, obj: Task, schema_obj: BaseModel) -> Task:
+    async def update(self, obj: Task, data: BaseModel) -> Task:
         """Optimistic locking, then apply the update.
 
         A change of the story points or the project updates the projects'
@@ -155,10 +156,10 @@ class TaskView(TrashView[Task]):
         task = obj
 
         # Check version for optimistic locking before applying the update.
-        client_version = getattr(schema_obj, "version", None)
+        client_version = getattr(data, "version", None)
         if (
             client_version is not None
-            and "version" in schema_obj.model_fields_set
+            and "version" in data.model_fields_set
             and client_version != task.version
         ):
             raise HTTPException(
@@ -167,7 +168,7 @@ class TaskView(TrashView[Task]):
             )
 
         # Cross-resource validation for assignee change.
-        sent = schema_obj.model_dump(exclude_unset=True)
+        sent = data.model_dump(exclude_unset=True)
         if sent.get("assignee_id") is not None:
             await self._validate_cross_resource(
                 {
@@ -177,12 +178,11 @@ class TaskView(TrashView[Task]):
             )
 
         # Apply writable fields, then bump version server-side.
-        task = await self.update_object(task, schema_obj)
+        task = await super().update(task, data)
         task.version = (
             client_version if client_version is not None else task.version
         ) + 1
-
-        return await self.save_object(task)
+        return task
 
     async def _transition_task(
         self, id: int, source_status: TaskStatus, target_status: TaskStatus, action: str
@@ -207,7 +207,6 @@ class TaskView(TrashView[Task]):
         async with self.write_action(action, obj=task):
             task.status = target_status
             task.version += 1
-            await self.save_object(task)
         return task
 
     @fr.post("/import-csv", response_model=BulkResult)
@@ -238,17 +237,17 @@ class TaskView(TrashView[Task]):
         async with self.shared_write_action_commit():
             for row_no, row in enumerate(reader, start=2):  # row 1 is the header
                 try:
-                    schema_obj = TaskCreate(
+                    data = TaskCreate(
                         title=(row.get("title") or "").strip(),
                         description=row.get("description") or "",
                         project_id=project_id,
                     )
-                    if not schema_obj.title:
+                    if not data.title:
                         raise ValueError("title is required")
                     # The savepoint contains the handler's mutation and
                     # before-hook writes. A rejected row rolls both back.
                     async with self.session.begin_nested():
-                        await self.handle_create(schema_obj)
+                        await self.handle_create(data)
                     success += 1
                 except Exception as exc:  # noqa: BLE001, surface per-row error
                     failed += 1

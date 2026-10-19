@@ -56,7 +56,7 @@ from fastapi.params import Param as _ParamMarker
 from fastapi.security.api_key import APIKeyBase
 from pydantic.fields import FieldInfo
 from sqlalchemy import JSON as _JSONType
-from sqlalchemy import ColumnElement, Select, func
+from sqlalchemy import ColumnElement, Select, func, tuple_
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import select as sa_select
 from sqlalchemy.orm import QueryableAttribute, selectinload
@@ -903,6 +903,43 @@ def _relationship_reload_statement(obj: Any, options: list[Any]) -> Any:
     return sa_select(mapper.class_).where(*conditions).options(*options)
 
 
+#: The most rows that one reload SELECT names, below the parameter limits of
+#: the databases (SQLite allows 32766 in all, older versions 999).
+_RELOAD_CHUNK = 500
+
+
+def _rows_reload_statements(
+    model: Any, rows: list[Any], options: list[Any]
+) -> list[Any]:
+    """The SELECTs that reload saved ``rows`` of ``model``, in chunks.
+
+    For the rows that a write action wrote, other than its subject. Their
+    relationships are expired first, as the subject's refresh expires them,
+    so a changed foreign key is never served from a stale relationship. The
+    SELECT then loads the relationships of the response again through
+    ``options``, and fills nothing else: not ``populate_existing``, which
+    would expire a deferred column that the route loaded, the columns of a
+    subclass, and a change made after the flush.
+    """
+    mapper = sa_inspect(model)
+    statements = []
+    for start in range(0, len(rows), _RELOAD_CHUNK):
+        identities = []
+        for row in rows[start : start + _RELOAD_CHUNK]:
+            state = sa_inspect(row)
+            relationships = [rel.key for rel in state.mapper.relationships]
+            # expire(row, []) would expire every attribute
+            if relationships:
+                state.session.expire(row, relationships)
+            identities.append(state.identity)
+        if len(mapper.primary_key) == 1:
+            where = mapper.primary_key[0].in_([identity[0] for identity in identities])
+        else:
+            where = tuple_(*mapper.primary_key).in_(identities)
+        statements.append(sa_select(model).where(where).options(*options))
+    return statements
+
+
 def _count_statement(query: Select[Any]) -> Select[Any]:
     """The SELECT that counts the rows of the list query ``query``.
 
@@ -1368,9 +1405,25 @@ def delete(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
     return route(path, **api_route_kwargs)
 
 
-# Callable from a verb override, never overridden. The framework's own view
-# classes define them; anything else in the MRO that does is a mistake.
-_FINAL_DOMAIN_UTILITIES = ("make_new_object", "update_object", "save_object")
+# Removed view methods. The business methods no longer flush, so these steps
+# moved: a definition on a view would be dead code, and a stamp or a save
+# hooked there would silently stop running.
+_REMOVED_DOMAIN_UTILITIES = {
+    "make_new_object": (
+        "super().create(data) builds the new object of the view's model, "
+        "and the commit bracket saves it after create returns."
+    ),
+    "update_object": (
+        "super().update(obj, data) applies the data to the object, and "
+        "the commit bracket saves it after update returns."
+    ),
+    "save_object": (
+        "The commit bracket saves the object that create or update returns, "
+        "and the obj of a write_action block: it adds it, flushes, refreshes "
+        "it and loads the relationships of the response. Call "
+        "session.flush() when you need an id earlier."
+    ),
+}
 
 # Callable from a custom route, never overridden. Every generated CRUD route
 # then runs ``authorize`` and, on writes, the commit bracket.
@@ -1842,22 +1895,19 @@ class BaseRestView(
                     "fr.objects.delete_object / async_delete_object on "
                     "self.session."
                 )
-        # the domain utilities are final: a stamp hooked there only covered
-        # the verbs, and a definition here would shadow the framework's
+        # the view's domain utilities are removed: a definition here would
+        # be dead code, and nothing would say so
         for klass in cls.__mro__:
-            if klass.__module__.startswith("fastapi_restly."):
-                continue
-            for name in _FINAL_DOMAIN_UTILITIES:
+            for name, instead in _REMOVED_DOMAIN_UTILITIES.items():
                 if name in vars(klass):
                     origin = _origin(cls, klass)
                     raise RestlyConfigurationError(
-                        f"{cls.__name__} defines {name}{origin}, which is a "
-                        "final domain utility, not a seam. Stamp a "
-                        "server-controlled field with a column default on the "
-                        "model (it then covers every write path); put "
-                        "logic that only the request needs in the create / "
-                        "update verb; "
-                        "put a per-write side effect in before_action_commit."
+                        f"{cls.__name__} defines {name}{origin}, which was "
+                        f"removed from the view and is no longer called. "
+                        f"{instead} For another model, use "
+                        f"fr.objects.{name} or async_{name}. A value that "
+                        "every write path must set belongs on the model, as a "
+                        "column default or a mapper event."
                     )
         # the handlers are final: an override re-implements the load,
         # authorize and commit order to reach something another seam gives
@@ -1904,7 +1954,7 @@ class BaseRestView(
 
         Returns recursive ``selectinload(...)`` options derived from
         :attr:`schema_response`, applied on reads (``get_one`` /
-        ``get_many``) and on the post-write reload in ``save_object``.
+        ``get_many``) and on the reload after the save of a write.
         Override to eager-load relationships the response class does not
         name on both paths; append to
         ``super().get_relationship_loader_options()`` to keep the derived
@@ -1918,10 +1968,14 @@ class BaseRestView(
     def _get_response_reload_statement(self, obj: Any) -> Any:
         """The SELECT that makes ``obj`` serializable, or ``None`` if it already is.
 
-        Called by ``save_object`` *after* the flush and refresh, because the
-        refresh is itself what leaves relationships unloaded; asking earlier
-        would see a value the refresh is about to discard.
+        Called by the save step of the commit bracket *after* the flush and
+        refresh, because the refresh is itself what leaves relationships
+        unloaded; asking earlier would see a value the refresh is about to
+        discard. ``None`` for an object of another model: the view's response
+        class does not describe it.
         """
+        if not isinstance(obj, self.model):
+            return None
         if _schema_relationships_are_loaded(
             obj, self.model, _schema_response(type(self))
         ):
@@ -1930,6 +1984,21 @@ class BaseRestView(
         if not options:
             return None
         return _relationship_reload_statement(obj, options)
+
+    def _get_rows_reload_statements(self, rows: list[Any]) -> list[Any]:
+        """The SELECTs that make saved ``rows`` of the view's model fresh and
+        serializable.
+
+        Called by the save step of the commit bracket after the flush, for the
+        rows of the view's model that a write action wrote, other than its
+        subject: a route that changes several rows in one action returns each
+        of them as the database has it.
+        """
+        if not rows:
+            return []
+        return _rows_reload_statements(
+            self.model, rows, self.get_relationship_loader_options()
+        )
 
     def _reject_unknown_query_params(self) -> None:
         """Reject any query-string key that neither the list params nor the

@@ -12,15 +12,18 @@ methods. The handler handles the steps, and you override a step:
    never override it.
 3. ``<verb>`` (``get_many``, ``get_one``, ``create``, ``update``, ``delete``),
    the business method: the domain operation, auth-free and commit-free. The
-   usual override point.
+   usual override point. A write business method changes objects in the
+   session and returns the object; it does not flush.
 
 Cross-cutting seams: ``scope`` (read visibility), ``authorize`` (policy),
 ``apply_list_params`` (list params), ``to_response`` (response shape),
 ``write_action`` (custom write actions), ``shared_write_action_commit``
-(one commit over several writes). Under the verbs sit the final
-domain utilities (``make_new_object``, ``update_object``, ``save_object``):
-call them from a verb override, never override them; a server-stamped
-field is a column default on the model. ``View`` is the bare class-based
+(one commit over several writes). After a write business method, the
+commit bracket saves: it adds a new object, flushes, refreshes the object
+and every other row of the view's model that the action wrote, and loads
+the relationships of the response on them. ``fr.objects`` has the
+schema-to-ORM functions, for another model and for code outside a view; a
+server-stamped field is a column default on the model. ``View`` is the bare class-based
 primitive for non-CRUD endpoint groups (auth flows, webhooks, RPC).
 """
 
@@ -44,7 +47,6 @@ from ._base import (
     resolve_scope,
     route,
 )
-from ._lifecycle import async_run_write_action, run_write_action
 from ._sync import RestView
 from ._view_types import ViewCreate, ViewID, ViewListResponse, ViewResponse, ViewUpdate
 
@@ -81,8 +83,6 @@ __all__ = [
     "ViewListResponse",
     "ViewCreate",
     "ViewUpdate",
-    "async_run_write_action",
-    "run_write_action",
     "resolve_scope",
     "delete",
     "get",

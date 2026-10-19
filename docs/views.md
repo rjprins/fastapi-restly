@@ -303,7 +303,7 @@ class SoftDeleteMixin:
 
     async def delete(self, obj: Any) -> None:
         obj.deleted_at = datetime.now(timezone.utc)
-        await self.session.flush()
+        self.session.add(DeletionLog(row_id=obj.id))  # a model of your own
 ```
 
 When the shared code calls methods of the view, such as `get_one` or a
@@ -343,8 +343,8 @@ method is a real method, and Python finds it before the view's method, so
 does not add the stub to the class, but type checkers still find it before
 the view's method. A stub such as `async def get_one(self, id: Any) -> Any`
 then hides the typed `get_one` in every view that uses the mixin. And mypy
-reports a stub for a final handler, such as `handle_get_many` or
-`save_object`, as an error.
+reports a stub for a final handler, such as `handle_get_many`, as an
+error.
 
 To keep the model's type in each subclass, make the base view generic in the
 model. The `TrashView` of the SaaS example does this, and it binds the model
@@ -535,16 +535,16 @@ Here, two resources store a password hash:
 class PasswordHashingView(fr.AsyncRestView):
     """Base for resources that store a password hash. Never registered."""
 
-    async def create(self, schema_obj):
-        obj = await self.make_new_object(schema_obj)
-        obj.password = hash_password(schema_obj.password)
-        return await self.save_object(obj)
+    async def create(self, data):
+        obj = await super().create(data)
+        obj.password = hash_password(data.password)
+        return obj
 
-    async def update(self, obj, schema_obj):
-        obj = await self.update_object(obj, schema_obj)
-        if "password" in schema_obj.model_fields_set:
-            obj.password = hash_password(schema_obj.password)
-        return await self.save_object(obj)
+    async def update(self, obj, data):
+        obj = await super().update(obj, data)
+        if "password" in data.model_fields_set:
+            obj.password = hash_password(data.password)
+        return obj
 
 
 @fr.include_view(app)

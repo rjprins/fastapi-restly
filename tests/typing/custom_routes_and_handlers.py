@@ -55,11 +55,11 @@ class WidgetView(fr.RestView[Widget, WidgetSchema, WidgetInput, WidgetInput, int
     ) -> Widget:
         return super().get_one(id, scope=scope)
 
-    def create(self, schema_obj: WidgetInput) -> Widget:
-        return super().create(schema_obj)
+    def create(self, data: WidgetInput) -> Widget:
+        return super().create(data)
 
-    def update(self, obj: Widget, schema_obj: WidgetInput) -> Widget:
-        return super().update(obj, schema_obj)
+    def update(self, obj: Widget, data: WidgetInput) -> Widget:
+        return super().update(obj, data)
 
     def delete(self, obj: Widget) -> None:
         super().delete(obj)
@@ -67,8 +67,8 @@ class WidgetView(fr.RestView[Widget, WidgetSchema, WidgetInput, WidgetInput, int
     # Request handlers (authorize + commit bracket) -- final, and typed at
     # the call site: a custom action reuses the full op and its bracket.
     @fr.post("/{id}/rename")
-    def rename(self, id: int, schema_obj: WidgetInput) -> WidgetSchema:
-        widget: Widget = self.handle_update(id, schema_obj)
+    def rename(self, id: int, data: WidgetInput) -> WidgetSchema:
+        widget: Widget = self.handle_update(id, data)
         return self.to_single_response(widget)
 
     @fr.post("/{id}/retire")

@@ -233,8 +233,8 @@ class UserView(fr.AsyncRestView):
         return {"data": self.to_single_response(obj)}
 
     @fr.post("/", response_model=UserEnvelope)
-    async def create_endpoint(self, schema_obj: ViewCreate):
-        obj = await self.handle_create(schema_obj)
+    async def create_endpoint(self, data: ViewCreate):
+        obj = await self.handle_create(data)
         return {"data": self.to_single_response(obj)}
 ```
 

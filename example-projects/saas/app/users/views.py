@@ -64,12 +64,12 @@ class UserView(SoftDeleteMixin, AuthenticatedView[User]):
     def _can_see_salary(self) -> bool:
         return Current.role() in (UserRole.HR, UserRole.OWNER)
 
-    async def create(self, schema_obj: Any) -> User:
-        """Hash the password before saving the new row."""
-        user = await self.make_new_object(schema_obj)
-        if schema_obj.password:
-            user.password = hash_password(schema_obj.password)
-        return await self.save_object(user)
+    async def create(self, data: Any) -> User:
+        """Hash the password. The commit bracket saves the new row after this."""
+        user = await super().create(data)
+        if data.password:
+            user.password = hash_password(data.password)
+        return user
 
     @fr.post("/{id}/change-password", response_model=UserResponse)
     async def change_password(self, id: int, request: ChangePasswordRequest) -> Any:
@@ -87,7 +87,6 @@ class UserView(SoftDeleteMixin, AuthenticatedView[User]):
 
         async with self.write_action("change_password", obj=user):
             user.password = hash_password(request.new_password)
-            await self.save_object(user)
         return self.to_single_response(user)
 
     @fr.get("/{id}/with-permissions", response_model=dict)

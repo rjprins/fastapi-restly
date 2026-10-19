@@ -1,11 +1,12 @@
-"""The object methods under the verbs are not seams: a view class that
-defines one, itself or through a mixin, fails at class definition.
+"""The object methods under the verbs are removed from the view: a view
+class that defines one, itself or through a mixin, fails at class definition.
 
 ``delete_object`` is removed (its every override was a verb concern; a
 stale one would hard-delete silently). ``make_new_object``,
-``update_object``, and ``save_object`` are final (a stamp hooked there only
-covered the verbs; a definition would shadow the framework's). Each guard
-names the defining class and points at the replacement.
+``update_object``, and ``save_object`` are removed because the business
+methods no longer flush: ``super().create()`` and ``super().update()`` build
+and change the object, and the commit bracket saves it. A definition would be
+dead code. Each guard names the defining class and points at the replacement.
 """
 
 import pytest
@@ -97,12 +98,18 @@ def test_a_delete_override_is_the_replacement():
 
 
 # ---------------------------------------------------------------------------
-# make_new_object / update_object / save_object: final
+# make_new_object / update_object / save_object: removed from the view
 # ---------------------------------------------------------------------------
+
+_REPLACEMENTS = {
+    "make_new_object": "super().create(data)",
+    "update_object": "super().update(obj, data)",
+    "save_object": "The commit bracket saves",
+}
 
 
 @pytest.mark.parametrize("name", ["make_new_object", "update_object", "save_object"])
-def test_async_view_defining_a_final_utility_fails_at_class_definition(name):
+def test_async_view_defining_a_removed_utility_fails_at_class_definition(name):
     Record, RecordSchema = _model_and_schema()
 
     async def override(self, *args):
@@ -110,7 +117,7 @@ def test_async_view_defining_a_final_utility_fails_at_class_definition(name):
 
     with pytest.raises(
         fr.exc.RestlyConfigurationError,
-        match=rf"RecordView defines {name}, which is a final domain utility",
+        match=rf"RecordView defines {name}, which was removed from the view",
     ) as info:
         type(
             "RecordView",
@@ -118,11 +125,13 @@ def test_async_view_defining_a_final_utility_fails_at_class_definition(name):
             {"model": Record, "schema": RecordSchema, name: override},
         )
 
-    assert "column default on the model" in str(info.value)
+    message = str(info.value)
+    assert _REPLACEMENTS[name] in message
+    assert f"fr.objects.{name}" in message
 
 
 @pytest.mark.parametrize("name", ["make_new_object", "update_object", "save_object"])
-def test_sync_view_defining_a_final_utility_fails_at_class_definition(name):
+def test_sync_view_defining_a_removed_utility_fails_at_class_definition(name):
     Record, RecordSchema = _model_and_schema()
 
     def override(self, *args):
@@ -130,7 +139,7 @@ def test_sync_view_defining_a_final_utility_fails_at_class_definition(name):
 
     with pytest.raises(
         fr.exc.RestlyConfigurationError,
-        match=rf"RecordView defines {name}, which is a final domain utility",
+        match=rf"RecordView defines {name}, which was removed from the view",
     ):
         type(
             "RecordView",
@@ -139,8 +148,8 @@ def test_sync_view_defining_a_final_utility_fails_at_class_definition(name):
         )
 
 
-def test_a_final_utility_from_a_mixin_names_the_mixin():
-    """The cooperative-stamping mixin shape is the case the guard exists for."""
+def test_a_removed_utility_from_a_mixin_names_the_mixin():
+    """A stamping mixin of the old shape would be dead code now."""
     Record, RecordSchema = _model_and_schema()
 
     class AuditStampedMixin:
@@ -159,8 +168,9 @@ def test_a_final_utility_from_a_mixin_names_the_mixin():
             schema = RecordSchema
 
 
-def test_a_create_override_that_calls_the_utilities_is_the_replacement():
-    """Calling stays fine; only defining is rejected."""
+def test_a_create_override_that_calls_super_is_the_replacement():
+    """The override the guard points at defines cleanly, and the view has no
+    make_new_object any more."""
     Record, RecordSchema = _model_and_schema()
 
     class RecordView(fr.AsyncRestView):
@@ -168,8 +178,9 @@ def test_a_create_override_that_calls_the_utilities_is_the_replacement():
         schema = RecordSchema
 
         async def create(self, schema_obj):
-            obj = await self.make_new_object(schema_obj)
+            obj = await super().create(schema_obj)
             obj.name = obj.name.strip()
-            return await self.save_object(obj)
+            return obj
 
-    assert RecordView.make_new_object is fr.AsyncRestView.make_new_object
+    assert not hasattr(RecordView, "make_new_object")
+    assert not hasattr(RecordView, "save_object")

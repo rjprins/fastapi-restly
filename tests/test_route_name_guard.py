@@ -76,9 +76,9 @@ def test_bare_verb_override_without_route_is_allowed(sync_db):
         schema = ItemSchema
 
         def create(self, schema_obj):  # no @route -> domain override, allowed
-            obj = self.make_new_object(schema_obj)
+            obj = super().create(schema_obj)
             obj.name = obj.name.upper()
-            return self.save_object(obj)
+            return obj
 
     app = FastAPI()
     fr.include_view(app, ItemView)  # no raise

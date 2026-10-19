@@ -29,7 +29,7 @@ from ..exc import RestlyConfigurationError
 # Alternatives to cascade "all" and "all, delete-orphan" without
 # "refresh-expire": a plain session.refresh(obj) on an async session would
 # expire related objects that then lazy-load on access. Restly's own
-# save_object refreshes by attribute name and does not cascade. See:
+# save of a write refreshes by attribute name and does not cascade. See:
 # https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#preventing-implicit-io-when-using-asyncsession
 CASCADE_ALL_ASYNC = "save-update, merge, delete, expunge"
 CASCADE_ALL_DELETE_ORPHAN_ASYNC = CASCADE_ALL_ASYNC + ", delete-orphan"

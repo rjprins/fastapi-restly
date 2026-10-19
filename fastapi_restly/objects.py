@@ -26,8 +26,9 @@ def make_new_object(
     This is the schema-to-ORM mapping primitive. It resolves Restly reference
     fields, skips read-only inputs, applies schema defaults, and stages the
     object in the session. A field that the client left out with the value
-    ``None`` is not passed, so the model's default applies to it. It does not flush and does not run a view's
-    ``create`` business logic.
+    ``None`` is not passed, so the model's default applies to it. It does not
+    flush, so the object has no id yet. The default ``create`` of a view
+    calls this with the view's model.
 
     ``schema_obj``'s own schema decides what is written: every field it
     declares, except those it marks ``ReadOnly``.
@@ -53,8 +54,8 @@ def update_object(session: _Session, obj: _T, schema_obj: _pydantic.BaseModel) -
 
     This is the schema-to-ORM update primitive. It resolves Restly reference
     fields and applies only writable inputs: the fields the client sent that
-    ``schema_obj``'s own schema does not mark ``ReadOnly``. It does not flush
-    and does not run a view's ``update`` business logic.
+    ``schema_obj``'s own schema does not mark ``ReadOnly``. It does not flush.
+    The default ``update`` of a view calls this.
     """
     from .views._base import (
         apply_update_to_object,
@@ -99,14 +100,23 @@ def save_object(session: _Session, obj: _T) -> _T:
     """Flush the session and refresh ``obj`` from the database.
 
     The refresh names ``obj``'s own attributes, so it does not cascade into
-    related objects; see :func:`_refresh_plan`.
+    related objects; see :func:`_refresh_plan`. Inside a view, the commit
+    bracket saves the subject of the action and the other rows of the view's
+    model that it wrote. Call this in code outside a view, or for a row of
+    another model that must be fresh before the commit. It does not load the
+    relationships of a response.
     """
     session.flush()
+    _refresh_saved(session, obj)
+    return obj
+
+
+def _refresh_saved(session: _Session, obj: object) -> None:
+    """The refresh of :func:`save_object`, after its flush."""
     expire, reload = _refresh_plan(obj)
     if expire:
         session.expire(obj, expire)
     session.refresh(obj, reload)
-    return obj
 
 
 def delete_object(session: _Session, obj: object) -> None:
@@ -209,11 +219,16 @@ def _unloaded_written_collections(
 async def async_save_object(session: _AsyncSession, obj: _T) -> _T:
     """Async equivalent of :func:`save_object`."""
     await session.flush()
+    await _async_refresh_saved(session, obj)
+    return obj
+
+
+async def _async_refresh_saved(session: _AsyncSession, obj: object) -> None:
+    """Async equivalent of :func:`_refresh_saved`."""
     expire, reload = _refresh_plan(obj)
     if expire:
         session.expire(obj, expire)
     await session.refresh(obj, reload)
-    return obj
 
 
 async def async_delete_object(session: _AsyncSession, obj: object) -> None:

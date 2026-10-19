@@ -1,9 +1,10 @@
 """Tests for the ``write_action`` context manager (custom write actions).
 
 ``async with self.write_action(action, *, obj, data)`` runs the full request
-bracket -- authorize -> snapshot -> (your inline body) -> before_action_commit -> commit
--> after_action_commit. For an in-place action you ignore the yielded handle; for a
-create-shaped action you deposit the new object on ``w.obj`` and read it back.
+bracket -- authorize -> snapshot -> (your inline body) -> save ->
+before_action_commit -> commit -> after_action_commit. ``obj`` names the row
+that the action is about: a row from the database, a new object that the
+action creates, or None.
 """
 
 import pytest
@@ -28,14 +29,12 @@ def _publish_view(client, **attrs):
         doc = await self.handle_get_one(id)  # scope + 404 + read-auth
         async with self.write_action("publish", obj=doc):
             doc.published = True
-            await self.save_object(doc)
         return self.to_response(doc)
 
     async def boom_endpoint(self, id: int):
         doc = await self.handle_get_one(id)
         async with self.write_action("publish", obj=doc):
             doc.published = True
-            await self.save_object(doc)
             raise fr.exc.Conflict("nope")  # fails inside the block
         return self.to_response(doc)
 
@@ -100,7 +99,9 @@ def test_failure_in_block_rolls_back_and_skips_hooks(client):
     assert after_action_commits == []  # commit + after_action_commit never ran
 
 
-def test_create_shaped_action_returns_via_handle(client):
+def test_a_new_object_as_obj_is_created(client):
+    seen: dict = {}
+
     class Item(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
@@ -116,24 +117,33 @@ def test_create_shaped_action_returns_via_handle(client):
         @fr.post("/clone/{id}")
         async def clone(self, id: int):
             original = await self.handle_get_one(id)
-            async with self.write_action("create", data=None) as w:
-                w.obj = await self.make_new_object(
-                    ItemSchema.model_construct(name=original.name + " (copy)")
-                )
-            return self.to_response(w.obj)
+            copy = Item(name=original.name + " (copy)")
+            async with self.write_action("create", obj=copy):
+                pass  # Restly adds the new object, and saves it
+            return self.to_response(copy)
+
+        async def authorize(self, action, obj=None, data=None):
+            seen.setdefault(action, []).append(obj)
+
+        async def after_action_commit(self, action, new, old=None):
+            seen[f"{action} hook"] = (new.name, old)
 
     create_tables()
 
     a = client.post("/items/", json={"name": "x"}).json()
+    seen.clear()
     cloned = client.post(f"/items/clone/{a['id']}").json()
     assert cloned["name"] == "x (copy)"
+    assert cloned["id"] != a["id"]
     assert len(client.get("/items/").json()["data"]) == 2
+    # authorize gets no row for a new object, as on POST /; there is no old
+    assert seen["create"] == [None]
+    assert seen["create hook"] == ("x (copy)", None)
 
 
-def test_create_shaped_action_without_deposit_raises_and_rolls_back(client):
-    """The create-shaped footgun: a block with no ``obj=`` that builds a row but
-    forgets to set ``w.obj`` raises ``RuntimeError`` on exit (instead of silently
-    committing the row with the hooks blind to it), and the write rolls back."""
+def test_write_action_requires_obj(client):
+    """``obj`` has no default: a block names its row, its new object, or None.
+    Leaving it out fails before ``authorize``, and nothing is written."""
 
     class Thing(fr.IDMixin, SharedBase):
         name: Mapped[str]
@@ -149,19 +159,41 @@ def test_create_shaped_action_without_deposit_raises_and_rolls_back(client):
 
         @fr.post("/sneaky")
         async def sneaky(self):
-            # create-shaped (no obj=): build a row but FORGET to deposit w.obj.
-            async with self.write_action("create"):
+            async with self.write_action("create"):  # type: ignore[call-arg]
                 self.session.add(Thing(name="ghost"))
                 await self.session.flush()
             return {"never": "reached"}
 
     create_tables()
 
-    with pytest.raises(RuntimeError, match="create-shaped"):
+    with pytest.raises(TypeError, match="obj"):
         client.post("/things/sneaky")
-
-    # The guard fired before commit, so the flushed row never persisted.
     assert client.get("/things/").json()["data"] == []
+
+
+def test_write_action_refuses_a_value_that_is_not_a_row(client):
+    class Box(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    class BoxSchema(fr.IDSchema):
+        name: str
+
+    @fr.include_view(client.app)
+    class BoxView(fr.AsyncRestView):
+        prefix = "/boxes"
+        model = Box
+        schema = BoxSchema
+
+        @fr.post("/several")
+        async def several(self):
+            boxes = [Box(name="a"), Box(name="b")]
+            async with self.write_action("pack", obj=boxes):
+                pass
+            return {}
+
+    create_tables()
+    with pytest.raises(TypeError, match="obj=None"):
+        client.post("/boxes/several")
 
 
 def test_explicit_no_object_write_is_allowed(client):

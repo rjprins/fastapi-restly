@@ -6,7 +6,6 @@ import sqlalchemy as sa
 from fastapi import HTTPException
 from pydantic import BaseModel
 from sqlalchemy import func, select
-from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
 import fastapi_restly as fr
@@ -68,6 +67,10 @@ class ProjectView(TrashView[Project]):
     The slug and the story-point total are the model's business too (see
     ``app.projects.models`` and ``app.tasks.models``). This view keeps
     project-specific logic: response decoration and project-level events.
+    The events are outbox rows in ``before_action_commit``, which runs after
+    the save, so the id and the slug are set there. They follow from ``old``
+    and ``new``, so every route that creates a project or changes its status
+    emits them.
     """
 
     prefix = "/projects"
@@ -141,52 +144,56 @@ class ProjectView(TrashView[Project]):
         """
         return Current.is_admin() or project.organization_id == Current.org_id()
 
-    async def create(self, schema_obj: BaseModel) -> Project:
-        """Save the project and emit its outbox event.
+    async def create(self, data: BaseModel) -> Project:
+        """Build the project, and fill the response fields that are not columns.
 
-        Overrides the *bare* business ``create`` verb: auth-free and
-        commit-free. ``organization_id``, the audit stamps and the slug are
-        the model's business (``app.models``, ``app.projects.models``), set
-        at flush, so the event reads the slug after ``save_object``. The
-        outbox row is added to the session here and the ``handle_create``
-        commit bracket persists it atomically with the project write.
+        ``organization_id``, the audit stamps and the slug are the model's
+        business (``app.models``, ``app.projects.models``), set at the
+        flush. The response fields need the id and the organization, so this
+        method flushes early, as in plain SQLAlchemy. The commit bracket
+        saves the project after it returns.
         """
-        project = await self.make_new_object(schema_obj)
-        project = await self.save_object(project)
-        self._emit(
-            "project.created", project, {"name": project.name, "slug": project.slug}
-        )
+        project = await super().create(data)
+        await self.session.flush()  # the id and the stamps, for the counts below
         return await self._decorate_project_response(project)
 
-    async def update(self, obj: Project, schema_obj: BaseModel) -> Project:
-        """Status-transition outbox event.
+    async def update(self, obj: Project, data: BaseModel) -> Project:
+        """Keep a slug that the client sent.
 
-        Overrides the *bare* business ``update`` verb, which receives the
-        already-loaded ``obj``: ``handle_update`` loads it through ``get_one``
-        (tenant-scope + soft-delete + 404), runs ``authorize``, then calls this
-        method, and finally commits via the bracket. Audit-stamping
-        (``updated_by_id``) is the column's ``onupdate`` (``AuditStamped`` in
-        ``app.models``), and a new name gives a new slug through the mapper
-        event in ``app.projects.models``. This method only contains the
-        transition-event logic; ``organization_id`` is read-only on the
-        schema, so no body can move a project. The status-changed outbox row
-        is added to the session and the ``handle_update`` commit bracket
-        persists it atomically.
+        ``handle_update`` loads ``obj`` through ``get_one``, which also fills
+        the response fields. An update cannot change them: the organization
+        is read-only, and the task counts do not depend on the project's own
+        columns. Audit-stamping (``updated_by_id``) is the column's
+        ``onupdate`` (``AuditStamped`` in ``app.models``), and a new name
+        gives a new slug through the mapper event in ``app.projects.models``.
         """
-        old_status = obj.status
-        project = await self.update_object(obj, schema_obj)
-        if getattr(schema_obj, "slug", None):
+        project = await super().update(obj, data)
+        if getattr(data, "slug", None):
             # A slug that the client sent is kept, also when it is the
             # current one, which SQLAlchemy does not count as a change.
             flag_modified(project, "slug")
-        project = await self.save_object(project)
-        if project.status != old_status:
+        return project
+
+    async def before_action_commit(
+        self, action: str, new: Any, old: Any = None
+    ) -> None:
+        """Write the project's outbox events, in the transaction of the write.
+
+        The bracket has saved ``new``, so its id and its slug are set. ``old``
+        is the project before the action: ``None`` for a new project, from
+        ``POST /projects`` or from a clone. So the events follow from ``old``
+        and ``new``, whichever route made the change. A project is never
+        removed here (``DELETE`` is a soft delete), so ``new`` is set.
+        """
+        await super().before_action_commit(action, new, old)
+        if old is None:
+            self._emit("project.created", new, {"name": new.name, "slug": new.slug})
+        elif new.status != old["status"]:
             self._emit(
                 "project.status_changed",
-                project,
-                {"from": old_status.value, "to": project.status.value},
+                new,
+                {"from": old["status"].value, "to": new.status.value},
             )
-        return await self._decorate_project_response(project)
 
     @fr.delete("/{id}", status_code=200, response_model=ProjectResponse)
     async def soft_delete(self, id: int) -> Project:
@@ -206,7 +213,8 @@ class ProjectView(TrashView[Project]):
         """Archive a project (prevents new task creation).
 
         Loads through ``get_one``; ``write_action("archive")`` gates the
-        action and commits the status change.
+        action and commits the status change. The status changes, so
+        ``before_action_commit`` writes a ``project.status_changed`` event.
         """
         project = await self.get_one(id)
         if project.status == ProjectStatus.ARCHIVED:
@@ -214,55 +222,44 @@ class ProjectView(TrashView[Project]):
 
         async with self.write_action("archive", obj=project):
             project.status = ProjectStatus.ARCHIVED
-            await self.save_object(project)
         return await self._decorate_project_response(project)
 
     @fr.post("/{id}/clone", response_model=ProjectResponse)
     async def clone_project(self, id: int, request: CloneRequest) -> Project:
         """Clone a project with all its tasks.
 
-        ``get_one`` performs the visibility check. A second query eager-loads
-        tasks for copying. The project, its outbox event, and copied tasks share
-        one commit.
+        One write action: the new project is its subject, under the name
+        ``create``, so ``authorize`` and the outbox event see a new project,
+        as on ``POST /projects``. The project, its outbox event and the copied
+        tasks share one commit. The save refreshes the clone, so the response
+        has the story-point total that the tasks add.
         """
-        # Tenant scope + 404 visibility check.
-        await self.get_one(id)
-
-        query = (
-            select(Project).where(Project.id == id).options(selectinload(Project.tasks))
-        )
-        result = await self.session.execute(query)
-        original = result.scalar_one()
-
-        new_schema = ProjectSchema.model_construct(
+        original = await self.get_one(id)  # the scope and the 404
+        tasks = await original.awaitable_attrs.tasks if request.include_tasks else []
+        clone = Project(
             name=request.new_name or f"{original.name} (Copy)",
             description=original.description,
             status=ProjectStatus.ACTIVE,
         )
-        async with self.shared_write_action_commit():
-            new_project = await self.handle_create(new_schema)
-
-            if request.include_tasks:
-                from fastapi_restly.objects import async_save_object
-
-                for task in original.tasks:
-                    new_task = Task(
+        async with self.write_action(fr.Action.CREATE, obj=clone):
+            if tasks:
+                await self.session.flush()  # clone.id, for the copied tasks
+                self.session.add_all(
+                    Task(
                         title=task.title,
                         description=task.description,
                         status=task.status,
                         priority=task.priority,
                         task_type=task.task_type,
-                        project_id=new_project.id,
+                        project_id=clone.id,
                         severity=task.severity,
                         steps_to_reproduce=task.steps_to_reproduce,
                         story_points=task.story_points,
                         acceptance_criteria=task.acceptance_criteria,
                     )
-                    self.session.add(new_task)
-                # The flush adds the tasks' story points to the total.
-                await async_save_object(self.session, new_project)
-
-        return await self._decorate_project_response(new_project)
+                    for task in tasks
+                )
+        return await self._decorate_project_response(clone)
 
     @fr.get("/by-slug/{slug}", response_model=ProjectResponse)
     async def get_by_slug(self, slug: str) -> Project:
@@ -365,8 +362,8 @@ class ProjectView(TrashView[Project]):
         """
         await self.get_one(id)
         task_view = TaskView(session=self.session, request=self.request)
-        schema_obj = TaskCreate(project_id=id, **request.model_dump())
-        return await task_view.handle_create(schema_obj)
+        data = TaskCreate(project_id=id, **request.model_dump())
+        return await task_view.handle_create(data)
 
 
 class TaskCreateRequest(BaseModel):

@@ -441,10 +441,10 @@ class SoftDeleteMixin:
 
     async def delete(self, obj: Any) -> None:
         obj.deleted_at = datetime.now(timezone.utc)
-        await self.session.flush()
 ```
 
-If only one view needs it, put the same `delete` method on that view. The
+The handler saves the change after `delete` returns, as after every business
+method, and the hooks get the row as `new`. If only one view needs it, put the same `delete` method on that view. The
 mixin has no `hasattr` check and no fallback to `super()`. It goes on views of
 `SoftDeletable` models, so the column is always there.
 

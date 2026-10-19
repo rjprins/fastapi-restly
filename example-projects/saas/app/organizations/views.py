@@ -40,7 +40,7 @@ class OrganizationView(fr.AsyncRestView[Organization]):
 
     @fr.post("/", response_model=OrganizationResponse, status_code=201)
     async def create_with_location(
-        self, schema_obj: OrganizationCreate, response: Response
+        self, data: OrganizationCreate, response: Response
     ) -> Organization:
         """Create + 201 Created + Location header.
 
@@ -49,7 +49,7 @@ class OrganizationView(fr.AsyncRestView[Organization]):
         (``before_action_commit`` -> commit -> ``after_action_commit``). The default create
         endpoint method does the same thing. This method adds the header.
         """
-        org = await self.handle_create(schema_obj)
+        org = await self.handle_create(data)
         response.headers["Location"] = f"{self.prefix}/{org.id}"
         return org
 

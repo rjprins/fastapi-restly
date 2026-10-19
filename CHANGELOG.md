@@ -92,6 +92,83 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The write business methods no longer flush. `create` and `update` return
+  the object, and `delete` only marks the row. The commit bracket saves the
+  result: it adds a new object, flushes, refreshes it and loads the
+  relationships of the response, before `before_action_commit`. So a change
+  after `super().create()` is in the INSERT:
+
+  ```python
+  async def create(self, data):
+      user = await super().create(data)
+      user.password = hash_password(data.password)
+      return user
+  ```
+
+  Before, the INSERT ran inside `super().create()`, and the change came
+  after it as an UPDATE. For a password, the INSERT stored the plain text.
+  Inside `create`, the new object has no id yet. Code that needs the id runs
+  in `before_action_commit`, or calls `session.flush()` first. A `try` or a
+  `with` around `super().create()` no longer catches an error of the INSERT,
+  because the INSERT runs after `create` returns.
+- A business method and a `write_action` block run under
+  `session.no_autoflush`. Nothing is written until the save after them, also
+  on a `RestView`, whose session keeps SQLAlchemy's autoflush. Before, a
+  query after `super().create()` on a sync session wrote the half-built
+  object, so a check such as "is this email taken?" found the new row
+  itself. So a query in the change does not see your unflushed rows: a loop
+  that looks a row up and adds it when it is missing, or a count against a
+  limit, calls `flush()` first. Async views already worked this way, because
+  Restly's async session factory has `autoflush=False`.
+- The save also refreshes every other row of the view's model that the
+  action wrote, with the relationships of the response. So a
+  `write_action(..., obj=None)` block that calls `update()` for several rows
+  returns each row as the database has it, also when a foreign key changed.
+  Rows of other models are written but not refreshed.
+- `write_action(action, *, obj, data=None)`: `obj` is required, and it names
+  the row that the action is about. It is a row from the database, a new
+  object that the action creates, or `None`. For a new object, `authorize`
+  gets `obj=None`, as on `POST /`, and Restly adds the object to the session
+  when the block starts. A detached row is added back; a row that another
+  open session holds raises `TypeError`. The block gets nothing from `as`. A block that set `w.obj` now passes the new object
+  as `obj`:
+
+  ```python
+  upload = Upload(filename=file.filename)
+  async with self.write_action("create", obj=upload):
+      await self.session.flush()  # upload.id, for the lines
+      ...
+  return upload
+  ```
+
+  `write_action("create")` without `obj` raises `TypeError`. A block that
+  changes a foreign key now answers with the new related row, because the
+  save refreshes `obj`. Before, it answered with the old one.
+- `new` and `old` in the hooks come from the row that the action is about.
+  `old` is that row before the action, and `new` is the row after the save,
+  or `None` when the row is gone. So a soft delete through `DELETE /{id}`
+  gives the row as `new`, as a `write_action("delete", obj=row)` block
+  already did, and a block that deletes its `obj`, such as a merge, gives
+  `new=None`.
+- A `create` or `update` that returns `None`, or anything that is not one
+  object of a model, such as a list, raises `TypeError`, and nothing is
+  committed. Before, the change was committed, and the hooks got
+  `new=None`, the shape of a delete.
+- The request body is `data` in every view method, as it already was in
+  `authorize` and `write_action`: `create(self, data)`,
+  `update(self, obj, data)`, `handle_create(data)`, `handle_update(id, data)`,
+  `create_endpoint(self, data)` and `update_endpoint(self, id, data)`.
+  Before, these called it `schema_obj`. Rename the parameter in your
+  overrides too: Pyright reports an override with another name, because a
+  caller could pass the argument by keyword. Nothing changes in the HTTP API.
+- A write action inside a shared commit that raises after it changed
+  objects stops the commit, also when the route catches the error: the commit
+  raises `RuntimeError`, and nothing is committed. Before, the half-done
+  change of a refused row was committed with the others. Put
+  `session.begin_nested()` around each write that may fail, as the docs
+  show: the rollback of the savepoint undoes its change, and the commit goes
+  on. An error from `authorize` or the reference check changed nothing, and
+  does not stop the commit.
 - The write bracket checks the references in the data of a write, after
   `authorize` and before the business method. So a `create` or `update` of
   your own that builds the object itself is still checked, and so is the
@@ -128,7 +205,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
   @fr.post("/", dependencies=[Depends(require_admin)])
-  async def create_endpoint(self, schema_obj: ViewCreate) -> ViewResponse: ...
+  async def create_endpoint(self, data: ViewCreate) -> ViewResponse: ...
   ```
 
   `list_params` still takes the view's list params by its name.
@@ -317,6 +394,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- The view methods `make_new_object`, `update_object` and `save_object`. Use
+  `super().create(data)` and `super().update(obj, data)`; the commit bracket
+  saves. For another model, use the functions in
+  `fr.objects`. A view class that defines one of the old names fails when
+  Python creates the class, with a message that names the replacement.
+- `fastapi_restly.views.run_write_action` and `async_run_write_action`. The
+  commit bracket has one public form, `self.write_action(...)`. The CRUD
+  handlers use a private one. An import of the old names fails.
+- The handle that `write_action` gave to `as`, and its `obj`. Pass the new
+  object as `obj` instead. The `RuntimeError` for a block that did not set
+  `w.obj` is gone with it.
 - `fr.RefExists`, and with it the `scope=` argument of a reference check.
   Write a reference as `fr.MustExist[int, Post]`. It finds the rows of the
   model's `default_scope`, under the rules of the session. A tenant rule goes

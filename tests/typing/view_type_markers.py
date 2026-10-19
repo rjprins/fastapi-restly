@@ -31,8 +31,8 @@ class RenameView(fr.AsyncRestView[Any]):
     """A base view: each view that subclasses it gets its own types."""
 
     @fr.post("/{id}/rename", status_code=200)
-    async def rename(self, id: ViewID, schema_obj: ViewUpdate) -> ViewResponse:
-        obj = await self.handle_update(id, schema_obj)
+    async def rename(self, id: ViewID, data: ViewUpdate) -> ViewResponse:
+        obj = await self.handle_update(id, data)
         return self.to_response(obj)
 
     @fr.get("/recent")
@@ -57,8 +57,8 @@ class SyncTaskView(fr.RestView[Task, TaskSchema]):
     schema = TaskSchema
 
     @fr.post("/import", response_model=list[ViewResponse])
-    def import_tasks(self, schema_obj: ViewCreate) -> Any:
-        return [self.to_response(self.handle_create(schema_obj))]
+    def import_tasks(self, data: ViewCreate) -> Any:
+        return [self.to_response(self.handle_create(data))]
 
     @fr.get("/maybe/{id}")
     def maybe(self, id: ViewID) -> ViewResponse | None:

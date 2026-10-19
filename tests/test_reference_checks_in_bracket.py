@@ -171,14 +171,10 @@ def test_create_that_builds_its_own_object_is_still_checked(api):
     Task = api.models.Task
 
     def create(self, schema_obj):
-        task = Task(**schema_obj.model_dump())
-        self.session.add(task)
-        return self.save_object(task)
+        return Task(**schema_obj.model_dump())
 
     async def async_create(self, schema_obj):
-        task = Task(**schema_obj.model_dump())
-        self.session.add(task)
-        return await self.save_object(task)
+        return Task(**schema_obj.model_dump())
 
     client = api.make_client(create=api.pick(create, async_create))
     ids = _seed(client)
@@ -215,12 +211,12 @@ def test_update_that_changes_the_object_itself_is_still_checked(api):
     def update(self, obj, schema_obj):
         for name, value in schema_obj.model_dump(exclude_unset=True).items():
             setattr(obj, name, value)
-        return self.save_object(obj)
+        return obj
 
     async def async_update(self, obj, schema_obj):
         for name, value in schema_obj.model_dump(exclude_unset=True).items():
             setattr(obj, name, value)
-        return await self.save_object(obj)
+        return obj
 
     client = api.make_client(update=api.pick(update, async_update))
     ids = _seed(client)
@@ -294,18 +290,16 @@ def test_write_action_checks_the_references_of_data(api):
     Task, TaskIn = api.models.Task, api.models.TaskIn
 
     def import_task(self, body: TaskIn):
-        with self.write_action("import", data=body) as w:
-            task = Task(title=body.title.upper(), project_id=body.project_id)
-            self.session.add(task)
-            w.obj = self.save_object(task)
-        return {"id": w.obj.id}
+        task = Task(title=body.title.upper(), project_id=body.project_id)
+        with self.write_action("import", obj=task, data=body):
+            pass
+        return {"id": task.id}
 
     async def async_import_task(self, body: TaskIn):
-        async with self.write_action("import", data=body) as w:
-            task = Task(title=body.title.upper(), project_id=body.project_id)
-            self.session.add(task)
-            w.obj = await self.save_object(task)
-        return {"id": w.obj.id}
+        task = Task(title=body.title.upper(), project_id=body.project_id)
+        async with self.write_action("import", obj=task, data=body):
+            pass
+        return {"id": task.id}
 
     route = fr.post("/import")(api.pick(import_task, async_import_task))
     client = api.make_client(import_task=route)
@@ -359,15 +353,14 @@ def test_write_action_checks_a_schema_of_another_model(api):
         project_id: fr.MustExist[int, Project]
 
     def attach(self, body: Attach):
-        with self.write_action("attach", data=body) as w:
-            w.obj = Label(name=body.label_name)
-            self.session.add(w.obj)
+        with self.write_action("attach", obj=Label(name=body.label_name), data=body):
+            pass
         return {"ok": True}
 
     async def async_attach(self, body: Attach):
-        async with self.write_action("attach", data=body) as w:
-            w.obj = Label(name=body.label_name)
-            self.session.add(w.obj)
+        label = Label(name=body.label_name)
+        async with self.write_action("attach", obj=label, data=body):
+            pass
         return {"ok": True}
 
     client = api.make_client(
@@ -448,14 +441,10 @@ def test_handle_create_for_each_row_checks_each_row(api):
     Task, TaskIn = api.models.Task, api.models.TaskIn
 
     def create(self, schema_obj):
-        task = Task(**schema_obj.model_dump())
-        self.session.add(task)
-        return self.save_object(task)
+        return Task(**schema_obj.model_dump())
 
     async def async_create(self, schema_obj):
-        task = Task(**schema_obj.model_dump())
-        self.session.add(task)
-        return await self.save_object(task)
+        return Task(**schema_obj.model_dump())
 
     def import_rows(self, project_ids: list[int] = Body()):
         errors = []
@@ -544,11 +533,13 @@ def test_a_reference_that_the_business_method_changes_is_checked_again(api):
 
     def create(self, schema_obj):
         schema_obj.project_id = archived["id"]
-        return self.save_object(self.make_new_object(schema_obj))
+        return fr.objects.make_new_object(self.session, self.model, schema_obj)
 
     async def async_create(self, schema_obj):
         schema_obj.project_id = archived["id"]
-        return await self.save_object(await self.make_new_object(schema_obj))
+        return await fr.objects.async_make_new_object(
+            self.session, self.model, schema_obj
+        )
 
     client = api.make_client(create=api.pick(create, async_create))
     ids = _seed(client)

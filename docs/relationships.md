@@ -393,8 +393,8 @@ that each one gets.
 (idref-custom-routes)=
 ## Build references in a custom route
 
-The default `POST` and `PATCH` routes validate the body first. So when Restly
-calls `make_new_object()` or `update_object()`, every reference field has the
+The default `POST` and `PATCH` routes validate the body first. So when the
+default `create` or `update` builds the object, every reference field has the
 right type: a `MustExist` field holds a plain id, and an `IDRef` or `IDSchema`
 field holds a reference object.
 
@@ -421,8 +421,10 @@ task_label = await async_make_new_object(
 ```
 
 `async_make_new_object` still checks that the rows exist, and writes the
-foreign key columns. The SaaS example runs this code in its
-`POST /task-labels/create-and-attach` route, in
+foreign key columns. A schema that validates, such as
+`self.schema_create(task_id=..., label_id=...)`, needs none of this, and a
+handler can take it. The SaaS example's `POST /task-labels/create-and-attach`
+route does that, in
 [`app/labels/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/labels/views.py).
 
 :::{admonition} Details
@@ -671,11 +673,12 @@ relationship of the model, it adds a `selectinload(...)` option. When the
 field type is a nested schema, it walks that schema against the related
 model in the same way, and adds the result as child options.
 
-`get_one` and `get_many` add these options to their query. On a write,
-`save_object` flushes and then refreshes the object. The refresh reloads the
-columns, but it unloads the relationships that load lazily, so a changed
-foreign key never shows an old related row. Then `save_object` checks whether
-each relationship that the response class reaches is loaded. If one is not,
+`get_one` and `get_many` add these options to their query. On a write, the
+save after the business method flushes and then refreshes the object. The
+refresh reloads the columns, but it unloads the relationships that load
+lazily, so a changed foreign key never shows an old related row. Then the
+save checks whether each relationship that the response class reaches is
+loaded. If one is not,
 it runs one query by primary key with all the loader options. That query does
 not use `populate_existing`, so it fills only what is not loaded. A related
 object that is already in the session keeps the values it has.

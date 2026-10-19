@@ -2,13 +2,14 @@
 
 The multipart upload flow:
 
-1. Build the parent ``Upload`` row from the file; the tenant and the
+1. Build the parent ``Upload`` row from the file. The tenant and the
    uploader are the model's stamps from ``Current``.
-2. ``await self.session.flush()`` — populates ``upload.id`` from the
-   autoincrement so we can use it as a foreign key on the lines.
-3. Mutate: parse the file, attach related ``UploadLine`` rows, set the
-   denormalized ``line_count`` and ``completed_at`` from the parse result.
-4. ``await self.save_object(upload)`` — final flush + refresh.
+2. Pass it to ``write_action`` as ``obj``: it is the new row that the action
+   creates, so Restly adds it to the session.
+3. ``await self.session.flush()`` inside the block: the INSERT gives
+   ``upload.id``, the foreign key of the lines.
+4. Add the ``UploadLine`` rows and the outbox event. When the block ends,
+   Restly flushes, refreshes the upload and commits once.
 
 The early flush gives related rows a parent id while the full transaction still
 commits once.
@@ -16,6 +17,7 @@ commits once.
 
 import csv
 import io
+from datetime import datetime, timezone
 
 import fastapi
 
@@ -47,7 +49,7 @@ class UploadView(AuthenticatedView[Upload]):
         """Parse a CSV file and create an Upload + UploadLine rows.
 
         The parent, lines, and outbox event are committed together through one
-        ``write_action("create")`` block.
+        ``write_action`` block, with the new upload as its ``obj``.
         """
         if not file.filename:
             raise fastapi.HTTPException(422, "filename is required")
@@ -58,36 +60,26 @@ class UploadView(AuthenticatedView[Upload]):
         except UnicodeDecodeError as exc:
             raise fastapi.HTTPException(422, f"file is not utf-8: {exc}") from exc
 
-        # Commit the parent, lines, and outbox event together.
-        async with self.write_action("create") as w:
-            # 1) Build the parent; organization_id and uploaded_by_id are the
-            #    model's stamps, filled at the flush below.
-            upload = Upload(filename=file.filename)
-            self.session.add(upload)
-
-            # 2) Early flush: get upload.id before creating child rows.
-            await self.session.flush()
-
-            # 3) Build related rows referencing the parent's PK.
-            for n, row in enumerate(rows, start=1):
-                line = UploadLine(
+        upload = Upload(
+            filename=file.filename,
+            line_count=len(rows),
+            completed_at=datetime.now(timezone.utc),
+        )
+        # The new upload is the subject: the parent, the lines and the outbox
+        # event are committed together.
+        async with self.write_action(fr.Action.CREATE, obj=upload):
+            await self.session.flush()  # upload.id, for the lines
+            self.session.add_all(
+                UploadLine(
                     upload_id=upload.id,
                     row_number=n,
                     title=row.get("title", ""),
                     amount=int(row.get("amount") or 0),
                 )
-                self.session.add(line)
-
-            upload.line_count = len(rows)
-            from datetime import datetime, timezone
-
-            upload.completed_at = datetime.now(timezone.utc)
-
-            # 4) Final flush + refresh for generated columns/defaults.
-            saved = await self.save_object(upload)
-            self._emit("upload.completed", saved, {"line_count": saved.line_count})
-            w.obj = saved
-        return saved
+                for n, row in enumerate(rows, start=1)
+            )
+            self._emit("upload.completed", upload, {"line_count": upload.line_count})
+        return upload
 
     @fr.get("/{id}/lines", response_model=list[UploadLineSchema])
     async def list_lines(self, id: int) -> list[UploadLine]:

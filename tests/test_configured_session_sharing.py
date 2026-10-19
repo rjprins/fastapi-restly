@@ -133,9 +133,9 @@ def test_view_route_and_owner_dependency_share_one_session(sessions, owner_depen
 
         class ItemView(sessions.view_base):
             async def create(self, data):
-                obj = await self.make_new_object(data)
+                obj = await super().create(data)
                 obj.owner = self.owner_state[1]
-                return await self.save_object(obj)
+                return obj
     else:
 
         def get_owner(session: owner_dep):
@@ -143,9 +143,9 @@ def test_view_route_and_owner_dependency_share_one_session(sessions, owner_depen
 
         class ItemView(sessions.view_base):
             def create(self, data):
-                obj = self.make_new_object(data)
+                obj = super().create(data)
                 obj.owner = self.owner_state[1]
-                return self.save_object(obj)
+                return obj
 
     class BoundView(ItemView):
         prefix = "/items"

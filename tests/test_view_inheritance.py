@@ -59,7 +59,7 @@ def test_inherit_model_and_schema(sync_db):
         view = WidgetView()
         view.session = session
 
-        created = view.create(WidgetSchema(id=0, name="Cog"))
+        created = view.handle_create(WidgetSchema(id=0, name="Cog"))
         assert created.name == "Cog"
         assert created.id is not None
 
@@ -296,7 +296,6 @@ def test_inherit_soft_delete_via_delete(sync_db):
 
         def delete(self, obj):
             obj.deleted = True
-            self.session.flush()
 
     class RecordView(SoftDeleteBase):
         prefix = "/records"
@@ -307,7 +306,7 @@ def test_inherit_soft_delete_via_delete(sync_db):
         view = RecordView()
         view.session = session
 
-        rec = view.create(RecordSchema(id=0, name="doc", deleted=False))
+        rec = view.handle_create(RecordSchema(id=0, name="doc", deleted=False))
         assert rec.deleted is False
 
         view.handle_delete(rec.id)

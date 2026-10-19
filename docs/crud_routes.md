@@ -306,10 +306,10 @@ class ProjectTaskView(fr.AsyncRestView):
         fr.where_clause(Task.project_id == Parent.project_id),
     )
 
-    async def create(self, schema_obj):
-        task = await self.make_new_object(schema_obj)
+    async def create(self, data):
+        task = await super().create(data)
         task.project_id = Parent.project_id()
-        return await self.save_object(task)
+        return task
 ```
 
 `ProjectTaskView` differs from a flat view in these places:
@@ -358,11 +358,10 @@ override as a plain `def` without `await`.
 The project id comes from the path, not from the request body. `TaskSchema`
 marks `project_id` as {data}`fr.ReadOnly <fastapi_restly.schemas.ReadOnly>`,
 so the generated create and update schemas leave it out. The `create`
-override sets it from `Parent` after
-{meth}`make_new_object <fastapi_restly.views.AsyncRestView.make_new_object>`
-builds the task.
+override sets it from `Parent` after `super().create()` builds the task. The
+INSERT has the id, because Restly saves after `create` returns.
 
-Declare the foreign key with `init=False`. `make_new_object` builds the task
+Declare the foreign key with `init=False`. `super().create()` builds the task
 from the request body, which has no `project_id`. Without `init=False`, the
 model requires `project_id` in its constructor, and the create returns `500`.
 
@@ -480,10 +479,10 @@ class ProjectTaskView(ProjectScoped):
         fr.where_clause(Task.project_id == Parent.project_id),
     )
 
-    async def create(self, schema_obj):
-        task = await self.make_new_object(schema_obj)
+    async def create(self, data):
+        task = await super().create(data)
         task.project_id = Parent.project_id()
-        return await self.save_object(task)
+        return task
 ```
 
 `project_from_path` gets the company id from `company_from_path` as a FastAPI

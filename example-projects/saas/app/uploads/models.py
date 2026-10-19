@@ -4,13 +4,12 @@ The multipart upload route needs ``Upload.id`` before it can insert
 ``UploadLine`` rows. The flow is::
 
     upload = Upload(filename=...)
-    await self.session.flush()        # populate upload.id
-    upload.lines = [
-        UploadLine(upload_id=upload.id, ...) for row in parsed_rows
-    ]
-    upload = await self.save_object(upload)   # final flush + refresh
+    async with self.write_action("create", obj=upload):
+        await self.session.flush()        # the INSERT: upload.id is set
+        self.session.add_all(UploadLine(upload_id=upload.id, ...) ...)
 
-The flow needs two flush points with mutation in between.
+The flow needs two flush points with mutation in between: the early one in
+the block, and the one of the save when the block ends.
 """
 
 from datetime import datetime

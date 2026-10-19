@@ -9,9 +9,7 @@ from sqlalchemy import ColumnElement, select
 from .._pagination import NumberedPagination
 from ..db import AsyncSessionDep
 from ..exc import NotFound
-from ..objects import async_delete_object as object_async_delete_object
 from ..objects import async_make_new_object as object_async_make_new_object
-from ..objects import async_save_object as object_async_save_object
 from ..objects import async_update_object as object_async_update_object
 from ..query._impl import _apply_filters, _apply_sort_and_page, _keep_joins
 from ._base import (
@@ -38,9 +36,9 @@ from ._base import (
     post,
 )
 from ._lifecycle import (
-    _UNSET,
+    _async_bracket,
     _async_shared_write_action_commit,
-    async_run_write_action,
+    _require_result,
     async_write_action,
 )
 from ._view_types import ViewCreate, ViewID, ViewListResponse, ViewResponse, ViewUpdate
@@ -70,7 +68,8 @@ class AsyncRestView(
       call it from a custom route to run the same steps, never override it.
     * ``<verb>`` (``get_many`` / ``get_one`` / ``create`` / ``update`` /
       ``delete``): the business method. Auth-free, commit-free; the common
-      override point (hash a password, ...).
+      override point (hash a password, ...). A write business method changes
+      objects in the session and does not flush: the commit bracket saves.
     """
 
     session: AsyncSessionDep
@@ -100,20 +99,20 @@ class AsyncRestView(
         return self.to_response(obj)
 
     @post("/")
-    async def create_endpoint(self, schema_obj: ViewCreate) -> ViewResponse:
+    async def create_endpoint(self, data: ViewCreate) -> ViewResponse:
         """``POST /`` endpoint method. Override ``create`` for domain
         logic (it is commit-free; the handler owns the commit),
         ``to_response`` for the response shape; replace this method only to
         change the HTTP contract."""
-        obj = await self.handle_create(schema_obj)
+        obj = await self.handle_create(data)
         return self.to_response(obj)
 
     @patch("/{id}")
-    async def update_endpoint(self, id: ViewID, schema_obj: ViewUpdate) -> ViewResponse:
+    async def update_endpoint(self, id: ViewID, data: ViewUpdate) -> ViewResponse:
         """``PATCH /{id}`` endpoint method. Override ``update`` for
         domain logic, ``to_response`` for the response shape; replace this
         method only to change the HTTP contract."""
-        obj = await self.handle_update(id, schema_obj)
+        obj = await self.handle_update(id, data)
         return self.to_response(obj)
 
     @delete("/{id}")
@@ -178,31 +177,64 @@ class AsyncRestView(
         await self.authorize(Action.GET_ONE, obj=obj)
         return obj
 
-    def write_action(self, action: str, *, obj: Any = _UNSET, data: Any = None):
-        """Run a custom write action through the commit bracket.
+    def write_action(
+        self, action: str, *, obj: Any, data: Any = None
+    ) -> AbstractAsyncContextManager[None]:
+        """Run one write action of a custom route: ``authorize``, the reference
+        check, your change, the save and the commit.
 
-        Use this for non-CRUD actions such as publish or change-password::
+        ``obj`` is the row that the action is about. It is required:
 
-            async with self.write_action("publish", obj=article):  # in-place
-                article.status = "published"
+        - A row from the database, such as one from ``get_one``. The block
+          changes it. ``authorize`` gets the row, and ``old`` is its snapshot::
 
-        For create-shaped actions, omit ``obj`` and set ``w.obj`` before exit::
+              async with self.write_action("publish", obj=post):
+                  post.published = True
 
-            async with self.write_action("create", data=req) as w:
-                w.obj = await self.make_new_object(req)
+        - A new object that is not in the database yet: the action creates
+          it. Restly adds it to the session when the block starts, so a flush
+          in the block gives it an id. ``authorize`` gets ``obj=None``, as on
+          ``POST /``, and ``old`` is ``None``::
 
-        Pass ``obj=None`` for writes with no single object. After
-        ``authorize``, the block checks the references in ``data``, as a CRUD
-        write does: the ``MustExist``, ``IDRef`` and ``IDSchema`` fields, also
-        in nested schemas and in each item of a list. A missing row raises
-        :class:`~fastapi_restly.exc.NotFound` (404). Exceptions skip the
-        commit. The outermost block on the session owns the commit and the
-        after-hooks. So a handler or a ``write_action`` inside this block, or
-        this block inside :meth:`shared_write_action_commit`, returns after
-        its flush, before either one. An ``IntegrityError`` from ``authorize``
-        to the commit becomes :class:`~fastapi_restly.exc.Conflict` (409)
-        when it leaves the outermost block, and stays raw inside it. A direct
+              upload = Upload(filename=file.filename)
+              async with self.write_action("create", obj=upload, data=form):
+                  await self.session.flush()  # upload.id, for the lines
+                  self.session.add_all(UploadLine(upload_id=upload.id) ...)
+
+        - ``None``: the action has no single row, such as a change to several
+          rows. ``authorize`` gets ``obj=None``, and the hooks get
+          ``new=None`` and ``old=None``.
+
+        ``action`` is the name that ``authorize`` and the hooks get. ``data``
+        goes to ``authorize``, and Restly checks the references in it, as a
+        CRUD write does: the ``MustExist``, ``IDRef`` and ``IDSchema`` fields,
+        also in nested schemas and in each item of a list. A missing row
+        raises :class:`~fastapi_restly.exc.NotFound` (404).
+
+        The block runs under ``session.no_autoflush``: nothing is written
+        until the block ends, and a query in the block does not see your
+        unflushed changes. When the block ends, Restly flushes the session.
+        Then it refreshes ``obj`` and every other row of the view's model that
+        the action wrote, and loads the relationships of the view's response
+        on them, so the route can return them. When the block deleted ``obj``,
+        as a merge deletes its source, ``new`` is ``None``. Then Restly runs
+        ``before_action_commit(action, new, old)``, commits, and runs
+        ``after_action_commit(action, new, old)``. The block gets nothing
+        from ``as``.
+
+        An exception in the block skips the save and the commit. The
+        outermost block on the session owns the commit and the after-hooks.
+        So a handler or a ``write_action`` inside this block, or this block
+        inside :meth:`shared_write_action_commit`, returns after its save and
+        ``before_action_commit``. Its save also writes the changes of this
+        block so far, so set the required values of the block's objects
+        before you call it. An ``IntegrityError`` from ``authorize`` to
+        the commit becomes :class:`~fastapi_restly.exc.Conflict` (409) when
+        it leaves the outermost block, and stays raw inside it. A direct
         ``session.commit()`` inside the block raises ``RuntimeError``.
+
+        :raises TypeError: ``obj`` is neither ``None`` nor an object of a
+            SQLAlchemy model.
         """
         return async_write_action(self, action, obj=obj, data=data)
 
@@ -211,18 +243,21 @@ class AsyncRestView(
 
         The outermost block commits once, then runs the queued
         ``after_action_commit`` hooks. ``write_action`` and the write handlers
-        still authorize, snapshot, mutate, run ``before_action_commit``, and
-        flush. They return uncommitted objects inside the block::
+        still authorize, check the references, change, save, and run
+        ``before_action_commit``. They return uncommitted objects inside the block::
 
             async with self.shared_write_action_commit():
-                for schema_obj in items:
-                    await self.handle_create(schema_obj)
+                for item in items:
+                    await self.handle_create(item)
 
         Serialize returned objects and run code that depends on an after-hook
         only after the block exits. Nested blocks on the same session share the
         commit. An exception escaping a deferred-commit block aborts the shared
         commit, including when an enclosing deferred-commit block catches that
-        exception. Rollback belongs to the session owner. An
+        exception. A write action that raises after it changed objects stops
+        the commit too, unless the rollback of a savepoint around it undid the
+        change: run each write that a route may refuse in
+        ``session.begin_nested()``. Rollback belongs to the session owner. An
         ``IntegrityError`` inside the block stays raw, so a route can catch the
         error of one row; one that escapes the outermost block, or that its
         commit raises, becomes :class:`~fastapi_restly.exc.Conflict` (409).
@@ -236,52 +271,59 @@ class AsyncRestView(
         return _async_shared_write_action_commit(self.session)
 
     @final
-    async def handle_create(self, schema_obj: CreateSchemaT) -> ModelT:
+    async def handle_create(self, data: CreateSchemaT) -> ModelT:
         """Create handler: ``authorize``, the reference check, ``create``, commit bracket.
 
         Final: override ``create`` for the domain change, ``authorize`` for
         the gate, and ``before_action_commit`` / ``after_action_commit`` for
-        side effects. Call it from a custom create route, and from inside
+        side effects. ``authorize`` gets the payload, and no row. The object
+        that ``create`` returns is the subject of the action: the save adds
+        it, flushes, refreshes it, and the hooks get it as ``new``. Call this
+        from a custom create route, and from inside
         ``shared_write_action_commit()`` to share one commit with other
-        writes; it then returns after the flush, before the commit.
+        writes; it then returns after the save, before the commit.
+
+        :raises TypeError: ``create`` returned ``None``.
         """
-        return await async_run_write_action(
-            self, Action.CREATE, data=schema_obj, mutate=lambda: self.create(schema_obj)
-        )
+        async with _async_bracket(self, Action.CREATE, None, data) as bracket:
+            result = await self.create(data)
+            bracket.subject = _require_result(self, "create", result)
+        return cast(ModelT, bracket.subject)
 
     @final
     async def handle_update(
-        self, id: IdT | ColumnElement[bool], schema_obj: UpdateSchemaT
+        self, id: IdT | ColumnElement[bool], data: UpdateSchemaT
     ) -> ModelT:
         """Update handler: scoped load, then ``update`` in the commit bracket.
 
         Final, like :meth:`handle_create`: ``update`` receives the loaded
-        object, so the load, the 404, and ``authorize`` stay here. Inside
+        object, so the load, the 404, ``authorize`` and the reference check
+        stay here. ``old`` is the snapshot of the loaded row, and ``new`` is
+        the object that ``update`` returns, after the save. Inside
         ``shared_write_action_commit()`` it returns before the commit.
+
+        :raises TypeError: ``update`` returned ``None``.
         """
         obj = await self.get_one(id)
-        return await async_run_write_action(
-            self,
-            Action.UPDATE,
-            obj=obj,
-            data=schema_obj,
-            mutate=lambda: self.update(obj, schema_obj),
-        )
+        async with _async_bracket(self, Action.UPDATE, obj, data) as bracket:
+            result = await self.update(obj, data)
+            bracket.subject = _require_result(self, "update", result)
+        return cast(ModelT, bracket.subject)
 
     @final
     async def handle_delete(self, id: IdT | ColumnElement[bool]) -> None:
         """Delete handler: scoped load, then ``delete`` in the commit bracket.
 
-        Final, like :meth:`handle_create`: a soft delete flips a timestamp in
-        ``delete``, and an off-request follow-up runs in
-        ``after_action_commit``. Inside ``shared_write_action_commit()``, the
-        mutation runs immediately. The after-hook waits for the outermost
-        block to commit.
+        Final, like :meth:`handle_create`. The loaded row is the subject.
+        After a hard delete, the hooks get ``new=None``. A soft delete flips a
+        timestamp in ``delete`` and keeps the row, so the hooks get the row as
+        ``new``. An off-request follow-up runs in ``after_action_commit``.
+        Inside ``shared_write_action_commit()``, the change runs at once, and
+        the after-hook waits for the outermost block to commit.
         """
         obj = await self.get_one(id)
-        await async_run_write_action(
-            self, Action.DELETE, obj=obj, mutate=lambda: self.delete(obj)
-        )
+        async with _async_bracket(self, Action.DELETE, obj, None):
+            await self.delete(obj)
 
     # ====================================================================
     # Business methods (auth-free, commit-free): the common override point
@@ -379,35 +421,48 @@ class AsyncRestView(
             raise NotFound(_not_found_message(self.model, id))
         return cast(ModelT, obj)
 
-    async def create(self, schema_obj: CreateSchemaT) -> ModelT:
-        """Build a new object from ``schema_obj`` and save it.
+    async def create(self, data: CreateSchemaT) -> ModelT:
+        """Build a new object from ``data`` and return it.
 
-        Auth-free and commit-free: ``handle_create`` owns both. The usual
-        create override point (hash a password from the request), written as
-        :meth:`make_new_object`, the extra step, then :meth:`save_object`.
+        Auth-free, flush-free and commit-free: ``handle_create`` checks the
+        references before this method, and saves and commits after it. The
+        default is ``fr.objects.async_make_new_object`` with the view's
+        model: it adds the object to the session, without a flush, so the
+        object has no id yet. Override to change the object before the save
+        (hash a password from the request): call ``super().create()``, change
+        the object, and return it.
+
+        Nothing is written until the save after this method: the handler runs
+        it under ``session.no_autoflush``, so a query here does not flush the
+        new object, and it does not see your unflushed changes. Call
+        ``await self.session.flush()`` when you need the id inside this method. A
+        direct call, outside ``handle_create``, writes nothing.
         """
-        obj = await self.make_new_object(schema_obj)
-        return await self.save_object(obj)
+        model_cls = cast(type[ModelT], self.model)
+        return await object_async_make_new_object(self.session, model_cls, data)
 
-    async def update(self, obj: ModelT, schema_obj: UpdateSchemaT) -> ModelT:
-        """Apply ``schema_obj`` to the loaded ``obj`` and save it.
+    async def update(self, obj: ModelT, data: UpdateSchemaT) -> ModelT:
+        """Apply ``data`` to the loaded ``obj`` and return it.
 
-        Auth-free and commit-free: ``handle_update`` loads ``obj`` through
-        ``get_one``, gates, and commits. The usual update override point,
-        written as :meth:`update_object`, the extra step, then
-        :meth:`save_object`.
+        Auth-free, flush-free and commit-free: ``handle_update`` loads ``obj``
+        through ``get_one``, gates, checks the references, and saves and
+        commits after this method. The default is
+        ``fr.objects.async_update_object``. Override to check the stored row
+        first, or to change the object after ``super().update()``. As in
+        ``create``, nothing is written before the save, and a direct call
+        writes nothing.
         """
-        obj = await self.update_object(obj, schema_obj)
-        return await self.save_object(obj)
+        return await object_async_update_object(self.session, obj, data)
 
     async def delete(self, obj: ModelT) -> None:
-        """Remove ``obj`` and flush. Does not commit: ``handle_delete`` does.
+        """Mark ``obj`` for deletion. Does not flush or commit:
+        ``handle_delete`` does.
 
         Override (on the view or on a soft-delete mixin) to flip a timestamp
         instead of removing the row, without calling ``super()``. A raw row
         delete elsewhere is ``fr.objects.async_delete_object(self.session, obj)``.
         """
-        await object_async_delete_object(self.session, obj)
+        await self.session.delete(obj)
 
     # ====================================================================
     # Read seams
@@ -486,60 +541,6 @@ class AsyncRestView(
         estimated counts on huge tables.
         """
         return int((await self.session.scalar(_count_statement(query))) or 0)
-
-    # ====================================================================
-    # Domain utilities (final: call from a verb override, never override)
-    # ====================================================================
-
-    @final
-    async def make_new_object(self, schema_obj: CreateSchemaT) -> ModelT:
-        """Construct a new ORM object from ``schema_obj`` and add it to the
-        session. Does not flush; :meth:`save_object` does.
-
-        Final: the view-bound spelling of ``fr.objects.async_make_new_object``,
-        passing the view's model. ``schema_obj``'s own schema decides what is
-        written, not the view's schema. A value that every write path must
-        set, such as an audit id, a tenant id or a slug from the title, belongs
-        on the model: a column default or a mapper event. A value that only the
-        request sets, such as a hashed password, goes in a ``create`` override,
-        after this call.
-        """
-        model_cls = cast(type[ModelT], self.model)
-        return await object_async_make_new_object(self.session, model_cls, schema_obj)
-
-    @final
-    async def update_object(self, obj: ModelT, schema_obj: UpdateSchemaT) -> ModelT:
-        """Apply writable fields from ``schema_obj`` to ``obj``. Does not flush.
-
-        Final, like :meth:`make_new_object`: an ``updated_by`` stamp is the
-        column's ``onupdate`` on the model; a value that only the request sets
-        goes in an ``update`` override, after this call.
-        """
-        return await object_async_update_object(self.session, obj, schema_obj)
-
-    @final
-    async def save_object(self, obj: ModelT) -> ModelT:
-        """Flush the session and refresh ``obj`` from the database, eager-loading
-        the relationships the response class names. Does not commit;
-        ``handle_<verb>`` owns the commit.
-
-        Final: a side effect per write belongs in ``before_action_commit`` /
-        ``after_action_commit`` (or a session event, to see the bulk paths
-        too), and the reload strategy is ``get_relationship_loader_options``.
-
-        The refresh leaves relationships unloaded, so without the eager load the
-        serializer would reach them one lazy query at a time, which on an async
-        session is not slow but fatal: a lazy load in the endpoint coroutine has
-        no greenlet to suspend into and raises ``MissingGreenlet``. Reads apply
-        the same options in ``get_one`` / ``get_many``.
-        """
-        obj = await object_async_save_object(self.session, obj)
-        statement = self._get_response_reload_statement(obj)
-        if statement is not None:
-            # unique(): the loader-options seam is public and may return a
-            # joinedload against a collection, which fans the row set out.
-            (await self.session.scalars(statement)).unique().all()
-        return obj
 
     # ====================================================================
     # Request-logic seams (authorize + transaction hooks)
