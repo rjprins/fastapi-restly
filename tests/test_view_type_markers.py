@@ -15,6 +15,7 @@ from sqlalchemy import Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 import fastapi_restly as fr
+from fastapi_restly._routes import iter_routes, original_route
 from fastapi_restly.exc import RestlyConfigurationError
 from fastapi_restly.testing._client import RestlyTestClient
 from fastapi_restly.views import ViewID, ViewListResponse, ViewResponse, ViewUpdate
@@ -59,7 +60,11 @@ def env(request):
 
 
 def _route_paths(app):
-    return {route.path for route in app.routes if isinstance(route, APIRoute)}
+    return {
+        route.path
+        for route in iter_routes(app.routes)
+        if isinstance(original_route(route), APIRoute)
+    }
 
 
 def _ref(schema):

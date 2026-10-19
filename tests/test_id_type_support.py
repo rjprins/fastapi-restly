@@ -11,6 +11,7 @@ from sqlalchemy import ForeignKey, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
+from fastapi_restly._routes import iter_routes, original_route
 from fastapi_restly.testing._client import RestlyTestClient
 
 from ._models import SharedBase
@@ -486,8 +487,8 @@ def test_id_paths_are_isolated_across_registered_relatives(flavor):
     methods = {"GET", "PATCH", "DELETE", "PUT"}
     item_paths = {
         (route.path, method)
-        for route in app.routes
-        if isinstance(route, APIRoute)
+        for route in iter_routes(app.routes)
+        if isinstance(original_route(route), APIRoute)
         for method in route.methods & methods
         if "{id" in route.path
     }
