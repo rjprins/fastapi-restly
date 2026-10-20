@@ -152,13 +152,30 @@ def test_a_default_sort_key_that_the_schema_does_not_have_fails(views):
     )
 
 
-def test_an_inherited_default_sort_without_its_keys_does_not_apply(views):
+def test_an_inherited_default_sort_without_its_keys_fails(views):
     _, view_base, _ = views
 
     class AppView(view_base):
         default_sort = "-created_at"
 
-    client = spools((views[0], AppView, views[2]))
+    with pytest.raises(RestlyConfigurationError) as exc_info:
+        spools((views[0], AppView, views[2]))
+
+    assert str(exc_info.value) == (
+        "SpoolView.default_sort (from AppView): 'created_at' is not a field of "
+        "SpoolSchema to sort on. A key is a field as the client writes it in "
+        "the sort parameter. The fields to sort on are: id, name, rank, used. "
+        "Set SpoolView.default_sort = None for primary key order."
+    )
+
+
+def test_a_view_turns_off_an_inherited_default_sort(views):
+    _, view_base, _ = views
+
+    class AppView(view_base):
+        default_sort = "-created_at"
+
+    client = spools((views[0], AppView, views[2]), default_sort=None)
 
     assert names(client) == ["a", "b", "c", "d", "e"]
 

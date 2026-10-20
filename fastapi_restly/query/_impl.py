@@ -97,8 +97,7 @@ class _ListParamsRecord:
     sort_query_param: str
     #: The sort when the request has none, as the view sets it.
     default_sort: str | None
-    #: The keys of ``default_sort``, or none when it does not apply: a view
-    #: inherits it, and its response class does not have all of them.
+    #: The keys of ``default_sort``.
     default_sort_keys: tuple[str, ...]
     #: The sort keys that are on, in the order of the schema.
     sort_keys: tuple[str, ...]
@@ -470,15 +469,17 @@ def _derive_list_params(
     own_filters: _abc.Sequence[_OwnFilter] = (),
     sort_query_param: str = _SORT_QUERY_PARAM,
     default_sort: str | None = None,
+    default_sort_from: str | None = None,
 ) -> SchemaType:
     """:func:`derive_schema_list_params`, for a view too.
 
     :param owner: The view, for the messages.
-    :param unchecked: The settings whose entries may match no key: the ones
-        that a view inherits. A base view serves many schemas. An unchecked
-        ``default_sort`` with a key that the schema does not have does not
-        apply.
+    :param unchecked: The key settings whose entries may match no key: the
+        ones that a view inherits. A base view serves many schemas.
     :param own_filters: The view's own filter keys, which are always on.
+    :param default_sort_from: The base view that ``default_sort`` comes
+        from, for the messages. It is checked too: an order that does not
+        apply would change the list without a sign.
     """
     patterns = {
         name: _check_key_setting(_setting_label(owner, name), settings[name])
@@ -556,20 +557,21 @@ def _derive_list_params(
                 _setting_label(owner, name), patterns[name], sort_keys, schema_name
             )
 
+    label = _setting_label(owner, "default_sort")
     default_sort_keys = _default_sort_keys(
-        _setting_label(owner, "default_sort"),
+        f"{label} (from {default_sort_from})" if default_sort_from else label,
         default_sort,
         sort_keys,
         schema_name,
-        checked="default_sort" not in unchecked,
+        hint=(
+            f" Set {label} = None for primary key order." if default_sort_from else ""
+        ),
     )
     sort_keys = _pick_keys(
         sort_keys, patterns["include_sort_keys"], patterns["exclude_sort_keys"]
     )
     if sort_keys:
-        fields[sort_query_param] = _sort_field(
-            sort_keys, default_sort if default_sort_keys else None
-        )
+        fields[sort_query_param] = _sort_field(sort_keys, default_sort)
     for key in _pick_keys(
         list(filter_fields), patterns["include_filters"], patterns["exclude_filters"]
     ):
@@ -619,14 +621,13 @@ def _default_sort_keys(
     sort_keys: list[str],
     schema_name: str,
     *,
-    checked: bool,
+    hint: str = "",
 ) -> tuple[str, ...]:
-    """The keys of ``default_sort``, or none when it does not apply.
+    """The keys of ``default_sort``.
 
     :param sort_keys: Every key that the schema can sort on, before the key
         settings choose.
-    :param checked: A key that is not in ``sort_keys`` is an error. When
-        not checked, ``default_sort`` then does not apply.
+    :param hint: The end of the message.
     :raises RestlyConfigurationError: a key is not in ``sort_keys``.
     """
     if default_sort is None:
@@ -635,8 +636,6 @@ def _default_sort_keys(
     for key in keys:
         if key in sort_keys:
             continue
-        if not checked:
-            return ()
         message = (
             f"{label}: {key!r} is not a field of {schema_name} to sort on. "
             "A key is a field as the client writes it in the sort parameter."
@@ -645,7 +644,7 @@ def _default_sort_keys(
             message += f" The fields to sort on are: {', '.join(sort_keys)}."
         else:
             message += f" {schema_name} has no fields to sort on."
-        raise RestlyConfigurationError(message)
+        raise RestlyConfigurationError(message + hint)
     return keys
 
 
@@ -1076,9 +1075,7 @@ def _apply_sort_and_page(
         # the client cannot send
         sort_keys=record.sort_keys + record.default_sort_keys if record else None,
         sort_query_param=sort_query_param,
-        default_sort=record.default_sort
-        if record and record.default_sort_keys
-        else None,
+        default_sort=record.default_sort if record else None,
         sort_nulls=sort_nulls,
     )
     if isinstance(pagination, NumberedPagination):

@@ -2874,14 +2874,15 @@ def _derive_view_list_params(view_cls: type) -> type[pydantic.BaseModel]:
         settings={name: getattr(view_cls, name) for name in _KEY_SETTINGS},
         owner=view_cls.__name__,
         # a base view serves many schemas
-        unchecked={
-            name
-            for name in (*_KEY_SETTINGS, "default_sort")
-            if name not in vars(view_cls)
-        },
+        unchecked={name for name in _KEY_SETTINGS if name not in vars(view_cls)},
         own_filters=_own_filters(view_cls),
         sort_query_param=view_cls.sort_query_param,
         default_sort=_list_setting(view_cls, "default_sort"),
+        default_sort_from=(
+            None
+            if "default_sort" in vars(view_cls)
+            else _owner(view_cls, "default_sort").__name__
+        ),
     )
 
 
