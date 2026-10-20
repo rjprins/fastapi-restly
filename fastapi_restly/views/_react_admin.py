@@ -24,6 +24,7 @@ from fastapi.exceptions import RequestValidationError
 from sqlalchemy.orm import RelationshipProperty
 
 from fastapi_restly.exc import BadQueryParam, RestlyConfigurationError
+from fastapi_restly.query import SortNulls
 from fastapi_restly.views import (
     AsyncRestView,
     BaseRestView,
@@ -40,7 +41,7 @@ from fastapi_restly.views import (
 )
 
 # Private names without a public form yet.
-from ..query._shared import SortNulls, _sort_term
+from ..query._shared import _sort_term
 from ._base import _how_set, _list_filter_methods, _list_setting, _owner, _set_by
 
 #: Default page size used when the react-admin client does not send a `range`

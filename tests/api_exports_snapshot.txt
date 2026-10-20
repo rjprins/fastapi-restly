@@ -119,6 +119,7 @@ fastapi_restly.pytest_fixtures:
 fastapi_restly.query:
   - DEFAULT_PAGE_SIZE
   - MAX_PAGE_SIZE
+  - SortNulls
   - apply_list_params
   - derive_schema_list_params
 fastapi_restly.schemas:
@@ -218,6 +219,7 @@ fastapi_restly.pytest_fixtures:
 fastapi_restly.query:
   - DEFAULT_PAGE_SIZE
   - MAX_PAGE_SIZE
+  - SortNulls
   - apply_list_params
   - derive_schema_list_params
 fastapi_restly.schemas:
