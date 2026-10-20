@@ -406,6 +406,12 @@ class TestRelationAliases:
         Article, ArticleSchema = self._build()
         params = mock_query_params(sort="-writer.authorName")
         rendered = str(
-            _apply_sorting(params, sqlalchemy.select(Article), Article, ArticleSchema)
+            _apply_sorting(
+                params,
+                sqlalchemy.select(Article),
+                Article,
+                ArticleSchema,
+                sort_nulls=None,
+            )
         )
         assert "ORDER BY ra_author_1.name DESC" in rendered

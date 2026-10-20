@@ -20,7 +20,7 @@ from fastapi_restly.testing import RestlyTestClient
         ({"manager.name": "Alice", "sort": "-name"}, [15, 12, 10]),
         (
             {"id__in": "10,11,12,13,14,15", "sort": "-manager.name,name"},
-            [13, 11, 10, 12, 15],
+            [13, 11, 10, 12, 15, 14],
         ),
         (
             {
@@ -31,7 +31,7 @@ from fastapi_restly.testing import RestlyTestClient
         ),
         (
             {"id__in": "10,11,12,13,14,15", "sort": "manager.manager.name,-name"},
-            [15, 12, 11, 10, 13],
+            [15, 12, 11, 10, 13, 14],
         ),
     ],
     ids=["filter-manager", "sort-manager", "filter-two-hops", "sort-two-hops"],
@@ -82,8 +82,15 @@ def test_two_relationships_to_same_model_filter_independently(path_client):
 @pytest.mark.parametrize(
     ("sort", "expected"),
     [
-        ("homeCity.cityName,-workCity.cityName,name", [12, 10, 15, 11, 13]),
-        ("workCity.cityName,-homeCity.cityName,name", [11, 13, 10, 15, 12]),
+        # the employees without a city come last, in both directions
+        (
+            "homeCity.cityName,-workCity.cityName,name",
+            [12, 10, 15, 11, 13, 14, 2, 3, 1, 4, 5],
+        ),
+        (
+            "workCity.cityName,-homeCity.cityName,name",
+            [11, 13, 10, 15, 14, 12, 2, 3, 1, 4, 5],
+        ),
     ],
 )
 def test_two_relationships_to_same_model_sort_independently(
@@ -121,16 +128,20 @@ def test_converging_paths_and_shared_prefixes_preserve_pagination(path_client):
     assert ids == [10, 15, 13]
 
 
-def test_missing_nullable_relationships_keep_inner_join_behavior(path_client):
+def test_a_sort_keeps_a_row_without_the_related_row(path_client):
     employee = path_client.get("/employees/14").json()
     assert employee["homeCity"] is None
-    assert employee["manager"] is None
 
     payload = path_client.get(
         "/employees/", params={"id": "14", "sort": "homeCity.cityName"}
     ).json()
-    assert payload["data"] == []
-    assert payload["total_count"] == 0
+    assert [row["id"] for row in payload["data"]] == [14]
+    assert payload["total_count"] == 1
+
+
+def test_a_filter_through_a_missing_relationship_leaves_out_the_row(path_client):
+    employee = path_client.get("/employees/14").json()
+    assert employee["homeCity"] is None
 
     payload = path_client.get(
         "/employees/", params={"homeCity.cityName__isnull": "true"}

@@ -40,6 +40,7 @@ from fastapi_restly.views import (
 )
 
 # Private names without a public form yet.
+from ..query._shared import SortNulls, _sort_term
 from ._base import _how_set, _list_filter_methods, _list_setting, _owner, _set_by
 
 #: Default page size used when the react-admin client does not send a `range`
@@ -65,6 +66,7 @@ _LIST_SETTINGS = (
     "include_sort_keys",
     "exclude_sort_keys",
     "sort_query_param",
+    "default_sort",
 )
 
 
@@ -224,14 +226,16 @@ def _apply_react_admin_sort_and_range(
     sort: tuple[str, str] | None,
     start: int,
     end: int,
+    sort_nulls: SortNulls = "last",
 ) -> sqlalchemy.Select:
     """The sort and the range (limit/offset) of a react-admin list."""
     sorted_on: list[str] = []
     if sort:
         field, direction = sort
         col = _resolve_column(model, schema_cls, field, kind="sort")
-        order_fn = sqlalchemy.desc if direction == "DESC" else sqlalchemy.asc
-        stmt = stmt.order_by(order_fn(col))
+        stmt = stmt.order_by(
+            _sort_term(col, descending=direction == "DESC", nulls=sort_nulls)
+        )
         sorted_on.append(col.key)
     stmt = _order_by_primary_key(stmt, model, sorted_on)
 
@@ -337,6 +341,7 @@ class _ReactAdminViewProtocol(Protocol):
     schema_response: ClassVar[type[pydantic.BaseModel]]
     schema_update: ClassVar[type[pydantic.BaseModel]]
     pagination: ClassVar[NumberedPagination | NoPagination | None]
+    sort_nulls: ClassVar[SortNulls]
     put: ClassVar[Any]
 
     def get_react_admin_range_unit(self) -> str: ...
@@ -446,6 +451,7 @@ class _ReactAdminMixin:
             getattr(params, "sort", None),
             start,
             end,
+            view.sort_nulls,
         )
 
     def to_list_response(self, list_result: ListResult[Any]) -> fastapi.Response:

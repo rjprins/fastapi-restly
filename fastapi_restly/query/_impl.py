@@ -30,7 +30,7 @@ from .._pagination import (
 )
 from ..exc import BadQueryParam, RestlyConfigurationError
 from ..schemas._base import IDRef, IDSchema, _schema_role_name, _unwrap_type
-from ._shared import _append_pk_tiebreak, _escape_like_value
+from ._shared import SortNulls, _append_pk_tiebreak, _escape_like_value, _sort_term
 
 SchemaType = type[pydantic.BaseModel]
 _JoinAliases = dict[tuple[str, ...], AliasedClass[Any]]
@@ -95,6 +95,11 @@ class _ListParamsRecord:
     exclude_sort_keys: tuple[str, ...]
     #: The name of the sort parameter.
     sort_query_param: str
+    #: The sort when the request has none, as the view sets it.
+    default_sort: str | None
+    #: The keys of ``default_sort``, or none when it does not apply: a view
+    #: inherits it, and its response class does not have all of them.
+    default_sort_keys: tuple[str, ...]
     #: The sort keys that are on, in the order of the schema.
     sort_keys: tuple[str, ...]
     #: The view's own filter keys.
@@ -134,6 +139,27 @@ def _record_of(params_model: type) -> _ListParamsRecord | None:
     """What generated list params were created with, or ``None`` for
     hand-written ones."""
     return _RECORDS.get(params_model)
+
+
+def _check_default_sort(label: str, value: Any) -> None:
+    """Reject a ``default_sort`` that is not sort keys as a client writes
+    them in the sort parameter.
+
+    :raises RestlyConfigurationError: ``value`` is not ``None`` or a string
+        of keys separated by commas.
+    """
+    if value is None:
+        return
+    if not isinstance(value, str):
+        raise RestlyConfigurationError(
+            f"{label} must be a string such as '-created_at,name', or None, "
+            f"got {value!r}."
+        )
+    if not all(term.removeprefix("-") for term in value.split(",")):
+        raise RestlyConfigurationError(
+            f"{label} must be sort keys separated by commas, such as "
+            f"'-created_at,name', got {value!r}."
+        )
 
 
 def _check_key_setting(label: str, value: Any) -> tuple[str, ...]:
@@ -356,6 +382,7 @@ def derive_schema_list_params(
     include_sort_keys: _abc.Iterable[str] = ("*",),
     exclude_sort_keys: _abc.Iterable[str] = (),
     sort_query_param: str = "sort",
+    default_sort: str | None = None,
 ) -> SchemaType:
     """
     Build the list params: a Pydantic model that describes and validates the
@@ -408,9 +435,14 @@ def derive_schema_list_params(
         ``include_sort_keys``.
     :param sort_query_param: The name of the sort parameter, such as
         ``"order_by"``.
+    :param default_sort: The sort when the request has none, such as
+        ``"-created_at"``. It becomes the default of the sort parameter. A
+        key must be a field that a sort key could have, but
+        ``include_sort_keys`` does not have to keep it.
     :raises fastapi_restly.exc.RestlyConfigurationError: An entry of a key
         setting matches no key, or is not a key or pattern. The sort
-        parameter has the name of a page parameter.
+        parameter has the name of a page parameter. A key of
+        ``default_sort`` is not a field to sort on.
     """
     return _derive_list_params(
         schema_response,
@@ -423,6 +455,7 @@ def derive_schema_list_params(
             "exclude_sort_keys": exclude_sort_keys,
         },
         sort_query_param=sort_query_param,
+        default_sort=default_sort,
     )
 
 
@@ -436,12 +469,15 @@ def _derive_list_params(
     unchecked: _abc.Set[str] = frozenset(),
     own_filters: _abc.Sequence[_OwnFilter] = (),
     sort_query_param: str = _SORT_QUERY_PARAM,
+    default_sort: str | None = None,
 ) -> SchemaType:
     """:func:`derive_schema_list_params`, for a view too.
 
     :param owner: The view, for the messages.
-    :param unchecked: The key settings whose entries may match no key: the
-        ones that a view inherits. A base view serves many schemas.
+    :param unchecked: The settings whose entries may match no key: the ones
+        that a view inherits. A base view serves many schemas. An unchecked
+        ``default_sort`` with a key that the schema does not have does not
+        apply.
     :param own_filters: The view's own filter keys, which are always on.
     """
     patterns = {
@@ -449,6 +485,7 @@ def _derive_list_params(
         for name in _KEY_SETTINGS
     }
     _check_query_param(_setting_label(owner, "sort_query_param"), sort_query_param)
+    _check_default_sort(_setting_label(owner, "default_sort"), default_sort)
     if isinstance(pagination, NumberedPagination) and sort_query_param in (
         pagination.page_query_param,
         pagination.page_size_query_param,
@@ -519,11 +556,20 @@ def _derive_list_params(
                 _setting_label(owner, name), patterns[name], sort_keys, schema_name
             )
 
+    default_sort_keys = _default_sort_keys(
+        _setting_label(owner, "default_sort"),
+        default_sort,
+        sort_keys,
+        schema_name,
+        checked="default_sort" not in unchecked,
+    )
     sort_keys = _pick_keys(
         sort_keys, patterns["include_sort_keys"], patterns["exclude_sort_keys"]
     )
     if sort_keys:
-        fields[sort_query_param] = _sort_field(sort_keys)
+        fields[sort_query_param] = _sort_field(
+            sort_keys, default_sort if default_sort_keys else None
+        )
     for key in _pick_keys(
         list(filter_fields), patterns["include_filters"], patterns["exclude_filters"]
     ):
@@ -559,10 +605,48 @@ def _derive_list_params(
         pagination=pagination,
         **patterns,
         sort_query_param=sort_query_param,
+        default_sort=default_sort,
+        default_sort_keys=default_sort_keys,
         sort_keys=tuple(sort_keys),
         own_filters=tuple(own_filters),
     )
     return params_model
+
+
+def _default_sort_keys(
+    label: str,
+    default_sort: str | None,
+    sort_keys: list[str],
+    schema_name: str,
+    *,
+    checked: bool,
+) -> tuple[str, ...]:
+    """The keys of ``default_sort``, or none when it does not apply.
+
+    :param sort_keys: Every key that the schema can sort on, before the key
+        settings choose.
+    :param checked: A key that is not in ``sort_keys`` is an error. When
+        not checked, ``default_sort`` then does not apply.
+    :raises RestlyConfigurationError: a key is not in ``sort_keys``.
+    """
+    if default_sort is None:
+        return ()
+    keys = tuple(term.removeprefix("-") for term in default_sort.split(","))
+    for key in keys:
+        if key in sort_keys:
+            continue
+        if not checked:
+            return ()
+        message = (
+            f"{label}: {key!r} is not a field of {schema_name} to sort on. "
+            "A key is a field as the client writes it in the sort parameter."
+        )
+        if sort_keys:
+            message += f" The fields to sort on are: {', '.join(sort_keys)}."
+        else:
+            message += f" {schema_name} has no fields to sort on."
+        raise RestlyConfigurationError(message)
+    return keys
 
 
 def _check_own_key(
@@ -748,11 +832,18 @@ def _check_sort_entries(
         raise RestlyConfigurationError(message)
 
 
-def _sort_field(sort_keys: list[str]) -> tuple[Any, None]:
-    """The ``sort`` field of a list params model, which accepts ``sort_keys``."""
+def _sort_field(sort_keys: list[str], default: str | None) -> tuple[Any, str | None]:
+    """The ``sort`` field of a list params model, which accepts ``sort_keys``.
+
+    :param default: The sort when the request has none. It does not have to
+        be in ``sort_keys``.
+    """
     allowed = frozenset(sort_keys)
 
     def check_sort_keys(value: str | None) -> str | None:
+        if value == default:
+            # the list params validate their defaults
+            return value
         for term in (value or "").split(","):
             key = term.removeprefix("-")
             if term and key not in allowed:
@@ -773,7 +864,7 @@ def _sort_field(sort_keys: list[str]) -> tuple[Any, None]:
             Field(description=description),
             pydantic.AfterValidator(check_sort_keys),
         ],
-        None,
+        default,
     )
 
 
@@ -784,6 +875,7 @@ def apply_list_params(
     schema_response: SchemaType,
     *,
     pagination: _AnyPagination = cast(Any, _FROM_PARAMS),
+    sort_nulls: SortNulls = "last",
 ) -> Select[Any]:
     """
     Apply pagination, sorting, and filtering to ``query`` using validated
@@ -821,6 +913,11 @@ def apply_list_params(
     ``QueryParams`` or a hand-written model. A ``NoPagination`` or ``None``
     applies no ``LIMIT``/``OFFSET``, and so does a missing page-size key.
 
+    ``sort_nulls`` says where the sort puts NULLs: ``"last"`` (the default)
+    or ``"first"`` in both directions, or ``None`` for where the database
+    puts them. Without a sort parameter, the sort is the ``default_sort``
+    that the list params were created with.
+
     Examples::
 
         # Pagination
@@ -840,7 +937,12 @@ def apply_list_params(
         query, list_params, model, schema_response, pagination=pagination
     )
     return _apply_sort_and_page(
-        query, list_params, model, schema_response, pagination=pagination
+        query,
+        list_params,
+        model,
+        schema_response,
+        pagination=pagination,
+        sort_nulls=sort_nulls,
     )
 
 
@@ -954,6 +1056,7 @@ def _apply_sort_and_page(
     schema_response: SchemaType,
     *,
     pagination: _AnyPagination = cast(Any, _FROM_PARAMS),
+    sort_nulls: SortNulls = "last",
 ) -> Select[Any]:
     """The last steps of :func:`apply_list_params`: the sort, then the page."""
     record, pagination, sort_query_param, query_params = _read_list_params(
@@ -965,8 +1068,14 @@ def _apply_sort_and_page(
         model,
         schema_response,
         aliases=dict(_STATEMENT_JOINS.get(stmt, {})),
-        sort_keys=record.sort_keys if record else None,
+        # the default is the value of the sort field, also with a key that
+        # the client cannot send
+        sort_keys=record.sort_keys + record.default_sort_keys if record else None,
         sort_query_param=sort_query_param,
+        default_sort=record.default_sort
+        if record and record.default_sort_keys
+        else None,
+        sort_nulls=sort_nulls,
     )
     if isinstance(pagination, NumberedPagination):
         stmt = _apply_pagination(query_params, stmt, pagination)
@@ -1034,24 +1143,27 @@ def _apply_sorting(
     aliases: _JoinAliases | None = None,
     sort_keys: tuple[str, ...] | None = None,
     sort_query_param: str = _SORT_QUERY_PARAM,
+    default_sort: str | None = None,
+    sort_nulls: SortNulls = "last",
 ) -> Select[Any]:
     """Apply the sort parameter to ``select_query``, with the primary key
     last.
 
     :param sort_keys: The keys that ``sort`` may use. ``None`` allows every
         key that resolves to a column, as for hand-written list params.
+    :param default_sort: The sort when the sort parameter has no value.
+    :param sort_nulls: Where the sort puts NULLs.
     :raises BadQueryParam: ``Unknown sort key``.
     """
     if aliases is None:
         aliases = {}
     sorted_on: list[InstrumentedAttribute[Any]] = []
-    for column_name in (query_params.get(sort_query_param) or "").split(","):
+    sort = query_params.get(sort_query_param) or default_sort or ""
+    for column_name in sort.split(","):
         if not column_name:
             continue
-        order = sqlalchemy.asc
-        if column_name.startswith("-"):
-            order = sqlalchemy.desc
-            column_name = column_name[1:]
+        descending = column_name.startswith("-")
+        column_name = column_name.removeprefix("-")
         # The model checked ``sort``, but ``model_copy(update=...)`` does
         # not validate.
         if sort_keys is not None and column_name not in sort_keys:
@@ -1059,7 +1171,14 @@ def _apply_sorting(
         select_query, column = _join_column(
             select_query, model, column_name, schema_cls, aliases, kind="sort"
         )
-        select_query = select_query.order_by(order(column))
+        select_query = select_query.order_by(
+            _sort_term(
+                column,
+                descending=descending,
+                nulls=sort_nulls,
+                joined="." in column_name,
+            )
+        )
         sorted_on.append(column)
     return _append_pk_tiebreak(select_query, model, sorted_on)
 
@@ -1149,7 +1268,12 @@ def _join_column(
     *,
     kind: str = "filter",
 ) -> tuple[Select[Any], InstrumentedAttribute[Any]]:
-    """Join each relationship path once and return its aliased leaf column."""
+    """Join each relationship path once and return its aliased leaf column.
+
+    A sort joins with a LEFT OUTER JOIN, so a row without the related row
+    stays in the list. A join that a filter added is an inner join: the
+    filter leaves out such a row anyway.
+    """
     relationships, column = _resolve_column(model, column_path, schema_cls, kind=kind)
     source: type[DeclarativeBase] | AliasedClass[Any] = model
     path: tuple[str, ...] = ()
@@ -1161,7 +1285,9 @@ def _join_column(
         if target is None:
             target = aliased(relationship.property.mapper)
             select_query = select_query.join_from(
-                source, getattr(source, relationship.key).of_type(target)
+                source,
+                getattr(source, relationship.key).of_type(target),
+                isouter=kind == "sort",
             )
             aliases[path] = target
         source = target

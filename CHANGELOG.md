@@ -50,6 +50,13 @@ replacement, unless it says otherwise.
   matches any characters. `fr.query.derive_schema_list_params` takes them
   too.
 - `sort_query_param` renames the sort parameter, such as `"order_by"`.
+- `default_sort` is the sort when the request has none, such as
+  `"-created_at"`. A `sort` from the client replaces it. OpenAPI shows it as
+  the default of the sort parameter. `fr.query.derive_schema_list_params`
+  takes it too.
+- `sort_nulls` sets where a sort puts NULLs: `"last"` (the default) or
+  `"first"` in both directions, or `None` for where the database puts them.
+  `fr.query.apply_list_params` takes it too.
 - `unknown_query_params = "ignore"` leaves out a query key that the route
   does not read, as FastAPI does. The default, `"forbid"`, answers `422`, as
   before.
@@ -194,11 +201,16 @@ replacement, unless it says otherwise.
   filter methods, or the view fails when it registers. A subclass that
   changes `pagination` or a list setting gets new list params when its base
   uses generated ones.
+- A sort puts NULLs last in both directions, on every database, also on a
+  react-admin view. Before, the database decided: PostgreSQL put them first
+  in a descending sort, and SQLite and MySQL first in an ascending sort. Set
+  `sort_nulls = None` for the old order. On PostgreSQL, a fast descending
+  sort on a nullable column needs an index with `DESC NULLS LAST`.
 
 #### React-admin
 
-- React-admin views reject the list key settings, `sort_query_param` and
-  `@fr.list_filter`.
+- React-admin views reject the list key settings, `sort_query_param`,
+  `default_sort` and `@fr.list_filter`.
 - The list route of a react-admin view declares `list_params`. Overrides of
   `apply_list_params`, `apply_filters` and `to_list_response` get the parsed
   values: `sort` as `("name", "DESC")`, `range` as `(0, 24)` and `filter` as
@@ -286,6 +298,9 @@ replacement, unless it says otherwise.
 
 ### Fixed
 
+- A sort on a related field, such as `?sort=vendor.name`, keeps the rows
+  that have no related row. They come last. Before, the list left them out,
+  and `total_count` did not count them.
 - A response that nests a row of another model, such as the lines of an
   order, shows the new related row after a write set a foreign key column of
   that row. Before, it showed the old one.

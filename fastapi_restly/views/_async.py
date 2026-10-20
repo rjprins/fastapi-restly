@@ -512,6 +512,7 @@ class AsyncRestView(
             self.model,
             _schema_response(type(self)),
             pagination=self.pagination,
+            sort_nulls=self.sort_nulls,
         )
 
     async def apply_filters(

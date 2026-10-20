@@ -507,6 +507,7 @@ class RestView(
             self.model,
             _schema_response(type(self)),
             pagination=self.pagination,
+            sort_nulls=self.sort_nulls,
         )
 
     def apply_filters(

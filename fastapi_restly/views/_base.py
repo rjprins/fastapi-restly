@@ -109,12 +109,14 @@ from ..query._impl import (
     _KEY_SETTING_DEFAULTS,
     _KEY_SETTINGS,
     _NO_DEFAULT,
+    _check_default_sort,
     _check_key_setting,
     _derive_list_params,
     _OwnFilter,
     _query_settings,
     _record_of,
 )
+from ..query._shared import SortNulls
 from ..schemas import (
     BaseSchema,
     IDSchema,
@@ -1660,6 +1662,13 @@ def _check_list_settings(cls: type) -> None:
         _check_query_param(
             f"{cls.__name__}.sort_query_param", vars(cls)["sort_query_param"]
         )
+    if "default_sort" in vars(cls):
+        _check_default_sort(f"{cls.__name__}.default_sort", vars(cls)["default_sort"])
+    if vars(cls).get("sort_nulls", "last") not in ("first", "last", None):
+        raise RestlyConfigurationError(
+            f"{cls.__name__}.sort_nulls must be 'first', 'last' or None, "
+            f"got {vars(cls)['sort_nulls']!r}."
+        )
 
 
 def _check_unknown_query_params(cls: type) -> None:
@@ -1676,6 +1685,7 @@ def _check_unknown_query_params(cls: type) -> None:
 _LIST_SETTING_DEFAULTS: dict[str, Any] = {
     **_KEY_SETTING_DEFAULTS,
     "sort_query_param": _SORT_QUERY_PARAM,
+    "default_sort": None,
 }
 
 
@@ -1686,7 +1696,7 @@ def _list_setting(cls: type, name: str) -> Any:
         that a mixin sets, which is not checked when it is defined.
     """
     value = getattr(cls, name)
-    if name == "sort_query_param":
+    if name in ("sort_query_param", "default_sort"):
         return value
     return _check_key_setting(f"{cls.__name__}.{name}{_set_by(cls, name)}", value)
 
@@ -1983,6 +1993,20 @@ class BaseRestView(
     #: ``"order_by"`` for fastapi-filter. The old name is then free for a
     #: filter key.
     sort_query_param: ClassVar[str] = "sort"
+    #: The sort when the request has none, as a client writes it in
+    #: ``?sort=``, such as ``"-created_at"``. It becomes the default of the
+    #: sort parameter, so OpenAPI shows it. A key must be a field of
+    #: :attr:`schema_response` that a sort key could have, but
+    #: :attr:`include_sort_keys` does not have to keep it. ``None`` (the
+    #: default) sorts by the primary key. The primary key is always the last
+    #: term. A view that inherits it and does not have all its keys sorts
+    #: by the primary key.
+    default_sort: ClassVar[str | None] = None
+    #: Where a sort puts NULLs: ``"last"`` (the default) or ``"first"`` in
+    #: both directions, on every database. ``None`` leaves them where the
+    #: database puts them, which differs: PostgreSQL puts them last in an
+    #: ascending sort, SQLite and MySQL first.
+    sort_nulls: ClassVar[SortNulls] = "last"
     #: The list params (filter, sort, page) as a pydantic model, generated
     #: from ``schema_response`` and ``model`` by
     #: :func:`~fastapi_restly.query.derive_schema_list_params`. Any route
@@ -2841,9 +2865,14 @@ def _derive_view_list_params(view_cls: type) -> type[pydantic.BaseModel]:
         settings={name: getattr(view_cls, name) for name in _KEY_SETTINGS},
         owner=view_cls.__name__,
         # a base view serves many schemas
-        unchecked={name for name in _KEY_SETTINGS if name not in vars(view_cls)},
+        unchecked={
+            name
+            for name in (*_KEY_SETTINGS, "default_sort")
+            if name not in vars(view_cls)
+        },
         own_filters=_own_filters(view_cls),
         sort_query_param=view_cls.sort_query_param,
+        default_sort=view_cls.default_sort,
     )
 
 

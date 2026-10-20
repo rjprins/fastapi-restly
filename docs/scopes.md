@@ -505,24 +505,22 @@ class ItemClauses(fr.ClauseNamespace):
 
 Relationship loading that was in `build_query` goes in
 {meth}`get_loader_options <fastapi_restly.views.BaseRestView.get_loader_options>`.
-Other changes to the list query, such as a join or a default order, go in an
-{meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
-override:
+A default order goes in
+{attr}`default_sort <fastapi_restly.views.BaseRestView.default_sort>`, which
+applies when the client sends no `?sort=`:
 
 ```python
 class ItemView(fr.AsyncRestView):
     ...
-
-    async def apply_list_params(self, query, list_params):
-        query = query.order_by(Item.created_at.desc())
-        return await super().apply_list_params(query, list_params)
+    default_sort = "-created_at"
 ```
 
-An order that you add before `super()` comes first, so a client's `?sort=`
-orders the rows inside it.
+Other changes to the list query, such as a join, go in an
+{meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
+override that passes the statement on to `super()`.
 
 For a condition on a to-many relationship, use `EXISTS`, such as
-`query.where(Item.comments.any(Comment.author_id == user_id))`. A join to a
+`stmt.where(Item.comments.any(Comment.author_id == user_id))`. A join to a
 to-many relationship repeats the item for each comment, as in SQLAlchemy. A
 page would then count comments, not items.
 

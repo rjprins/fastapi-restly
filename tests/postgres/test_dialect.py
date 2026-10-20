@@ -7,10 +7,10 @@ at PostgreSQL (see ``conftest.py``). Five things are covered:
   case, for ASCII *and* non-ASCII input. On SQLite ``LIKE`` is
   ASCII-case-insensitive and ``lower()`` is ASCII-only, so the two operators are
   indistinguishable and non-ASCII folding never happens.
-* Default ``NULL`` ordering. The framework emits a plain ``ORDER BY`` with an id
-  tiebreak and no explicit ``NULLS`` clause, so the placement is the dialect
-  default -- ``NULLS LAST`` ascending / ``NULLS FIRST`` descending on PostgreSQL,
-  the reverse of SQLite.
+* ``NULL`` ordering. By default a sort puts NULLs last in both directions,
+  with ``NULLS LAST``. With ``sort_nulls = None`` the placement is the dialect
+  default -- ``NULLS LAST`` ascending / ``NULLS FIRST`` descending on
+  PostgreSQL, the reverse of SQLite.
 * Pagination stays stable across pages when many rows share a sort key, because
   the id tiebreak makes row order deterministic (PostgreSQL gives no stable
   order otherwise, unlike SQLite's rowid).
@@ -160,6 +160,22 @@ class PgRankedView(fr.AsyncRestView):
     prefix = "/ranked"
     model = PgRanked
     schema = PgRankedSchema
+
+
+@fr.include_view(_app)
+class PgRankedByDatabaseView(fr.AsyncRestView):
+    prefix = "/ranked-by-database"
+    model = PgRanked
+    schema = PgRankedSchema
+    sort_nulls = None
+
+
+@fr.include_view(_app)
+class PgRankedFirstView(fr.RestView):
+    prefix = "/sync/ranked-first"
+    model = PgRanked
+    schema = PgRankedSchema
+    sort_nulls = "first"
 
 
 @fr.include_view(_app)
@@ -314,18 +330,58 @@ def test_icontains_folds_non_ascii_case(restly_client):
     assert _names(response) == ["Öland"]
 
 
-def test_null_ordering_ascending_places_nulls_last(restly_client):
-    # PostgreSQL default: ascending sorts NULLs last. Non-nulls ascend
-    # (5, 10, 20) then the NULL rows follow, ordered by the id tiebreak.
-    labels = _labels(restly_client.get("/ranked/?sort=score"))
-    assert labels == ["c", "a", "e", "b", "d"]
+def test_nulls_come_last_in_both_directions_by_default(restly_client):
+    # Non-nulls ascend (5, 10, 20) or descend, then the NULL rows follow,
+    # ordered by the id tiebreak.
+    assert _labels(restly_client.get("/ranked/?sort=score")) == [
+        "c",
+        "a",
+        "e",
+        "b",
+        "d",
+    ]
+    assert _labels(restly_client.get("/ranked/?sort=-score")) == [
+        "e",
+        "a",
+        "c",
+        "b",
+        "d",
+    ]
 
 
-def test_null_ordering_descending_places_nulls_first(restly_client):
-    # PostgreSQL default: descending sorts NULLs first. The NULL rows lead
-    # (id tiebreak), then non-nulls descend (20, 10, 5).
-    labels = _labels(restly_client.get("/ranked/?sort=-score"))
-    assert labels == ["b", "d", "e", "a", "c"]
+def test_nulls_come_first_in_both_directions(restly_client):
+    assert _labels(restly_client.get("/sync/ranked-first/?sort=score")) == [
+        "b",
+        "d",
+        "c",
+        "a",
+        "e",
+    ]
+    assert _labels(restly_client.get("/sync/ranked-first/?sort=-score")) == [
+        "b",
+        "d",
+        "e",
+        "a",
+        "c",
+    ]
+
+
+def test_null_ordering_of_the_database(restly_client):
+    # PostgreSQL default: ascending sorts NULLs last, descending first.
+    assert _labels(restly_client.get("/ranked-by-database/?sort=score")) == [
+        "c",
+        "a",
+        "e",
+        "b",
+        "d",
+    ]
+    assert _labels(restly_client.get("/ranked-by-database/?sort=-score")) == [
+        "b",
+        "d",
+        "e",
+        "a",
+        "c",
+    ]
 
 
 def test_pagination_is_stable_under_duplicate_sort_keys(restly_client):

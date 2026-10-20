@@ -238,9 +238,10 @@ GET /people?home_city.country.code=NL&work_city.country.code=DE
 ```
 
 Sorting accepts the same paths, when `include_sort_keys` has them. A filter
-and a sort on the same relationship share one join. The joins are inner
-joins: a row without the related row is left out, also for a dotted
-`__isnull` filter.
+and a sort on the same relationship share one join. The join of a filter is
+an inner join: a row without the related row is left out, also for a dotted
+`__isnull` filter. The join of a sort is a `LEFT OUTER JOIN`, so the row
+stays, and its value counts as NULL in the sort.
 
 Aliases apply to every part of the path, the relationship and the field,
 because the list params always use the public names of the response
@@ -347,15 +348,61 @@ choose them, see [Choose the keys of a list](#choose-list-keys).
 
 A dotted key sorts by a related field, when `include_sort_keys` has it:
 `?sort=-city.country.code` orders by that column, and joins each step of the
-path.
+path. A row without the related row stays in the list.
+
+Without `sort`, the list is in primary key order. For another order when the
+client sends no `sort`, set
+{attr}`default_sort <fastapi_restly.views.BaseRestView.default_sort>`. It is
+written as the client writes `sort`:
+
+```python
+class UserView(fr.AsyncRestView):
+    ...
+    default_sort = "-created_at"
+```
+
+`GET /users` is then newest first, and `GET /users?sort=name` is sorted by
+name only. OpenAPI shows `-created_at` as the default of `sort`.
+
+(sort-nulls)=
+A sort puts NULLs last, in both directions and on every database. So the
+users without a `last_login` come after the other users, in
+`?sort=last_login` and in `?sort=-last_login`.
 
 Restly always adds the primary key as the last sort term, every column of a
 composite key included. So rows with equal values are never skipped or
-repeated from one page to the next. Without `sort`, the list is in primary key
-order.
+repeated from one page to the next.
 
 :::{admonition} Details
 :class: details
+
+A key of `default_sort` must be a field of the response class that can be a
+sort key. `include_sort_keys` does not have to keep it, so a view can sort by
+a field that the client cannot sort by. A key that the response class does
+not have fails when the view registers. A view that gets `default_sort` from
+a base view, and does not have all its keys, is in primary key order. An
+empty `?sort=` gets the default too. An override of
+{meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
+finds the default in `list_params.sort`.
+
+{attr}`sort_nulls <fastapi_restly.views.BaseRestView.sort_nulls>` sets where
+NULLs go. `"first"` puts them first in both directions. `None` leaves them
+where the database puts them: PostgreSQL puts them last in an ascending sort
+and first in a descending sort, SQLite and MySQL the other way round. A
+project base view can set `sort_nulls` once for every view. On PostgreSQL,
+Oracle and SQLite, Restly writes `NULLS LAST` in the SQL. MySQL and SQL
+Server do not have it, so Restly sorts on `CASE WHEN ... IS NULL` first. A
+column that cannot be NULL gets neither.
+
+PostgreSQL can read a plain index in the order of `x NULLS LAST`, but not in
+the order of `x DESC NULLS LAST`. For a fast `?sort=-last_login` on a large
+table, give the column an index in that order:
+
+```python
+from sqlalchemy import Index
+
+Index("ix_user_last_login", User.last_login.desc().nulls_last())
+```
 
 To keep the URLs of another library, rename the parameter with
 {attr}`sort_query_param <fastapi_restly.views.BaseRestView.sort_query_param>`,
@@ -760,10 +807,10 @@ no statement, so put base query changes in the scope.
 :class: details
 
 For list params of another form, such as those of another client library,
-see [Write the list params yourself](#own-list-params). A join or a default
-order goes in an
+see [Write the list params yourself](#own-list-params). A join goes in an
 {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
-override. For a list that has another *result*, write a route of your own
+override, and a default order in
+[`default_sort`](#sort-a-list). For a list that has another *result*, write a route of your own
 that starts from `self.select()`, as
 [Use the scope in your own query](#reading-the-scope) shows.
 
@@ -882,9 +929,11 @@ On a sync view, the two methods are `def`. `apply_list_params` adds the
 order and the page. Order by a unique column last, such as `Item.id`, so
 that a row never moves to another page.
 
-The list settings, such as `include_filters` and `sort_query_param`, and
+The list settings, such as `include_filters`, `sort_query_param` and
+`default_sort`, and
 {func}`fr.list_filter <fastapi_restly.views.list_filter>` apply to the list
-params that Restly generates. A view with list params of its own that has
+params that Restly generates. For a default order, give a field of your
+model a default, as `order` has here. A view with list params of its own that has
 one of them fails when it registers. A subclass with a new `schema` gets
 generated list params, so it declares its own again. The
 [React Admin](react_admin.md) views have list params of their own: `sort`,

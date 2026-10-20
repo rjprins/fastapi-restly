@@ -518,12 +518,16 @@ class TestApplyFiltering:
     ):
         params = mock_query_params(sort="creator.name,-id")
         result = _apply_sorting(
-            params, audit_log_select_query, AuditLogModel, AuditLogSchema
+            params,
+            audit_log_select_query,
+            AuditLogModel,
+            AuditLogSchema,
+            sort_nulls=None,
         )
 
         rendered = str(result)
         assert (
-            "JOIN audit_relation_users AS audit_relation_users_1 "
+            "LEFT OUTER JOIN audit_relation_users AS audit_relation_users_1 "
             "ON audit_relation_users_1.id = audit_logs.creator_id" in rendered
         )
         assert (

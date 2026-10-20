@@ -58,7 +58,7 @@ async def test_async_get_many_uses_validated_list_params(monkeypatch):
     """
     captured: dict[str, list[Any]] = {"list_params": [], "pagination": []}
 
-    def _apply_step(query, list_params, model, schema, *, pagination):
+    def _apply_step(query, list_params, model, schema, *, pagination, **_):
         captured["list_params"].append(list_params)
         captured["pagination"].append(pagination)
         return query
