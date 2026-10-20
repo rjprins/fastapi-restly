@@ -204,8 +204,10 @@ replacement, unless it says otherwise.
 - A sort puts NULLs last in both directions, on every database, also on a
   react-admin view. Before, the database decided: PostgreSQL put them first
   in a descending sort, and SQLite and MySQL first in an ascending sort. Set
-  `sort_nulls = None` for the old order. On PostgreSQL, a fast descending
-  sort on a nullable column needs an index with `DESC NULLS LAST`.
+  `sort_nulls = None` for the old place of NULLs. On PostgreSQL, a fast
+  descending sort on a nullable column needs an index with
+  `DESC NULLS LAST`. On MySQL and SQL Server, a sort on a nullable column
+  cannot use a plain index any more.
 
 #### React-admin
 
@@ -299,8 +301,8 @@ replacement, unless it says otherwise.
 ### Fixed
 
 - A sort on a related field, such as `?sort=vendor.name`, keeps the rows
-  that have no related row. They come last. Before, the list left them out,
-  and `total_count` did not count them.
+  that have no related row. With the default `sort_nulls`, they come last.
+  Before, the list left them out, and `total_count` did not count them.
 - A response that nests a row of another model, such as the lines of an
   order, shows the new related row after a write set a foreign key column of
   that row. Before, it showed the old one.

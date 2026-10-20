@@ -1652,9 +1652,11 @@ def _check_pagination_setting(cls: type) -> None:
 
 def _check_list_settings(cls: type) -> None:
     """Reject a list setting with a bad value, when the class is defined: a
-    key setting that is not a tuple of keys and patterns, or a sort
-    parameter name that cannot be a query parameter. Whether each entry
-    matches a key is checked when the view registers, with the schema."""
+    key setting that is not a tuple of keys and patterns, a sort parameter
+    name that cannot be a query parameter, a ``default_sort`` that is not
+    sort keys, or a ``sort_nulls`` that is not ``'first'``, ``'last'`` or
+    ``None``. Whether each key matches a field is checked when the view
+    registers, with the schema."""
     for name in _KEY_SETTINGS:
         if name in vars(cls):
             _check_key_setting(f"{cls.__name__}.{name}", vars(cls)[name])
@@ -1664,10 +1666,12 @@ def _check_list_settings(cls: type) -> None:
         )
     if "default_sort" in vars(cls):
         _check_default_sort(f"{cls.__name__}.default_sort", vars(cls)["default_sort"])
-    if vars(cls).get("sort_nulls", "last") not in ("first", "last", None):
+    # also a value from a mixin, which nothing else checks
+    sort_nulls = getattr(cls, "sort_nulls", "last")
+    if sort_nulls not in ("first", "last", None):
         raise RestlyConfigurationError(
-            f"{cls.__name__}.sort_nulls must be 'first', 'last' or None, "
-            f"got {vars(cls)['sort_nulls']!r}."
+            f"{cls.__name__}.sort_nulls{_set_by(cls, 'sort_nulls')} must be "
+            f"'first', 'last' or None, got {sort_nulls!r}."
         )
 
 
@@ -1692,13 +1696,18 @@ _LIST_SETTING_DEFAULTS: dict[str, Any] = {
 def _list_setting(cls: type, name: str) -> Any:
     """The value of a list setting of a view, as it is recorded.
 
-    :raises RestlyConfigurationError: a key setting is not keys, such as one
-        that a mixin sets, which is not checked when it is defined.
+    :raises RestlyConfigurationError: a key setting is not keys, or a
+        ``default_sort`` is not sort keys, such as one that a mixin sets,
+        which is not checked when it is defined.
     """
     value = getattr(cls, name)
-    if name in ("sort_query_param", "default_sort"):
+    label = f"{cls.__name__}.{name}{_set_by(cls, name)}"
+    if name == "sort_query_param":
         return value
-    return _check_key_setting(f"{cls.__name__}.{name}{_set_by(cls, name)}", value)
+    if name == "default_sort":
+        _check_default_sort(label, value)
+        return value
+    return _check_key_setting(label, value)
 
 
 #: The list methods that an async view awaits, and a sync view calls.
@@ -2872,7 +2881,7 @@ def _derive_view_list_params(view_cls: type) -> type[pydantic.BaseModel]:
         },
         own_filters=_own_filters(view_cls),
         sort_query_param=view_cls.sort_query_param,
-        default_sort=view_cls.default_sort,
+        default_sort=_list_setting(view_cls, "default_sort"),
     )
 
 

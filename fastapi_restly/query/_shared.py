@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import sqlalchemy
 from sqlalchemy import ColumnElement, Select
@@ -6,7 +6,8 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.sql.compiler import SQLCompiler
-from sqlalchemy.sql.visitors import InternalTraversal
+from sqlalchemy.sql.elements import UnaryExpression
+from sqlalchemy.sql.operators import nulls_first_op, nulls_last_op
 
 #: Where a sort puts NULLs: first or last in both directions, or where the
 #: database puts them.
@@ -49,53 +50,35 @@ def _append_pk_tiebreak(
     return query
 
 
-class _SortTerm(ColumnElement[Any]):
-    """One ``ORDER BY`` term with NULLs first or last on every database.
+class _SortTerm(UnaryExpression[Any]):
+    """``nulls_first()`` or ``nulls_last()`` that works on every database.
 
     PostgreSQL, Oracle and SQLite 3.30 or later get ``NULLS FIRST`` or
     ``NULLS LAST``. Other databases, such as MySQL and SQL Server, do not
-    have it, and get ``CASE WHEN x IS NULL ...`` before the term.
+    have it, and get ``CASE WHEN x IS NULL ...`` before the term. It is a
+    ``UnaryExpression`` as ``nulls_last()`` is, so the ORM finds the column
+    in it, as it does for a joined eager load with a page.
     """
 
     __visit_name__ = "restly_sort_term"
     inherit_cache = True
-    _traverse_internals = [
-        ("column", InternalTraversal.dp_clauseelement),
-        ("descending", InternalTraversal.dp_boolean),
-        ("nulls", InternalTraversal.dp_string),
-    ]
-
-    def __init__(
-        self, column: ColumnElement[Any], *, descending: bool, nulls: str
-    ) -> None:
-        self.column = column
-        self.descending = descending
-        self.nulls = nulls
-
-    def ordered(self) -> ColumnElement[Any]:
-        """The term without the rule for NULLs."""
-        return sqlalchemy.desc(self.column) if self.descending else self.column
 
 
 @compiles(_SortTerm)
 def _compile_with_case(term: _SortTerm, compiler: SQLCompiler, **kw: Any) -> str:
-    first, other = ("0", "1") if term.nulls == "first" else ("1", "0")
+    ordered = cast(UnaryExpression[Any], term.element)
+    first, other = ("0", "1") if term.modifier is nulls_first_op else ("1", "0")
     is_null = sqlalchemy.case(
-        (term.column.is_(None), sqlalchemy.literal_column(first)),
+        (ordered.element.is_(None), sqlalchemy.literal_column(first)),
         else_=sqlalchemy.literal_column(other),
     )
-    return (
-        f"{compiler.process(is_null, **kw)}, {compiler.process(term.ordered(), **kw)}"
-    )
+    return f"{compiler.process(is_null, **kw)}, {compiler.process(ordered, **kw)}"
 
 
 @compiles(_SortTerm, "postgresql")
 @compiles(_SortTerm, "oracle")
 def _compile_native(term: _SortTerm, compiler: SQLCompiler, **kw: Any) -> str:
-    ordered = term.ordered()
-    if term.nulls == "first":
-        return compiler.process(sqlalchemy.nulls_first(ordered), **kw)
-    return compiler.process(sqlalchemy.nulls_last(ordered), **kw)
+    return compiler.visit_unary(term, **kw)
 
 
 @compiles(_SortTerm, "sqlite")
@@ -111,15 +94,17 @@ def _sort_term(
 ) -> ColumnElement[Any]:
     """The ``ORDER BY`` term for ``column``, with NULLs where ``nulls`` says.
 
-    A column that cannot be NULL gets a plain term, which keeps the SQL
-    simple and lets the database use an index.
+    A column of the model that cannot be NULL gets a plain term, which keeps
+    the SQL simple.
 
     :param joined: ``column`` is on a row that a join added. A sort joins
         with a LEFT OUTER JOIN, so the value can be NULL.
     """
+    ordered = sqlalchemy.desc(column) if descending else sqlalchemy.asc(column)
     if nulls is None or (not joined and not _can_be_null(column)):
-        return sqlalchemy.desc(column) if descending else sqlalchemy.asc(column)
-    return _SortTerm(column.expression, descending=descending, nulls=nulls)
+        return ordered
+    modifier = nulls_first_op if nulls == "first" else nulls_last_op
+    return _SortTerm(ordered, modifier=modifier)
 
 
 def _can_be_null(column: Any) -> bool:

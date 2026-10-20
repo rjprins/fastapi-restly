@@ -842,7 +842,7 @@ def _sort_field(sort_keys: list[str], default: str | None) -> tuple[Any, str | N
 
     def check_sort_keys(value: str | None) -> str | None:
         if value == default:
-            # the list params validate their defaults
+            # FastAPI validates the default that it fills in
             return value
         for term in (value or "").split(","):
             key = term.removeprefix("-")
@@ -932,6 +932,10 @@ def apply_list_params(
         # Contains (string fields)
         name__contains=John&email__icontains=example
     """
+    if sort_nulls not in ("first", "last", None):
+        raise ValueError(
+            f"sort_nulls must be 'first', 'last' or None, got {sort_nulls!r}."
+        )
     _reject_own_filters(list_params)
     query = _apply_filters(
         query, list_params, model, schema_response, pagination=pagination
@@ -1158,7 +1162,10 @@ def _apply_sorting(
     if aliases is None:
         aliases = {}
     sorted_on: list[InstrumentedAttribute[Any]] = []
-    sort = query_params.get(sort_query_param) or default_sort or ""
+    sort = query_params.get(sort_query_param) or ""
+    if not sort.strip(","):
+        # also a sort of only commas, which has no keys
+        sort = default_sort or ""
     for column_name in sort.split(","):
         if not column_name:
             continue

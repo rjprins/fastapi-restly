@@ -14,7 +14,14 @@ import sqlalchemy
 from fastapi import FastAPI
 from sqlalchemy import ForeignKey
 from sqlalchemy.dialects import mssql, mysql, oracle, postgresql, sqlite
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    Session,
+    joinedload,
+    mapped_column,
+    relationship,
+)
 from starlette.datastructures import QueryParams
 
 import fastapi_restly as fr
@@ -86,6 +93,7 @@ def test_the_default_sort_applies_when_the_client_sends_none(views):
 
     assert names(client) == ["a", "c", "d", "b", "e"]
     assert names(client, sort="") == ["a", "c", "d", "b", "e"]
+    assert names(client, sort=",") == ["a", "c", "d", "b", "e"]
 
 
 def test_the_sort_of_the_client_replaces_the_default_sort(views):
@@ -169,6 +177,17 @@ def test_a_bad_default_sort_fails_when_the_class_is_defined(value, message):
 
         class ItemView(fr.AsyncRestView):
             default_sort = value
+
+
+def test_a_bad_default_sort_from_a_mixin_fails_when_the_view_registers(views):
+    class Ordering:
+        default_sort = "name,"
+
+    with pytest.raises(
+        RestlyConfigurationError,
+        match=r"SpoolView.default_sort \(from Ordering\) must be sort keys",
+    ):
+        spools((views[0], type("Base", (Ordering, views[1]), {}), views[2]))
 
 
 def test_hand_written_list_params_take_no_default_sort():
@@ -270,6 +289,30 @@ def test_a_bad_sort_nulls_fails_when_the_class_is_defined():
             sort_nulls = "end"  # type: ignore[assignment]
 
 
+def test_a_bad_sort_nulls_from_a_mixin_fails_too():
+    class Ordering:
+        sort_nulls = "LAST"
+
+    with pytest.raises(
+        RestlyConfigurationError,
+        match=r"ItemView.sort_nulls \(from Ordering\) must be 'first', 'last'",
+    ):
+
+        class ItemView(Ordering, fr.AsyncRestView):
+            pass
+
+
+def test_apply_list_params_rejects_a_bad_sort_nulls():
+    with pytest.raises(ValueError, match="sort_nulls must be 'first', 'last'"):
+        apply_list_params(
+            sqlalchemy.select(_Sorted),
+            QueryParams({"sort": "used"}),
+            _Sorted,
+            _SortedSchema,
+            sort_nulls="LAST",  # type: ignore[arg-type]
+        )
+
+
 class _Base(DeclarativeBase):
     pass
 
@@ -307,7 +350,7 @@ def test_postgresql_and_oracle_get_nulls_last(dialect):
         order_by(dialect, "-used") == "sorted_rows.used DESC NULLS LAST, sorted_rows.id"
     )
     assert order_by(dialect, "used", "first") == (
-        "sorted_rows.used NULLS FIRST, sorted_rows.id"
+        "sorted_rows.used ASC NULLS FIRST, sorted_rows.id"
     )
 
 
@@ -321,7 +364,7 @@ def test_mysql_and_sql_server_get_a_case_before_the_column(dialect):
         f"{case.format(1, 0)}, sorted_rows.used DESC, sorted_rows.id"
     )
     assert order_by(dialect, "used", "first") == (
-        f"{case.format(0, 1)}, sorted_rows.used, sorted_rows.id"
+        f"{case.format(0, 1)}, sorted_rows.used ASC, sorted_rows.id"
     )
 
 
@@ -420,6 +463,75 @@ def test_a_react_admin_view_puts_nulls_where_the_view_says(
 
     payload = client.get("/spools/", params={"sort": '["used","DESC"]'}).json()
     assert [spool["name"] for spool in payload] == expected
+
+
+# ---------------------------------------------------------------------------
+# The rule for NULLs on a database
+# ---------------------------------------------------------------------------
+
+
+class _Shelf(_Base):
+    __tablename__ = "shelves"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    label: Mapped[str | None]
+    books: Mapped[list["_Book"]] = relationship()
+
+
+class _Book(_Base):
+    __tablename__ = "books"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    shelf_id: Mapped[int] = mapped_column(ForeignKey(_Shelf.id))
+
+
+class _ShelfSchema(fr.IDSchema):
+    label: str | None
+
+
+@pytest.mark.parametrize(
+    "version", [(3, 30, 0), (3, 29, 0)], ids=["nulls-last", "case"]
+)
+@pytest.mark.parametrize(
+    ("sort", "sort_nulls", "expected"),
+    [
+        ("label", "last", ["a", "b", None]),
+        ("-label", "last", ["b", "a", None]),
+        ("label", "first", [None, "a", "b"]),
+        ("-label", "first", [None, "b", "a"]),
+    ],
+)
+def test_a_joined_eager_load_with_a_page_keeps_the_order(
+    version, sort, sort_nulls, expected
+):
+    # The ORM puts a page of a joined eager load in a subquery, and takes
+    # the column out of each ORDER BY term for it.
+    engine = sqlalchemy.create_engine("sqlite://")
+    _Base.metadata.create_all(engine)
+    engine.dialect.server_version_info = version
+    with Session(engine) as session:
+        session.add_all(
+            [
+                _Shelf(label="b", books=[_Book()]),
+                _Shelf(label=None, books=[_Book(), _Book()]),
+                _Shelf(label="a"),
+            ]
+        )
+        session.commit()
+        stmt = apply_list_params(
+            sqlalchemy.select(_Shelf).options(joinedload(_Shelf.books)),
+            QueryParams({"sort": sort}),
+            _Shelf,
+            _ShelfSchema,
+            pagination=None,
+            sort_nulls=sort_nulls,
+        ).limit(10)
+
+        shelves = session.scalars(stmt).unique().all()
+    engine.dispose()
+
+    assert [shelf.label for shelf in shelves] == expected
+    assert [len(shelf.books) for shelf in shelves] == [
+        {"a": 0, "b": 1, None: 2}[label] for label in expected
+    ]
 
 
 # ---------------------------------------------------------------------------
