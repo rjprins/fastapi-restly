@@ -387,6 +387,20 @@ default too. An override of
 finds the default in `list_params.sort`. With `include_sort_keys = ()`, the
 list params have no sort parameter, but the default still applies.
 
+For a default order on a column that the response class does not have,
+such as a `position` that an admin sets, order the statement when the
+client sends no sort:
+
+```python
+class ItemView(fr.AsyncRestView):
+    ...
+
+    async def apply_list_params(self, stmt, list_params):
+        if list_params.sort is None:
+            stmt = stmt.order_by(Item.position)
+        return await super().apply_list_params(stmt, list_params)
+```
+
 {attr}`sort_nulls <fastapi_restly.views.BaseRestView.sort_nulls>` sets where
 NULLs go. `"first"` puts them first in both directions. `None` leaves them
 where the database puts them: PostgreSQL puts them last in an ascending sort
