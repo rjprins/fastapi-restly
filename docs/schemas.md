@@ -747,9 +747,10 @@ Three rules decide the rest:
   **not** `ReadOnly`.
 - **Relationships**: never included. A foreign key column, such as
   `customer_id`, is an ordinary field. With `init=False`, it is `ReadOnly`,
-  as the rule above says. To show a related row in a response,
-  write the schema yourself, for example with an `IDRef[Customer]` field; see
-  [Relationships](relationships.md).
+  as the rule above says. To write a relationship, or to show it in a
+  response, write the schema yourself: `customer: fr.IDRef[Customer]` for
+  its id, or a nested schema for the whole row. See
+  [Choose a reference style](#reference-styles).
 
 A view and a direct call of `derive_schema(model)` give the same schema.
 
