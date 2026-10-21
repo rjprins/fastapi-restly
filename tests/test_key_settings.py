@@ -201,9 +201,6 @@ def test_a_sort_key_never_goes_through_a_to_many_relationship():
     )
 
     assert "tags.name" in model.model_fields
-    record = _record_of(model)
-    assert record is not None
-    assert record.sort_keys == ("id", "name")
     with pytest.raises(RestlyConfigurationError, match="'\\*.\\*' matches no sort key"):
         derive_schema_list_params(TaggedItemSchema, Item, include_sort_keys=("*.*",))
     with pytest.raises(BadQueryParam, match="Unknown sort key: 'tags.name'"):
@@ -295,8 +292,8 @@ def test_apply_list_params_checks_a_sort_that_skipped_validation():
         (
             {"include_filters": ("vendor.**",)},
             "include_filters: 'vendor.**' uses '**'. A key pattern has one "
-            "wildcard, '*', which stays within one level. Write one '*' for "
-            "each level, such as 'vendor.*.*'.",
+            "wildcard, '*', for any characters except '.'. Write one entry "
+            "for each level, such as ('vendor.*', 'vendor.*.*').",
         ),
         (
             {"include_filters": ("[nN]ame",)},

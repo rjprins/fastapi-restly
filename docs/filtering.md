@@ -26,9 +26,10 @@ For a filter that is not a comparison with a column, see
 [Add a filter of your own](#own-list-filter).
 
 The filters narrow the rows inside the view's [scope](scopes.md). They can
-never show a row that the scope hides. To limit the rows of a view, declare
-its scope, as [Give one view other rows](#view-scope) shows. `get_many` is
-final and takes no statement, so put base query changes in the scope.
+never show a row that the scope hides. To limit the rows of every list,
+declare the view's scope, as [Give one view other rows](#view-scope) shows.
+For list params of another form, such as those of another client library,
+see [Write the list params yourself](#own-list-params).
 
 Restly rejects an unknown key with `422`. A filter only narrows the result, so
 a mistyped key that Restly ignored would return more rows than the client
@@ -190,7 +191,8 @@ choose them, see [Choose the keys of a list](#choose-list-keys).
 
 A dotted key sorts by a related field, when `include_sort_keys` has it:
 `?sort=-city.country.code` orders by that column, and joins each step of the
-path. A row without the related row stays in the list.
+path. A row without the related row stays in the list. Dotted keys follow
+the rules of [Filter on a related row](#relation-filtering).
 
 Without `sort`, the list is in primary key order. For another order when the
 client sends no `sort`, set
@@ -343,7 +345,8 @@ Clients then send `?p=2&size=50`, `page` and `page_size` become unknown keys,
 and OpenAPI shows the new names. A schema field with the same public name as
 a pagination parameter fails when the view registers: rename the parameter,
 give the field an alias, or leave the field's plain key out with
-`exclude_filters = ("size",)`. A renamed parameter frees its old name, so a
+`exclude_filters = ("size",)`; see
+[Choose the keys of a list](#choose-list-keys). A renamed parameter frees its old name, so a
 field called `page` gets its filter back.
 
 (set-pagination-once)=
@@ -467,11 +470,11 @@ class ItemView(fr.AsyncRestView):
 :::{admonition} Details
 :class: details
 
-A `*` never matches a `.`, so a pattern names its depth. For an item with a
-`vendor`, and a `country` on the vendor, `"vendor.*"` has the keys on the
-fields of `vendor`, but not those on `vendor.country`. For both levels, write
+A `*` never matches a `.`, so each `*` covers one level only. For an item
+with a `vendor`, and a `country` on the vendor, `"vendor.*"` has the keys on
+the fields of `vendor`, but not those on `vendor.country`. For both levels, write
 `("vendor.*", "vendor.*.*")`. A pattern has no other wildcard: `**`, `?` and
-`[...]` fail when the class is defined.
+`[...]` are errors.
 
 The pattern `"name*"` also matches a field such as `names`. Write
 `("name", "name__*")` for the keys of `name` only.
@@ -507,7 +510,9 @@ single `tags.name` to sort on.
 
 To see the keys that a view could have, set
 `include_filters = ("*", "*.*")` and `include_sort_keys = ("*", "*.*")` for a
-moment, and look at `/docs`. Add `"*.*.*"` for the next level.
+moment, and look at `/docs`. Every entry must match a key, so leave out
+`"*.*"` when the schema has no nested object. Add `"*.*.*"` for keys two
+levels down.
 
 {func}`derive_schema_list_params() <fastapi_restly.query.derive_schema_list_params>`
 takes the four settings and `sort_query_param` as keywords, so a route
@@ -540,8 +545,9 @@ The relation must be a `relationship` on the SQLAlchemy model and a nested
 schema on the response class, as in
 [Return related objects in a response](#relationship-loading). A nested schema
 that can be `None` (`UserSchema | None`) works, and so do several steps
-(`?blog.author.name=Alice`). A list of nested schemas (`list[UserSchema]`)
-does not.
+(`?blog.author.name=Alice`). Each step needs its own `*` in the setting:
+`?blog.author.name=` needs `"blog.*.*"`. A list of nested schemas
+(`list[UserSchema]`) does not work.
 
 A dotted filter joins the related table without that model's default scope;
 see [Scopes](#default-scope). Restly joins through SQL aliases. If you add a
@@ -847,6 +853,13 @@ the category that the client chose.
 :::{admonition} Details
 :class: details
 
+{meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
+would add `ORDER BY` and `LIMIT`. PostgreSQL rejects an order on a column
+that the `GROUP BY` does not have.
+
+A real route also removes `category__in` and the other keys of `category`.
+The route still documents `page`, `page_size` and `sort`, and ignores them.
+
 A route method with a `list_params` parameter takes the same list params as
 `GET /`. Restly gives it the view's
 {attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`,
@@ -865,13 +878,6 @@ out the keys that the route reads, such as `mode` above. Any other key gets
 such a route. A dict, as in `view.get_many({"name": "axe"})`, holds list
 params only, so a key that they do not have always gets `422`.
 
-{meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
-would add `ORDER BY` and `LIMIT`. PostgreSQL rejects an order on a column
-that the `GROUP BY` does not have.
-
-A real route also removes `category__in` and the other keys of `category`.
-The route still documents `page`, `page_size` and `sort`, and ignores them.
-
 On an async view, `apply_filters` is `async def`, as `apply_list_params` is.
 A view can override it to add a condition to every list, and to every route
 that calls it. `apply_list_params` calls it first. Add the condition to the
@@ -879,8 +885,8 @@ statement before `super().apply_filters(...)`. After it, a sort on a
 relationship that a filter joined joins that table a second time. A join
 that every list needs goes in an
 {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
-override. For a list that has another *result*, write a route of your own
-that starts from `self.select()`, as
+override. A route of your own that reads rows of the model starts from
+`self.select()`, which has the scope, as
 [Use the scope in your own query](#reading-the-scope) shows.
 :::
 

@@ -194,13 +194,13 @@ def _check_key_setting(label: str, value: Any) -> tuple[str, ...]:
         if "**" in entry:
             raise RestlyConfigurationError(
                 f"{label}: {entry!r} uses '**'. A key pattern has one "
-                "wildcard, '*', which stays within one level. Write one '*' "
-                "for each level, such as 'vendor.*.*'."
+                "wildcard, '*', for any characters except '.'. Write one "
+                "entry for each level, such as ('vendor.*', 'vendor.*.*')."
             )
         if any(char in entry for char in "?[]"):
             raise RestlyConfigurationError(
                 f"{label}: {entry!r} uses '?' or '[...]'. A key pattern "
-                "has one wildcard: '*', for any characters except '.'."
+                "has one wildcard, '*', for any characters except '.'."
             )
     return entries
 
@@ -423,7 +423,8 @@ def derive_schema_list_params(
         ``None`` is an unpaginated view, which returns the full result set.
     :param include_filters: The filter keys to keep. ``("*", "*.*")`` keeps
         the own keys and the dotted keys one level down, and ``()`` keeps
-        none.
+        none. Each entry must match a key, so ``"*.*"`` needs a nested
+        schema.
     :param exclude_filters: The filter keys to remove, after
         ``include_filters``.
     :param include_sort_keys: The keys that ``sort`` accepts. A sort key has

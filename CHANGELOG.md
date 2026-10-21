@@ -177,8 +177,9 @@ replacement, unless it says otherwise.
 #### Lists
 
 - A list has no dotted filter keys and no dotted sort keys by default, such as
-  `?vendor.name=`. Turn them on with `include_filters = ("**",)` and
-  `include_sort_keys = ("**",)`, or with a narrower pattern.
+  `?vendor.name=`. Turn them on with `include_filters = ("*", "*.*")` and
+  `include_sort_keys = ("*", "*.*")`, with one `*` for each level, or with a
+  narrower pattern.
   `fr.query.derive_schema_list_params` has the same default. A sort key never
   goes through a to-many relationship.
 - An unknown sort key gets `422`, not `400`. The `422` for an unknown query

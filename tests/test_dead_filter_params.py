@@ -25,6 +25,7 @@ from sqlalchemy import JSON, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
+from fastapi_restly.exc import RestlyConfigurationError
 from fastapi_restly.query import derive_schema_list_params
 
 from ._models import SharedBase
@@ -323,3 +324,8 @@ def test_a_schema_that_names_itself_gets_one_level_of_dotted_filters():
         assert "parent.name" in fields, schema
         assert "parent.name__contains" in fields, schema
         assert not any(key.startswith("parent.parent") for key in fields), schema
+        # the walk stops, not the pattern: no key is two levels down
+        with pytest.raises(RestlyConfigurationError, match="matches no filter key"):
+            derive_schema_list_params(
+                schema, SpellingCategory, include_filters=("*.*.*",)
+            )

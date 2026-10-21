@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
+from fastapi_restly.exc import RestlyConfigurationError
 from fastapi_restly.testing import RestlyTestClient
 
 
@@ -315,6 +316,15 @@ def test_a_schema_that_names_itself_filters_one_step(request, view_class):
         model = Category
         schema = CategorySchema
         include_filters = ("*", "*.*")
+
+    # the walk stops, not the pattern: no key is two levels down
+    deeper = type(
+        "DeeperView",
+        (CategoryView,),
+        {"prefix": "/deeper", "include_filters": ("*", "*.*", "*.*.*")},
+    )
+    with pytest.raises(RestlyConfigurationError, match="'\\*.\\*.\\*' matches no"):
+        fr.include_view(FastAPI(), deeper)
 
     rows = [
         Category(id=1, name="root"),
