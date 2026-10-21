@@ -286,7 +286,8 @@ class ItemView(fr.AsyncRestView):
 ```
 
 The `list_params` argument gives the route the same filter, sort and page
-parameters as `GET /`, as [Filtering & Pagination](filtering.md) explains.
+parameters as `GET /`, as
+[Filtering, Sorting & Pagination](filtering.md) explains.
 
 The argument replaces the scope. It does not narrow it. So a rule that must
 never be replaced belongs on the session, like the

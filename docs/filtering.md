@@ -1,4 +1,4 @@
-# Filtering & Pagination
+# Filtering, Sorting & Pagination
 
 The list endpoint of a view, `GET /{prefix}`, reads filters, a sort order and
 a page from the URL:
@@ -26,7 +26,9 @@ For a filter that is not a comparison with a column, see
 [Add a filter of your own](#own-list-filter).
 
 The filters narrow the rows inside the view's [scope](scopes.md). They can
-never show a row that the scope hides.
+never show a row that the scope hides. To limit the rows of a view, declare
+its scope, as [Give one view other rows](#view-scope) shows. `get_many` is
+final and takes no statement, so put base query changes in the scope.
 
 Restly rejects an unknown key with `422`. A filter only narrows the result, so
 a mistyped key that Restly ignored would return more rows than the client
@@ -171,6 +173,349 @@ GET /users?created_at__gte=2024-01-01&created_at__lt=2025-01-01
 ```
 
 This gives `WHERE created_at >= '2024-01-01' AND created_at < '2025-01-01'`.
+
+(sort-a-list)=
+## Sort a list
+
+The `sort` parameter takes sort keys separated by commas. A sort key is the
+name of a field. A `-` before a key sorts in descending order:
+
+```text
+GET /users?sort=-created_at,name
+```
+
+By default every own field of the resource is a sort key. An unknown sort key
+gets `422`. The description of `sort` in OpenAPI lists the sort keys. To
+choose them, see [Choose the keys of a list](#choose-list-keys).
+
+A dotted key sorts by a related field, when `include_sort_keys` has it:
+`?sort=-city.country.code` orders by that column, and joins each step of the
+path. A row without the related row stays in the list.
+
+Without `sort`, the list is in primary key order. For another order when the
+client sends no `sort`, set
+{attr}`default_sort <fastapi_restly.views.BaseRestView.default_sort>`. It is
+written as the client writes `sort`:
+
+```python
+class UserView(fr.AsyncRestView):
+    ...
+    default_sort = "-created_at"
+```
+
+`GET /users` is then newest first, and `GET /users?sort=name` is sorted by
+name only. OpenAPI shows `-created_at` as the default of `sort`.
+
+Restly always adds the primary key as the last sort term, every column of a
+composite key included. So rows with equal values are never skipped or
+repeated from one page to the next.
+
+:::{admonition} Details
+:class: details
+
+A key of `default_sort` must be a field of the response class that can be a
+sort key. `include_sort_keys` does not have to keep it, so a view can sort by
+a field that the client cannot sort by. A key that the response class does
+not have fails when the view registers, also when the view gets
+`default_sort` from a base view. A view without those fields sets
+`default_sort = None` for primary key order. An empty `?sort=` gets the
+default too. An override of
+{meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
+finds the default in `list_params.sort`. With `include_sort_keys = ()`, the
+list params have no sort parameter, but the default still applies.
+
+For a default order on a column that the response class does not have,
+such as a `position` that an admin sets, order the statement when the
+client sends no sort:
+
+```python
+class ItemView(fr.AsyncRestView):
+    ...
+
+    async def apply_list_params(self, stmt, list_params):
+        if list_params.sort is None:
+            stmt = stmt.order_by(Item.position)
+        return await super().apply_list_params(stmt, list_params)
+```
+:::
+
+(sort-nulls)=
+### Where NULLs go
+
+A sort puts NULLs last, in both directions and on every database. So the
+users without a `last_login` come after the other users, in
+`?sort=last_login` and in `?sort=-last_login`.
+
+{attr}`sort_nulls <fastapi_restly.views.BaseRestView.sort_nulls>` sets where
+NULLs go. `"first"` puts them first in both directions. `None` leaves them
+where the database puts them: PostgreSQL puts them last in an ascending sort
+and first in a descending sort, SQLite and MySQL the other way round. A
+project base view can set `sort_nulls` once for every view.
+
+:::{admonition} Details
+:class: details
+
+On PostgreSQL, Oracle and SQLite 3.30 or later, Restly writes `NULLS LAST`
+in the SQL. MySQL and SQL Server do not have it, so Restly sorts on
+`CASE WHEN ... IS NULL` first. A column of the model that cannot be NULL
+gets neither. A column through a relationship always gets it, because the
+row without the related row has NULL there.
+
+The rule for NULLs can make a sort on a large table slower, because the
+database cannot always read an index in that order:
+
+- PostgreSQL reads a plain index in the order of `x NULLS LAST`, but not in
+  the order of `x DESC NULLS LAST`. For a fast `?sort=-last_login`, also
+  give the column an index in that order. Keep the plain index for
+  `?sort=last_login`:
+
+  ```python
+  from sqlalchemy import Index
+
+  Index("ix_user_last_login_desc", User.last_login.desc().nulls_last())
+  ```
+
+- MySQL and SQL Server cannot read a plain index in the order of the `CASE`,
+  in either direction, so they sort the rows themselves.
+
+If a sort must use a plain index, set `sort_nulls = None` on that view.
+:::
+
+### Rename the sort parameter
+
+To keep the URLs of another library, rename the parameter with
+{attr}`sort_query_param <fastapi_restly.views.BaseRestView.sort_query_param>`,
+such as `"ordering"` for Django REST framework or `"order_by"` for
+fastapi-filter:
+
+```python
+class UserView(fr.AsyncRestView):
+    sort_query_param = "order_by"
+```
+
+Clients then send `?order_by=-created_at`, and `sort` becomes an unknown key.
+A field called `sort` gets its filter key back.
+
+(list-pagination)=
+## Page through a list
+
+The client asks for a page with `page` and `page_size`:
+
+```text
+GET /users?page=2&page_size=50
+```
+
+`page` starts at 1. `page_size` must be at least 1 and at most
+`max_page_size`, 1000 by default. Without `page_size`, the endpoint uses
+`default_page_size`, 50 by default. Restly also rejects a page whose SQL
+offset, `(page - 1) * page_size`, is larger than `2**63 - 1`. A value out of
+range returns FastAPI's standard `422`.
+
+The response holds the page in `data`, with `total_count`, `page`,
+`page_size` and `total_pages`. To change this envelope, see
+[Change the list envelope](#change-list-envelope).
+
+Set the limits with
+{class}`fr.NumberedPagination <fastapi_restly.views.NumberedPagination>` on the
+view class. On a public endpoint, use a smaller page size and maximum.
+`max_page` also limits the page number:
+
+```python
+class UserView(fr.AsyncRestView):
+    pagination = fr.NumberedPagination(
+        default_page_size=25, max_page_size=200, max_page=100
+    )
+```
+
+### Rename the page parameters
+
+Rename the two parameters with `page_query_param` and
+`page_size_query_param`:
+
+```python
+class UserView(fr.AsyncRestView):
+    pagination = fr.NumberedPagination(
+        page_query_param="p", page_size_query_param="size"
+    )
+```
+
+Clients then send `?p=2&size=50`, `page` and `page_size` become unknown keys,
+and OpenAPI shows the new names. A schema field with the same public name as
+a pagination parameter fails when the view registers: rename the parameter,
+give the field an alias, or leave the field's plain key out with
+`exclude_filters = ("size",)`. A renamed parameter frees its old name, so a
+field called `page` gets its filter back.
+
+(set-pagination-once)=
+### Set the pagination once for every view
+
+Views inherit `pagination`, so a project base view sets it once. A view that
+differs changes one setting with `replace()`, which returns a checked copy:
+
+```python
+APP_PAGINATION = fr.NumberedPagination(
+    page_size_query_param="size", max_page_size=100
+)
+
+
+class AppView(fr.AsyncRestView):
+    pagination = APP_PAGINATION
+
+
+class LogView(AppView):
+    pagination = APP_PAGINATION.replace(default_page_size=10, max_page_size=10)
+```
+
+(no-pagination)=
+### Return every row without pagination
+
+Set `pagination = None` to return every matching row:
+
+```python
+@fr.include_view(app)
+class TagView(fr.AsyncRestView):
+    prefix = "/tags"
+    model = Tag
+    schema = TagSchema
+    pagination = None
+    # Response: {"data": [ /* every tag */ ]}
+```
+
+The list has no `page` and `page_size` parameters, and Restly runs no count
+query. Filters and `sort` still work. The response keeps the `data` envelope,
+without the count and page fields.
+
+Use this only for a table that stays small, such as tags or countries. A list
+without pagination returns the whole table in one response.
+
+:::{admonition} Details
+:class: details
+
+`None` is short for
+{class}`fr.NoPagination() <fastapi_restly.views.NoPagination>`. Use
+`fr.NoPagination(envelope=...)` to choose the envelope of a list without
+pagination; see [Change the list envelope](#change-list-envelope).
+:::
+
+(fastapi-pagination-migration)=
+### Coming from fastapi-pagination
+
+The default `Page` of fastapi-pagination takes `?page=` and `?size=`, and
+returns `items`, `total`, `page`, `size` and `pages`. To keep that contract
+for existing clients, rename the page size parameter and the fields of the
+envelope:
+
+```python
+from typing import Generic, TypeVar
+
+import pydantic
+
+T = TypeVar("T")
+
+
+class Page(pydantic.BaseModel, Generic[T]):
+    data: list[T] = pydantic.Field(alias="items")
+    total_count: int = pydantic.Field(alias="total")
+    page: int
+    page_size: int = pydantic.Field(alias="size")
+    total_pages: int = pydantic.Field(alias="pages")
+
+
+class AppView(fr.AsyncRestView):
+    pagination = fr.NumberedPagination(
+        page_size_query_param="size", max_page_size=100, envelope=Page
+    )
+```
+
+The default page size of 50 and the maximum of 100 match those of
+fastapi-pagination. fastapi-pagination has no filters and no sorting. Restly
+adds both, as this page describes.
+
+(choose-list-keys)=
+## Choose the keys of a list
+
+A view chooses the keys of its list with
+{attr}`include_filters <fastapi_restly.views.BaseRestView.include_filters>`
+and
+{attr}`include_sort_keys <fastapi_restly.views.BaseRestView.include_sort_keys>`:
+
+```python
+class ItemView(fr.AsyncRestView):
+    ...
+    include_filters = ("status", "category_id", "name__icontains", "created_at__*")
+    include_sort_keys = ("name", "created_at")
+```
+
+An entry is a key as the client sends it, such as `name__icontains`, or a
+pattern. In a pattern, `*` matches any characters except `.`. So
+`"created_at__*"` is every filter on `created_at` with a suffix, and
+`"vendor.*"` is every key on the fields of `vendor`. OpenAPI shows only the
+keys that are on, and another key gets `422`.
+
+To remove a few keys, use
+{attr}`exclude_filters <fastapi_restly.views.BaseRestView.exclude_filters>`
+and
+{attr}`exclude_sort_keys <fastapi_restly.views.BaseRestView.exclude_sort_keys>`.
+Restly applies them after the include settings:
+
+```python
+class ItemView(fr.AsyncRestView):
+    ...
+    exclude_filters = ("internal_note", "internal_note__*", "*__icontains")
+```
+
+:::{admonition} Details
+:class: details
+
+A `*` never matches a `.`, so a pattern names its depth. For an item with a
+`vendor`, and a `country` on the vendor, `"vendor.*"` has the keys on the
+fields of `vendor`, but not those on `vendor.country`. For both levels, write
+`("vendor.*", "vendor.*.*")`. A pattern has no other wildcard: `**`, `?` and
+`[...]` fail when the class is defined.
+
+The pattern `"name*"` also matches a field such as `names`. Write
+`("name", "name__*")` for the keys of `name` only.
+
+`include_filters = ()` leaves no generated filters, and
+`include_sort_keys = ()` removes the `sort` parameter. `page` and `page_size`
+are not filters, and they always stay.
+
+Dotted keys are off by default. Each one is a join that a client can add, and
+a new field on a nested schema would add keys to every list that nests it.
+
+An entry that a view sets and that matches no key fails when the view
+registers. The message lists the keys of the field:
+
+```text
+ItemView.include_filters: 'price__icontains' matches no filter key of
+ItemSchema. The filter keys of 'price' are: price, price__in, price__ne,
+price__isnull, price__gte, price__lte, price__gt, price__lt. Only text fields
+have __contains and __icontains.
+```
+
+A view inherits each setting on its own, as it inherits `pagination`. So a
+project base view can set `include_filters = ()`, and a view turns its
+filters on again with `("*",)`. An entry that a view inherits may match no
+key, because a base view serves many schemas. For mypy, give the setting a
+type on the base view: `include_filters: ClassVar[tuple[str, ...]] = ()`.
+Without it, mypy takes the type of `()` and rejects `("*",)` in the view.
+
+The sort keys are separate from the filter keys, so a view can sort on
+`created_at` without a `?created_at=` filter. A sort key has no suffix. It
+never goes through a list of related rows: an item with several tags has no
+single `tags.name` to sort on.
+
+To see the keys that a view could have, set
+`include_filters = ("*", "*.*")` and `include_sort_keys = ("*", "*.*")` for a
+moment, and look at `/docs`. Add `"*.*.*"` for the next level.
+
+{func}`derive_schema_list_params() <fastapi_restly.query.derive_schema_list_params>`
+takes the four settings and `sort_query_param` as keywords, so a route
+outside a view can build the same list params.
+
+A key that clients use is part of your API. Removing it later breaks those
+clients.
+:::
 
 (relation-filtering)=
 ## Filter on a related row
@@ -329,205 +674,6 @@ GET /users?user_name=Alice       # rejected: the Python name is not public
 
 To use another key in the URL, change the alias.
 
-(sort-a-list)=
-## Sort a list
-
-The `sort` parameter takes sort keys separated by commas. A sort key is the
-name of a field. A `-` before a key sorts in descending order:
-
-```text
-GET /users?sort=-created_at,name
-```
-
-By default every own field of the resource is a sort key. An unknown sort key
-gets `422`. The description of `sort` in OpenAPI lists the sort keys. To
-choose them, see [Choose the keys of a list](#choose-list-keys).
-
-A dotted key sorts by a related field, when `include_sort_keys` has it:
-`?sort=-city.country.code` orders by that column, and joins each step of the
-path. A row without the related row stays in the list.
-
-Without `sort`, the list is in primary key order. For another order when the
-client sends no `sort`, set
-{attr}`default_sort <fastapi_restly.views.BaseRestView.default_sort>`. It is
-written as the client writes `sort`:
-
-```python
-class UserView(fr.AsyncRestView):
-    ...
-    default_sort = "-created_at"
-```
-
-`GET /users` is then newest first, and `GET /users?sort=name` is sorted by
-name only. OpenAPI shows `-created_at` as the default of `sort`.
-
-(sort-nulls)=
-A sort puts NULLs last, in both directions and on every database. So the
-users without a `last_login` come after the other users, in
-`?sort=last_login` and in `?sort=-last_login`.
-
-Restly always adds the primary key as the last sort term, every column of a
-composite key included. So rows with equal values are never skipped or
-repeated from one page to the next.
-
-:::{admonition} Details
-:class: details
-
-A key of `default_sort` must be a field of the response class that can be a
-sort key. `include_sort_keys` does not have to keep it, so a view can sort by
-a field that the client cannot sort by. A key that the response class does
-not have fails when the view registers, also when the view gets
-`default_sort` from a base view. A view without those fields sets
-`default_sort = None` for primary key order. An empty `?sort=` gets the
-default too. An override of
-{meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
-finds the default in `list_params.sort`. With `include_sort_keys = ()`, the
-list params have no sort parameter, but the default still applies.
-
-For a default order on a column that the response class does not have,
-such as a `position` that an admin sets, order the statement when the
-client sends no sort:
-
-```python
-class ItemView(fr.AsyncRestView):
-    ...
-
-    async def apply_list_params(self, stmt, list_params):
-        if list_params.sort is None:
-            stmt = stmt.order_by(Item.position)
-        return await super().apply_list_params(stmt, list_params)
-```
-
-{attr}`sort_nulls <fastapi_restly.views.BaseRestView.sort_nulls>` sets where
-NULLs go. `"first"` puts them first in both directions. `None` leaves them
-where the database puts them: PostgreSQL puts them last in an ascending sort
-and first in a descending sort, SQLite and MySQL the other way round. A
-project base view can set `sort_nulls` once for every view. On PostgreSQL,
-Oracle and SQLite 3.30 or later, Restly writes `NULLS LAST` in the SQL.
-MySQL and SQL Server do not have it, so Restly sorts on
-`CASE WHEN ... IS NULL` first. A column of the model that cannot be NULL
-gets neither. A column through a relationship always gets it, because the
-row without the related row has NULL there.
-
-The rule for NULLs can make a sort on a large table slower, because the
-database cannot always read an index in that order:
-
-- PostgreSQL reads a plain index in the order of `x NULLS LAST`, but not in
-  the order of `x DESC NULLS LAST`. For a fast `?sort=-last_login`, also
-  give the column an index in that order. Keep the plain index for
-  `?sort=last_login`:
-
-  ```python
-  from sqlalchemy import Index
-
-  Index("ix_user_last_login_desc", User.last_login.desc().nulls_last())
-  ```
-
-- MySQL and SQL Server cannot read a plain index in the order of the `CASE`,
-  in either direction, so they sort the rows themselves.
-
-If a sort must use a plain index, set `sort_nulls = None` on that view.
-
-To keep the URLs of another library, rename the parameter with
-{attr}`sort_query_param <fastapi_restly.views.BaseRestView.sort_query_param>`,
-such as `"ordering"` for Django REST framework or `"order_by"` for
-fastapi-filter:
-
-```python
-class UserView(fr.AsyncRestView):
-    sort_query_param = "order_by"
-```
-
-Clients then send `?order_by=-created_at`, and `sort` becomes an unknown key.
-A field called `sort` gets its filter key back.
-:::
-
-(choose-list-keys)=
-## Choose the keys of a list
-
-A view chooses the keys of its list with
-{attr}`include_filters <fastapi_restly.views.BaseRestView.include_filters>`
-and
-{attr}`include_sort_keys <fastapi_restly.views.BaseRestView.include_sort_keys>`:
-
-```python
-class ItemView(fr.AsyncRestView):
-    ...
-    include_filters = ("status", "category_id", "name__icontains", "created_at__*")
-    include_sort_keys = ("name", "created_at")
-```
-
-An entry is a key as the client sends it, such as `name__icontains`, or a
-pattern. In a pattern, `*` matches any characters except `.`. So
-`"created_at__*"` is every filter on `created_at` with a suffix, and
-`"vendor.*"` is every key on the fields of `vendor`. OpenAPI shows only the
-keys that are on, and another key gets `422`.
-
-To remove a few keys, use
-{attr}`exclude_filters <fastapi_restly.views.BaseRestView.exclude_filters>`
-and
-{attr}`exclude_sort_keys <fastapi_restly.views.BaseRestView.exclude_sort_keys>`.
-Restly applies them after the include settings:
-
-```python
-class ItemView(fr.AsyncRestView):
-    ...
-    exclude_filters = ("internal_note", "internal_note__*", "*__icontains")
-```
-
-:::{admonition} Details
-:class: details
-
-A `*` never matches a `.`, so a pattern names its depth. For an item with a
-`vendor`, and a `country` on the vendor, `"vendor.*"` has the keys on the
-fields of `vendor`, but not those on `vendor.country`. For both levels, write
-`("vendor.*", "vendor.*.*")`. A pattern has no other wildcard: `**`, `?` and
-`[...]` fail when the class is defined.
-
-The pattern `"name*"` also matches a field such as `names`. Write
-`("name", "name__*")` for the keys of `name` only.
-
-`include_filters = ()` leaves no generated filters, and
-`include_sort_keys = ()` removes the `sort` parameter. `page` and `page_size`
-are not filters, and they always stay.
-
-Dotted keys are off by default. Each one is a join that a client can add, and
-a new field on a nested schema would add keys to every list that nests it.
-
-An entry that a view sets and that matches no key fails when the view
-registers. The message lists the keys of the field:
-
-```text
-ItemView.include_filters: 'price__icontains' matches no filter key of
-ItemSchema. The filter keys of 'price' are: price, price__in, price__ne,
-price__isnull, price__gte, price__lte, price__gt, price__lt. Only text fields
-have __contains and __icontains.
-```
-
-A view inherits each setting on its own, as it inherits `pagination`. So a
-project base view can set `include_filters = ()`, and a view turns its
-filters on again with `("*",)`. An entry that a view inherits may match no
-key, because a base view serves many schemas. For mypy, give the setting a
-type on the base view: `include_filters: ClassVar[tuple[str, ...]] = ()`.
-Without it, mypy takes the type of `()` and rejects `("*",)` in the view.
-
-The sort keys are separate from the filter keys, so a view can sort on
-`created_at` without a `?created_at=` filter. A sort key has no suffix. It
-never goes through a list of related rows: an item with several tags has no
-single `tags.name` to sort on.
-
-To see the keys that a view could have, set
-`include_filters = ("*", "*.*")` and `include_sort_keys = ("*", "*.*")` for a
-moment, and look at `/docs`. Add `"*.*.*"` for the next level.
-
-{func}`derive_schema_list_params() <fastapi_restly.query.derive_schema_list_params>`
-takes the four settings and `sort_query_param` as keywords, so a route
-outside a view can build the same list params.
-
-A key that clients use is part of your API. Removing it later breaks those
-clients.
-:::
-
 (own-list-filter)=
 ## Add a filter of your own
 
@@ -618,141 +764,6 @@ value. Call the view's
 instead.
 :::
 
-(list-pagination)=
-## Page through a list
-
-The client asks for a page with `page` and `page_size`:
-
-```text
-GET /users?page=2&page_size=50
-```
-
-`page` starts at 1. `page_size` must be at least 1 and at most
-`max_page_size`, 1000 by default. Without `page_size`, the endpoint uses
-`default_page_size`, 50 by default. Restly also rejects a page whose SQL
-offset, `(page - 1) * page_size`, is larger than `2**63 - 1`. A value out of
-range returns FastAPI's standard `422`.
-
-The response holds the page in `data`, with `total_count`, `page`,
-`page_size` and `total_pages`. To change this envelope, see
-[Change the list envelope](#change-list-envelope).
-
-Set the limits with
-{class}`fr.NumberedPagination <fastapi_restly.views.NumberedPagination>` on the
-view class. On a public endpoint, use a smaller page size and maximum.
-`max_page` also limits the page number:
-
-```python
-class UserView(fr.AsyncRestView):
-    pagination = fr.NumberedPagination(
-        default_page_size=25, max_page_size=200, max_page=100
-    )
-```
-
-### Rename the page parameters
-
-Rename the two parameters with `page_query_param` and
-`page_size_query_param`:
-
-```python
-class UserView(fr.AsyncRestView):
-    pagination = fr.NumberedPagination(
-        page_query_param="p", page_size_query_param="size"
-    )
-```
-
-Clients then send `?p=2&size=50`, `page` and `page_size` become unknown keys,
-and OpenAPI shows the new names. A schema field with the same public name as
-a pagination parameter fails when the view registers: rename the parameter,
-give the field an alias, or leave the field's plain key out with
-`exclude_filters = ("size",)`. A renamed parameter frees its old name, so a
-field called `page` gets its filter back.
-
-(set-pagination-once)=
-### Set the pagination once for every view
-
-Views inherit `pagination`, so a project base view sets it once. A view that
-differs changes one setting with `replace()`, which returns a checked copy:
-
-```python
-APP_PAGINATION = fr.NumberedPagination(
-    page_size_query_param="size", max_page_size=100
-)
-
-
-class AppView(fr.AsyncRestView):
-    pagination = APP_PAGINATION
-
-
-class LogView(AppView):
-    pagination = APP_PAGINATION.replace(default_page_size=10, max_page_size=10)
-```
-
-(no-pagination)=
-### Return every row without pagination
-
-Set `pagination = None` to return every matching row:
-
-```python
-@fr.include_view(app)
-class TagView(fr.AsyncRestView):
-    prefix = "/tags"
-    model = Tag
-    schema = TagSchema
-    pagination = None
-    # Response: {"data": [ /* every tag */ ]}
-```
-
-The list has no `page` and `page_size` parameters, and Restly runs no count
-query. Filters and `sort` still work. The response keeps the `data` envelope,
-without the count and page fields.
-
-Use this only for a table that stays small, such as tags or countries. A list
-without pagination returns the whole table in one response.
-
-:::{admonition} Details
-:class: details
-
-`None` is short for
-{class}`fr.NoPagination() <fastapi_restly.views.NoPagination>`. Use
-`fr.NoPagination(envelope=...)` to choose the envelope of a list without
-pagination; see [Change the list envelope](#change-list-envelope).
-:::
-
-(fastapi-pagination-migration)=
-### Coming from fastapi-pagination
-
-The default `Page` of fastapi-pagination takes `?page=` and `?size=`, and
-returns `items`, `total`, `page`, `size` and `pages`. To keep that contract
-for existing clients, rename the page size parameter and the fields of the
-envelope:
-
-```python
-from typing import Generic, TypeVar
-
-import pydantic
-
-T = TypeVar("T")
-
-
-class Page(pydantic.BaseModel, Generic[T]):
-    data: list[T] = pydantic.Field(alias="items")
-    total_count: int = pydantic.Field(alias="total")
-    page: int
-    page_size: int = pydantic.Field(alias="size")
-    total_pages: int = pydantic.Field(alias="pages")
-
-
-class AppView(fr.AsyncRestView):
-    pagination = fr.NumberedPagination(
-        page_size_query_param="size", max_page_size=100, envelope=Page
-    )
-```
-
-The default page size of 50 and the maximum of 100 match those of
-fastapi-pagination. fastapi-pagination has no filters and no sorting. Restly
-adds both, as this page describes.
-
 (extra-query-parameters)=
 ## Accept extra query parameters
 
@@ -810,45 +821,6 @@ class attribute. The key of an `APIKeyQuery` is accepted too. A project base
 view can set `unknown_query_params` once for every view.
 :::
 
-(change-list-query)=
-## Change the list query of a view
-
-The filters apply inside the view's scope. To limit the rows of a view,
-declare its {attr}`scope <fastapi_restly.views.BaseRestView.scope>`, as
-[Give one view other rows](#view-scope) shows. `get_many` is final and takes
-no statement, so put base query changes in the scope.
-
-:::{admonition} Details
-:class: details
-
-For list params of another form, such as those of another client library,
-see [Write the list params yourself](#own-list-params). A join goes in an
-{meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
-override, and a default order in
-{attr}`default_sort <fastapi_restly.views.BaseRestView.default_sort>`. For
-a list that has another *result*, write a route of your own
-that starts from `self.select()`, as
-[Use the scope in your own query](#reading-the-scope) shows.
-
-A route method with a `list_params` parameter takes the same list params as
-`GET /`. Restly gives it the view's
-{attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`,
-so filters, sort and page are read and checked in the same way, OpenAPI shows
-them, and an unknown key returns `422`. A custom list route, such as a trash
-route, passes them on with `self.handle_get_many(list_params, scope=...)`; see
-[Read other rows on one route](#per-read-scope). The route can take its own
-query parameters next to `list_params`, as in
-`def search(self, list_params, mode: SearchMode)`.
-
-A route can also pass `self.request.query_params` on, in place of
-`list_params`. Restly reads the keys of the list params from it and leaves
-out the keys that the route reads, such as `mode` above. Any other key gets
-`422`, as on the list route, or is left out when the view sets
-`unknown_query_params = "ignore"`. OpenAPI does not show the list keys of
-such a route. A dict, as in `view.get_many({"name": "axe"})`, holds list
-params only, so a key that they do not have always gets `422`.
-:::
-
 (filters-in-own-route)=
 ## Use the filters in a route of your own
 
@@ -875,6 +847,24 @@ the category that the client chose.
 :::{admonition} Details
 :class: details
 
+A route method with a `list_params` parameter takes the same list params as
+`GET /`. Restly gives it the view's
+{attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`,
+so filters, sort and page are read and checked in the same way, OpenAPI shows
+them, and an unknown key returns `422`. A custom list route, such as a trash
+route, passes them on with `self.handle_get_many(list_params, scope=...)`; see
+[Read other rows on one route](#per-read-scope). The route can take its own
+query parameters next to `list_params`, as in
+`def search(self, list_params, mode: SearchMode)`.
+
+A route can also pass `self.request.query_params` on, in place of
+`list_params`. Restly reads the keys of the list params from it and leaves
+out the keys that the route reads, such as `mode` above. Any other key gets
+`422`, as on the list route, or is left out when the view sets
+`unknown_query_params = "ignore"`. OpenAPI does not show the list keys of
+such a route. A dict, as in `view.get_many({"name": "axe"})`, holds list
+params only, so a key that they do not have always gets `422`.
+
 {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
 would add `ORDER BY` and `LIMIT`. PostgreSQL rejects an order on a column
 that the `GROUP BY` does not have.
@@ -886,7 +876,12 @@ On an async view, `apply_filters` is `async def`, as `apply_list_params` is.
 A view can override it to add a condition to every list, and to every route
 that calls it. `apply_list_params` calls it first. Add the condition to the
 statement before `super().apply_filters(...)`. After it, a sort on a
-relationship that a filter joined joins that table a second time.
+relationship that a filter joined joins that table a second time. A join
+that every list needs goes in an
+{meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
+override. For a list that has another *result*, write a route of your own
+that starts from `self.select()`, as
+[Use the scope in your own query](#reading-the-scope) shows.
 :::
 
 (own-list-params)=
@@ -981,9 +976,6 @@ Apart from `__isnull`, the generated filter values are text in this model.
 Restly validates them against the field when
 {func}`apply_list_params <fastapi_restly.query.apply_list_params>` builds the
 query. A key of your own has the type of its method's value.
-
-The [React Admin](react_admin.md) views have list params of their own:
-`sort`, `range` and `filter`, as JSON.
 
 ## See also
 
