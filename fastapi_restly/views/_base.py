@@ -1768,7 +1768,7 @@ def _set_by(cls: type, name: str) -> str:
 
 def _how_set(cls: type, name: str) -> str:
     """How ``cls`` has the list setting ``name``, for a message, such as
-    ``inherits include_filters = ('**',) from AppView``."""
+    ``inherits include_filters = ('*', '*.*') from AppView``."""
     value = _list_setting(cls, name)
     setter = _owner(cls, name)
     if value == _LIST_SETTING_DEFAULTS[name]:
@@ -1977,13 +1977,12 @@ class BaseRestView(
     #: The filter keys that the list params keep, from the keys that Restly
     #: generates from :attr:`schema_response`. An entry is a key as the
     #: client sends it, such as ``"name__icontains"``, or a pattern. ``*``
-    #: matches any characters except ``.``, and ``**`` matches any
-    #: characters, so ``"created_at__*"`` is every filter on ``created_at``
-    #: with a suffix, and ``"vendor.**"`` is every key under ``vendor``. The
-    #: default, ``("*",)``, keeps the keys of the resource's own fields, and
-    #: no dotted keys. ``("**",)`` keeps every key, and ``()`` none. An entry
-    #: that the view sets and that matches no key fails when the view
-    #: registers.
+    #: matches any characters except ``.``, so ``"created_at__*"`` is every
+    #: filter on ``created_at`` with a suffix, and ``"vendor.*"`` is every
+    #: key on the fields of ``vendor``. The default, ``("*",)``, keeps the
+    #: keys of the resource's own fields, and no dotted keys. ``()`` keeps
+    #: none. An entry that the view sets and that matches no key fails when
+    #: the view registers.
     include_filters: ClassVar[tuple[str, ...]] = ("*",)
     #: The filter keys that the list params leave out, after
     #: :attr:`include_filters`. The entries are the same as there.

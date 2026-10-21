@@ -130,7 +130,7 @@ class TestContainsSchemaGeneration:
             address: Address
 
         fields = derive_schema_list_params(
-            Schema, DotUser, include_filters=("**",)
+            Schema, DotUser, include_filters=("*", "*.*")
         ).model_fields
         assert "name__contains" in fields
         assert "name__icontains" in fields

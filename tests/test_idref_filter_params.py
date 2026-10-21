@@ -109,7 +109,7 @@ def test_idref_targeting_leaves_nested_resource_dotted_traversal_intact():
 
     fields = set(
         derive_schema_list_params(
-            AuthorSchema, Author, include_filters=("**",)
+            AuthorSchema, Author, include_filters=("*", "*.*")
         ).model_fields
     )
 

@@ -46,9 +46,9 @@ replacement, unless it says otherwise.
   no row. Every item route and `self.get_one(id)` use them.
 - Four list settings choose the keys of a list: `include_filters`,
   `exclude_filters`, `include_sort_keys` and `exclude_sort_keys`. An entry is
-  a key, or a pattern: `*` matches any characters except `.`, and `**`
-  matches any characters. `fr.query.derive_schema_list_params` takes them
-  too.
+  a key, or a pattern: `*` matches any characters except `.`, so
+  `"vendor.*"` is every key on the fields of `vendor`.
+  `fr.query.derive_schema_list_params` takes them too.
 - `sort_query_param` renames the sort parameter, such as `"order_by"`.
 - `default_sort` is the sort when the request has none, such as
   `"-created_at"`. A `sort` from the client replaces it. OpenAPI shows it as

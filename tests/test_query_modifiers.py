@@ -181,7 +181,7 @@ class TestDeriveSchemaListParams:
     def test_derive_schema_list_params_nested(self):
         """Test creating a query param schema for nested fields."""
         schema = derive_schema_list_params(
-            NestedWidgetSchema, NestedWidgetModel, include_filters=("**",)
+            NestedWidgetSchema, NestedWidgetModel, include_filters=("*.*",)
         )
 
         # Check that nested field filters exist (using dot notation)
@@ -195,7 +195,7 @@ class TestDeriveSchemaListParams:
             user: WidgetSchema | None = None
 
         schema = derive_schema_list_params(
-            OptionalNestedSchema, NestedWidgetModel, include_filters=("**",)
+            OptionalNestedSchema, NestedWidgetModel, include_filters=("*.*",)
         )
 
         assert "user.name" in schema.model_fields
@@ -700,7 +700,7 @@ def test_three_level_dotted_filter_executes_with_correct_joins(sync_db):
 
     # The deep path is advertised — and must therefore execute.
     params_schema = derive_schema_list_params(
-        ResidentSchema, Resident, include_filters=("**",)
+        ResidentSchema, Resident, include_filters=("*", "*.*", "*.*.*")
     )
     assert "city.country.code" in params_schema.model_fields
 

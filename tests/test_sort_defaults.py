@@ -579,7 +579,7 @@ def test_a_sort_through_a_relationship_keeps_the_rows_without_one(views):
 
     for prefix, model, schema, attrs in [
         ("/vendors", Vendor, VendorSchema, {}),
-        ("/filaments", Filament, FilamentSchema, {"include_sort_keys": ("**",)}),
+        ("/filaments", Filament, FilamentSchema, {"include_sort_keys": ("*", "*.*")}),
     ]:
         fr.include_view(
             client.app,

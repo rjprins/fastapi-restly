@@ -191,11 +191,16 @@ def _check_key_setting(label: str, value: Any) -> tuple[str, ...]:
             raise RestlyConfigurationError(
                 f"{label} must hold keys as strings, got {entry!r}."
             )
+        if "**" in entry:
+            raise RestlyConfigurationError(
+                f"{label}: {entry!r} uses '**'. A key pattern has one "
+                "wildcard, '*', which stays within one level. Write one '*' "
+                "for each level, such as 'vendor.*.*'."
+            )
         if any(char in entry for char in "?[]"):
             raise RestlyConfigurationError(
                 f"{label}: {entry!r} uses '?' or '[...]'. A key pattern "
-                "has only two wildcards: '*' for any characters except '.', "
-                "and '**' for any characters."
+                "has one wildcard: '*', for any characters except '.'."
             )
     return entries
 
@@ -204,17 +209,10 @@ def _check_key_setting(label: str, value: Any) -> tuple[str, ...]:
 def _pattern_regex(pattern: str) -> "re.Pattern[str]":
     """A regular expression for a key pattern, for ``fullmatch``.
 
-    The rules of a file glob, with ``.`` in place of ``/``: ``**`` matches
-    any characters, ``*`` any characters except ``.``. Every other character,
-    ``.`` too, matches only itself.
+    ``*`` matches any characters except ``.``. Every other character, ``.``
+    too, matches only itself.
     """
-    parts = re.split(r"(\*\*|\*)", pattern)
-    return re.compile(
-        "".join(
-            ".*" if part == "**" else "[^.]*" if part == "*" else re.escape(part)
-            for part in parts
-        )
-    )
+    return re.compile("[^.]*".join(re.escape(part) for part in pattern.split("*")))
 
 
 def _matches(patterns: tuple[str, ...], key: str) -> bool:
@@ -402,7 +400,7 @@ def derive_schema_list_params(
 
     The four key settings choose which of these keys the model has. Each
     entry is a key as the client sends it, or a pattern. ``*`` in a pattern
-    matches any characters except ``.``, and ``**`` matches any characters.
+    matches any characters except ``.``, so it stays within one level.
     By default the model has the keys of the resource's own fields, and no
     dotted keys. An entry that matches no key raises an error.
 
@@ -423,8 +421,9 @@ def derive_schema_list_params(
         omitted from the generated params.
     :param pagination: The view's pagination settings. A ``NoPagination`` or
         ``None`` is an unpaginated view, which returns the full result set.
-    :param include_filters: The filter keys to keep. ``("**",)`` keeps every
-        key, also the dotted ones, and ``()`` keeps none.
+    :param include_filters: The filter keys to keep. ``("*", "*.*")`` keeps
+        the own keys and the dotted keys one level down, and ``()`` keeps
+        none.
     :param exclude_filters: The filter keys to remove, after
         ``include_filters``.
     :param include_sort_keys: The keys that ``sort`` accepts. A sort key has

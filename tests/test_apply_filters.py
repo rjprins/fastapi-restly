@@ -92,8 +92,8 @@ def counts_view(view_class: type) -> type:
             prefix = "/items"
             model = Item
             schema = ItemSchema
-            include_filters = ("**",)
-            include_sort_keys = ("**",)
+            include_filters = ("*", "*.*")
+            include_sort_keys = ("*", "*.*")
 
             @fr.get("/category-counts")
             async def category_counts(self, list_params) -> dict[str, int]:
@@ -115,8 +115,8 @@ def counts_view(view_class: type) -> type:
         prefix = "/items"
         model = Item
         schema = ItemSchema
-        include_filters = ("**",)
-        include_sort_keys = ("**",)
+        include_filters = ("*", "*.*")
+        include_sort_keys = ("*", "*.*")
 
         @fr.get("/category-counts")
         def category_counts(self, list_params) -> dict[str, int]:
@@ -177,8 +177,8 @@ def test_an_override_of_apply_filters_narrows_every_list(view_class):
         prefix = "/items"
         model = Item
         schema = ItemSchema
-        include_filters = ("**",)
-        include_sort_keys = ("**",)
+        include_filters = ("*", "*.*")
+        include_sort_keys = ("*", "*.*")
 
         async def apply_filters(self, stmt: Any, list_params: Any) -> Any:
             stmt = await super().apply_filters(stmt, list_params)

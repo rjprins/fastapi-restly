@@ -59,7 +59,7 @@ def test_dead_relationship_params_are_not_generated():
         books: list[fr.IDRef[DeadParamBook]]  # to-many relationship -> dead
 
     fields = derive_schema_list_params(
-        AuthorSchema, DeadParamAuthor, include_filters=("**",)
+        AuthorSchema, DeadParamAuthor, include_filters=("*", "*.*")
     ).model_fields
 
     # A real scalar column is filterable.
@@ -276,7 +276,7 @@ def test_annotated_inside_optional_gets_the_filters_of_the_plain_type():
         ) = None
 
     fields = derive_schema_list_params(
-        SpellingSchema, SpellingRow, include_filters=("**",)
+        SpellingSchema, SpellingRow, include_filters=("*", "*.*")
     ).model_fields
 
     def filters(name: str) -> set[str]:
@@ -318,7 +318,7 @@ def test_a_schema_that_names_itself_gets_one_level_of_dotted_filters():
 
     for schema in (PlainCategory, AnnotatedCategory):
         fields = derive_schema_list_params(
-            schema, SpellingCategory, include_filters=("**",)
+            schema, SpellingCategory, include_filters=("*", "*.*")
         ).model_fields
         assert "parent.name" in fields, schema
         assert "parent.name__contains" in fields, schema

@@ -232,8 +232,8 @@ def path_client(request: pytest.FixtureRequest) -> Iterator[RestlyTestClient]:
         prefix = "/employees"
         model = Employee
         schema = EmployeeSchema
-        include_filters = ("**",)
-        include_sort_keys = ("**",)
+        include_filters = ("*", "*.*", "*.*.*")
+        include_sort_keys = ("*", "*.*", "*.*.*")
 
     rows = [
         Country(id=1, code="NL"),
@@ -314,7 +314,7 @@ def test_a_schema_that_names_itself_filters_one_step(request, view_class):
         prefix = "/categories"
         model = Category
         schema = CategorySchema
-        include_filters = ("**",)
+        include_filters = ("*", "*.*")
 
     rows = [
         Category(id=1, name="root"),

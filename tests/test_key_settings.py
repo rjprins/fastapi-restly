@@ -2,8 +2,8 @@
 ``include_sort_keys`` and ``exclude_sort_keys``.
 
 An entry is a key as the client sends it, or a pattern. ``*`` matches any
-characters except ``.``, and ``**`` matches any characters. By default a list
-has the keys of the resource's own fields, and no dotted keys.
+characters except ``.``, so it stays within one level. By default a list has
+the keys of the resource's own fields, and no dotted keys.
 """
 
 import asyncio
@@ -95,6 +95,7 @@ def sort_keys(**settings: Any) -> tuple[str, ...]:
 
 
 OWN_FIELDS = ("id", "name", "username", "created_at", "active")
+EVERY_LEVEL = ("*", "*.*", "*.*.*")
 
 
 def test_the_default_is_the_keys_of_the_own_fields():
@@ -105,12 +106,12 @@ def test_the_default_is_the_keys_of_the_own_fields():
     assert sort_keys() == OWN_FIELDS
 
 
-def test_two_stars_give_every_key():
-    keys = filter_keys(include_filters=("**",))
+def test_one_star_per_level_gives_every_key():
+    keys = filter_keys(include_filters=EVERY_LEVEL)
 
     assert {"vendor.name__icontains", "vendor.country.name"} <= keys
     assert filter_keys() < keys
-    assert sort_keys(include_sort_keys=("**",)) == (
+    assert sort_keys(include_sort_keys=EVERY_LEVEL) == (
         *OWN_FIELDS,
         "vendor.id",
         "vendor.name",
@@ -123,23 +124,16 @@ def test_two_stars_give_every_key():
     ("pattern", "expected"),
     [
         ("vendor.*", {"vendor.id", "vendor.name"}),
-        (
-            "vendor.**",
-            {"vendor.id", "vendor.name", "vendor.country.id", "vendor.country.name"},
-        ),
+        ("vendor.*.*", {"vendor.country.id", "vendor.country.name"}),
         ("*.*", {"vendor.id", "vendor.name"}),
-        (
-            "*.**",
-            {"vendor.id", "vendor.name", "vendor.country.id", "vendor.country.name"},
-        ),
         # every "." in a pattern must be in the key
-        ("**.name", {"vendor.name", "vendor.country.name"}),
-        ("**name", {"name", "username", "vendor.name", "vendor.country.name"}),
+        ("*.*.name", {"vendor.country.name"}),
+        ("*name", {"name", "username"}),
         ("name*", {"name"}),
         ("*e", {"name", "username", "active"}),
     ],
 )
-def test_patterns_follow_the_rules_of_a_file_glob(pattern, expected):
+def test_a_star_stays_within_one_level(pattern, expected):
     # the sort keys have no suffixes, so they show the levels plainly
     assert set(sort_keys(include_sort_keys=(pattern,))) == expected
 
@@ -160,15 +154,7 @@ def test_patterns_follow_the_rules_of_a_file_glob(pattern, expected):
             },
         ),
         ("*__icontains", {"name__icontains", "username__icontains"}),
-        (
-            "**__icontains",
-            {
-                "name__icontains",
-                "username__icontains",
-                "vendor.name__icontains",
-                "vendor.country.name__icontains",
-            },
-        ),
+        ("*.*__icontains", {"vendor.name__icontains"}),
         # also matches a field such as "names"; the docs teach ("name", "name__*")
         ("name*", {key for key in filter_keys() if key.startswith("name")}),
     ],
@@ -185,9 +171,9 @@ def test_exclude_applies_after_include():
     assert "name__contains" in keys
     assert "name__icontains" not in keys
     assert "name" not in keys
-    assert filter_keys(include_filters=("**",), exclude_filters=("*.**",)) == (
-        filter_keys()
-    )
+    assert filter_keys(
+        include_filters=EVERY_LEVEL, exclude_filters=("*.*", "*.*.*")
+    ) == (filter_keys())
     assert sort_keys(exclude_sort_keys=("username", "created_at")) == (
         "id",
         "name",
@@ -211,13 +197,15 @@ def test_a_sort_key_never_goes_through_a_to_many_relationship():
         tags: TagSchema
 
     model = derive_schema_list_params(
-        TaggedItemSchema, Item, include_filters=("**",), include_sort_keys=("**",)
+        TaggedItemSchema, Item, include_filters=("*", "*.*")
     )
 
     assert "tags.name" in model.model_fields
     record = _record_of(model)
     assert record is not None
     assert record.sort_keys == ("id", "name")
+    with pytest.raises(RestlyConfigurationError, match="'\\*.\\*' matches no sort key"):
+        derive_schema_list_params(TaggedItemSchema, Item, include_sort_keys=("*.*",))
     with pytest.raises(BadQueryParam, match="Unknown sort key: 'tags.name'"):
         apply_list_params(
             select(Item), QueryParams("sort=tags.name"), Item, TaggedItemSchema
@@ -305,6 +293,12 @@ def test_apply_list_params_checks_a_sort_that_skipped_validation():
             "exclude_sort_keys: 'na?e' uses '?' or '[...]'.",
         ),
         (
+            {"include_filters": ("vendor.**",)},
+            "include_filters: 'vendor.**' uses '**'. A key pattern has one "
+            "wildcard, '*', which stays within one level. Write one '*' for "
+            "each level, such as 'vendor.*.*'.",
+        ),
+        (
             {"include_filters": ("[nN]ame",)},
             "include_filters: '[nN]ame' uses '?' or '[...]'.",
         ),
@@ -322,7 +316,9 @@ def test_an_entry_that_matches_no_key_fails(settings, message):
 
 
 def test_a_dot_in_a_pattern_is_always_a_dot():
-    keys = filter_keys(include_filters=("**",), exclude_filters=("**.name",))
+    keys = filter_keys(
+        include_filters=EVERY_LEVEL, exclude_filters=("*.name", "*.*.name")
+    )
 
     assert "name" in keys
     assert "vendor.name" not in keys

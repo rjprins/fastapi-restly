@@ -207,9 +207,6 @@ session rule with {func}`sqlalchemy.orm.with_loader_criteria`, set
 :::{admonition} Details
 :class: details
 
-The examples here have `include_filters = ("**",)` and
-`include_sort_keys = ("**",)`, which turn on every dotted key.
-
 A path can follow a relationship of a model to the same model, such as
 `?manager.name=Alice` or `?manager.manager.name=Alice`. Each step must be a
 nested schema, and Restly follows each schema class only once in a path. So
@@ -461,10 +458,10 @@ class ItemView(fr.AsyncRestView):
 ```
 
 An entry is a key as the client sends it, such as `name__icontains`, or a
-pattern. Patterns work as file globs do, with `.` in place of `/`: `*`
-matches any characters except `.`, and `**` matches any characters. So
-`"created_at__*"` is every filter on `created_at` with a suffix. OpenAPI shows
-only the keys that are on, and another key gets `422`.
+pattern. In a pattern, `*` matches any characters except `.`. So
+`"created_at__*"` is every filter on `created_at` with a suffix, and
+`"vendor.*"` is every key on the fields of `vendor`. OpenAPI shows only the
+keys that are on, and another key gets `422`.
 
 To remove a few keys, use
 {attr}`exclude_filters <fastapi_restly.views.BaseRestView.exclude_filters>`
@@ -481,24 +478,14 @@ class ItemView(fr.AsyncRestView):
 :::{admonition} Details
 :class: details
 
-Some patterns, for an item with a `vendor`, and a `country` on the vendor:
+A `*` never matches a `.`, so a pattern names its depth. For an item with a
+`vendor`, and a `country` on the vendor, `"vendor.*"` has the keys on the
+fields of `vendor`, but not those on `vendor.country`. For both levels, write
+`("vendor.*", "vendor.*.*")`. A pattern has no other wildcard: `**`, `?` and
+`[...]` fail when the class is defined.
 
-| Pattern | Keys |
-|---|---|
-| `"*"` | the keys on the item's own fields: the default |
-| `"vendor.*"` | the keys on the fields of `vendor`, but not on `vendor.country` |
-| `"vendor.**"` | every key under `vendor`, at every level |
-| `"*.**"` | every dotted key |
-| `"**"` | every key |
-| `"**.name"` | `vendor.name` and `vendor.country.name`, but not `name` |
-| `"*__icontains"` | `__icontains` on every own field |
-
-Every `.` in a pattern must be in the key. `?` and `[...]` are not wildcards,
-and fail when the class is defined.
-
-Two patterns match more than they seem to. `"name*"` also matches a field
-such as `names`: write `("name", "name__*")`. `"**name"` also matches a field
-such as `username`: write `("name", "**.name")`.
+The pattern `"name*"` also matches a field such as `names`. Write
+`("name", "name__*")` for the keys of `name` only.
 
 `include_filters = ()` leaves no generated filters, and
 `include_sort_keys = ()` removes the `sort` parameter. `page` and `page_size`
@@ -529,8 +516,9 @@ The sort keys are separate from the filter keys, so a view can sort on
 never goes through a list of related rows: an item with several tags has no
 single `tags.name` to sort on.
 
-To see every key that a view could have, set `include_filters = ("**",)` and
-`include_sort_keys = ("**",)` for a moment, and look at `/docs`.
+To see the keys that a view could have, set
+`include_filters = ("*", "*.*")` and `include_sort_keys = ("*", "*.*")` for a
+moment, and look at `/docs`. Add `"*.*.*"` for the next level.
 
 {func}`derive_schema_list_params() <fastapi_restly.query.derive_schema_list_params>`
 takes the four settings and `sort_query_param` as keywords, so a route

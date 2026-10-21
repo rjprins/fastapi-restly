@@ -605,8 +605,8 @@ def test_other_list_params_skip_the_filter_methods_with_a_warning(view_class, sy
 @pytest.mark.parametrize("view_class", [fr.AsyncRestView], indirect=True)
 def test_a_sort_still_shares_the_join_of_a_filter(view_class):
     class ItemView(PopularView):
-        include_filters = ("**",)
-        include_sort_keys = ("**",)
+        include_filters = ("*", "*.*")
+        include_sort_keys = ("*", "*.*")
 
         @fr.get("/sql")
         async def sql(self, list_params) -> str:

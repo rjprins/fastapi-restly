@@ -67,7 +67,7 @@ def _secret_params(names: Any) -> set[str]:
 
 def test_list_params_schema_has_no_writeonly_params():
     fields = derive_schema_list_params(
-        AccountSchema, Account, include_filters=("**",)
+        AccountSchema, Account, include_filters=("*", "*.*")
     ).model_fields
 
     assert {"name", "name__gte", "owner.name", "owner.name__contains"} <= set(fields)
@@ -193,7 +193,7 @@ def make_client(
 
 @pytest.fixture
 def accounts(make_client: Callable[..., RestlyTestClient]) -> RestlyTestClient:
-    return make_client(include_filters=("**",), include_sort_keys=("**",))
+    return make_client(include_filters=("*", "*.*"), include_sort_keys=("*", "*.*"))
 
 
 @pytest.mark.parametrize(

@@ -383,7 +383,7 @@ class TestRelationAliases:
     def test_schema_uses_aliases_for_both_segments(self):
         _Article, ArticleSchema = self._build()
         fields = derive_schema_list_params(
-            ArticleSchema, _Article, include_filters=("**",)
+            ArticleSchema, _Article, include_filters=("*", "*.*")
         ).model_fields
         assert "writer.authorName" in fields
         assert "writer.authorName__contains" in fields

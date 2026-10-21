@@ -263,7 +263,7 @@ def _member_view(base: type) -> type:
         model = _Member
         schema = MemberSchema
         schema_response = MemberResponse
-        include_filters = ("**",)
+        include_filters = ("*", "*.*")
 
     return MemberView
 
