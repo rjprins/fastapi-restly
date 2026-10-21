@@ -66,7 +66,7 @@ These are the parts, and the page that explains each one:
   See [Request Context](context.md).
 - **List params**: the filter, sort and page parameters of the list route.
   Restly builds them from the response class. See
-  [Filtering & Pagination](filtering.md).
+  [Filtering, Sorting & Pagination](filtering.md).
 - **Session**: each request gets a database session from the source that
   {func}`fr.configure() <fastapi_restly.db.configure>` sets. See
   [Database & Configuration](database.md).
@@ -130,9 +130,9 @@ filter, sort and page parameters to the URL.
 - [Responses](responses.md): what each route returns, the list envelope,
   the response of a custom route, and how to change the shape of one route
   or of all routes.
-- [Filtering & Pagination](filtering.md): the filters, the sort order and
-  the pages that a client can use on a list, the keys that a view chooses,
-  filters of your own, and list params that you write yourself.
+- [Filtering, Sorting & Pagination](filtering.md): the filters, the sort
+  order and the pages that a client can use on a list, the keys that a view
+  chooses, filters of your own, and list params that you write yourself.
 - [Errors](errors.md): raise a 404 or a 403, see why a duplicate value gives
   a 409, and change the error body.
 - [OpenAPI](openapi.md): the tags, names and operation IDs of the routes,

@@ -64,7 +64,7 @@ These are the parts, and the page that explains each one:
   See [Request Context](https://www.fastapi-restly.org/dev/context.html).
 - **List params**: the filter, sort and page parameters of the list route.
   Restly builds them from the response class. See
-  [Filtering & Pagination](https://www.fastapi-restly.org/dev/filtering.html).
+  [Filtering, Sorting & Pagination](https://www.fastapi-restly.org/dev/filtering.html).
 - **Session**: each request gets a database session from the source that
   `fr.configure()` sets. See
   [Database & Configuration](https://www.fastapi-restly.org/dev/database.html).
@@ -93,7 +93,7 @@ These are the parts, and the page that explains each one:
 - [Schemas & Validation](https://www.fastapi-restly.org/dev/schemas.html): generate the schema or write it, keep a field out of the requests or the responses, validate input, and use other field names in JSON, such as camelCase.
 - [Relationships](https://www.fastapi-restly.org/dev/relationships.html): accept the id of another row, check that the row exists, return related objects, and fix `MissingGreenlet`.
 - [Responses](https://www.fastapi-restly.org/dev/responses.html): what each route returns, the list envelope, the response of a custom route, and how to change the shape of one route or of all routes.
-- [Filtering & Pagination](https://www.fastapi-restly.org/dev/filtering.html): the filters, the sort order and the pages that a client can use on a list, the keys that a view chooses, filters of your own, and list params that you write yourself.
+- [Filtering, Sorting & Pagination](https://www.fastapi-restly.org/dev/filtering.html): the filters, the sort order and the pages that a client can use on a list, the keys that a view chooses, filters of your own, and list params that you write yourself.
 - [Errors](https://www.fastapi-restly.org/dev/errors.html): raise a 404 or a 403, see why a duplicate value gives a 409, and change the error body.
 - [OpenAPI](https://www.fastapi-restly.org/dev/openapi.html): the tags, names and operation IDs of the routes, and how to document a custom route.
 

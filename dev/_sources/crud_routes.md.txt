@@ -64,7 +64,7 @@ The main path of the list is `/users`, without a slash at the end. Restly
 also accepts `/users/`, as a route that OpenAPI does not show.
 
 `GET /users` takes the filter, sort and page parameters that
-[Filtering & Pagination](filtering.md) defines, and it is paginated by
+[Filtering, Sorting & Pagination](filtering.md) defines, and it is paginated by
 default.
 [Responses](responses.md) shows the response bodies and how to
 change the `data` envelope.
@@ -159,7 +159,7 @@ This table maps each need to its setting:
 | Another type for the `{id}` path parameter | Set {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` ([Item paths](#item-route-matching)) |
 | Fewer routes, such as a read-only view | Set {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` ([Exclude CRUD routes](#exclude-crud-routes)) |
 | Hide rows from every read | Set {attr}`scope <fastapi_restly.views.BaseRestView.scope>`, or `default_scope` on the model ([Scopes](#view-scope)) |
-| No pagination | Set {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` to `None`, or to a {class}`NoPagination <fastapi_restly.views.NoPagination>` to choose its envelope ([Filtering & Pagination](#no-pagination)) |
+| No pagination | Set {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` to `None`, or to a {class}`NoPagination <fastapi_restly.views.NoPagination>` to choose its envelope ([Filtering, Sorting & Pagination](#no-pagination)) |
 | Other page limits, parameter names or list envelope | Set {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` to a {class}`NumberedPagination <fastapi_restly.views.NumberedPagination>` ([Pagination settings](#pagination-settings)) |
 | Fewer filter or sort keys on a list | Set {attr}`include_filters <fastapi_restly.views.BaseRestView.include_filters>` or {attr}`include_sort_keys <fastapi_restly.views.BaseRestView.include_sort_keys>` ([Choose the keys of a list](#choose-list-keys)) |
 | A list filter of your own | Decorate a method with {func}`fr.list_filter <fastapi_restly.views.list_filter>` ([Add a filter of your own](#own-list-filter)) |

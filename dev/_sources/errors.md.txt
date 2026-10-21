@@ -223,6 +223,6 @@ Some errors are not a `RestlyHTTPError`, so this handler does not change them:
 - [Request Lifecycle & Hooks](lifecycle.md): where
   {meth}`authorize <fastapi_restly.views.RestView.authorize>` and the business
   methods run, and when the commit happens.
-- [Filtering & Pagination](filtering.md): the list params that the `422`
-  and `400` errors check.
+- [Filtering, Sorting & Pagination](filtering.md): the list params that the
+  `422` and `400` errors check.
 - {doc}`api/exc`: every name in `fr.exc`.

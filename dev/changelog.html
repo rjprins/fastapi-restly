@@ -538,10 +538,17 @@ and loader options. The loads start from it, and so can a custom route.</p></li>
 no row. Every item route and <code class="docutils literal notranslate"><span class="pre">self.get_one(id)</span></code> use them.</p></li>
 <li><p>Four list settings choose the keys of a list: <code class="docutils literal notranslate"><span class="pre">include_filters</span></code>,
 <code class="docutils literal notranslate"><span class="pre">exclude_filters</span></code>, <code class="docutils literal notranslate"><span class="pre">include_sort_keys</span></code> and <code class="docutils literal notranslate"><span class="pre">exclude_sort_keys</span></code>. An entry is
-a key, or a pattern: <code class="docutils literal notranslate"><span class="pre">*</span></code> matches any characters except <code class="docutils literal notranslate"><span class="pre">.</span></code>, and <code class="docutils literal notranslate"><span class="pre">**</span></code>
-matches any characters. <code class="docutils literal notranslate"><span class="pre">fr.query.derive_schema_list_params</span></code> takes them
-too.</p></li>
+a key, or a pattern: <code class="docutils literal notranslate"><span class="pre">*</span></code> matches any characters except <code class="docutils literal notranslate"><span class="pre">.</span></code>, so
+<code class="docutils literal notranslate"><span class="pre">&quot;vendor.*&quot;</span></code> is every key on the fields of <code class="docutils literal notranslate"><span class="pre">vendor</span></code>.
+<code class="docutils literal notranslate"><span class="pre">fr.query.derive_schema_list_params</span></code> takes them too.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">sort_query_param</span></code> renames the sort parameter, such as <code class="docutils literal notranslate"><span class="pre">&quot;order_by&quot;</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">default_sort</span></code> is the sort when the request has none, such as
+<code class="docutils literal notranslate"><span class="pre">&quot;-created_at&quot;</span></code>. A <code class="docutils literal notranslate"><span class="pre">sort</span></code> from the client replaces it. OpenAPI shows it as
+the default of the sort parameter. <code class="docutils literal notranslate"><span class="pre">fr.query.derive_schema_list_params</span></code>
+takes it too.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sort_nulls</span></code> sets where a sort puts NULLs: <code class="docutils literal notranslate"><span class="pre">&quot;last&quot;</span></code> (the default) or
+<code class="docutils literal notranslate"><span class="pre">&quot;first&quot;</span></code> in both directions, or <code class="docutils literal notranslate"><span class="pre">None</span></code> for where the database puts them.
+<code class="docutils literal notranslate"><span class="pre">fr.query.apply_list_params</span></code> takes it too.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">unknown_query_params</span> <span class="pre">=</span> <span class="pre">&quot;ignore&quot;</span></code> leaves out a query key that the route
 does not read, as FastAPI does. The default, <code class="docutils literal notranslate"><span class="pre">&quot;forbid&quot;</span></code>, answers <code class="docutils literal notranslate"><span class="pre">422</span></code>, as
 before.</p></li>
@@ -668,8 +675,9 @@ still works by its name.</p></li>
 <h4>Lists<a class="headerlink" href="#lists" title="Link to this heading">#</a></h4>
 <ul class="simple">
 <li><p>A list has no dotted filter keys and no dotted sort keys by default, such as
-<code class="docutils literal notranslate"><span class="pre">?vendor.name=</span></code>. Turn them on with <code class="docutils literal notranslate"><span class="pre">include_filters</span> <span class="pre">=</span> <span class="pre">(&quot;**&quot;,)</span></code> and
-<code class="docutils literal notranslate"><span class="pre">include_sort_keys</span> <span class="pre">=</span> <span class="pre">(&quot;**&quot;,)</span></code>, or with a narrower pattern.
+<code class="docutils literal notranslate"><span class="pre">?vendor.name=</span></code>. Turn them on with <code class="docutils literal notranslate"><span class="pre">include_filters</span> <span class="pre">=</span> <span class="pre">(&quot;*&quot;,</span> <span class="pre">&quot;*.*&quot;)</span></code> and
+<code class="docutils literal notranslate"><span class="pre">include_sort_keys</span> <span class="pre">=</span> <span class="pre">(&quot;*&quot;,</span> <span class="pre">&quot;*.*&quot;)</span></code>, with one <code class="docutils literal notranslate"><span class="pre">*</span></code> for each level, or with a
+narrower pattern.
 <code class="docutils literal notranslate"><span class="pre">fr.query.derive_schema_list_params</span></code> has the same default. A sort key never
 goes through a to-many relationship.</p></li>
 <li><p>An unknown sort key gets <code class="docutils literal notranslate"><span class="pre">422</span></code>, not <code class="docutils literal notranslate"><span class="pre">400</span></code>. The <code class="docutils literal notranslate"><span class="pre">422</span></code> for an unknown query
@@ -692,13 +700,20 @@ only when it gets a filter key. Leave the key out with
 filter methods, or the view fails when it registers. A subclass that
 changes <code class="docutils literal notranslate"><span class="pre">pagination</span></code> or a list setting gets new list params when its base
 uses generated ones.</p></li>
+<li><p>A sort puts NULLs last in both directions, on every database, also on a
+react-admin view. Before, the database decided: PostgreSQL put them first
+in a descending sort, and SQLite and MySQL first in an ascending sort. Set
+<code class="docutils literal notranslate"><span class="pre">sort_nulls</span> <span class="pre">=</span> <span class="pre">None</span></code> for the old place of NULLs. On PostgreSQL, a fast
+descending sort on a nullable column needs an index with
+<code class="docutils literal notranslate"><span class="pre">DESC</span> <span class="pre">NULLS</span> <span class="pre">LAST</span></code>. On MySQL and SQL Server, a sort on a nullable column
+cannot use a plain index any more.</p></li>
 </ul>
 </section>
 <section id="react-admin">
 <h4>React-admin<a class="headerlink" href="#react-admin" title="Link to this heading">#</a></h4>
 <ul class="simple">
-<li><p>React-admin views reject the list key settings, <code class="docutils literal notranslate"><span class="pre">sort_query_param</span></code> and
-<code class="docutils literal notranslate"><span class="pre">&#64;fr.list_filter</span></code>.</p></li>
+<li><p>React-admin views reject the list key settings, <code class="docutils literal notranslate"><span class="pre">sort_query_param</span></code>,
+<code class="docutils literal notranslate"><span class="pre">default_sort</span></code> and <code class="docutils literal notranslate"><span class="pre">&#64;fr.list_filter</span></code>.</p></li>
 <li><p>The list route of a react-admin view declares <code class="docutils literal notranslate"><span class="pre">list_params</span></code>. Overrides of
 <code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code>, <code class="docutils literal notranslate"><span class="pre">apply_filters</span></code> and <code class="docutils literal notranslate"><span class="pre">to_list_response</span></code> get the parsed
 values: <code class="docutils literal notranslate"><span class="pre">sort</span></code> as <code class="docutils literal notranslate"><span class="pre">(&quot;name&quot;,</span> <span class="pre">&quot;DESC&quot;)</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code> as <code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">24)</span></code> and <code class="docutils literal notranslate"><span class="pre">filter</span></code> as
@@ -794,6 +809,9 @@ dependency. For keys that are known only at run time, set
 <section id="fixed">
 <h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>A sort on a related field, such as <code class="docutils literal notranslate"><span class="pre">?sort=vendor.name</span></code>, keeps the rows
+that have no related row. With the default <code class="docutils literal notranslate"><span class="pre">sort_nulls</span></code>, they come last.
+Before, the list left them out, and <code class="docutils literal notranslate"><span class="pre">total_count</span></code> did not count them.</p></li>
 <li><p>A response that nests a row of another model, such as the lines of an
 order, shows the new related row after a write set a foreign key column of
 that row. Before, it showed the old one.</p></li>

@@ -693,7 +693,7 @@ it, and is set on the object after the constructor otherwise.
 
 - [Schemas & Validation](schemas.md): the schema bases and field
   markers that these types work with.
-- [Filtering & Pagination](filtering.md): filters on references
+- [Filtering, Sorting & Pagination](filtering.md): filters on references
   and on related fields.
 - [Build a Blog API](tutorial.md): `MustExist` in the blog, step by step.
 - The [shop example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/shop):

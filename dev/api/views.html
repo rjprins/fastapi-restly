@@ -961,7 +961,7 @@ the object that <code class="docutils literal notranslate"><span class="pre">upd
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.AsyncRestView.session">
-<span class="sig-name descname"><span class="pre">session</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">_AsyncSessionDependency</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x7f454972f800&gt;,</span> <span class="pre">use_cache=True,</span> <span class="pre">scope=function)]</span></em><a class="headerlink" href="#fastapi_restly.views.AsyncRestView.session" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">session</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">_AsyncSessionDependency</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x7fec43a4c560&gt;,</span> <span class="pre">use_cache=True,</span> <span class="pre">scope=function)]</span></em><a class="headerlink" href="#fastapi_restly.views.AsyncRestView.session" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -1107,6 +1107,19 @@ are added to FastAPI.</p>
 </dd></dl>
 
 <dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.default_sort">
+<span class="sig-name descname"><span class="pre">default_sort</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.15)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#fastapi_restly.views.BaseRestView.default_sort" title="Link to this definition">#</a></dt>
+<dd><p>The sort when the request has none, as a client writes it in
+<code class="docutils literal notranslate"><span class="pre">?sort=</span></code>, such as <code class="docutils literal notranslate"><span class="pre">&quot;-created_at&quot;</span></code>. It becomes the default of the
+sort parameter, so OpenAPI shows it. A key must be a field of
+<a class="reference internal" href="#fastapi_restly.views.BaseRestView.schema_response" title="fastapi_restly.views.BaseRestView.schema_response"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_response</span></code></a> that a sort key could have, but
+<a class="reference internal" href="#fastapi_restly.views.BaseRestView.include_sort_keys" title="fastapi_restly.views.BaseRestView.include_sort_keys"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_sort_keys</span></code></a> does not have to keep it. <code class="docutils literal notranslate"><span class="pre">None</span></code> (the
+default) sorts by the primary key. The primary key is always the last
+term. A view that inherits it and does not have all its keys sorts
+by the primary key.</p>
+</dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.exclude_filters">
 <span class="sig-name descname"><span class="pre">exclude_filters</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.15)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.15)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">()</span></em><a class="headerlink" href="#fastapi_restly.views.BaseRestView.exclude_filters" title="Link to this definition">#</a></dt>
 <dd><p>The filter keys that the list params leave out, after
@@ -1156,13 +1169,12 @@ falls through to another route or returns 404, instead of 422.</p>
 <dd><p>The filter keys that the list params keep, from the keys that Restly
 generates from <a class="reference internal" href="#fastapi_restly.views.BaseRestView.schema_response" title="fastapi_restly.views.BaseRestView.schema_response"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_response</span></code></a>. An entry is a key as the
 client sends it, such as <code class="docutils literal notranslate"><span class="pre">&quot;name__icontains&quot;</span></code>, or a pattern. <code class="docutils literal notranslate"><span class="pre">*</span></code>
-matches any characters except <code class="docutils literal notranslate"><span class="pre">.</span></code>, and <code class="docutils literal notranslate"><span class="pre">**</span></code> matches any
-characters, so <code class="docutils literal notranslate"><span class="pre">&quot;created_at__*&quot;</span></code> is every filter on <code class="docutils literal notranslate"><span class="pre">created_at</span></code>
-with a suffix, and <code class="docutils literal notranslate"><span class="pre">&quot;vendor.**&quot;</span></code> is every key under <code class="docutils literal notranslate"><span class="pre">vendor</span></code>. The
-default, <code class="docutils literal notranslate"><span class="pre">(&quot;*&quot;,)</span></code>, keeps the keys of the resource’s own fields, and
-no dotted keys. <code class="docutils literal notranslate"><span class="pre">(&quot;**&quot;,)</span></code> keeps every key, and <code class="docutils literal notranslate"><span class="pre">()</span></code> none. An entry
-that the view sets and that matches no key fails when the view
-registers.</p>
+matches any characters except <code class="docutils literal notranslate"><span class="pre">.</span></code>, so <code class="docutils literal notranslate"><span class="pre">&quot;created_at__*&quot;</span></code> is every
+filter on <code class="docutils literal notranslate"><span class="pre">created_at</span></code> with a suffix, and <code class="docutils literal notranslate"><span class="pre">&quot;vendor.*&quot;</span></code> is every
+key on the fields of <code class="docutils literal notranslate"><span class="pre">vendor</span></code>. The default, <code class="docutils literal notranslate"><span class="pre">(&quot;*&quot;,)</span></code>, keeps the
+keys of the resource’s own fields, and no dotted keys. <code class="docutils literal notranslate"><span class="pre">()</span></code> keeps
+none. An entry that the view sets and that matches no key fails when
+the view registers.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -1313,6 +1325,15 @@ statement; <code class="docutils literal notranslate"><span class="pre">fr.claus
 Override to change what <code class="docutils literal notranslate"><span class="pre">old</span></code> captures (e.g. include a relationship’s
 prior state); the default delegates to
 <a class="reference internal" href="objects.html#fastapi_restly.objects.snapshot" title="fastapi_restly.objects.snapshot"><code class="xref py py-func docutils literal notranslate"><span class="pre">snapshot()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.sort_nulls">
+<span class="sig-name descname"><span class="pre">sort_nulls</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.15)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.15)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'first'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'last'</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'last'</span></em><a class="headerlink" href="#fastapi_restly.views.BaseRestView.sort_nulls" title="Link to this definition">#</a></dt>
+<dd><p>Where a sort puts NULLs: <code class="docutils literal notranslate"><span class="pre">&quot;last&quot;</span></code> (the default) or <code class="docutils literal notranslate"><span class="pre">&quot;first&quot;</span></code> in
+both directions, on every database. <code class="docutils literal notranslate"><span class="pre">None</span></code> leaves them where the
+database puts them, which differs: PostgreSQL puts them last in an
+ascending sort, SQLite and MySQL first.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -2044,7 +2065,7 @@ the object that <code class="docutils literal notranslate"><span class="pre">upd
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.RestView.session">
-<span class="sig-name descname"><span class="pre">session</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">_SyncSessionDependency</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x7f454972f6b0&gt;,</span> <span class="pre">use_cache=True,</span> <span class="pre">scope=function)]</span></em><a class="headerlink" href="#fastapi_restly.views.RestView.session" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">session</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">_SyncSessionDependency</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x7fec43a4c410&gt;,</span> <span class="pre">use_cache=True,</span> <span class="pre">scope=function)]</span></em><a class="headerlink" href="#fastapi_restly.views.RestView.session" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -2551,6 +2572,7 @@ and collects the task-shaped override recipes.</p>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView"><code class="docutils literal notranslate"><span class="pre">BaseRestView</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.before_include_view"><code class="docutils literal notranslate"><span class="pre">BaseRestView.before_include_view()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.default_sort"><code class="docutils literal notranslate"><span class="pre">BaseRestView.default_sort</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.exclude_filters"><code class="docutils literal notranslate"><span class="pre">BaseRestView.exclude_filters</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.exclude_routes"><code class="docutils literal notranslate"><span class="pre">BaseRestView.exclude_routes</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.exclude_sort_keys"><code class="docutils literal notranslate"><span class="pre">BaseRestView.exclude_sort_keys</span></code></a></li>
@@ -2571,6 +2593,7 @@ and collects the task-shaped override recipes.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.scope"><code class="docutils literal notranslate"><span class="pre">BaseRestView.scope</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.select"><code class="docutils literal notranslate"><span class="pre">BaseRestView.select()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.snapshot"><code class="docutils literal notranslate"><span class="pre">BaseRestView.snapshot()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.sort_nulls"><code class="docutils literal notranslate"><span class="pre">BaseRestView.sort_nulls</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.sort_query_param"><code class="docutils literal notranslate"><span class="pre">BaseRestView.sort_query_param</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.to_list_response"><code class="docutils literal notranslate"><span class="pre">BaseRestView.to_list_response()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.to_response"><code class="docutils literal notranslate"><span class="pre">BaseRestView.to_response()</span></code></a></li>

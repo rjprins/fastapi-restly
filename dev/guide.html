@@ -429,7 +429,7 @@
 <li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
 <li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
-<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering &amp; Pagination</a></li>
+<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering, Sorting &amp; Pagination</a></li>
 <li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
 <li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
 </ul>
@@ -565,7 +565,7 @@ for the request. Scopes, column defaults and your <code class="docutils literal 
 See <a class="reference internal" href="context.html"><span class="std std-doc">Request Context</span></a>.</p></li>
 <li><p><strong>List params</strong>: the filter, sort and page parameters of the list route.
 Restly builds them from the response class. See
-<a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering &amp; Pagination</span></a>.</p></li>
+<a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering, Sorting &amp; Pagination</span></a>.</p></li>
 <li><p><strong>Session</strong>: each request gets a database session from the source that
 <a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure()</span></code></a> sets. See
 <a class="reference internal" href="database.html"><span class="std std-doc">Database &amp; Configuration</span></a>.</p></li>
@@ -632,9 +632,9 @@ that the row exists, return related objects, and fix <code class="docutils liter
 <li><p><a class="reference internal" href="responses.html"><span class="std std-doc">Responses</span></a>: what each route returns, the list envelope,
 the response of a custom route, and how to change the shape of one route
 or of all routes.</p></li>
-<li><p><a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering &amp; Pagination</span></a>: the filters, the sort order and
-the pages that a client can use on a list, the keys that a view chooses,
-filters of your own, and list params that you write yourself.</p></li>
+<li><p><a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering, Sorting &amp; Pagination</span></a>: the filters, the sort
+order and the pages that a client can use on a list, the keys that a view
+chooses, filters of your own, and list params that you write yourself.</p></li>
 <li><p><a class="reference internal" href="errors.html"><span class="std std-doc">Errors</span></a>: raise a 404 or a 403, see why a duplicate value gives
 a 409, and change the error body.</p></li>
 <li><p><a class="reference internal" href="openapi.html"><span class="std std-doc">OpenAPI</span></a>: the tags, names and operation IDs of the routes,

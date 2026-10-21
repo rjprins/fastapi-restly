@@ -62,7 +62,7 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Filtering &amp; Pagination" href="filtering.html" />
+    <link rel="next" title="Filtering, Sorting &amp; Pagination" href="filtering.html" />
     <link rel="prev" title="Relationships" href="relationships.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -429,7 +429,7 @@
 <li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Responses</a></li>
-<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering &amp; Pagination</a></li>
+<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering, Sorting &amp; Pagination</a></li>
 <li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
 <li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
 </ul>
@@ -591,7 +591,7 @@ replaced endpoint method; see <a class="reference internal" href="#one-route-sha
 <p>A view without pagination sends only <code class="docutils literal notranslate"><span class="pre">data</span></code>; see
 <a class="reference internal" href="filtering.html#no-pagination"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">pagination</span> <span class="pre">=</span> <span class="pre">None</span></code></span></a>. How a client asks for a page, and
 the page size limits, are on
-<a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering &amp; Pagination</span></a>.</p>
+<a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering, Sorting &amp; Pagination</span></a>.</p>
 <p>The list route’s <code class="docutils literal notranslate"><span class="pre">response_model</span></code> is the pagination’s envelope, filled with
 the response class. By default that envelope is a
 <a class="reference internal" href="api/views.html#fastapi_restly.views.PaginatedEnvelope" title="fastapi_restly.views.PaginatedEnvelope"><code class="xref py py-class docutils literal notranslate"><span class="pre">PaginatedEnvelope</span></code></a>, and a
@@ -967,7 +967,7 @@ other fields and types, so Restly cannot copy into it.</p></li>
 class has.</p></li>
 <li><p><a class="reference internal" href="lifecycle.html#replace-endpoint-method"><span class="std std-ref">Request Lifecycle &amp; Hooks</span></a>: how to replace an
 endpoint method.</p></li>
-<li><p><a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering &amp; Pagination</span></a>: the page parameters
+<li><p><a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering, Sorting &amp; Pagination</span></a>: the page parameters
 that clients send.</p></li>
 <li><p><a class="reference internal" href="errors.html"><span class="std std-doc">Errors</span></a>: the error shape, which does not pass
 through <code class="docutils literal notranslate"><span class="pre">to_response</span></code>.</p></li>
@@ -1001,7 +1001,7 @@ relationship fields load, and <code class="docutils literal notranslate"><span c
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Filtering &amp; Pagination</p>
+        <p class="prev-next-title">Filtering, Sorting &amp; Pagination</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>

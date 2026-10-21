@@ -429,7 +429,7 @@
 <li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
 <li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
-<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering &amp; Pagination</a></li>
+<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering, Sorting &amp; Pagination</a></li>
 <li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
 <li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
 </ul>
@@ -594,7 +594,7 @@ The examples on this page use <code class="docutils literal notranslate"><span c
 <p>The main path of the list is <code class="docutils literal notranslate"><span class="pre">/users</span></code>, without a slash at the end. Restly
 also accepts <code class="docutils literal notranslate"><span class="pre">/users/</span></code>, as a route that OpenAPI does not show.</p>
 <p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users</span></code> takes the filter, sort and page parameters that
-<a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering &amp; Pagination</span></a> defines, and it is paginated by
+<a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering, Sorting &amp; Pagination</span></a> defines, and it is paginated by
 default.
 <a class="reference internal" href="responses.html"><span class="std std-doc">Responses</span></a> shows the response bodies and how to
 change the <code class="docutils literal notranslate"><span class="pre">data</span></code> envelope.</p>
@@ -710,7 +710,7 @@ shows which fields each class takes.</p>
 <td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.scope" title="fastapi_restly.views.BaseRestView.scope"><code class="xref py py-attr docutils literal notranslate"><span class="pre">scope</span></code></a>, or <code class="docutils literal notranslate"><span class="pre">default_scope</span></code> on the model (<a class="reference internal" href="scopes.html#view-scope"><span class="std std-ref">Scopes</span></a>)</p></td>
 </tr>
 <tr class="row-odd"><td><p>No pagination</p></td>
-<td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.pagination" title="fastapi_restly.views.BaseRestView.pagination"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pagination</span></code></a> to <code class="docutils literal notranslate"><span class="pre">None</span></code>, or to a <a class="reference internal" href="api/views.html#fastapi_restly.views.NoPagination" title="fastapi_restly.views.NoPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">NoPagination</span></code></a> to choose its envelope (<a class="reference internal" href="filtering.html#no-pagination"><span class="std std-ref">Filtering &amp; Pagination</span></a>)</p></td>
+<td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.pagination" title="fastapi_restly.views.BaseRestView.pagination"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pagination</span></code></a> to <code class="docutils literal notranslate"><span class="pre">None</span></code>, or to a <a class="reference internal" href="api/views.html#fastapi_restly.views.NoPagination" title="fastapi_restly.views.NoPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">NoPagination</span></code></a> to choose its envelope (<a class="reference internal" href="filtering.html#no-pagination"><span class="std std-ref">Filtering, Sorting &amp; Pagination</span></a>)</p></td>
 </tr>
 <tr class="row-even"><td><p>Other page limits, parameter names or list envelope</p></td>
 <td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.pagination" title="fastapi_restly.views.BaseRestView.pagination"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pagination</span></code></a> to a <a class="reference internal" href="api/views.html#fastapi_restly.views.NumberedPagination" title="fastapi_restly.views.NumberedPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">NumberedPagination</span></code></a> (<a class="reference internal" href="view_reference.html#pagination-settings"><span class="std std-ref">Pagination settings</span></a>)</p></td>

@@ -429,7 +429,7 @@
 <li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
 <li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
-<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering &amp; Pagination</a></li>
+<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering, Sorting &amp; Pagination</a></li>
 <li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
 <li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
 </ul>
@@ -906,7 +906,7 @@ shows the three keys with the shape of their JSON, and an unknown key gets
 (a plain array body and <code class="docutils literal notranslate"><span class="pre">Content-Range</span></code>). An override of these methods gets
 the same values: <code class="docutils literal notranslate"><span class="pre">sort</span></code> as <code class="docutils literal notranslate"><span class="pre">(&quot;name&quot;,</span> <span class="pre">&quot;DESC&quot;)</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code> as <code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">24)</span></code> and
 <code class="docutils literal notranslate"><span class="pre">filter</span></code> as a dict. These views do not use the list params that Restly
-generates, which <a class="reference internal" href="filtering.html#list-parameters-lifecycle"><span class="std std-ref">Filtering &amp; Pagination</span></a>
+generates, which <a class="reference internal" href="filtering.html#list-parameters-lifecycle"><span class="std std-ref">Filtering, Sorting &amp; Pagination</span></a>
 describes.</p>
 <p>To add a query key, subclass <code class="docutils literal notranslate"><span class="pre">ReactAdminListParams</span></code> and set the subclass as
 <code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code>. A subclass of the view keeps it. List params that are

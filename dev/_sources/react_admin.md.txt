@@ -401,7 +401,7 @@ The views use the parsed values where they apply them: in
 (a plain array body and `Content-Range`). An override of these methods gets
 the same values: `sort` as `("name", "DESC")`, `range` as `(0, 24)` and
 `filter` as a dict. These views do not use the list params that Restly
-generates, which [Filtering & Pagination](#list-parameters-lifecycle)
+generates, which [Filtering, Sorting & Pagination](#list-parameters-lifecycle)
 describes.
 
 To add a query key, subclass `ReactAdminListParams` and set the subclass as
