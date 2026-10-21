@@ -32,8 +32,8 @@ through `fr`.
 | {class}`fr.ListResult <fastapi_restly.views.ListResult>` | The objects, total count, and list params of a list, before response serialization. |
 | {class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>` | Restly's defaults for models, added to your own declarative base. |
 | {class}`fr.MustExist <fastapi_restly.schemas.MustExist>` | Scalar foreign-key annotation that checks the referenced row exists. |
-| {func}`fr.none_of <fastapi_restly.clauses.none_of>` | Negate a group of query clauses. |
-| {class}`fr.NoPagination <fastapi_restly.views.NoPagination>` | Settings for a view's `pagination` that returns every row, with a custom envelope. |
+| {func}`fr.none_of <fastapi_restly.clauses.none_of>` | Match the rows where none of the query clauses match. |
+| {class}`fr.NoPagination <fastapi_restly.views.NoPagination>` | Settings for a view's `pagination` that returns every row, optionally with an envelope of your own. |
 | {class}`fr.NumberedPagination <fastapi_restly.views.NumberedPagination>` | Page-number pagination settings for a view's `pagination`. |
 | {func}`fr.open_async_session <fastapi_restly.db.open_async_session>` | Open an async session outside request handling. |
 | {func}`fr.open_session <fastapi_restly.db.open_session>` | Open a synchronous session outside request handling. |
@@ -45,7 +45,7 @@ through `fr`.
 | {func}`fr.resolve_scope <fastapi_restly.views.resolve_scope>` | Resolve the read scope for a view or model. |
 | {class}`fr.ResponseShape <fastapi_restly.views.ResponseShape>` | Response forms for one object, a list, or an empty body. |
 | {class}`fr.RestView <fastapi_restly.views.RestView>` | CRUD view using a synchronous SQLAlchemy session. |
-| {func}`fr.route <fastapi_restly.views.route>` | Decorate an endpoint method with explicit route options. |
+| {func}`fr.route <fastapi_restly.views.route>` | Decorate an endpoint method for any HTTP method. |
 | {data}`fr.SessionDep <fastapi_restly.db.SessionDep>` | FastAPI dependency annotation for a synchronous session. |
 | {class}`fr.TimestampsMixin <fastapi_restly.models.TimestampsMixin>` | Model fields for creation and update timestamps. |
 | {class}`fr.TimestampsSchemaMixin <fastapi_restly.schemas.TimestampsSchemaMixin>` | Read-only creation and update timestamps in a schema. |

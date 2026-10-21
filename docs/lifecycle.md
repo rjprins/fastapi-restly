@@ -506,7 +506,8 @@ their sync versions. See
 call `authorize` or the hooks. `async_make_new_object` and
 `async_update_object` check the references too. In a CRUD route the handler
 has checked them first, and the second check does not query the database
-again.
+again. `async_save_object` refreshes the object, but it does not load the
+relationships that the view's response class names.
 
 The save writes every change in the session. It refreshes the object that the
 business method returns, and every other row of the view's model that the

@@ -9,18 +9,25 @@ Two families:
   These subclass :class:`fastapi.HTTPException`, so the default responses are
   identical to raising ``HTTPException`` directly -- but a user can
   ``app.add_exception_handler(fr.exc.NotFound, ...)`` to reshape Restly's errors
-  distinctly (e.g. into RFC 7807 problem+json).
+  distinctly (e.g. into RFC 9457 problem+json).
 """
 
 import fastapi
 
 
 class RestlyError(Exception):
-    """Base class for FastAPI-Restly framework errors."""
+    """Base class of Restly's configuration errors.
+
+    The request-time HTTP errors, such as :class:`NotFound`, do not derive
+    from it. They subclass :class:`RestlyHTTPError`, a
+    :class:`fastapi.HTTPException`.
+    """
 
 
 class RestlyConfigurationError(RestlyError):
-    """Raised when Restly is used before required configuration is available."""
+    """Raised when a setup cannot work: a view, a model, a schema or the test
+    setup that is declared wrongly, or Restly used before it is configured.
+    """
 
 
 class RestlyHTTPError(fastapi.HTTPException):
@@ -64,7 +71,14 @@ class Conflict(RestlyHTTPError):
 
 
 class BadQueryParam(RestlyHTTPError):
-    """HTTP 400 -- an invalid filter/sort/pagination query parameter."""
+    """HTTP 400 -- a list query parameter with a known key, whose value
+    Restly cannot apply.
+
+    An example is a filter value that fails the validation of its field,
+    such as ``?age=old`` on an ``int`` field. On a list route, a query
+    string that does not match the list params, such as an unknown key or a
+    bad page, is a 422 from FastAPI instead.
+    """
 
     status_code = 400
     default_detail = "Invalid query parameter"
@@ -96,7 +110,8 @@ class RestlyMisuseWarning(UserWarning):
     foreign-key column (``post_id``) as an ``IDRef`` / ``IDSchema`` reference
     instead of ``fr.MustExist[int, Model]``, and a writable field that sets
     a column that the model sets (``init=False`` with a default) instead of
-    ``fr.ReadOnly``.
+    ``fr.ReadOnly``. It also flags a view that is registered twice on the
+    same app or router: the second ``include_view`` call does nothing.
     """
 
 

@@ -55,9 +55,10 @@ def any_of(*clauses: WhereClause) -> WhereClause:
 
 
 def none_of(*clauses: WhereClause) -> WhereClause:
-    """True when none of the operands' predicates hold.
+    """A clause that matches the rows where none of the operands match.
 
-    NOT over the OR of all operands. An UNSCOPED operand returns a
+    It is NOT over the OR of all operands: ``NOT (a OR b)``, not
+    ``NOT (a AND b)``. An UNSCOPED operand returns a
     WhereClause over SQL false(), matching no rows. Other operands are
     validated but not resolved in that case.
     """

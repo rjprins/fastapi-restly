@@ -251,9 +251,10 @@ database that you can lose: a file left from an older run keeps its old
 tables, because creating a schema never drops a table.
 
 **From your migrations**, with `alembic_upgrade=True`. It runs
-`alembic upgrade head` before the first test. Restly finds `alembic.ini`
-from the root of your project, not from the directory where you started
-pytest. It sets `sqlalchemy.url` in the Alembic config to the database that
+`alembic upgrade head` before the first test. Restly looks for
+`alembic.ini` in pytest's
+[rootdir](https://docs.pytest.org/en/stable/reference/customize.html#rootdir),
+not in the directory where you started pytest. It sets `sqlalchemy.url` in the Alembic config to the database that
 the application configured. An `env.py` that reads this setting therefore
 migrates your test database, and not another one. Restly keeps the driver
 of this URL, so an async-only application needs an `env.py` made from
@@ -357,8 +358,10 @@ excludes its `country` table, which a migration fills.
 
 ## Use the test clients
 
-Both clients check the status code of every response. When the status does
-not match, they raise an `AssertionError` that includes the response body.
+Both clients check the status code of each response from `get`, `post`,
+`put`, `patch` and `delete`. `request`, `head` and `options` do not check it.
+When the status does not match, they raise an `AssertionError` that includes
+the response body.
 The `assert_status_code` argument of each request method sets the check:
 
 | `assert_status_code` | Accepted status |

@@ -138,8 +138,9 @@ def configure_tests(
 
     * ``create_all=True`` builds it straight from ``base``, as
       :func:`fastapi_restly.db.create_all` does.
-    * ``alembic_upgrade=True`` runs ``alembic upgrade head`` through ``alembic.ini``
-      next to your project root; pass a path to point at a different config.
+    * ``alembic_upgrade=True`` runs ``alembic upgrade head`` through the
+      ``alembic.ini`` in pytest's rootdir. Pass a path to use another config;
+      a relative path is read from that rootdir too.
       Restly reads the URL from the application's configured engine and sets
       ``sqlalchemy.url`` on the config. It preserves that URL's driver, so an
       async-only application needs an Alembic ``env.py`` created from the async

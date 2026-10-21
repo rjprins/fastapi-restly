@@ -388,12 +388,14 @@ def derive_schema_list_params(
 
     The generated model accepts pagination (``page``, ``page_size``), sorting
     (``sort``), and filters. Each field of ``schema_response`` that maps to a
-    column of ``model`` gives filter keys: the plain key, and keys with the
-    suffixes ``__in``, ``__ne``, ``__gte``, ``__lte``, ``__gt``, ``__lt``,
-    ``__isnull``, ``__contains`` and ``__icontains``. A field that does not
-    map to a column, such as a relationship, gives no keys. A WriteOnly field
-    gives none either, because a filter on it would let a client find out its
-    value. A field whose type is a collection (``dict``/``list``, e.g. a
+    column of ``model`` gives filter keys, and its type decides which ones.
+    Every such field gives the plain key and the keys with the suffixes
+    ``__in``, ``__ne`` and ``__isnull``. A type with an order, such as a
+    number, text or a date, also gives ``__gte``, ``__lte``, ``__gt`` and
+    ``__lt``. Text also gives ``__contains`` and ``__icontains``. A field
+    that does not map to a column, such as a relationship, gives no keys. A
+    WriteOnly field gives none either, because a filter on it would let a
+    client find out its value. A field whose type is a collection (``dict``/``list``, e.g. a
     ``JSON`` or ``ARRAY`` column) gives only ``__isnull``: a value from the
     URL cannot become a collection. A field of a nested schema gives dotted
     keys, such as ``vendor.name``.
@@ -881,8 +883,10 @@ def apply_list_params(
     list params.
 
     ``list_params`` is normally an instance of the model returned by
-    :func:`derive_schema_list_params`. The default list endpoints always pass a
-    validated instance, so pagination/filter bounds have already been checked.
+    :func:`derive_schema_list_params`. The default list endpoints pass a
+    validated instance, so the page and the page size are within their
+    bounds. This function still checks each filter value itself, with the
+    validation of its field.
     ``schema_response`` decides the fields a client can filter and sort on.
     A view passes its response class.
 
@@ -899,12 +903,12 @@ def apply_list_params(
     view can apply them. Use the view's ``apply_list_params``.
 
     A raw :class:`~starlette.datastructures.QueryParams` is also accepted
-    for callers that build the query parameters programmatically.
-    **Raw inputs bypass schema validation** — the caller is responsible
-    for verifying ``page``/``page_size`` ranges and any per-view bounds
-    (``max_page_size``); this function only performs the minimum coercion
-    needed to apply the SQL clauses. Every filter key that
-    :func:`derive_schema_list_params` can generate works, also a dotted one.
+    for callers that build the query parameters programmatically. It skips
+    the list params model, so nothing checks the ``page`` and ``page_size``
+    bounds, such as ``max_page_size``: the caller checks them. Each filter
+    value still goes through the validation of its field. Every filter key
+    that :func:`derive_schema_list_params` can generate works, also a dotted
+    one.
 
     ``pagination`` names the page and page-size parameters to read. By default
     it is the pagination that :func:`derive_schema_list_params` created the

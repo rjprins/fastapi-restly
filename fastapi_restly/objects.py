@@ -25,8 +25,9 @@ def make_new_object(
 
     This is the schema-to-ORM mapping primitive. It resolves Restly reference
     fields, skips read-only inputs, applies schema defaults, and stages the
-    object in the session. A field that the client left out with the value
-    ``None`` is not passed, so the model's default applies to it. It does not
+    object in the session. A field that the client did not send, and whose
+    value is ``None``, is not passed to the constructor, unless the
+    constructor requires it. So the model's default applies to it. It does not
     flush, so the object has no id yet. The default ``create`` of a view
     calls this with the view's model.
 
@@ -99,8 +100,10 @@ def _refresh_plan(obj: object) -> tuple[list[str], list[str]]:
 def save_object(session: _Session, obj: _T) -> _T:
     """Flush the session and refresh ``obj`` from the database.
 
-    The refresh names ``obj``'s own attributes, so it does not cascade into
-    related objects; see :func:`_refresh_plan`. Inside a view, the commit
+    The refresh reloads the columns of ``obj`` and its eagerly loaded
+    relationships, and nothing else: it does not reach related objects. Its
+    lazy relationships are left unloaded, so a changed foreign key is not
+    read from a stale relationship. Inside a view, the commit
     bracket saves the subject of the action and the other rows of the view's
     model that it wrote. Call this in code outside a view, or for a row of
     another model that must be fresh before the commit. It does not load the
@@ -126,14 +129,16 @@ def delete_object(session: _Session, obj: object) -> None:
 
 
 def snapshot(obj: _Any) -> dict[str, _Any]:
-    """Frozen capture of an object's *already-loaded* column values, for
-    old-vs-new dirty detection in the commit hooks.
+    """A dict of the column values that are loaded on ``obj``, to compare
+    old and new values in the commit hooks.
 
-    Not ``copy(obj)`` (which shares SQLAlchemy instance state). Reads only
-    attributes already present on the instance, so it never triggers a lazy
-    load: a deferred/unloaded column is skipped instead of forcing a blocking
-    SELECT (which on an async session would raise ``MissingGreenlet``). No
-    session argument: it reads state already on the instance.
+    It is a shallow copy: a mutable value, such as a JSON dict, is shared
+    with the object. So a change to such a value in place also shows in the
+    snapshot. Assign a new value instead.
+
+    It reads only what is loaded, so it never starts a lazy load. A deferred
+    or unloaded column is left out, where a load would raise
+    ``MissingGreenlet`` on an async session. It needs no session.
     """
     state = _sa_inspect(obj)
     loaded = state.dict

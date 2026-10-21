@@ -89,7 +89,7 @@ Use these decorators on methods in a view class:
 | `@fr.patch(path)` | `PATCH` | `200` |
 | `@fr.put(path)` | `PUT` | `200` |
 | `@fr.delete(path)` | `DELETE` | `204` |
-| `@fr.route(path, ...)` | Custom | As configured |
+| `@fr.route(path, methods=[...])` | `methods=`, or `GET` without it | `200` |
 
 The shorthand decorators explicitly set the default status code shown. Pass `status_code=` to override it.
 

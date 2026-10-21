@@ -97,8 +97,9 @@ class NumberedPagination:
     default_page_size: int = DEFAULT_PAGE_SIZE
     #: The largest ``page_size`` a client may ask for. A larger one returns 422.
     max_page_size: int = MAX_PAGE_SIZE
-    #: The largest page number a client may ask for, or ``None`` for no limit
-    #: other than the database's largest offset. A larger one returns 422.
+    #: The largest page number a client may ask for. A larger one returns
+    #: 422. ``None`` sets no limit of its own: then only a page whose offset
+    #: is above ``2**63 - 1`` returns 422.
     max_page: int | None = None
     #: The query parameter that carries the page number.
     page_query_param: str = "page"
@@ -148,6 +149,12 @@ class NoPagination:
 
     ``pagination = None`` is the short form of ``NoPagination()``. Set an
     instance to choose the list response model::
+
+        T = TypeVar("T")
+
+        class DataCount(pydantic.BaseModel, Generic[T]):
+            data: list[T]
+            total_count: int = pydantic.Field(alias="count")
 
         class TagView(fr.AsyncRestView):
             pagination = fr.NoPagination(envelope=DataCount)

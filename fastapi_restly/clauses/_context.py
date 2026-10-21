@@ -124,8 +124,10 @@ class ContextNamespace:
         Keyword names are member names; each value is the dependency the
         member's value comes from (a callable, a ``Depends(...)``, or an
         ``Annotated`` alias), so ``app.dependency_overrides`` keeps
-        working. The result drops into a ``dependencies=[...]`` list at
-        app, router, or view level. It is an async dependency underneath:
+        working. The result is a ``Depends`` object: put it in a
+        ``dependencies=[...]`` list at app, router, or view level as it is,
+        and do not wrap it in ``Depends()`` again. It is an async dependency
+        underneath:
         the bind lands in the request task, where async and def endpoints
         alike read it.
         Two names for the same member raise TypeError at declaration.
@@ -165,12 +167,14 @@ class ContextParam(Generic[_T]):
 
     Declared in a ContextNamespace (``tenant_id: ContextParam[UUID]``),
     never constructed directly: the namespace is its address, and it is
-    bound through the namespace's bind() or depends(). One member, two
-    positions. Called, it returns the bound value, or raises LookupError
+    bound through the namespace's bind() or depends(). One member works in
+    three places. Called, it returns the bound value, or raises LookupError
     when nothing is bound. Embedded in a SQL expression
     (``Item.tenant_id == Current.tenant_id``) it becomes a placeholder,
     filled with the bound value each time a clause that carries it is
-    applied.
+    applied. As a column default, without parentheses
+    (``insert_default=Current.user_id``), SQLAlchemy calls it when it inserts
+    the row.
 
     A member never stands in for its value: comparisons with values and
     truth tests raise. Call the member to read it, and in a SQL expression put

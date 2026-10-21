@@ -571,15 +571,23 @@ class AsyncRestView(
     async def authorize(
         self, action: str, obj: ModelT | None = None, data: Any = None
     ) -> None:
-        """Gate a verb. Called by ``handle_<verb>`` at the right phase: before
-        the write for ``create``, and after the scoped load for ``update`` /
-        ``delete`` / ``get_one`` (so ``obj`` is available for row-level checks).
+        """Decide whether the caller may do ``action``. The default allows
+        everything.
 
-        The default is a **no-op**. Override to enforce policy, raising
-        ``fr.exc.Forbidden`` / ``fr.exc.NotFound`` to reject (``action`` says
-        which verb; ``obj`` / ``data`` carry the loaded row and the request
-        payload). Row *visibility*, hiding a row from every caller, belongs in
-        the scope, not here.
+        Restly calls it for every action, before anything changes:
+
+        - ``get_many``: before the load. ``obj`` and ``data`` are ``None``.
+        - ``get_one``: after the scoped load. ``obj`` is the row.
+        - ``create``: ``obj`` is ``None``, and ``data`` is the request body.
+        - ``update``: after the scoped load. ``obj`` is the row, and ``data``
+          is the request body.
+        - ``delete``: after the scoped load. ``obj`` is the row.
+        - every :meth:`write_action`: ``obj`` is its row, or ``None`` for a
+          new object or for no single row. ``data`` is its ``data``.
+
+        Override it to enforce a policy: raise ``fr.exc.Forbidden`` or
+        ``fr.exc.NotFound`` to refuse. Row visibility, hiding a row from every
+        caller, belongs in the scope, not here.
         """
 
     async def before_action_commit(

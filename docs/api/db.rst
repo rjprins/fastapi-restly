@@ -3,8 +3,7 @@ Database API
 
 ``fastapi_restly.db`` implements the connection layer: ``configure()`` for
 process-wide setup, session context managers and FastAPI session dependencies,
-engine accessors, table creation helpers for development, and the
-savepoint-only mode used in testing.
+engine accessors, and table creation helpers for development.
 
 .. py:data:: fastapi_restly.db.AsyncSessionDep
 

@@ -48,18 +48,15 @@ if sys.version_info >= (3, 14):
 
 
 class BaseSchema(pydantic.BaseModel):
-    """Thin Pydantic base for ORM-facing Restly schemas.
+    """The base of a Restly schema: a Pydantic model with
+    ``from_attributes=True``, so it can read a SQLAlchemy object by its
+    attributes.
 
-    Equivalent to::
-
-        class BaseSchema(pydantic.BaseModel):
-            model_config = pydantic.ConfigDict(from_attributes=True)
-
-    ``from_attributes=True`` lets Pydantic/FastAPI validate objects by
-    attribute when the schema is used directly. The inherited CRUD endpoint
-    methods still serialize through ``to_single_response()`` so Restly-specific
-    behavior such as ``WriteOnly`` filtering and relationship-id normalization
-    is applied.
+    It also checks where the ``ReadOnly``, ``WriteOnly`` and ``MustExist``
+    markers are placed. A marker deep inside the type of a field, such as
+    ``ReadOnly[int] | None``, would have no effect. So the class raises
+    :class:`~fastapi_restly.exc.RestlyConfigurationError` when Python defines
+    it. Put the marker around the whole type: ``ReadOnly[int | None]``.
     """
 
     model_config = pydantic.ConfigDict(from_attributes=True)
@@ -333,8 +330,8 @@ def _model_id_type(sql_model: type[Any]) -> Any:
 
 
 class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
-    """Response-schema base that adds a read-only ``id``; parametrized as a
-    field type, a nested-object relationship reference.
+    """The base of a view's schema, which adds a read-only ``id``. As the
+    type of a field, ``IDSchema[Model]`` is a reference to a related row.
 
     - As a BASE CLASS (``class UserSchema(IDSchema): ...``) it adds the resource's
       own read-only ``id`` -- the common use.

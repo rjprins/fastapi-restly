@@ -199,8 +199,11 @@ class ResponseShape(str, Enum):
 
 
 class Action:
-    """The names of the five CRUD actions: the ``action`` that ``authorize``,
-    ``before_action_commit`` and ``after_action_commit`` get.
+    """The names of the five CRUD actions: the ``action`` that ``authorize``
+    gets. A write, such as ``CREATE`` or the action of a ``write_action``
+    block, also passes it to ``before_action_commit`` and
+    ``after_action_commit``. A read, ``GET_MANY`` or ``GET_ONE``, has no
+    commit, so it reaches only ``authorize``.
 
     Each view has a class ``Action`` that lists all its actions. It is this
     class, until a view adds actions of its own in a subclass::
@@ -1004,10 +1007,10 @@ class View:
     Class-based view primitive for FastAPI.
 
     Group related endpoints on a class, share dependencies and metadata via
-    class attributes, and let subclasses override individual handlers. Routes
-    are bound at :func:`include_view` time, not at class-definition time, so
-    subclassing works the way Python developers expect: override a method on
-    a subclass and the override is what runs.
+    class attributes, and let subclasses override individual route methods.
+    Routes are bound at :func:`include_view` time, not at class-definition
+    time, so subclassing works the way Python developers expect: override a
+    method on a subclass and the override is what runs.
 
     Most users will subclass :class:`RestView` or :class:`AsyncRestView`,
     which extend ``View`` with CRUD scaffolding. Use ``View`` directly for
@@ -1083,11 +1086,14 @@ def include_view(
 
 
 def route(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
-    """Decorator to mark a View method as an endpoint.
-    The path and api_route_kwargs are passed into APIRouter.add_api_route(), see for example:
-    https://fastapi.tiangolo.com/reference/apirouter/#fastapi.APIRouter.get
+    """Mark a view method as an endpoint, with the HTTP method and the route
+    options that you pass.
 
-    Endpoints methods are later added as routes to the FastAPI app using `include_view()`
+    ``path`` and ``api_route_kwargs`` go to FastAPI's
+    ``APIRouter.add_api_route()`` when :func:`include_view` registers the
+    view. Without ``methods=``, the route is a ``GET`` with status 200, as in
+    FastAPI. :func:`get`, :func:`post`, :func:`patch`, :func:`put` and
+    :func:`delete` set the method and the status code for you.
     """
 
     def store_args_decorator(func: Callable[..., Any]) -> Callable[..., Any]:
@@ -1896,11 +1902,12 @@ class BaseRestView(
     View, Generic[ModelT, ResponseSchemaT, CreateSchemaT, UpdateSchemaT, IdT]
 ):
     """
-    Base class for RestView implementations.
+    The part that :class:`RestView` and :class:`AsyncRestView` share: the
+    settings, the read statement and the response methods.
 
-    This class contains the common functionality shared between AsyncRestView
-    and RestView, including schema definitions, model configuration, and
-    common CRUD operation logic.
+    It has no routes, no handlers and no business methods. Those are on
+    ``RestView`` and ``AsyncRestView``, in a sync and an async form. Subclass
+    this class only to write a CRUD base class of your own.
     """
 
     responses: ClassVar[dict[int | str, dict[str, Any]]] = {
@@ -1927,13 +1934,15 @@ class BaseRestView(
     #: A class that a view sets is used as it is.
     schema_response: ClassVar[type[pydantic.BaseModel]]
     #: The class of the ``POST`` body. When a view sets none, Restly builds
-    #: it from the view's schema without its ``ReadOnly`` fields, named
+    #: it from the view's schema without its ``ReadOnly`` fields and without
+    #: a primary key that the server generates. It is named
     #: ``<Resource>Create``. A class that a view sets is used as it is.
     schema_create: ClassVar[type[pydantic.BaseModel]]
     #: The class of the ``PATCH`` body. When a view sets none, Restly builds
-    #: it from the view's schema without its ``ReadOnly`` fields, and makes
-    #: every other field optional. It is named ``<Resource>Update``. A class
-    #: that a view sets is used as it is.
+    #: it from the view's schema without its ``ReadOnly`` fields and without
+    #: a primary key that the server generates, and makes every other field
+    #: optional. It is named ``<Resource>Update``. A class that a view sets
+    #: is used as it is.
     schema_update: ClassVar[type[pydantic.BaseModel]]
     model: ClassVar[type[Any]]
     #: The clause every read on this view applies: list, count, and retrieve
@@ -2480,11 +2489,14 @@ class BaseRestView(
         return self._single_response(result)
 
     def snapshot(self, obj: Any) -> dict[str, Any]:
-        """Frozen capture of an object's already-loaded column values, passed as
-        ``old`` to ``before_action_commit`` / ``after_action_commit`` for dirty detection.
-        Override to change what ``old`` captures (e.g. include a relationship's
-        prior state); the default delegates to
-        :func:`~fastapi_restly.objects.snapshot`.
+        """The column values that are loaded on ``obj``, passed as ``old`` to
+        ``before_action_commit`` and ``after_action_commit`` to compare old
+        and new values.
+
+        The default is :func:`~fastapi_restly.objects.snapshot`: a shallow
+        copy, which shares a mutable value, such as a JSON dict, with the
+        object. Override it to change what ``old`` holds, for example the
+        state of a relationship before the change.
         """
         return _object_snapshot(obj)
 

@@ -115,11 +115,13 @@ def configure(
     warn_on_uncommitted: bool | None = None,
     health: str | None = None,
 ) -> None:
-    """Configure FastAPI-Restly. Call once at startup.
+    """Configure FastAPI-Restly. Call it at startup. A second call replaces
+    only the sources that it names, for every app in the process.
 
-    Async support comes from ``async_database_url``, ``async_engine``, or
-    ``async_make_session``; sync support from ``database_url``, ``engine``, or
-    ``make_session``. Pass both sets if the application uses both.
+    Async support comes from ``async_database_url``, ``async_engine``,
+    ``async_make_session`` or ``session_generator``; sync support from
+    ``database_url``, ``engine``, ``make_session`` or
+    ``sync_session_generator``. Pass both sets if the application uses both.
 
     A URL is the one form Restly builds an engine from, and that engine gets
     defaults suited to a web application: ``StaticPool`` for in-memory SQLite,
