@@ -1,4 +1,4 @@
-.PHONY: test test-framework test-typing test-postgres test-postgres-asyncpg test-examples test-all clean install-dev lint pre-commit-install pre-commit-run docs docs-serve docs-pdf blog blog-serve build-pages scaffold-check scaffold-matrix scaffold-matrix-sqlite
+.PHONY: test test-framework test-typing test-postgres test-postgres-asyncpg test-examples test-all clean install-dev lint pre-commit-install pre-commit-run docs docs-serve docs-pdf blog blog-serve build-pages scaffold-check scaffold-matrix scaffold-matrix-sqlite fresh-install-check
 
 # Default target
 all: test-all
@@ -84,8 +84,15 @@ scaffold-matrix:
 	@echo "=== Scaffold matrix: every combination ==="
 	scripts/with_postgres.sh scripts/scaffold_matrix.sh
 
+# Build the package and install it in a new folder outside the repo, as the
+# README says. Then run the README quickstart, both tutorials and a project from
+# `restly new` against it. This catches docs that only work with the source tree.
+fresh-install-check:
+	@echo "=== Fresh-install check: the built package, as a reader installs it ==="
+	uv run python scripts/fresh_install_check.py
+
 # Test everything
-test-all: test-framework test-typing test-postgres test-postgres-asyncpg test-examples scaffold-check scaffold-matrix
+test-all: test-framework test-typing test-postgres test-postgres-asyncpg test-examples scaffold-check scaffold-matrix fresh-install-check
 	@echo "=== All Tests Complete ==="
 
 # Quick test (just framework)
@@ -157,6 +164,7 @@ help:
 	@echo "  test-postgres-asyncpg - Test pooled async-only PostgreSQL fixtures in every cleanup mode"
 	@echo "  test-examples   - Test all examples"
 	@echo "  test-all        - Test framework, dialect leg, and all examples"
+	@echo "  fresh-install-check - Install the built package outside the repo; run the README and tutorials"
 	@echo "  test            - Quick test (just framework)"
 	@echo "  test-coverage   - Run tests with coverage reports"
 	@echo "  install-dev     - Install all development dependencies"

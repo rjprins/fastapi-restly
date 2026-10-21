@@ -402,28 +402,13 @@ jobs:
           --with "$(ls dist/*.whl)"
           python -c "from importlib.metadata import version; import fastapi_restly; import fastapi_restly.db; import fastapi_restly.schemas; import fastapi_restly.views; print(version('fastapi-restly'))"
 
-      # Templates ship as package data and `restly` as a console script, so a
-      # packaging regression that drops either leaves every other gate green
-      # while `restly new` is broken for anyone installing from PyPI. Generating
-      # from the built wheel, outside the source tree, is what catches that.
-      - name: Generate a project from the built wheel
-        run: |
-          set -euo pipefail
-          mkdir -p /tmp/wheel-check && cd /tmp/wheel-check
-          uv venv
-          uv pip install "$(ls "$GITHUB_WORKSPACE"/dist/*.whl)"
-          ./.venv/bin/restly new demo --sqlite --create-all --yes
-          ./.venv/bin/restly new prod --postgres --alembic --async --yes
-          ./.venv/bin/restly new legacy --postgres --alembic --sync --yes
-          test -f demo/app/main.py
-          test -f demo/tests/conftest.py
-          test -f demo/.gitignore
-          test -f prod/compose.yaml
-          test -f prod/alembic/env.py
-          test -f prod/alembic/versions/.gitkeep
-          test -f legacy/alembic/env.py
-          # Between them these three name every overlay, so a template missing
-          # from the wheel fails here rather than at a user's first command.
+      # Install the wheel in a new venv outside the source tree, as the README
+      # says, and run the README quickstart, both tutorials and projects from
+      # `restly new` against it. Templates ship as package data and `restly` as
+      # a console script, so a packaging regression that drops either fails
+      # here, and not for a reader who installs from PyPI.
+      - name: Fresh-install check
+        run: python scripts/fresh_install_check.py --wheel "$(ls dist/*.whl)"
 
       - name: Check package
         run: uv run --with twine twine check dist/*

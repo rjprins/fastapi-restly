@@ -30,6 +30,9 @@ make test-all
 # Type-checking tests
 make test-typing
 
+# The built package, installed outside the repo: README quickstart, tutorials
+make fresh-install-check
+
 # Run a single test file
 uv run pytest tests/test_schemas.py -v
 
@@ -232,14 +235,19 @@ Releases are cut by maintainers. The flow is:
    make scaffold-check
    ```
 
-4. Commit and push to `main`. Then tag the commit and push the tag:
+4. Run `make fresh-install-check`. It installs the built package in a new
+   folder outside the repo, as the README says, and runs the README
+   quickstart, both tutorials and a project from `restly new` against it. CI
+   runs it too, on every push to `main`.
+5. Commit and push to `main`. Wait until CI passes. Then tag the commit and
+   push the tag:
 
    ```bash
    git tag -a vX.Y.Z -m "Release X.Y.Z"
    git push origin vX.Y.Z
    ```
 
-5. Publish a GitHub Release for the tag. The tag alone publishes nothing. The
+6. Publish a GitHub Release for the tag. The tag alone publishes nothing. The
    release starts `.github/workflows/publish.yml`, which uploads the package
    to PyPI. Use the new changelog section as the release notes, without its
    heading:
