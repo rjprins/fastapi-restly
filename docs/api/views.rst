@@ -10,6 +10,7 @@ either on a FastAPI app.
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: ViewID, ViewResponse, ViewListResponse, ViewCreate, ViewUpdate
 
 Markers for the view's own types
 --------------------------------

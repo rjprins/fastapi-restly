@@ -20,13 +20,14 @@ from .exc import RestlyConfigurationError
 #: Default ``page_size`` applied to paginated list endpoints when the client
 #: does not send one. A bounded default keeps a forgotten ``page_size`` from
 #: returning an entire table. Override per view through
-#: :attr:`NumberedPagination.default_page_size`; to return every row, set the
-#: view's ``pagination`` to ``None`` instead of removing the cap.
+#: :attr:`~fastapi_restly.views.NumberedPagination.default_page_size`; to
+#: return every row, set the view's ``pagination`` to ``None`` instead of
+#: removing the cap.
 DEFAULT_PAGE_SIZE: int = 50
 
 #: Maximum ``page_size`` accepted by list endpoints. Values above this are
 #: rejected with a 422. Override per view through
-#: :attr:`NumberedPagination.max_page_size`.
+#: :attr:`~fastapi_restly.views.NumberedPagination.max_page_size`.
 MAX_PAGE_SIZE = 1000
 
 #: The default name of the sort parameter. A view renames it with

@@ -3,14 +3,33 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+import dataclasses
+import enum
+import importlib
+import inspect
 import os
 import re
 import sys
+import types
+import typing
 from importlib.metadata import version as _package_version
 from pathlib import Path
 from xml.etree import ElementTree
 
+import sphinx.ext.autodoc as sphinx_autodoc
+import sphinx.util.inspect as sphinx_inspect
+import sphinx.util.typing as sphinx_typing
+from docutils import nodes
+from sphinx.errors import PycodeError
+from sphinx.ext.autodoc.importer import get_class_members
+from sphinx.pycode import ModuleAnalyzer
 from sphinx.util import logging as sphinx_logging
+from sqlalchemy.orm import MappedAsDataclass
+from sqlalchemy.orm.properties import MappedColumn
+
+import fastapi_restly.db as fr_db
+from fastapi_restly.schemas._base import readonly_marker, writeonly_marker
+from fastapi_restly.views._view_types import _ViewType
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -51,9 +70,10 @@ nitpicky = True
 nitpick_ignore_regex = [
     (r"py:.*", r"(.*\.)?_.*"),  # private modules and classes, and their TypeVars
     (r"py:.*", r"httpx2\..*"),  # httpx2 publishes no intersphinx inventory
-    # Annotated[X, ...] has no page. On Python 3.10, Annotated also takes the
-    # module of X, so autodoc writes datetime.Annotated, which has no page too.
-    (r"py:.*", r"[\w.]+\.Annotated(\[.*)?"),
+    # On Python 3.10, Annotated takes the module of its first argument, so
+    # autodoc writes datetime.Annotated, which has no page. Only the bare name:
+    # a target with brackets is an annotation that Sphinx could not parse.
+    (r"py:.*", r"[\w.]+\.Annotated"),
 ]
 nitpick_ignore = [
     # Names autodoc reads off an annotation unqualified, so intersphinx cannot
@@ -66,15 +86,7 @@ nitpick_ignore = [
     ("py:class", "Path"),
     ("py:class", "fastapi.params.Depends"),
     ("py:class", "starlette.datastructures.QueryParams"),
-    ("py:class", "fr.ReadOnly"),
     ("py:class", "function"),
-    # The markers are type aliases, documented as data in api/views.rst. A
-    # signature links them as classes, which never resolves to data.
-    ("py:class", "fastapi_restly.views.ViewID"),
-    ("py:class", "fastapi_restly.views.ViewResponse"),
-    ("py:class", "fastapi_restly.views.ViewListResponse"),
-    ("py:class", "fastapi_restly.views.ViewCreate"),
-    ("py:class", "fastapi_restly.views.ViewUpdate"),
     # Python 3.10 only: Self comes from typing_extensions there, not typing.
     ("py:class", "typing_extensions.Self"),
 ]
@@ -133,6 +145,8 @@ autodoc_default_options = {
     "undoc-members": True,
     "show-inheritance": True,
 }
+# Members in the order of the source, or of __all__ in a package module.
+autodoc_member_order = "bysource"
 
 templates_path = ["_templates"]
 exclude_patterns = []
@@ -229,24 +243,278 @@ def _canonicalize_sitemap_index(app, exception):
         tree.write(sitemap_path, xml_declaration=True, encoding="utf-8")
 
 
-def _skip_envelope_alias(app, what, name, obj, skip, options):
-    # NumberedPagination.envelope and NoPagination.envelope hold a model class,
-    # which autodoc renders as a bare "alias of ..." and drops the setting's
-    # comment. The class docstrings describe the setting instead.
-    if name == "envelope" and isinstance(obj, type):
-        return True
+# -- API reference -----------------------------------------------------------
+# Autodoc writes a type with the repr of its Annotated metadata, and a default
+# value with its repr. For Restly's aliases and sentinels that gives text that
+# is not Python, such as "FieldInfo(...)" or "<object object>", and Sphinx then
+# cannot parse the signature. Autodoc has no event for this, so conf.py wraps
+# the Sphinx functions that write types and values. The rest of this section
+# uses autodoc's events and documenter classes.
+
+_RESTLY_MODULES = [
+    importlib.import_module(f"fastapi_restly.{name}")
+    for name in (
+        "clauses",
+        "db",
+        "exc",
+        "models",
+        "objects",
+        "query",
+        "schemas",
+        "views",
+        "testing",
+    )
+]
+_RESTLY_PUBLIC = {
+    id(getattr(module, name)) for module in _RESTLY_MODULES for name in module.__all__
+}
+_stringify_annotation = sphinx_typing.stringify_annotation
+_object_description = sphinx_inspect.object_description
+
+
+def _alias_name(annotation):
+    """The public name of the Restly alias that an annotation spells, and the
+    type in its brackets, or None. ReadOnly[datetime] gives
+    ("fastapi_restly.schemas.ReadOnly", datetime)."""
+    if typing.get_origin(annotation) is not typing.Annotated:
+        return None
+    if annotation == fr_db.SessionDep:
+        return "fastapi_restly.db.SessionDep", None
+    if annotation == fr_db.AsyncSessionDep:
+        return "fastapi_restly.db.AsyncSessionDep", None
+    inner = typing.get_args(annotation)[0]
+    for meta in annotation.__metadata__:
+        if meta is readonly_marker:
+            return "fastapi_restly.schemas.ReadOnly", inner
+        if meta is writeonly_marker:
+            return "fastapi_restly.schemas.WriteOnly", inner
+        if isinstance(meta, _ViewType):
+            return f"fastapi_restly.views.{meta.name}", None
+    return None
+
+
+def _restly_stringify_annotation(
+    annotation, /, mode="fully-qualified-except-typing", **kwargs
+):
+    alias = _alias_name(annotation)
+    if alias is None:
+        return _stringify_annotation(annotation, mode, **kwargs)
+    name, inner = alias
+    if mode == "smart":
+        name = f"~{name}"
+    if inner is None:
+        return name
+    return f"{name}[{_restly_stringify_annotation(inner, mode, **kwargs)}]"
+
+
+def _restly_object_description(obj, **kwargs):
+    if obj is type(None):
+        return "None"
+    if isinstance(obj, type):
+        return obj.__name__
+    if isinstance(obj, types.UnionType):  # a type alias such as ReadScope
+        return " | ".join(map(_restly_object_description, typing.get_args(obj)))
+    if type(obj) is object:  # a sentinel for "not given"
+        return "..."
+    if isinstance(obj, MappedColumn):
+        return "mapped_column(...)"
+    if dataclasses.is_dataclass(obj) and id(type(obj)) in _RESTLY_PUBLIC:
+        # Settings such as NumberedPagination: only the fields that differ
+        # from the defaults, so the default reads NumberedPagination().
+        default = type(obj)()
+        changed = [
+            f"{field.name}={_restly_object_description(getattr(obj, field.name))}"
+            for field in dataclasses.fields(obj)
+            if getattr(obj, field.name) != getattr(default, field.name)
+        ]
+        return f"{type(obj).__name__}({', '.join(changed)})"
+    return _object_description(obj, **kwargs)
+
+
+sphinx_typing.stringify_annotation = _restly_stringify_annotation
+sphinx_inspect.stringify_annotation = _restly_stringify_annotation
+sphinx_inspect.object_description = _restly_object_description
+sphinx_autodoc.stringify_annotation = _restly_stringify_annotation
+sphinx_autodoc.object_description = _restly_object_description
+
+
+def _resolve_alias_as_data(app, env, node, contnode):
+    # A type in a signature links as a class. ReadOnly, SessionDep and the
+    # view markers are documented as data, so look them up as data as well.
+    if node.get("refdomain") != "py" or node.get("reftype") != "class":
+        return None
+    return env.get_domain("py").resolve_xref(
+        env, node["refdoc"], app.builder, "data", node["reftarget"], node, contnode
+    )
+
+
+def _read_reexported_comments(analyzer):
+    """Add the #: comments of the names that a public module re-exports.
+
+    Autodoc reads a module's #: comments only from that module, so a name that
+    is defined in a private module, such as ReadScope, would get no entry.
+    """
+    module = sys.modules.get(analyzer.modname)
+    if module not in _RESTLY_MODULES:
+        return
+    for name in module.__all__:
+        if ("", name) in analyzer.attr_docs:
+            continue
+        value = getattr(module, name)
+        for source in list(sys.modules.values()):
+            source_name = getattr(source, "__name__", "")
+            if not source_name.startswith("fastapi_restly."):
+                continue
+            if source is module or getattr(source, name, None) is not value:
+                continue
+            docs = ModuleAnalyzer.for_module(source_name).find_attr_docs()
+            if ("", name) in docs:
+                analyzer.attr_docs["", name] = docs["", name]
+                break
+
+
+_analyze = ModuleAnalyzer.analyze
+
+
+def _analyze_with_reexported_comments(self):
+    if self._analyzed:
+        return
+    _analyze(self)
+    _read_reexported_comments(self)
+
+
+ModuleAnalyzer.analyze = _analyze_with_reexported_comments
+
+
+def _has_attribute_comment(cls, name):
+    for klass in cls.__mro__:
+        try:
+            docs = ModuleAnalyzer.for_module(klass.__module__).find_attr_docs()
+        except PycodeError:
+            continue
+        if (klass.__qualname__, name) in docs:
+            return True
+    return False
+
+
+class _ClassSettingDocumenter(sphinx_autodoc.AttributeDocumenter):
+    """A class attribute that holds a class, such as NumberedPagination's
+    envelope, as an attribute with its #: comment. Autodoc would document it as
+    a bare "alias of" the class, without the comment."""
+
+    objtype = "classsetting"
+    directivetype = "attribute"
+    priority = sphinx_autodoc.ClassDocumenter.priority + 1
+
+    @classmethod
+    def can_document_member(cls, member, membername, isattr, parent):
+        return (
+            isinstance(member, type)
+            and isinstance(parent, sphinx_autodoc.ClassDocumenter)
+            and _has_attribute_comment(parent.object, membername)
+        )
+
+
+def _private_bases(cls):
+    """The private classes in cls.__mro__ before its first public base."""
+    private = []
+    for klass in cls.__mro__[1:]:
+        if not klass.__name__.startswith("_"):
+            break
+        private.append(klass)
+    return private
+
+
+def _defining_class(cls, name):
+    for klass in cls.__mro__:
+        if name in vars(klass) or name in inspect.get_annotations(klass):
+            return klass
+    return None
+
+
+class _ClassDocumenter(sphinx_autodoc.ClassDocumenter):
+    """A class also shows the members of a private base, such as assert_status
+    from the test clients' _StatusAssertions. A private base has no entry, so
+    autodoc would show these members nowhere."""
+
+    def get_object_members(self, want_all):
+        check, members = super().get_object_members(want_all)
+        private = _private_bases(self.object)
+        if not want_all or self.options.inherited_members or not private:
+            return check, members
+        own = {member.__name__ for member in members}
+        everything = get_class_members(
+            self.object,
+            self.objpath,
+            self.get_attr,
+            self.config.autodoc_inherit_docstrings,
+        )
+        for name, member in everything.items():
+            if name not in own and _defining_class(self.object, name) in private:
+                members.append(member)
+        return check, members
+
+    def sort_members(self, documenters, order):
+        # Autodoc reads the source order from the module that it documents,
+        # which is the package for a re-exported class. Read it from the
+        # module that defines each member.
+        if order != "bysource":
+            return super().sort_members(documenters, order)
+
+        def source_order(entry):
+            name = entry[0].name.split("::")[1].rsplit(".", 1)[-1]
+            klass = _defining_class(self.object, name) or self.object
+            analyzer = ModuleAnalyzer.for_module(klass.__module__)
+            analyzer.analyze()
+            position = analyzer.tagorder.get(f"{klass.__qualname__}.{name}", 1 << 30)
+            return self.object.__mro__.index(klass), position
+
+        documenters.sort(key=source_order)
+        return documenters
+
+
+def _skip_member(app, what, name, obj, skip, options):
     # A view's Action is fr.Action, which the module documents already.
     if what == "class" and name == "Action" and isinstance(obj, type):
+        return True
+    # Pydantic's own setting, with Pydantic's own text.
+    if what == "class" and name == "model_config":
         return True
     return None
 
 
-def _short_class_defaults(app, what, name, obj, options, signature, annotation):
-    # a class default, such as a settings dataclass's envelope, would print
-    # as "<class 'fastapi_restly._pagination.PaginatedEnvelope'>"
-    if signature:
-        signature = re.sub(r"<class '(?:[\w.]+\.)?(\w+)'>", r"\1", signature)
-    return signature, annotation
+def _hide_class_signature(app, what, name, obj, options, signature, annotation):
+    # An enum shows Enum's own signature. A mixin for mapped dataclasses shows
+    # the signature of the mixin, but a model's constructor is another one.
+    if what == "class" and isinstance(obj, type):
+        if issubclass(obj, enum.Enum) or (
+            issubclass(obj, MappedAsDataclass) and "__mapper__" not in vars(obj)
+        ):
+            return "", annotation
+    return None
+
+
+def _public_bases(app, name, obj, options, bases):
+    # Leave out object, Generic[...] with Restly's own type variables, and the
+    # private classes, which have no entry to link to.
+    def public(base):
+        origin = typing.get_origin(base) or base
+        if origin in (object, typing.Generic):
+            return False
+        if getattr(origin, "__module__", "").startswith("fastapi_restly"):
+            return id(origin) in _RESTLY_PUBLIC
+        return not getattr(origin, "__name__", "_").startswith("_")
+
+    bases[:] = [base for base in bases if public(base)]
+
+
+def _drop_empty_bases(app, domain, objtype, contentnode):
+    # A class whose bases all went leaves an empty "Bases:" line.
+    if domain != "py" or objtype not in ("class", "exception"):
+        return
+    first = next(contentnode.findall(nodes.paragraph), None)
+    if first is not None and first.astext().strip() == "Bases:":
+        first.parent.remove(first)
 
 
 # -- llms.txt ----------------------------------------------------------------
@@ -361,8 +629,13 @@ def _write_llms_txt(app, exception):
 
 def setup(app):
     app.connect("build-finished", _write_llms_txt)
-    app.connect("autodoc-skip-member", _skip_envelope_alias)
-    app.connect("autodoc-process-signature", _short_class_defaults)
+    app.add_autodocumenter(_ClassDocumenter, override=True)
+    app.add_autodocumenter(_ClassSettingDocumenter)
+    app.connect("autodoc-skip-member", _skip_member)
+    app.connect("autodoc-process-signature", _hide_class_signature)
+    app.connect("autodoc-process-bases", _public_bases)
+    app.connect("object-description-transform", _drop_empty_bases)
+    app.connect("missing-reference", _resolve_alias_as_data)
     app.connect("html-page-context", _canonicalize_index_page)
     app.connect("html-page-context", _noindex_snapshots)
     app.connect("build-finished", _canonicalize_sitemap_index, priority=900)

@@ -56,7 +56,7 @@ through `fr`.
 | {data}`fr.WriteOnly <fastapi_restly.schemas.WriteOnly>` | Mark a field as accepted on input and excluded from serialization. |
 | {data}`fr.__version__ <fastapi_restly.__version__>` | Installed package version. |
 
-```{py:data} fastapi_restly.__version__
+```{py:data} __version__
 :type: str
 
 The installed `fastapi-restly` version, read from package metadata.
