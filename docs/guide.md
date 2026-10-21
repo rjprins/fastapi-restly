@@ -9,9 +9,9 @@ Restly, start with the tutorial, [Build a Blog API](tutorial.md).
 ## How Restly works
 
 You write a SQLAlchemy model and a view class, and Restly turns the view into
-FastAPI routes. This is what happens when a client sends `PATCH /projects/1`.
-FastAPI first checks the request body against the update body,
-`ProjectUpdate`:
+FastAPI routes. For example, when a client sends `PATCH /projects/1`,
+FastAPI first checks the request body against the update schema,
+`ProjectUpdate`. Then these steps run:
 
 ```
 PATCH /projects/1
@@ -55,9 +55,10 @@ These are the parts, and the page that explains each one:
   `before_action_commit` runs just before the commit, and
   `after_action_commit` just after it. A read does not commit. See
   [What commits, and when](#what-commits).
-- **Scope**: the rows of a model that exist for a request. Restly applies it
-  to every read of the model and to every reference to the model, so a hidden
-  row is a 404. A scope is made of clauses, which are named query rules. See
+- **Scope**: a SQL where clause that limits which rows of a model a request
+  can read. Restly applies it to every read of the model and to every
+  reference to the model, so a row outside the scope is a 404. You write a
+  scope as a query clause, a named rule that you can reuse. See
   [Scopes](scopes.md) and [Query Clauses](clauses.md).
 - **`authorize`**: decides whether the caller may do the action. A refusal
   is a 403. See [Authorization](authorization.md).
@@ -185,7 +186,8 @@ routes. So these subjects are FastAPI's, and its docs explain them:
   [transaction hook](#after-action-commit-raises).
 - [File uploads](https://fastapi.tiangolo.com/tutorial/request-files/).
 - [WebSockets](https://fastapi.tiangolo.com/advanced/websockets/). Declare
-  them on the app or on a router, not on a view.
+  them on the app or on a router, not on a view: a view has HTTP routes
+  only.
 
 ```{toctree}
 :caption: Setup

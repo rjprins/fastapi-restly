@@ -12,11 +12,11 @@ In plain FastAPI, an endpoint is a function, and each function declares what
 it needs:
 
 ```python
-@app.get("/users")
+@app.get("/users", dependencies=[Depends(require_login)])
 async def list_users(session: AsyncSession = Depends(get_session)):
     ...
 
-@app.post("/users")
+@app.post("/users", dependencies=[Depends(require_login)])
 async def create_user(payload: UserCreate, session: AsyncSession = Depends(get_session)):
     ...
 ```
