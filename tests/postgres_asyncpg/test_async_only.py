@@ -53,6 +53,16 @@ class AsyncpgNoteSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     local_time: datetime | None = None
 
 
+class AsyncpgTag(fr.IDMixin, SharedBase):
+    __tablename__ = "restly_asyncpg_tag"
+
+    name: Mapped[str] = mapped_column(unique=True)
+
+
+class AsyncpgTagSchema(fr.IDSchema):
+    name: str
+
+
 LIFESPAN_EVENTS: list[str] = []
 
 
@@ -91,6 +101,13 @@ class AsyncpgNoteView(fr.AsyncRestView):
     schema = AsyncpgNoteSchema
 
 
+@fr.include_view(app)
+class AsyncpgTagView(fr.AsyncRestView):
+    prefix = "/tags"
+    model = AsyncpgTag
+    schema = AsyncpgTagSchema
+
+
 fr.testing.configure_tests(
     app=app, base=SharedBase, create_all=True, db_cleanup=CLEANUP
 )
@@ -103,6 +120,7 @@ def drop_test_table() -> Iterator[None]:
     async def drop() -> None:
         async with engine.begin() as connection:
             await connection.run_sync(AsyncpgNote.__table__.drop, checkfirst=True)
+            await connection.run_sync(AsyncpgTag.__table__.drop, checkfirst=True)
         await engine.dispose()
 
     asyncio.run(drop())
@@ -226,6 +244,22 @@ async def test_explicitly_naive_datetime_filter_stays_naive_with_asyncpg(
     assert response.status_code == 200
     assert [item["text"] for item in response.json()["data"]] == ["known wall time"]
     assert response.json()["data"][0]["local_time"] == "2024-07-01T09:30:00"
+
+
+@pytest.mark.asyncio
+async def test_a_unique_violation_names_the_constraint_with_asyncpg(
+    restly_async_client,
+):
+    """asyncpg has no psycopg ``diag``: the 409 still names the constraint."""
+    await restly_async_client.post("/tags", json={"name": "taken"})
+
+    response = await restly_async_client.post(
+        "/tags", json={"name": "taken"}, assert_status_code=409
+    )
+
+    assert response.json()["detail"] == (
+        "Unique constraint violated: restly_asyncpg_tag_name_key"
+    )
 
 
 class _NoteText(fr.ContextNamespace):

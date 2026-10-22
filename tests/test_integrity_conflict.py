@@ -466,6 +466,23 @@ def test_postgres_sqlstate_includes_constraint_name():
     assert "unique" in detail.lower()
 
 
+def test_postgres_sqlstate_includes_constraint_name_from_asyncpg():
+    """asyncpg has no ``diag``. SQLAlchemy raises its wrapper from asyncpg's own
+    exception, which carries the names."""
+
+    class UniqueViolationError(Exception):
+        constraint_name = "uq_user_username"
+        column_name = None
+
+    class AsyncAdaptIntegrityError(Exception):
+        sqlstate = "23505"
+
+    orig = AsyncAdaptIntegrityError("duplicate key value")
+    orig.__cause__ = UniqueViolationError("duplicate key value")
+    detail = _build_integrity_detail(_make_integrity_error(orig))
+    assert detail == "Unique constraint violated: uq_user_username"
+
+
 def test_postgres_sqlstate_not_null_includes_column():
     orig = SimpleNamespace(
         sqlstate="23502",

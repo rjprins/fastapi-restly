@@ -50,11 +50,14 @@ _PG_SQLSTATE_DETAILS: dict[str, str] = {
 def _extract_postgres_detail(orig: Any) -> str | None:
     """Return a user-facing detail message for a Postgres-driver error.
 
-    Reads the SQLSTATE code and, when psycopg's ``orig.diag`` is present, its
-    ``constraint_name`` / ``column_name`` to enrich the message. The attribute
-    holding the code differs by driver: psycopg 3 exposes ``sqlstate``, psycopg 2
-    exposes ``pgcode`` -- read whichever is present. Reading only ``pgcode``
-    silently degraded every psycopg 3 error to the generic fallback.
+    Reads the SQLSTATE code, and the ``constraint_name`` / ``column_name`` of
+    the error to enrich the message. The attribute holding the code differs by
+    driver: psycopg 3 and SQLAlchemy's asyncpg wrapper expose ``sqlstate``,
+    psycopg 2 exposes ``pgcode`` -- read whichever is present. Reading only
+    ``pgcode`` silently degraded every psycopg 3 error to the generic fallback.
+    The names are on psycopg's ``orig.diag``. asyncpg has no ``diag``: the
+    names are on asyncpg's own exception, and SQLAlchemy raises its wrapper
+    (``orig``) from that exception.
     """
     pgcode = getattr(orig, "sqlstate", None) or getattr(orig, "pgcode", None)
     if not pgcode:
@@ -64,10 +67,11 @@ def _extract_postgres_detail(orig: Any) -> str | None:
     if base is None:
         return None
 
-    # ``diag`` is a psycopg-specific attribute holding fielded error info.
-    diag = getattr(orig, "diag", None)
-    constraint_name = getattr(diag, "constraint_name", None) if diag else None
-    column_name = getattr(diag, "column_name", None) if diag else None
+    fields = getattr(orig, "diag", None)
+    if fields is None:
+        fields = getattr(orig, "__cause__", None)
+    constraint_name = getattr(fields, "constraint_name", None)
+    column_name = getattr(fields, "column_name", None)
 
     if pgcode == "23505" and constraint_name:
         return f"{base}: {constraint_name}"

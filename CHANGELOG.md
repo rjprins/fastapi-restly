@@ -332,6 +332,10 @@ replacement, unless it says otherwise.
   UUID gave `500`.
 - OpenAPI shows the `sort`, `range` and `filter` parameters of a react-admin
   list. A subclass of a react-admin view keeps the list params of its base.
+- On PostgreSQL with asyncpg, the text of a `409` names the constraint or the
+  column, as it does with psycopg, such as
+  `Unique constraint violated: uq_user_email`. Before, it was only
+  `Unique constraint violated`.
 - Pyright and mypy report an unknown name on `fr`.
 - Fixes for FastAPI 0.115 with `from __future__ import annotations`, and for
   Python 3.14.
