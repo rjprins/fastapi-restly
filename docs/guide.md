@@ -83,9 +83,9 @@ ordinary SQLAlchemy models on a declarative base of your own.
   already have, start a new project with `restly new`, lay out a project as
   it grows, and serve more than one API version.
 - [Database & Configuration](database.md): tell Restly where its database
-  is, reuse the engine or sessionmaker that your app already has, use another
-  database on one view, such as a read replica, and open a session outside a
-  request.
+  is, reuse the engine, sessionmaker or session generator that your app
+  already has, use another database on one view, such as a read replica, and
+  open a session outside a request.
 - [Models](models.md): add Restly's defaults and common columns to your
   models, and set the values that every write needs, such as the author or a
   slug.

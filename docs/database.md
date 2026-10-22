@@ -26,8 +26,9 @@ argument:
 | A session generator | `session_generator` | `sync_session_generator` | Calls it for each request |
 
 Pass a URL when Restly may own the engine. Pass your engine or your
-sessionmaker when your application already builds one. Use a generator only
-when sessions must be built in a special way. An application that has both
+sessionmaker when your application already builds one. Pass a generator when
+your routes already get their session from one, such as `get_db`, or when
+sessions must be built in a special way. An application that has both
 async and sync views passes one async and one sync source.
 
 For each request, a view gets a session from that source. An
@@ -96,10 +97,11 @@ to `fr.configure()`
 
 ## Build sessions with your own generator
 
-Use a session generator when your sessions need special setup, such as
-scoped sessions, routing to a database per tenant, or instrumentation. The
-generator builds a session, yields it, and cleans it up. It must not commit:
-the view commits its write actions.
+Use a session generator when your application already has one, like the
+`get_db` that your routes use. Use one also when your sessions need special
+setup, such as scoped sessions, routing to a database per tenant, or
+instrumentation. The generator builds a session, yields it, and cleans it up.
+It must not commit: the view commits its write actions.
 
 For async views, pass an async generator:
 
@@ -138,6 +140,12 @@ def my_get_db() -> Iterator[Session]:
 # Before you register views or routes.
 fr.configure(sync_session_generator=my_get_db)
 ```
+
+Many `get_db` generators commit after the `yield`. Remove that commit, and
+commit in your own routes that write. The views do not need it, and it saves
+changes that should be rolled back: changes that no write action committed,
+such as those of a route that forgot to commit. Restly warns that it rolls
+such changes back, but a generator that commits saves them.
 
 Give your sessions the same options as Restly's own factories, unless you need
 other behavior: `expire_on_commit=False`, and for async sessions also
@@ -191,7 +199,10 @@ that were not committed, as they do on a view.
 When you configure your own generator, your existing `Depends(my_get_db)`
 gives the same session as the view's `self.session`. FastAPI runs the
 generator once per request, and cleans it up once. FastAPI's own caching rules
-still apply: a dependency with `use_cache=False` gets its own session.
+still apply: a dependency with `use_cache=False` gets its own session. For the
+same reason, an override of `my_get_db` in `app.dependency_overrides` also
+gives the views their session, so a test setup that overrides it keeps
+working.
 :::
 
 (session-dependency-one-view)=
