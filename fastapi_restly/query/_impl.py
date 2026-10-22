@@ -2,6 +2,7 @@ import collections.abc as _abc
 import dataclasses
 import datetime as _dt
 import decimal as _decimal
+import enum
 import functools
 import re
 import uuid as _uuid
@@ -356,6 +357,9 @@ def _supports_range_operators(field: FieldInfo) -> bool:
     if annotation is Any or not isinstance(annotation, type):
         return True
     if issubclass(annotation, bool):
+        return False
+    if issubclass(annotation, enum.Enum) and issubclass(annotation, str):
+        # a set of names, as a plain enum, not text with a useful order
         return False
     if issubclass(annotation, _ORDERABLE_TYPES):
         return True

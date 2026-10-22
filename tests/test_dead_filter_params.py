@@ -15,6 +15,7 @@ ARE columns, but no query string coerces into ``dict``/``list``, so only
 
 from __future__ import annotations
 
+import enum
 from collections.abc import Mapping, Sequence
 from typing import Annotated, Optional
 
@@ -301,6 +302,31 @@ def test_annotated_inside_optional_gets_the_filters_of_the_plain_type():
     assert "count_annotated__gte" in fields
     assert "owner_annotated_id__in" in fields
     assert "owner_annotated.name__contains" in fields
+
+
+def test_a_str_enum_gets_no_range_filters():
+    """A str enum is a set of names, as a plain enum. An order by its text is
+    rarely what a client means, so it gets no ``__gte``, ``__lte``, ``__gt``
+    or ``__lt``, and no ``__contains``, which is for text."""
+
+    class Direction(str, enum.Enum):
+        UP = "up"
+        DOWN = "down"
+
+    class Arrow(fr.IDMixin, SharedBase):
+        direction: Mapped[str]
+
+    class ArrowSchema(fr.IDSchema):
+        direction: Direction
+
+    fields = derive_schema_list_params(ArrowSchema, Arrow).model_fields
+
+    assert [key for key in fields if key.startswith("direction")] == [
+        "direction",
+        "direction__in",
+        "direction__ne",
+        "direction__isnull",
+    ]
 
 
 def test_a_schema_that_names_itself_gets_one_level_of_dotted_filters():

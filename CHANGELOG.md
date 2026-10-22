@@ -196,6 +196,9 @@ replacement, unless it says otherwise.
   `BadQueryParam`, a `400`; before, the list came back with `200`. A
   `default_sort` with a key twice fails when the class is defined, or when
   the view registers for a mixin.
+- A `str` enum field, such as `class Direction(str, Enum)`, gets no range
+  filters (`__gte`, `__lte`, `__gt`, `__lt`), as a plain enum. Before, it got
+  them because it is a `str`, and they compared the text.
 - The `400` texts of a list name the problem: `Unknown sort key: 'nope'`,
   `Unknown filter key: 'nope'`, or `Invalid filter value for 'age': 'old'.`
   with Pydantic's reason. A field validator that raises another exception
