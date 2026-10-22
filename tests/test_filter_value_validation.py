@@ -8,12 +8,14 @@ now validates through the field's own core schema: field validators,
 constraints and the model config still apply, model validators do not.
 """
 
+from datetime import datetime, timezone
 from typing import Annotated, Any
 
 import pydantic
 import pytest
 from pydantic import ConfigDict, Field, field_validator, model_validator
-from sqlalchemy.orm import Mapped
+from sqlalchemy import DateTime
+from sqlalchemy.orm import Mapped, mapped_column
 
 import fastapi_restly as fr
 from fastapi_restly.exc import BadQueryParam
@@ -338,3 +340,43 @@ def test_a_bug_in_a_validator_is_not_a_bad_filter_value(client):
     create_tables()
     with pytest.raises(RuntimeError, match="a bug in the validator"):
         client.get("/gadgets/", params={"code": "boom"})
+
+
+def _naive_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value
+    return value.astimezone(timezone.utc).replace(tzinfo=None)
+
+
+def test_a_naive_column_takes_a_value_with_an_offset_through_the_field_type(client):
+    """The example of docs/filtering.md: a column without a time zone that
+    stores UTC. An ``AfterValidator`` on the field converts a value with an
+    offset, in a filter and in a request body. Without it, SQLite drops the
+    offset."""
+
+    class Meetup(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+        starts_at: Mapped[datetime] = mapped_column(DateTime())
+
+    class MeetupSchema(fr.IDSchema):
+        name: str
+        starts_at: Annotated[datetime, pydantic.AfterValidator(_naive_utc)]
+
+    @fr.include_view(client.app)
+    class MeetupView(fr.AsyncRestView):
+        prefix = "/meetups"
+        model = Meetup
+        schema = MeetupSchema
+
+    create_tables()
+    client.post("/meetups", json={"name": "early", "starts_at": "2024-01-01T09:30"})
+    late = client.post(
+        "/meetups", json={"name": "late", "starts_at": "2024-01-01T11:30+01:00"}
+    ).json()
+    assert late["starts_at"] == "2024-01-01T10:30:00"
+
+    # 10:15+01:00 is 09:15 UTC, so both meetups start later
+    rows = client.get(
+        "/meetups", params={"starts_at__gte": "2024-01-01T10:15:00+01:00"}
+    ).json()
+    assert [row["name"] for row in rows["data"]] == ["early", "late"]
