@@ -1,6 +1,7 @@
 import enum
 import re
 from datetime import datetime, timezone
+from inspect import unwrap
 from typing import Any
 
 from sqlalchemy import DateTime, Enum, func, inspect
@@ -60,7 +61,7 @@ def _reject_dataclass_method_from_a_mixin(cls: type, base: type, option: str) ->
     """
     method = f"__{option}__"
     owner = next(b for b in cls.__mro__ if method in b.__dict__)
-    if not _left_to_python(owner, option):
+    if not _left_to_python(owner, option) or _written_by_hand(owner, method):
         # The default (object.__eq__ or ModelDefaults.__repr__), a method
         # someone wrote, or a method someone asked for.
         return
@@ -99,6 +100,15 @@ def _reject_dataclass_method_from_a_mixin(cls: type, base: type, option: str) ->
         f"the mixin with the options of fr.IDMixin: class {mixin.__name__}("
         f"MappedAsDataclass, kw_only=True, eq=False, repr=False). {keep}"
     )
+
+
+def _written_by_hand(cls: type, method: str) -> bool:
+    """Whether ``cls`` wrote ``method`` itself. The dataclass decorator keeps
+    such a method, also when the option is True, and it builds the methods
+    that it adds from a string of code."""
+    func = unwrap(cls.__dict__[method])
+    code = getattr(func, "__code__", None)
+    return code is not None and code.co_filename != "<string>"
 
 
 def _left_to_python(cls: type, option: str) -> bool:

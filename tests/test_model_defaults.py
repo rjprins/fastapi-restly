@@ -359,6 +359,39 @@ def test_a_model_with_such_a_mixin_can_ask_for_the_dataclass_repr():
     assert repr(Note(title="a")).endswith("Note(note='', id=None, title='a')")
 
 
+def test_a_mixin_that_writes_its_own_methods_keeps_them():
+    """Later in the bases, the model inherits what the mixin wrote, not a
+    dataclass method, so nothing raises. First in the bases, the model takes
+    its options from the mixin, and gets a dataclass repr of its own."""
+
+    class Base(fr.ModelDefaults, DeclarativeBase):
+        pass
+
+    class Labelled(MappedAsDataclass, kw_only=True):
+        label: Mapped[str] = mapped_column(default="")
+
+        def __repr__(self) -> str:
+            return f"<labelled {self.label}>"
+
+        def __eq__(self, other: object) -> bool:
+            return isinstance(other, Labelled) and other.label == self.label
+
+        __hash__ = object.__hash__
+
+    class Note(fr.IDMixin, Labelled, Base):
+        title: Mapped[str]
+
+    assert repr(Note(title="a", label="x")) == "<labelled x>"
+    assert Note(title="a", label="x") == Note(title="b", label="x")
+
+    with pytest.raises(
+        fr.exc.RestlyConfigurationError, match="Post gets a dataclass repr"
+    ):
+
+        class Post(Labelled, fr.IDMixin, Base, eq=False):
+            title: Mapped[str]
+
+
 def test_a_model_that_writes_its_own_repr_keeps_it():
     class Base(fr.ModelDefaults, DeclarativeBase):
         pass
