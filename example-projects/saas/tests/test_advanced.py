@@ -533,3 +533,31 @@ class TestFieldLevelPermissions:
             user = client.get(f"/users/{user_id}/with-permissions").json()
 
         assert "salary" not in user
+
+    def test_crud_routes_do_not_show_salary(self, client, auth_context):
+        """The CRUD routes and /users/me leave salary out, also for HR."""
+        created = client.post(
+            "/users",
+            json={"email": "crud@field.com", "name": "Employee", "salary": 60000},
+        ).json()
+        assert "salary" not in created
+
+        with auth_context(user_id=created["id"], role=UserRole.HR):
+            assert "salary" not in client.get(f"/users/{created['id']}").json()
+            assert "salary" not in client.get("/users/me").json()
+            for user in client.get("/users").json()["data"]:
+                assert "salary" not in user
+            patched = client.patch(
+                f"/users/{created['id']}", json={"salary": 65000}
+            ).json()
+            assert "salary" not in patched
+            # The PATCH body still takes it.
+            user = client.get(f"/users/{created['id']}/with-permissions").json()
+            assert user["salary"] == 65000
+
+    def test_salary_is_not_a_filter_or_sort_key(self, client):
+        """A filter or a sort on salary would show who earns more, so both are 422."""
+        self._user_with_salary(client, 70000)
+
+        client.get("/users?salary__gte=50000", assert_status_code=422)
+        client.get("/users?sort=salary", assert_status_code=422)

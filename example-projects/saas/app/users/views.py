@@ -48,6 +48,10 @@ class UserView(SoftDeleteMixin, AuthenticatedView[User]):
     ``schema_update`` leaves ``password`` out of the PATCH body. Otherwise a
     PATCH could set a password without the current-password check of
     change-password, and without a hash.
+
+    ``UserSchema`` marks ``salary`` write-only, so the CRUD routes never
+    show it, and it is not a filter or a sort key. The one route that shows
+    it is ``get_user_with_field_permissions``, and only to HR and owners.
     """
 
     prefix = "/users"
