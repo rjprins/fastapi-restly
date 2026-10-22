@@ -13,7 +13,9 @@ from app.settings import get_settings
 config = context.config
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # Keep the loggers that exist already: the tests run these migrations in
+    # their own process, and caplog sees nothing from a logger that is off.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 # Restly's test setup injects its own database URL here. A direct Alembic
 # command falls back to the same settings the application uses.
