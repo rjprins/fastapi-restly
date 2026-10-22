@@ -30,10 +30,11 @@ test-typing:
 	cd example-projects/blog && uv run --with pyright pyright blog tests
 	cd example-projects/saas && uv run --with mypy mypy
 
-# Test the main framework
+# Test the main framework. sqlmodel is not a dependency, but a few tests
+# check SQLModel tables; without it they skip.
 test-framework:
 	@echo "=== Testing FastAPI-Restly Framework ==="
-	uv run pytest tests/ -v
+	uv run --with sqlmodel pytest tests/ -v
 
 # Test shop example
 test-shop:
