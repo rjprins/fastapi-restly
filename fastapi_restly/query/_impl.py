@@ -460,7 +460,7 @@ def derive_schema_list_params(
     :raises fastapi_restly.exc.RestlyConfigurationError: An entry of a key
         setting matches no key, or is not a key or pattern. The sort
         parameter has the name of a page parameter. A key of
-        ``default_sort`` is not a field to sort on.
+        ``default_sort`` is not a field to sort on, or appears twice.
     """
     return _derive_list_params(
         schema_response,
@@ -881,7 +881,7 @@ def _sort_field(sort_keys: list[str], default: str | None) -> tuple[Any, str | N
     keys = ", ".join(f"``{key}``" for key in sort_keys)
     description = (
         "Keys to sort by, separated by commas. A ``-`` before a key sorts in "
-        f"descending order. Each key may appear once. Example: ``{example}``. "
+        f"descending order. Use each key only once. Example: ``{example}``. "
         f"The sort keys are: {keys}."
     )
     return (

@@ -191,8 +191,11 @@ replacement, unless it says otherwise.
   key is a `RequestValidationError`, not an `HTTPException`; the body is the
   same.
 - A sort key that appears twice, such as `?sort=name,-name`, gets `422`.
-  Before, the second term had no effect. A `default_sort` with a key twice
-  fails when the class is defined.
+  Before, the second term had no effect. With hand-written list params, or a
+  raw `QueryParams` in `fr.query.apply_list_params`, it raises
+  `BadQueryParam`, a `400`; before, the list came back with `200`. A
+  `default_sort` with a key twice fails when the class is defined, or when
+  the view registers for a mixin.
 - The `400` texts of a list name the problem: `Unknown sort key: 'nope'`,
   `Unknown filter key: 'nope'`, or `Invalid filter value for 'age': 'old'.`
   with Pydantic's reason. A field validator that raises another exception

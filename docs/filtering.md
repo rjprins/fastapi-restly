@@ -228,7 +228,9 @@ A key of `default_sort` must be a field of the response class that can be a
 sort key. `include_sort_keys` does not have to keep it, so a view can sort by
 a field that the client cannot sort by. A key that the response class does
 not have fails when the view registers, also when the view gets
-`default_sort` from a base view. A view without those fields sets
+`default_sort` from a base view. A key that appears twice, such as in
+`"name,-name"`, fails when the class is defined, or when the view registers
+for a mixin. A view without those fields sets
 `default_sort = None` for primary key order. An empty `?sort=` gets the
 default too. An override of
 {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`

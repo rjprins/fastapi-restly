@@ -2146,10 +2146,10 @@ class BaseRestView(
     #: ``?sort=``, such as ``"-created_at"``. It becomes the default of the
     #: sort parameter, so OpenAPI shows it. A key must be a field of
     #: :attr:`schema_response` that a sort key could have, but
-    #: :attr:`include_sort_keys` does not have to keep it. ``None`` (the
-    #: default) sorts by the primary key. The primary key is always the last
-    #: term. A view that inherits it and does not have all its keys sorts
-    #: by the primary key.
+    #: :attr:`include_sort_keys` does not have to keep it. Use each key only
+    #: once. ``None`` (the default) sorts by the primary key. The primary key
+    #: is always the last term. A view that inherits it and does not have all
+    #: its keys sorts by the primary key.
     default_sort: ClassVar[str | None] = None
     #: Where a sort puts NULLs: ``"last"`` (the default) or ``"first"`` in
     #: both directions, on every database. ``None`` leaves them where the
