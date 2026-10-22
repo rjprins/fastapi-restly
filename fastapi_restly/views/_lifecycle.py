@@ -692,9 +692,11 @@ class _SharedWriteActionCommit:
     def _record_loaded(self, transaction: SessionTransaction | None, obj: Any) -> None:
         """Add the loaded graph of ``obj`` to the record of ``transaction``.
 
-        A savepoint that was released belongs to its parent now, so its record
-        moves to the parent first. This keeps one record for each open
-        transaction, also when each action runs in a savepoint of its own.
+        A savepoint that was released is part of its parent now, so its record
+        moves to its nearest open ancestor first. This keeps one record for
+        each open transaction, also when each action runs in a savepoint of
+        its own. The record of an open savepoint stays, so its rollback can
+        drop it.
         """
         for recorded in list(self.loaded):
             target = recorded

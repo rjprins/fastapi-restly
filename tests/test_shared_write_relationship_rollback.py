@@ -321,6 +321,8 @@ async def test_writes_that_reach_the_same_objects_record_each_object_once(
                         owner.id, view.schema_update(name=owner.name.upper())
                     )
                 )
+        # A white-box check: it counts the records in the private store of the
+        # shared commit, because a count is exact where peak memory is noisy.
         records = _shared_write_action_commit_owner(session).loaded
         # The company and its owners, once for the transaction. The released
         # savepoint of the last write moves to its parent at the next write.
@@ -329,3 +331,37 @@ async def test_writes_that_reach_the_same_objects_record_each_object_once(
     async with _enter(writes.make_session()) as other:
         names = await _call(other.scalars(select(writes.owner_model.name)))
         assert sorted(names) == sorted(owner.name.upper() for owner in owners)
+
+
+async def test_a_rolled_back_savepoint_drops_the_records_of_all_its_writes(
+    related_writes,
+):
+    """A second write in a savepoint must not move the record of the first
+    one out of it: the savepoint is still open, and its rollback drops both.
+    Otherwise the commit would reload what only the rolled-back writes
+    loaded."""
+    writes = related_writes
+    view = writes.document_view
+    owner_view = writes.owner_view
+
+    async with _enter(view.shared_write_action_commit()):
+        await _call(
+            view.handle_create(
+                view.schema_create(title="survivor", owner_id=writes.owner_id)
+            )
+        )
+        with pytest.raises(ValueError, match="discard both updates"):
+            async with _enter(writes.session.begin_nested()):
+                colleague = await _call(
+                    owner_view.handle_update(
+                        writes.colleague_id, owner_view.schema_update(name="gone")
+                    )
+                )
+                await _call(
+                    owner_view.handle_update(
+                        writes.owner_id, owner_view.schema_update(name="gone too")
+                    )
+                )
+                raise ValueError("discard both updates")
+
+    assert "company" in inspect(colleague).unloaded
