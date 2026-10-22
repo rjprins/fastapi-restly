@@ -219,6 +219,13 @@ There is a known limit: views that you include on an `APIRouter`, not on the
 app, do not get these annotations. The check for two classes with the same
 name still covers them when you pass the app to
 {func}`fr.configure(app, ...) <fastapi_restly.db.configure>`.
+
+Restly adds the annotations in the app's `app.openapi()`, and checks the
+class names there too. FastAPI's function `get_openapi()` does neither. So to
+write the spec to a file, call `app.openapi()`. Restly wraps `app.openapi`
+when the first view is included on the app, or when you pass the app to
+`fr.configure`. An `app.openapi` of your own that you set after that replaces
+Restly's. Set it before, and Restly wraps it.
 :::
 
 ## See also
