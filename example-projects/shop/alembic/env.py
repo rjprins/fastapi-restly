@@ -11,7 +11,9 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 config = context.config
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # Keep the loggers that exist already: tests that run these migrations in
+    # their own process would see nothing from a logger that is off.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = shop.main.Base.metadata
 
