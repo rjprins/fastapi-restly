@@ -566,7 +566,7 @@ class AsyncRestView(
         selects columns, not a model, counts its distinct rows. Override for
         estimated counts on huge tables.
         """
-        return int((await self.session.scalar(_count_statement(query))) or 0)
+        return int(await self.session.scalar(_count_statement(query)) or 0)
 
     # ====================================================================
     # Request-logic seams (authorize + transaction hooks)
