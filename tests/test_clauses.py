@@ -210,6 +210,58 @@ def test_the_uncalled_form_fails_in_either_order(called_first):
         engine.dispose()
 
 
+@pytest.mark.parametrize("called_first", [True, False], ids=["called", "uncalled"])
+def test_a_member_in_a_relationship_condition_in_either_order(called_first):
+    """SQLAlchemy annotates the condition of a relationship, so its member
+    placeholder is a bind of SQLAlchemy's annotated class."""
+
+    class ShelfBase(DeclarativeBase):
+        pass
+
+    class Shelf(ShelfBase):
+        __tablename__ = "shelf"
+        id: Mapped[int] = mapped_column(primary_key=True)
+        tenant_books: Mapped[list["Book"]] = relationship(
+            primaryjoin=lambda: and_(
+                Shelf.id == Book.shelf_id, Book.tenant_id == Ctx.tenant_id
+            ),
+            viewonly=True,
+        )
+
+    class Book(ShelfBase):
+        __tablename__ = "book"
+        id: Mapped[int] = mapped_column(primary_key=True)
+        shelf_id: Mapped[int] = mapped_column(ForeignKey("shelf.id"))
+        tenant_id: Mapped[int]
+
+    engine = create_engine("sqlite://")
+    ShelfBase.metadata.create_all(engine)
+    with Session(engine) as session:
+        session.add_all([Shelf(id=1), Book(id=1, shelf_id=1, tenant_id=1)])
+        session.commit()
+    has_tenant_books = where_clause(Shelf.tenant_books.any())
+
+    def run_called():
+        with Ctx.bind(tenant_id=1), Session(engine) as session:
+            stmt = select(Shelf.id).where(has_tenant_books())
+            assert session.scalars(stmt).all() == [1]
+
+    def run_uncalled():
+        with Session(engine) as session:
+            with pytest.raises(StatementError, match="A value is required"):
+                session.scalars(select(Shelf.id).where(Shelf.tenant_books.any()))
+
+    try:
+        if called_first:
+            run_called()
+            run_uncalled()
+        else:
+            run_uncalled()
+            run_called()
+    finally:
+        engine.dispose()
+
+
 # --- clause functions -------------------------------------------------------
 
 

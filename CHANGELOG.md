@@ -336,11 +336,11 @@ replacement, unless it says otherwise.
   `list[X]`. Before, an async view answered 500 when such a field held a
   nested schema with relationships of its own, and a body with
   `tuple[fr.IDRef[Tag], ...]` answered 500 too.
-- A clause with a context member that is used without the call in plain
-  SQLAlchemy, as in `select(Post).where(mine)`, always fails when it runs, as
-  the docs say. Before, it ran with `NULL` for the member once the called
-  form, `mine()`, had run. And after the form without the call had failed
-  once, the called form failed too.
+- In plain SQLAlchemy, a clause that you forget to call, as in
+  `select(Post).where(mine)`, now always fails when it runs. Before, it ran
+  with `NULL` for its context member once the called form, `mine()`, had
+  run. And after the form without the call had failed once, the called form
+  failed too.
 - A react-admin view checks a filter value with Pydantic. Before,
   `{"active": "false"}` matched the rows where `active` is true, and a bad
   UUID gave `500`.

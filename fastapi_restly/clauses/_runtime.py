@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 from typing import Any, Callable, NoReturn, Sequence, TypeVar, final, overload
 
 from sqlalchemy import ColumnElement, Delete, Select, Update, true
@@ -131,17 +132,21 @@ class Unscoped(WhereClause):
 UNSCOPED = Unscoped._of(true, "UNSCOPED", fixed=True)
 
 
-class _FilledPlaceholder(BindParameter[Any]):
-    """A member placeholder that a clause filled with its value.
+@functools.cache
+def _filled_class(cls: type[BindParameter[Any]]) -> type[BindParameter[Any]]:
+    """The class of a member placeholder that a clause filled with its value:
+    a subclass of the placeholder's own class.
 
     The class of its own gives the statement a cache key of its own.
     SQLAlchemy's cache key of a bind leaves out its value and ``required``.
     So the called and the uncalled form of a clause would share one compiled
     statement, and the form that ran first would decide whether the uncalled
-    form raises.
+    form raises. A subclass of the placeholder's own class keeps its layout,
+    such as that of the annotated bind in the condition of a relationship.
     """
-
-    inherit_cache = True
+    return type(
+        f"Filled{cls.__name__}", (cls,), {"__slots__": (), "inherit_cache": True}
+    )
 
 
 def _fill_members(expr: ColumnElement[bool]) -> ColumnElement[bool]:
@@ -171,8 +176,8 @@ def _fill_members(expr: ColumnElement[bool]) -> ColumnElement[bool]:
         if bind.key in values:
             bind.value = values[bind.key]
             bind.required = False
-            # the traversal made this copy, so the class can change in place
-            bind.__class__ = _FilledPlaceholder
+            # the traversal made this copy, so its class can change
+            bind.__class__ = _filled_class(type(bind))
 
     return cloned_traverse(
         expr, {"maintain_key": True, "detect_subquery_cols": True}, {"bindparam": fill}
