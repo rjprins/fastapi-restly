@@ -42,6 +42,7 @@ from sqlalchemy.orm import MANYTOONE, InstanceState, Session, SessionTransaction
 from sqlalchemy.orm.collections import collection_adapter
 
 from .._integrity import after_commit, translate_integrity_errors
+from ..exc import RestlyExpireOnCommitWarning
 from ..objects import _async_refresh_saved, _refresh_saved
 from ..schemas._base import (
     _async_check_body_references,
@@ -393,28 +394,35 @@ def _change(session: Any, subject: Any) -> Iterator[None]:
         yield
 
 
-#: The view classes whose first write checked ``expire_on_commit``.
-_EXPIRY_CHECKED: "weakref.WeakSet[type]" = weakref.WeakSet()
+#: The view classes that warned about a session that expires on commit.
+_EXPIRY_WARNED: "weakref.WeakSet[type]" = weakref.WeakSet()
 
 
 def _warn_if_session_expires(host: Any) -> None:
-    """Warn once for each view class, at its first write, when its session
-    expires on commit, from any source of sessions."""
+    """Warn once for each view class, at a write through a session that
+    expires on commit, from any source of sessions.
+
+    The class is kept only after the warning, so a session that does not
+    expire, such as that of another app, does not hide one that does. And
+    when a filter turns the warning into an error, each such write raises.
+    """
     view_cls = type(host)
-    if view_cls in _EXPIRY_CHECKED:
+    if view_cls in _EXPIRY_WARNED:
         return
-    _EXPIRY_CHECKED.add(view_cls)
     session = getattr(host.session, "sync_session", host.session)
-    if getattr(session, "expire_on_commit", False) is True:
-        warnings.warn(
-            f"{view_cls.__name__} writes through a session with "
-            "expire_on_commit=True. The commit expires the loaded attributes "
-            "of the saved row. So snapshot(new) in after_action_commit is "
-            "empty, and the response loads the row from the database again, "
-            "which raises MissingGreenlet in async code. Create the sessions "
-            "with expire_on_commit=False, as Restly's own session factories do.",
-            stacklevel=4,
-        )
+    if getattr(session, "expire_on_commit", False) is not True:
+        return
+    warnings.warn(
+        f"{view_cls.__name__} writes through a session with "
+        "expire_on_commit=True. The commit expires the loaded attributes of "
+        "the saved row. So snapshot(new) in after_action_commit is empty. The "
+        "response also loads the row from the database again, and in async "
+        "code that raises MissingGreenlet. Create the sessions with "
+        "expire_on_commit=False, as Restly's own session factories do.",
+        RestlyExpireOnCommitWarning,
+        stacklevel=4,
+    )
+    _EXPIRY_WARNED.add(view_cls)
 
 
 @contextlib.asynccontextmanager

@@ -650,9 +650,9 @@ is not loaded, after a read or after a write. On an async view it raises
 :class: details
 
 Restly's session factories set `expire_on_commit=False`, so an object stays
-readable after the commit. Restly warns when the async session factory that
-you pass has `expire_on_commit=True`; see
-[Session Factory Defaults](#session-factory-defaults).
+readable after the commit. Restly warns once for each view that writes
+through a session with `expire_on_commit=True`, from any source of sessions;
+see [Session Factory Defaults](#session-factory-defaults).
 
 The same error comes from any database access without `await`, not only from
 relationships: a deferred column, an expired attribute that your code reads,

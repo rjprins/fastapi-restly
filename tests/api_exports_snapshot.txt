@@ -83,6 +83,7 @@ fastapi_restly.exc:
   - RestlyConfigurationError
   - RestlyDuplicateSchemaNameWarning
   - RestlyError
+  - RestlyExpireOnCommitWarning
   - RestlyHTTPError
   - RestlyMisuseWarning
   - RestlySkippedFilterMethodsWarning
@@ -186,6 +187,7 @@ fastapi_restly.exc:
   - RestlyConfigurationError
   - RestlyDuplicateSchemaNameWarning
   - RestlyError
+  - RestlyExpireOnCommitWarning
   - RestlyHTTPError
   - RestlyMisuseWarning
   - RestlySkippedFilterMethodsWarning

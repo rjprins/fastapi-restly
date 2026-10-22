@@ -16,7 +16,11 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from sqlalchemy.orm import Session as SA_Session
 
 from .._routes import iter_routes
-from ..exc import RestlyConfigurationError, RestlyUncommittedChangesWarning
+from ..exc import (
+    RestlyConfigurationError,
+    RestlyExpireOnCommitWarning,
+    RestlyUncommittedChangesWarning,
+)
 from ._engine_defaults import apply_connect_hooks, engine_options
 from ._globals import _fr_globals
 
@@ -49,6 +53,7 @@ def _setup_async_database_connection(
             "in the response serializer, and earlier too if an after_action_commit hook "
             "reads the committed object. Pass expire_on_commit=False to your "
             "async_sessionmaker.",
+            RestlyExpireOnCommitWarning,
             stacklevel=3,
         )
 

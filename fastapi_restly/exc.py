@@ -101,6 +101,19 @@ class RestlyUncommittedChangesWarning(UserWarning):
     """
 
 
+class RestlyExpireOnCommitWarning(UserWarning):
+    """Emitted when a view writes through a session with
+    ``expire_on_commit=True``, once for each view.
+
+    The commit expires the loaded attributes of the saved row. So
+    ``snapshot(new)`` in ``after_action_commit`` is empty, and the response
+    loads the row from the database again. In async code, that raises
+    ``MissingGreenlet``. Restly's own session factories set
+    ``expire_on_commit=False``. A sync project that keeps
+    ``expire_on_commit=True`` on purpose can filter this warning by its class.
+    """
+
+
 class RestlyMisuseWarning(UserWarning):
     """Emitted at view registration for common framework-misuse patterns.
 
@@ -158,6 +171,7 @@ __all__ = [
     "RestlyConfigurationError",
     "RestlyDuplicateSchemaNameWarning",
     "RestlyError",
+    "RestlyExpireOnCommitWarning",
     "RestlyHTTPError",
     "RestlyMisuseWarning",
     "RestlySkippedFilterMethodsWarning",

@@ -104,16 +104,18 @@ async def export_user(id: int):
 A `get_db` that works for your own routes can still break the views.
 
 Create its sessionmaker with `expire_on_commit=False`, and for async views
-also with `autoflush=False`, as Restly does. Restly reads the response from
-the object after the commit. With SQLAlchemy's default,
-`expire_on_commit=True`, that read fails in an async view with
-`MissingGreenlet`, so every `POST` and `PATCH` answers 500. A sync view still
-works, but `snapshot(new)` in `after_action_commit` is empty, and Restly
-warns:
+also with `autoflush=False`, as Restly does:
 
 ```python
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False, autoflush=False)
 ```
+
+Restly reads the response from the object after the commit. With
+SQLAlchemy's default, `expire_on_commit=True`, that read fails in an async
+view with `MissingGreenlet`, so every `POST` and `PATCH` answers 500. A sync
+view still works, but `snapshot(new)` in `after_action_commit` is empty.
+Restly warns once for each view, sync or async, that writes through such a
+session.
 
 And `get_db` must not commit. A `get_db` that commits after the `yield` saves
 changes that should be rolled back, such as those of a route that forgot to

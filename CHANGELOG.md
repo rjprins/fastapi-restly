@@ -81,9 +81,11 @@ replacement, unless it says otherwise.
 - With `warn_on_misuse=True`, Restly warns about a writable field on a column
   that the model sets itself (`init=False` with a default), such as a tenant
   column.
-- A view warns once, at its first write, when its session expires on commit,
-  from any source of sessions. `snapshot(new)` in `after_action_commit` is
-  then empty, and an async view fails with `MissingGreenlet`.
+- `fr.exc.RestlyExpireOnCommitWarning`: a view warns once when it writes
+  through a session that expires on commit, from any source of sessions.
+  `snapshot(new)` in `after_action_commit` is then empty, and an async view
+  fails with `MissingGreenlet`. The warning of `fr.configure()` about an async
+  session factory with `expire_on_commit=True` has this class too.
 
 ### Changed
 
