@@ -21,7 +21,7 @@ import sys
 import types
 import warnings
 import weakref
-from collections.abc import Iterable, Mapping, Set
+from collections.abc import Collection, Iterable, Mapping, Set
 from enum import Enum
 from typing import (
     TYPE_CHECKING,
@@ -2094,7 +2094,7 @@ class BaseRestView(
     #: routes, or the names of endpoint methods. A subclass that sets its own
     #: value replaces the list of its base. A name that is not a route
     #: raises ``AttributeError`` when the view is registered.
-    exclude_routes: ClassVar[Iterable[str | ViewRoute]] = ()
+    exclude_routes: ClassVar[Collection[str | ViewRoute]] = ()
     #: What a list route does with a query key that it does not read.
     #: ``"forbid"`` (the default) rejects the request with 422, so a typo in
     #: a filter key does not return more rows than the client asked for.
@@ -3497,25 +3497,11 @@ def _guard_list_params(route: Callable) -> Callable:
 
 
 def _excluded_route_names(view_cls: type) -> frozenset[str]:
-    """The endpoint method names that the view's ``exclude_routes`` names.
-
-    They are read once and kept on the class that declares the setting, with
-    the value they come from. The setting may be any iterable, such as a
-    ``map()``, which can be read only once, and subclasses inherit it. A new
-    value, such as one that fixes a typo, is read again.
-    """
-    owner = next((c for c in view_cls.__mro__ if "exclude_routes" in vars(c)), None)
-    if owner is None:
-        return frozenset()
-    declared = vars(owner)["exclude_routes"]
-    kept = vars(owner).get("_fr_excluded_routes")
-    if kept is not None and kept[0] is declared:
-        return kept[1]
-    names = frozenset(
-        route.value if isinstance(route, ViewRoute) else route for route in declared
+    """The endpoint method names that the view's ``exclude_routes`` names."""
+    return frozenset(
+        route.value if isinstance(route, ViewRoute) else route
+        for route in getattr(view_cls, "exclude_routes", ())
     )
-    owner._fr_excluded_routes = (declared, names)  # type: ignore[attr-defined]
-    return names
 
 
 def _check_exclude_routes(cls: type[BaseRestView[Any, Any, Any, Any, Any]]):

@@ -58,3 +58,9 @@ class AllTicketView(PagedTicketView):
 
 class ExportTicketView(PagedTicketView):
     pagination = fr.NoPagination().replace(envelope=fr.views.Envelope)
+
+
+class MappedTicketView(PagedTicketView):
+    # Restly reads exclude_routes more than once, and a map() can be read only
+    # once. mypy's warn_unused_ignores fails here if the type starts to accept it.
+    exclude_routes = map(fr.ViewRoute, ("delete_endpoint",))  # type: ignore[assignment]

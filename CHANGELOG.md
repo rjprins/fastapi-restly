@@ -270,6 +270,9 @@ replacement, unless it says otherwise.
 - The test clients accept any 2xx status by default. Pass
   `assert_status_code` for an exact status. `assert_status_code=None` skips
   the check.
+- `exclude_routes` is typed `Collection[str | ViewRoute]`, not `Iterable`.
+  Restly reads the value more than once, so use a tuple, a list or a set, not
+  a `map()` or a generator.
 
 ### Removed
 
