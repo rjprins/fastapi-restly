@@ -3990,13 +3990,15 @@ def _init_all_endpoints(view_cls: type[View]):
     """
     Ensure every endpoint has a unique name and update the 'self' annotation.
     """
-    for attr in view_cls.__dict__.values():
+    for name, attr in view_cls.__dict__.items():
         if not hasattr(attr, "_api_route_args"):
             continue
         endpoint = attr
-        # Give every endpoint a unique name
-        # This will give the FooView.create() endpoint the name "fooview_create"
-        endpoint.__name__ = view_cls.__name__.lower() + "_" + endpoint.__name__
+        # Give every endpoint a unique name: FooView.create_endpoint gets
+        # "fooview_create_endpoint". From the attribute, as for a copied
+        # endpoint, not from __name__: a registration that failed has renamed
+        # the endpoint already, and a retry must not add the prefix again.
+        endpoint.__name__ = view_cls.__name__.lower() + "_" + name
         _annotate_self(view_cls, endpoint)
 
 

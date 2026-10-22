@@ -646,11 +646,7 @@ def test_failed_registration_is_not_recorded_as_mounted(sync_db):
     parent — otherwise a later, corrected ``include_view`` call would silently
     no-op and the app would serve no routes for the view at all. Pins the
     record-after-mount ordering in ``_init_view_cls_and_add_to_router``.
-
-    (The retried registration currently re-runs endpoint renaming, so route
-    *names*/operation IDs come out double-prefixed — a pre-existing prep
-    re-entrancy bug, tracked separately; this test only asserts the routes
-    mount and answer.)
+    The retry also names each route once, without a second class prefix.
     """
     engine, _ = sync_db
 
@@ -666,9 +662,14 @@ def test_failed_registration_is_not_recorded_as_mounted(sync_db):
         schema = WinchSchema
         exclude_routes = ("delete",)  # business name, not the route name
 
+        @fr.get("/stats")
+        def stats(self) -> dict:
+            return {}
+
     app = FastAPI()
-    with pytest.raises(AttributeError, match="not a route"):
-        fr.include_view(app, WinchView)
+    for _ in range(2):
+        with pytest.raises(AttributeError, match="not a route"):
+            fr.include_view(app, WinchView)
 
     # Fix the mistake and retry on the SAME app: the failed attempt must not
     # have been recorded, so this call really mounts.
@@ -678,6 +679,11 @@ def test_failed_registration_is_not_recorded_as_mounted(sync_db):
     assert _duplicate_routes(app) == {}
     paths = {path for path, _ in _effective_route_pairs(app)}
     assert "/winches/" in paths
+    [stats] = [route for route in app.routes if route.path == "/winches/stats"]
+    assert stats.name == "winchview_stats"
+    assert WinchView.create_endpoint.__name__ == "winchview_create_endpoint"
+    operations = app.openapi()["paths"]["/winches/stats"]
+    assert operations["get"]["operationId"].startswith("winchview_stats_")
 
     SharedBase.metadata.create_all(engine)
     client = TestClient(app)

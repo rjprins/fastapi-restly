@@ -401,6 +401,11 @@ replacement, unless it says otherwise.
   calls its `handle_<verb>` handler, or the endpoint method of its base, no
   longer warns. That is how the warning itself says to change the HTTP
   contract.
+- A view whose registration failed, such as for a name in `exclude_routes`
+  that is not a route, names its custom routes once when you register it
+  again after the fix: `widgetview_stats`, not `widgetview_widgetview_stats`.
+  Before, each failed attempt added the class prefix again, also to the
+  operation ID.
 - On PostgreSQL with asyncpg, the detail of a `409` names the constraint or
   the column, as with psycopg. An example is
   `Unique constraint violated: uq_user_email`. Before, it named only the kind
