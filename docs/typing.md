@@ -233,6 +233,14 @@ each marker as `Any`. See
 - They help less with the
   [endpoint methods](#replace-endpoint-method) (`*_endpoint`), whose
   signatures Restly fills in at registration.
+- mypy gives a setting that a base view sets without an annotation the type
+  of its value. So after `id_type = UUID` on a base view, `id_type = int` in a
+  subclass is an error. This holds for every setting, such as `tags` and
+  `include_filters`. Annotate the setting on the base view with the type that
+  Restly declares for it, such as
+  `id_type: ClassVar[type[Any] | None] = UUID`. The
+  [View Reference](#view-class-attributes) lists these types. Pyright needs
+  no annotation.
 
 
 ## Check your project

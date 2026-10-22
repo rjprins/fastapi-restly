@@ -535,6 +535,8 @@ filters on again with `("*",)`. An entry that a view inherits may match no
 key, because a base view serves many schemas. For mypy, give the setting a
 type on the base view: `include_filters: ClassVar[tuple[str, ...]] = ()`.
 Without it, mypy takes the type of `()` and rejects `("*",)` in the view.
+The same holds for every setting; see
+[What a type checker cannot see](#typing-limits).
 
 The sort keys are separate from the filter keys, so a view can sort on
 `created_at` without a `?created_at=` filter. A sort key has no suffix. It
