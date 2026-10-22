@@ -80,7 +80,8 @@ class BadQueryParam(RestlyHTTPError):
     An example is a filter value that fails the validation of its field,
     such as ``?age=old`` on an ``int`` field. On a list route, a query
     string that does not match the list params, such as an unknown key or a
-    bad page, is a 422 from FastAPI instead.
+    bad page, is a 422 instead: a ``RequestValidationError``, in the shape
+    that FastAPI uses for a bad parameter.
     """
 
     status_code = 400
