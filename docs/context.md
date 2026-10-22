@@ -52,41 +52,48 @@ reads `Current` needs a binding, even though its signature does not show it.
 
 Pass your existing authentication dependency to
 {meth}`Current.depends <fastapi_restly.clauses.ContextNamespace.depends>`.
-This example reads the `X-User-ID` header. It rejects a request without
-that header:
+Most apps have one that loads the user of the request, such as the
+`CurrentUser` alias of the
+[FastAPI full-stack template](https://github.com/fastapi/full-stack-fastapi-template).
+Pass the alias as it is:
 
 ```python
 from typing import Annotated
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI
+
+import fastapi_restly as fr
+from app.api.deps import get_current_user  # your authentication
+from app.models import User
+
+CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
-def get_user_id(
-    user_id: Annotated[int | None, Header(alias="X-User-ID")] = None,
-) -> int:
-    if user_id is None:
-        raise HTTPException(status_code=401, detail="Authentication required")
-    return user_id
+class Current(fr.ContextNamespace):
+    user: fr.ContextParam[User]
 
 
-SetCurrentContextDep = Current.depends(user_id=get_user_id)
+SetCurrentContextDep = Current.depends(user=CurrentUser)
 
 app = FastAPI(dependencies=[SetCurrentContextDep])
 
 
 @app.get("/me")
 def me() -> dict[str, int]:
-    return {"user_id": Current.user_id()}
+    return {"user_id": Current.user().id}
 ```
 
-Trust this header only when an authenticating proxy replaces the values that
-clients send, and clients cannot reach the app directly.
-
-FastAPI calls `get_user_id` before the endpoint. The generated dependency
-binds the result for the request. Both `def` and `async def` endpoints can
-read it. Binding only supplies the value. It does not check who the caller is,
-and it does not decide what the caller may do: that is
+FastAPI calls `get_current_user` before the endpoint. The generated dependency
+binds the user for the request, so code in the request can read it, such as
+`Current.user().is_superuser`. Both `def` and `async def` endpoints can read
+it. Binding only supplies the value. It does not check who the caller is, and
+it does not decide what the caller may do: that is
 [`authorize`](#authorize-gate).
+
+Bind the whole user, as here, when your app already loads it for each request.
+Bind scalars, such as `user_id: fr.ContextParam[int]`, when a worker must bind
+without loading a row, or when a column default or a
+[query clause](#binding-values) should use the member directly.
 
 :::{admonition} Details
 :class: details
@@ -101,7 +108,8 @@ group of routes. Each source can be a callable, a `Depends(...)` object, or
 an `Annotated` dependency alias.
 
 One `Current.depends(...)` call can bind several members, each from its own
-dependency. The SaaS example binds four members from its authentication in
+dependency. The SaaS example binds four scalar members from its
+authentication in
 [`app/current.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/current.py).
 :::
 
@@ -121,6 +129,15 @@ SQLAlchemy calls the member when it inserts the row, usually during a flush.
 So keep the binding active until the flush finishes. `Current.user_id()` with
 parentheses would read the value once, when Python defines the model class.
 No request has bound a value then, so the import fails with `LookupError`.
+
+A member that holds the whole user needs a lambda. SQLAlchemy calls the
+lambda when it inserts the row, and the lambda reads the member then:
+
+```python
+created_by_id: Mapped[int] = mapped_column(
+    init=False, insert_default=lambda: Current.user().id
+)
+```
 
 [Stamp the fields the server owns](#server-stamped-fields) shows the whole
 recipe, with `onupdate` and `fr.ReadOnly` on the schema.
@@ -229,12 +246,12 @@ override returns:
 ```python
 from fastapi.testclient import TestClient
 
-app.dependency_overrides[get_user_id] = lambda: 7
+app.dependency_overrides[get_current_user] = lambda: User(id=7)
 try:
     with TestClient(app) as client:
         assert client.get("/me").json() == {"user_id": 7}
 finally:
-    app.dependency_overrides.pop(get_user_id)
+    app.dependency_overrides.pop(get_current_user)
 ```
 
 A test that calls application code directly, without a request, binds the
