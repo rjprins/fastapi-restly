@@ -158,9 +158,8 @@ get their session through `fr.AsyncSessionDep` or `fr.SessionDep`.
 Give your sessions the same options as Restly's own factories:
 `expire_on_commit=False`, and for async sessions also `autoflush=False`. An
 async view needs `expire_on_commit=False`. Without it, its `POST` and `PATCH`
-routes fail with `MissingGreenlet`, and Restly does not warn about this for a
-generator. [Session factory defaults](#session-factory-defaults) explains
-why.
+routes fail with `MissingGreenlet`. Restly warns at the first write of each
+view; [Session factory defaults](#session-factory-defaults) explains why.
 
 To use the generator outside a request, with
 [`fr.open_session()`](#session-off-request), it must take no arguments. In
@@ -441,7 +440,9 @@ commit expires those attributes, so each read loads them from the database
 again. In async code, that read raises `MissingGreenlet`: the response is
 built in plain async code, and SQLAlchemy cannot load from the database there
 without an `await`. In sync code, the read works, but building the response
-now needs the database.
+now needs the database. And in both, `snapshot(new)` in `after_action_commit`
+is empty, because it reads only the loaded attributes. So Restly warns once
+for each view, at its first write through a session that expires on commit.
 
 The autoflush option is different for async and sync sessions. Async sessions
 turn autoflush off, because autoflush can make a read send a write to the

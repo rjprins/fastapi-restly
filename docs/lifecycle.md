@@ -617,7 +617,9 @@ not call them, and neither do the `fr.objects` functions. The arguments are:
   custom route gives `write_action`. See [Action names](#action-names).
 - `new`: the row that the action is about, after the save. It is `None` when
   the action removed the row, as a delete does, or when the action has no
-  single row.
+  single row. On a session that expires on commit, `snapshot(new)` in
+  `after_action_commit` is empty, and Restly warns; see
+  [Session factory defaults](#session-factory-defaults).
 - `old`: a dict of that row's column values before the action, from
   {meth}`snapshot <fastapi_restly.views.BaseRestView.snapshot>`. It holds only
   the columns that were loaded. It is `None` when the row is new, as on a

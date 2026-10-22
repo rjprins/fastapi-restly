@@ -27,6 +27,8 @@ bracket inside it joins it, as inside ``shared_write_action_commit``.
 """
 
 import contextlib
+import warnings
+import weakref
 from collections.abc import AsyncIterator, Callable, Iterator
 from dataclasses import dataclass, field
 from functools import partial
@@ -391,6 +393,30 @@ def _change(session: Any, subject: Any) -> Iterator[None]:
         yield
 
 
+#: The view classes whose first write checked ``expire_on_commit``.
+_EXPIRY_CHECKED: "weakref.WeakSet[type]" = weakref.WeakSet()
+
+
+def _warn_if_session_expires(host: Any) -> None:
+    """Warn once for each view class, at its first write, when its session
+    expires on commit, from any source of sessions."""
+    view_cls = type(host)
+    if view_cls in _EXPIRY_CHECKED:
+        return
+    _EXPIRY_CHECKED.add(view_cls)
+    session = getattr(host.session, "sync_session", host.session)
+    if getattr(session, "expire_on_commit", False) is True:
+        warnings.warn(
+            f"{view_cls.__name__} writes through a session with "
+            "expire_on_commit=True. The commit expires the loaded attributes "
+            "of the saved row. So snapshot(new) in after_action_commit is "
+            "empty, and the response loads the row from the database again, "
+            "which raises MissingGreenlet in async code. Create the sessions "
+            "with expire_on_commit=False, as Restly's own session factories do.",
+            stacklevel=4,
+        )
+
+
 @contextlib.asynccontextmanager
 async def _async_bracket(
     host: AsyncWriteHost, action: str, obj: Any, data: Any
@@ -400,6 +426,7 @@ async def _async_bracket(
     The outermost bracket on a session opens the shared commit, so it owns
     the commit and the after-hooks. A bracket inside it joins it.
     """
+    _warn_if_session_expires(host)
     commit = (
         _async_shared_write_action_commit(host.session)
         if _shared_write_action_commit_owner(host.session) is None
@@ -439,6 +466,7 @@ async def _async_joined_bracket(
 @contextlib.contextmanager
 def _bracket(host: WriteHost, action: str, obj: Any, data: Any) -> Iterator[_Bracket]:
     """Sync variant of :func:`_async_bracket`."""
+    _warn_if_session_expires(host)
     commit = (
         _shared_write_action_commit(host.session)
         if _shared_write_action_commit_owner(host.session) is None
