@@ -12,8 +12,10 @@ or the guard for a marker that has no effect.
 import sys
 import typing
 from collections.abc import Sequence
+from collections.abc import Set as AbstractSet
 from typing import Any
 
+import pydantic
 import pytest
 import typing_extensions
 from fastapi import FastAPI
@@ -22,7 +24,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
 from fastapi_restly.exc import RestlyConfigurationError
-from fastapi_restly.schemas._base import reference_origin_and_target
+from fastapi_restly.schemas._base import (
+    _listed_ref_exists_marker,
+    reference_origin_and_target,
+)
 from fastapi_restly.testing import RestlyTestClient
 from fastapi_restly.views._openapi import _is_id_ref_annotation
 
@@ -189,22 +194,7 @@ def test_a_marker_inside_a_type_alias_is_rejected(alias_class, marker, generic):
     with pytest.raises(RestlyConfigurationError, match="Leaky.secret") as excinfo:
         type("Leaky", (fr.BaseSchema,), {"__annotations__": {"secret": annotation}})
 
-    assert (
-        f"Move the marker out of the type alias, such as secret: {marker}[str]."
-        in str(excinfo.value)
-    )
-
-
-def test_a_marker_in_optional_names_no_alias():
-    with pytest.raises(RestlyConfigurationError) as excinfo:
-        type(
-            "Leaky",
-            (fr.BaseSchema,),
-            {"__annotations__": {"count": typing.Optional[fr.WriteOnly[int]]}},
-        )
-
-    assert "Wrap the whole field type instead" in str(excinfo.value)
-    assert "Move the marker" not in str(excinfo.value)
+    assert "move the marker out of the type alias" in str(excinfo.value)
 
 
 def test_a_reference_in_a_to_many_spelling_is_a_reference():
@@ -213,6 +203,21 @@ def test_a_reference_in_a_to_many_spelling_is_a_reference():
 
     for spelling in TO_MANY_SPELLINGS.values():
         assert _is_id_ref_annotation(spelling(fr.IDRef[RefTag]))
+
+
+def test_a_set_holds_ids_but_no_references():
+    """A set cannot hold Pydantic models, so ``set[fr.IDRef[Tag]]`` is no
+    reference. A set of ids is."""
+
+    class SetTag(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    for collection in (set, frozenset, AbstractSet):
+        assert not _is_id_ref_annotation(collection[fr.IDRef[SetTag]])
+        field = pydantic.fields.FieldInfo.from_annotation(
+            collection[fr.MustExist[int, SetTag]]
+        )
+        assert _listed_ref_exists_marker(field) is not None
 
 
 def test_a_generic_alias_takes_the_default_of_a_missing_argument():
@@ -333,3 +338,64 @@ def test_a_tuple_of_references_is_written_sync(sync_db):
     _register_tagged_articles(app, fr.RestView)
     SharedBase.metadata.create_all(engine)
     _assert_a_tuple_of_references_is_written(RestlyTestClient(app))
+
+
+@pytest.mark.skipif(
+    sys.version_info < (3, 12), reason="the type statement needs Python 3.12"
+)
+def test_a_type_alias_may_name_a_schema_that_python_creates_later(client):
+    """A type statement is lazy. Pydantic accepts a schema that uses one
+    before the class that it names exists, and so does Restly."""
+
+    class LateAuthor(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+        articles: Mapped[list["LateArticle"]] = relationship(default_factory=list)
+
+    class LateArticle(fr.IDMixin, SharedBase):
+        title: Mapped[str]
+        author_id: Mapped[int] = mapped_column(ForeignKey("late_author.id"))
+        tags: Mapped[list["LateTag"]] = relationship(default_factory=list)
+
+    class LateTag(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+        article_id: Mapped[int] = mapped_column(ForeignKey("late_article.id"))
+
+    namespace: dict[str, Any] = {"fr": fr}
+    exec(
+        "type Articles = list[LateArticleOut]\n"
+        "type AuthorRef = LateAuthorOut\n"
+        "class LateAuthorSchema(fr.IDSchema):\n"
+        "    name: str\n"
+        "    articles: fr.ReadOnly[Articles] = []\n"
+        "class LateArticleSchema(fr.IDSchema):\n"
+        "    title: str\n"
+        "    author_id: int\n"
+        "    author: fr.ReadOnly[AuthorRef | None] = None\n"
+        "class LateTagOut(fr.IDSchema):\n"
+        "    name: str\n"
+        "class LateArticleOut(fr.IDSchema):\n"
+        "    title: str\n"
+        "    tags: list[LateTagOut]\n"
+        "class LateAuthorOut(fr.IDSchema):\n"
+        "    name: str\n"
+        "class LateTagSchema(fr.IDSchema):\n"
+        "    name: str\n"
+        "    article_id: int\n"
+        "LateAuthorSchema.model_rebuild()\n"
+        "LateArticleSchema.model_rebuild()\n",
+        namespace,
+    )
+    for prefix, model, schema in (
+        ("/authors", LateAuthor, namespace["LateAuthorSchema"]),
+        ("/articles", LateArticle, namespace["LateArticleSchema"]),
+        ("/tags", LateTag, namespace["LateTagSchema"]),
+    ):
+        view = type(
+            f"{model.__name__}View",
+            (fr.AsyncRestView,),
+            {"prefix": prefix, "model": model, "schema": schema},
+        )
+        fr.include_view(client.app, view)
+    create_tables()
+
+    _assert_the_second_level_is_loaded(client)
