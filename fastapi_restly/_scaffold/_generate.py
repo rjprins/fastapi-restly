@@ -110,7 +110,7 @@ def _walk(node: Any, prefix: Path = Path()) -> Iterator[tuple[Path, Any]]:
 
     Walks the ``Traversable`` API directly rather than going through
     ``importlib.resources.as_file()``, which only supports directory
-    traversables from Python 3.12 while Restly still supports 3.10.
+    traversables from Python 3.12 while Restly still supports 3.11.
     Bytecode is skipped: a plain ``pytest`` in the repository also collects
     the template tests, and leaves a ``__pycache__`` in the template tree.
     """
@@ -231,7 +231,7 @@ def build_pyrightconfig(options: Options) -> str:
         "{\n"
         f'    "include": {include},\n'
         f'    "exclude": {exclude},\n'
-        '    "pythonVersion": "3.10"\n'
+        '    "pythonVersion": "3.11"\n'
         "}\n"
     )
 
@@ -280,7 +280,7 @@ def build_pyproject(options: Options) -> str:
     return f"""[project]
 name = "{options.name}"
 version = "0.1.0"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
 {listed}
 ]

@@ -187,7 +187,7 @@ class ContextParam(Generic[_T]):
     # the bound (value, origin), or None: a bound value may itself be None
     _var: ContextVar[tuple[Any, str | None] | None]
     _placeholder: BindParameter[Any]
-    # Python 3.10/3.11 signature inspection otherwise invokes our equality guard.
+    # Python 3.11 signature inspection otherwise invokes our equality guard.
     __signature__ = inspect.Signature()
 
     def __init__(self) -> None:

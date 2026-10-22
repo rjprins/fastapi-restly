@@ -2,7 +2,7 @@ import enum
 import re
 from datetime import datetime, timezone
 from inspect import unwrap
-from typing import Any
+from typing import Any, dataclass_transform
 
 from sqlalchemy import DateTime, Enum, func, inspect
 from sqlalchemy.ext.asyncio import AsyncAttrs
@@ -23,7 +23,6 @@ from sqlalchemy.orm import (
     synonym,
 )
 from sqlalchemy.orm.decl_api import DCTransformDeclarative
-from typing_extensions import dataclass_transform
 
 from ..exc import RestlyConfigurationError
 

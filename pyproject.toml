@@ -7,7 +7,7 @@ name = "fastapi-restly"
 version = "0.11.0"
 description = "A REST Framework for FastAPI"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "MIT"
 authors = [
     { name = "Rutger Prins", email = "rutgerprins@gmail.com" },
@@ -18,7 +18,6 @@ classifiers = [
     "Framework :: FastAPI",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",

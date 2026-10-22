@@ -3,7 +3,7 @@ name = "blog"
 version = "0.1.0"
 description = "The blog API that the FastAPI-Restly tutorials build"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "fastapi-restly[standard]",
     "aiosqlite",

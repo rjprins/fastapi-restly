@@ -2,7 +2,7 @@
 name = "saas-example"
 version = "0.1.0"
 description = "Multi-tenant SaaS example for FastAPI-Restly"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "alembic>=1.15.2",
     "asyncpg>=0.30.0",

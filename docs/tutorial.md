@@ -8,7 +8,7 @@ Drafts](tutorial_customizing.md) continues from the file you build here.
 
 ## Install
 
-Python 3.10 or later is required. Install Restly with FastAPI's development
+Python 3.11 or later is required. Install Restly with FastAPI's development
 server, and the async SQLite driver:
 
 ```bash

@@ -1,5 +1,5 @@
 {
     "include": ["app", "tests", "alembic"],
     "exclude": ["**/__pycache__", ".venv", "alembic/versions"],
-    "pythonVersion": "3.10"
+    "pythonVersion": "3.11"
 }

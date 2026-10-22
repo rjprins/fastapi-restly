@@ -362,10 +362,6 @@ async def test_a_change_from_after_flush_postexec_on_a_written_row_is_kept(env):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skipif(
-    not hasattr(sqlite3.Connection, "setlimit"),
-    reason="sqlite3.Connection.setlimit is new in Python 3.11",
-)
 def test_a_bulk_insert_in_one_block_and_the_parameter_limit(tmp_path):
     """A bulk import in one block: ``session.add_all`` of many rows of the
     view's model, with ``obj=None``.

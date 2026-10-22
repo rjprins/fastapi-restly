@@ -121,8 +121,6 @@ def _alias_value(annotation: Any, seen: set[Any] | None = None) -> Any:
     if seen is None:
         seen = set()
     while True:
-        # The origin first: on Python 3.10, Many[int] also passes as an
-        # instance of the alias's own class.
         origin = get_origin(annotation)
         if type(origin) in _TYPE_ALIAS_TYPES:
             alias, args = origin, get_args(annotation)

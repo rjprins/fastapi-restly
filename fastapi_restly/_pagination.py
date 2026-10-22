@@ -10,10 +10,10 @@ through :mod:`fastapi_restly.views`, and the page-size constants through
 
 import dataclasses
 from math import ceil
-from typing import Any, Generic, Sequence
+from typing import Any, Generic, Self, Sequence
 
 import pydantic
-from typing_extensions import Self, TypeVar
+from typing_extensions import TypeVar
 
 from .exc import RestlyConfigurationError
 

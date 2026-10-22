@@ -3,7 +3,7 @@ name = "shop"
 version = "0.1.0"
 description = "A FastAPI-Restly example featuring customizations"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115.12",
     "fastapi-restly",

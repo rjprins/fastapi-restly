@@ -273,6 +273,8 @@ replacement, unless it says otherwise.
 
 ### Removed
 
+- Python 3.10, which reaches its end of life in October 2026. Restly now
+  needs Python 3.11 or later, and so does a project from `restly new`.
 - The view methods `make_new_object`, `update_object` and `save_object`. Use
   `super().create(data)` and `super().update(obj, data)`, and `fr.objects`
   for another model.

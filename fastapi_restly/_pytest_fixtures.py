@@ -118,7 +118,7 @@ def _install_sqlite_savepoint_fix(engine: Engine | AsyncEngine) -> None:
     engine-wide fix could never be complete, and it would change production
     locking and DDL semantics. On Python 3.12+ the connect handler is a one-liner
     (``dbapi_connection.autocommit = False``); the ``isolation_level = None`` form
-    stays while ``requires-python`` still includes 3.10/3.11.
+    stays while ``requires-python`` still includes 3.11.
     """
     sync_engine = engine.sync_engine if isinstance(engine, AsyncEngine) else engine
     if sync_engine.dialect.name != "sqlite":
