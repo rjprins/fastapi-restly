@@ -89,6 +89,11 @@ time zone. On a base with
 {class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>`,
 `Mapped[datetime]` stores one by default. A column declared `DateTime()`
 compares the value as it is.
+
+A `column_property` counts as a column. So a value that SQL computes for
+each row, such as the number of tasks of a project, gets filters and a sort
+key too, such as `?task_count__gte=1` and `?sort=-task_count`.
+[Add a value to each row](#value-on-each-row) shows such a value.
 :::
 
 (filter-value-validation)=

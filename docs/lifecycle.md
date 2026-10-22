@@ -403,7 +403,9 @@ Project.task_count = column_property(
 
 Declare `task_count: fr.ReadOnly[int] = 0` in the view's schema, as for
 `can_edit`. The save after a write loads the value again, so the create and
-update responses show it too. The SaaS example sets two task counts on its
+update responses show it too. The list gets filters and a sort key for it,
+such as `?sort=-task_count`; see [Filter a list](#filter-a-list). The SaaS
+example sets two task counts on its
 projects this way
 ([`app/tasks/models.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/tasks/models.py)),
 and `can_edit` in `ProjectView.to_single_response`
