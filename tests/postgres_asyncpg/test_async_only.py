@@ -23,11 +23,13 @@ from datetime import datetime, timezone
 import pytest
 from fastapi import FastAPI
 from sqlalchemy import DateTime, func, or_, select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.pool import NullPool
 
 import fastapi_restly as fr
+from fastapi_restly._integrity import _build_integrity_detail
 from fastapi_restly.exc import RestlyConfigurationError
 
 from .._models import SharedBase
@@ -259,6 +261,21 @@ async def test_a_unique_violation_names_the_constraint_with_asyncpg(
 
     assert response.json()["detail"] == (
         "Unique constraint violated: restly_asyncpg_tag_name_key"
+    )
+
+
+@pytest.mark.asyncio
+async def test_a_not_null_violation_names_the_column_with_asyncpg(
+    restly_async_session: AsyncSession,
+):
+    """The session drives the violation: a NOT NULL column is a required
+    request field, so a request would get a 422 first."""
+    restly_async_session.add(AsyncpgTag(name=None))  # type: ignore[arg-type]
+    with pytest.raises(IntegrityError) as excinfo:
+        await restly_async_session.flush()
+
+    assert _build_integrity_detail(excinfo.value) == (
+        "Not-null constraint violated on column 'name'"
     )
 
 
