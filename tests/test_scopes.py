@@ -535,7 +535,7 @@ def test_the_resolved_scope_and_the_reads_agree_on_the_rows_async(client):
     async def agreement(view, scope):
         """The four answers for one scope: accessor, list, get_one, count."""
         resolved = fr.resolve_scope(view) if scope is None else scope
-        query = fr.apply_clauses(select(AgreeRow), resolved)
+        stmt = fr.apply_clauses(select(AgreeRow), resolved)
         list_result = await view.handle_get_many({}, scope=scope)
         retrieved = []
         for row_id in (await view.session.scalars(select(AgreeRow.id))).all():
@@ -545,11 +545,11 @@ def test_the_resolved_scope_and_the_reads_agree_on_the_rows_async(client):
                 pass
         return {
             "accessor": sorted(
-                row.id for row in (await view.session.scalars(query)).all()
+                row.id for row in (await view.session.scalars(stmt)).all()
             ),
             "listed": sorted(obj.id for obj in list_result.objects),
             "retrieved": sorted(retrieved),
-            "count": await view.count(query),
+            "count": await view.count(stmt),
             "total": list_result.total_count,
         }
 
@@ -636,8 +636,8 @@ def test_a_count_route_counts_the_scoped_select_under_the_list_params(client):
         @fr.get("/count")
         async def total(self, list_params) -> int:
             await self.authorize(fr.Action.GET_MANY)
-            query = fr.apply_clauses(select(CountRow), fr.resolve_scope(self))
-            return await self.count(await self.apply_list_params(query, list_params))
+            stmt = fr.apply_clauses(select(CountRow), fr.resolve_scope(self))
+            return await self.count(await self.apply_list_params(stmt, list_params))
 
     create_tables()
 
@@ -1478,8 +1478,8 @@ def test_the_resolved_scope_and_the_reads_agree_on_the_rows_sync(sync_session):
 
     def through_the_accessor(view, scope):
         resolved = fr.resolve_scope(view) if scope is None else scope
-        query = fr.apply_clauses(select(SyncRow), resolved)
-        return {row.id for row in view.session.scalars(query)}
+        stmt = fr.apply_clauses(select(SyncRow), resolved)
+        return {row.id for row in view.session.scalars(stmt)}
 
     def through_retrieve(view, scope):
         found = set()

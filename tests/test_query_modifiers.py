@@ -595,8 +595,8 @@ class TestParseValue:
         assert exc_info.value.status_code == 400
 
 
-def _render_sql(query) -> str:
-    return str(query.compile(compile_kwargs={"literal_binds": True}))
+def _render_sql(stmt) -> str:
+    return str(stmt.compile(compile_kwargs={"literal_binds": True}))
 
 
 class TestMakeWhereClause:
@@ -725,13 +725,13 @@ def test_three_level_dotted_filter_executes_with_correct_joins(sync_db):
         session.flush()
 
         def names(query_params: dict[str, str]) -> list[str]:
-            query = apply_list_params(
+            stmt = apply_list_params(
                 sqlalchemy.select(Resident),
                 QueryParams(query_params),
                 Resident,
                 ResidentSchema,
             )
-            return [r.name for r in session.scalars(query).all()]
+            return [r.name for r in session.scalars(stmt).all()]
 
         # Each NL resident exactly once — a cartesian product would either
         # raise or duplicate rows.
@@ -752,13 +752,13 @@ def test_three_level_dotted_filter_executes_with_correct_joins(sync_db):
         # element. (The pre-fix failure depended on set-iteration order --
         # allocation addresses -- so pure execution asserts could pass by
         # luck in some run contexts; the structural assert narrows that.)
-        query = apply_list_params(
+        stmt = apply_list_params(
             sqlalchemy.select(Resident),
             QueryParams({"city.country.code": "NL"}),
             Resident,
             ResidentSchema,
         )
-        sql = _render_sql(query)
+        sql = _render_sql(stmt)
         from_clause = sql[sql.index("FROM") : sql.index("WHERE")]
         assert "," not in from_clause, from_clause
         assert from_clause.index("JOIN city") < from_clause.index("JOIN country")
@@ -790,31 +790,31 @@ def test_relationship_filters_preserve_existing_joins_and_visibility(
         session.flush()
 
         # An application join and its predicate still select the first log.
-        query = (
+        stmt = (
             sqlalchemy.select(AuditLogModel)
             .join(AuditLogModel.creator)
             .where(AuditUserModel.name == "Alice")
         )
         if restricted:
             # Alice is visible, but the first log's updater is hidden.
-            query = query.options(
+            stmt = stmt.options(
                 with_loader_criteria(
                     AuditUserModel,
                     lambda user: user.name != "Bob",
                     include_aliases=True,
                 )
             )
-        query = apply_list_params(
-            query,
+        stmt = apply_list_params(
+            stmt,
             QueryParams({"updater.name": "Bob", "sort": "creator.name,updater.id"}),
             AuditLogModel,
             AuditLogSchema,
         )
-        assert [log.id for log in session.scalars(query)] == ([] if restricted else [1])
+        assert [log.id for log in session.scalars(stmt)] == ([] if restricted else [1])
 
 
 def test_filtering_and_sorting_share_relationship_joins():
-    query = apply_list_params(
+    stmt = apply_list_params(
         sqlalchemy.select(AuditLogModel),
         QueryParams(
             [
@@ -828,4 +828,4 @@ def test_filtering_and_sorting_share_relationship_joins():
         AuditLogSchema,
     )
     # Each relationship is joined once, including repeated filters and sorts.
-    assert str(query).count("JOIN audit_relation_users AS ") == 2
+    assert str(stmt).count("JOIN audit_relation_users AS ") == 2

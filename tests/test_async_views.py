@@ -436,9 +436,9 @@ def test_async_rest_view_dispatches_to_handle_overrides():
         model = DispatchWidget
         schema = WidgetSchema
 
-        async def apply_list_params(self, query, list_params):
+        async def apply_list_params(self, stmt, list_params):
             call_log.append("apply_list_params")
-            return await super().apply_list_params(query, list_params)
+            return await super().apply_list_params(stmt, list_params)
 
         def to_list_response(self, list_result):
             call_log.append("to_list_response")
@@ -583,8 +583,8 @@ def test_async_scope_is_consulted_by_list_and_count():
             assert all(g.active for g in results.objects)
 
             scoped = fr.apply_clauses(sqlalchemy.select(Gizmo), fr.resolve_scope(view))
-            query = fr.query.apply_list_params(scoped, {}, Gizmo, GizmoSchema)
-            total = await view.count(query)
+            stmt = fr.query.apply_list_params(scoped, {}, Gizmo, GizmoSchema)
+            total = await view.count(stmt)
             assert total == 2
 
         await engine.dispose()

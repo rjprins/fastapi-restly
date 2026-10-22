@@ -1000,35 +1000,35 @@ def _rows_reload_statements(
     return statements
 
 
-def _count_statement(query: Select[Any]) -> Select[Any]:
-    """The SELECT that counts the rows of the list query ``query``.
+def _count_statement(stmt: Select[Any]) -> Select[Any]:
+    """The SELECT that counts the rows of the list statement ``stmt``.
 
-    A list has one object for each row of the entity that ``query`` selects
+    A list has one object for each row of the entity that ``stmt`` selects
     first. So the count counts the distinct values of the columns that name
     such a row (``_identity_columns``), and a join that repeats a row does
     not count it twice. The other columns are left out. PostgreSQL cannot
     compare ``json`` values, so ``DISTINCT`` over a ``json`` column fails.
     And the subquery of a ``column_property`` would run for every row of the
-    list. A query that does not select an entity first counts its distinct
-    rows.
+    list. A statement that does not select an entity first counts its
+    distinct rows.
     """
-    source = query.order_by(None).limit(None).offset(None)
-    columns = _identity_columns(query)
+    source = stmt.order_by(None).limit(None).offset(None)
+    columns = _identity_columns(stmt)
     if columns:
         source = source.with_only_columns(*columns, maintain_column_froms=True)
     return sa_select(func.count()).select_from(source.distinct().subquery())
 
 
-def _identity_columns(query: Select[Any]) -> list[Any]:
-    """The columns that name a row of the entity that ``query`` selects first.
+def _identity_columns(stmt: Select[Any]) -> list[Any]:
+    """The columns that name a row of the entity that ``stmt`` selects first.
 
     These are the primary key columns, as attributes of the entity, so the
     ORM puts them on the selectable the entity loads from: an alias, or the
     union of a concrete inheritance. Each table of such a union numbers its
     own rows, so the discriminator is added too. Empty when the first column
-    of ``query`` is not an entity.
+    of ``stmt`` is not an entity.
     """
-    descriptions = query.column_descriptions
+    descriptions = stmt.column_descriptions
     entity = descriptions[0]["entity"] if descriptions else None
     if entity is None or descriptions[0]["expr"] is not entity:
         return []
@@ -2277,7 +2277,7 @@ class BaseRestView(
         _check_renamed_names(cls)
         _check_actions(cls)
 
-    def _apply_scope(self, query: Select[Any], scope: ReadScope) -> Select[Any]:
+    def _apply_scope(self, stmt: Select[Any], scope: ReadScope) -> Select[Any]:
         # the one path every read takes, so retrieve, list and count cannot
         # disagree about which rows exist; not an override point
         if scope is None:
@@ -2285,7 +2285,7 @@ class BaseRestView(
         else:
             # a per-read scope replaces the resolution rather than joining it
             scope = _checked_scope(scope, type(self).__name__, "a per-read scope")
-        return apply_clauses(query, scope)
+        return apply_clauses(stmt, scope)
 
     def _narrowed_scope(self, scope: ReadScope, where: _ReadWhere) -> ReadScope:
         # the list handler is final, so it can fold where= into the scope it
@@ -3065,7 +3065,7 @@ def resolve_scope(target: type[Any] | _AnyRestView) -> WhereClause:
     The result is a clause or ``fr.clauses.UNSCOPED``, never ``None``, so
     it composes without a branch::
 
-        query = fr.apply_clauses(
+        stmt = fr.apply_clauses(
             select(Task).where(Task.project_id == id),
             fr.resolve_scope(TaskView),
         )

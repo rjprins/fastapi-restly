@@ -34,7 +34,7 @@ def _primary_key_attrs(
 
 
 def _append_pk_tiebreak(
-    query: Select[Any],
+    stmt: Select[Any],
     model: type[DeclarativeBase],
     sorted_on: list[InstrumentedAttribute[Any]],
 ) -> Select[Any]:
@@ -46,8 +46,8 @@ def _append_pk_tiebreak(
     """
     for pk in _primary_key_attrs(model):
         if not any(pk is column for column in sorted_on):
-            query = query.order_by(pk)
-    return query
+            stmt = stmt.order_by(pk)
+    return stmt
 
 
 class _SortTerm(UnaryExpression[Any]):

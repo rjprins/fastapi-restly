@@ -227,8 +227,8 @@ def _counted_before(session: orm.Session, task: Task) -> tuple[Project | None, i
         if history.added:
             # Set while not loaded, so SQLAlchemy kept no old value: read the
             # row, which holds the state of the last flush.
-            query = sa.select(getattr(Task, key)).where(Task.id == task.id)
-            return session.connection().scalar(query)
+            stmt = sa.select(getattr(Task, key)).where(Task.id == task.id)
+            return session.connection().scalar(stmt)
         return getattr(task, key)
 
     project_id = before("project_id")

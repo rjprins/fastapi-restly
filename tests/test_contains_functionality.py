@@ -144,27 +144,27 @@ class TestContainsSchemaGeneration:
 
 class TestContainsApplied:
     def test_contains_query_processing(self):
-        query = select(User)
+        stmt = select(User)
         params = QueryParams("name__contains=john&email__contains=example")
-        result = _apply_filtering(params, query, User, UserSchema)
+        result = _apply_filtering(params, stmt, User, UserSchema)
         assert hasattr(result, "where")
 
     def test_multiple_contains_values_split_on_whitespace(self):
-        query = select(User)
+        stmt = select(User)
         params = QueryParams("name__contains=john jane")
-        result = _apply_filtering(params, query, User, UserSchema)
+        result = _apply_filtering(params, stmt, User, UserSchema)
         assert hasattr(result, "where")
 
     def test_multiple_icontains_values_split_on_whitespace(self):
-        query = select(User)
+        stmt = select(User)
         params = QueryParams("name__icontains=john jane")
-        result = _apply_filtering(params, query, User, UserSchema)
+        result = _apply_filtering(params, stmt, User, UserSchema)
         assert hasattr(result, "where")
 
     def test_contains_combined_with_filters(self):
-        query = select(User)
+        stmt = select(User)
         params = QueryParams("name__contains=john&age__gte=25")
-        result = _apply_filtering(params, query, User, UserSchema)
+        result = _apply_filtering(params, stmt, User, UserSchema)
         assert hasattr(result, "where")
 
     def test_contains_emits_like_clause(self):
@@ -195,16 +195,16 @@ class TestContainsApplied:
 
 class TestContainsErrorHandling:
     def test_invalid_field(self):
-        query = select(User)
+        stmt = select(User)
         params = QueryParams("nonexistent__contains=value")
         with pytest.raises(Exception):
-            _apply_filtering(params, query, User, UserSchema)
+            _apply_filtering(params, stmt, User, UserSchema)
 
     def test_empty_value(self):
-        query = select(User)
+        stmt = select(User)
         params = QueryParams("name__contains=")
 
         with warnings.catch_warnings():
             warnings.simplefilter("error", SADeprecationWarning)
-            result = _apply_filtering(params, query, User, UserSchema)
+            result = _apply_filtering(params, stmt, User, UserSchema)
         assert hasattr(result, "where")

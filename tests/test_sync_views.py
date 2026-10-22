@@ -524,9 +524,9 @@ def test_sync_rest_view_dispatches_to_handle_overrides(sync_db):
         model = DispatchWidget
         schema = WidgetSchema
 
-        def apply_list_params(self, query, list_params):
+        def apply_list_params(self, stmt, list_params):
             call_log.append("apply_list_params")
-            return super().apply_list_params(query, list_params)
+            return super().apply_list_params(stmt, list_params)
 
         def to_list_response(self, list_result):
             call_log.append("to_list_response")
@@ -616,8 +616,8 @@ def test_sync_scope_applies_to_the_list_and_its_count(sync_db):
         assert all(g.active for g in results.objects)
 
         scoped = fr.apply_clauses(sqlalchemy.select(Gadget), fr.resolve_scope(view))
-        query = fr.query.apply_list_params(scoped, {}, Gadget, GadgetSchema)
-        total = view.count(query)
+        stmt = fr.query.apply_list_params(scoped, {}, Gadget, GadgetSchema)
+        total = view.count(stmt)
         assert total == 2
 
 

@@ -895,7 +895,7 @@ def _sort_field(sort_keys: list[str], default: str | None) -> tuple[Any, str | N
 
 
 def apply_list_params(
-    query: Select[Any],
+    stmt: Select[Any],
     list_params: pydantic.BaseModel | QueryParams,
     model: type[DeclarativeBase],
     schema_response: SchemaType,
@@ -904,7 +904,7 @@ def apply_list_params(
     sort_nulls: SortNulls = "last",
 ) -> Select[Any]:
     """
-    Apply pagination, sorting, and filtering to ``query`` using validated
+    Apply pagination, sorting, and filtering to ``stmt`` using validated
     list params.
 
     ``list_params`` is normally an instance of the model returned by
@@ -965,11 +965,11 @@ def apply_list_params(
             f"sort_nulls must be 'first', 'last' or None, got {sort_nulls!r}."
         )
     _reject_own_filters(list_params)
-    query = _apply_filters(
-        query, list_params, model, schema_response, pagination=pagination
+    stmt = _apply_filters(
+        stmt, list_params, model, schema_response, pagination=pagination
     )
     return _apply_sort_and_page(
-        query,
+        stmt,
         list_params,
         model,
         schema_response,
@@ -1142,14 +1142,14 @@ def _coerce_to_query_params(
 
 
 def _apply_pagination(
-    query_params: QueryParams, select_query: Select[Any], pagination: NumberedPagination
+    query_params: QueryParams, stmt: Select[Any], pagination: NumberedPagination
 ) -> Select[Any]:
     page_size = _get_int(query_params, pagination.page_size_query_param)
     if page_size is None:
-        return select_query
+        return stmt
     page = _get_int(query_params, pagination.page_query_param) or 1
     offset = (page - 1) * page_size
-    return select_query.limit(page_size).offset(offset)
+    return stmt.limit(page_size).offset(offset)
 
 
 def _get_int(query_params: QueryParams, param_name: str) -> Optional[int]:
@@ -1166,7 +1166,7 @@ def _get_int(query_params: QueryParams, param_name: str) -> Optional[int]:
 
 def _apply_sorting(
     query_params: QueryParams,
-    select_query: Select[Any],
+    stmt: Select[Any],
     model: type[DeclarativeBase],
     schema_cls: SchemaType,
     *,
@@ -1176,7 +1176,7 @@ def _apply_sorting(
     default_sort: str | None = None,
     sort_nulls: SortNulls = "last",
 ) -> Select[Any]:
-    """Apply the sort parameter to ``select_query``, with the primary key
+    """Apply the sort parameter to ``stmt``, with the primary key
     last.
 
     :param sort_keys: The keys that ``sort`` may use. ``None`` allows every
@@ -1206,10 +1206,10 @@ def _apply_sorting(
         if column_name in seen:
             raise BadQueryParam(f"Sort key {column_name!r} appears more than once")
         seen.add(column_name)
-        select_query, column = _join_column(
-            select_query, model, column_name, schema_cls, aliases, kind="sort"
+        stmt, column = _join_column(
+            stmt, model, column_name, schema_cls, aliases, kind="sort"
         )
-        select_query = select_query.order_by(
+        stmt = stmt.order_by(
             _sort_term(
                 column,
                 descending=descending,
@@ -1218,7 +1218,7 @@ def _apply_sorting(
             )
         )
         sorted_on.append(column)
-    return _append_pk_tiebreak(select_query, model, sorted_on)
+    return _append_pk_tiebreak(stmt, model, sorted_on)
 
 
 def _written_name(schema_cls: SchemaType) -> str:
@@ -1298,7 +1298,7 @@ def _resolve_field_name(schema_cls: SchemaType, public_name: str) -> str | None:
 
 
 def _join_column(
-    select_query: Select[Any],
+    stmt: Select[Any],
     model: type[DeclarativeBase],
     column_path: str,
     schema_cls: SchemaType,
@@ -1322,14 +1322,14 @@ def _join_column(
         target = aliases.get(path)
         if target is None:
             target = aliased(relationship.property.mapper)
-            select_query = select_query.join_from(
+            stmt = stmt.join_from(
                 source,
                 getattr(source, relationship.key).of_type(target),
                 isouter=kind == "sort",
             )
             aliases[path] = target
         source = target
-    return select_query, getattr(source, column.key)
+    return stmt, getattr(source, column.key)
 
 
 def _resolve_column(
@@ -1394,7 +1394,7 @@ def _resolve_column(
 
 def _apply_filtering(
     query_params: QueryParams,
-    select_query: Select[Any],
+    stmt: Select[Any],
     model: type[DeclarativeBase],
     schema_cls: SchemaType,
     *,
@@ -1402,7 +1402,7 @@ def _apply_filtering(
     pagination: _AnyPagination = _DEFAULT_PAGINATION,
     sort_query_param: str = _SORT_QUERY_PARAM,
 ) -> Select[Any]:
-    """Apply ``key=value`` and ``key__op=value`` filters to ``select_query``.
+    """Apply ``key=value`` and ``key__op=value`` filters to ``stmt``.
 
     Multiple filters on the same column are AND-combined. Comma-separated
     values within one parameter are OR-combined for ``eq`` (the default),
@@ -1426,9 +1426,7 @@ def _apply_filtering(
         else:
             column_name, op = key, "eq"
 
-        select_query, column = _join_column(
-            select_query, model, column_name, schema_cls, aliases
-        )
+        stmt, column = _join_column(stmt, model, column_name, schema_cls, aliases)
         parser = functools.partial(_parse_value, schema_cls, column_name)
 
         if op == "isnull":
@@ -1448,8 +1446,8 @@ def _apply_filtering(
 
     for column, clauses in filters.items():
         and_clause = clauses[0] if len(clauses) == 1 else sqlalchemy.and_(*clauses)
-        select_query = select_query.where(and_clause)
-    return select_query
+        stmt = stmt.where(and_clause)
+    return stmt
 
 
 def _build_clause(

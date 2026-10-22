@@ -389,7 +389,7 @@ def test_a_base_view_sets_pagination_once(client):
         prefix = "/all-notes"
         pagination = None
 
-        async def count(self, query):
+        async def count(self, stmt):
             raise AssertionError("a view without pagination runs no count query")
 
     create_tables()
@@ -649,7 +649,7 @@ def test_sync_view_takes_the_same_settings(sync_db):
         schema = ThingSchema
         pagination = fr.NoPagination(envelope=DataCount)
 
-        def count(self, query):
+        def count(self, stmt):
             raise AssertionError("a view without pagination runs no count query")
 
     SharedBase.metadata.create_all(engine)
@@ -692,7 +692,7 @@ def test_no_pagination_is_what_none_means(client, unpaginated):
 def test_no_pagination_envelope_gets_the_row_count(client):
     view = _list_app(client, fr.NoPagination(envelope=DataCount))
 
-    async def count(self, query):
+    async def count(self, stmt):
         raise AssertionError("a view without pagination runs no count query")
 
     view.count = count
@@ -756,10 +756,10 @@ def test_query_helpers_take_the_pagination():
     assert "page_size" not in params_model.model_fields
 
     def sql(query_string: str, **kwargs: Any) -> str:
-        query = apply_list_params(
+        stmt = apply_list_params(
             select(Widget), QueryParams(query_string), Widget, WidgetSchema, **kwargs
         )
-        return str(query.compile(compile_kwargs={"literal_binds": True}))
+        return str(stmt.compile(compile_kwargs={"literal_binds": True}))
 
     assert "LIMIT 10 OFFSET 20" in sql("page=3&size=10", pagination=pagination)
     assert "LIMIT" not in sql("sort=name", pagination=None)
@@ -781,8 +781,8 @@ def test_apply_list_params_reads_the_pagination_of_its_params_model():
         page: int
 
     def sql(params: Any) -> str:
-        query = apply_list_params(select(Bookmark), params, Bookmark, BookmarkSchema)
-        return str(query.compile(compile_kwargs={"literal_binds": True}))
+        stmt = apply_list_params(select(Bookmark), params, Bookmark, BookmarkSchema)
+        return str(stmt.compile(compile_kwargs={"literal_binds": True}))
 
     # without pagination, ``page`` is a filter, not a page number
     unpaginated = derive_schema_list_params(BookmarkSchema, Bookmark, pagination=None)

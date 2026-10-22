@@ -315,11 +315,11 @@ class ProjectView(fr.AsyncRestView):
 
 
 async def project_from_path(project_id: int, session: fr.AsyncSessionDep) -> int:
-    query = fr.apply_clauses(
+    stmt = fr.apply_clauses(
         sa.select(Project.id).where(Project.id == project_id),
         fr.resolve_scope(ProjectView),
     )
-    found = await session.scalar(query)
+    found = await session.scalar(stmt)
     if found is None:
         raise fr.exc.NotFound(f"Project with id {project_id} was not found")
     return found
@@ -462,11 +462,11 @@ class Parent(fr.ContextNamespace):
 
 
 async def company_from_path(company_id: int, session: fr.AsyncSessionDep) -> int:
-    query = fr.apply_clauses(
+    stmt = fr.apply_clauses(
         sa.select(Company.id).where(Company.id == company_id),
         fr.resolve_scope(Company),
     )
-    found = await session.scalar(query)
+    found = await session.scalar(stmt)
     if found is None:
         raise fr.exc.NotFound(f"Company with id {company_id} was not found")
     return found
@@ -477,13 +477,13 @@ async def project_from_path(
     company_id: Annotated[int, Depends(company_from_path)],
     session: fr.AsyncSessionDep,
 ) -> int:
-    query = fr.apply_clauses(
+    stmt = fr.apply_clauses(
         sa.select(Project.id).where(
             Project.id == project_id, Project.company_id == company_id
         ),
         fr.resolve_scope(Project),
     )
-    found = await session.scalar(query)
+    found = await session.scalar(stmt)
     if found is None:
         raise fr.exc.NotFound(f"Project with id {project_id} was not found")
     return found

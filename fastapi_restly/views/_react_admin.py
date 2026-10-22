@@ -510,11 +510,11 @@ class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
         return self.to_response(result, ResponseShape.LIST)
 
     async def apply_list_params(
-        self, query: sqlalchemy.Select, list_params: Any
+        self, stmt: sqlalchemy.Select, list_params: Any
     ) -> sqlalchemy.Select:
         """Apply the react-admin list params to the scoped base statement:
         :meth:`apply_filters`, then ``sort`` and ``range``."""
-        stmt = await self.apply_filters(query, list_params)
+        stmt = await self.apply_filters(stmt, list_params)
         return self._react_admin_sort_and_range(stmt, list_params)
 
     async def apply_filters(
@@ -550,11 +550,11 @@ class ReactAdminView(_ReactAdminMixin, RestView):
         return self.to_response(result, ResponseShape.LIST)
 
     def apply_list_params(
-        self, query: sqlalchemy.Select, list_params: Any
+        self, stmt: sqlalchemy.Select, list_params: Any
     ) -> sqlalchemy.Select:
         """Apply the react-admin list params to the scoped base statement:
         :meth:`apply_filters`, then ``sort`` and ``range``."""
-        stmt = self.apply_filters(query, list_params)
+        stmt = self.apply_filters(stmt, list_params)
         return self._react_admin_sort_and_range(stmt, list_params)
 
     def apply_filters(

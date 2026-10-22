@@ -199,6 +199,11 @@ replacement, unless it says otherwise.
   gives `500`.
 - On async views, `apply_list_params` is `async def`. An override must match
   its view: `async def` on an async view, `def` on a sync one.
+- The statement parameter is called `stmt`, as in the SQLAlchemy docs, not
+  `query`: in `fr.query.apply_list_params`, and in the view methods
+  `apply_list_params` and `count`. A call that passes `query=` by name must
+  pass `stmt=`. Restly passes the statement by position, so an override that
+  keeps the name `query` still works.
 - `apply_list_params` and `apply_filters` validate a `QueryParams` or a
   mapping through `schema_list_params` first, as the list route does. A
   mapping without `page_size` gets the default page size, so

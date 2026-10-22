@@ -205,10 +205,10 @@ def test_a_member_still_builds_sql_from_the_column_side(condition, expected):
             )
             session.flush()
             with Context.bind(tenant_id=4):
-                query = fr.apply_clauses(
+                stmt = fr.apply_clauses(
                     sqlalchemy.select(Thing.id), fr.where_clause(condition)
                 )
-            assert set(session.scalars(query)) == expected
+            assert set(session.scalars(stmt)) == expected
     finally:
         engine.dispose()
 
@@ -317,10 +317,10 @@ def test_a_wrapped_member_works_where_a_bare_one_is_passed_as_a_value(
             )
             session.flush()
             with Context.bind(tenant_id=4):
-                query = fr.apply_clauses(
+                stmt = fr.apply_clauses(
                     sqlalchemy.select(Thing.id), fr.where_clause(condition)
                 )
-            assert set(session.scalars(query)) == expected
+            assert set(session.scalars(stmt)) == expected
     finally:
         engine.dispose()
 

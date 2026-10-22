@@ -64,8 +64,8 @@ class _BookSchema(fr.IDSchema):
     status: str
 
 
-def _order_by_sql(query: sqlalchemy.Select) -> str:
-    return str(query).rsplit("ORDER BY", 1)[1]
+def _order_by_sql(stmt: sqlalchemy.Select) -> str:
+    return str(stmt).rsplit("ORDER BY", 1)[1]
 
 
 def test_standard_sort_appends_pk_tiebreaker():
@@ -204,9 +204,9 @@ def test_to_many_condition_in_exists_gives_whole_pages(client):
         model = Author
         schema = AuthorSchema
 
-        async def apply_list_params(self, query, list_params):
-            query = query.where(Author.books.any(Book.title.contains("b")))
-            return await super().apply_list_params(query, list_params)
+        async def apply_list_params(self, stmt, list_params):
+            stmt = stmt.where(Author.books.any(Book.title.contains("b")))
+            return await super().apply_list_params(stmt, list_params)
 
     @fr.include_view(client.app)
     class BookView(fr.AsyncRestView):
@@ -458,10 +458,10 @@ def test_default_ordering_belongs_in_apply_list_params(client):
         model = RankedNote
         schema = RankedNoteSchema
 
-        async def apply_list_params(self, query, list_params):
+        async def apply_list_params(self, stmt, list_params):
             # before super(): the client's ?sort= then orders within it
-            query = query.order_by(RankedNote.rank.desc())
-            return await super().apply_list_params(query, list_params)
+            stmt = stmt.order_by(RankedNote.rank.desc())
+            return await super().apply_list_params(stmt, list_params)
 
     create_tables()
     for rank in (1, 3, 2, 3):

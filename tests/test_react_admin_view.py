@@ -967,13 +967,13 @@ def test_react_admin_list_runs_the_handler_load_and_response_seams(client):
             events.append(("authorize", action))
             await super().authorize(action, obj, data)
 
-        async def apply_list_params(self, query, list_params):
+        async def apply_list_params(self, stmt, list_params):
             events.append(("apply_list_params", None))
-            return await super().apply_list_params(query, list_params)
+            return await super().apply_list_params(stmt, list_params)
 
-        async def count(self, query):
+        async def count(self, stmt):
             events.append(("count", None))
-            return (await super().count(query)) + 10
+            return (await super().count(stmt)) + 10
 
         def to_response(self, result, shape=fr.ResponseShape.SINGLE):
             events.append(("to_response", shape))
@@ -1017,13 +1017,13 @@ def test_sync_react_admin_list_runs_the_handler_load_and_response_seams(sync_cli
             events.append(("authorize", action))
             super().authorize(action, obj, data)
 
-        def apply_list_params(self, query, list_params):
+        def apply_list_params(self, stmt, list_params):
             events.append(("apply_list_params", None))
-            return super().apply_list_params(query, list_params)
+            return super().apply_list_params(stmt, list_params)
 
-        def count(self, query):
+        def count(self, stmt):
             events.append(("count", None))
-            return super().count(query) + 10
+            return super().count(stmt) + 10
 
         def to_response(self, result, shape=fr.ResponseShape.SINGLE):
             events.append(("to_response", shape))

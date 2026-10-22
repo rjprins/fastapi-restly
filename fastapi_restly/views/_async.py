@@ -494,9 +494,9 @@ class AsyncRestView(
     # ====================================================================
 
     async def apply_list_params(
-        self, query: sqlalchemy.Select[Any], list_params: Any
+        self, stmt: sqlalchemy.Select[Any], list_params: Any
     ) -> sqlalchemy.Select[Any]:
-        """Apply the list params to ``query``: :meth:`apply_filters`, then the
+        """Apply the list params to ``stmt``: :meth:`apply_filters`, then the
         sort, then the page.
 
         Async, as :meth:`apply_filters` is: call it with ``await``. Override
@@ -509,9 +509,9 @@ class AsyncRestView(
         :attr:`~fastapi_restly.views.BaseRestView.unknown_query_params`).
         """
         list_params = self._validated_list_params(list_params)
-        query = await self.apply_filters(query, list_params)
+        stmt = await self.apply_filters(stmt, list_params)
         return _apply_sort_and_page(
-            query,
+            stmt,
             list_params,
             self.model,
             _schema_response(type(self)),
@@ -555,18 +555,18 @@ class AsyncRestView(
             results.append((f"{type(self).__name__}.{own.method}", result))
         return _keep_joins(filtered, _apply_own_filters(filtered, results))
 
-    async def count(self, query: sqlalchemy.Select[Any]) -> int:
+    async def count(self, stmt: sqlalchemy.Select[Any]) -> int:
         """Total for the list, ignoring presentation-layer ordering/pagination.
 
-        It counts the distinct primary keys of the model that ``query``
+        It counts the distinct primary keys of the model that ``stmt``
         selects, without its order and page. So a join to a to-many
         relationship does not count a row twice. No other column is part of
         the count, so a ``json`` column works on PostgreSQL, and the subquery
-        of a ``column_property`` does not run for every row. A ``query`` that
+        of a ``column_property`` does not run for every row. A ``stmt`` that
         selects columns, not a model, counts its distinct rows. Override for
         estimated counts on huge tables.
         """
-        return int(await self.session.scalar(_count_statement(query)) or 0)
+        return int(await self.session.scalar(_count_statement(stmt)) or 0)
 
     # ====================================================================
     # Request-logic seams (authorize + transaction hooks)
