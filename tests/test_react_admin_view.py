@@ -910,9 +910,10 @@ def test_default_page_size_setting_overrides_default(client):
 # ---------------------------------------------------------------------------
 
 
-def test_react_admin_list_respects_build_query_scope(client):
-    """The React Admin list must route through build_query, so a row hidden by
-    the read scope is not leaked, and Content-Range total reflects the scope."""
+def test_react_admin_list_respects_the_view_scope(client):
+    """The React Admin list applies the view's scope, so a row that the scope
+    hides is not leaked, and the Content-Range total counts only the rows in
+    the scope."""
 
     class ScopedItem(fr.IDMixin, SharedBase):
         name: Mapped[str]

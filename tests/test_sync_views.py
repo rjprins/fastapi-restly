@@ -572,9 +572,9 @@ def test_sync_rest_view_dispatches_to_handle_overrides(sync_db):
     ]
 
 
-def test_sync_build_query_is_consulted_by_list_and_count(sync_db):
-    """get_many routes through build_query and count uses that query so a
-    single override filters the list AND its pagination total."""
+def test_sync_scope_applies_to_the_list_and_its_count(sync_db):
+    """get_many applies the view's scope, and count uses the same query, so
+    one scope filters the list AND its pagination total."""
     import sqlalchemy
 
     engine, make_session = sync_db

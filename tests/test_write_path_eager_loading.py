@@ -382,8 +382,8 @@ def test_reload_preserves_an_already_loaded_relationship(sync_db):
     in-memory value differs from a fresh read keeps that value.
 
     That is what makes applying the full options safe: they can name a
-    relationship the caller has already populated (an eager loader in
-    ``build_query``, a hand-set value) without overwriting it.
+    relationship the caller has already populated (an eager loader of the
+    read, a hand-set value) without overwriting it.
     """
     ScopedDoc, Tag, make_session = _seed_doc_with_two_tags(sync_db)
 
