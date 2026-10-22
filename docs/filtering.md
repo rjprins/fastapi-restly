@@ -167,7 +167,10 @@ Restly also splits one `__contains` or `__icontains` value at each space, so
 parameter when you build the URL yourself: it has only one meaning.
 
 Restly escapes `%`, `_` and `\` before it builds the `LIKE` condition. A
-search finds the text as written; these characters are not wildcards.
+search finds the text as written; these characters are not wildcards. In a
+filter of your own, pass SQLAlchemy's `autoescape=True` for the same result,
+such as `Item.name.icontains(q, autoescape=True)`. Without it, `?q=%` matches
+every row.
 :::
 
 ### Combine filters on one field
@@ -929,7 +932,7 @@ class ItemView(fr.AsyncRestView):
 
     async def apply_filters(self, stmt, list_params: ItemSearch):
         if list_params.q:
-            stmt = stmt.where(Item.name.icontains(list_params.q))
+            stmt = stmt.where(Item.name.icontains(list_params.q, autoescape=True))
         return stmt
 
     async def apply_list_params(self, stmt, list_params: ItemSearch):

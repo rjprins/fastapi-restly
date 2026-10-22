@@ -161,7 +161,7 @@ class ProductView(fr.AsyncReactAdminView):
         rest = list_params.model_copy(update={"filter": filters})
         stmt = await super().apply_filters(stmt, rest)
         if q:
-            stmt = stmt.where(Product.name.icontains(q))
+            stmt = stmt.where(Product.name.icontains(q, autoescape=True))
         return stmt
 ```
 

@@ -300,7 +300,7 @@ def test_a_view_with_list_params_of_its_own(view_class):
 
         async def apply_filters(self, stmt, list_params: ItemSearch):
             if list_params.q:
-                stmt = stmt.where(Item.name.icontains(list_params.q))
+                stmt = stmt.where(Item.name.icontains(list_params.q, autoescape=True))
             return stmt
 
         async def apply_list_params(self, stmt, list_params: ItemSearch):
@@ -330,6 +330,8 @@ def test_a_view_with_list_params_of_its_own(view_class):
     ).json()
     assert [row["name"] for row in payload["data"]] == ["apple", "anvil"]
     assert (payload["total_count"], payload["page"], payload["page_size"]) == (4, 2, 2)
+    # autoescape: % is the character, not a wildcard
+    assert client.get("/items/", params={"q": "%"}).json()["total_count"] == 0
     client.get("/items/", params={"name": "axe"}, assert_status_code=422)
     client.get("/items/", params={"page_size": 500}, assert_status_code=422)
     operation = client.get("/openapi.json").json()["paths"]["/items"]["get"]

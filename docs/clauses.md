@@ -521,7 +521,7 @@ clause. Write a plain function that returns the expression:
 
 ```python
 def name_matches(term: str) -> ColumnElement[bool]:
-    return Item.name.ilike(f"%{term}%")
+    return Item.name.icontains(term, autoescape=True)
 
 
 with Current.bind(user_id=42):
