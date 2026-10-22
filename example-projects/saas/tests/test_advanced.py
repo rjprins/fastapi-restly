@@ -52,6 +52,27 @@ class TestReportingEndpoints:
         assert stats["done_count"] == 3
         assert stats["completion_percent"] == 50.0  # 3/6 = 50%
 
+    def test_project_stats_leave_out_deleted_tasks(self, client):
+        """A deleted task is in the trash. The stats do not count it, as the
+        task counts of the project do not."""
+        response = client.post("/projects", json={"name": "Trash Stats Project"})
+        project_id = response.json()["id"]
+        client.post(
+            "/tasks", json={"title": "Kept", "status": "done", "project_id": project_id}
+        )
+        gone = client.post(
+            "/tasks", json={"title": "Gone", "status": "todo", "project_id": project_id}
+        ).json()
+        client.delete(f"/tasks/{gone['id']}")
+
+        stats = client.get(f"/projects/{project_id}/stats").json()
+        project = client.get(f"/projects/{project_id}").json()
+
+        assert stats["total_tasks"] == project["task_count"] == 1
+        assert stats["todo_count"] == 0
+        assert stats["done_count"] == 1
+        assert stats["completion_percent"] == 100.0
+
     def test_project_stats_empty(self, client):
         """Test stats for project with no tasks."""
         # Create project

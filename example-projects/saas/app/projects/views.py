@@ -12,7 +12,7 @@ import fastapi_restly as fr
 from fastapi_restly.views import ViewResponse
 
 from ..current import Current
-from ..tasks.models import Task, TaskPriority, TaskStatus, TaskType
+from ..tasks.models import Task, TaskClauses, TaskPriority, TaskStatus, TaskType
 from ..tasks.schemas import TaskResponse
 from ..tasks.views import TaskCreate, TaskView
 from ..views import TrashView
@@ -242,30 +242,18 @@ class ProjectView(TrashView[Project]):
         # Reuse the standard scoped read check.
         await self.handle_get_one(id)
 
-        todo = (
-            await self.session.scalar(
-                select(func.count())
-                .select_from(Task)
-                .where(Task.project_id == id, Task.status == TaskStatus.TODO)
-            )
-            or 0
+        # Live tasks only: a task in the trash is not counted, as in the
+        # task counts of the project itself.
+        stmt = fr.apply_clauses(
+            select(Task.status, func.count())
+            .where(Task.project_id == id)
+            .group_by(Task.status),
+            TaskClauses.default_scope,
         )
-        in_progress = (
-            await self.session.scalar(
-                select(func.count())
-                .select_from(Task)
-                .where(Task.project_id == id, Task.status == TaskStatus.IN_PROGRESS)
-            )
-            or 0
-        )
-        done = (
-            await self.session.scalar(
-                select(func.count())
-                .select_from(Task)
-                .where(Task.project_id == id, Task.status == TaskStatus.DONE)
-            )
-            or 0
-        )
+        counts = dict((await self.session.execute(stmt)).tuples().all())
+        todo = counts.get(TaskStatus.TODO, 0)
+        in_progress = counts.get(TaskStatus.IN_PROGRESS, 0)
+        done = counts.get(TaskStatus.DONE, 0)
         total = todo + in_progress + done
         completion = round(done / total * 100, 1) if total > 0 else 0.0
 
