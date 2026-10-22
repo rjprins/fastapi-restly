@@ -58,15 +58,11 @@ Most apps have one that loads the user of the request, such as the
 Pass the alias as it is:
 
 ```python
-from typing import Annotated
-
-from fastapi import Depends, FastAPI
+from fastapi import APIRouter, FastAPI
 
 import fastapi_restly as fr
-from app.api.deps import get_current_user  # your authentication
+from app.api.deps import CurrentUser, get_current_user  # your authentication
 from app.models import User
-
-CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
 class Current(fr.ContextNamespace):
@@ -75,25 +71,34 @@ class Current(fr.ContextNamespace):
 
 SetCurrentContextDep = Current.depends(user=CurrentUser)
 
-app = FastAPI(dependencies=[SetCurrentContextDep])
+router = APIRouter(dependencies=[SetCurrentContextDep])
 
 
-@app.get("/me")
-def me() -> dict[str, int]:
-    return {"user_id": Current.user().id}
+@router.get("/me")
+def me() -> dict[str, str]:
+    return {"email": Current.user().email}
+
+
+app = FastAPI()
+app.include_router(router)
 ```
 
-FastAPI calls `get_current_user` before the endpoint. The generated dependency
-binds the user for the request, so code in the request can read it, such as
-`Current.user().is_superuser`. Both `def` and `async def` endpoints can read
-it. Binding only supplies the value. It does not check who the caller is, and
-it does not decide what the caller may do: that is
+FastAPI calls `get_current_user` before each route of the router. The
+generated dependency binds the user for the request, so code in the request
+can read it, such as `Current.user().is_superuser`. Both `def` and
+`async def` endpoints can read it. Keep the routes that a client calls
+before it has a token, such as login and sign-up, out of this router:
+`get_current_user` answers them with 401.
+
+Binding only supplies the value. It does not check who the caller is, and it
+does not decide what the caller may do: that is
 [`authorize`](#authorize-gate).
 
-Bind the whole user, as here, when your app already loads it for each request.
-Bind scalars, such as `user_id: fr.ContextParam[int]`, when a worker must bind
-without loading a row, or when a column default or a
-[query clause](#binding-values) should use the member directly.
+Bind the whole user, as here, when your app already loads it for each
+request. Bind scalars when a worker must bind without loading a row, or when
+a column default or a [query clause](#binding-values) should use the member
+directly. The other examples on this page bind a scalar,
+`user_id: fr.ContextParam[int]`.
 
 :::{admonition} Details
 :class: details
@@ -101,11 +106,13 @@ without loading a row, or when a column default or a
 `SetCurrentContextDep` is already a {func}`Depends <fastapi.Depends>` object.
 Add it directly to `dependencies`, without another `Depends(...)` around it.
 
-Attach the dependency to the app when every route needs it. Use the
-`dependencies` of an `APIRouter`, or a view's
-{attr}`dependencies <fastapi_restly.views.View.dependencies>`, for a smaller
-group of routes. Each source can be a callable, a `Depends(...)` object, or
-an `Annotated` dependency alias.
+Attach the dependency to the app, as in
+`FastAPI(dependencies=[SetCurrentContextDep])`, only when every route needs a
+user. A view's {attr}`dependencies <fastapi_restly.views.View.dependencies>`
+also take it, and
+{func}`fr.include_view <fastapi_restly.views.include_view>` registers a view
+on a router as it does on the app. Each source can be a callable, a
+`Depends(...)` object, or an `Annotated` dependency alias.
 
 One `Current.depends(...)` call can bind several members, each from its own
 dependency. The SaaS example binds four scalar members from its
@@ -246,10 +253,10 @@ override returns:
 ```python
 from fastapi.testclient import TestClient
 
-app.dependency_overrides[get_current_user] = lambda: User(id=7)
+app.dependency_overrides[get_current_user] = lambda: User(email="ann@example.com")
 try:
     with TestClient(app) as client:
-        assert client.get("/me").json() == {"user_id": 7}
+        assert client.get("/me").json() == {"email": "ann@example.com"}
 finally:
     app.dependency_overrides.pop(get_current_user)
 ```
