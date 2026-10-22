@@ -328,6 +328,7 @@ def _caller_origin() -> str | None:
     bind site, not the machinery. Only strings are kept; no frame
     reference survives.
     """
+    # CPython only: another Python runtime may not have sys._getframe().
     frame = sys._getframe(1)
     while frame is not None:
         filename = frame.f_code.co_filename
