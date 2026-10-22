@@ -352,6 +352,11 @@ replacement, unless it says otherwise.
 - A plain `fr.View` may name a route method `create`, `update` or `delete`.
   Before, its registration failed with `TypeError`, as if it had the business
   methods of a CRUD view.
+- A route method with the name of a view setting, such as `tags` or `model`,
+  fails when Python defines the class, with a message that names the method
+  and the setting. The method would replace the setting. Before, the view
+  failed later with an unclear message, such as
+  `TypeError: 'function' object is not iterable`.
 - Many writes in one `shared_write_action_commit()` no longer use memory that
   grows with the square of their number. This happened when every write
   reached the same loaded rows, such as the children of one parent through a

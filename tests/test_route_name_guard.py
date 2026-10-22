@@ -123,3 +123,50 @@ def test_a_plain_view_may_name_its_routes_like_the_verbs():
     assert client.get("/settings/a").json() == {"key": "a"}
     assert client.put("/settings/a").json() == {"updated": "a"}
     assert client.delete("/settings/a").status_code == 204
+
+
+def test_a_route_named_like_a_view_setting_is_refused():
+    """A route method is a class attribute, so it would replace the setting."""
+    with pytest.raises(
+        fr.exc.RestlyConfigurationError,
+        match=r"TagView\.tags\(\) is a route method with the name of the view "
+        r"setting View\.tags",
+    ):
+
+        class TagView(fr.View):
+            prefix = "/tags"
+
+            @fr.get("")
+            def tags(self) -> list[str]:
+                return []
+
+
+def test_a_route_named_like_a_crud_setting_is_refused_first():
+    class Item(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    with pytest.raises(
+        fr.exc.RestlyConfigurationError,
+        match=r"setting BaseRestView\.pagination, so it replaces the setting",
+    ):
+
+        class ItemView(fr.AsyncRestView):
+            prefix = "/items"
+            model = Item
+
+            @fr.get("/pagination")
+            async def pagination(self) -> dict:
+                return {}
+
+
+def test_a_plain_view_may_name_a_route_like_a_crud_setting():
+    class ModelView(fr.View):
+        prefix = "/models"
+
+        @fr.get("")
+        def model(self) -> dict:
+            return {"model": "x"}
+
+    app = FastAPI()
+    fr.include_view(app, ModelView)
+    assert TestClient(app).get("/models").json() == {"model": "x"}

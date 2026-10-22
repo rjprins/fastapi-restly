@@ -1084,10 +1084,52 @@ class View:
         # keyword, so code that builds a view by hand passes them by name.
         def __init__(self, **dependencies: Any) -> None: ...
 
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        _reject_route_names_of_settings(cls)
+
     @classmethod
     def before_include_view(cls) -> None:
         """Run by :func:`include_view` once per class, before its routes are
         registered. A no-op here; override to adjust route methods first."""
+
+
+def _own_annotations(klass: type) -> Mapping[str, Any]:
+    """The annotations that ``klass`` itself declares, without evaluating one
+    that names something not defined yet; see :func:`_route_parameters`."""
+    if sys.version_info >= (3, 14):
+        return annotationlib.get_annotations(
+            klass, format=annotationlib.Format.FORWARDREF
+        )
+    return klass.__dict__.get("__annotations__", {})
+
+
+def _setting_names(view_cls: type) -> dict[str, type]:
+    """The view settings of ``view_cls``, with the Restly class that declares
+    each. A setting is a ``ClassVar`` of Restly's view classes, such as
+    ``tags`` or ``model``: Restly reads it from the class."""
+    settings: dict[str, type] = {}
+    for klass in reversed(view_cls.__mro__):
+        if not klass.__module__.startswith("fastapi_restly."):
+            continue
+        for name, annotation in _own_annotations(klass).items():
+            if get_origin(annotation) is ClassVar and not name.startswith("_"):
+                settings[name] = klass
+    return settings
+
+
+def _reject_route_names_of_settings(view_cls: type) -> None:
+    """Refuse a route method with the name of a view setting. A method is a
+    class attribute too, so it would replace the setting."""
+    settings = _setting_names(view_cls)
+    for name, value in vars(view_cls).items():
+        if name in settings and hasattr(value, "_api_route_args"):
+            raise RestlyConfigurationError(
+                f"{view_cls.__name__}.{name}() is a route method with the name "
+                f"of the view setting {settings[name].__name__}.{name}, so it "
+                f"replaces the setting. Give the method another name, such as "
+                f"list_{name}. The route keeps its path."
+            )
 
 
 V = TypeVar("V", bound=type[View])
