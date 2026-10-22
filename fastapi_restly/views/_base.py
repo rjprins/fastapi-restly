@@ -1063,7 +1063,7 @@ class View:
     """
 
     #: The URL prefix of every route. Each class in the hierarchy that sets one
-    #: adds a segment, base first.
+    #: adds a segment, base first. Without a prefix, the routes are at the root.
     prefix: ClassVar[str]
     #: The OpenAPI tags of every route. When it is not set, the tag is the
     #: last part of the prefix in title case, so ``/order-items`` gives
