@@ -499,10 +499,14 @@ def test_replaced_react_admin_put_keeps_explicit_schema_obj(env):
     client.put(
         f"/products/{created['id']}", json={"name": "Desk"}, assert_status_code=422
     )
+    # react-admin sends the id too, which ProductReplace does not declare
     response = client.put(
-        f"/products/{created['id']}", json={"name": "Desk", "price": 2.0}
+        f"/products/{created['id']}",
+        json={"id": created["id"], "name": "Desk", "price": 2.0},
     )
     assert response.json()["price"] == 2.0
+    response = client.patch(f"/products/{created['id']}", json={"price": 3.0})
+    assert response.json() == {"id": created["id"], "name": "Desk", "price": 3.0}
 
     assert _body_ref(openapi, "/products/{id}", "put") == "ProductReplace"
 
