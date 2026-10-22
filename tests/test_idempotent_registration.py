@@ -16,8 +16,6 @@ registering the same View twice would:
   ``fooview_fooview_create_endpoint``), yielding endpoint name collisions and
   broken signatures.
 * Re-run ``_fill_view_types`` on already-modified signatures.
-* Re-trip ``_exclude_routes``: ``del view_func._api_route_args`` raises
-  AttributeError on the second run, since the attribute was already removed.
 * Risk corrupting the first registration's class attributes (``cls.schema``,
   ``cls.schema_create``, ``cls.schema_update``, ``cls.schema_list_params``).
 """
@@ -185,12 +183,9 @@ def test_class_attributes_are_not_corrupted_by_second_registration():
 
 
 def test_exclude_routes_does_not_crash_on_second_registration(sync_db):
-    """``_exclude_routes`` removes ``_api_route_args`` from listed methods.
-
-    Without the idempotency guard, a second registration would re-enter
-    ``_exclude_routes`` and find the attribute already removed, raising
-    AttributeError before the route would even mount.
-    """
+    """A view with ``exclude_routes`` registers on two apps, and both leave
+    the route out. An older version removed the route mark from the method,
+    so the second registration raised AttributeError."""
     engine, _ = sync_db
 
     class Token(fr.IDMixin, SharedBase):
@@ -411,10 +406,7 @@ def test_parent_exclude_routes_with_coregistered_subclass_does_not_crash(sync_db
 
     A parent that excludes a route, co-registered with a subclass that inherits
     ``exclude_routes``, must register cleanly. The subclass inherits the
-    exclusion (and never receives a routable copy of the excluded endpoint), so
-    re-running ``_exclude_routes`` for the already-excluded name must be a
-    no-op, not an ``AttributeError``. Both end up without the route; nothing is
-    duplicated.
+    exclusion, so both end up without the route; nothing is duplicated.
     """
     engine, _ = sync_db
 
@@ -713,3 +705,40 @@ def test_exclude_routes_unknown_name_still_raises():
     app = FastAPI()
     with pytest.raises(AttributeError, match="not a route"):
         fr.include_view(app, SprocketView)
+
+
+def _item_methods(app: FastAPI, prefix: str) -> set[str]:
+    return {
+        method
+        for route in iter_routes(app.routes)
+        if getattr(route, "path", "").startswith(f"{prefix}/{{id")
+        for method in getattr(route, "methods", ())
+    }
+
+
+@pytest.mark.parametrize("view_base", [fr.RestView, fr.AsyncRestView])
+@pytest.mark.parametrize("base_first", [False, True], ids=["alone", "base-first"])
+def test_a_subclass_exclude_routes_replaces_the_list_of_its_base(view_base, base_first):
+    """The base's exclusion must not reach a subclass with its own
+    ``exclude_routes``, also when the base registered first."""
+
+    class Crank(fr.IDMixin, SharedBase):
+        label: Mapped[str]
+
+    class CrankBase(view_base):
+        prefix = "/cranks"
+        model = Crank
+        exclude_routes = (fr.ViewRoute.DELETE,)
+
+    class SubCrankView(CrankBase):
+        prefix = "/sub"
+        exclude_routes = (fr.ViewRoute.GET_ONE,)
+
+    app = FastAPI()
+    if base_first:
+        fr.include_view(app, CrankBase)
+    fr.include_view(app, SubCrankView)
+
+    assert _item_methods(app, "/cranks/sub") == {"PATCH", "DELETE"}
+    if base_first:
+        assert _item_methods(app, "/cranks") == {"GET", "PATCH"}

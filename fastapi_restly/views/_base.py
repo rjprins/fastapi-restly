@@ -1491,10 +1491,12 @@ def _check_composite_key(cls: Any) -> None:
     if len(sa_inspect(cls.model).primary_key) < 2:
         return
     if getattr(cls.where_id, "__module__", "").startswith("fastapi_restly."):
+        excluded = _excluded_route_names(cls)
         routes = [
             name
             for name in _ITEM_ROUTES
-            if hasattr(getattr(cls, name, None), "_api_route_args")
+            if name not in excluded
+            and hasattr(getattr(cls, name, None), "_api_route_args")
         ]
         if routes:
             raise RestlyConfigurationError(
@@ -2649,7 +2651,7 @@ class BaseRestView(
                 route = _guard_list_params(route)
                 setattr(cls, name, route)
             _fill_view_types(route, view_types, list_params)
-        _exclude_routes(cls)
+        _check_exclude_routes(cls)
         _check_composite_key(cls)
 
 
@@ -3417,23 +3419,26 @@ def _guard_list_params(route: Callable) -> Callable:
     return guarded
 
 
-def _exclude_routes(cls: type[BaseRestView[Any, Any, Any, Any, Any]]):
+def _excluded_route_names(view_cls: type) -> set[str]:
+    """The endpoint method names that the view's ``exclude_routes`` names."""
+    return {
+        route.value if isinstance(route, ViewRoute) else route
+        for route in getattr(view_cls, "exclude_routes", ())
+    }
+
+
+def _check_exclude_routes(cls: type[BaseRestView[Any, Any, Any, Any, Any]]):
+    """Raise for a name in ``exclude_routes`` that is no route at all: a typo,
+    or the business method name instead of the ``*_endpoint`` route name.
+
+    The excluded endpoints stay routes on the class. The router leaves them
+    out. So a subclass with its own ``exclude_routes`` gets them back, also
+    when the base registered first and copied them into its own namespace.
+    """
     for route_name in cls.exclude_routes:
         method_name = (
             route_name.value if isinstance(route_name, ViewRoute) else route_name
         )
-        # @route decorator adds `_api_route_args` to a method to create the route later.
-        # By removing it from the method, the method will no longer be added as a route.
-        view_func = getattr(cls, method_name, None)
-        if view_func is not None and hasattr(view_func, "_api_route_args"):
-            del view_func._api_route_args
-            continue
-        # Not a live route on this class. Tolerate an exclusion that is *already*
-        # satisfied: a subclass that inherits ``exclude_routes`` from a parent
-        # which already excluded the route never receives a routable copy, so
-        # there is nothing to strip. The name is still a genuine route elsewhere
-        # in the lineage; only raise when it is no route at all (a typo, or the
-        # business method name instead of the ``*_endpoint`` route name).
         if not _is_route_name_in_lineage(cls, method_name):
             raise AttributeError(f"{method_name!r} is not a route on {cls.__name__}")
 
@@ -3442,8 +3447,7 @@ def _is_route_name_in_lineage(
     cls: type[BaseRestView[Any, Any, Any, Any, Any]], method_name: str
 ) -> bool:
     """True if any class in ``cls``'s MRO defines a routable endpoint of this
-    name, so the name is a real route that may merely be already-excluded here.
-    """
+    name."""
     return any(
         hasattr(klass.__dict__.get(method_name), "_api_route_args")
         for klass in cls.mro()
@@ -3744,10 +3748,7 @@ def _warn_writable_model_set_fields(view_cls: type[View]) -> None:
         return
     if not model_set:
         return
-    excluded = {
-        route.value if isinstance(route, ViewRoute) else route
-        for route in view_cls.exclude_routes
-    }
+    excluded = _excluded_route_names(view_cls)
     # Each write class, and whether Restly derives it from ``schema``.
     write_classes: dict[type[pydantic.BaseModel], bool] = {}
     for attr, route in (
@@ -4299,8 +4300,9 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
     # Find all endpoint functions in this class and add them to the router
     list_parameters: list[dict[str, Any]] | None = None
     view_types = _view_types(view_cls) if issubclass(view_cls, BaseRestView) else None
+    excluded = _excluded_route_names(view_cls)
     for name, attr in view_cls.__dict__.items():
-        if not hasattr(attr, "_api_route_args"):
+        if not hasattr(attr, "_api_route_args") or name in excluded:
             continue
         endpoint = attr
         if view_types is not None:

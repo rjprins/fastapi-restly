@@ -336,6 +336,9 @@ replacement, unless it says otherwise.
   `list[X]`. Before, an async view answered 500 when such a field held a
   nested schema with relationships of its own, and a body with
   `tuple[fr.IDRef[Tag], ...]` answered 500 too.
+- A subclass that sets its own `exclude_routes` serves the routes that only
+  its base leaves out, also when the base view was registered first. Before,
+  the list of the base applied to the subclass too in that case.
 - In plain SQLAlchemy, a clause that you forget to call, as in
   `select(Post).where(mine)`, now always fails when it runs. Before, it ran
   with `NULL` for its context member once the called form, `mine()`, had
