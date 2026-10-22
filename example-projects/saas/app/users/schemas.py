@@ -54,13 +54,13 @@ class UserUpdate(BaseModel):
     email: str | None = None
     name: str | None = None
     role: UserRole | None = None
-    salary: int | None = None
+    salary: fr.WriteOnly[int | None] = None
 
 
 class UserPublicResponse(BaseModel):
     """Public user schema - excludes sensitive fields like salary.
 
-    This schema is returned for non-HR users.
+    This schema is returned to every role except HR and owners.
     """
 
     id: int
@@ -73,7 +73,7 @@ class UserPublicResponse(BaseModel):
 class UserFullResponse(BaseModel):
     """Full user schema - includes all fields including salary.
 
-    This schema is only returned for HR users.
+    This schema is only returned to HR and owners.
     """
 
     id: int
