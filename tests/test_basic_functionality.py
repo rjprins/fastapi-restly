@@ -61,9 +61,7 @@ def test_basic_crud_operations(client):
 
     # Verify deletion
     response = client.get(f"/products/{product_id}", assert_status_code=404)
-    assert response.json() == {
-        "detail": f"Product with id {product_id!r} was not found"
-    }
+    assert response.json() == {"detail": f"Product with id {product_id} was not found"}
 
 
 def test_put_request_with_non_existing_id(client):

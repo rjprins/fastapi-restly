@@ -3124,7 +3124,7 @@ def _not_found_message(model_cls: type[Any], id: Any) -> str:
     # is no place for SQL
     if id is None:
         return f"{model_cls.__name__} was not found"
-    return f"{model_cls.__name__} with id {id!r} was not found"
+    return f"{model_cls.__name__} with id {id} was not found"
 
 
 def reject_unknown_query_keys(

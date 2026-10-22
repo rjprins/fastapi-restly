@@ -128,6 +128,9 @@ field and the id:
 {"detail": "Id not found for author_id: 99"}
 ```
 
+The message names a field by the name that the client sends: its alias, if
+the field has one, such as `authorId`.
+
 :::{admonition} Details
 :class: details
 

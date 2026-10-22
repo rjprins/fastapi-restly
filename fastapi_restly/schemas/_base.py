@@ -839,7 +839,8 @@ def _collect_model_references(
         value = getattr(obj, name, None)
         if value is None:
             continue
-        here = f"{path}.{name}" if path else name
+        public_name = field_info.alias or name
+        here = f"{path}.{public_name}" if path else public_name
         marker = _ref_exists_marker(field_info)
         listed = _listed_ref_exists_marker(field_info) if marker is None else None
         if marker is not None:
@@ -1013,19 +1014,26 @@ def _id_schema_fields(
                 yield field, model, list(dict.fromkeys(i.id for i in value)), True
 
 
+def _public_name(schema_obj: pydantic.BaseModel, field: str) -> str:
+    """The name of ``field`` as the client sends it: its alias, if it has
+    one. The list params use the same name."""
+    return type(schema_obj).model_fields[field].alias or field
+
+
 def _id_schema_rows(
-    field: str, ids: list[Any], found: list[Any], key: str, is_list: bool
+    label: str, ids: list[Any], found: list[Any], key: str, is_list: bool
 ) -> Any:
-    """The resolved value of ``field``, from the rows that were ``found``.
-    Raises ``NotFound`` for an id that has no row."""
+    """The resolved value of a field, from the rows that were ``found``.
+    Raises ``NotFound`` for an id that has no row, with the field's public
+    name, ``label``."""
     if not is_list:
         if not found:
-            raise NotFound(f"Id not found for {field}: {ids[0]}")
+            raise NotFound(f"Id not found for {label}: {ids[0]}")
         return found[0]
     by_id = {getattr(row, key): row for row in found}
     missing = [id_ for id_ in ids if id_ not in by_id]
     if missing:
-        raise NotFound(f"Id not found for {field}: {missing}")
+        raise NotFound(f"Id not found for {label}: {missing}")
     return [by_id[id_] for id_ in ids]
 
 
@@ -1045,12 +1053,14 @@ async def _async_resolve_ids_to_sqlalchemy_objects(
             try:
                 resolved[field] = await session.get_one(model, ids[0])
             except NoResultFound as e:
-                raise NotFound(f"Id not found for {field}: {ids[0]}") from e
+                label = _public_name(schema_obj, field)
+                raise NotFound(f"Id not found for {label}: {ids[0]}") from e
             continue
         found: list[Any] = []
         for stmt, key in _reference_statements(model, ids, rows=True):
             found.extend((await session.scalars(stmt)).unique())
-        resolved[field] = _id_schema_rows(field, ids, found, key, is_list)
+        label = _public_name(schema_obj, field)
+        resolved[field] = _id_schema_rows(label, ids, found, key, is_list)
     return resolved
 
 
@@ -1081,12 +1091,14 @@ def _resolve_ids_to_sqlalchemy_objects(
             try:
                 resolved[field] = session.get_one(model, ids[0])
             except NoResultFound as e:
-                raise NotFound(f"Id not found for {field}: {ids[0]}") from e
+                label = _public_name(schema_obj, field)
+                raise NotFound(f"Id not found for {label}: {ids[0]}") from e
             continue
         found: list[Any] = []
         for stmt, key in _reference_statements(model, ids, rows=True):
             found.extend(session.scalars(stmt).unique())
-        resolved[field] = _id_schema_rows(field, ids, found, key, is_list)
+        label = _public_name(schema_obj, field)
+        resolved[field] = _id_schema_rows(label, ids, found, key, is_list)
     return resolved
 
 
@@ -1149,9 +1161,10 @@ def _listed_ref_exists_marker(field_info: FieldInfo) -> RefExists | None:
 def _ref_exists_fields(
     schema_obj: pydantic.BaseModel,
 ) -> dict[type[Any], list[tuple[str, Any, bool]]]:
-    """``{model: [(field_name, id, listed), ...]}`` for the ``MustExist``
-    fields that the client sent with a value other than ``None``. A list of
-    ids gives one entry for each id, with ``listed`` set."""
+    """``{model: [(label, id, listed), ...]}`` for the ``MustExist``
+    fields that the client sent with a value other than ``None``. ``label`` is
+    the field's alias, or its name. A list of ids gives one entry for each id,
+    with ``listed`` set."""
     by_target: dict[type[Any], list[tuple[str, Any, bool]]] = {}
     model_fields = type(schema_obj).model_fields
     for field_name in schema_obj.model_fields_set:
@@ -1161,14 +1174,15 @@ def _ref_exists_fields(
         value = getattr(schema_obj, field_name, None)
         if value is None:
             continue
+        label = field_info.alias or field_name
         marker = _ref_exists_marker(field_info)
         if marker is not None:
-            by_target.setdefault(marker.model, []).append((field_name, value, False))
+            by_target.setdefault(marker.model, []).append((label, value, False))
             continue
         listed = _listed_ref_exists_marker(field_info)
         if listed is not None:
             by_target.setdefault(listed.model, []).extend(
-                (field_name, item, True) for item in value if item is not None
+                (label, item, True) for item in value if item is not None
             )
     return by_target
 
