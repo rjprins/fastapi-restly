@@ -24,6 +24,7 @@ import sqlalchemy
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy import ForeignKey
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from starlette.datastructures import QueryParams
 
@@ -622,6 +623,38 @@ def test_resolve_column_rejects_a_field_that_never_goes_out(hidden):
 
     assert exc_info.value.status_code == 400
     assert "Unknown filter key" in str(exc_info.value.detail)
+
+
+def test_resolve_column_rejects_a_field_without_a_column():
+    """A response field whose model attribute is not a column, such as a plain
+    class attribute or a Python property, is an unknown key: 400, not 500. A
+    hybrid property is SQL, so it still filters and sorts."""
+
+    class RaLamp(fr.IDMixin, SharedBase):
+        name: Mapped[str] = mapped_column()
+        label = ""
+
+        @property
+        def shout(self) -> str:
+            return self.name.upper()
+
+        @hybrid_property
+        def loud(self) -> str:
+            return self.name + "!"
+
+    class RaLampSchema(fr.IDSchema):
+        name: str
+        label: fr.ReadOnly[str] = ""
+        shout: fr.ReadOnly[str] = ""
+        loud: fr.ReadOnly[str] = ""
+
+    for field in ("label", "shout"):
+        for kind in ("filter", "sort"):
+            with pytest.raises(HTTPException) as exc_info:
+                _resolve_column(RaLamp, RaLampSchema, field, kind=kind)
+            assert exc_info.value.status_code == 400
+            assert exc_info.value.detail == f"Unknown {kind} key: {field!r}"
+    assert str(_resolve_column(RaLamp, RaLampSchema, "loud")) == str(RaLamp.loud)
 
 
 # --- Overrides get the parsed values ---

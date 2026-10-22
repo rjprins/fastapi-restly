@@ -142,9 +142,10 @@ JSON that does not have the shape of `sort`, `range` or `filter` gets a
 React-admin uses the `id` array form of `filter` (`{"id": [1, 2, 3]}`) for
 its `getMany` calls. It becomes `WHERE id IN (1, 2, 3)`. Other filter values
 must be equal to the column value. Only fields that the view's response class
-sends are accepted. Other fields, also react-admin's full-text search
-parameter `q`, get a 400. For a search on part of a value, or a full-text
-search, override the view's
+sends are accepted. The model must have the field in SQL: as a column, a
+`column_property` or a hybrid property. Other fields, also a Python
+`@property` and react-admin's full-text search parameter `q`, get a 400. For
+a search on part of a value, or a full-text search, override the view's
 {meth}`apply_filters <fastapi_restly.views.RestView.apply_filters>`. It gets
 the list params with `filter` as a dict. Take your keys out, and pass the
 rest on:

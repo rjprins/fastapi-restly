@@ -21,7 +21,7 @@ import fastapi
 import pydantic
 import sqlalchemy
 from fastapi.exceptions import RequestValidationError
-from sqlalchemy.orm import RelationshipProperty
+from sqlalchemy.orm import QueryableAttribute, RelationshipProperty
 
 from fastapi_restly.exc import BadQueryParam, RestlyConfigurationError
 from fastapi_restly.query import SortNulls
@@ -159,7 +159,9 @@ def _resolve_column(
         raise BadQueryParam(f"Unknown {kind} key: {field_name!r}")
 
     col = getattr(model, resolved_name, None)
-    if col is None:
+    if not isinstance(col, QueryableAttribute):
+        # also a plain class attribute or a Python property, which SQL
+        # cannot filter or sort on; a hybrid property is a QueryableAttribute
         raise BadQueryParam(f"Unknown {kind} key: {field_name!r}")
     if hasattr(col, "property") and isinstance(col.property, RelationshipProperty):
         raise BadQueryParam(
