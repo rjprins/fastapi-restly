@@ -349,6 +349,9 @@ replacement, unless it says otherwise.
 - A subclass that sets its own `exclude_routes` serves the routes that only
   its base leaves out, also when the base view was registered first. Before,
   the list of the base applied to the subclass too in that case.
+- A plain `fr.View` may name a route method `create`, `update` or `delete`.
+  Before, its registration failed with `TypeError`, as if it had the business
+  methods of a CRUD view.
 - In plain SQLAlchemy, a clause that you forget to call, as in
   `select(Post).where(mine)`, now always fails when it runs. Before, it ran
   with `NULL` for its context member once the called form, `mine()`, had

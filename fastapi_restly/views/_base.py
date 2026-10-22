@@ -3526,16 +3526,20 @@ def _init_view_cls_and_add_to_router(
     setattr(holder, "_fr_mounted_views", mounted)
 
 
-#: Bare business-method names. A ``@route``-decorated method must not be
-#: named like one of these: it would shadow the verb (which the ``handle_<verb>``
-#: handlers call) and collide with ``<verb>_endpoint`` at the same path.
-#: Override the business method *without* a decorator for domain logic; use
-#: ``<verb>_endpoint`` or a distinct name for a custom route. ``get_one`` and
-#: ``get_many`` are final, so the class-definition guard refuses them first.
+#: Bare business-method names. A ``@route``-decorated method of a CRUD view
+#: must not be named like one of these: it would shadow the verb (which the
+#: ``handle_<verb>`` handlers call) and collide with ``<verb>_endpoint`` at the
+#: same path. Override the business method *without* a decorator for domain
+#: logic; use ``<verb>_endpoint`` or a distinct name for a custom route.
+#: ``get_one`` and ``get_many`` are final, so the class-definition guard
+#: refuses them first. A plain ``View`` has none of these methods, so the
+#: names are free there.
 _BARE_VERB_NAMES = frozenset({"create", "update", "delete"})
 
 
 def _reject_bare_verb_route_names(view_cls: type[View]) -> None:
+    if not issubclass(view_cls, BaseRestView):
+        return
     for name, value in view_cls.__dict__.items():
         if name in _BARE_VERB_NAMES and hasattr(value, "_api_route_args"):
             raise TypeError(

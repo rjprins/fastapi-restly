@@ -1,4 +1,5 @@
-"""The bare verbs (get_many/get_one/create/update/delete) are reserved names.
+"""The bare verbs (get_many/get_one/create/update/delete) are reserved names
+on a CRUD view. A plain ``View`` has no such methods, so it may use them.
 
 A ``@route``-decorated method named like a bare write verb shadows the verb
 (which the ``handle_<verb>`` handlers call) and collides with the
@@ -92,3 +93,33 @@ def test_bare_verb_override_without_route_is_allowed(sync_db):
     created = client.post("/items/", json={"name": "abc"})
     assert created.status_code == 201, created.text
     assert created.json()["name"] == "ABC"  # the override ran
+
+
+def test_a_plain_view_may_name_its_routes_like_the_verbs():
+    class SettingView(fr.View):
+        prefix = "/settings"
+
+        @fr.post("/")
+        def create(self) -> dict:
+            return {"made": True}
+
+        @fr.get("/{key}")
+        def get_one(self, key: str) -> dict:
+            return {"key": key}
+
+        @fr.put("/{key}")
+        def update(self, key: str) -> dict:
+            return {"updated": key}
+
+        @fr.delete("/{key}")
+        def delete(self, key: str) -> None:
+            return None
+
+    app = FastAPI()
+    fr.include_view(app, SettingView)
+
+    client = TestClient(app)
+    assert client.post("/settings/").json() == {"made": True}
+    assert client.get("/settings/a").json() == {"key": "a"}
+    assert client.put("/settings/a").json() == {"updated": "a"}
+    assert client.delete("/settings/a").status_code == 204
