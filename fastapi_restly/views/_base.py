@@ -167,8 +167,17 @@ class ListResult(Generic[ModelT]):
     the page from them.
     """
 
+    #: The rows that the list loaded: one page, or every row for a list
+    #: without pagination.
     objects: Sequence[ModelT]
+    #: The number of rows that match the filters, on all pages. It is
+    #: ``None`` for a list without pagination. A paginated list response
+    #: sends ``None`` as ``0``.
     total_count: int | None = None
+    #: The list params that ``get_many`` received. Pass on the list params
+    #: that you received: :meth:`BaseRestView.to_list_response` reads the
+    #: page and the page size from them, and without them it reports page 1
+    #: on every page.
     list_params: Any = None
 
 
@@ -178,10 +187,15 @@ class ViewRoute(str, Enum):
     Values are the endpoint method names so ``exclude_routes`` can drop them.
     """
 
+    #: ``GET /``: the list.
     GET_MANY = "get_many_endpoint"
+    #: ``GET /{id}``: one row.
     GET_ONE = "get_one_endpoint"
+    #: ``POST /``: create a row.
     CREATE = "create_endpoint"
+    #: ``PATCH /{id}``: update a row.
     UPDATE = "update_endpoint"
+    #: ``DELETE /{id}``: delete a row.
     DELETE = "delete_endpoint"
 
 
@@ -194,9 +208,14 @@ class ResponseShape(str, Enum):
     open string namespace.
     """
 
-    SINGLE = "single"  # one serialized object
-    LIST = "list"  # a ListResult -> the list envelope
-    EMPTY = "empty"  # 204 No Content
+    #: One object: ``result`` is a row, and the response is an instance of
+    #: the response class, from :meth:`BaseRestView.to_single_response`.
+    SINGLE = "single"
+    #: A list: ``result`` is a :class:`ListResult`, and the response is the
+    #: list envelope, from :meth:`BaseRestView.to_list_response`.
+    LIST = "list"
+    #: No body: ``result`` is not used, and the response is ``204 No Content``.
+    EMPTY = "empty"
 
 
 class Action:
@@ -220,10 +239,15 @@ class Action:
     too.
     """
 
+    #: Read a list, as ``GET /`` does. A read has no commit.
     GET_MANY = "get_many"
+    #: Read one row, as ``GET /{id}`` does. A read has no commit.
     GET_ONE = "get_one"
+    #: Create a row, as ``POST /`` does.
     CREATE = "create"
+    #: Update a row, as ``PATCH /{id}`` does.
     UPDATE = "update"
+    #: Delete a row, as ``DELETE /{id}`` does.
     DELETE = "delete"
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
@@ -1022,6 +1046,10 @@ class View:
     #: The URL prefix of every route. Each class in the hierarchy that sets one
     #: adds a segment, base first.
     prefix: ClassVar[str]
+    #: The OpenAPI tags of every route. When it is not set, the tag is the
+    #: last part of the prefix in title case, so ``/order-items`` gives
+    #: ``Order Items``. Without a prefix, the tag is the class name. Setting
+    #: it replaces that tag.
     tags: ClassVar[Iterable[str | Enum] | None] = None
     #: FastAPI dependencies run for every route, without injecting a result.
     #: Each class in the hierarchy adds its own, base first, so a subclass
@@ -1946,6 +1974,10 @@ class BaseRestView(
     #: optional. It is named ``<Resource>Update``. A class that a view sets
     #: is used as it is.
     schema_update: ClassVar[type[pydantic.BaseModel]]
+    #: The SQLAlchemy model that the view serves: a mapped class. A view that
+    #: you register needs it. A class that is not mapped raises
+    #: :class:`~fastapi_restly.exc.RestlyConfigurationError` when Python
+    #: creates the view class.
     model: ClassVar[type[Any]]
     #: The clause every read on this view applies: list, count, and retrieve
     #: (a row outside it is 404). ``None`` (the default) falls back to the
@@ -1964,6 +1996,10 @@ class BaseRestView(
     #: types. Integer paths accept non-negative digits. An unmatched value
     #: falls through to another route or returns 404, instead of 422.
     id_type: ClassVar[type[Any] | None] = None
+    #: The routes to leave out of the view: :class:`ViewRoute` values for the
+    #: CRUD routes, or the names of endpoint methods, such as
+    #: ``(fr.ViewRoute.DELETE,)``. A name that is not a route raises
+    #: ``AttributeError`` when the view is registered.
     exclude_routes: ClassVar[Iterable[str | ViewRoute]] = ()
     #: What a list route does with a query key that it does not read.
     #: ``"forbid"`` (the default) rejects the request with 422, so a typo in
@@ -2036,6 +2072,9 @@ class BaseRestView(
     #: beside it.
     schema_list_params: ClassVar[type[pydantic.BaseModel]]
 
+    #: The ``fastapi.Request`` of the current request, which Restly sets for
+    #: each request. A view that you create yourself, outside a request,
+    #: takes it as a keyword argument, as it takes the session.
     request: fastapi.Request
 
     if not TYPE_CHECKING:

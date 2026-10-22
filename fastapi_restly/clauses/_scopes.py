@@ -42,7 +42,15 @@ class ClauseNamespace:
     explicit opt-out. `None` says nothing here and is rejected.
     """
 
+    #: The model that the namespace belongs to. Setting it makes this class
+    #: the namespace of the model, so its ``default_scope`` reaches the
+    #: model's reads and reference checks. A model has at most one such
+    #: namespace. Leave it out for a plain group of clauses.
     model: ClassVar[type[Any]]
+    #: The scope of every view read and every reference check on the model,
+    #: unless a view declares its own. A namespace that does not declare it
+    #: takes the scope of the namespace of a parent model. Declare
+    #: ``UNSCOPED`` for no scope.
     default_scope: ClassVar[WhereClause] = UNSCOPED
 
     def __init_subclass__(cls, **kwargs: Any) -> None:

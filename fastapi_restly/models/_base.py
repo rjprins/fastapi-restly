@@ -26,12 +26,18 @@ from typing_extensions import dataclass_transform
 
 from ..exc import RestlyConfigurationError
 
-# Alternatives to cascade "all" and "all, delete-orphan" without
-# "refresh-expire": a plain session.refresh(obj) on an async session would
-# expire related objects that then lazy-load on access. Restly's own
-# save of a write refreshes by attribute name and does not cascade. See:
-# https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#preventing-implicit-io-when-using-asyncsession
+#: The cascade ``"all"`` without ``"refresh-expire"``, for
+#: ``relationship(cascade=...)`` on an async session:
+#: ``"save-update, merge, delete, expunge"``. With ``"all"``, your own
+#: ``session.refresh(obj)`` also expires the related objects. On an async
+#: session, the next read of one then raises ``MissingGreenlet``. Restly's
+#: own save after a write refreshes by attribute name and does not cascade,
+#: so ``"all"`` is safe on Restly's write paths. See SQLAlchemy's
+#: `Preventing Implicit IO when Using AsyncSession
+#: <https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#preventing-implicit-io-when-using-asyncsession>`_.
 CASCADE_ALL_ASYNC = "save-update, merge, delete, expunge"
+#: :data:`CASCADE_ALL_ASYNC` with ``"delete-orphan"``: the cascade
+#: ``"all, delete-orphan"`` without ``"refresh-expire"``.
 CASCADE_ALL_DELETE_ORPHAN_ASYNC = CASCADE_ALL_ASYNC + ", delete-orphan"
 
 
@@ -125,9 +131,15 @@ class TimestampsMixin(MappedAsDataclass, kw_only=True, eq=False, repr=False):
     SQLAlchemy makes each model that uses it a dataclass.
     """
 
+    #: When the row was created, in UTC. The model sets it to the current
+    #: time when you create the object. The database sets it when SQL that
+    #: leaves it out inserts a row.
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default_factory=utc_now, server_default=func.now()
     )
+    #: When the row last changed, in UTC. The model sets it when you create
+    #: the object, and again in each UPDATE that SQLAlchemy runs for the row.
+    #: The database sets it when SQL that leaves it out inserts a row.
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default_factory=utc_now,
@@ -143,6 +155,9 @@ class IDMixin(MappedAsDataclass, kw_only=True, eq=False, repr=False):
     SQLAlchemy makes each model that uses it a dataclass.
     """
 
+    #: The primary key: an integer that the database generates when it
+    #: inserts the row. The constructor does not take it, and it is ``None``
+    #: until the session flushes the new object.
     id: Mapped[int] = mapped_column(init=False, primary_key=True)
 
 

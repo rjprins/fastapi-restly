@@ -76,6 +76,10 @@ class AsyncRestView(
     ``apply_list_params`` and ``get_loader_options``.
     """
 
+    #: The SQLAlchemy ``AsyncSession`` of this request, from
+    #: :data:`fr.AsyncSessionDep <fastapi_restly.db.AsyncSessionDep>`.
+    #: To use another database on one view, give the attribute another
+    #: annotation; see :ref:`session-dependency-one-view`.
     session: AsyncSessionDep
     _fr_async_view: ClassVar[bool] = True
 

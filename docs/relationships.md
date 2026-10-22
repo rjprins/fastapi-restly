@@ -652,7 +652,12 @@ you pass has `expire_on_commit=True`; see
 
 The same error comes from any database access without `await`, not only from
 relationships: a deferred column, an expired attribute that your code reads,
-or a sync database driver behind an async engine. For those cases, see
+or a sync database driver behind an async engine. A relationship with
+`cascade="all"` expires its related objects when your own code calls
+`session.refresh(obj)`. On an async session, use
+{data}`CASCADE_ALL_ASYNC <fastapi_restly.models.CASCADE_ALL_ASYNC>` or
+{data}`CASCADE_ALL_DELETE_ORPHAN_ASYNC <fastapi_restly.models.CASCADE_ALL_DELETE_ORPHAN_ASYNC>`
+instead. For all these cases, see
 SQLAlchemy's
 [Preventing Implicit IO when Using AsyncSession](https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#preventing-implicit-io-when-using-asyncsession).
 :::

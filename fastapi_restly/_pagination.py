@@ -45,6 +45,8 @@ class Envelope(pydantic.BaseModel, Generic[DataT]):
     :class:`PaginatedEnvelope` by default.
     """
 
+    #: The rows of the list, each as an instance of the view's response
+    #: class.
     data: Sequence[DataT]
 
 
@@ -54,9 +56,15 @@ class PaginatedEnvelope(Envelope[DataT]):
     The default ``envelope`` of :class:`NumberedPagination`.
     """
 
+    #: The number of rows that match the filters, on all pages.
     total_count: int
+    #: The number of this page. The first page is 1.
     page: int
+    #: The most rows on one page: the page size of the request, or the
+    #: default page size.
     page_size: int
+    #: The number of pages: ``total_count`` divided by ``page_size``, rounded
+    #: up. It is 0 when no row matches.
     total_pages: int
 
 

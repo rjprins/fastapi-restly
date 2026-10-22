@@ -9,18 +9,7 @@ defaults to your own declarative base, and the model mixins ``IDMixin`` and
    :members:
    :undoc-members:
    :show-inheritance:
-   :exclude-members: utc_now, underscore, metadata, CASCADE_ALL_ASYNC, CASCADE_ALL_DELETE_ORPHAN_ASYNC, TableNameMixin
-
-``fastapi_restly.models`` also provides two cascade strings for
-``relationship(cascade=...)`` on async sessions. ``CASCADE_ALL_ASYNC`` is
-``"save-update, merge, delete, expunge"``, and
-``CASCADE_ALL_DELETE_ORPHAN_ASYNC`` adds ``"delete-orphan"``. SQLAlchemy's
-``"all"`` also includes ``"refresh-expire"``: then a plain
-``session.refresh(obj)`` expires the related objects, and they lazy-load on the
-next access, which fails on an async session. Restly's save after a write
-refreshes by attribute name and does not cascade, so ``"all"`` is safe on
-Restly's write paths. Use these constants where your own code refreshes an
-object on an async session.
+   :exclude-members: utc_now, underscore, metadata, TableNameMixin
 
 .. seealso::
 

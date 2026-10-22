@@ -75,6 +75,10 @@ class RestView(
     ``apply_list_params`` and ``get_loader_options``.
     """
 
+    #: The SQLAlchemy ``Session`` of this request, from
+    #: :data:`fr.SessionDep <fastapi_restly.db.SessionDep>`.
+    #: To use another database on one view, give the attribute another
+    #: annotation; see :ref:`session-dependency-one-view`.
     session: SessionDep
 
     def __init_subclass__(cls, **kwargs: Any) -> None:

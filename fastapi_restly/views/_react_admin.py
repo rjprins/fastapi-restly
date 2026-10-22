@@ -86,10 +86,14 @@ class ReactAdminListParams(pydantic.BaseModel):
     subclass as the view's ``schema_list_params``.
     """
 
+    #: The sort order: a field name and ``"ASC"`` or ``"DESC"``, such as
+    #: ``("name", "DESC")``. ``None`` when the request has no sort.
     sort: pydantic.Json[tuple[str, Literal["ASC", "DESC"]]] | None = pydantic.Field(
         None,
         description='The sort order, as JSON: ["field", "ASC"] or ["field", "DESC"].',
     )
+    #: The first and the last row to return, both included, such as
+    #: ``(0, 24)``. ``None`` when the request has no range.
     range: pydantic.Json[tuple[int, int]] | None = pydantic.Field(
         None,
         description=(
@@ -97,6 +101,8 @@ class ReactAdminListParams(pydantic.BaseModel):
             "included, and the first row is 0."
         ),
     )
+    #: The filters, as a dict from a field name to a value. ``None`` when
+    #: the request has no filter.
     filter: pydantic.Json[dict[str, Any]] | None = pydantic.Field(
         None,
         description=(
@@ -520,6 +526,12 @@ class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
 
     @put("/{id}")
     async def put(self, id: ViewID, data: ViewUpdate) -> ViewResponse:
+        """``PUT /{id}`` endpoint method, for react-admin's ``update``. It
+        runs the same steps as ``PATCH``:
+        :meth:`~fastapi_restly.views.AsyncRestView.handle_update`, with the
+        view's ``schema_update`` body. An ``update`` override changes both
+        routes. Replace this method to give ``PUT`` its own rules; see
+        :ref:`react-admin-put`."""
         obj = await self.handle_update(id, data)
         return self.to_response(obj)
 
@@ -554,5 +566,11 @@ class ReactAdminView(_ReactAdminMixin, RestView):
 
     @put("/{id}")
     def put(self, id: ViewID, data: ViewUpdate) -> ViewResponse:
+        """``PUT /{id}`` endpoint method, for react-admin's ``update``. It
+        runs the same steps as ``PATCH``:
+        :meth:`~fastapi_restly.views.RestView.handle_update`, with the view's
+        ``schema_update`` body. An ``update`` override changes both routes.
+        Replace this method to give ``PUT`` its own rules; see
+        :ref:`react-admin-put`."""
         obj = self.handle_update(id, data)
         return self.to_response(obj)
