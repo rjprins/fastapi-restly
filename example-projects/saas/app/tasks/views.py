@@ -168,9 +168,8 @@ class TaskView(TrashView[Task]):
             and "version" in data.model_fields_set
             and client_version != task.version
         ):
-            raise HTTPException(
-                status_code=409,
-                detail=f"Conflict: expected version {client_version}, but current version is {task.version}",
+            raise fr.exc.Conflict(
+                f"Conflict: expected version {client_version}, but current version is {task.version}"
             )
 
         # Cross-resource validation for assignee change.

@@ -85,7 +85,7 @@ class UserView(SoftDeleteMixin, AuthenticatedView[User]):
         """
         user = await self.get_one(id)
         if not verify_password(request.current_password, user.password):
-            raise HTTPException(403, "Current password is incorrect")
+            raise fr.exc.Forbidden("Current password is incorrect")
         if not request.new_password:
             raise HTTPException(422, "new_password is required")
 
