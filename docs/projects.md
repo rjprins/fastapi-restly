@@ -63,11 +63,16 @@ stay hand-written, and the users routes come from `UserView`. If you add a
 `ProductView` later, the orders router does not change.
 
 `require_login` runs before every route of the view; see
-[Run a dependency on every route](#run-a-dependency-on-every-route). Restly
-calls `get_db` for each request, so in one request the views and your own
-routes get the same session. A sync app passes its generator as
-`sync_session_generator`, and its views are `fr.RestView`. The next section
-says what `get_db` must not do.
+[Run a dependency on every route](#run-a-dependency-on-every-route).
+FastAPI calls `get_db` once for each request, so the view and your
+dependencies that use `Depends(get_db)`, such as `require_login`, get the
+same session. An override of `get_db` in `app.dependency_overrides` gives the
+views their session too, so a test setup that overrides `get_db` keeps
+working; see
+[Use the view's session in your own dependencies](#share-request-session).
+A sync app passes its generator as `sync_session_generator`, and its views
+are `fr.RestView`. Before you pass `get_db`, check the two rules in the next
+section.
 
 :::{admonition} Details
 :class: details
@@ -94,11 +99,23 @@ async def export_user(id: int):
 
 (existing-get-db)=
 
-## Keep your `get_db` and your tests
+## Two rules for your `get_db`
 
-Your `get_db` must not commit, because each write of a view commits itself.
-Many `get_db` functions commit after the `yield`. Remove that commit, and
-commit in your own routes that write:
+A `get_db` that works for your own routes can still break the views.
+
+For async views, create its sessionmaker with `expire_on_commit=False` and
+`autoflush=False`, as Restly does. Restly reads the response from the object
+after the commit. With SQLAlchemy's default, `expire_on_commit=True`, that
+read fails with `MissingGreenlet`, so every `POST` and `PATCH` answers 500.
+Sync views work with the defaults:
+
+```python
+SessionLocal = async_sessionmaker(engine, expire_on_commit=False, autoflush=False)
+```
+
+And `get_db` must not commit. A `get_db` that commits after the `yield` saves
+changes that should be rolled back, such as those of a route that forgot to
+commit. Remove that commit:
 
 ```python
 async def get_db():
@@ -107,13 +124,14 @@ async def get_db():
         # no session.commit() here
 ```
 
-With the commit, the views still work. But `get_db` then also saves changes
-that should be rolled back when the request ends; see
-[Build sessions with your own generator](#own-session-generator).
+:::{warning}
+First add a commit to each of your own routes that writes. A route that
+still relies on the commit in `get_db` answers 200, but its writes are lost,
+and nothing warns you.
+:::
 
-A test setup that overrides `get_db` in `app.dependency_overrides` keeps
-working: the override gives the views their session too; see
-[Use the view's session in your own dependencies](#share-request-session).
+[Build sessions with your own generator](#own-session-generator) has the
+details of both rules.
 
 (hand-written-crud-route)=
 

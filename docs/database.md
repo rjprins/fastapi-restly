@@ -141,16 +141,26 @@ def my_get_db() -> Iterator[Session]:
 fr.configure(sync_session_generator=my_get_db)
 ```
 
-Many `get_db` generators commit after the `yield`. Remove that commit, and
-commit in your own routes that write. The views do not need it, and it saves
+Many `get_db` generators commit after the `yield`. Such a commit saves
 changes that should be rolled back: changes that no write action committed,
-such as those of a route that forgot to commit. Restly warns that it rolls
-such changes back, but a generator that commits saves them.
+such as those of a route that forgot to commit. Restly's warning says that
+these changes are rolled back, but a generator that commits saves them. So
+remove the commit from the generator. The views do not need it.
 
-Give your sessions the same options as Restly's own factories, unless you need
-other behavior: `expire_on_commit=False`, and for async sessions also
-`autoflush=False`. [Session factory defaults](#session-factory-defaults)
-explains why.
+:::{warning}
+Before you remove the commit, add a commit to each of your own routes that
+writes. A route that still relies on the commit in the generator answers 200,
+but its writes are lost, and nothing warns you. Restly's warning about
+changes that were not committed comes only from views, and from routes that
+get their session through `fr.AsyncSessionDep` or `fr.SessionDep`.
+:::
+
+Give your sessions the same options as Restly's own factories:
+`expire_on_commit=False`, and for async sessions also `autoflush=False`. An
+async view needs `expire_on_commit=False`. Without it, its `POST` and `PATCH`
+routes fail with `MissingGreenlet`, and Restly does not warn about this for a
+generator. [Session factory defaults](#session-factory-defaults) explains
+why.
 
 To use the generator outside a request, with
 [`fr.open_session()`](#session-off-request), it must take no arguments. In

@@ -592,8 +592,9 @@ The warning is on by default. To turn it off for the app, pass
 A route that rolls back on purpose, such as a dry run, can turn it off for one
 request with `session.info["_fr_suppress_uncommitted"] = True`.
 
-A [session generator of your own](#own-session-generator) decides how a
-session is made and closed. It does not change who commits.
+A session generator of your own decides how a session is made and closed. It
+does not change who commits, unless it commits itself, which it must not do;
+see [Build sessions with your own generator](#own-session-generator).
 :::
 
 (transaction-hooks)=
