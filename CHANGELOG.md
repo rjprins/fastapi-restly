@@ -356,6 +356,9 @@ replacement, unless it says otherwise.
   grows with the square of their number. This happened when every write
   reached the same loaded rows, such as the children of one parent through a
   loaded collection: 1,000 updates kept about 270 MB.
+- `restly new` works after `pip install`. pip compiles the Python files of
+  the project templates, and `restly new` read the compiled files as text and
+  failed with `UnicodeDecodeError`.
 - In plain SQLAlchemy, a clause that you forget to call, as in
   `select(Post).where(mine)`, now always fails when it runs. Before, it ran
   with `NULL` for its context member once the called form, `mine()`, had

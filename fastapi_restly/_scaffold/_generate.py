@@ -111,8 +111,12 @@ def _walk(node: Any, prefix: Path = Path()) -> Iterator[tuple[Path, Any]]:
     Walks the ``Traversable`` API directly rather than going through
     ``importlib.resources.as_file()``, which only supports directory
     traversables from Python 3.12 while Restly still supports 3.10.
+    Bytecode is skipped: a plain ``pytest`` in the repository also collects
+    the template tests, and leaves a ``__pycache__`` in the template tree.
     """
     for child in sorted(node.iterdir(), key=lambda c: c.name):
+        if child.name == "__pycache__" or child.name.endswith(".pyc"):
+            continue
         relative = prefix / child.name
         if child.is_dir():
             yield from _walk(child, relative)

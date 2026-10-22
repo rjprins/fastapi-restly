@@ -313,6 +313,29 @@ def test_generate_renames_a_placeholder_directory_at_any_depth(tmp_path):
     assert (destination / "src" / "shop" / "x.py").exists()
 
 
+def test_generate_skips_bytecode_in_the_template_tree(tmp_path):
+    """A plain ``pytest`` in the repository leaves a ``__pycache__`` in the
+    template tree. It is not a template, and it is not UTF-8."""
+    options = Options(name="shop")
+    root = _template_root(
+        tmp_path / "templates", {"base/tests/test_tasks.py": "import myapp\n"}, options
+    )
+    cache = root / "base" / "tests" / "__pycache__"
+    cache.mkdir()
+    (cache / "test_tasks.cpython-313.pyc").write_bytes(b"\xf3\r\r\n\x00")
+    (root / "base" / "stray.pyc").write_bytes(b"\xf3\x00")
+    destination = tmp_path / "out"
+    written = generate(options, destination, root)
+
+    assert _written(written, destination) >= {"tests/test_tasks.py"}
+    assert not [
+        path
+        for path in _written(written, destination)
+        if "__pycache__" in path or path.endswith(".pyc")
+    ]
+    assert (destination / "tests" / "test_tasks.py").read_text() == "import shop\n"
+
+
 # ---------------------------------------------------------------------------
 # Dot-less template names
 # ---------------------------------------------------------------------------
