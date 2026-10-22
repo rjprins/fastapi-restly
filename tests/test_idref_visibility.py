@@ -1,10 +1,10 @@
-"""IDRef reference resolution is an UNSCOPED existence check.
+"""An IDRef reference is checked against the referenced model's
+``default_scope``, not against the ``scope`` of a view.
 
-Resolution does a bare primary-key lookup with no view ``build_query`` scoping,
-so visibility of references is the application's responsibility. This pins the
-documented escape hatch: ``authorize`` runs BEFORE resolution and sees the
-*unresolved* reference (``data.<field>.id``), so a cross-visibility reference can
-be rejected by id before the row is ever fetched.
+So a visibility rule that only a view declares does not cover references.
+This pins the documented way to add one: ``authorize`` runs BEFORE the
+reference check and sees the *unresolved* reference (``data.<field>.id``), so it
+can reject a reference by id before the row is ever fetched.
 """
 
 from sqlalchemy import ForeignKey
@@ -64,7 +64,8 @@ def test_idref_reference_is_unresolved_and_gatable_in_authorize(client):
     gate["forbidden_id"] = a1["id"]
 
     # A reference to the "invisible" author is rejected in authorize, by id,
-    # before resolution would have fetched it unscoped.
+    # before the row is fetched. Author has no default_scope, so the
+    # reference check alone would accept it.
     client.post(
         "/articles/", json={"title": "x", "author_id": a1["id"]}, assert_status_code=404
     )

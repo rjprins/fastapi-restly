@@ -519,7 +519,8 @@ takes the four settings and `sort_query_param` as keywords, so a route
 outside a view can build the same list params.
 
 A key that clients use is part of your API. Removing it later breaks those
-clients.
+clients. A key also goes away when you remove its field from the response
+class.
 :::
 
 (relation-filtering)=
