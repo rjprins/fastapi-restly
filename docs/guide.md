@@ -127,7 +127,7 @@ filter, sort and page parameters to the URL.
   a field out of the requests or the responses, validate input, and use other
   field names in JSON, such as camelCase.
 - [Relationships](relationships.md): accept the id of another row, check
-  that the row exists, many-to-many relationships, return related objects,
+  that the row exists, link many rows to many rows, return related objects,
   and fix `MissingGreenlet`.
 - [Responses](responses.md): what each route returns, the list envelope,
   the response of a custom route, and how to change the shape of one route

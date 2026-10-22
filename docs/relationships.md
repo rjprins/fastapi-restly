@@ -319,9 +319,10 @@ id in one query, and the list stays a list of ints.
 (many-to-many)=
 ## Many-to-many relationships
 
-A many-to-many relationship, such as the tags of a post, goes through an
-association table. Map it with SQLAlchemy's `secondary`, and send the ids as
-`list[fr.IDRef[Model]]`, as for any to-many relationship:
+The products of an order in the shop example above are a many-to-many
+relationship. An order has many products, and a product is in many orders.
+Such a relationship goes through an association table. Map it with
+SQLAlchemy's `secondary`, as in this example of posts and tags:
 
 ```python
 from sqlalchemy import Column, ForeignKey, Table
@@ -354,31 +355,92 @@ class PostSchema(fr.IDSchema):
     tags: list[fr.IDRef[Tag]] = []
 ```
 
-`POST /posts` with `"tags": [1, 2]` links the post to those tags, and a
-`PATCH` with `"tags": [2]` replaces the whole list. Restly checks the ids as
-for [several rows](#reference-lists): in one query, with `404` for a missing
-id. Responses show the ids, also on an async view: Restly loads each
-relationship that the response class names, so the relationship needs no
-`lazy` option. The other side works the same way: on the schema of a tag,
-`posts: fr.ReadOnly[list[fr.IDRef[Post]]]` shows the ids of its posts.
+The schema takes the tags as a list of ids, as in
+[Reference several rows](#reference-lists). `POST /posts` with
+`"tags": [1, 2]` links the post to those tags. A `PATCH` with `"tags": [2]`
+replaces the whole list.
+
+Responses show the ids, also on an async view. Restly loads each relationship
+that the response class names. So the relationship needs no `lazy` option.
+
+The schema of a tag can show the ids of its posts with
+`posts: fr.ReadOnly[list[fr.IDRef[Post]]]`. The field is read-only here.
 
 :::{admonition} Details
 :class: details
 
-To show the tags as objects, use a nested schema, such as
-`tags: fr.ReadOnly[list[TagSchema]]`. It is read-only, so a view with this
-schema cannot set the tags; see
-[Return related objects in a response](#relationship-loading).
+To return the tags as objects, while clients still send ids, set your own
+[response class](#own-response-class):
+
+```python
+class PostResponse(fr.IDSchema):
+    title: str
+    tags: list[TagSchema] = []
+
+
+class PostView(fr.AsyncRestView):
+    prefix = "/posts"
+    model = Post
+    schema = PostSchema
+    schema_response = PostResponse
+```
 
 A link with columns of its own, such as the position of a tag on a post, is
 an association object: a model. Give it a view of its own, with a
-`fr.MustExist` for each end. A unique constraint on the two ends answers a
-second link with `409`. The post can show its links as a nested list, such
-as `links: fr.ReadOnly[list[PostTagSchema]]`, and Restly loads each level.
+`fr.MustExist` for each end:
 
-A filter or a sort key cannot go through a list of related rows, so
-`?tags.name=news` is an unknown key; see
-[Filter on a related row](#relation-filtering).
+```python
+from sqlalchemy import ForeignKey, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+
+class PostTag(fr.IDMixin, Base):
+    __table_args__ = (UniqueConstraint("post_id", "tag_id"),)
+    post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
+    tag_id: Mapped[int] = mapped_column(ForeignKey("tag.id"))
+    position: Mapped[int] = mapped_column(default=0)
+    tag: Mapped[Tag] = relationship(init=False)
+
+
+class Post(fr.IDMixin, Base):
+    title: Mapped[str]
+    links: Mapped[list[PostTag]] = relationship(
+        cascade=fr.models.CASCADE_ALL_DELETE_ORPHAN_ASYNC, default_factory=list
+    )
+
+
+class PostTagSchema(fr.IDSchema):
+    post_id: fr.MustExist[int, Post]
+    tag_id: fr.MustExist[int, Tag]
+    position: int = 0
+```
+
+The unique constraint answers a second link of the same tag with `409`. The
+cascade deletes the links of a post with the post. Without it, deleting a
+post that has links answers `409`. The post can show its links as a nested
+list, such as `links: fr.ReadOnly[list[PostTagSchema]]`, and Restly loads
+each level.
+
+A key of the list params cannot go through a list of related rows. So
+`include_filters = ("*", "tags.*")` fails when the view registers, because
+`tags.*` matches no key. Write a [filter of your own](#own-list-filter)
+instead:
+
+```python
+from sqlalchemy import ColumnElement
+
+
+class PostView(fr.AsyncRestView):
+    ...
+
+    @fr.list_filter("tag")
+    def filter_tag(self, value: list[str]) -> ColumnElement[bool]:
+        """Posts with one of these tags."""
+        return Post.tags.any(Tag.name.in_(value))
+```
+
+A client then sends `?tag=news`, or `?tag=news&tag=tech` for posts with
+either tag.
 :::
 
 (model-relationship-setup)=
