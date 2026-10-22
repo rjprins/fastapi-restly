@@ -191,8 +191,9 @@ GET /users?sort=-created_at,name
 ```
 
 By default every own field of the resource is a sort key. An unknown sort key
-gets `422`. The description of `sort` in OpenAPI lists the sort keys. To
-choose them, see [Choose the keys of a list](#choose-list-keys).
+gets `422`, and so does a key that appears twice, such as `?sort=name,-name`.
+The description of `sort` in OpenAPI lists the sort keys. To choose them, see
+[Choose the keys of a list](#choose-list-keys).
 
 A dotted key sorts by a related field, when `include_sort_keys` has it:
 `?sort=-city.country.code` orders by that column, and joins each step of the

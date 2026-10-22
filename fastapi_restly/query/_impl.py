@@ -145,7 +145,7 @@ def _check_default_sort(label: str, value: Any) -> None:
     them in the sort parameter.
 
     :raises RestlyConfigurationError: ``value`` is not ``None`` or a string
-        of keys separated by commas.
+        of keys separated by commas, or it has a key more than once.
     """
     if value is None:
         return
@@ -154,11 +154,28 @@ def _check_default_sort(label: str, value: Any) -> None:
             f"{label} must be a string such as '-created_at,name', or None, "
             f"got {value!r}."
         )
-    if not all(term.removeprefix("-") for term in value.split(",")):
+    keys = [term.removeprefix("-") for term in value.split(",")]
+    if not all(keys):
         raise RestlyConfigurationError(
             f"{label} must be sort keys separated by commas, such as "
             f"'-created_at,name', got {value!r}."
         )
+    repeated = _repeated_key(keys)
+    if repeated is not None:
+        raise RestlyConfigurationError(
+            f"{label} has the sort key {repeated!r} more than once, got {value!r}."
+        )
+
+
+def _repeated_key(keys: _abc.Iterable[str]) -> str | None:
+    """The first key that comes a second time, or ``None``. ``name,-name``
+    sorts twice on one column, and the second term changes nothing."""
+    seen: set[str] = set()
+    for key in keys:
+        if key in seen:
+            return key
+        seen.add(key)
+    return None
 
 
 def _check_key_setting(label: str, value: Any) -> tuple[str, ...]:
@@ -845,19 +862,27 @@ def _sort_field(sort_keys: list[str], default: str | None) -> tuple[Any, str | N
         if value == default:
             # FastAPI validates the default that it fills in
             return value
-        for term in (value or "").split(","):
-            key = term.removeprefix("-")
-            if term and key not in allowed:
+        keys = [term.removeprefix("-") for term in (value or "").split(",") if term]
+        for key in keys:
+            if key not in allowed:
                 raise PydanticCustomError(
                     "unknown_sort_key", "Unknown sort key '{key}'", {"key": key}
                 )
+        repeated = _repeated_key(keys)
+        if repeated is not None:
+            raise PydanticCustomError(
+                "repeated_sort_key",
+                "Sort key '{key}' appears more than once",
+                {"key": repeated},
+            )
         return value
 
     example = ",".join([f"-{sort_keys[0]}", *sort_keys[1:2]])
     keys = ", ".join(f"``{key}``" for key in sort_keys)
     description = (
         "Keys to sort by, separated by commas. A ``-`` before a key sorts in "
-        f"descending order. Example: ``{example}``. The sort keys are: {keys}."
+        f"descending order. Each key may appear once. Example: ``{example}``. "
+        f"The sort keys are: {keys}."
     )
     return (
         Annotated[
@@ -1158,7 +1183,8 @@ def _apply_sorting(
         key that resolves to a column, as for hand-written list params.
     :param default_sort: The sort when the sort parameter has no value.
     :param sort_nulls: Where the sort puts NULLs.
-    :raises BadQueryParam: ``Unknown sort key``.
+    :raises BadQueryParam: ``Unknown sort key``, or a key that appears more
+        than once.
     """
     if aliases is None:
         aliases = {}
@@ -1167,6 +1193,7 @@ def _apply_sorting(
     if not sort.strip(","):
         # also a sort of only commas, which has no keys
         sort = default_sort or ""
+    seen: set[str] = set()
     for column_name in sort.split(","):
         if not column_name:
             continue
@@ -1176,6 +1203,9 @@ def _apply_sorting(
         # not validate.
         if sort_keys is not None and column_name not in sort_keys:
             raise BadQueryParam(f"Unknown sort key: {column_name!r}")
+        if column_name in seen:
+            raise BadQueryParam(f"Sort key {column_name!r} appears more than once")
+        seen.add(column_name)
         select_query, column = _join_column(
             select_query, model, column_name, schema_cls, aliases, kind="sort"
         )

@@ -190,6 +190,9 @@ replacement, unless it says otherwise.
 - An unknown sort key gets `422`, not `400`. The `422` for an unknown query
   key is a `RequestValidationError`, not an `HTTPException`; the body is the
   same.
+- A sort key that appears twice, such as `?sort=name,-name`, gets `422`.
+  Before, the second term had no effect. A `default_sort` with a key twice
+  fails when the class is defined.
 - The `400` texts of a list name the problem: `Unknown sort key: 'nope'`,
   `Unknown filter key: 'nope'`, or `Invalid filter value for 'age': 'old'.`
   with Pydantic's reason. A field validator that raises another exception

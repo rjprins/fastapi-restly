@@ -220,6 +220,21 @@ def test_sort_accepts_only_its_keys():
     assert error["msg"] == "Unknown sort key 'vendor.name'"
 
 
+def test_sort_rejects_a_key_that_appears_twice():
+    """``name,-name`` sorts twice on one column, and the second term changes
+    nothing. The list params reject it, and so does ``apply_list_params``,
+    for a sort that skipped them."""
+    model = params_model()
+
+    with pytest.raises(pydantic.ValidationError) as exc_info:
+        model.model_validate({"sort": "name,-created_at,-name"})
+    [error] = exc_info.value.errors()
+    assert error["type"] == "repeated_sort_key"
+    assert error["msg"] == "Sort key 'name' appears more than once"
+    with pytest.raises(BadQueryParam, match="Sort key 'id' appears more than once"):
+        apply_list_params(select(Item), QueryParams("sort=id,id"), Item, ItemSchema)
+
+
 def test_the_description_of_sort_lists_its_keys():
     description = params_model().model_fields["sort"].description
 
@@ -364,6 +379,10 @@ def test_a_view_without_settings_has_no_dotted_keys(app):
     ).json()["detail"]
     assert detail[0]["msg"] == "Unknown sort key 'vendor.name'"
     assert "vendor.name" not in query_names(client)
+    detail = client.get(
+        "/items/", params={"sort": "name,-name"}, assert_status_code=422
+    ).json()["detail"]
+    assert detail[0]["msg"] == "Sort key 'name' appears more than once"
 
 
 def test_a_view_keeps_only_the_keys_it_includes(app):

@@ -186,6 +186,7 @@ def test_a_view_turns_off_an_inherited_default_sort(views):
         ("", "must be sort keys separated by commas"),
         ("name,", "must be sort keys separated by commas"),
         ("-", "must be sort keys separated by commas"),
+        ("name,-rank,-name", "has the sort key 'name' more than once"),
         (("name",), r"must be a string such as '-created_at,name', or None"),
     ],
 )
