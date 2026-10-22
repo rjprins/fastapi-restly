@@ -276,6 +276,21 @@ class TestNaturalKeyRoutes:
             "/projects/by-slug/nope", json={"description": "x"}, assert_status_code=404
         )
 
+    def test_a_slug_race_answers_409(self, client, monkeypatch):
+        """Two creates at the same time can both find a slug free. The unique
+        constraint under the slug makes the second insert a 409."""
+        from app.projects import models
+
+        monkeypatch.setattr(
+            models, "_unique_slug", lambda connection, base, *args, **kwargs: base
+        )
+        client.post("/projects", json={"name": "Race"})
+
+        response = client.post(
+            "/projects", json={"name": "Race"}, assert_status_code=409
+        )
+        assert "project_organization_id_slug_key" in response.json()["detail"]
+
 
 class TestProjectLifecycle:
     """Test project lifecycle (archive) functionality."""

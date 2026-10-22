@@ -41,6 +41,11 @@ class Project(
     them, and the reload after a write does too.
     """
 
+    # The mapper events below pick a slug that no project of the organization
+    # uses. Two creates at the same time can pick the same one; this
+    # constraint makes the second insert fail, and Restly answers it with 409.
+    __table_args__ = (sa.UniqueConstraint("organization_id", "slug"),)
+
     name: orm.Mapped[str]
     slug: orm.Mapped[str] = orm.mapped_column(default="")
     description: orm.Mapped[str] = orm.mapped_column(default="")
