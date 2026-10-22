@@ -29,7 +29,7 @@ bracket inside it joins it, as inside ``shared_write_action_commit``.
 import contextlib
 import warnings
 import weakref
-from collections.abc import AsyncIterator, Callable, Iterator
+from collections.abc import AsyncIterator, Callable, Iterable, Iterator
 from dataclasses import dataclass, field
 from functools import partial
 from itertools import chain
@@ -594,7 +594,10 @@ class _QueuedAfterHook:
     callback: Callable[[], Any]
     transaction: SessionTransaction | None
     asynchronous: bool
-    loaded_objects: list[tuple[Any, frozenset[str]]]
+
+
+#: The loaded attributes of objects, by the id of the object.
+_LoadedObjects = dict[int, tuple[Any, set[str]]]
 
 
 @dataclass
@@ -606,6 +609,14 @@ class _SharedWriteActionCommit:
     pending: list[_QueuedAfterHook] = field(default_factory=list)
     #: The transaction of each action that raised and left a change behind.
     refused: list[SessionTransaction | None] = field(default_factory=list)
+    #: The objects that the actions reached, with their loaded attributes, for
+    #: each transaction. The rollback of a savepoint drops the record of its
+    #: transaction. One record for each object and transaction: actions that
+    #: reach the same objects, as through a loaded reverse collection, add
+    #: nothing new.
+    loaded: dict[SessionTransaction | None, _LoadedObjects] = field(
+        default_factory=dict
+    )
 
     def require_active(self, *, asynchronous: bool = False) -> None:
         if self.aborted:
@@ -624,6 +635,7 @@ class _SharedWriteActionCommit:
     def abort(self) -> None:
         self.aborted = True
         self.pending.clear()
+        self.loaded.clear()
 
     def refuse(self, session: Session, written: _WrittenRows) -> None:
         """Remember an action that raised after its change began.
@@ -667,16 +679,35 @@ class _SharedWriteActionCommit:
         asynchronous: bool = False,
     ) -> None:
         self.require_active(asynchronous=asynchronous)
+        transaction = session.get_nested_transaction() or session.get_transaction()
         self.pending.append(
             _QueuedAfterHook(
                 callback=partial(host.after_action_commit, action, new=new, old=old),
-                transaction=(
-                    session.get_nested_transaction() or session.get_transaction()
-                ),
+                transaction=transaction,
                 asynchronous=asynchronous,
-                loaded_objects=_loaded_orm_graph(new),
             )
         )
+        self._record_loaded(transaction, new)
+
+    def _record_loaded(self, transaction: SessionTransaction | None, obj: Any) -> None:
+        """Add the loaded graph of ``obj`` to the record of ``transaction``.
+
+        A savepoint that was released belongs to its parent now, so its record
+        moves to the parent first. This keeps one record for each open
+        transaction, also when each action runs in a savepoint of its own.
+        """
+        for recorded in list(self.loaded):
+            target = recorded
+            while (
+                target is not None
+                and not target.is_active
+                and target.parent is not None
+            ):
+                target = target.parent
+            if target is not recorded:
+                records = self.loaded.pop(recorded)
+                _add_loaded(self.loaded.setdefault(target, {}), records.values())
+        _add_loaded(self.loaded.setdefault(transaction, {}), _loaded_orm_graph(obj))
 
 
 async def _async_commit_shared_write_actions(
@@ -708,10 +739,9 @@ def _commit_shared_write_actions(
 def _objects_to_refresh(
     owner: _SharedWriteActionCommit,
 ) -> Iterator[tuple[Any, set[str]]]:
-    loaded: dict[int, tuple[Any, set[str]]] = {}
-    for entry in owner.pending:
-        for obj, attributes in entry.loaded_objects:
-            loaded.setdefault(id(obj), (obj, set()))[1].update(attributes)
+    loaded: _LoadedObjects = {}
+    for records in owner.loaded.values():
+        _add_loaded(loaded, records.values())
     for obj, attributes in loaded.values():
         state = sa_inspect(obj)
         if state.persistent:
@@ -722,11 +752,20 @@ def _objects_to_refresh(
                 yield obj, missing
 
 
+def _add_loaded(
+    records: _LoadedObjects, objects: Iterable[tuple[Any, Iterable[str]]]
+) -> None:
+    """Add ``objects`` and their loaded attributes to ``records``."""
+    for obj, attributes in objects:
+        records.setdefault(id(obj), (obj, set()))[1].update(attributes)
+
+
 def _loaded_orm_graph(obj: Any) -> list[tuple[Any, frozenset[str]]]:
     """Record loaded attributes without invoking relationship loaders.
 
     Keep related objects alive: rollback can remove their last relationship
-    reference. Each action owns its record so a rolled-back action drops it.
+    reference. The shared commit keeps the record for each transaction, so
+    the rollback of a savepoint drops what its actions recorded.
     """
     loaded = []
     pending = [obj]
@@ -792,6 +831,7 @@ def _join_shared_write_action_commit(
             session.info.pop(_SHARED_WRITE_ACTION_COMMIT_KEY, None)
             owner.pending.clear()
             owner.refused.clear()
+            owner.loaded.clear()
 
 
 def _listen_once(session: Session) -> None:
@@ -850,6 +890,9 @@ def _discard_rolled_back_hooks(
         for refused in owner.refused
         if not _belongs_to_transaction(refused, transaction)
     ]
+    for recorded in list(owner.loaded):
+        if _belongs_to_transaction(recorded, transaction):
+            del owner.loaded[recorded]
 
 
 def _belongs_to_transaction(

@@ -1,6 +1,6 @@
 """Surviving writes keep loaded response relationships usable after rollback."""
 
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, nullcontext
 from inspect import isawaitable
 from types import SimpleNamespace
 
@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import Mapped, Session, mapped_column, relationship
 
 import fastapi_restly as fr
+from fastapi_restly.views._lifecycle import _shared_write_action_commit_owner
 
 from ._models import SharedBase
 
@@ -146,8 +147,13 @@ async def related_writes(request, tmp_path):
 
 @pytest.mark.parametrize("related_model", ["owner", "company"])
 @pytest.mark.parametrize("read_in_after_hook", [False, True])
+@pytest.mark.parametrize("survivor_in_savepoint", [False, True])
 async def test_savepoint_rollback_keeps_related_response_objects_readable(
-    related_writes, monkeypatch, related_model, read_in_after_hook
+    related_writes,
+    monkeypatch,
+    related_model,
+    read_in_after_hook,
+    survivor_in_savepoint,
 ):
     writes = related_writes
     view = writes.document_view
@@ -165,11 +171,16 @@ async def test_savepoint_rollback_keeps_related_response_objects_readable(
         )
 
     async with _enter(view.shared_write_action_commit()):
-        document = await _call(
-            view.handle_create(
-                view.schema_create(title="survivor", owner_id=writes.owner_id)
+        # A released savepoint belongs to its parent, so a later rollback of
+        # another savepoint must not drop its record.
+        async with _enter(
+            writes.session.begin_nested() if survivor_in_savepoint else nullcontext()
+        ):
+            document = await _call(
+                view.handle_create(
+                    view.schema_create(title="survivor", owner_id=writes.owner_id)
+                )
             )
-        )
         assert {"internal_note", "owners"} <= inspect(document.owner.company).unloaded
         with pytest.raises(ValueError, match="discard related update"):
             async with _enter(writes.session.begin_nested()):
@@ -282,3 +293,39 @@ async def test_shared_write_without_rollback_does_not_reload_related_objects(
     assert view.to_response(document).owner.name == "Alice"
     assert writes.statements == []
     assert {"internal_note", "owners"} <= inspect(document.owner.company).unloaded
+
+
+@pytest.mark.parametrize("savepoints", [False, True])
+async def test_writes_that_reach_the_same_objects_record_each_object_once(
+    related_writes, savepoints
+):
+    """Each owner's response loads its company, and the company's owners are
+    loaded, so every write reaches every owner. The shared commit keeps one
+    record of each object, not one for each write."""
+    writes = related_writes
+    session = writes.session
+    view = writes.owner_view
+    company = await _call(session.get(writes.company_model, writes.company_id))
+    session.add_all(
+        writes.owner_model(name=f"owner {i}", company_id=company.id) for i in range(20)
+    )
+    await _call(session.flush())
+    await _call(session.refresh(company, attribute_names=["owners"]))
+    owners = list(company.owners)
+
+    async with _enter(view.shared_write_action_commit()):
+        for owner in owners:
+            async with _enter(session.begin_nested() if savepoints else nullcontext()):
+                await _call(
+                    view.handle_update(
+                        owner.id, view.schema_update(name=owner.name.upper())
+                    )
+                )
+        records = _shared_write_action_commit_owner(session).loaded
+        # The company and its owners, once for the transaction. The released
+        # savepoint of the last write moves to its parent at the next write.
+        assert sum(map(len, records.values())) <= 2 * (len(owners) + 1)
+
+    async with _enter(writes.make_session()) as other:
+        names = await _call(other.scalars(select(writes.owner_model.name)))
+        assert sorted(names) == sorted(owner.name.upper() for owner in owners)

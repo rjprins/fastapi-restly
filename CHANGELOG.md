@@ -352,6 +352,10 @@ replacement, unless it says otherwise.
 - A plain `fr.View` may name a route method `create`, `update` or `delete`.
   Before, its registration failed with `TypeError`, as if it had the business
   methods of a CRUD view.
+- Many writes in one `shared_write_action_commit()` no longer use memory that
+  grows with the square of their number. This happened when every write
+  reached the same loaded rows, such as the children of one parent through a
+  loaded collection: 1,000 updates kept about 270 MB.
 - In plain SQLAlchemy, a clause that you forget to call, as in
   `select(Post).where(mine)`, now always fails when it runs. Before, it ran
   with `NULL` for its context member once the called form, `mine()`, had
