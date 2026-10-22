@@ -262,6 +262,17 @@ Alembic's async template, as
 [Set up migrations with Alembic](#alembic) shows. When the application
 configures both a sync and an async database, Restly passes the sync URL.
 
+Alembic runs in the test process. The `env.py` of Alembic's templates calls
+`logging.config.fileConfig()`, which turns off every logger that exists
+already. A test that checks the log of such a logger with pytest's `caplog`
+then sees nothing. To keep these loggers on, pass
+`disable_existing_loggers=False`:
+
+```python
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
+```
+
 The SaaS example builds its test schema from its migrations
 ([`tests/conftest.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/tests/conftest.py)).
 
