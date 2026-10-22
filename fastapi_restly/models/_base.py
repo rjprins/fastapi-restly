@@ -107,6 +107,9 @@ def _written_by_hand(cls: type, method: str) -> bool:
     that it adds from a string of code."""
     func = unwrap(cls.__dict__[method])
     code = getattr(func, "__code__", None)
+    # CPython only: its dataclasses module builds these methods with exec(),
+    # so their code has the file name "<string>". Check this again before
+    # Restly supports another Python runtime, such as PyPy.
     return code is not None and code.co_filename != "<string>"
 
 
