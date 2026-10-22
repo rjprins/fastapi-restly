@@ -52,9 +52,7 @@ app.add_middleware(
 # This includes an id primary key
 class Customer(fr.IDMixin, Base):
     email: orm.Mapped[str]
-    orders: orm.Mapped[list["Order"]] = orm.relationship(
-        default_factory=list, lazy="selectin"
-    )
+    orders: orm.Mapped[list["Order"]] = orm.relationship(default_factory=list)
 
 
 # Example of many-to-many
@@ -72,10 +70,7 @@ class Product(Base):
     name: orm.Mapped[str]
     price: orm.Mapped[float]
     orders: orm.Mapped[list["Order"]] = orm.relationship(
-        secondary=product_order_table,
-        back_populates="products",
-        lazy="selectin",
-        default_factory=list,
+        secondary=product_order_table, back_populates="products", default_factory=list
     )
 
 
@@ -83,7 +78,7 @@ class Product(Base):
 class Order(fr.TimestampsMixin, fr.IDMixin, Base):
     customer_id: orm.Mapped[int] = orm.mapped_column(sa.ForeignKey(Customer.id))
     products: orm.Mapped[list[Product]] = orm.relationship(
-        secondary=product_order_table, back_populates="orders", lazy="selectin"
+        secondary=product_order_table, back_populates="orders"
     )
 
 
