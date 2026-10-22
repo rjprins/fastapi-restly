@@ -4,6 +4,7 @@
 
 <p align="center">
   <a href="https://pypi.org/project/fastapi-restly/"><img src="https://img.shields.io/pypi/v/fastapi-restly?color=009b84" alt="PyPI"></a>
+  <a href="https://pypistats.org/packages/fastapi-restly"><img src="https://img.shields.io/pypi/dm/fastapi-restly?color=009b84" alt="Downloads"></a>
   <a href="https://github.com/rjprins/fastapi-restly/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/rjprins/fastapi-restly/ci.yml?branch=main&amp;label=CI&amp;color=009b84" alt="CI"></a>
   <a href="https://github.com/rjprins/fastapi-restly/blob/main/pyproject.toml"><img src="https://img.shields.io/pypi/pyversions/fastapi-restly?color=009b84" alt="Python"></a>
   <a href="https://github.com/rjprins/fastapi-restly/blob/main/LICENSE"><img src="https://img.shields.io/github/license/rjprins/fastapi-restly?color=009b84" alt="License"></a>
