@@ -680,6 +680,36 @@ does not tell the session, so the refresh of the row fails with SQLAlchemy's
 `InvalidRequestError`. Delete the row that `obj` names through the ORM.
 :::
 
+(after-commit-background-task)=
+### Run the work after the response
+
+Work in `after_action_commit`, such as sending an email, makes the client
+wait for it. To answer first, give the work to FastAPI's
+{class}`BackgroundTasks <fastapi.BackgroundTasks>`. Declare it as a
+[class attribute](#dependency-injection-on-class-attributes) of the view, and
+add the task in the hook:
+
+```python
+from fastapi import BackgroundTasks
+
+
+class OrderView(fr.AsyncRestView):
+    ...
+    background_tasks: BackgroundTasks
+
+    async def after_action_commit(self, action, new, old=None):
+        if action == self.Action.CREATE:
+            self.background_tasks.add_task(send_confirmation_email, new.id)
+```
+
+FastAPI runs the task after it sends the response. The order is committed
+then, so a task that opens its own session finds it. A task queue works the
+same way: enqueue the job in `after_action_commit`, with the id of the row.
+Do not enqueue it in `before_action_commit`: a worker can start the job
+before the commit, when other sessions cannot see the row yet, and the commit
+can still fail. A task that fails does not undo the write; see the next
+section.
+
 (after-action-commit-raises)=
 ### When `after_action_commit` raises
 
