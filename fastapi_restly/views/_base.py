@@ -125,6 +125,7 @@ from ..schemas import (
 )
 from ..schemas._base import (
     _as_response,
+    _collection_item_type,
     _is_readonly,
     _model_id_type,
     _reject_buried_markers,
@@ -852,11 +853,9 @@ def _get_nested_schema_annotation(annotation: Any) -> type[pydantic.BaseModel] |
     except TypeError:
         pass
 
-    origin = get_origin(annotation)
-    if origin is list:
-        args = get_args(annotation)
-        if args:
-            return _get_nested_schema_annotation(args[0])
+    item = _collection_item_type(annotation)
+    if item is not None:
+        return _get_nested_schema_annotation(item)
 
     return None
 

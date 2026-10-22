@@ -4,6 +4,7 @@ import functools
 import inspect
 import sys
 import types
+import typing
 import weakref
 from collections.abc import Iterable, Iterator, Mapping
 from collections.abc import Sequence as _AbcSequence
@@ -112,14 +113,34 @@ WriteOnly = Annotated[
 # backstop only inspects a view's own read/create/update schemas -- not a custom
 # ``response_model=`` or a non-``BaseSchema`` nested model. Those narrow cases are
 # left uncovered by design.
+#: The classes of a type alias. ``type X = ...`` makes a
+#: ``typing.TypeAliasType``, and typing_extensions has a class of its own on
+#: some Python versions.
+_TYPE_ALIAS_TYPES: tuple[type, ...] = tuple(
+    {TypeAliasType, getattr(typing, "TypeAliasType", TypeAliasType)}
+)
+
+
+def _alias_value(annotation: Any) -> Any:
+    """The type that a type alias stands for, such as ``int`` for
+    ``type UserId = int``. Any other annotation comes back unchanged, and so
+    does an alias with type parameters, such as ``Pair[int]``."""
+    while isinstance(annotation, _TYPE_ALIAS_TYPES):
+        annotation = annotation.__value__
+    return annotation
+
+
 def _annotation_buries_marker(annotation: Any, marker: _Marker) -> bool:
     """True if ``marker`` appears anywhere below the top level of ``annotation``
-    -- inside a union member, ``Annotated`` inner type, or container arg.
+    -- inside a union member, ``Annotated`` inner type, container arg, or type
+    alias. Pydantic does not apply the field settings of an ``Annotated``
+    inside a type alias either.
 
     Only descends type arguments (``get_args``); it does not recurse into the
     fields of a nested model, so a nested schema carrying its own top-level
     marker is not flagged.
     """
+    annotation = _alias_value(annotation)
     if marker in getattr(annotation, "__metadata__", ()):
         return True
     return any(_annotation_buries_marker(arg, marker) for arg in get_args(annotation))
@@ -149,10 +170,10 @@ def _reject_buried_markers(model_cls: type[pydantic.BaseModel]) -> None:
         raise RestlyConfigurationError(
             f"{model_cls.__name__}.{name} nests the {marker.name} marker inside "
             f"its type (e.g. Optional[{marker.name}[T]], {marker.name}[T] | None, "
-            f"or list[{marker.name}[T]]). The marker only takes effect as the "
-            f"outer annotation, so it is silently ignored here and {marker.name} "
-            f"is not applied. Wrap the whole field type instead, e.g. "
-            f"{marker.name}[Optional[T]]."
+            f"list[{marker.name}[T]], or a type alias). The marker only takes "
+            f"effect as the outer annotation, so it is silently ignored here and "
+            f"{marker.name} is not applied. Wrap the whole field type instead, "
+            f"e.g. {marker.name}[Optional[T]]."
         )
     _reject_buried_ref_exists(model_cls)
 
@@ -187,6 +208,7 @@ class RefExists:
 
 
 def _annotation_contains_ref_exists(annotation: Any) -> bool:
+    annotation = _alias_value(annotation)
     if any(isinstance(m, RefExists) for m in getattr(annotation, "__metadata__", ())):
         return True
     return any(_annotation_contains_ref_exists(arg) for arg in get_args(annotation))
@@ -512,17 +534,21 @@ def _unwrap_optional_annotation(annotation: Any) -> Any:
 
 
 def _unwrap_type(annotation: Any) -> tuple[Any, list[Any]]:
-    """Return ``annotation`` without its ``Optional`` and ``Annotated`` layers,
-    and the metadata of each ``Annotated`` layer that it removed.
+    """Return ``annotation`` without its ``Optional``, ``Annotated`` and type
+    alias layers, and the metadata of each ``Annotated`` layer that it removed.
 
     Pydantic moves the metadata of an outer ``Annotated`` to
-    ``field.metadata``, but it keeps an ``Annotated`` inside ``Optional``. So
-    ``Annotated[IDRef[User], Field(...)] | None`` and ``constr(...) | None``
-    keep both layers, and every check of a field's type must remove both.
+    ``field.metadata``, but it keeps an ``Annotated`` inside ``Optional`` or
+    inside a type alias. So ``Annotated[IDRef[User], Field(...)] | None``,
+    ``constr(...) | None`` and ``type AuthorId = MustExist[int, User]`` keep
+    their layers, and every check of a field's type must remove them.
     """
     metadata: list[Any] = []
     while True:
         annotation = _unwrap_optional_annotation(annotation)
+        if isinstance(annotation, _TYPE_ALIAS_TYPES):
+            annotation = annotation.__value__
+            continue
         if get_origin(annotation) is Annotated:
             annotation, *extra = get_args(annotation)
             metadata.extend(extra)
@@ -961,9 +987,27 @@ def _ref_exists_marker(field_info: FieldInfo) -> RefExists | None:
     return None
 
 
-#: The collections whose items a ``MustExist`` marker may type, as in
-#: ``list[MustExist[int, Tag]]``.
-_ID_COLLECTIONS = (list, tuple, set, frozenset, _AbcSequence, _AbcSet)
+#: The collections whose items a field's type may name, as in
+#: ``list[MustExist[int, Tag]]`` or ``Sequence[PostSchema]``.
+_ITEM_COLLECTIONS = (list, tuple, set, frozenset, _AbcSequence, _AbcSet)
+
+
+def _collection_item_type(annotation: Any) -> Any:
+    """The item type of a list-like ``annotation``, or ``None``.
+
+    A list, a set, a ``Sequence`` and a ``Set`` count, and a tuple only in
+    its form with one item type, ``tuple[X, ...]``. ``str`` does not count.
+    The ``Optional``, ``Annotated`` and type alias layers around the
+    collection are removed first.
+    """
+    annotation, _ = _unwrap_type(annotation)
+    origin = get_origin(annotation)
+    if origin not in _ITEM_COLLECTIONS:
+        return None
+    args = get_args(annotation)
+    if origin is tuple and not (len(args) == 2 and args[1] is Ellipsis):
+        return None
+    return args[0] if args else None
 
 
 def _listed_ref_exists_marker(field_info: FieldInfo) -> RefExists | None:
@@ -973,16 +1017,10 @@ def _listed_ref_exists_marker(field_info: FieldInfo) -> RefExists | None:
     The field may allow ``None``, and so may each item. A tuple counts only
     in its form with one item type, ``tuple[MustExist[int, Tag], ...]``.
     """
-    annotation, _ = _unwrap_type(field_info.annotation)
-    origin = get_origin(annotation)
-    if origin not in _ID_COLLECTIONS:
+    item = _collection_item_type(field_info.annotation)
+    if item is None:
         return None
-    args = get_args(annotation)
-    if origin is tuple and not (len(args) == 2 and args[1] is Ellipsis):
-        return None
-    if not args:
-        return None
-    _, metadata = _unwrap_type(args[0])
+    _, metadata = _unwrap_type(item)
     for m in metadata:
         if isinstance(m, RefExists):
             return m

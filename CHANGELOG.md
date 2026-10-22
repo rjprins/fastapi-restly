@@ -327,6 +327,14 @@ replacement, unless it says otherwise.
   filters, as a reference, and in the loads of an async view.
 - A schema that names itself in a to-one field no longer fails with
   `RecursionError`.
+- A field typed with a type alias, such as
+  `type AuthorId = fr.MustExist[int, User]`, works like the plain type.
+  Before, Restly did not check the reference. A `ReadOnly` or `WriteOnly`
+  marker inside a type alias has no effect, so Restly now rejects it, as it
+  does a marker inside `Optional`.
+- A to-many nested schema typed `Sequence[...]` or `tuple[..., ...]` loads
+  its relationships, as `list[...]` does. Before, an async view answered 500
+  when the nested schema had relationships of its own.
 - A react-admin view checks a filter value with Pydantic. Before,
   `{"active": "false"}` matched the rows where `active` is true, and a bad
   UUID gave `500`.

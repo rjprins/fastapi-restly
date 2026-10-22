@@ -23,7 +23,7 @@ from sqlalchemy import inspect as sa_inspect
 
 from .._mapping import is_mapped_class
 from ..schemas import IDSchema
-from ..schemas._base import _unwrap_type
+from ..schemas._base import _collection_item_type, _unwrap_type
 from ._openapi_names import _warn_on_name_clashes
 
 _PATCHED_ATTR = "_fr_resource_refs_patched"
@@ -158,10 +158,10 @@ def _is_id_ref_annotation(annotation: Any) -> bool:
             if a is not type(None)
         )
 
-    # list[X] — check the element type
-    if origin is list:
-        args = get_args(annotation)
-        return bool(args and _is_id_ref_annotation(args[0]))
+    # list[X], Sequence[X], tuple[X, ...] — check the element type
+    item = _collection_item_type(annotation)
+    if item is not None:
+        return _is_id_ref_annotation(item)
 
     # Check for parametrized IDSchema/IDRef generics.
     # In Pydantic v2, IDSchema[Author] and IDRef[Author] are concrete classes,

@@ -173,7 +173,8 @@ schema outside a view:
 
 A marker must be the outer type of the field. Inside a union or a container,
 as in `Optional[WriteOnly[str]]`, `WriteOnly[str] | None` or
-`list[WriteOnly[str]]`, the marker would do nothing. So Restly rejects such a
+`list[WriteOnly[str]]`, the marker would do nothing. The same holds inside a
+type alias, such as `type Secret = WriteOnly[str]`. So Restly rejects such a
 field with a
 {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`.
 For an optional write-only field, write `WriteOnly[Optional[str]]`.
