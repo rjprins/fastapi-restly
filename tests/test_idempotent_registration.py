@@ -742,3 +742,45 @@ def test_a_subclass_exclude_routes_replaces_the_list_of_its_base(view_base, base
     assert _item_methods(app, "/cranks/sub") == {"PATCH", "DELETE"}
     if base_first:
         assert _item_methods(app, "/cranks") == {"GET", "PATCH"}
+
+
+@pytest.mark.parametrize("view_base", [fr.RestView, fr.AsyncRestView])
+def test_exclude_routes_may_be_any_iterable(view_base):
+    """A map() can be read only once. The base and a subclass that inherits it
+    both leave the route out."""
+
+    class Spoke(fr.IDMixin, SharedBase):
+        label: Mapped[str]
+
+    class SpokeView(view_base):
+        prefix = "/spokes"
+        model = Spoke
+        exclude_routes = map(fr.ViewRoute, ["delete_endpoint"])
+
+    class SubSpokeView(SpokeView):
+        prefix = "/sub"
+
+    app = FastAPI()
+    fr.include_view(app, SpokeView)
+    fr.include_view(app, SubSpokeView)
+
+    assert _item_methods(app, "/spokes") == {"GET", "PATCH"}
+    assert _item_methods(app, "/spokes/sub") == {"GET", "PATCH"}
+
+
+def test_a_plain_view_keeps_its_routes_despite_exclude_routes():
+    """``exclude_routes`` is a setting of the CRUD views. On a plain View, the
+    attribute is not a setting, so it removes nothing and checks nothing."""
+
+    class PlainView(fr.View):
+        prefix = "/plain"
+        exclude_routes = ("hello", "typo")
+
+        @fr.get("/hello")
+        def hello(self) -> dict:
+            return {}
+
+    app = FastAPI()
+    fr.include_view(app, PlainView)
+
+    assert "/plain/hello" in {route.path for route in iter_routes(app.routes)}

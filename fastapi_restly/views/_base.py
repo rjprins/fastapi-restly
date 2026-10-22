@@ -3421,12 +3421,26 @@ def _guard_list_params(route: Callable) -> Callable:
     return guarded
 
 
-def _excluded_route_names(view_cls: type) -> set[str]:
-    """The endpoint method names that the view's ``exclude_routes`` names."""
-    return {
-        route.value if isinstance(route, ViewRoute) else route
-        for route in getattr(view_cls, "exclude_routes", ())
-    }
+def _excluded_route_names(view_cls: type) -> frozenset[str]:
+    """The endpoint method names that the view's ``exclude_routes`` names.
+
+    They are read once and kept on the class that declares the setting, with
+    the value they come from. The setting may be any iterable, such as a
+    ``map()``, which can be read only once, and subclasses inherit it. A new
+    value, such as one that fixes a typo, is read again.
+    """
+    owner = next((c for c in view_cls.__mro__ if "exclude_routes" in vars(c)), None)
+    if owner is None:
+        return frozenset()
+    declared = vars(owner)["exclude_routes"]
+    kept = vars(owner).get("_fr_excluded_routes")
+    if kept is not None and kept[0] is declared:
+        return kept[1]
+    names = frozenset(
+        route.value if isinstance(route, ViewRoute) else route for route in declared
+    )
+    owner._fr_excluded_routes = (declared, names)  # type: ignore[attr-defined]
+    return names
 
 
 def _check_exclude_routes(cls: type[BaseRestView[Any, Any, Any, Any, Any]]):
@@ -3437,10 +3451,7 @@ def _check_exclude_routes(cls: type[BaseRestView[Any, Any, Any, Any, Any]]):
     out. So a subclass with its own ``exclude_routes`` gets them back, also
     when the base registered first and copied them into its own namespace.
     """
-    for route_name in cls.exclude_routes:
-        method_name = (
-            route_name.value if isinstance(route_name, ViewRoute) else route_name
-        )
+    for method_name in sorted(_excluded_route_names(cls)):
         if not _is_route_name_in_lineage(cls, method_name):
             raise AttributeError(f"{method_name!r} is not a route on {cls.__name__}")
 
@@ -4302,7 +4313,8 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
     # Find all endpoint functions in this class and add them to the router
     list_parameters: list[dict[str, Any]] | None = None
     view_types = _view_types(view_cls) if issubclass(view_cls, BaseRestView) else None
-    excluded = _excluded_route_names(view_cls)
+    # exclude_routes is a setting of the CRUD views only
+    excluded = _excluded_route_names(view_cls) if view_types is not None else ()
     for name, attr in view_cls.__dict__.items():
         if not hasattr(attr, "_api_route_args") or name in excluded:
             continue
