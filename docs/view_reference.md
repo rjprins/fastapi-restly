@@ -27,7 +27,7 @@ Every `View` subclass, CRUD or not, honors these class attributes:
 | Attribute | Type | Description |
 |---|---|---|
 | {attr}`prefix <fastapi_restly.views.View.prefix>` | `ClassVar[str]` | URL prefix for all routes in the view (e.g. `"/users"`). A view without a prefix puts its routes at the root. Each class in the hierarchy adds its own, base first. |
-| {attr}`tags <fastapi_restly.views.View.tags>` | `ClassVar[Iterable[str \| Enum] \| None]` | OpenAPI tags. When unset, the tag is the last part of the prefix in title case (`/order-items` gives `Order Items`), or the class name when there is no prefix. Setting this replaces that tag. |
+| {attr}`tags <fastapi_restly.views.View.tags>` | `ClassVar[Iterable[str \| Enum] \| None]` | OpenAPI tags. When unset, Restly takes one from the prefix; see the entry. |
 | {attr}`dependencies <fastapi_restly.views.View.dependencies>` | `ClassVar[Sequence[Depends] \| None]` | FastAPI dependencies applied to every route in the view. Each class in the hierarchy adds its own, base first. |
 | {attr}`responses <fastapi_restly.views.View.responses>` | `ClassVar[dict[int \| str, dict[str, Any]]]` | OpenAPI response overrides. `View` defaults to `{}`; `BaseRestView` defaults to `{404: {"description": "Not found"}}`. Each class in the hierarchy adds its own, and a subclass's entry for a status code wins. |
 

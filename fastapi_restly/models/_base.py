@@ -30,7 +30,7 @@ from ..exc import RestlyConfigurationError
 #: ``relationship(cascade=...)`` on an async session:
 #: ``"save-update, merge, delete, expunge"``. With ``"all"``, your own
 #: ``session.refresh(obj)`` also expires the related objects. On an async
-#: session, the next read of one then raises ``MissingGreenlet``. Restly's
+#: session, the next read of one can then raise ``MissingGreenlet``. Restly's
 #: own save after a write refreshes by attribute name and does not cascade,
 #: so ``"all"`` is safe on Restly's write paths. See SQLAlchemy's
 #: `Preventing Implicit IO when Using AsyncSession

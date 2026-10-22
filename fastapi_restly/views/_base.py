@@ -2015,10 +2015,11 @@ class BaseRestView(
     #: types. Integer paths accept non-negative digits. An unmatched value
     #: falls through to another route or returns 404, instead of 422.
     id_type: ClassVar[type[Any] | None] = None
-    #: The routes to leave out of the view: :class:`ViewRoute` values for the
-    #: CRUD routes, or the names of endpoint methods, such as
-    #: ``(fr.ViewRoute.DELETE,)``. A name that is not a route raises
-    #: ``AttributeError`` when the view is registered.
+    #: The routes to leave out of the view, such as
+    #: ``(fr.ViewRoute.DELETE,)``: :class:`ViewRoute` values for the CRUD
+    #: routes, or the names of endpoint methods. A subclass that sets its own
+    #: value replaces the list of its base. A name that is not a route
+    #: raises ``AttributeError`` when the view is registered.
     exclude_routes: ClassVar[Iterable[str | ViewRoute]] = ()
     #: What a list route does with a query key that it does not read.
     #: ``"forbid"`` (the default) rejects the request with 422, so a typo in
@@ -2092,8 +2093,9 @@ class BaseRestView(
     schema_list_params: ClassVar[type[pydantic.BaseModel]]
 
     #: The ``fastapi.Request`` of the current request, which Restly sets for
-    #: each request. A view that you create yourself, outside a request,
-    #: takes it as a keyword argument, as it takes the session.
+    #: each request. After :func:`include_view`, a view that you create
+    #: yourself must get ``request=`` (``None`` outside a request) and
+    #: ``session=``.
     request: fastapi.Request
 
     if not TYPE_CHECKING:

@@ -365,7 +365,8 @@ class TimestampsSchemaMixin(pydantic.BaseModel):
     ``updated_at`` columns uses this mixin.
     """
 
-    #: When the row was created. It is ``ReadOnly``, as ``updated_at`` is.
+    #: When the row was created. It is ``ReadOnly``: the responses show it,
+    #: and the create and update bodies that Restly generates leave it out.
     created_at: ReadOnly[datetime]
     #: When the row last changed. It is ``ReadOnly``: the responses show it,
     #: and the create and update bodies that Restly generates leave it out.
@@ -477,8 +478,10 @@ class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
     """
 
     # Keep this broad so relation-id payloads can target non-int primary keys.
-    #: The id of the row. It is ``ReadOnly``: the responses show it, and the
-    #: create and update bodies that Restly generates leave it out.
+    #: The id of the row. In a view's schema, it is ``ReadOnly``: the
+    #: responses show it, and the create and update bodies that Restly
+    #: generates leave it out. In a reference field, such as
+    #: ``author: fr.IDSchema[Author]``, the client sends it.
     id: ReadOnly[Any]
 
     @classmethod

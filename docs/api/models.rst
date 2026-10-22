@@ -3,7 +3,9 @@ Models API
 
 ``fastapi_restly.models`` provides ``ModelDefaults``, which adds Restly's
 defaults to your own declarative base, and the model mixins ``IDMixin`` and
-``TimestampsMixin``. :doc:`/models` shows how to use them.
+``TimestampsMixin``. :doc:`/models` shows how to use them. It also provides
+two cascades for relationships on an async session, ``CASCADE_ALL_ASYNC`` and
+``CASCADE_ALL_DELETE_ORPHAN_ASYNC``.
 
 .. automodule:: fastapi_restly.models
    :members:

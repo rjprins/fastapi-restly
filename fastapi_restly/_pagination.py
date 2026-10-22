@@ -60,8 +60,8 @@ class PaginatedEnvelope(Envelope[DataT]):
     total_count: int
     #: The number of this page. The first page is 1.
     page: int
-    #: The most rows on one page: the page size of the request, or the
-    #: default page size.
+    #: The largest number of rows on one page: the page size of the
+    #: request, or the default page size.
     page_size: int
     #: The number of pages: ``total_count`` divided by ``page_size``, rounded
     #: up. It is 0 when no row matches.

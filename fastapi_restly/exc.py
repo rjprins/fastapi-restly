@@ -35,8 +35,8 @@ class RestlyHTTPError(fastapi.HTTPException):
 
     #: The HTTP status of the response. Each error class sets its own.
     status_code: int = 500
-    #: The ``detail`` of the response when the error gets none. Each error
-    #: class sets its own.
+    #: The ``detail`` of the response when the error is raised without a
+    #: detail. Each error class sets its own.
     default_detail: str = "Error"
 
     def __init__(self, detail: object | None = None, **kwargs: object) -> None:

@@ -49,7 +49,8 @@ class ClauseNamespace:
     model: ClassVar[type[Any]]
     #: The scope of every view read and every reference check on the model,
     #: unless a view declares its own. A namespace that does not declare it
-    #: takes the scope of the namespace of a parent model. Declare
+    #: takes it from the namespace class that it subclasses, if that class
+    #: declares one, and else from the namespace of a parent model. Declare
     #: ``UNSCOPED`` for no scope.
     default_scope: ClassVar[WhereClause] = UNSCOPED
 
