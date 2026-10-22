@@ -89,9 +89,9 @@ def test_shared_connection_yields_none_or_real_connection():
 
     try:
         with RestlyContext():
-            from fastapi_restly.db._globals import _fr_globals
+            from fastapi_restly.db._globals import _fr_config
 
-            _fr_globals.make_session = make_session
+            _fr_config.make_session = make_session
 
             gen = _fixtures._shared_connection.__wrapped__(
                 _SYNC_SESSION_REQUEST, _fixtures._source_factories()[0]
@@ -111,9 +111,9 @@ def test_sync_fixture_swaps_in_an_isolated_factory_and_restores():
 
     try:
         with RestlyContext():
-            from fastapi_restly.db._globals import _fr_globals
+            from fastapi_restly.db._globals import _fr_config
 
-            _fr_globals.make_session = make_session
+            _fr_config.make_session = make_session
             with engine.connect() as conn:
                 conn.begin()
                 scope = _fixtures._restly_sync_scope.__wrapped__(
@@ -126,7 +126,7 @@ def test_sync_fixture_swaps_in_an_isolated_factory_and_restores():
                 # The factory is swapped for a real create_savepoint factory
                 # bound to the pinned connection -- not a MagicMock, not the
                 # original.
-                swapped = _fr_globals.test_make_session
+                swapped = _fr_config.test_make_session
                 assert swapped is not None
                 assert swapped is not make_session
                 assert isinstance(swapped, sessionmaker)
@@ -144,8 +144,8 @@ def test_sync_fixture_swaps_in_an_isolated_factory_and_restores():
                     next(gen)
                 scope.close()
 
-            assert _fr_globals.test_make_session is None
-            assert _fr_globals.make_session is make_session
+            assert _fr_config.test_make_session is None
+            assert _fr_config.make_session is make_session
     finally:
         engine.dispose()
 
@@ -160,9 +160,9 @@ def test_sync_fixture_begin_context_flushes_on_successful_exit():
         FixtureTestBase.metadata.create_all(engine)
 
         with RestlyContext():
-            from fastapi_restly.db._globals import _fr_globals
+            from fastapi_restly.db._globals import _fr_config
 
-            _fr_globals.make_session = make_session
+            _fr_config.make_session = make_session
             with engine.connect() as conn:
                 scope = _fixtures._restly_sync_scope.__wrapped__(
                     conn, _fixtures._source_factories()[0]
@@ -172,7 +172,7 @@ def test_sync_fixture_begin_context_flushes_on_successful_exit():
                 next(gen)
 
                 item = FixtureItem(name="sync")
-                with _fr_globals.test_make_session.begin() as session:
+                with _fr_config.test_make_session.begin() as session:
                     session.add(item)
 
                 assert item.id is not None
@@ -191,9 +191,9 @@ async def test_async_fixture_swaps_in_an_isolated_factory_and_restores():
 
     try:
         with RestlyContext():
-            from fastapi_restly.db._globals import _fr_globals
+            from fastapi_restly.db._globals import _fr_config
 
-            _fr_globals.async_make_session = make_session
+            _fr_config.async_make_session = make_session
             scope = _fixtures._restly_async_scope.__wrapped__(
                 None, _ASYNC_SESSION_REQUEST
             )
@@ -203,7 +203,7 @@ async def test_async_fixture_swaps_in_an_isolated_factory_and_restores():
 
             # The factory is swapped for a real create_savepoint factory bound to
             # the pinned connection -- not a MagicMock, not the original.
-            swapped = _fr_globals.test_async_make_session
+            swapped = _fr_config.test_async_make_session
             assert swapped is not None
             assert swapped is not make_session
             assert isinstance(swapped, async_sessionmaker)
@@ -220,8 +220,8 @@ async def test_async_fixture_swaps_in_an_isolated_factory_and_restores():
             # connection tears down cleanly.
             await agen.aclose()
             await scope.aclose()
-            assert _fr_globals.test_async_make_session is None
-            assert _fr_globals.async_make_session is make_session
+            assert _fr_config.test_async_make_session is None
+            assert _fr_config.async_make_session is make_session
     finally:
         await async_engine.dispose()
 
@@ -242,10 +242,10 @@ def test_sync_fixture_restores_globals_even_if_session_close_raises():
 
     try:
         with RestlyContext():
-            from fastapi_restly.db._globals import _fr_globals
+            from fastapi_restly.db._globals import _fr_config
 
-            _fr_globals.make_session = make_session
-            _fr_globals.sync_session_generator = sentinel_gen
+            _fr_config.make_session = make_session
+            _fr_config.sync_session_generator = sentinel_gen
             with engine.connect() as conn:
                 conn.begin()
                 scope = _fixtures._restly_sync_scope.__wrapped__(
@@ -265,9 +265,9 @@ def test_sync_fixture_restores_globals_even_if_session_close_raises():
 
                 # Cleared despite the close() failure, and the application's own
                 # configuration was never touched.
-                assert _fr_globals.test_make_session is None
-                assert _fr_globals.make_session is make_session
-                assert _fr_globals.sync_session_generator is sentinel_gen
+                assert _fr_config.test_make_session is None
+                assert _fr_config.make_session is make_session
+                assert _fr_config.sync_session_generator is sentinel_gen
     finally:
         engine.dispose()
 
@@ -283,10 +283,10 @@ async def test_async_fixture_restores_globals_even_if_session_close_raises():
 
     try:
         with RestlyContext():
-            from fastapi_restly.db._globals import _fr_globals
+            from fastapi_restly.db._globals import _fr_config
 
-            _fr_globals.async_make_session = make_session
-            _fr_globals.session_generator = sentinel_gen
+            _fr_config.async_make_session = make_session
+            _fr_config.session_generator = sentinel_gen
             scope = _fixtures._restly_async_scope.__wrapped__(
                 None, _ASYNC_SESSION_REQUEST
             )
@@ -303,9 +303,9 @@ async def test_async_fixture_restores_globals_even_if_session_close_raises():
             await scope.aclose()
 
             # Restored despite the close() failure.
-            assert _fr_globals.test_async_make_session is None
-            assert _fr_globals.async_make_session is make_session
-            assert _fr_globals.session_generator is sentinel_gen
+            assert _fr_config.test_async_make_session is None
+            assert _fr_config.async_make_session is make_session
+            assert _fr_config.session_generator is sentinel_gen
     finally:
         await async_engine.dispose()
 
@@ -320,9 +320,9 @@ async def test_async_fixture_begin_context_flushes_on_successful_exit():
             await conn.run_sync(FixtureTestBase.metadata.create_all)
 
         with RestlyContext():
-            from fastapi_restly.db._globals import _fr_globals
+            from fastapi_restly.db._globals import _fr_config
 
-            _fr_globals.async_make_session = make_session
+            _fr_config.async_make_session = make_session
             scope = _fixtures._restly_async_scope.__wrapped__(
                 None, _ASYNC_SESSION_REQUEST
             )
@@ -331,7 +331,7 @@ async def test_async_fixture_begin_context_flushes_on_successful_exit():
             await agen.__anext__()
 
             item = FixtureItem(name="async")
-            async with _fr_globals.test_async_make_session.begin() as session:
+            async with _fr_config.test_async_make_session.begin() as session:
                 session.add(item)
 
             assert item.id is not None
@@ -357,10 +357,10 @@ async def test_async_fixture_reuses_configured_sync_connection():
 
     try:
         with RestlyContext():
-            from fastapi_restly.db._globals import _fr_globals
+            from fastapi_restly.db._globals import _fr_config
 
-            _fr_globals.make_session = make_session
-            _fr_globals.async_make_session = async_make_session
+            _fr_config.make_session = make_session
+            _fr_config.async_make_session = async_make_session
 
             conn_gen = _fixtures._shared_connection.__wrapped__(
                 _ASYNC_SESSION_REQUEST, _fixtures._source_factories()[0]
@@ -395,9 +395,9 @@ async def test_async_scope_closes_a_pool_replaced_by_application_shutdown(tmp_pa
     make_session = async_sessionmaker(bind=async_engine, expire_on_commit=False)
 
     with RestlyContext():
-        from fastapi_restly.db._globals import _fr_globals
+        from fastapi_restly.db._globals import _fr_config
 
-        _fr_globals.async_make_session = make_session
+        _fr_config.async_make_session = make_session
         former_pool = async_engine.sync_engine.pool
 
         async with _fixtures._async_rollback_factory():

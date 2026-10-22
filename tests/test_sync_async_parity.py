@@ -15,7 +15,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
-from fastapi_restly.db._globals import _fr_globals
+from fastapi_restly.db._globals import _fr_config
 
 from ._models import SharedBase
 
@@ -28,16 +28,16 @@ from ._models import SharedBase
 
 def _save_globals():
     return {
-        "database_url": _fr_globals.database_url,
-        "make_session": _fr_globals.make_session,
-        "sync_session_generator": _fr_globals.sync_session_generator,
+        "database_url": _fr_config.database_url,
+        "make_session": _fr_config.make_session,
+        "sync_session_generator": _fr_config.sync_session_generator,
     }
 
 
 def _restore_globals(saved):
-    _fr_globals.database_url = saved["database_url"]
-    _fr_globals.make_session = saved["make_session"]
-    _fr_globals.sync_session_generator = saved["sync_session_generator"]
+    _fr_config.database_url = saved["database_url"]
+    _fr_config.make_session = saved["make_session"]
+    _fr_config.sync_session_generator = saved["sync_session_generator"]
 
 
 @pytest.fixture

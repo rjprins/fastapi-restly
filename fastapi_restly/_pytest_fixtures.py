@@ -34,7 +34,7 @@ from ._test_setup import (
     _sync_source_factory,
     _validate_database_sources,
 )
-from .db._globals import RestlyContext, _fr_globals, _get_restly_context
+from .db._globals import RestlyContext, _fr_config, _get_restly_context
 from .db._session import _async_generate_session, _generate_session
 from .exc import RestlyConfigurationError
 
@@ -466,13 +466,13 @@ else:
                     "join_transaction_mode": "create_savepoint",
                 },
             )
-            globals_obj = _get_restly_context()
-            previous = globals_obj.test_async_make_session
-            globals_obj.test_async_make_session = isolated_make_session
+            context = _get_restly_context()
+            previous = context.test_async_make_session
+            context.test_async_make_session = isolated_make_session
             try:
                 yield isolated_make_session
             finally:
-                globals_obj.test_async_make_session = previous
+                context.test_async_make_session = previous
 
     @asynccontextmanager
     async def _async_test_scope(
@@ -871,13 +871,13 @@ def _override_session_generators(app: FastAPI | None) -> Iterator[None]:
     installed = {}
     for generator, factory, replacement in (
         (
-            _fr_globals.sync_session_generator,
-            _fr_globals.test_make_session,
+            _fr_config.sync_session_generator,
+            _fr_config.test_make_session,
             _generate_session,
         ),
         (
-            _fr_globals.session_generator,
-            _fr_globals.test_async_make_session,
+            _fr_config.session_generator,
+            _fr_config.test_async_make_session,
             _async_generate_session,
         ),
     ):

@@ -33,7 +33,7 @@ from sqlalchemy.orm import Mapped, joinedload, mapped_column, relationship, sele
 from sqlalchemy.orm.attributes import set_committed_value
 
 import fastapi_restly as fr
-from fastapi_restly.db._globals import _fr_globals
+from fastapi_restly.db._globals import _fr_config
 from fastapi_restly.testing._client import RestlyTestClient
 from fastapi_restly.views._base import _rows_reload_statements
 
@@ -48,7 +48,7 @@ def sync_client(sync_db) -> Iterator[RestlyTestClient]:
 
 
 def _create_sync_tables():
-    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
 
 
 # ---------------------------------------------------------------------------
@@ -187,7 +187,7 @@ def test_sync_create_serializes_nested_relationship(sync_client):
             return obj
 
     _create_sync_tables()
-    with _fr_globals.make_session() as session:
+    with _fr_config.make_session() as session:
         company = Company(name="Initech")
         session.add(company)
         session.flush()
@@ -338,7 +338,7 @@ def test_relationship_free_schema_issues_no_reload(sync_client):
         schema_create = PlainCreate
 
     _create_sync_tables()
-    engine = _fr_globals.make_session.kw["bind"]
+    engine = _fr_config.make_session.kw["bind"]
     statements = _count_statements(engine)
 
     response = sync_client.post("/plain/", json={"title": "x"})
@@ -739,7 +739,7 @@ def test_sync_create_serializes_assigned_collection(sync_client):
             return super().to_response(result, *args, **kwargs)
 
     _create_sync_tables()
-    with _fr_globals.make_session() as session:
+    with _fr_config.make_session() as session:
         session.add_all([Tag(label="a"), Tag(label="b")])
         session.commit()
 

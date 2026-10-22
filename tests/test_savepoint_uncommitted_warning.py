@@ -21,7 +21,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import fastapi_restly._pytest_fixtures as _fixtures
-from fastapi_restly.db._globals import RestlyContext, _fr_globals
+from fastapi_restly.db._globals import RestlyContext, _fr_config
 from fastapi_restly.db._session import _arm_uncommitted_warning, _warn_if_uncommitted
 from fastapi_restly.exc import RestlyUncommittedChangesWarning
 
@@ -54,7 +54,7 @@ def test_savepoint_sync_commit_does_not_false_warn():
     try:
         _Base.metadata.create_all(engine)
         with RestlyContext():
-            _fr_globals.make_session = make_session
+            _fr_config.make_session = make_session
             with engine.connect() as conn:
                 scope = _fixtures._restly_sync_scope.__wrapped__(
                     conn, _fixtures._source_factories()[0]
@@ -92,7 +92,7 @@ async def test_savepoint_async_commit_does_not_false_warn():
         async with async_engine.begin() as conn:
             await conn.run_sync(_Base.metadata.create_all)
         with RestlyContext():
-            _fr_globals.async_make_session = make_session
+            _fr_config.async_make_session = make_session
             scope = _fixtures._restly_async_scope.__wrapped__(
                 None, _ASYNC_SESSION_REQUEST
             )

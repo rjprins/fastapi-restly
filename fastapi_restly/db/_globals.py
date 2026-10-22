@@ -82,7 +82,7 @@ def _get_restly_context() -> RestlyContext:
     return _restly_context_ctx.get() or _default_context
 
 
-class _FRGlobalsProxy:
+class _FRConfigProxy:
     def __getattr__(self, name: str):
         return getattr(_get_restly_context(), name)
 
@@ -90,4 +90,4 @@ class _FRGlobalsProxy:
         setattr(_get_restly_context(), name, value)
 
 
-_fr_globals = _FRGlobalsProxy()
+_fr_config = _FRConfigProxy()

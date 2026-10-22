@@ -97,7 +97,7 @@ from .._pagination import (
     _unpaginated_page_info,
 )
 from .._routes import matched_route
-from ..db._globals import _fr_globals
+from ..db._globals import _fr_config
 from ..exc import (
     NotFound,
     RestlyConfigurationError,
@@ -3578,7 +3578,7 @@ def _init_view_cls_and_add_to_router(
     )
     mounted: set[type[View]] = getattr(holder, "_fr_mounted_views", None) or set()
     if view_cls in mounted:
-        if _fr_globals.warn_on_misuse:
+        if _fr_config.warn_on_misuse:
             warnings.warn(
                 f"{view_cls.__name__} is already registered on this app/router; "
                 f"this include_view() call is a no-op. Duplicate registration "
@@ -3893,7 +3893,7 @@ def _prepare_view_class(view_cls: type[View]) -> None:
     """
     if view_cls.__dict__.get("_fr_initialised", False):
         return
-    if _fr_globals.warn_on_misuse:
+    if _fr_config.warn_on_misuse:
         _warn_on_misuse(view_cls)
     _copy_all_parent_class_endpoints_into_this_subclass(view_cls)
     _init_all_endpoints(view_cls)

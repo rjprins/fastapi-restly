@@ -22,7 +22,7 @@ from ..exc import (
     RestlyUncommittedChangesWarning,
 )
 from ._engine_defaults import apply_connect_hooks, engine_options
-from ._globals import _fr_globals
+from ._globals import _fr_config
 
 
 def _setup_async_database_connection(
@@ -57,8 +57,8 @@ def _setup_async_database_connection(
             stacklevel=3,
         )
 
-    _fr_globals.async_database_url = async_database_url
-    _fr_globals.async_make_session = async_make_session
+    _fr_config.async_database_url = async_database_url
+    _fr_config.async_make_session = async_make_session
     return async_make_session
 
 
@@ -82,8 +82,8 @@ def _setup_database_connection(
             apply_connect_hooks(engine)
         make_session = sessionmaker(bind=engine, expire_on_commit=False)
 
-    _fr_globals.database_url = database_url
-    _fr_globals.make_session = make_session
+    _fr_config.database_url = database_url
+    _fr_config.make_session = make_session
     return make_session
 
 
@@ -206,7 +206,7 @@ def configure(
             sync_session_generator is not None,
         )
     )
-    if configures_database and _fr_globals.database_configuration_locked:
+    if configures_database and _fr_config.database_configuration_locked:
         raise RestlyConfigurationError(
             "Restly's database configuration cannot be changed after "
             "fr.testing.configure_tests() recorded it. This is often a "
@@ -235,8 +235,8 @@ def configure(
     ):
         if (
             generator is not None
-            and name in _fr_globals.registered_session_dependencies
-            and generator is not getattr(_fr_globals, name)
+            and name in _fr_config.registered_session_dependencies
+            and generator is not getattr(_fr_config, name)
         ):
             raise RestlyConfigurationError(
                 f"Configure {name} before registering routes that use Restly's "
@@ -260,9 +260,9 @@ def configure(
             )
 
     if warn_on_misuse is not None:
-        _fr_globals.warn_on_misuse = warn_on_misuse
+        _fr_config.warn_on_misuse = warn_on_misuse
     if warn_on_uncommitted is not None:
-        _fr_globals.warn_on_uncommitted = warn_on_uncommitted
+        _fr_config.warn_on_uncommitted = warn_on_uncommitted
     if (
         async_database_url is not None
         or async_engine is not None
@@ -278,9 +278,9 @@ def configure(
             database_url=database_url, engine=engine, make_session=make_session
         )
     if session_generator is not None:
-        _fr_globals.session_generator = session_generator
+        _fr_config.session_generator = session_generator
     if sync_session_generator is not None:
-        _fr_globals.sync_session_generator = sync_session_generator
+        _fr_config.sync_session_generator = sync_session_generator
     if app is not None:
         from ..views._openapi import _ensure_patched
 
@@ -292,24 +292,24 @@ def configure(
 
 def _active_make_session():
     """The sync factory in force: a test's, if one installed it."""
-    return _fr_globals.test_make_session or _fr_globals.make_session
+    return _fr_config.test_make_session or _fr_config.make_session
 
 
 def _active_async_make_session():
     """The async factory in force: a test's, if one installed it."""
-    return _fr_globals.test_async_make_session or _fr_globals.async_make_session
+    return _fr_config.test_async_make_session or _fr_config.async_make_session
 
 
 def get_async_engine() -> AsyncEngine:
     """Return the async engine registered via configure()."""
-    if _fr_globals.async_make_session is None:
+    if _fr_config.async_make_session is None:
         raise RestlyConfigurationError(
             "Call fr.configure() before using get_async_engine()."
         )
     # This is a read-only lookup of application configuration. Test overrides may
     # be bound to a pinned connection or deliberately refuse session creation;
     # neither changes the engine that configure() registered.
-    bind = _fr_globals.async_make_session.kw["bind"]
+    bind = _fr_config.async_make_session.kw["bind"]
     if isinstance(bind, AsyncConnection):
         return bind.engine
     return bind
@@ -317,7 +317,7 @@ def get_async_engine() -> AsyncEngine:
 
 def get_engine() -> Engine:
     """Return the sync engine registered via configure()."""
-    if _fr_globals.make_session is None:
+    if _fr_config.make_session is None:
         raise RestlyConfigurationError("Call fr.configure() before using get_engine().")
     bind = _active_make_session().kw["bind"]
     # Under restly_session the factory is bound to a pinned Connection; resolve
@@ -352,7 +352,7 @@ def create_all(base_or_metadata: type[DeclarativeBase] | MetaData) -> None:
     production.
     """
     metadata = _resolve_metadata(base_or_metadata)
-    if _fr_globals.make_session is None:
+    if _fr_config.make_session is None:
         raise RestlyConfigurationError("Call fr.configure() before using create_all().")
     # Create against the configured bind: the engine in production, or the pinned
     # Connection under restly_session so the schema is visible to the test's
@@ -368,7 +368,7 @@ async def async_create_all(base_or_metadata: type[DeclarativeBase] | MetaData) -
         await fr.db.async_create_all(Base)
     """
     metadata = _resolve_metadata(base_or_metadata)
-    if _fr_globals.async_make_session is None:
+    if _fr_config.async_make_session is None:
         raise RestlyConfigurationError(
             "Call fr.configure() before using async_create_all()."
         )
@@ -387,7 +387,7 @@ def _should_warn_uncommitted() -> bool:
     on. Restly owns the commit, so changes still pending when a request ends are
     the tell of a custom write route that never committed.
     """
-    return _fr_globals.warn_on_uncommitted
+    return _fr_config.warn_on_uncommitted
 
 
 def _mark_uncommitted(session: SA_Session, flush_context: Any = None) -> None:
@@ -452,15 +452,15 @@ def _warn_if_uncommitted(session: SA_AsyncSession | SA_Session) -> None:
 
 async def _async_generate_session() -> AsyncIterator[SA_AsyncSession]:
     """FastAPI dependency for async database session."""
-    if _fr_globals.test_async_make_session is not None:
-        async with _fr_globals.test_async_make_session() as session:
+    if _fr_config.test_async_make_session is not None:
+        async with _fr_config.test_async_make_session() as session:
             yield session
         return
-    if _fr_globals.session_generator is not None:
-        async for session in _fr_globals.session_generator():
+    if _fr_config.session_generator is not None:
+        async for session in _fr_config.session_generator():
             yield session
         return
-    if _fr_globals.async_make_session is None:
+    if _fr_config.async_make_session is None:
         raise RestlyConfigurationError(
             "Call fr.configure() before using AsyncSessionDep."
         )
@@ -471,7 +471,7 @@ async def _async_generate_session() -> AsyncIterator[SA_AsyncSession]:
     # dependency only manages the session lifecycle: the context manager rolls
     # back and closes on the way out, and any change a custom route flushed but
     # never committed is discarded (and warned about).
-    async with _fr_globals.async_make_session() as session:
+    async with _fr_config.async_make_session() as session:
         yield session
 
 
@@ -486,18 +486,18 @@ def _generate_session() -> Iterator[SA_Session]:
     """FastAPI dependency for sync database session."""
     # A test's session source wins over everything, including a generator and
     # anything reconfigured after the test started.
-    if _fr_globals.test_make_session is not None:
-        with _fr_globals.test_make_session() as session:
+    if _fr_config.test_make_session is not None:
+        with _fr_config.test_make_session() as session:
             yield session
         return
-    if _fr_globals.sync_session_generator is not None:
-        for session in _fr_globals.sync_session_generator():
+    if _fr_config.sync_session_generator is not None:
+        for session in _fr_config.sync_session_generator():
             yield session
         return
-    if _fr_globals.make_session is None:
+    if _fr_config.make_session is None:
         raise RestlyConfigurationError("Call fr.configure() before using SessionDep.")
 
-    with _fr_globals.make_session() as session:
+    with _fr_config.make_session() as session:
         yield session
 
 
@@ -539,8 +539,8 @@ def _session_signature(
     the active context here also keeps app factories from mutating a global
     function signature when they configure different generators.
     """
-    _fr_globals.registered_session_dependencies.add(generator_name)
-    source = getattr(_fr_globals, generator_name)
+    _fr_config.registered_session_dependencies.add(generator_name)
+    source = getattr(_fr_config, generator_name)
     dependency = Depends(source) if source is not None else _session_dependency(default)
     return Signature(
         [

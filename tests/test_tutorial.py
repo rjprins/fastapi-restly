@@ -17,7 +17,7 @@ from types import ModuleType
 import pytest
 
 import fastapi_restly as fr
-from fastapi_restly.db._globals import _fr_globals
+from fastapi_restly.db._globals import _fr_config
 from fastapi_restly.testing import RestlyTestClient
 
 BLOG = Path(__file__).resolve().parents[1] / "example-projects" / "blog" / "blog"
@@ -39,7 +39,7 @@ def use_empty_database() -> None:
     The file configures blog.db when it is imported, before any connection
     opens, so the first call replaces that configuration too.
     """
-    async_make_session = _fr_globals.async_make_session
+    async_make_session = _fr_config.async_make_session
     if async_make_session is not None:
         asyncio.run(async_make_session.kw["bind"].dispose())
     fr.configure(async_database_url="sqlite+aiosqlite:///:memory:")

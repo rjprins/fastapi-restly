@@ -5,29 +5,29 @@ from sqlalchemy.ext.asyncio import AsyncSession as SAAsyncSession
 from sqlalchemy.orm import Session as SASession
 
 from fastapi_restly.db import configure
-from fastapi_restly.db._globals import _fr_globals
+from fastapi_restly.db._globals import _fr_config
 from fastapi_restly.db._session import _async_generate_session, _generate_session
 
 
 @pytest.fixture(autouse=True)
 def restore_session_generators():
-    original_async_generator = _fr_globals.session_generator
-    original_sync_generator = _fr_globals.sync_session_generator
+    original_async_generator = _fr_config.session_generator
+    original_sync_generator = _fr_config.sync_session_generator
     yield
-    _fr_globals.session_generator = original_async_generator
-    _fr_globals.sync_session_generator = original_sync_generator
+    _fr_config.session_generator = original_async_generator
+    _fr_config.sync_session_generator = original_sync_generator
 
 
 def test_configure_sets_async_database_url():
     configure(async_database_url="sqlite+aiosqlite:///from-configure.db")
 
-    assert _fr_globals.async_database_url == "sqlite+aiosqlite:///from-configure.db"
+    assert _fr_config.async_database_url == "sqlite+aiosqlite:///from-configure.db"
 
 
 def test_configure_sets_sync_database_url():
     configure(database_url="sqlite+pysqlite:///from-configure.db")
 
-    assert _fr_globals.database_url == "sqlite+pysqlite:///from-configure.db"
+    assert _fr_config.database_url == "sqlite+pysqlite:///from-configure.db"
 
 
 @pytest.mark.asyncio

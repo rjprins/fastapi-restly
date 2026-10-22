@@ -26,7 +26,7 @@ from sqlalchemy.orm import (
 )
 
 import fastapi_restly as fr
-from fastapi_restly.db._globals import _fr_globals
+from fastapi_restly.db._globals import _fr_config
 from fastapi_restly.testing import RestlyTestClient
 
 from ._models import SharedBase
@@ -56,13 +56,13 @@ class Flavor:
     def run(self, statement: Any) -> None:
         """Run a write outside the app and commit it."""
         if self.name == "sync":
-            with _fr_globals.make_session() as session:
+            with _fr_config.make_session() as session:
                 session.execute(statement)
                 session.commit()
             return
 
         async def go() -> None:
-            async with _fr_globals.async_make_session() as session:
+            async with _fr_config.async_make_session() as session:
                 await session.execute(statement)
                 await session.commit()
 
@@ -86,7 +86,7 @@ def flavor(request) -> Iterator[Flavor]:
         yield Flavor("sync", RestlyTestClient(FastAPI()), engine)
     else:
         client = request.getfixturevalue("client")
-        engine = _fr_globals.async_make_session.kw["bind"].sync_engine
+        engine = _fr_config.async_make_session.kw["bind"].sync_engine
         yield Flavor("async", client, engine)
 
 
@@ -837,9 +837,9 @@ def test_sync_not_found_can_answer_410_for_a_deleted_row(sync_db):
                 return HTTPException(410, f"Note {id} was deleted")
             return super().not_found(id)
 
-    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
     sync_client.post("/notes/", json={"text": "a"})
-    with _fr_globals.make_session() as session:
+    with _fr_config.make_session() as session:
         session.execute(sa.update(Note).values(deleted=True))
         session.commit()
     sync_client.get("/notes/1", assert_status_code=410)

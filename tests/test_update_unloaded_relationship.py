@@ -17,7 +17,7 @@ from sqlalchemy import ForeignKey, select
 from sqlalchemy.orm import Mapped, mapped_column, relationship, selectinload
 
 import fastapi_restly as fr
-from fastapi_restly.db._globals import _fr_globals
+from fastapi_restly.db._globals import _fr_config
 from fastapi_restly.objects import _unloaded_written_collections
 from fastapi_restly.testing import RestlyTestClient
 
@@ -131,7 +131,7 @@ def test_a_sync_update_writes_a_collection_with_lazy_raise(sync_client):
         model = Member
         schema = MemberSchema
 
-    make_session = _fr_globals.make_session
+    make_session = _fr_config.make_session
     SharedBase.metadata.create_all(make_session.kw["bind"])
     with make_session() as session:
         red, blue = Team(name="red"), Team(name="blue")

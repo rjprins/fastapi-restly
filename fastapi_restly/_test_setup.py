@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any
 
 from .db import _session
 from .db._engine_defaults import is_memory_sqlite as _is_memory_sqlite
-from .db._globals import _fr_globals
+from .db._globals import _fr_config
 from .exc import RestlyConfigurationError
 
 if TYPE_CHECKING:
@@ -65,7 +65,7 @@ def _source_factories() -> tuple[Any, Any]:
     """The factories isolation and schema setup build from."""
     if _setup is not None:
         return _setup.make_session, _setup.async_make_session
-    return _fr_globals.make_session, _fr_globals.async_make_session
+    return _fr_config.make_session, _fr_config.async_make_session
 
 
 def _current_setup() -> _TestSetup | None:
@@ -82,7 +82,7 @@ def _reset_setup() -> None:
     """Drop the recorded setup. For Restly's own tests, not for user suites."""
     global _setup
     _setup = None
-    _fr_globals.database_configuration_locked = False
+    _fr_config.database_configuration_locked = False
 
 
 def configure_tests(
@@ -223,12 +223,12 @@ def configure_tests(
         alembic_upgrade=alembic_upgrade,
         db_cleanup=db_cleanup,
         db_cleanup_exclude=tuple(db_cleanup_exclude),
-        make_session=_fr_globals.make_session,
-        async_make_session=_fr_globals.async_make_session,
-        session_generator=_fr_globals.session_generator,
-        sync_session_generator=_fr_globals.sync_session_generator,
-        database_url=_fr_globals.database_url,
-        async_database_url=_fr_globals.async_database_url,
+        make_session=_fr_config.make_session,
+        async_make_session=_fr_config.async_make_session,
+        session_generator=_fr_config.session_generator,
+        sync_session_generator=_fr_config.sync_session_generator,
+        database_url=_fr_config.database_url,
+        async_database_url=_fr_config.async_database_url,
     )
     # Judged at rollback, the permissive mode: the flag or the environment can
     # still override db_cleanup=, and the collection-time recheck in
@@ -236,7 +236,7 @@ def configure_tests(
     # Raising on the argument here would refuse a run the override makes legal.
     _reject_split_databases(setup, ROLLBACK)
     _setup = setup
-    _fr_globals.database_configuration_locked = True
+    _fr_config.database_configuration_locked = True
     if app is not None:
         from .views._openapi import _ensure_patched
 
@@ -262,7 +262,7 @@ def _validate_database_sources(setup: _TestSetup, mode: str) -> None:
 
 def _sync_source_factory() -> Any:
     factory = _source_factories()[0]
-    generator = _fr_globals.sync_session_generator
+    generator = _fr_config.sync_session_generator
     if factory is not None or generator is None:
         return factory
     _check_discoverable_generator(generator, "sync_session_generator")
@@ -272,7 +272,7 @@ def _sync_source_factory() -> Any:
 
 async def _async_source_factory() -> Any:
     factory = _source_factories()[1]
-    generator = _fr_globals.session_generator
+    generator = _fr_config.session_generator
     if factory is not None or generator is None:
         return factory
     _check_discoverable_generator(generator, "session_generator")
@@ -646,7 +646,7 @@ def _create_schema(setup: _TestSetup, root: Path | None = None) -> None:
 def _configured_url(setup: _TestSetup) -> str | None:
     """The URL of the database the tests were pointed at, however it was given.
 
-    From the recorded setup, never the live globals: Alembic runs DDL, which
+    From the recorded setup, never the live config: Alembic runs DDL, which
     survives everything, so a reconfiguration must not be able to point it at
     another database. Engine and sessionmaker forms record no URL, so read it
     back off the bind. Prefer the sync leg: Alembic

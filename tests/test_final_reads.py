@@ -23,7 +23,7 @@ from sqlalchemy import ForeignKey, event, func
 from sqlalchemy.orm import Mapped, column_property, mapped_column, relationship
 
 import fastapi_restly as fr
-from fastapi_restly.db._globals import _fr_globals
+from fastapi_restly.db._globals import _fr_config
 from fastapi_restly.testing import RestlyTestClient
 from fastapi_restly.views import ViewListResponse, ViewResponse
 
@@ -70,7 +70,7 @@ def _run_async(statement: Any) -> Any:
     """Run a statement outside the app, commit it, and return its result."""
 
     async def run() -> Any:
-        async with _fr_globals.async_make_session() as session:
+        async with _fr_config.async_make_session() as session:
             result = await session.execute(statement)
             await session.commit()
             return result
@@ -167,7 +167,7 @@ def test_a_classmethod_or_staticmethod_hook_is_accepted(sync_client):
         def not_found(id: str | None) -> Exception:
             return HTTPException(410, f"{id} is gone")
 
-    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
     _seed(sync_client)
 
     assert sync_client.get("/books/emma").json()["title"] == "Emma"
@@ -269,7 +269,7 @@ def test_sync_where_id_serves_every_item_route(sync_client):
         def where_id(self, id: str) -> sa.ColumnElement[bool]:
             return Book.id == int(id) if id.isdigit() else Book.slug == id
 
-    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
     _seed(sync_client)
 
     assert sync_client.get("/books/dune").json()["title"] == "Dune"
@@ -551,7 +551,7 @@ def test_a_computed_value_loads_with_the_rows_and_after_a_write(client):
     for n in range(3):
         client.post("/books/", json={"title": f"b{n}", "slug": f"b{n}", "shelf_id": 1})
 
-    seen = _count_statements(_fr_globals.async_make_session.kw["bind"].sync_engine)
+    seen = _count_statements(_fr_config.async_make_session.kw["bind"].sync_engine)
     page = client.get("/shelves/").json()["data"]
     assert [(s["book_count"], s["mine"]) for s in page] == [
         (3, True),
@@ -645,7 +645,7 @@ def test_a_route_that_declares_a_list_of_view_response_returns_rows(sync_client)
             stmt = self.select().order_by(Book.id).limit(2)
             return tuple(self.session.scalars(stmt))
 
-    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
     _seed(sync_client)
     sync_client.post("/books/", json={"title": "Odyssey", "slug": "odyssey"})
 

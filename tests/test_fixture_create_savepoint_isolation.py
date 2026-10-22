@@ -27,7 +27,7 @@ from sqlalchemy.pool import StaticPool
 
 import fastapi_restly as fr
 import fastapi_restly._pytest_fixtures as _fixtures
-from fastapi_restly.db._globals import RestlyContext, _fr_globals
+from fastapi_restly.db._globals import RestlyContext, _fr_config
 from fastapi_restly.db._session import _async_generate_session, _generate_session
 
 
@@ -55,7 +55,7 @@ def test_get_engine_and_create_all_work_inside_the_sync_fixture():
     make_session = sessionmaker(bind=engine, expire_on_commit=False)
     try:
         with RestlyContext():
-            _fr_globals.make_session = make_session
+            _fr_config.make_session = make_session
             shared_gen = _fixtures._shared_connection.__wrapped__(
                 _SYNC_SESSION_REQUEST, _fixtures._source_factories()[0]
             )
@@ -89,7 +89,7 @@ def test_sync_request_write_is_visible_to_a_later_request():
     make_session = sessionmaker(bind=engine, expire_on_commit=False)
     try:
         with RestlyContext():
-            _fr_globals.make_session = make_session
+            _fr_config.make_session = make_session
             shared_gen = _fixtures._shared_connection.__wrapped__(
                 _SYNC_SESSION_REQUEST, _fixtures._source_factories()[0]
             )
@@ -135,7 +135,7 @@ def test_sync_request_rollback_discards_only_its_own_work():
     make_session = sessionmaker(bind=engine, expire_on_commit=False)
     try:
         with RestlyContext():
-            _fr_globals.make_session = make_session
+            _fr_config.make_session = make_session
             shared_gen = _fixtures._shared_connection.__wrapped__(
                 _SYNC_SESSION_REQUEST, _fixtures._source_factories()[0]
             )
@@ -184,7 +184,7 @@ async def test_get_async_engine_and_async_create_all_work_inside_the_async_fixtu
     make_session = async_sessionmaker(bind=async_engine, expire_on_commit=False)
     try:
         with RestlyContext():
-            _fr_globals.async_make_session = make_session
+            _fr_config.async_make_session = make_session
             scope = _fixtures._restly_async_scope.__wrapped__(
                 None, _ASYNC_SESSION_REQUEST
             )
@@ -216,7 +216,7 @@ async def test_async_request_write_is_visible_to_a_later_request():
     make_session = async_sessionmaker(bind=async_engine, expire_on_commit=False)
     try:
         with RestlyContext():
-            _fr_globals.async_make_session = make_session
+            _fr_config.async_make_session = make_session
             scope = _fixtures._restly_async_scope.__wrapped__(
                 None, _ASYNC_SESSION_REQUEST
             )
@@ -253,7 +253,7 @@ async def test_async_request_rollback_discards_only_its_own_work():
     make_session = async_sessionmaker(bind=async_engine, expire_on_commit=False)
     try:
         with RestlyContext():
-            _fr_globals.async_make_session = make_session
+            _fr_config.async_make_session = make_session
             scope = _fixtures._restly_async_scope.__wrapped__(
                 None, _ASYNC_SESSION_REQUEST
             )

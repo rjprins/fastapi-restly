@@ -17,7 +17,7 @@ from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
-from fastapi_restly.db._globals import _fr_globals
+from fastapi_restly.db._globals import _fr_config
 from fastapi_restly.testing import RestlyTestClient
 
 from ._models import SharedBase
@@ -30,7 +30,7 @@ def sync_client(sync_db) -> Iterator[RestlyTestClient]:
 
 
 def _async_engine():
-    return _fr_globals.async_make_session.kw["bind"].sync_engine
+    return _fr_config.async_make_session.kw["bind"].sync_engine
 
 
 def _record_statements(engine) -> list[str]:
@@ -102,7 +102,7 @@ def _add_team_async(Team) -> int:
     import asyncio
 
     async def add() -> int:
-        async with _fr_globals.async_make_session() as session:
+        async with _fr_config.async_make_session() as session:
             team = Team(name="core")
             session.add(team)
             await session.commit()

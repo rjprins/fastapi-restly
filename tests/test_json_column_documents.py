@@ -25,7 +25,7 @@ from fastapi import FastAPI
 from sqlalchemy.orm import Mapped, mapped_column
 
 import fastapi_restly as fr
-from fastapi_restly.db._globals import _fr_globals
+from fastapi_restly.db._globals import _fr_config
 from fastapi_restly.testing._client import RestlyTestClient
 
 from ._models import SharedBase
@@ -200,7 +200,7 @@ def test_http_create_rejects_writeonly_json_without_committing(request, asynchro
     if asynchronous:
         create_tables()
     else:
-        SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+        SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
     with pytest.raises(fr.exc.RestlyConfigurationError, match="Document.payload"):
         client.post("/private-documents", json={"payload": {"secret": "input-secret"}})
     assert client.get("/private-documents").json()["total_count"] == 0
@@ -258,7 +258,7 @@ def test_sync_create_stores_a_nested_model_as_plain_json(sync_client):
         model = Doc
         schema = DocSchema
 
-    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
 
     body = sync_client.post(
         "/docs", json={"title": "t", "address": {"street": "Main", "number": 4}}
@@ -279,7 +279,7 @@ def test_the_stored_value_is_a_dict_not_a_model(sync_client):
         model = Doc
         schema = DocSchema
 
-    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
     sync_client.post(
         "/docs",
         json={
@@ -375,7 +375,7 @@ def test_a_type_decorator_still_receives_the_model(sync_client):
         model = Decorated
         schema = DecoratedSchema
 
-    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
 
     body = sync_client.post(
         "/decorated", json={"address": {"street": "Main", "number": 2}}
@@ -393,7 +393,7 @@ def test_create_leaves_pydantic_serialization_to_a_type_decorator(sync_client):
         model = Decorated
         schema = _OpaqueSchema
 
-    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
 
     response = sync_client.post("/decorated", json={"payload": {"token": "created"}})
 
@@ -411,7 +411,7 @@ def test_update_leaves_pydantic_serialization_to_a_type_decorator(sync_client):
         model = Decorated
         schema = _OpaqueSchema
 
-    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
     with fr.open_session() as session:
         session.add(Decorated(payload=_OpaquePayload(token=_OpaqueToken("old"))))
         session.commit()
@@ -427,7 +427,7 @@ def test_the_free_object_helpers_dump_too(sync_client):
     """``fr.objects.make_new_object`` shares the translation, so a script
     writing outside a view gets the same value."""
     Doc = _define_model("HelperDoc", "jcd_helper_docs")
-    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
 
     with fr.open_session() as session:
         obj = fr.objects.make_new_object(
@@ -458,7 +458,7 @@ def test_type_decorator_owns_storage_of_excluded_document_fields(sync_client):
         model = Decorated
         schema = DocumentSchema
 
-    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
     for method, url, secret in (
         (sync_client.post, "/private-documents", "created-secret"),
         (sync_client.patch, "/private-documents/1", "updated-secret"),
@@ -485,7 +485,7 @@ def test_writeonly_marker_on_whole_json_column_is_supported(sync_client):
         model = Document
         schema = DocumentSchema
 
-    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
     body = sync_client.post(
         "/private-documents", json={"payload": {"street": "Main", "number": 4}}
     ).json()
@@ -581,7 +581,7 @@ def test_a_left_out_json_field_gets_the_column_default(request, asynchronous):
     if asynchronous:
         create_tables()
     else:
-        SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+        SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
     response = client.post("/sheets/", json={"title": "a"}, assert_status_code=422)
     assert [error["loc"] for error in response.json()["detail"]] == [["body", "tags"]]
     created = client.post("/sheets/", json={"title": "a", "tags": ["x"]}).json()

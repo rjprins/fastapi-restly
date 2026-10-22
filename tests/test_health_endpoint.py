@@ -259,9 +259,9 @@ def test_bad_path_does_not_partially_configure():
     with pytest.raises(RestlyConfigurationError):
         fr.configure(app, health="health", warn_on_misuse=True)
 
-    from fastapi_restly.db._globals import _fr_globals
+    from fastapi_restly.db._globals import _fr_config
 
-    assert _fr_globals.warn_on_misuse is False
+    assert _fr_config.warn_on_misuse is False
 
 
 def test_health_without_app_raises():
@@ -312,14 +312,14 @@ def test_health_alone_satisfies_the_at_least_one_argument_check():
 
 
 def test_health_does_not_configure_a_database():
-    from fastapi_restly.db._globals import _fr_globals
+    from fastapi_restly.db._globals import _fr_config
 
-    _fr_globals.async_make_session = None
+    _fr_config.async_make_session = None
     app = FastAPI()
 
     fr.configure(app, health="/health")
 
-    assert _fr_globals.async_make_session is None
+    assert _fr_config.async_make_session is None
 
 
 def test_health_composes_with_a_full_database_configuration(sync_db):

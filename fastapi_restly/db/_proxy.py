@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession
 from sqlalchemy.orm import Session as SA_Session
 
 from ..exc import RestlyConfigurationError
-from ._globals import _fr_globals
+from ._globals import _fr_config
 
 
 @asynccontextmanager
@@ -26,20 +26,20 @@ async def open_async_session() -> AsyncGenerator[SA_AsyncSession]:
         async with fr.open_async_session() as session:
             result = await session.execute(select(User))
     """
-    if _fr_globals.test_async_make_session is not None:
-        async with _fr_globals.test_async_make_session() as sess:
+    if _fr_config.test_async_make_session is not None:
+        async with _fr_config.test_async_make_session() as sess:
             yield sess
         return
-    generator = _fr_globals.session_generator
+    generator = _fr_config.session_generator
     if generator is not None:
         async with asynccontextmanager(generator)() as sess:
             yield sess
         return
-    if _fr_globals.async_make_session is None:
+    if _fr_config.async_make_session is None:
         raise RestlyConfigurationError(
             "Call fr.configure() before using open_async_session()."
         )
-    async with _fr_globals.async_make_session() as sess:
+    async with _fr_config.async_make_session() as sess:
         yield sess
 
 
@@ -61,18 +61,18 @@ def open_session() -> Generator[SA_Session]:
         with fr.open_session() as session:
             result = session.execute(select(User))
     """
-    if _fr_globals.test_make_session is not None:
-        with _fr_globals.test_make_session() as sess:
+    if _fr_config.test_make_session is not None:
+        with _fr_config.test_make_session() as sess:
             yield sess
         return
-    generator = _fr_globals.sync_session_generator
+    generator = _fr_config.sync_session_generator
     if generator is not None:
         with contextmanager(generator)() as sess:
             yield sess
         return
-    if _fr_globals.make_session is None:
+    if _fr_config.make_session is None:
         raise RestlyConfigurationError(
             "Call fr.configure() before using open_session()."
         )
-    with _fr_globals.make_session() as sess:
+    with _fr_config.make_session() as sess:
         yield sess

@@ -17,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 import fastapi_restly as fr
-from fastapi_restly.db._globals import _fr_globals
+from fastapi_restly.db._globals import _fr_config
 from fastapi_restly.testing._client import RestlyTestClient
 
 from ._models import SharedBase
@@ -84,7 +84,7 @@ def test_dataclass_defaults_read_the_flush_binding(sync_db, wrap_default):
 
 
 def _create_sync_tables():
-    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
 
 
 def _define(prefix: str, *, wrap_default: bool):

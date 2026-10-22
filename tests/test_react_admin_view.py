@@ -29,7 +29,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from starlette.datastructures import QueryParams
 
 import fastapi_restly as fr
-from fastapi_restly.db._globals import _fr_globals
+from fastapi_restly.db._globals import _fr_config
 from fastapi_restly.exc import RestlyConfigurationError
 from fastapi_restly.testing._client import RestlyTestClient
 from fastapi_restly.views._react_admin import (
@@ -94,7 +94,7 @@ def _setup_sync_item_view(client):
         model = SyncItem
         schema = SyncItemSchema
 
-    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
 
 
 @pytest.fixture(params=["sync", "async"])
@@ -129,7 +129,7 @@ def custom_list_client(request):
     if asynchronous:
         create_tables()
     else:
-        SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+        SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
     for name in ("a", "b", "c"):
         client.post("/custom-items", json={"name": name})
     return client
@@ -1062,7 +1062,7 @@ def test_sync_react_admin_list_runs_the_handler_load_and_response_seams(sync_cli
             events.append(("to_response", shape))
             return super().to_response(result, shape)
 
-    SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+    SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
     sync_client.post("/sync-seam-items/", json={"name": "a"})
     events.clear()
 
@@ -1109,7 +1109,7 @@ def test_react_admin_list_response_is_changed_in_to_list_response(flavor, reques
     if asynchronous:
         create_tables()
     else:
-        SharedBase.metadata.create_all(_fr_globals.make_session.kw["bind"])
+        SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
     for name in ("a", "b"):
         client.post("/counted-items/", json={"name": name})
 

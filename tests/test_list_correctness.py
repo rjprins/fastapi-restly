@@ -41,7 +41,7 @@ from sqlalchemy.orm import (
 from starlette.datastructures import QueryParams
 
 import fastapi_restly as fr
-from fastapi_restly.db._globals import _fr_globals
+from fastapi_restly.db._globals import _fr_config
 from fastapi_restly.query._impl import _apply_sorting
 from fastapi_restly.testing._client import RestlyTestClient
 from fastapi_restly.views._react_admin import _apply_react_admin_sort_and_range
@@ -243,7 +243,7 @@ def views(request):
     """A client, the view base class and the engine, for each kind of view."""
     if request.param == "async":
         client = request.getfixturevalue("client")
-        engine = _fr_globals.async_make_session.kw["bind"].sync_engine
+        engine = _fr_config.async_make_session.kw["bind"].sync_engine
         return client, fr.AsyncRestView, engine, create_tables
     engine, _ = request.getfixturevalue("sync_db")
     client = RestlyTestClient(FastAPI())

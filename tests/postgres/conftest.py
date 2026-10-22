@@ -51,7 +51,7 @@ def setup_database_connection():
     """Override the parent's per-test SQLite reset.
 
     This subtree runs on the PostgreSQL engines configured once for the whole
-    session, so leave ``_fr_globals`` untouched between tests.
+    session, so leave ``_fr_config`` untouched between tests.
     """
     yield
 

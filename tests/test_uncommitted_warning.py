@@ -13,7 +13,7 @@ import pytest
 from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
-from fastapi_restly.db._globals import _fr_globals
+from fastapi_restly.db._globals import _fr_config
 
 from ._models import SharedBase
 from .conftest import create_tables
@@ -22,12 +22,12 @@ from .conftest import create_tables
 @pytest.fixture(autouse=True)
 def _restore_config():
     """The config lives on a process-wide context; restore it after each test."""
-    original_async_gen = _fr_globals.session_generator
-    original_sync_gen = _fr_globals.sync_session_generator
+    original_async_gen = _fr_config.session_generator
+    original_sync_gen = _fr_config.sync_session_generator
     yield
-    _fr_globals.warn_on_uncommitted = True
-    _fr_globals.session_generator = original_async_gen
-    _fr_globals.sync_session_generator = original_sync_gen
+    _fr_config.warn_on_uncommitted = True
+    _fr_config.session_generator = original_async_gen
+    _fr_config.sync_session_generator = original_sync_gen
 
 
 def _build(client):
@@ -139,7 +139,7 @@ def test_custom_generator_forgot_commit_warns(client):
     still caught."""
 
     async def custom_gen():
-        async with _fr_globals.async_make_session() as session:
+        async with _fr_config.async_make_session() as session:
             yield session
 
     fr.configure(session_generator=custom_gen)
