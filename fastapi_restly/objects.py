@@ -40,7 +40,7 @@ def make_new_object(
         validate_resolved_reference_consistency,
     )
 
-    resolved = _resolve_ids_to_sqlalchemy_objects(session, data)
+    resolved = _resolve_ids_to_sqlalchemy_objects(session, data, model)
     _check_ref_exists(session, data)
     validate_resolved_reference_consistency(model, data, resolved)
     create_plan = build_create_plan(model, data, resolved)
@@ -63,7 +63,7 @@ def update_object(session: _Session, obj: _T, data: _pydantic.BaseModel) -> _T:
         validate_resolved_reference_consistency,
     )
 
-    resolved = _resolve_ids_to_sqlalchemy_objects(session, data)
+    resolved = _resolve_ids_to_sqlalchemy_objects(session, data, type(obj))
     _check_ref_exists(session, data)
     validate_resolved_reference_consistency(type(obj), data, resolved)
     unloaded = _unloaded_written_collections(obj, data)
@@ -159,7 +159,7 @@ async def async_make_new_object(
         validate_resolved_reference_consistency,
     )
 
-    resolved = await _async_resolve_ids_to_sqlalchemy_objects(session, data)
+    resolved = await _async_resolve_ids_to_sqlalchemy_objects(session, data, model)
     await _async_check_ref_exists(session, data)
     validate_resolved_reference_consistency(model, data, resolved)
     create_plan = build_create_plan(model, data, resolved)
@@ -178,7 +178,7 @@ async def async_update_object(
         validate_resolved_reference_consistency,
     )
 
-    resolved = await _async_resolve_ids_to_sqlalchemy_objects(session, data)
+    resolved = await _async_resolve_ids_to_sqlalchemy_objects(session, data, type(obj))
     await _async_check_ref_exists(session, data)
     validate_resolved_reference_consistency(type(obj), data, resolved)
     unloaded = _unloaded_written_collections(obj, data)

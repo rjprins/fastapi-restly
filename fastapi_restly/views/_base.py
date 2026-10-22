@@ -84,7 +84,7 @@ ReadScope = WhereClause | None
 # all_of takes. Private: only the final list handler accepts one, so no
 # override spells it.
 _ReadWhere = ColumnElement[bool] | WhereClause | None
-from .._mapping import is_mapped_class, is_mapped_instance
+from .._mapping import is_mapped_class, is_mapped_instance, is_to_many_relationship
 from .._pagination import (
     _DEFAULT_PAGINATION,
     _SORT_QUERY_PARAM,
@@ -450,10 +450,8 @@ def _collection_ready(model_cls: type[Any], field_name: str, value: Any) -> Any:
     an empty one, and SQLAlchemy takes a list for a list collection, not a
     tuple.
     """
-    if isinstance(value, tuple):
-        relationship = _get_relationship_property(model_cls, field_name)
-        if relationship is not None and relationship.uselist:
-            return list(value)
+    if isinstance(value, tuple) and is_to_many_relationship(model_cls, field_name):
+        return list(value)
     return value
 
 

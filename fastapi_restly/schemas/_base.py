@@ -33,7 +33,7 @@ from sqlalchemy.ext.asyncio.session import AsyncSession as SA_AsyncSession
 from sqlalchemy.orm.session import Session as SA_Session
 from typing_extensions import TypeAliasType, TypeVar
 
-from .._mapping import is_mapped_instance
+from .._mapping import is_mapped_instance, is_to_many_relationship
 from .._pagination import (
     _DEFAULT_PAGINATION,
     Envelope,
@@ -962,23 +962,51 @@ async def _async_check_body_references(
 
 
 def _id_schema_fields(
-    schema_obj: pydantic.BaseModel,
+    schema_obj: pydantic.BaseModel, model_cls: type[Any] | None
 ) -> Iterator[tuple[str, type[Any], list[Any], bool]]:
     """``(field, model, ids, is_list)`` for each ``IDRef`` or ``IDSchema``
     field that the client sent. ``ids`` keeps the client's order, without
-    repeats, so a repeated id cannot give a false 404."""
+    repeats, so a repeated id cannot give a false 404.
+
+    A tuple counts only when :func:`_is_reference_tuple` accepts it."""
     for field in schema_obj.model_fields_set:
         value = getattr(schema_obj, field, None)
         model = _reference_model(value)
         if model is not None:
             yield field, model, [value.id], False
-        elif isinstance(value, (list, tuple)) and any(
-            isinstance(i, IDSchema) for i in value
-        ):
+        elif (
+            isinstance(value, list) or _is_reference_tuple(schema_obj, field, model_cls)
+        ) and any(isinstance(i, IDSchema) for i in value):
             # Assume all IdSchemas are for the same model
             model = value[0].get_sql_model_annotation()
             if model is not None:
                 yield field, model, list(dict.fromkeys(i.id for i in value)), True
+
+
+def _is_reference_tuple(
+    schema_obj: pydantic.BaseModel, field: str, model_cls: type[Any] | None
+) -> bool:
+    """Whether ``field`` of ``schema_obj`` holds a tuple of references for a
+    to-many relationship of ``model_cls``.
+
+    The field's type decides, not its value: it must be a collection of
+    references, such as ``tuple[IDRef[Tag], ...]``. Another tuple, such as
+    ``tuple[IDRef[Author], int]`` or a tuple for a JSON column, is written as
+    it is.
+    """
+    field_info = type(schema_obj).model_fields.get(field)
+    if (
+        model_cls is None
+        or field_info is None
+        or not isinstance(getattr(schema_obj, field, None), tuple)
+    ):
+        return False
+    item = _collection_item_type(field_info.annotation)
+    return (
+        item is not None
+        and is_reference_annotation(item)
+        and is_to_many_relationship(model_cls, field)
+    )
 
 
 def _client_name(field_name: str, field_info: FieldInfo) -> str:
@@ -1017,12 +1045,14 @@ def _id_schema_rows(
 
 
 async def _async_resolve_ids_to_sqlalchemy_objects(
-    session: SA_AsyncSession, schema_obj: pydantic.BaseModel
+    session: SA_AsyncSession,
+    schema_obj: pydantic.BaseModel,
+    model_cls: type[Any] | None = None,
 ) -> dict[str, Any]:
     """Async twin of :func:`_resolve_ids_to_sqlalchemy_objects`."""
     checked = _checked_references(session)
     resolved: dict[str, Any] = {}
-    for field, model, ids, is_list in _id_schema_fields(schema_obj):
+    for field, model, ids, is_list in _id_schema_fields(schema_obj, model_cls):
         rows = _recorded_rows(checked, model, ids)
         if rows is not None:
             resolved[field] = rows if is_list else rows[0]
@@ -1044,13 +1074,18 @@ async def _async_resolve_ids_to_sqlalchemy_objects(
 
 
 def _resolve_ids_to_sqlalchemy_objects(
-    session: SA_Session, schema_obj: pydantic.BaseModel
+    session: SA_Session,
+    schema_obj: pydantic.BaseModel,
+    model_cls: type[Any] | None = None,
 ) -> dict[str, Any]:
     """Resolve the ``IDRef`` and ``IDSchema`` fields of ``schema_obj`` to rows.
 
     Returns ``{field_name: row_or_rows}`` for the fields that refer to a
     model. ``schema_obj`` itself is left unchanged, so it keeps the validated
-    request values (``IDRef[T]``, not ORM rows).
+    request values (``IDRef[T]``, not ORM rows). ``model_cls`` is the model
+    that ``schema_obj`` is written to. A tuple of references resolves only
+    for a to-many relationship of it, so without ``model_cls`` no tuple
+    resolves.
 
     The lookup applies the referenced model's ``default_scope``, so a
     reference to a row that the scope hides is ``NotFound``, as a missing row
@@ -1060,7 +1095,7 @@ def _resolve_ids_to_sqlalchemy_objects(
     """
     checked = _checked_references(session)
     resolved: dict[str, Any] = {}
-    for field, model, ids, is_list in _id_schema_fields(schema_obj):
+    for field, model, ids, is_list in _id_schema_fields(schema_obj, model_cls):
         rows = _recorded_rows(checked, model, ids)
         if rows is not None:
             resolved[field] = rows if is_list else rows[0]

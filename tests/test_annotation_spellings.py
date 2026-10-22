@@ -340,6 +340,63 @@ def test_a_tuple_of_references_is_written_sync(sync_db):
     _assert_a_tuple_of_references_is_written(RestlyTestClient(app))
 
 
+def _register_json_notes(app, view_base):
+    """Tuples with references, for JSON columns: no relationship to resolve
+    them for."""
+
+    class JsonNoteAuthor(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    class JsonNote(fr.IDMixin, SharedBase):
+        pair: Mapped[Any] = mapped_column(JSON)
+        flipped: Mapped[Any] = mapped_column(JSON)
+        many: Mapped[Any] = mapped_column(JSON)
+
+    class JsonNoteAuthorSchema(fr.IDSchema):
+        name: str
+
+    class JsonNoteSchema(fr.IDSchema):
+        pair: tuple[fr.IDRef[JsonNoteAuthor], int]
+        flipped: tuple[int, fr.IDRef[JsonNoteAuthor]]
+        many: tuple[fr.IDRef[JsonNoteAuthor], ...]
+
+    for prefix, model, schema in (
+        ("/authors", JsonNoteAuthor, JsonNoteAuthorSchema),
+        ("/notes", JsonNote, JsonNoteSchema),
+    ):
+        view = type(
+            f"{model.__name__}View",
+            (view_base,),
+            {"prefix": prefix, "model": model, "schema": schema},
+        )
+        fr.include_view(app, view)
+
+
+def _assert_a_tuple_for_a_json_column_is_stored_as_sent(client):
+    author_id = client.post("/authors", json={"name": "ann"}).json()["id"]
+    body = {"pair": [author_id, 5], "flipped": [5, author_id], "many": [author_id]}
+
+    created = client.post("/notes", json=body).json()
+    note = client.get(f"/notes/{created['id']}").json()
+
+    for sent in (created, note):
+        assert {key: sent[key] for key in body} == body
+
+
+def test_a_tuple_for_a_json_column_is_stored_as_sent_async(client):
+    _register_json_notes(client.app, fr.AsyncRestView)
+    create_tables()
+    _assert_a_tuple_for_a_json_column_is_stored_as_sent(client)
+
+
+def test_a_tuple_for_a_json_column_is_stored_as_sent_sync(sync_db):
+    engine, _ = sync_db
+    app = FastAPI()
+    _register_json_notes(app, fr.RestView)
+    SharedBase.metadata.create_all(engine)
+    _assert_a_tuple_for_a_json_column_is_stored_as_sent(RestlyTestClient(app))
+
+
 @pytest.mark.skipif(
     sys.version_info < (3, 12), reason="the type statement needs Python 3.12"
 )

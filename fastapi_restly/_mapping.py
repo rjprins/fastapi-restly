@@ -25,3 +25,15 @@ def is_mapped_class(cls: Any) -> TypeGuard[type[Any]]:
 def is_mapped_instance(obj: Any) -> bool:
     """Whether ``obj`` is an instance of a mapped class."""
     return isinstance(sa_inspect(obj, raiseerr=False), InstanceState)
+
+
+def is_to_many_relationship(cls: type[Any], name: str) -> bool:
+    """Whether ``name`` is a relationship of ``cls`` that holds a collection."""
+    try:
+        mapper = sa_inspect(cls, raiseerr=False)
+    except UnmappedClassError:
+        return False
+    if not isinstance(mapper, Mapper):
+        return False
+    relationship = mapper.relationships.get(name)
+    return relationship is not None and relationship.uselist
