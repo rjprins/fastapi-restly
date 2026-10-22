@@ -125,6 +125,7 @@ from ..schemas import (
 )
 from ..schemas._base import (
     _as_response,
+    _client_name,
     _collection_item_type,
     _is_readonly,
     _model_id_type,
@@ -597,12 +598,15 @@ def validate_resolved_reference_consistency(
         if fk_identity == relation_identity:
             continue
 
+        fields = schema_cls.model_fields
         raise fastapi.HTTPException(
             status_code=422,
             detail=(
-                f"Conflicting references for {fk_field} and {relation_field}: "
-                f"{_reference_identity_detail(fk_identity)!r} != "
-                f"{_reference_identity_detail(relation_identity)!r}"
+                f"Conflicting references for "
+                f"{_client_name(fk_field, fields[fk_field])} and "
+                f"{_client_name(relation_field, fields[relation_field])}: "
+                f"{_reference_identity_detail(fk_identity)} != "
+                f"{_reference_identity_detail(relation_identity)}"
             ),
         )
 

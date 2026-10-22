@@ -339,10 +339,11 @@ replacement, unless it says otherwise.
   `list[X]`. Before, an async view answered 500 when such a field held a
   nested schema with relationships of its own, and a body with
   `tuple[fr.IDRef[Tag], ...]` answered 500 too.
-- Error texts name things as the client sees them. A `404` for a row shows
-  the id as it is in the URL, such as a UUID, and not its Python form
-  `UUID('...')`. A missing reference names the field by its alias, such as
-  `Id not found for authorId: 99`, as the list params do.
+- Error texts name things as the client sees them. A `404` for a row, and a
+  list of missing ids, show an id as it is in the URL, such as a UUID, and
+  not its Python form `UUID('...')`. A missing reference and the 422 for two
+  references that disagree name a field as the client sends it: its
+  validation alias, else its alias, such as `Id not found for authorId: 99`.
 - A subclass that sets its own `exclude_routes` serves the routes that only
   its base leaves out, also when the base view was registered first. Before,
   the list of the base applied to the subclass too in that case.

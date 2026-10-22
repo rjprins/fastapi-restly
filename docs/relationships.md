@@ -128,19 +128,20 @@ field and the id:
 {"detail": "Id not found for author_id: 99"}
 ```
 
-The message names a field by the name that the client sends: its alias, if
-the field has one, such as `authorId`.
-
 :::{admonition} Details
 :class: details
 
+- The message names a field by the name that the client sends in the body:
+  its validation alias when that is a string, else its alias, else its
+  name, such as `authorId`.
 - Restly checks the references after `authorize` and before your `create` or
   `update`. So the errors come in this order: the row in the URL (`404`),
   then the permission (`403`), then the references (`404`).
 - Restly checks the data of every write: the CRUD routes, and
   `write_action(data=...)`. It also checks the schemas inside the data, such
   as the lines of an order, and each item when the data is a list. The
-  message then names the place: `Id not found for lines[1].product_id: 7`.
+  message then names the place: `Id not found for lines[1].product_id: 7`,
+  or `lines.k.product_id` for the key `k` of a dict.
 - One query checks all the ids of one model. Restly checks only the fields
   that the client sent, and it skips a `null` value. In one write, Restly
   does not look up the same row twice.

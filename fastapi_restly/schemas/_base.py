@@ -779,7 +779,7 @@ def _body_references(data: Any) -> list[_BodyReference]:
             _collect_value_references(item, f"[{index}]", references, seen)
     elif isinstance(data, dict):
         for key, item in data.items():
-            _collect_value_references(item, f"[{key!r}]", references, seen)
+            _collect_value_references(item, f"{key}", references, seen)
     return references
 
 
@@ -806,7 +806,7 @@ def _collect_model_references(
         value = getattr(obj, name, None)
         if value is None:
             continue
-        public_name = field_info.alias or name
+        public_name = _client_name(name, field_info)
         here = f"{path}.{public_name}" if path else public_name
         marker = _ref_exists_marker(field_info)
         listed = _listed_ref_exists_marker(field_info) if marker is None else None
@@ -849,7 +849,7 @@ def _collect_value_references(
                 _collect_value_references(item, f"{path}[{index}]", references, seen)
     elif isinstance(value, dict):
         for key, item in value.items():
-            _collect_value_references(item, f"{path}[{key!r}]", references, seen)
+            _collect_value_references(item, f"{path}.{key}", references, seen)
 
 
 def _reference_lookups(
@@ -920,7 +920,7 @@ def _raise_for_missing_references(
         if reference.listed:
             listed.add(reference.path)
     for path, ids in missing.items():
-        shown = ids if path in listed else ids[0]
+        shown = _id_list(ids) if path in listed else ids[0]
         raise NotFound(f"Id not found for {path}: {shown}")
 
 
@@ -981,10 +981,22 @@ def _id_schema_fields(
                 yield field, model, list(dict.fromkeys(i.id for i in value)), True
 
 
+def _client_name(field_name: str, field_info: FieldInfo) -> str:
+    """The name of a field as the client sends it in a body: its validation
+    alias when that is a string, else its alias, else its name."""
+    if isinstance(field_info.validation_alias, str):
+        return field_info.validation_alias
+    return field_info.alias or field_name
+
+
 def _public_name(schema_obj: pydantic.BaseModel, field: str) -> str:
-    """The name of ``field`` as the client sends it: its alias, if it has
-    one. The list params use the same name."""
-    return type(schema_obj).model_fields[field].alias or field
+    """The name of ``field`` of ``schema_obj`` as the client sends it."""
+    return _client_name(field, type(schema_obj).model_fields[field])
+
+
+def _id_list(ids: list[Any]) -> str:
+    """Ids for an error text, as the client wrote them, such as ``[7, 9]``."""
+    return "[" + ", ".join(map(str, ids)) + "]"
 
 
 def _id_schema_rows(
@@ -1000,7 +1012,7 @@ def _id_schema_rows(
     by_id = {getattr(row, key): row for row in found}
     missing = [id_ for id_ in ids if id_ not in by_id]
     if missing:
-        raise NotFound(f"Id not found for {label}: {missing}")
+        raise NotFound(f"Id not found for {label}: {_id_list(missing)}")
     return [by_id[id_] for id_ in ids]
 
 
@@ -1138,8 +1150,8 @@ def _ref_exists_fields(
 ) -> dict[type[Any], list[tuple[str, Any, bool]]]:
     """``{model: [(label, id, listed), ...]}`` for the ``MustExist``
     fields that the client sent with a value other than ``None``. ``label`` is
-    the field's alias, or its name. A list of ids gives one entry for each id,
-    with ``listed`` set."""
+    the name that the client sends. A list of ids gives one entry for each
+    id, with ``listed`` set."""
     by_target: dict[type[Any], list[tuple[str, Any, bool]]] = {}
     model_fields = type(schema_obj).model_fields
     for field_name in schema_obj.model_fields_set:
@@ -1149,7 +1161,7 @@ def _ref_exists_fields(
         value = getattr(schema_obj, field_name, None)
         if value is None:
             continue
-        label = field_info.alias or field_name
+        label = _client_name(field_name, field_info)
         marker = _ref_exists_marker(field_info)
         if marker is not None:
             by_target.setdefault(marker.model, []).append((label, value, False))
@@ -1192,7 +1204,7 @@ def _raise_for_missing_refs(
         if is_listed:
             listed.add(field_name)
     for field_name, ids in missing.items():
-        shown = ids if field_name in listed else ids[0]
+        shown = _id_list(ids) if field_name in listed else ids[0]
         raise NotFound(f"Id not found for {field_name}: {shown}")
 
 
