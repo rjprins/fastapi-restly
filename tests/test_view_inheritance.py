@@ -230,6 +230,42 @@ def test_exclude_routes_accepts_view_route_enum(sync_db):
     assert client.delete("/events/1").status_code in (404, 405)
 
 
+def test_a_read_only_subclass_keeps_the_custom_routes_of_its_base():
+    """exclude_routes leaves out only the routes that it names. A read-only
+    subclass still serves a custom write route of its base, until it names
+    the method, as docs/crud_routes.md warns."""
+
+    class Badge(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    class BadgeView(fr.RestView):
+        prefix = "/badges"
+        model = Badge
+
+        @fr.post("/merge")
+        def merge(self) -> dict:
+            return {}
+
+    writes = (fr.ViewRoute.CREATE, fr.ViewRoute.UPDATE, fr.ViewRoute.DELETE)
+
+    class PublicBadgeView(BadgeView):
+        prefix = "/public"
+        exclude_routes = writes
+
+    class ClosedBadgeView(BadgeView):
+        prefix = "/closed"
+        exclude_routes = (*writes, "merge")
+
+    app = FastAPI()
+    fr.include_view(app, PublicBadgeView)
+    fr.include_view(app, ClosedBadgeView)
+
+    posts = {
+        route.path for route in app.routes if "POST" in getattr(route, "methods", ())
+    }
+    assert posts == {"/badges/public/merge"}
+
+
 # ---------------------------------------------------------------------------
 # 5. Inherited class-variable: paginated
 # ---------------------------------------------------------------------------

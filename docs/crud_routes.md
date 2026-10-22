@@ -208,6 +208,35 @@ does not add to it. So repeat the entries of the base, or the subclass serves
 the write routes again:
 `exclude_routes = (*ReadOnlyView.exclude_routes, fr.ViewRoute.GET_ONE)`.
 
+`exclude_routes` leaves out only the routes that it names. So a subclass also
+serves the custom routes of its base, such as `POST /tags/merge`. To leave one
+out, add the name of its method, such as `"merge"`. But the subclass also
+serves a write route that someone adds to the base later. So for a read-only
+copy of a view with custom routes, do not subclass that view. Put the shared
+settings in a base view, and subclass it twice:
+
+```python
+class TagBase(fr.AsyncRestView):
+    model = Tag
+
+
+@fr.include_view(app)
+class TagView(TagBase):
+    prefix = "/tags"
+
+    @fr.post("/merge")
+    async def merge(self, source_id: int, target_id: int) -> None: ...
+
+
+@fr.include_view(app)
+class PublicTagView(TagBase):
+    prefix = "/public/tags"
+    exclude_routes = (fr.ViewRoute.CREATE, fr.ViewRoute.UPDATE, fr.ViewRoute.DELETE)
+```
+
+`PublicTagView` serves only the two read routes, also when `TagView` gets more
+routes later.
+
 :::{admonition} Details
 :class: details
 
