@@ -395,6 +395,10 @@ replacement, unless it says otherwise.
 - A react-admin filter or sort on a field that the model has only in
   Python, such as a `@property`, gets `400` with `Unknown filter key`.
   Before, it gave `500`. A hybrid property still works.
+- With `fr.configure(warn_on_misuse=True)`, an endpoint method override that
+  calls its `handle_<verb>` handler, or the endpoint method of its base, no
+  longer warns. That is how the warning itself says to change the HTTP
+  contract.
 - On PostgreSQL with asyncpg, the detail of a `409` names the constraint or
   the column, as with psycopg. An example is
   `Unique constraint violated: uq_user_email`. Before, it named only the kind

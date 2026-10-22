@@ -21,6 +21,7 @@ from sqlalchemy import ForeignKey, orm
 import fastapi_restly as fr
 from fastapi_restly.db._globals import RestlyContext
 from fastapi_restly.exc import RestlyMisuseWarning
+from fastapi_restly.views import ViewCreate
 
 from ._models import SharedBase
 
@@ -72,6 +73,30 @@ def test_shell_override_warns():
     assert "'authorize'" in messages[0]
     # the handler stays in the message as the thing a replacement calls
     assert "Call 'handle_get_many' from the replacement" in messages[0]
+
+
+def test_an_override_that_keeps_the_steps_does_not_warn():
+    """An endpoint method override that calls its handler, or the endpoint
+    method of its base, changes only the HTTP contract. That is what the
+    warning tells you to do, so it does not warn."""
+
+    class KeptArticle(fr.IDMixin, SharedBase):
+        title: orm.Mapped[str]
+
+    class KeptArticleView(fr.AsyncRestView):
+        prefix = "/kept-articles"
+        model = KeptArticle
+
+        @fr.get("/")
+        async def get_many_endpoint(self, list_params: Any, archived: bool = False):
+            result = await self.handle_get_many(list_params)
+            return self.to_response(result, fr.ResponseShape.LIST)
+
+        @fr.post("/", status_code=201)
+        async def create_endpoint(self, data: ViewCreate) -> Any:
+            return await super().create_endpoint(data)
+
+    assert _register(KeptArticleView) == []
 
 
 def test_manual_commit_warns():

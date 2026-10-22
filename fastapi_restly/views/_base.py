@@ -3611,6 +3611,18 @@ _ENDPOINT_METHOD_NAMES = frozenset(
 )
 
 
+def _source_of(value: Any) -> str:
+    """The source code of a function on a view class, or ``""`` when Python
+    has none, such as for a function that was built at run time."""
+    func = getattr(value, "__func__", value)
+    if not isinstance(func, types.FunctionType):
+        return ""
+    try:
+        return inspect.getsource(func)
+    except (OSError, TypeError):
+        return ""
+
+
 def _warn_on_misuse(view_cls: type[View]) -> None:
     """Opt-in registration-time lint (``fr.configure(warn_on_misuse=True)``).
 
@@ -3625,10 +3637,15 @@ def _warn_on_misuse(view_cls: type[View]) -> None:
     name = view_cls.__name__
     is_crud_view = issubclass(view_cls, BaseRestView)
 
-    # 1. Endpoint-method override where a business-method override was likely meant.
+    # 1. Endpoint-method override where a business-method override was likely
+    # meant. A replacement that calls the handler, or the endpoint method of
+    # its base, keeps the steps: that is how a view changes the HTTP contract.
     if is_crud_view:
         for endpoint in sorted(_ENDPOINT_METHOD_NAMES & own.keys()):
             verb = endpoint.removesuffix("_endpoint")
+            source = _source_of(own[endpoint])
+            if f"handle_{verb}(" in source or f"super().{endpoint}(" in source:
+                continue
             if verb in _WRITE_VERBS:
                 seams = f"For domain logic override the business method '{verb}'"
                 keep = "the bracket"
@@ -3648,13 +3665,7 @@ def _warn_on_misuse(view_cls: type[View]) -> None:
     # 2. Manual session.commit() in a view method. The framework owns the
     # commit; methods that go through write_action / handle_<verb> are exempt.
     for attr, value in own.items():
-        func = getattr(value, "__func__", value)
-        if not isinstance(func, types.FunctionType):
-            continue
-        try:
-            source = inspect.getsource(func)
-        except (OSError, TypeError):
-            continue
+        source = _source_of(value)
         if (
             ".commit(" in source
             and "write_action" not in source

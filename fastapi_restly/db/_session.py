@@ -170,8 +170,10 @@ def configure(
         :class:`~sqlalchemy.orm.Session` for each request.
     :param warn_on_misuse: Emit
         :class:`~fastapi_restly.exc.RestlyMisuseWarning` when ``include_view``
-        registers a view with an endpoint method override, a direct
-        ``session.commit()``, a hand-rolled CRUD route set on a bare ``View``,
+        registers a view with an endpoint method override that calls neither
+        its ``handle_<verb>`` handler nor the endpoint method of its base, a
+        direct ``session.commit()``, a hand-rolled CRUD route set on a bare
+        ``View``,
         a scalar foreign key typed as an ``IDRef`` / ``IDSchema`` reference
         instead of ``fr.MustExist``, or a writable field on a column that the
         model sets (``init=False`` with a default). It also warns when a view
