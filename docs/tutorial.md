@@ -26,6 +26,8 @@ the app starts. You do not change this block again in this tutorial.
 :end-at: app = FastAPI(lifespan=lifespan)
 ```
 
+[Models](models.md) explains the base class.
+
 Below it, add a model and a view:
 
 ```{literalinclude} ../example-projects/blog/blog/part1.py
@@ -214,6 +216,8 @@ action, and rules for who may change a post.
 
 These pages go deeper into what this tutorial used:
 
+- [Models](models.md): the base class, and the defaults that
+  `fr.ModelDefaults` adds to it, such as datetimes with a time zone
 - [CRUD Routes](crud_routes.md): the default CRUD contract and the view
   settings
 - [How Restly generates a schema](#auto-generated-schemas): what
