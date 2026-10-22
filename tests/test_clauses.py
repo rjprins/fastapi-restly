@@ -6,6 +6,7 @@ from sqlalchemy import (
     ForeignKey,
     and_,
     bindparam,
+    create_engine,
     delete,
     exists,
     select,
@@ -13,7 +14,8 @@ from sqlalchemy import (
     update,
 )
 from sqlalchemy import false as sql_false
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.exc import StatementError
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship
 
 from fastapi_restly.clauses import (
     UNSCOPED,
@@ -174,6 +176,38 @@ def test_call_composite():
 def test_call_raises_when_the_member_is_unbound():
     with pytest.raises(LookupError, match="tenant_id"):
         owned_by_tenant()
+
+
+@pytest.mark.parametrize("called_first", [True, False], ids=["called", "uncalled"])
+def test_the_uncalled_form_fails_in_either_order(called_first):
+    """SQLAlchemy compiles each statement shape once. The called and the
+    uncalled form of a clause must not share that compiled form, or the form
+    that runs first decides whether the other one raises."""
+    engine = create_engine("sqlite://")
+    Base.metadata.create_all(engine, tables=[Collection.__table__, Item.__table__])
+    with Session(engine) as session:
+        session.add_all([Collection(id=1), Item(id=1, tenant_id=1, collection_id=1)])
+        session.commit()
+
+    def run_called():
+        with Ctx.bind(tenant_id=1), Session(engine) as session:
+            stmt = select(Item.id).where(owned_by_tenant())
+            assert session.scalars(stmt).all() == [1]
+
+    def run_uncalled():
+        with Session(engine) as session:
+            with pytest.raises(StatementError, match="A value is required"):
+                session.scalars(select(Item.id).where(owned_by_tenant))
+
+    try:
+        if called_first:
+            run_called()
+            run_uncalled()
+        else:
+            run_uncalled()
+            run_called()
+    finally:
+        engine.dispose()
 
 
 # --- clause functions -------------------------------------------------------
