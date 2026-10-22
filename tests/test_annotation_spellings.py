@@ -11,7 +11,7 @@ or the guard for a marker that has no effect.
 
 import sys
 import typing
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Sequence
 from typing import Any
 
 import pytest
@@ -22,6 +22,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
 from fastapi_restly.exc import RestlyConfigurationError
+from fastapi_restly.schemas._base import reference_origin_and_target
 from fastapi_restly.testing import RestlyTestClient
 from fastapi_restly.views._openapi import _is_id_ref_annotation
 
@@ -40,12 +41,16 @@ _T = typing.TypeVar("_T")
 
 TO_MANY_SPELLINGS = {
     "Sequence": lambda item: Sequence[item],
-    "MutableSequence": lambda item: MutableSequence[item],
     "tuple": lambda item: tuple[item, ...],
 }
 for _name, _alias_class in ALIAS_CLASSES.items():
     _many = _alias_class("Many", list[_T], type_params=(_T,))
     TO_MANY_SPELLINGS[f"generic-alias-{_name}"] = lambda item, many=_many: many[item]
+    # The same alias twice, with other arguments: Opt[list[Opt[X]]].
+    _opt = _alias_class("Opt", typing.Optional[_T], type_params=(_T,))
+    TO_MANY_SPELLINGS[f"nested-alias-{_name}"] = lambda item, opt=_opt: opt[
+        list[opt[item]]
+    ]
 
 
 def _register_posts(app, view_base, alias_class):
@@ -184,7 +189,22 @@ def test_a_marker_inside_a_type_alias_is_rejected(alias_class, marker, generic):
     with pytest.raises(RestlyConfigurationError, match="Leaky.secret") as excinfo:
         type("Leaky", (fr.BaseSchema,), {"__annotations__": {"secret": annotation}})
 
-    assert "move the marker out of the alias" in str(excinfo.value)
+    assert (
+        f"Move the marker out of the type alias, such as secret: {marker}[str]."
+        in str(excinfo.value)
+    )
+
+
+def test_a_marker_in_optional_names_no_alias():
+    with pytest.raises(RestlyConfigurationError) as excinfo:
+        type(
+            "Leaky",
+            (fr.BaseSchema,),
+            {"__annotations__": {"count": typing.Optional[fr.WriteOnly[int]]}},
+        )
+
+    assert "Wrap the whole field type instead" in str(excinfo.value)
+    assert "Move the marker" not in str(excinfo.value)
 
 
 def test_a_reference_in_a_to_many_spelling_is_a_reference():
@@ -193,6 +213,26 @@ def test_a_reference_in_a_to_many_spelling_is_a_reference():
 
     for spelling in TO_MANY_SPELLINGS.values():
         assert _is_id_ref_annotation(spelling(fr.IDRef[RefTag]))
+
+
+def test_a_generic_alias_takes_the_default_of_a_missing_argument():
+    class DefaultTag(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    T = typing_extensions.TypeVar("T", default=fr.IDRef[DefaultTag])
+    Refs = typing_extensions.TypeAliasType("Refs", list[T], type_params=(T,))
+
+    assert _is_id_ref_annotation(Refs)
+
+
+def test_a_generic_alias_of_a_pydantic_generic_names_its_model():
+    class GenericTag(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    M = typing.TypeVar("M")
+    Ref = typing_extensions.TypeAliasType("Ref", fr.IDRef[M], type_params=(M,))
+
+    assert reference_origin_and_target(Ref[GenericTag]) == (fr.IDRef, GenericTag)
 
 
 @pytest.mark.skipif(
@@ -271,6 +311,14 @@ def _assert_a_tuple_of_references_is_written(client):
         "/articles", json={"title": "two", "tags": [999]}, assert_status_code=404
     )
     assert missing.json()["detail"] == "Id not found for tags: [999]"
+
+    # An empty tuple, also the default, lands as an empty list.
+    assert client.post("/articles", json={"title": "three"}).json()["tags"] == []
+    empty = client.post("/articles", json={"title": "four", "tags": []}).json()
+    assert empty["tags"] == []
+    article_id = created.json()["id"]
+    cleared = client.patch(f"/articles/{article_id}", json={"tags": []}).json()
+    assert cleared["tags"] == []
 
 
 def test_a_tuple_of_references_is_written_async(client):

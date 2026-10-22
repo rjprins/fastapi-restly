@@ -112,35 +112,58 @@ def _alias_value(annotation: Any, seen: set[Any] | None = None) -> Any:
     ``type UserId = int``, and ``list[int]`` for ``Many[int]`` with
     ``type Many[T] = list[T]``. Any other annotation comes back unchanged.
 
-    ``seen`` collects the aliases that a check has expanded. An alias that
-    comes back inside its own value, as in ``type Json = list[Json] | str``,
-    is not expanded again, so the check ends. A check that follows a type into
-    its arguments passes its ``seen`` on.
+    ``seen`` collects the aliases that a check has expanded, each with its
+    arguments. An alias that comes back inside its own value, as in
+    ``type Json = list[Json] | str``, is not expanded again, so the check
+    ends. A check that follows a type into its arguments passes its ``seen``
+    on.
     """
     if seen is None:
         seen = set()
     while True:
-        if isinstance(annotation, _TYPE_ALIAS_TYPES):
+        # The origin first: on Python 3.10, Many[int] also passes as an
+        # instance of the alias's own class.
+        origin = get_origin(annotation)
+        if type(origin) in _TYPE_ALIAS_TYPES:
+            alias, args = origin, get_args(annotation)
+        elif type(annotation) in _TYPE_ALIAS_TYPES:
             alias, args = annotation, ()
-        elif isinstance(get_origin(annotation), _TYPE_ALIAS_TYPES):
-            alias, args = get_origin(annotation), get_args(annotation)
         else:
             return annotation
-        if alias in seen:
+        key = _seen_key(alias, args)
+        if key in seen:
             return annotation
-        seen.add(alias)
+        seen.add(key)
         annotation = _alias_body(alias, args)
 
 
+def _seen_key(alias: Any, args: tuple[Any, ...]) -> Any:
+    """``alias`` with its ``args``, as a key for the ``seen`` of
+    :func:`_alias_value`. An argument that cannot be hashed counts by its
+    identity."""
+    try:
+        hash(args)
+    except TypeError:
+        return (alias, tuple(id(arg) for arg in args))
+    return (alias, args)
+
+
 def _alias_body(alias: Any, args: tuple[Any, ...]) -> Any:
-    """The value of ``alias``, with ``args`` in place of its type parameters."""
+    """The value of ``alias``, with ``args`` in place of its type parameters.
+    A parameter without an argument takes its default, if it has one."""
     value = alias.__value__
     replacements = dict(zip(alias.__type_params__, args))
+    for param in alias.__type_params__[len(args) :]:
+        if getattr(param, "has_default", lambda: False)():
+            replacements[param] = param.__default__
     if not replacements:
         return value
     if isinstance(value, typing.TypeVar):
         return replacements.get(value, value)
-    params = getattr(value, "__parameters__", ())
+    # A generic Pydantic model keeps its parameters in its own metadata.
+    params = getattr(value, "__parameters__", ()) or getattr(
+        value, "__pydantic_generic_metadata__", {}
+    ).get("parameters", ())
     if not params:
         return value
     try:
@@ -201,19 +224,57 @@ def _find_buried_marker_fields(
     return buried
 
 
+_NOT_IN_ALIAS = object()
+
+
+def _marker_in_alias(
+    annotation: Any,
+    marker: _Marker,
+    seen: set[Any] | None = None,
+    in_alias: bool = False,
+) -> Any:
+    """The type that ``marker`` wraps, when a type alias in ``annotation``
+    holds the marker, else ``_NOT_IN_ALIAS``."""
+    seen = set() if seen is None else set(seen)
+    expanded = _alias_value(annotation, seen)
+    in_alias = in_alias or expanded is not annotation
+    if in_alias and marker in getattr(expanded, "__metadata__", ()):
+        return expanded.__origin__
+    for arg in get_args(expanded):
+        wrapped = _marker_in_alias(arg, marker, seen, in_alias)
+        if wrapped is not _NOT_IN_ALIAS:
+            return wrapped
+    return _NOT_IN_ALIAS
+
+
+def _type_name(annotation: Any) -> str:
+    if isinstance(annotation, type):
+        return annotation.__name__
+    return repr(annotation).replace("typing.", "")
+
+
 def _reject_buried_markers(model_cls: type[pydantic.BaseModel]) -> None:
     """Raise if any field nests a ReadOnly/WriteOnly/RefExists marker inside
     its type, where the marker machinery cannot see it."""
     for name, marker in _find_buried_marker_fields(model_cls):
+        annotation = model_cls.model_fields[name].annotation
+        wrapped = _marker_in_alias(annotation, marker)
+        if wrapped is _NOT_IN_ALIAS:
+            fix = (
+                f"Wrap the whole field type instead, such as "
+                f"{marker.name}[Optional[T]]."
+            )
+        else:
+            fix = (
+                f"Move the marker out of the type alias, such as "
+                f"{name}: {marker.name}[{_type_name(wrapped)}]."
+            )
         raise RestlyConfigurationError(
             f"{model_cls.__name__}.{name} nests the {marker.name} marker inside "
             f"its type, such as Optional[{marker.name}[T]], "
             f"{marker.name}[T] | None, list[{marker.name}[T]] or a type alias. "
             f"The marker only takes effect as the outer annotation, so it is "
-            f"silently ignored here and {marker.name} is not applied. Wrap the "
-            f"whole field type instead, such as {marker.name}[Optional[T]], or "
-            f"move the marker out of the alias, such as "
-            f"{name}: {marker.name}[str]."
+            f"silently ignored here and {marker.name} is not applied. {fix}"
         )
     _reject_buried_ref_exists(model_cls)
 
@@ -1042,19 +1103,22 @@ def _ref_exists_marker(field_info: FieldInfo) -> RefExists | None:
     return None
 
 
-def _collection_item_type(annotation: Any, seen: set[Any] | None = None) -> Any:
-    """The item type of a list-like ``annotation``, such as
-    ``list[MustExist[int, Tag]]`` or ``Sequence[PostSchema]``, or ``None``.
+#: The collections whose items a field's type may name, as in
+#: ``list[MustExist[int, Tag]]`` or ``Sequence[PostSchema]``.
+_ITEM_COLLECTIONS = (list, tuple, set, frozenset, _AbcSequence, _AbcSet)
 
-    Any ``Sequence`` or ``Set`` counts, such as a list, a set or a
-    ``MutableSequence``, and a tuple only in its form with one item type,
-    ``tuple[X, ...]``. ``str`` does not count. The ``Optional``,
-    ``Annotated`` and type alias layers around the collection are removed
-    first. ``seen`` is as in :func:`_alias_value`.
+
+def _collection_item_type(annotation: Any, seen: set[Any] | None = None) -> Any:
+    """The item type of a list-like ``annotation``, or ``None``.
+
+    A list, a set, a ``Sequence`` and a ``Set`` count, and a tuple only in
+    its form with one item type, ``tuple[X, ...]``. ``str`` does not count.
+    The ``Optional``, ``Annotated`` and type alias layers around the
+    collection are removed first. ``seen`` is as in :func:`_alias_value`.
     """
     annotation, _ = _unwrap_type(annotation, seen)
     origin = get_origin(annotation)
-    if not (isinstance(origin, type) and issubclass(origin, (_AbcSequence, _AbcSet))):
+    if origin not in _ITEM_COLLECTIONS:
         return None
     args = get_args(annotation)
     if origin is tuple and not (len(args) == 2 and args[1] is Ellipsis):

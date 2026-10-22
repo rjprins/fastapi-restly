@@ -442,6 +442,20 @@ def _is_json_column(model_cls: type[Any], field_name: str) -> bool:
     return column is not None and isinstance(column.type, _JSONType)
 
 
+def _collection_ready(model_cls: type[Any], field_name: str, value: Any) -> Any:
+    """A tuple for a to-many relationship, as a list.
+
+    A field such as ``tuple[fr.IDRef[Tag], ...]`` validates to a tuple, also
+    an empty one, and SQLAlchemy takes a list for a list collection, not a
+    tuple.
+    """
+    if isinstance(value, tuple):
+        relationship = _get_relationship_property(model_cls, field_name)
+        if relationship is not None and relationship.uselist:
+            return list(value)
+    return value
+
+
 def _json_ready(model_cls: type[Any], field_name: str, value: Any) -> Any:
     """Dump pydantic models on their way into a JSON column.
 
@@ -783,7 +797,9 @@ def build_create_plan(
             # default applies. A JSON column would store a None as JSON null.
             continue
 
-        value = _json_ready(model_cls, field_name, value)
+        value = _collection_ready(
+            model_cls, field_name, _json_ready(model_cls, field_name, value)
+        )
         if _accepts_init_kwarg(model_cls, field_name):
             plan.kwargs[field_name] = value
         elif _has_model_attr(model_cls, field_name):
@@ -865,7 +881,8 @@ def apply_update_to_object(
         if is_mapped_instance(value) and is_reference_field(schema_cls, field_name):
             _apply_resolved_reference_update(obj, field_name, value)
             continue
-        setattr(obj, field_name, _json_ready(type(obj), field_name, value))
+        value = _json_ready(type(obj), field_name, value)
+        setattr(obj, field_name, _collection_ready(type(obj), field_name, value))
 
 
 def _get_nested_schema_annotation(
