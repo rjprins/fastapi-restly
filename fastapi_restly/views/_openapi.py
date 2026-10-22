@@ -139,29 +139,31 @@ def _ensure_patched(app: fastapi.FastAPI) -> None:
     setattr(app, _PATCHED_ATTR, True)
 
 
-def _is_id_ref_annotation(annotation: Any) -> bool:
+def _is_id_ref_annotation(annotation: Any, seen: set[Any] | None = None) -> bool:
     """Return True if annotation is IDSchema[X], IDRef[X], or list/Optional thereof.
 
     Returns False for full nested Pydantic model objects — those are not ID references.
     Concrete user-defined subclasses like ``AuthorSchema(IDSchema)`` return False;
     only parametrized generics like ``IDSchema[Author]`` or ``IDRef[Author]``
-    return True, since those represent model ID references.
+    return True, since those represent model ID references. ``seen`` holds the
+    type aliases already expanded, so a recursive alias ends the check.
     """
-    annotation, _ = _unwrap_type(annotation)
+    seen = set() if seen is None else set(seen)
+    annotation, _ = _unwrap_type(annotation, seen)
     origin = get_origin(annotation)
 
     # Unwrap Optional / Union  (X | None, Optional[X], Union[X, Y])
     if origin in (Union, types.UnionType):
         return any(
-            _is_id_ref_annotation(a)
+            _is_id_ref_annotation(a, seen)
             for a in get_args(annotation)
             if a is not type(None)
         )
 
     # list[X], Sequence[X], tuple[X, ...] — check the element type
-    item = _collection_item_type(annotation)
+    item = _collection_item_type(annotation, seen)
     if item is not None:
-        return _is_id_ref_annotation(item)
+        return _is_id_ref_annotation(item, seen)
 
     # Check for parametrized IDSchema/IDRef generics.
     # In Pydantic v2, IDSchema[Author] and IDRef[Author] are concrete classes,

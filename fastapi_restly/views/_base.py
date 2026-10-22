@@ -844,8 +844,11 @@ def apply_update_to_object(
         setattr(obj, field_name, _json_ready(type(obj), field_name, value))
 
 
-def _get_nested_schema_annotation(annotation: Any) -> type[pydantic.BaseModel] | None:
-    annotation, _ = _unwrap_type(annotation)
+def _get_nested_schema_annotation(
+    annotation: Any, seen: set[Any] | None = None
+) -> type[pydantic.BaseModel] | None:
+    seen = set() if seen is None else set(seen)
+    annotation, _ = _unwrap_type(annotation, seen)
 
     try:
         if inspect.isclass(annotation) and issubclass(annotation, pydantic.BaseModel):
@@ -853,9 +856,9 @@ def _get_nested_schema_annotation(annotation: Any) -> type[pydantic.BaseModel] |
     except TypeError:
         pass
 
-    item = _collection_item_type(annotation)
+    item = _collection_item_type(annotation, seen)
     if item is not None:
-        return _get_nested_schema_annotation(item)
+        return _get_nested_schema_annotation(item, seen)
 
     return None
 

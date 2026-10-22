@@ -328,13 +328,14 @@ replacement, unless it says otherwise.
 - A schema that names itself in a to-one field no longer fails with
   `RecursionError`.
 - A field typed with a type alias, such as
-  `type AuthorId = fr.MustExist[int, User]`, works like the plain type.
-  Before, Restly did not check the reference. A `ReadOnly` or `WriteOnly`
-  marker inside a type alias has no effect, so Restly now rejects it, as it
-  does a marker inside `Optional`.
-- A to-many nested schema typed `Sequence[...]` or `tuple[..., ...]` loads
-  its relationships, as `list[...]` does. Before, an async view answered 500
-  when the nested schema had relationships of its own.
+  `type AuthorId = fr.MustExist[int, User]` or `type Many[T] = list[T]`,
+  works like the plain type. Before, Restly did not check the reference. A
+  `ReadOnly` or `WriteOnly` marker inside a type alias has no effect, so
+  Restly now rejects it, as it does a marker inside `Optional`.
+- A to-many field typed `Sequence[X]` or `tuple[X, ...]` works like
+  `list[X]`. Before, an async view answered 500 when such a field held a
+  nested schema with relationships of its own, and a body with
+  `tuple[fr.IDRef[Tag], ...]` answered 500 too.
 - A clause with a context member that is used without the call in plain
   SQLAlchemy, as in `select(Post).where(mine)`, always fails when it runs, as
   the docs say. Before, it ran with `NULL` for the member once the called
