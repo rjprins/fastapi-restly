@@ -1113,22 +1113,52 @@ def _setting_names(view_cls: type) -> dict[str, type]:
         if not klass.__module__.startswith("fastapi_restly."):
             continue
         for name, annotation in _own_annotations(klass).items():
-            if get_origin(annotation) is ClassVar and not name.startswith("_"):
+            if get_origin(annotation) is not ClassVar or name.startswith("_"):
+                continue
+            # a private class that declares the setting again, such as a
+            # mixin, is no name for a message
+            if name not in settings or not klass.__name__.startswith("_"):
                 settings[name] = klass
     return settings
 
 
 def _reject_route_names_of_settings(view_cls: type) -> None:
-    """Refuse a route method with the name of a view setting. A method is a
-    class attribute too, so it would replace the setting."""
-    settings = _setting_names(view_cls)
-    for name, value in vars(view_cls).items():
-        if name in settings and hasattr(value, "_api_route_args"):
+    """Refuse a route method with the name of a view setting, also from a
+    mixin. A method is a class attribute too, so it would replace the
+    setting. A class may still set the setting over a route of a mixin."""
+    for name, declarer in _setting_names(view_cls).items():
+        if hasattr(inspect.getattr_static(view_cls, name, None), "_api_route_args"):
             raise RestlyConfigurationError(
-                f"{view_cls.__name__}.{name}() is a route method with the name "
-                f"of the view setting {settings[name].__name__}.{name}, so it "
-                f"replaces the setting. Give the method another name, such as "
-                f"list_{name}. The route keeps its path."
+                f"{view_cls.__name__}.{name}(){_set_by(view_cls, name)} is a "
+                f"route method with the name of the view setting "
+                f"{declarer.__name__}.{name}, so it replaces the setting. Give "
+                f"the method another name. The route keeps its path."
+            )
+
+
+#: Bare business-method names. A ``@route``-decorated method of a CRUD view
+#: must not be named like one of these: it would shadow the verb (which the
+#: ``handle_<verb>`` handlers call) and collide with ``<verb>_endpoint`` at the
+#: same path. Override the business method *without* a decorator for domain
+#: logic; use ``<verb>_endpoint`` or a distinct name for a custom route.
+#: ``get_one`` and ``get_many`` are final, so the class-definition guard
+#: refuses them first. A plain ``View`` has none of these methods, so the
+#: names are free there.
+_BARE_VERB_NAMES = ("create", "update", "delete")
+
+
+def _reject_bare_verb_route_names(view_cls: type) -> None:
+    """Refuse a route method of a CRUD view with the name of a business
+    method, also from a mixin."""
+    for name in _BARE_VERB_NAMES:
+        if hasattr(inspect.getattr_static(view_cls, name, None), "_api_route_args"):
+            raise RestlyConfigurationError(
+                f"{view_cls.__name__}.{name}(){_set_by(view_cls, name)} is a "
+                f"route method with the name of the business method {name}, so "
+                f"it replaces that method, and its route collides with "
+                f"{name}_endpoint. To replace the route, override "
+                f"{name}_endpoint instead. For a custom action, give the method "
+                f"another name."
             )
 
 
@@ -2158,6 +2188,7 @@ class BaseRestView(
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
+        _reject_bare_verb_route_names(cls)
         # validate at class definition, so a raw expression fails at
         # import instead of on the first read
         scope = cls.__dict__.get("scope")
@@ -3568,31 +3599,6 @@ def _init_view_cls_and_add_to_router(
     setattr(holder, "_fr_mounted_views", mounted)
 
 
-#: Bare business-method names. A ``@route``-decorated method of a CRUD view
-#: must not be named like one of these: it would shadow the verb (which the
-#: ``handle_<verb>`` handlers call) and collide with ``<verb>_endpoint`` at the
-#: same path. Override the business method *without* a decorator for domain
-#: logic; use ``<verb>_endpoint`` or a distinct name for a custom route.
-#: ``get_one`` and ``get_many`` are final, so the class-definition guard
-#: refuses them first. A plain ``View`` has none of these methods, so the
-#: names are free there.
-_BARE_VERB_NAMES = frozenset({"create", "update", "delete"})
-
-
-def _reject_bare_verb_route_names(view_cls: type[View]) -> None:
-    if not issubclass(view_cls, BaseRestView):
-        return
-    for name, value in view_cls.__dict__.items():
-        if name in _BARE_VERB_NAMES and hasattr(value, "_api_route_args"):
-            raise TypeError(
-                f"{view_cls.__name__}.{name}() is a route method named like the "
-                f"business method '{name}'. A route by that name shadows the "
-                f"method and collides with the '{name}_endpoint' endpoint "
-                f"method. Rename it to '{name}_endpoint' (to replace it) or "
-                f"give the custom action its own name."
-            )
-
-
 #: The five endpoint methods defined by RestView / AsyncRestView.
 _ENDPOINT_METHOD_NAMES = frozenset(
     {
@@ -3879,7 +3885,6 @@ def _prepare_view_class(view_cls: type[View]) -> None:
     if _fr_globals.warn_on_misuse:
         _warn_on_misuse(view_cls)
     _copy_all_parent_class_endpoints_into_this_subclass(view_cls)
-    _reject_bare_verb_route_names(view_cls)
     _init_all_endpoints(view_cls)
     view_cls.before_include_view()
     _reject_buried_markers_in_view_schemas(view_cls)

@@ -357,6 +357,10 @@ replacement, unless it says otherwise.
   and the setting. The method would replace the setting. Before, the view
   failed later with an unclear message, such as
   `TypeError: 'function' object is not iterable`.
+- A route method of a CRUD view with the name of a business method,
+  `create`, `update` or `delete`, also fails when Python defines the class,
+  with `RestlyConfigurationError`, also when the route comes from a mixin.
+  Before, registration raised `TypeError`.
 - Many writes in one `shared_write_action_commit()` no longer use memory that
   grows with the square of their number. This happened when every write
   reached the same loaded rows, such as the children of one parent through a

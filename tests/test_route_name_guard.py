@@ -4,10 +4,13 @@ on a CRUD view. A plain ``View`` has no such methods, so it may use them.
 A ``@route``-decorated method named like a bare write verb shadows the verb
 (which the ``handle_<verb>`` handlers call) and collides with the
 ``<verb>_endpoint`` route shell at the same path -- the duplicate-route +
-recursion footgun. Such a definition is rejected at registration. Overriding a
-write verb *without* a decorator (the intended domain-logic path) is
-unaffected. ``get_one`` and ``get_many`` are final, so a class that defines
-one fails at class definition.
+recursion footgun. Such a definition fails when Python creates the class,
+also when the route comes from a mixin. Overriding a write verb *without* a
+decorator (the intended domain-logic path) is unaffected. ``get_one`` and
+``get_many`` are final, so a class that defines one fails then too.
+
+A route method with the name of a view setting, such as ``tags``, would
+replace the setting, so it fails in the same way.
 """
 
 import pytest
@@ -27,18 +30,39 @@ def test_route_named_like_write_verb_is_rejected():
     class ItemSchema(fr.IDSchema):
         name: str
 
-    class ItemView(fr.AsyncRestView):
-        prefix = "/items"
-        model = Item
-        schema = ItemSchema
+    with pytest.raises(
+        fr.exc.RestlyConfigurationError,
+        match=r"ItemView\.create\(\) is a route method with the name of the "
+        r"business method create",
+    ):
 
+        class ItemView(fr.AsyncRestView):
+            prefix = "/items"
+            model = Item
+            schema = ItemSchema
+
+            @fr.post("/")
+            async def create(self, schema_obj):  # shadows the bare verb
+                return schema_obj
+
+
+def test_a_route_from_a_mixin_named_like_a_write_verb_is_rejected():
+    class Item(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    class CreateRoute:
         @fr.post("/")
-        async def create(self, schema_obj):  # shadows the bare verb
+        async def create(self, schema_obj):
             return schema_obj
 
-    app = FastAPI()
-    with pytest.raises(TypeError, match="business method 'create'"):
-        fr.include_view(app, ItemView)
+    with pytest.raises(
+        fr.exc.RestlyConfigurationError,
+        match=r"ItemView\.create\(\) \(from CreateRoute\) is a route method",
+    ):
+
+        class ItemView(CreateRoute, fr.AsyncRestView):
+            prefix = "/items"
+            model = Item
 
 
 def test_route_named_like_read_verb_is_rejected():
@@ -151,6 +175,57 @@ def test_a_route_named_like_a_crud_setting_is_refused_first():
     ):
 
         class ItemView(fr.AsyncRestView):
+            prefix = "/items"
+            model = Item
+
+            @fr.get("/pagination")
+            async def pagination(self) -> dict:
+                return {}
+
+
+def test_a_route_from_a_mixin_named_like_a_view_setting_is_refused():
+    class TagRoutes:
+        @fr.get("")
+        def tags(self) -> list[str]:
+            return []
+
+    with pytest.raises(
+        fr.exc.RestlyConfigurationError,
+        match=r"TagView\.tags\(\) \(from TagRoutes\) is a route method with "
+        r"the name of the view setting View\.tags",
+    ):
+
+        class TagView(TagRoutes, fr.View):
+            prefix = "/tags"
+
+
+def test_a_class_may_set_a_setting_over_a_route_of_a_mixin():
+    """The setting of the class wins, as an attribute of a class does."""
+
+    class TagRoutes:
+        @fr.get("")
+        def tags(self) -> list[str]:
+            return []
+
+    class TagView(TagRoutes, fr.View):
+        prefix = "/tags"
+        tags = ["tags"]
+
+    fr.include_view(FastAPI(), TagView)
+
+
+def test_the_message_names_the_public_class_of_a_setting():
+    """A react-admin view declares pagination again in a private mixin."""
+
+    class Item(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    with pytest.raises(
+        fr.exc.RestlyConfigurationError,
+        match=r"the view setting BaseRestView\.pagination,",
+    ):
+
+        class ItemView(fr.AsyncReactAdminView):
             prefix = "/items"
             model = Item
 
