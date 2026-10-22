@@ -316,6 +316,71 @@ A plain list of ids that sets no relationship, such as the projects that a
 route body names, is `list[fr.MustExist[int, Project]]`. Restly checks each
 id in one query, and the list stays a list of ints.
 
+(many-to-many)=
+## Many-to-many relationships
+
+A many-to-many relationship, such as the tags of a post, goes through an
+association table. Map it with SQLAlchemy's `secondary`, and send the ids as
+`list[fr.IDRef[Model]]`, as for any to-many relationship:
+
+```python
+from sqlalchemy import Column, ForeignKey, Table
+from sqlalchemy.orm import Mapped, relationship
+
+post_tag = Table(
+    "post_tag",
+    Base.metadata,
+    Column("post_id", ForeignKey("post.id"), primary_key=True),
+    Column("tag_id", ForeignKey("tag.id"), primary_key=True),
+)
+
+
+class Tag(fr.IDMixin, Base):
+    name: Mapped[str]
+    posts: Mapped[list["Post"]] = relationship(
+        secondary=post_tag, back_populates="tags", default_factory=list
+    )
+
+
+class Post(fr.IDMixin, Base):
+    title: Mapped[str]
+    tags: Mapped[list[Tag]] = relationship(
+        secondary=post_tag, back_populates="posts", default_factory=list
+    )
+
+
+class PostSchema(fr.IDSchema):
+    title: str
+    tags: list[fr.IDRef[Tag]] = []
+```
+
+`POST /posts` with `"tags": [1, 2]` links the post to those tags, and a
+`PATCH` with `"tags": [2]` replaces the whole list. Restly checks the ids as
+for [several rows](#reference-lists): in one query, with `404` for a missing
+id. Responses show the ids, also on an async view: Restly loads each
+relationship that the response class names, so the relationship needs no
+`lazy` option. The other side works the same way: on the schema of a tag,
+`posts: fr.ReadOnly[list[fr.IDRef[Post]]]` shows the ids of its posts.
+
+:::{admonition} Details
+:class: details
+
+To show the tags as objects, use a nested schema, such as
+`tags: fr.ReadOnly[list[TagSchema]]`. It is read-only, so a view with this
+schema cannot set the tags; see
+[Return related objects in a response](#relationship-loading).
+
+A link with columns of its own, such as the position of a tag on a post, is
+an association object: a model. Give it a view of its own, with a
+`fr.MustExist` for each end. A unique constraint on the two ends answers a
+second link with `409`. The post can show its links as a nested list, such
+as `links: fr.ReadOnly[list[PostTagSchema]]`, and Restly loads each level.
+
+A filter or a sort key cannot go through a list of related rows, so
+`?tags.name=news` is an unknown key; see
+[Filter on a related row](#relation-filtering).
+:::
+
 (model-relationship-setup)=
 ## Declare the foreign key and the relationship on the model
 
