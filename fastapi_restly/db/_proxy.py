@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession
 from sqlalchemy.orm import Session as SA_Session
 
 from ..exc import RestlyConfigurationError
-from ._globals import _fr_config
+from ._config import _fr_config
 
 
 @asynccontextmanager

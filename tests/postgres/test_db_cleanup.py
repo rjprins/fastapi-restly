@@ -26,7 +26,7 @@ from fastapi_restly._test_setup import (
     _reset_setup,
     configure_tests,
 )
-from fastapi_restly.db._globals import RestlyContext
+from fastapi_restly.db._config import RestlyContext
 from fastapi_restly.exc import RestlyConfigurationError
 
 from .conftest import PG_URL

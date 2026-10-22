@@ -34,7 +34,7 @@ from ._test_setup import (
     _sync_source_factory,
     _validate_database_sources,
 )
-from .db._globals import RestlyContext, _fr_config, _get_restly_context
+from .db._config import RestlyContext, _fr_config, _get_restly_context
 from .db._session import _async_generate_session, _generate_session
 from .exc import RestlyConfigurationError
 

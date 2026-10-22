@@ -14,7 +14,7 @@ from sqlalchemy.pool import StaticPool
 import fastapi_restly as fr
 import fastapi_restly.db as fr_db
 import fastapi_restly.testing as fr_testing
-from fastapi_restly.db._globals import RestlyContext, _get_restly_context
+from fastapi_restly.db._config import RestlyContext, _get_restly_context
 from fastapi_restly.db._proxy import open_async_session as proxy_open_async_session
 from fastapi_restly.db._proxy import open_session as proxy_open_session
 from fastapi_restly.db._session import (

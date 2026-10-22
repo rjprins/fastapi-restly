@@ -16,8 +16,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool, StaticPool
 
 import fastapi_restly as fr
+from fastapi_restly.db._config import RestlyContext
 from fastapi_restly.db._engine_defaults import engine_options, is_memory_sqlite
-from fastapi_restly.db._globals import RestlyContext
 from fastapi_restly.db._session import get_async_engine, get_engine
 
 

@@ -24,7 +24,7 @@ from sqlalchemy import JSON, Engine, ForeignKey, String, event, select
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
-from fastapi_restly.db._globals import _fr_config
+from fastapi_restly.db._config import _fr_config
 from fastapi_restly.exc import NotFound, RestlyConfigurationError
 from fastapi_restly.schemas._base import _CHECKED_REFERENCES_KEY, _check_body_references
 from fastapi_restly.testing import RestlyTestClient

@@ -21,8 +21,8 @@ from ..exc import (
     RestlyExpireOnCommitWarning,
     RestlyUncommittedChangesWarning,
 )
+from ._config import _fr_config
 from ._engine_defaults import apply_connect_hooks, engine_options
-from ._globals import _fr_config
 
 
 def _setup_async_database_connection(

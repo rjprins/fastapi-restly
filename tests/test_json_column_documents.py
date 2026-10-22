@@ -25,7 +25,7 @@ from fastapi import FastAPI
 from sqlalchemy.orm import Mapped, mapped_column
 
 import fastapi_restly as fr
-from fastapi_restly.db._globals import _fr_config
+from fastapi_restly.db._config import _fr_config
 from fastapi_restly.testing._client import RestlyTestClient
 
 from ._models import SharedBase

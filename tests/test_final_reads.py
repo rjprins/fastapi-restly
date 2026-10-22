@@ -23,7 +23,7 @@ from sqlalchemy import ForeignKey, event, func
 from sqlalchemy.orm import Mapped, column_property, mapped_column, relationship
 
 import fastapi_restly as fr
-from fastapi_restly.db._globals import _fr_config
+from fastapi_restly.db._config import _fr_config
 from fastapi_restly.testing import RestlyTestClient
 from fastapi_restly.views import ViewListResponse, ViewResponse
 

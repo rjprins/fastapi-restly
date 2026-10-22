@@ -21,7 +21,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import fastapi_restly._pytest_fixtures as _fixtures
-from fastapi_restly.db._globals import RestlyContext, _fr_config
+from fastapi_restly.db._config import RestlyContext, _fr_config
 from fastapi_restly.db._session import _arm_uncommitted_warning, _warn_if_uncommitted
 from fastapi_restly.exc import RestlyUncommittedChangesWarning
 

@@ -97,7 +97,7 @@ from .._pagination import (
     _unpaginated_page_info,
 )
 from .._routes import matched_route
-from ..db._globals import _fr_config
+from ..db._config import _fr_config
 from ..exc import (
     NotFound,
     RestlyConfigurationError,

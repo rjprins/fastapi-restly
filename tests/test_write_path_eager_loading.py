@@ -33,7 +33,7 @@ from sqlalchemy.orm import Mapped, joinedload, mapped_column, relationship, sele
 from sqlalchemy.orm.attributes import set_committed_value
 
 import fastapi_restly as fr
-from fastapi_restly.db._globals import _fr_config
+from fastapi_restly.db._config import _fr_config
 from fastapi_restly.testing._client import RestlyTestClient
 from fastapi_restly.views._base import _rows_reload_statements
 

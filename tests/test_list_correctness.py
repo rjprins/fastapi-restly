@@ -41,7 +41,7 @@ from sqlalchemy.orm import (
 from starlette.datastructures import QueryParams
 
 import fastapi_restly as fr
-from fastapi_restly.db._globals import _fr_config
+from fastapi_restly.db._config import _fr_config
 from fastapi_restly.query._impl import _apply_sorting
 from fastapi_restly.testing._client import RestlyTestClient
 from fastapi_restly.views._react_admin import _apply_react_admin_sort_and_range

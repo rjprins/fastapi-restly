@@ -27,7 +27,7 @@ from sqlalchemy.pool import StaticPool
 
 import fastapi_restly as fr
 import fastapi_restly._pytest_fixtures as _fixtures
-from fastapi_restly.db._globals import RestlyContext, _fr_config
+from fastapi_restly.db._config import RestlyContext, _fr_config
 from fastapi_restly.db._session import _async_generate_session, _generate_session
 
 

@@ -15,7 +15,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
-from fastapi_restly.db._globals import _fr_config
+from fastapi_restly.db._config import _fr_config
 
 from ._models import SharedBase
 

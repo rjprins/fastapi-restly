@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession as SAAsyncSession
 from sqlalchemy.orm import Session as SASession
 
 from fastapi_restly.db import configure
-from fastapi_restly.db._globals import _fr_config
+from fastapi_restly.db._config import _fr_config
 from fastapi_restly.db._session import _async_generate_session, _generate_session
 
 

@@ -17,7 +17,7 @@ from types import ModuleType
 import pytest
 
 import fastapi_restly as fr
-from fastapi_restly.db._globals import _fr_config
+from fastapi_restly.db._config import _fr_config
 from fastapi_restly.testing import RestlyTestClient
 
 BLOG = Path(__file__).resolve().parents[1] / "example-projects" / "blog" / "blog"

@@ -16,8 +16,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from .db import _session
+from .db._config import _fr_config
 from .db._engine_defaults import is_memory_sqlite as _is_memory_sqlite
-from .db._globals import _fr_config
 from .exc import RestlyConfigurationError
 
 if TYPE_CHECKING:

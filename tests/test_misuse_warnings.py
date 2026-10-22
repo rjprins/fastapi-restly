@@ -19,7 +19,7 @@ import fastapi
 from sqlalchemy import ForeignKey, orm
 
 import fastapi_restly as fr
-from fastapi_restly.db._globals import RestlyContext
+from fastapi_restly.db._config import RestlyContext
 from fastapi_restly.exc import RestlyMisuseWarning
 from fastapi_restly.views import ViewCreate
 

@@ -17,7 +17,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.pool import StaticPool
 
 import fastapi_restly as fr
-from fastapi_restly.db._globals import RestlyContext
+from fastapi_restly.db._config import RestlyContext
 
 
 class _Base(DeclarativeBase):
