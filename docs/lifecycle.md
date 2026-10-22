@@ -758,14 +758,17 @@ class ProductView(fr.AsyncRestView):
     @fr.delete("/{id}", status_code=200)
     async def delete_endpoint(self, id: int):
         obj = await self.get_one(id)               # load through the scope, or 404
-        serialized = self.to_single_response(obj).model_dump(mode="json")
+        response = self.to_response(obj)           # the row as GET /{id} sends it
         await self.handle_delete(id)               # authorize, delete, commit
-        return serialized
+        return response
 ```
 
 The default `DELETE /{id}` answers `204 No Content`. This version answers
 `200` with the deleted row, as React Admin's `ra-data-simple-rest` expects
-([React Admin](react_admin.md)).
+([React Admin](react_admin.md)). It builds the response before the row is
+gone. {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>`
+gives an object of the response class, so only its fields go out, as from
+`GET /{id}`.
 
 :::{admonition} Details
 :class: details
@@ -810,7 +813,7 @@ class ProductView(fr.AsyncRestView):
     async def get_many_endpoint(self, list_params):
         result = await self.handle_get_many(list_params)
         serialized = [
-            self.to_single_response(obj).model_dump(mode="json")
+            self.to_response(obj).model_dump(mode="json", by_alias=True)
             for obj in result.objects
         ]
         return fastapi.Response(
@@ -822,7 +825,8 @@ class ProductView(fr.AsyncRestView):
 
 The route sends a plain list, not the default envelope, so it names its
 `response_model`: a list of the view's response class. Without it, OpenAPI
-shows no schema for the response.
+shows no schema for the response. The route builds the body itself, so it
+dumps each row `by_alias=True`, as FastAPI does for a response model.
 [Name the view's classes in a custom route](#name-the-response-classes)
 explains the markers, such as `ViewResponse`.
 
@@ -839,9 +843,9 @@ class DeleteReturnsObjectMixin:
     @fr.delete("/{id}", status_code=200)
     async def delete_endpoint(self, id: ViewID) -> ViewResponse:
         obj = await self.get_one(id)
-        serialized = self.to_single_response(obj).model_dump(mode="json")
+        response = self.to_response(obj)
         await self.handle_delete(id)
-        return serialized
+        return response
 
 
 @fr.include_view(app)
