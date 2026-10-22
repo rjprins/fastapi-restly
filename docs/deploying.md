@@ -14,7 +14,8 @@ production, Alembic creates and changes the tables, not the application. Its
 `env.py` imports `main.py`, which imports every model.
 
 The sections below follow that order: the settings, the factory, the command
-that runs it, the migrations, and a health check.
+that runs it, the migrations, and a health check. The last section lists the
+view settings to check before an API goes public.
 [New & Existing Projects](#compose-in-one-place) shows where these files sit
 in the project.
 
@@ -286,6 +287,31 @@ livenessProbe:
 A readiness probe takes the instance out of service instead of restarting it.
 That is the place to check the database and other services. Write it as an
 ordinary route, so that you control its checks and its timeouts.
+
+(before-public)=
+
+## Before you expose an API publicly
+
+Restly's list defaults are generous, and that suits most APIs. A table that
+only grows, such as an audit log, events or imports, is the exception. It
+gets large without anyone noticing, and clients want to filter and sort it.
+Check these settings on its view before the API goes public:
+
+- Lower the page size and its maximum with
+  {class}`fr.NumberedPagination <fastapi_restly.views.NumberedPagination>`,
+  such as `default_page_size=25` and `max_page_size=100`. `max_page` limits
+  how far a client can page. See [Page through a list](#list-pagination).
+- Turn on only the filters and sort keys that clients need, with
+  `include_filters` and `include_sort_keys`. A filter or a sort on a column
+  without an index reads the whole table. See
+  [Choose the keys of a list](#choose-list-keys).
+- Keep `unknown_query_params = "forbid"`, the default. A mistyped filter is
+  then a `422`, not a list with more rows than the client asked for. See
+  [Accept extra query parameters](#extra-query-parameters).
+- Put the rule for which rows a caller may see in a scope, not in code that
+  filters the rows after the read. A scope runs in SQL, so the rows of a
+  list, its count and its pages agree. See
+  [Give one view other rows](#view-scope).
 
 ## See also
 

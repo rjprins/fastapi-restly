@@ -168,7 +168,8 @@ parts that Restly adds need their own page.
 - [Testing](testing.md): set up the test suite, build the test schema, and
   use the test clients and fixtures.
 - [Deploying](deploying.md): read the settings from the environment, run
-  the app, set up Alembic and add a health check.
+  the app, set up Alembic, add a health check, and check the list settings
+  before an API goes public.
 
 ## What FastAPI covers
 
