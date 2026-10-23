@@ -131,6 +131,7 @@ from ..schemas._base import (
     _model_id_type,
     _reject_buried_markers,
     _response_adapter,
+    _schema_resource_name,
     _unwrap_type,
     create_model_with_optional_fields,
     create_model_without_read_only_fields,
@@ -2338,7 +2339,9 @@ class BaseRestView(
         return _primary_key_criterion(self.model, id)
 
     def not_found(self, id: Any) -> Exception:
-        """The exception for an id that names no row: a 404 by default.
+        """The exception for an id that names no row: a 404 by default, such
+        as ``User with id 5 was not found``. The name is the resource of the
+        view's schema, as in the names of the classes that Restly generates.
 
         ``get_one`` raises what this returns, so an override can change the
         text or the status, such as ``410`` for a row that was deleted. On
@@ -2346,7 +2349,7 @@ class BaseRestView(
         is the id from the path, or ``None`` when a route loaded by an
         expression, such as ``handle_get_one(Item.slug == slug)``.
         """
-        return NotFound(_not_found_message(self.model, id))
+        return NotFound(_not_found_message(_schema_resource_name(self.schema), id))
 
     def _row_criterion(self, id: Any) -> ColumnElement[bool]:
         """The WHERE of ``get_one``: an expression that a route passes in
@@ -3194,12 +3197,12 @@ def _primary_key_criterion(model_cls: type[Any], id: Any) -> ColumnElement[bool]
     return pk_cols[0] == id
 
 
-def _not_found_message(model_cls: type[Any], id: Any) -> str:
+def _not_found_message(resource: str, id: Any) -> str:
     # ``id`` is None for a route that loaded by an expression: the 404 body
     # is no place for SQL
     if id is None:
-        return f"{model_cls.__name__} was not found"
-    return f"{model_cls.__name__} with id {id} was not found"
+        return f"{resource} was not found"
+    return f"{resource} with id {id} was not found"
 
 
 def reject_unknown_query_keys(

@@ -1,5 +1,6 @@
-"""Error texts show what the client knows: an id as it is in the URL, and a
-field by the name that the client sends in the body."""
+"""Error texts show what the client knows: a row by the resource name that
+OpenAPI shows, an id as it is in the URL, and a field by the name that the
+client sends in the body."""
 
 import asyncio
 import uuid
@@ -72,6 +73,11 @@ def _register(app, view_base):
     class TextPostResponse(fr.IDSchema):
         title: str
 
+    # the resource is Thing, as in ThingCreate, and not the model's TextThing
+    class ThingSchema(fr.BaseSchema):
+        id: fr.ReadOnly[uuid.UUID]
+        name: str
+
     class ConflictPostSchema(fr.IDSchema):
         title: str
         author_id: fr.IDRef[TextAuthor] = Field(validation_alias="authorId")
@@ -79,6 +85,7 @@ def _register(app, view_base):
 
     for prefix, model, settings in (
         ("/things", TextThing, {}),
+        ("/named-things", TextThing, {"schema": ThingSchema}),
         ("/authors", TextAuthor, {}),
         (
             "/posts",
@@ -96,6 +103,8 @@ def _assert_the_texts(client):
     missing = uuid.uuid4()
     response = client.get(f"/things/{missing}", assert_status_code=404)
     assert response.json()["detail"] == f"TextThing with id {missing} was not found"
+    named = client.get(f"/named-things/{missing}", assert_status_code=404)
+    assert named.json()["detail"] == f"Thing with id {missing} was not found"
 
     no_author = client.post(
         "/posts", json={"title": "t", "authorId": 99}, assert_status_code=404

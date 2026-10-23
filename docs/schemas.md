@@ -413,6 +413,10 @@ unless another schema nests it or a custom route names it. The list params
 are not a class in OpenAPI either: OpenAPI shows them as separate query
 parameters.
 
+The `404` for a row that does not exist names the resource too, such as
+`User with id 5 was not found`. To change the text, override
+{meth}`not_found <fastapi_restly.views.BaseRestView.not_found>`.
+
 :::{admonition} Details
 :class: details
 
