@@ -28,7 +28,7 @@ from sqlalchemy.orm import MappedAsDataclass
 from sqlalchemy.orm.properties import MappedColumn
 
 import fastapi_restly.db as fr_db
-from fastapi_restly.schemas._base import readonly_marker, writeonly_marker
+from fastapi_restly.schemas._base import UTCDatetime, readonly_marker, writeonly_marker
 from fastapi_restly.views._view_types import _ViewType
 
 # -- Project information -----------------------------------------------------
@@ -277,6 +277,11 @@ def _alias_name(annotation):
     if annotation == fr_db.AsyncSessionDep:
         return "fastapi_restly.db.AsyncSessionDep", None
     inner = typing.get_args(annotation)[0]
+    # Python flattens ReadOnly[UTCDatetime] into one Annotated with the
+    # validator of UTCDatetime in it.
+    in_utc = any(meta is _UTC_VALIDATOR for meta in annotation.__metadata__)
+    if in_utc:
+        inner = UTCDatetime
     for meta in annotation.__metadata__:
         if meta is readonly_marker:
             return "fastapi_restly.schemas.ReadOnly", inner
@@ -284,7 +289,12 @@ def _alias_name(annotation):
             return "fastapi_restly.schemas.WriteOnly", inner
         if isinstance(meta, _ViewType):
             return f"fastapi_restly.views.{meta.name}", None
+    if in_utc:
+        return "fastapi_restly.schemas.UTCDatetime", None
     return None
+
+
+_UTC_VALIDATOR = UTCDatetime.__metadata__[0]
 
 
 def _restly_stringify_annotation(

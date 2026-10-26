@@ -278,6 +278,12 @@ replacement, unless it says otherwise.
   for `title: str` gets `422` now, not `409` from the database.
 - In a generated schema, a field allows `null` only when its column is
   nullable.
+- A generated schema gives each time column the type `fr.UTCDatetime`, and
+  `fr.TimestampsSchemaMixin` gives it to `created_at` and `updated_at`. So
+  the business methods get these times in UTC, and a response shows them
+  with `Z`, such as `2024-01-01T09:30:00Z`. A time from a column without a
+  time zone had no offset before. For local times, write the field yourself,
+  with a validator that converts the time.
 - The create body of a generated schema follows the model's constructor. On a
   dataclass model, a column with only an `insert_default` or a
   `server_default` is now a required field. Add `default=None` to let the

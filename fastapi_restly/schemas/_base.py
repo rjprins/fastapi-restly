@@ -321,10 +321,11 @@ class TimestampsSchemaMixin(pydantic.BaseModel):
     """Schema mixin that adds two fields: ``created_at`` and ``updated_at``.
 
     It is the schema side of :class:`~fastapi_restly.models.TimestampsMixin`.
-    Both fields are ``ReadOnly[datetime]``, so the responses contain them, and
-    the create and update bodies that Restly generates leave them out. When a
-    client sends them in a body, Restly ignores them. The fields have no
-    default, so the object that a response reads must have both attributes.
+    Both fields are ``ReadOnly[UTCDatetime]``, so the responses contain them,
+    in UTC, and the create and update bodies that Restly generates leave them
+    out. When a client sends them in a body, Restly ignores them. The fields
+    have no default, so the object that a response reads must have both
+    attributes.
 
     The mixin adds nothing else, so combine it with :class:`IDSchema` or
     :class:`BaseSchema`. Put it before the base class, so that ``id`` stays
@@ -339,10 +340,10 @@ class TimestampsSchemaMixin(pydantic.BaseModel):
 
     #: When the row was created. It is ``ReadOnly``: the responses show it,
     #: and the create and update bodies that Restly generates leave it out.
-    created_at: ReadOnly[datetime]
+    created_at: ReadOnly[UTCDatetime]
     #: When the row last changed. It is ``ReadOnly``: the responses show it,
     #: and the create and update bodies that Restly generates leave it out.
-    updated_at: ReadOnly[datetime]
+    updated_at: ReadOnly[UTCDatetime]
 
 
 # Unbound: a mapped class need not subclass DeclarativeBase.

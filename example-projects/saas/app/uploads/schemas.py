@@ -1,7 +1,5 @@
 """Upload + UploadLine schemas (read-only)."""
 
-from datetime import datetime
-
 import fastapi_restly as fr
 
 
@@ -27,7 +25,7 @@ class UploadSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     # Stamped from the request context, never from a body.
     organization_id: fr.ReadOnly[int]
     uploaded_by_id: fr.ReadOnly[int | None] = None
-    completed_at: datetime | None = None
+    completed_at: fr.UTCDatetime | None = None
     line_count: int = 0
 
 

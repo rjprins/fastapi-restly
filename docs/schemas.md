@@ -103,8 +103,8 @@ Restly has three base classes for a schema:
   yourself, `id` included. Mark the `id` `ReadOnly` if clients must not send
   it.
 - {class}`fr.TimestampsSchemaMixin <fastapi_restly.schemas.TimestampsSchemaMixin>`
-  adds read-only `created_at` and `updated_at` fields. Put it before the
-  base class.
+  adds read-only `created_at` and `updated_at` fields, in UTC. Put it before
+  the base class.
 
 ```python
 class UserSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
@@ -341,10 +341,14 @@ UTC. A time with an offset, such as `2024-01-01T10:30:00+01:00`, becomes the
 same time in UTC. So `create` and `update` get each time in UTC. A response
 shows it with `Z`, the offset of UTC, as JavaScript's `toISOString()` does: a
 client that sends `"starts_at": "2024-01-01T10:30:00+01:00"` gets
-`"starts_at": "2024-01-01T09:30:00Z"` back. A filter value goes through the
-same type, so `?starts_at__gte=2024-01-01T04:15:00-05:00` finds the meeting.
-In a URL, write the `+` of an offset as `%2B`: a plain `+` means a space
-there.
+`"starts_at": "2024-01-01T09:30:00Z"` back. A schema that Restly generates
+gives each time column this type, and
+{class}`fr.TimestampsSchemaMixin <fastapi_restly.schemas.TimestampsSchemaMixin>`
+gives it to `created_at` and `updated_at`.
+
+A filter value goes through the same type, so
+`?starts_at__gte=2024-01-01T04:15:00-05:00` finds the meeting. In a URL,
+write the `+` of an offset as `%2B`: a plain `+` means a space there.
 
 Each column stores the time in UTC. A column without a time zone stores it
 without the offset: `2024-01-01T09:30:00`. On a base with
@@ -881,7 +885,8 @@ A view and a direct call of `derive_schema(model)` give the same schema.
 
 `convert_sqlalchemy_type_to_pydantic` maps the Python type of each column,
 from its annotation or its column type, to a Pydantic field type. A type that
-Pydantic already understands stays as it is:
+Pydantic already understands stays as it is, except a time: it gets
+[`fr.UTCDatetime`](#utc-times).
 
 | SQLAlchemy / Python annotation | Pydantic field type |
 |-------------------------------|---------------------|
@@ -889,7 +894,7 @@ Pydantic already understands stays as it is:
 | `int` | `int` |
 | `float` | `float` |
 | `bool` | `bool` |
-| `datetime` | `datetime` |
+| `datetime` | `fr.UTCDatetime` |
 | `date` | `date` |
 | `time` | `time` |
 | `UUID` | `UUID` |
@@ -901,7 +906,7 @@ Pydantic already understands stays as it is:
 | SQLAlchemy `Integer` | `int` |
 | SQLAlchemy `Float` | `float` |
 | SQLAlchemy `Boolean` | `bool` |
-| SQLAlchemy `DateTime` | `datetime` |
+| SQLAlchemy `DateTime` | `fr.UTCDatetime` |
 | SQLAlchemy `Date` | `date` |
 | SQLAlchemy `Time` | `time` |
 

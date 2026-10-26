@@ -196,7 +196,7 @@ class UserSchema(fr.IDSchema):
     email: str
     password: fr.WriteOnly[str]
     team_id: fr.MustExist[int, Team]
-    created_at: fr.ReadOnly[datetime]
+    created_at: fr.ReadOnly[fr.UTCDatetime]
 ```
 
 | Class | Used for | Fields |

@@ -31,6 +31,7 @@ from ._base import (
     IDSchema,
     ReadOnly,
     TimestampsSchemaMixin,
+    UTCDatetime,
     _is_unresolved,
     _own_annotations,
 )
@@ -312,6 +313,9 @@ def derive_schema(model: type[Any], *, name: str | None = None) -> type[BaseSche
     ``updated_at``, a ``column_property`` over a SQL expression, and a column
     that the constructor does not take (``init=False``).
 
+    A time column gets a field of type :data:`UTCDatetime`, which holds the
+    time in UTC.
+
     A field allows ``None`` only when its column is nullable. The create body
     follows the constructor: the client may leave out a field when its
     column is nullable, or when the constructor does not require it and the
@@ -410,6 +414,8 @@ def convert_sqlalchemy_type_to_pydantic(
 
     if sqlalchemy_type is Any:
         pydantic_type = Any
+    elif sqlalchemy_type is datetime:
+        pydantic_type = UTCDatetime
     elif sqlalchemy_type in (
         str,
         int,
@@ -417,7 +423,6 @@ def convert_sqlalchemy_type_to_pydantic(
         bool,
         dict,
         list,
-        datetime,
         date,
         time,
         UUID,
@@ -441,7 +446,7 @@ def convert_sqlalchemy_type_to_pydantic(
     elif type_name in {"Boolean"}:
         pydantic_type = bool
     elif type_name in {"DateTime"}:
-        pydantic_type = datetime
+        pydantic_type = UTCDatetime
     elif type_name in {"Date"}:
         pydantic_type = date
     elif type_name in {"Time"}:

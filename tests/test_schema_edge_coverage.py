@@ -409,7 +409,8 @@ def test_schema_generator_helpers_cover_relationships_defaults_and_type_conversi
     assert convert_sqlalchemy_type_to_pydantic(Integer) is int
     assert convert_sqlalchemy_type_to_pydantic(Float) is float
     assert convert_sqlalchemy_type_to_pydantic(Boolean) is bool
-    assert convert_sqlalchemy_type_to_pydantic(DateTime) is datetime
+    assert convert_sqlalchemy_type_to_pydantic(DateTime) is fr.UTCDatetime
+    assert convert_sqlalchemy_type_to_pydantic(datetime) is fr.UTCDatetime
     assert convert_sqlalchemy_type_to_pydantic(Date) is date
     assert convert_sqlalchemy_type_to_pydantic(Time) is time
     assert convert_sqlalchemy_type_to_pydantic(Any) is Any

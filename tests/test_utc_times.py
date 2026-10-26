@@ -10,9 +10,12 @@ disagree:
   time in UTC, without the offset.
 
 A request body gets the form of its columns when Restly copies it onto the
-model. A validator on the field that makes the time local first opts the
-field out. The PostgreSQL legs check the drivers, which otherwise reject such
-a time or read it in a time zone of the server.
+model. A field of type ``fr.UTCDatetime`` holds each time in UTC, so the
+business methods and the responses have it in UTC too. A generated schema
+and ``fr.TimestampsSchemaMixin`` use that type. A validator on the field that
+makes the time local first opts the field out. The PostgreSQL legs check the
+drivers, which otherwise reject such a time or read it in a time zone of the
+server.
 """
 
 import json
@@ -640,3 +643,61 @@ def test_utc_datetime_gives_a_column_type_of_your_own_an_offset(api):
 
     assert created["stamped_at"] == "2024-01-01T09:30:00Z"
     assert len(rows["data"]) == 1
+
+
+# ---------------------------------------------------------------------------
+# A generated schema and fr.TimestampsSchemaMixin use fr.UTCDatetime.
+# ---------------------------------------------------------------------------
+
+
+def test_a_generated_schema_holds_each_time_in_utc(api):
+    """A view without a schema gives ``create`` each time in UTC, and the
+    response shows it with ``Z``, also from the column without a time zone."""
+    Meeting, _ = _meeting_classes()
+    seen: list[_Seen] = []
+
+    @fr.include_view(api.client.app)
+    class MeetingView(_recording_view(api.view, seen)):
+        prefix = "/meetings"
+        model = Meeting
+
+    api.create_tables()
+    created = api.client.post(
+        "/meetings",
+        json={
+            "name": "standup",
+            "starts_at": "2024-01-01T10:30:00+01:00",
+            "ends_at": "2024-01-01T09:45:00",
+        },
+    ).json()
+
+    (made,) = seen
+    assert made.data.starts_at.isoformat() == "2024-01-01T09:30:00+00:00"
+    assert made.data.ends_at.isoformat() == "2024-01-01T09:45:00+00:00"
+    assert created["starts_at"] == "2024-01-01T09:30:00Z"
+    assert created["ends_at"] == "2024-01-01T09:45:00Z"
+
+
+def test_the_timestamps_schema_mixin_gives_the_times_in_utc(api):
+    """SQLite gives ``created_at`` back without an offset. The response
+    shows it in UTC."""
+
+    class Note(fr.TimestampsMixin, fr.IDMixin, SharedBase):
+        text: Mapped[str]
+
+    class NoteSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
+        text: str
+
+    @fr.include_view(api.client.app)
+    class NoteView(api.view):
+        prefix = "/notes"
+        model = Note
+        schema = NoteSchema
+
+    api.create_tables()
+    created = api.client.post("/notes", json={"text": "hello"}).json()
+    read = api.client.get(f"/notes/{created['id']}").json()
+
+    assert created["created_at"].endswith("Z")
+    assert read["created_at"].endswith("Z")
+    assert read["updated_at"].endswith("Z")

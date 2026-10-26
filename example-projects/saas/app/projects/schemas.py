@@ -1,7 +1,5 @@
 """Project schema."""
 
-from datetime import datetime
-
 from pydantic import computed_field
 
 import fastapi_restly as fr
@@ -22,7 +20,7 @@ class ProjectSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     slug: str = ""  # from the name if blank: see app.projects.models
     description: str = ""
     status: ProjectStatus = ProjectStatus.ACTIVE
-    deleted_at: datetime | None = None
+    deleted_at: fr.UTCDatetime | None = None
     # The tenant stamp: from the request context, never from the body.
     organization_id: fr.ReadOnly[int]
 

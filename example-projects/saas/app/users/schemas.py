@@ -1,7 +1,5 @@
 """User schema."""
 
-from datetime import datetime
-
 from pydantic import BaseModel
 
 import fastapi_restly as fr
@@ -38,7 +36,7 @@ class UserSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     salary: fr.WriteOnly[int | None] = None
 
     # Stamped server-side by the view's mixin chain.
-    deleted_at: fr.ReadOnly[datetime | None] = None
+    deleted_at: fr.ReadOnly[fr.UTCDatetime | None] = None
     created_by_id: fr.ReadOnly[int | None] = None
     updated_by_id: fr.ReadOnly[int | None] = None
 

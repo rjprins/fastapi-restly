@@ -1,7 +1,5 @@
 """Task schema."""
 
-from datetime import datetime
-
 import fastapi_restly as fr
 
 from ..projects.models import Project
@@ -37,7 +35,7 @@ class TaskSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     version: int = 1
 
     # Stamped server-side by the model mixins (app.models).
-    deleted_at: fr.ReadOnly[datetime | None] = None
+    deleted_at: fr.ReadOnly[fr.UTCDatetime | None] = None
     created_by_id: fr.ReadOnly[int | None] = None
     updated_by_id: fr.ReadOnly[int | None] = None
 
