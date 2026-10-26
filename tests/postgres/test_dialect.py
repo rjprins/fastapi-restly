@@ -1,7 +1,7 @@
 """The dialect-divergent surface, pinned on real PostgreSQL.
 
 Everything here is invisible on SQLite and only runs when the subtree is pointed
-at PostgreSQL (see ``conftest.py``). Five things are covered:
+at PostgreSQL (see ``conftest.py``). Six things are covered:
 
 * ``contains`` (``LIKE``) is case-sensitive and ``icontains`` (``ILIKE``) folds
   case, for ASCII *and* non-ASCII input. On SQLite ``LIKE`` is
@@ -18,6 +18,10 @@ at PostgreSQL (see ``conftest.py``). Five things are covered:
   PostgreSQL cannot compare ``json`` values (it can compare ``jsonb``
   values), so ``DISTINCT`` over such a column fails. The count selects only
   the primary key.
+* A native ENUM column. PostgreSQL rejects a filter value that is no label
+  with an error, and it has no ``LIKE`` for an enum, so both would be a 500.
+  Restly checks the value against the labels, and gives such a column no
+  ``__contains``.
 * The psycopg cross-session connection sharing documented for
   ``restly_session`` / ``restly_async_session`` -- the async session runs over
   the sync fixture's pinned connection, so a write through either is visible to
@@ -33,6 +37,7 @@ from fastapi import FastAPI
 from sqlalchemy import (
     JSON,
     CheckConstraint,
+    Enum,
     ForeignKey,
     and_,
     create_engine,
@@ -103,6 +108,17 @@ class PgDoc(fr.IDMixin, SharedBase):
 class PgDocSchema(fr.IDSchema):
     title: str
     data: dict = {}
+
+
+class PgLabelled(fr.IDMixin, SharedBase):
+    # a native ENUM type on PostgreSQL
+    status: Mapped[str] = mapped_column(
+        Enum("draft", "published", name="pg_labelled_status")
+    )
+
+
+class PgLabelledSchema(fr.IDSchema):
+    status: str
 
 
 class PgShared(fr.IDMixin, SharedBase):
@@ -214,6 +230,13 @@ class PgDocSyncAdminView(fr.views.ReactAdminView):
 
 
 @fr.include_view(_app)
+class PgLabelledView(fr.AsyncRestView):
+    prefix = "/labelled"
+    model = PgLabelled
+    schema = PgLabelledSchema
+
+
+@fr.include_view(_app)
 class PgUniqueView(fr.AsyncRestView):
     prefix = "/unique"
     model = PgUnique
@@ -239,6 +262,7 @@ _MODELS = [
     PgRanked,
     PgPaged,
     PgDoc,
+    PgLabelled,
     PgShared,
     PgUnique,
     PgParent,
@@ -266,6 +290,7 @@ def _seed() -> None:
         session.add_all([PgPaged(label=f"p{i}", bucket=7) for i in range(5)])
         # json fixture: three rows, more than one page of two.
         session.add_all([PgDoc(title=f"d{n}", data={"n": n}) for n in range(3)])
+        session.add_all([PgLabelled(status=s) for s in ("draft", "published")])
         session.commit()
 
 
@@ -328,6 +353,18 @@ def test_icontains_folds_non_ascii_case(restly_client):
     # would fail loudly, not silently, on a C-locale database).
     response = restly_client.get("/words/", params={"name__icontains": "öl"})
     assert _names(response) == ["Öland"]
+
+
+def test_a_value_outside_the_labels_of_a_native_enum_is_a_400(restly_client):
+    response = restly_client.get("/labelled/", params={"status": "draft"})
+    assert [row["status"] for row in response.json()["data"]] == ["draft"]
+    response = restly_client.get(
+        "/labelled/", params={"status": "bogus"}, assert_status_code=400
+    )
+    assert response.json()["detail"] == (
+        "Invalid filter value for 'status': 'bogus'. Use one of: draft, published."
+    )
+    restly_client.get("/labelled/?status__contains=dr", assert_status_code=422)
 
 
 def test_nulls_come_last_in_both_directions_by_default(restly_client):

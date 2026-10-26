@@ -14,7 +14,7 @@ from typing import Annotated, Any
 import pydantic
 import pytest
 from pydantic import ConfigDict, Field, field_validator, model_validator
-from sqlalchemy import DateTime
+from sqlalchemy import DateTime, Enum
 from sqlalchemy.orm import Mapped, mapped_column
 
 import fastapi_restly as fr
@@ -312,6 +312,44 @@ def test_list_filter_with_cross_field_validator_is_200(client):
     assert [r["title"] for r in rows["data"]] == ["idea"]
     rows = client.get("/tickets", params={"severity__gte": "1"}).json()
     assert [r["title"] for r in rows["data"]] == ["crash"]
+
+
+def test_a_value_outside_the_labels_of_an_enum_column_is_a_400(client):
+    """A ``str`` field on a column of SQLAlchemy's Enum type takes any text,
+    and SQLAlchemy passes it on. A native ENUM on PostgreSQL rejects a value
+    that is no label with an error, which was a 500. So Restly checks the
+    value against the labels, on every database."""
+
+    class LabelledPost(fr.IDMixin, SharedBase):
+        status: Mapped[str] = mapped_column(
+            Enum("draft", "published", name="labelled_post_status")
+        )
+
+    class LabelledPostSchema(fr.IDSchema):
+        status: str
+
+    @fr.include_view(client.app)
+    class LabelledPostView(fr.AsyncRestView):
+        prefix = "/labelled-posts"
+        model = LabelledPost
+        schema = LabelledPostSchema
+
+    create_tables()
+    client.post("/labelled-posts", json={"status": "draft"})
+    client.post("/labelled-posts", json={"status": "published"})
+
+    rows = client.get("/labelled-posts", params={"status": "draft"}).json()
+    assert [row["status"] for row in rows["data"]] == ["draft"]
+    for params in (
+        {"status": "bogus"},
+        {"status__in": "draft,bogus"},
+        {"status__ne": "bogus"},
+    ):
+        response = client.get("/labelled-posts", params=params, assert_status_code=400)
+        assert response.json()["detail"] == (
+            "Invalid filter value for 'status': 'bogus'. Use one of: draft, published."
+        )
+    client.get("/labelled-posts?status__contains=dr", assert_status_code=422)
 
 
 def test_a_bug_in_a_validator_is_not_a_bad_filter_value(client):

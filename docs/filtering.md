@@ -83,7 +83,8 @@ Not every field gets every suffix:
   stores the number, such as `Integer`. On PostgreSQL, a native ENUM orders
   its labels as they were declared. To filter by that order, write the range
   yourself; see [Add a filter of your own](#own-list-filter).
-- `__contains` and `__icontains` exist only for text fields.
+- `__contains` and `__icontains` exist only for text fields, and not on a
+  column of SQLAlchemy's `Enum` type.
 - A field that holds a `dict` or a `list`, such as a `JSON` or `ARRAY`
   column, gets only `__isnull`. A value from the URL cannot become a
   collection, so the other filters would fail on every request.
@@ -130,7 +131,8 @@ key too, such as `?task_count__gte=1` and `?sort=-task_count`.
 
 Equality, `__ne`, `__in` and the range filters validate each value with the
 field's Pydantic validation, so the field validators of the schema run on
-filter values too. A value that fails returns `400` (see
+filter values too. On a column of SQLAlchemy's `Enum` type, the value must
+also be one of its labels. A value that fails returns `400` (see
 [Why a bad list request returns 422 or 400](#list-request-errors)).
 
 :::{admonition} Details

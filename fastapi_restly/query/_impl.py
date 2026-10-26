@@ -827,7 +827,9 @@ def _filter_fields(name: str, field: FieldInfo, column: Any) -> dict[str, Any]:
                 None,
             )
 
-    if _is_string_field(field):
+    # an Enum column holds labels: LIKE would search the stored names, and a
+    # native ENUM on PostgreSQL has no LIKE at all
+    if _is_string_field(field) and _enum_type(column) is None:
         fields[f"{name}__contains"] = (
             Annotated[
                 Optional[list[str]],
@@ -1500,6 +1502,9 @@ def _apply_filtering(
 
         stmt, column = _join_column(stmt, model, column_name, schema_cls, aliases)
         parser = functools.partial(_parse_value, schema_cls, column_name)
+        enum_type = _enum_type(column)
+        if enum_type is not None:
+            parser = functools.partial(_parse_label, parser, enum_type, column_name)
 
         if op == "isnull":
             try:
@@ -1548,6 +1553,31 @@ def _build_clause(
     if op == "ne":
         return sqlalchemy.and_(*clauses)
     return sqlalchemy.or_(*clauses)
+
+
+def _parse_label(
+    parser: Callable[[str], Any],
+    enum_type: sqlalchemy.Enum,
+    column_name: str,
+    value: str,
+) -> Any:
+    """Parse ``value`` with ``parser``, and check that it is a label of the
+    column's ``Enum`` type, as SQLAlchemy accepts it: a label, or a member of
+    the enum class.
+
+    SQLAlchemy passes any other string on, and a native ENUM on PostgreSQL
+    rejects it with an error, which would be a 500 for the client.
+
+    :raises BadQueryParam: the value is no label of the column.
+    """
+    result = parser(value)
+    members = list(enum_type.enum_class) if enum_type.enum_class else []
+    if result in enum_type.enums or any(result == member for member in members):
+        return result
+    raise BadQueryParam(
+        f"Invalid filter value for {column_name!r}: {value!r}. Use one of: "
+        f"{', '.join(enum_type.enums)}."
+    )
 
 
 def _parse_value(schema_cls: SchemaType, column_name: str, value: str) -> Any:

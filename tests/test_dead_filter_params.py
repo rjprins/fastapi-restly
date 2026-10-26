@@ -310,8 +310,8 @@ def test_labels_get_no_range_filters():
     ``__lte``, ``__gt`` or ``__lt``. An int enum, or a ``Literal`` of
     numbers, has the order of its numbers. A column of SQLAlchemy's Enum type
     holds labels, also inside ``TypeDecorator`` layers, so it gets none,
-    whatever the type of the field. A str enum gets no ``__contains``, which
-    is for text."""
+    whatever the type of the field, and no ``__contains``, which is for text
+    and would search the stored names."""
 
     class Direction(str, enum.Enum):
         UP = "up"
@@ -369,11 +369,9 @@ def test_labels_get_no_range_filters():
 
     plain = ["", "__in", "__ne", "__isnull"]
     labels = ("direction", "priority", "wrapped", "direction_value", "color_value")
-    for name in (*labels, "size"):
+    # status_text is text, but its Enum column holds labels: no __contains
+    for name in (*labels, "size", "status_text"):
         assert keys(name) == [name + suffix for suffix in plain]
-    assert keys("status_text") == [
-        "status_text" + suffix for suffix in [*plain, "__contains", "__icontains"]
-    ]
     for name in ("priority_value", "priority_number", "rank"):
         assert keys(name) == [
             name + suffix for suffix in [*plain, "__gte", "__lte", "__gt", "__lt"]
