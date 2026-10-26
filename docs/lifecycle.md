@@ -180,7 +180,7 @@ of some columns, SQLAlchemy leaves the loader options out.
 | What each row loads: a relationship, a SQL expression | {meth}`get_loader_options <fastapi_restly.views.BaseRestView.get_loader_options>` ([Relationships](#eager-load-extra-relationships)) |
 | A read from another source: a cache, a service | the endpoint method, `get_one_endpoint` or `get_many_endpoint` ([below](#value-on-each-row)) |
 | The keys that a list has | {attr}`include_filters <fastapi_restly.views.BaseRestView.include_filters>` / {attr}`include_sort_keys <fastapi_restly.views.BaseRestView.include_sort_keys>` ([Choose the keys of a list](#choose-list-keys)) |
-| A list filter that is not a comparison with a column | {func}`fr.list_filter <fastapi_restly.views.list_filter>` ([Add a filter of your own](#own-list-filter)) |
+| A list filter that the generated keys do not give | {func}`fr.list_filter <fastapi_restly.views.list_filter>` ([Add a filter of your own](#own-list-filter)) |
 | How the list params filter, sort and page | {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>` ([Filtering, Sorting & Pagination](filtering.md)) |
 | The list total | {meth}`count <fastapi_restly.views.RestView.count>` |
 | A side effect inside the commit: an outbox or audit row, or other work that needs the new id | {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>` ([below](#transaction-hooks)) |

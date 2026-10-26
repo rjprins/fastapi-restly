@@ -1232,7 +1232,7 @@ _F = TypeVar("_F", bound=Callable[..., Any])
 def list_filter(key: str) -> Callable[[_F], _F]:
     """Make a view method the filter for the query key ``key``.
 
-    For a filter that is not a comparison with a column::
+    For a filter that the generated keys do not give::
 
         @fr.list_filter("popular")
         def filter_popular(self, value: bool) -> ColumnElement[bool]:
@@ -1253,18 +1253,18 @@ def list_filter(key: str) -> Callable[[_F], _F]:
     the method can be ``async def``.
 
     The key is a name of your own, such as ``popular``, or a field and an
-    operator, such as ``priority__gte`` or ``name__startswith``. The
-    operator may be one that Restly generates for other fields, or a new
-    one. Before ``__`` comes a field with filters, as in the generated keys,
-    such as ``vendor.name``.
+    operator, such as ``name__length``. The operator may be one that Restly
+    generates for other fields, or a new one. Before the last ``__`` comes a
+    field with filters, as in the generated keys, such as ``vendor.name``.
 
     The key is always on: ``include_filters`` and ``exclude_filters`` choose
     among the generated keys only. A subclass drops the key by setting the
     method name to ``None``.
 
-    :raises RestlyConfigurationError: ``key`` starts with ``_``, is the name
-        of a Pydantic model attribute, or has ``__`` without one field before
-        it and one operator after it. A key that is a page parameter, the
+    :raises RestlyConfigurationError: ``key`` is not a non-empty string,
+        starts with ``_``, is the name of a Pydantic model attribute, or has
+        ``__`` without one field before it and one operator without ``.``
+        after it. A key that is a page parameter, the
         sort parameter or a generated key that is on fails when the view
         registers, and so does a key with ``__`` or ``.`` that does not start
         with a field with filters.

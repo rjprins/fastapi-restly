@@ -63,8 +63,8 @@ replacement, unless it says otherwise.
 - `@fr.list_filter("key")` makes a view method the filter for a query key.
   The type of its parameter is the type of the key, and its docstring is the
   description. It returns a condition, a clause or `None`, and it may be
-  `async def` on an async view. The key may be a field and an operator of
-  your own, such as `name__startswith`.
+  `async def` on an async view. The key may also be a field and an operator
+  that you choose, such as `name__length`.
 - `list[fr.MustExist[int, Model]]` checks each id of a list, such as the ids
   in the body of a custom route. The message names every missing id.
 - `apply_filters(stmt, list_params)` applies the client's filters without

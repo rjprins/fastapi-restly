@@ -11,7 +11,7 @@ from typing import Any
 import pydantic
 import pytest
 from fastapi import Depends, FastAPI
-from sqlalchemy import ColumnElement, ForeignKey, select
+from sqlalchemy import ColumnElement, ForeignKey, func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -340,20 +340,20 @@ def test_a_key_can_have_an_operator_of_its_own(view_class):
         model = Item
         schema = ItemSchema
 
-        @fr.list_filter("name__startswith")
-        def filter_name_startswith(self, value: str) -> ColumnElement[bool]:
-            """Items whose name starts with the value."""
-            return Item.name.startswith(value, autoescape=True)
+        @fr.list_filter("name__length")
+        def filter_name_length(self, value: int) -> ColumnElement[bool]:
+            """Items whose name has this many characters."""
+            return func.length(Item.name) == value
 
         @fr.list_filter("vendor.name__startswith")
         def filter_vendor_starts(self, value: str) -> ColumnElement[bool]:
             return Item.vendor.has(Vendor.name.startswith(value, autoescape=True))
 
     with client_for(ItemView) as client:
-        assert names(client, name__startswith="b") == ["bread"]
+        assert names(client, name__length=3) == ["axe"]
         assert names(client, **{"vendor.name__startswith": "g"}) == ["axe", "bread"]
-        assert query_parameter(client, "name__startswith")["description"] == (
-            "Items whose name starts with the value."
+        assert query_parameter(client, "name__length")["description"] == (
+            "Items whose name has this many characters."
         )
 
 

@@ -22,7 +22,7 @@ view's schema without its `WriteOnly` fields; see
 
 By default a list has the keys of the resource's own fields. A view chooses
 other keys with four settings; see [Choose the keys of a list](#choose-list-keys).
-For a filter that is not a comparison with a column, see
+For a filter that the generated keys do not give, see
 [Add a filter of your own](#own-list-filter).
 
 The filters narrow the rows inside the view's [scope](scopes.md). They can
@@ -728,7 +728,7 @@ To use another key in the URL, change the alias.
 (own-list-filter)=
 ## Add a filter of your own
 
-For a filter that is not a comparison with a column, decorate a view method
+For a filter that the generated keys do not give, decorate a view method
 with {func}`fr.list_filter <fastapi_restly.views.list_filter>`:
 
 ```python
@@ -769,15 +769,18 @@ A key can also be a field and an operator, as the generated keys are. The
 operator can be a new one:
 
 ```python
-@fr.list_filter("name__startswith")
-def filter_name_startswith(self, value: str) -> ColumnElement[bool]:
-    """Items whose name starts with the value."""
-    return Item.name.startswith(value, autoescape=True)
+from sqlalchemy import func
+
+
+@fr.list_filter("name__length")
+def filter_name_length(self, value: int) -> ColumnElement[bool]:
+    """Items whose name has this many characters."""
+    return func.length(Item.name) == value
 ```
 
-The client sends `?name__startswith=an`. Before `__` comes a field with
+The client sends `?name__length=5`. Before the last `__` comes a field with
 filters, such as `name` or `vendor.name`, so `__` always splits a field from
-an operator. A key without `__`, such as `popular`, needs no field.
+an operator. A key without `__` and `.`, such as `popular`, needs no field.
 
 A filter on a column lets a client find out the values of that column, one
 request at a time. Write a filter only on data that the client may see.
@@ -804,6 +807,10 @@ The key is always on: `include_filters` and `exclude_filters` choose among
 the generated keys only. A key with the name of a generated key that is on
 fails when the view registers. To replace a generated key, such as `name` or
 `name__icontains`, leave it out with `exclude_filters`, and decorate your own.
+
+A key with an operator looks like a generated key, but it works as your
+method does. It takes one value of the method's type, so a comma or a
+repeated key does not combine values, as they do for a generated key.
 
 A subclass inherits the key. It drops the key by setting the name of the
 method to `None`, as in `filter_popular = None`. A type checker rejects
