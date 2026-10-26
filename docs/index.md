@@ -9,8 +9,8 @@ route. Each route runs a fixed list of steps. To change one step, you
 override its method, and the other steps stay the same. So you write each
 rule once, even when your API is more than plain CRUD.
 
-Restly is a toolkit. It works inside the FastAPI app that you already have.
-Add it one resource at a time, and use only the parts that you want.
+Restly is a framework for REST resources, not for your app. It works inside
+the FastAPI app that you already have, and you add it one resource at a time.
 
 > **Status:** {{ release }}, a beta. Restly ran in production for
 > [four years](about.md) before it became public. Until 1.0, a minor release

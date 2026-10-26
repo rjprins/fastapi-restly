@@ -20,8 +20,8 @@ route. Each route runs a fixed list of steps. To change one step, you
 override its method, and the other steps stay the same. So you write each
 rule once, even when your API is more than plain CRUD.
 
-Restly is a toolkit. It works inside the FastAPI app that you already have.
-Add it one resource at a time, and use only the parts that you want.
+Restly is a framework for REST resources, not for your app. It works inside
+the FastAPI app that you already have, and you add it one resource at a time.
 
 With FastAPI-Restly imported as `fr`, a CRUD resource is four lines when `app`
 and `User` exist:
@@ -229,39 +229,32 @@ class CustomerView(fr.AsyncRestView):
 
 See [New & Existing Projects](https://www.fastapi-restly.org/projects.html).
 
-## Not just CRUD
-
-`fr.View` is a view without the CRUD routes. Use it for a group of
-endpoints that are not CRUD, such as login, webhooks or actions:
-
-```python
-@fr.include_view(app)
-class AuthView(fr.View):
-    prefix = "/auth"
-    tags = ["auth"]
-    session: fr.AsyncSessionDep
-
-    @fr.post("/login")
-    async def login(self, credentials: LoginRequest) -> Token: ...
-```
+## Declare dependencies once
 
 Views are Python classes, so they share code by inheritance. Declare the
-dependencies of your app once, on a base view, and read them from `self` in
-every view:
+dependencies of your app once, on a base view, and read them from `self`:
 
 ```python
-class AppView(fr.View):
-    session: fr.AsyncSessionDep
+class AppRestView(fr.AsyncRestView):
     current_user: Annotated[User, Depends(get_current_user)]
 
-class ProfileView(AppView): ...                    # custom endpoints
-class AppRestView(AppView, fr.AsyncRestView): ...  # CRUD resources, same dependencies
+    async def authorize(self, action, obj=None, data=None):
+        reads = (fr.Action.GET_MANY, fr.Action.GET_ONE)
+        if action not in reads and not self.current_user.is_admin:
+            raise fr.exc.Forbidden("Only admins can change this")
+
+
+@fr.include_view(app)
+class ProjectView(AppRestView):
+    prefix = "/projects"
+    model = Project
 ```
 
-Use a plain FastAPI route for one endpoint, `View` for a group of custom
-endpoints, and `AsyncRestView` or `RestView` for a CRUD resource. A CRUD view
-can have custom routes too, with `@fr.post` and the other route decorators.
-See [Views](https://www.fastapi-restly.org/views.html).
+Every view that inherits from `AppRestView` gets `self.current_user` and the
+same rule. A view can also have custom routes, with `@fr.post` and the other
+route decorators. `fr.View` is a view without the CRUD routes, for a group
+of routes such as login or webhooks. See
+[Views](https://www.fastapi-restly.org/views.html).
 
 ## Also in Restly
 
