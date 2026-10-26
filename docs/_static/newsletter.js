@@ -34,14 +34,14 @@ document.addEventListener("DOMContentLoaded", function () {
           );
         } else {
           setStatus(
-            "That didn’t work — check the address and try again.",
+            "That did not work. Check the address and try again.",
             "error"
           );
           if (button) button.disabled = false;
         }
       })
       .catch(function () {
-        setStatus("Network error — please try again.", "error");
+        setStatus("Network error. Please try again.", "error");
         if (button) button.disabled = false;
       });
   });
