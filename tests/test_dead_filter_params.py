@@ -22,7 +22,7 @@ from typing import Annotated, Optional
 import pydantic
 import pytest
 from fastapi import FastAPI
-from sqlalchemy import JSON, ForeignKey
+from sqlalchemy import JSON, Enum, ForeignKey, TypeDecorator
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
@@ -304,11 +304,12 @@ def test_annotated_inside_optional_gets_the_filters_of_the_plain_type():
     assert "owner_annotated.name__contains" in fields
 
 
-def test_an_enum_gets_no_range_filters():
-    """SQLAlchemy's Enum stores the names of the members, so a range would
-    compare names, and Restly sees only the Python type. So no enum gets
-    ``__gte``, ``__lte``, ``__gt`` or ``__lt``, also a str enum or an
-    IntEnum. A str enum gets no ``__contains`` either, which is for text."""
+def test_a_column_of_sqlalchemys_enum_type_gets_no_range_filters():
+    """SQLAlchemy's Enum stores the names of the members, so a range on such
+    a column would compare names, whatever the type of the field. An int or
+    str enum on a column that stores the value has the order of its values,
+    and a plain enum has no order. A str enum gets no ``__contains``, which
+    is for text."""
 
     class Direction(str, enum.Enum):
         UP = "up"
@@ -318,22 +319,47 @@ def test_an_enum_gets_no_range_filters():
         LOW = 1
         HIGH = 2
 
+    class Color(enum.Enum):
+        RED = "red"
+
+    class NamesType(TypeDecorator):
+        impl = Enum
+        cache_ok = True
+
     class Arrow(fr.IDMixin, SharedBase):
-        direction: Mapped[str]
-        priority: Mapped[int]
+        # the names
+        direction: Mapped[str] = mapped_column(Enum(Direction))
+        priority: Mapped[int] = mapped_column(Enum(Priority))
+        status_text: Mapped[str] = mapped_column(Enum(Direction))
+        wrapped: Mapped[str] = mapped_column(NamesType(Direction))
+        # the values
+        direction_value: Mapped[str]
+        priority_value: Mapped[int]
+        color_value: Mapped[str]
 
     class ArrowSchema(fr.IDSchema):
         direction: Direction
         priority: Priority
+        status_text: str
+        wrapped: Direction
+        direction_value: Direction
+        priority_value: Priority
+        color_value: Color
 
     fields = derive_schema_list_params(ArrowSchema, Arrow).model_fields
 
-    for name in ("direction", "priority"):
-        assert [key for key in fields if key.startswith(name)] == [
-            name,
-            f"{name}__in",
-            f"{name}__ne",
-            f"{name}__isnull",
+    def keys(name: str) -> list[str]:
+        return [key for key in fields if key == name or key.startswith(f"{name}__")]
+
+    plain = ["", "__in", "__ne", "__isnull"]
+    for name in ("direction", "priority", "wrapped", "color_value"):
+        assert keys(name) == [name + suffix for suffix in plain]
+    assert keys("status_text") == [
+        "status_text" + suffix for suffix in [*plain, "__contains", "__icontains"]
+    ]
+    for name in ("direction_value", "priority_value"):
+        assert keys(name) == [
+            name + suffix for suffix in [*plain, "__gte", "__lte", "__gt", "__lt"]
         ]
 
 

@@ -197,12 +197,12 @@ replacement, unless it says otherwise.
   `BadQueryParam`, a `400`; before, the list came back with `200`. A
   `default_sort` with a key twice fails when the class is defined, or when
   the view registers for a mixin.
-- No enum field gets range filters (`__gte`, `__lte`, `__gt`, `__lt`), also
-  not a `str` enum or an `IntEnum`. A SQLAlchemy `Enum` column stores the
-  names of the members, so a range compared names, and Restly sees only the
-  Python type. Before, a `str` or `int` enum got them. If a column stores an
-  int enum as an int, write the range filter yourself with `fr.list_filter`,
-  with the same key, such as `priority__gte`.
+- A field on a column of SQLAlchemy's `Enum` type gets no range filters
+  (`__gte`, `__lte`, `__gt`, `__lt`), whatever the type of the field. The
+  column stores the names of the members, so a range compared names. Before,
+  an int or `str` enum, or a `str` field, on such a column got them. An int
+  or `str` enum on a column that stores the value, such as `Integer`, keeps
+  them.
 - The `400` texts of a list name the problem: `Unknown sort key: 'nope'`,
   `Unknown filter key: 'nope'`, or `Invalid filter value for 'age': 'old'.`
   with Pydantic's reason. A field validator that raises another exception

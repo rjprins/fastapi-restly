@@ -5,7 +5,6 @@ the method returns a condition, a clause or ``None``.
 """
 
 import asyncio
-import enum
 from collections.abc import Iterator
 from typing import Any
 
@@ -45,19 +44,6 @@ class Item(Base):
     vendor: Mapped[Vendor] = relationship()
 
 
-class Level(enum.IntEnum):
-    LOW = 1
-    MID = 2
-    HIGH = 3
-
-
-class Ticket(Base):
-    __tablename__ = "list_filter_ticket"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    # an int enum, stored as an int
-    level: Mapped[int]
-
-
 class VendorSchema(fr.IDSchema):
     name: str
 
@@ -65,10 +51,6 @@ class VendorSchema(fr.IDSchema):
 class ItemSchema(fr.IDSchema):
     name: str
     vendor: VendorSchema
-
-
-class TicketSchema(fr.IDSchema):
-    level: Level
 
 
 class ItemClauses(fr.ClauseNamespace):
@@ -85,9 +67,6 @@ def rows() -> list[Any]:
         Item(id=2, name="axe", view_count=10, archived=False, vendor_id=2),
         Item(id=3, name="apple", view_count=2000, archived=True, vendor_id=1),
         Item(id=4, name="bread", view_count=1, archived=True, vendor_id=2),
-        Ticket(id=1, level=1),
-        Ticket(id=2, level=2),
-        Ticket(id=3, level=3),
     ]
 
 
@@ -378,23 +357,23 @@ def test_a_key_can_have_an_operator_of_its_own(view_class):
         )
 
 
-def test_a_key_keeps_a_range_that_restly_does_not_generate(view_class):
-    """No enum gets the generated range keys. A column that stores an int
-    enum as an int keeps ``?level__gte=`` with a filter of the view's own."""
+def test_a_key_replaces_a_generated_key_with_an_operator(view_class):
+    class ItemView(view_class):  # type: ignore[valid-type,misc]
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+        exclude_filters = ("name__icontains",)
 
-    class TicketView(view_class):  # type: ignore[valid-type,misc]
-        prefix = "/tickets"
-        model = Ticket
-        schema = TicketSchema
+        @fr.list_filter("name__icontains")
+        def filter_name_icontains(self, value: str) -> ColumnElement[bool]:
+            """Items whose name has the value, in any case, as one piece."""
+            return Item.name.icontains(value, autoescape=True)
 
-        @fr.list_filter("level__gte")
-        def filter_level_gte(self, value: Level) -> ColumnElement[bool]:
-            return Ticket.level >= value
-
-    with client_for(TicketView) as client:
-        payload = client.get("/tickets/", params={"level__gte": 2}).json()
-        assert [row["id"] for row in payload["data"]] == [2, 3]
-        client.get("/tickets/", params={"level__gte": 7}, assert_status_code=422)
+    with client_for(ItemView) as client:
+        assert names(client, name__icontains="AP") == ["apple"]
+        assert query_parameter(client, "name__icontains")["description"] == (
+            "Items whose name has the value, in any case, as one piece."
+        )
 
 
 def test_a_key_with_an_operator_starts_with_a_field():

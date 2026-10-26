@@ -77,8 +77,8 @@ class TestFiltering:
         assert len(tasks) >= 2  # At least 2 from our test data
 
     def test_filter_by_priority_range(self, client):
-        """priority__gte is a filter of the view's own: no enum gets the
-        generated range keys, but this column stores the number."""
+        """The column stores the number (IntEnumType), not the names that
+        SQLAlchemy's Enum stores, so priority gets the range filters."""
         setup_test_data(client)
 
         response = client.get("/tasks?priority__gte=3")

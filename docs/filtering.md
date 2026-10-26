@@ -75,11 +75,11 @@ Not every field gets every suffix:
 
 - The range suffixes (`__gte`, `__lte`, `__gt`, `__lt`) exist only for types
   that have an order, such as numbers, text and dates. Booleans, UUIDs and
-  enums do not get them, also not a `str` enum or an `IntEnum`. A SQLAlchemy
-  `Enum` column stores the names of the members, so a range would compare
-  names. If a column stores an int enum as an int, write the range filter
-  yourself, with the same key, such as `priority__gte`; see
-  [Add a filter of your own](#own-list-filter).
+  plain enums do not get them. An int or `str` enum, such as an `IntEnum`,
+  gets them when its column stores the value, such as an `Integer` column.
+  A column of SQLAlchemy's `Enum` type gets none, whatever the type of the
+  field: it stores the names of the members, so a range would compare names.
+  `Mapped[Status]`, with an enum `Status`, is such a column by default.
 - `__contains` and `__icontains` exist only for text fields.
 - A field that holds a `dict` or a `list`, such as a `JSON` or `ARRAY`
   column, gets only `__isnull`. A value from the URL cannot become a

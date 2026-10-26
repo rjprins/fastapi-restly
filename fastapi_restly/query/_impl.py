@@ -2,7 +2,6 @@ import collections.abc as _abc
 import dataclasses
 import datetime as _dt
 import decimal as _decimal
-import enum
 import functools
 import re
 import uuid as _uuid
@@ -15,7 +14,7 @@ import sqlalchemy
 from pydantic import Field
 from pydantic.fields import FieldInfo
 from pydantic_core import PydanticCustomError, SchemaValidator, core_schema
-from sqlalchemy import ColumnElement, Select
+from sqlalchemy import ColumnElement, Select, TypeDecorator
 from sqlalchemy.orm import DeclarativeBase, aliased
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.properties import ColumnProperty
@@ -349,7 +348,10 @@ def _supports_scalar_operators(field: FieldInfo) -> bool:
     )
 
 
-def _supports_range_operators(field: FieldInfo) -> bool:
+def _supports_range_operators(field: FieldInfo, column: Any) -> bool:
+    if _stores_enum_names(column):
+        # a range would compare the names, whatever the type of the field
+        return False
     annotation, _ = _unwrap_type(field.annotation)
     if annotation is bool:
         return False
@@ -358,15 +360,21 @@ def _supports_range_operators(field: FieldInfo) -> bool:
         return True
     if issubclass(annotation, bool):
         return False
-    if issubclass(annotation, enum.Enum):
-        # SQLAlchemy's Enum stores the names of the members, so a range would
-        # compare names; Restly sees only the Python type, not the column
-        return False
+    # an int or str enum has the order of its values
     if issubclass(annotation, _ORDERABLE_TYPES):
         return True
     if issubclass(annotation, _uuid.UUID):
         return False
     return False
+
+
+def _stores_enum_names(column: Any) -> bool:
+    """Whether ``column`` has SQLAlchemy's ``Enum`` type, also inside a
+    ``TypeDecorator``. That type stores the names of the members."""
+    sql_type = getattr(column, "type", None)
+    if isinstance(sql_type, TypeDecorator):
+        sql_type = sql_type.impl_instance
+    return isinstance(sql_type, sqlalchemy.Enum)
 
 
 def _pagination_offset_validator(pagination: NumberedPagination) -> Any:
@@ -414,7 +422,9 @@ def derive_schema_list_params(
     Every such field gives the plain key and the keys with the suffixes
     ``__in``, ``__ne`` and ``__isnull``. A type with an order, such as a
     number, text or a date, also gives ``__gte``, ``__lte``, ``__gt`` and
-    ``__lt``. Text also gives ``__contains`` and ``__icontains``. A field
+    ``__lt``, unless the column has SQLAlchemy's ``Enum`` type, which stores
+    the names of the members. Text also gives ``__contains`` and
+    ``__icontains``. A field
     that does not map to a column, such as a relationship, gives no keys. A
     WriteOnly field gives none either, because a filter on it would let a
     client find out its value. A field whose type is a collection (``dict``/``list``, e.g. a
@@ -558,14 +568,14 @@ def _derive_list_params(
         # reference traversal that does not resolve would otherwise advertise
         # filters in OpenAPI that always 400 at request time.
         try:
-            relationships, _ = _resolve_column(model, name, schema_response)
+            relationships, column = _resolve_column(model, name, schema_response)
         except BadQueryParam:
             continue
         # ``sort=tags.name`` has no clear meaning when an item has several
         # tags, and the join repeats rows.
         if not any(relationship.property.uselist for relationship in relationships):
             sort_keys.append(name)
-        field_filters = _filter_fields(name, field)
+        field_filters = _filter_fields(name, field, column)
         filter_fields.update(field_filters)
         keys_of_field[name] = list(field_filters)
 
@@ -734,8 +744,12 @@ def _setting_label(owner: str | None, name: str) -> str:
     return f"{owner}.{name}" if owner else name
 
 
-def _filter_fields(name: str, field: FieldInfo) -> dict[str, Any]:
-    """The filter keys of one field, as fields of the list params model."""
+def _filter_fields(name: str, field: FieldInfo, column: Any) -> dict[str, Any]:
+    """The filter keys of one field, as fields of the list params model.
+
+    :param column: The column of the field, whose type can take the range
+        keys away.
+    """
     fields: dict[str, Any] = {}
     # Type filter parameters as ``Optional[list[str]]`` instead of the
     # column's true type) so FastAPI/Starlette preserve repeated query
@@ -784,7 +798,7 @@ def _filter_fields(name: str, field: FieldInfo) -> dict[str, Any]:
         None,
     )
 
-    if supports_scalar and _supports_range_operators(field):
+    if supports_scalar and _supports_range_operators(field, column):
         for suffix, sql in (
             ("__gte", ">="),
             ("__lte", "<="),
@@ -837,7 +851,8 @@ _SUFFIX_HINTS = {
     **dict.fromkeys(
         ("gte", "lte", "gt", "lt"),
         "Only fields with an order, such as numbers, text and dates, have "
-        "__gte, __lte, __gt and __lt.",
+        "__gte, __lte, __gt and __lt. A column of SQLAlchemy's Enum type has "
+        "none: it stores the names.",
     ),
     **dict.fromkeys(
         ("", "in", "ne"), "A field that holds a dict or a list has only __isnull."
