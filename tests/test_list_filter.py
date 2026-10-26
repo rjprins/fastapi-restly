@@ -423,7 +423,7 @@ def test_a_generated_key_with_an_operator_that_is_on_fails():
     [
         ("a__b__c", "'__' splits a field from an operator"),
         ("a__", "'__' splits a field from an operator"),
-        ("a__b.c", "'__' splits a field from an operator"),
+        ("a__b.c", "an operator has no '.'"),
         ("_private", "cannot start with '_'"),
         ("copy", "be the name of a Pydantic model attribute"),
         ("", "needs a key as a non-empty string"),

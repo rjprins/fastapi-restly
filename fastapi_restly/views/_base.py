@@ -1281,15 +1281,20 @@ def list_filter(key: str) -> Callable[[_F], _F]:
 def _check_own_key_name(key: Any) -> None:
     """Reject a key that cannot be a query parameter of the list params.
 
-    ``__`` splits a field from an operator, as in the generated keys. The
-    view checks the field when it registers.
+    The last ``__`` splits a field from an operator, as in the generated
+    keys. The view checks the field when it registers.
     """
     if not isinstance(key, str) or not key:
         raise RestlyConfigurationError(
             f"@fr.list_filter needs a key as a non-empty string, got {key!r}."
         )
-    field, separator, operator = key.partition("__")
-    if separator and (not field or not operator or "__" in operator or "." in operator):
+    field, separator, operator = key.rpartition("__")
+    if separator and "." in operator:
+        raise RestlyConfigurationError(
+            f"@fr.list_filter({key!r}): an operator has no '.'. A '.' goes in "
+            "the field, as in 'vendor.name__startswith'."
+        )
+    if separator and (not field or not operator or "__" in field):
         raise RestlyConfigurationError(
             f"@fr.list_filter({key!r}): '__' splits a field from an operator, "
             "as in 'name__startswith'. Write it once, with a field before it "

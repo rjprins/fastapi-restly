@@ -333,6 +333,10 @@ replacement, unless it says otherwise.
 
 ### Fixed
 
+- A field whose name ends in `_`, such as `type_`, gets filter keys that
+  work, such as `?type___in=a,b`. Restly now splits a key at its last `__`.
+  Before, it split at the first one, so these keys were in OpenAPI, but every
+  request with them got a `400`.
 - A filter on a column of SQLAlchemy's `Enum` type no longer gives a `500`
   on PostgreSQL, where such a column is a native ENUM by default. A value
   that is no label of the column, such as `?status=bogus` for a `str` field,

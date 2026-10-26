@@ -704,6 +704,14 @@ def _default_sort_keys(
     return keys
 
 
+def _split_key(key: str) -> tuple[str, str]:
+    """The field and the operator of a filter key, such as ``("vendor.name",
+    "icontains")``. The operator is ``""`` for a key without one. The last
+    ``__`` splits them, so a field may end in ``_``, as ``type___in`` does."""
+    field, separator, operator = key.rpartition("__")
+    return (field, operator) if separator else (key, "")
+
+
 def _check_own_key(
     label: str,
     key: str,
@@ -729,7 +737,7 @@ def _check_own_key(
         )
     # ``__`` splits a field from an operator, and ``.`` walks to a related
     # field, in every key
-    field = key.partition("__")[0]
+    field, _ = _split_key(key)
     if ("__" in key or "." in key) and field not in keys_of_field:
         message = (
             f"{label}: the key {key!r} starts with {field!r}, which is not a "
@@ -893,7 +901,7 @@ def _check_filter_entries(
         if any(_pattern_regex(entry).fullmatch(key) for key in keys):
             continue
         message = f"{label}: {entry!r} matches no filter key of {schema_name}."
-        field, _, suffix = entry.partition("__")
+        field, suffix = _split_key(entry)
         if "*" not in field and field in keys_of_field:
             field_keys = ", ".join(keys_of_field[field])
             message += f" The filter keys of {field!r} are: {field_keys}."
@@ -1495,10 +1503,8 @@ def _apply_filtering(
         if key in reserved:
             continue
 
-        if "__" in key:
-            column_name, op = key.split("__", 1)
-        else:
-            column_name, op = key, "eq"
+        column_name, op = _split_key(key)
+        op = op or "eq"
 
         stmt, column = _join_column(stmt, model, column_name, schema_cls, aliases)
         parser = functools.partial(_parse_value, schema_cls, column_name)

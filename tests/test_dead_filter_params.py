@@ -22,7 +22,7 @@ from typing import Annotated, Literal, Optional
 import pydantic
 import pytest
 from fastapi import FastAPI
-from sqlalchemy import JSON, Enum, ForeignKey, Integer, TypeDecorator
+from sqlalchemy import JSON, ColumnElement, Enum, ForeignKey, Integer, TypeDecorator
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
@@ -376,6 +376,38 @@ def test_labels_get_no_range_filters():
         assert keys(name) == [
             name + suffix for suffix in [*plain, "__gte", "__lte", "__gt", "__lt"]
         ]
+
+
+def test_a_field_that_ends_in_an_underscore_has_working_filters(client):
+    """The last ``__`` of a key splits the field from the operator, so the
+    keys of ``type_`` are ``type___in`` and so on. Before, the first ``__``
+    split them, and every such key answered 400."""
+
+    class Gizmo(fr.IDMixin, SharedBase):
+        type_: Mapped[str] = mapped_column("type")
+
+    @fr.include_view(client.app)
+    class GizmoView(fr.AsyncRestView):
+        prefix = "/gizmos"
+        model = Gizmo
+
+        @fr.list_filter("type___startswith")
+        def filter_type_startswith(self, value: str) -> ColumnElement[bool]:
+            return Gizmo.type_.startswith(value, autoescape=True)
+
+    create_tables()
+    for type_ in ("ant", "bee", "cat"):
+        client.post("/gizmos", json={"type_": type_})
+
+    def types(**params: str) -> list[str]:
+        rows = client.get("/gizmos", params=params).json()["data"]
+        return [row["type_"] for row in rows]
+
+    assert types(type___in="ant,bee") == ["ant", "bee"]
+    assert types(type___ne="ant") == ["bee", "cat"]
+    assert types(type___gte="bee") == ["bee", "cat"]
+    assert types(type___contains="at") == ["cat"]
+    assert types(type___startswith="b") == ["bee"]
 
 
 def test_a_schema_that_names_itself_gets_one_level_of_dotted_filters():
