@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "fastapi-restly"
 version = "0.11.0"
-description = "A REST Framework for FastAPI"
+description = "Class-based REST resources for FastAPI and SQLAlchemy 2.0"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
@@ -31,7 +31,6 @@ dependencies = [
     "alembic>=1.15.2",
     "fastapi>=0.115.0",
     "pydantic>=2.11.7",
-    "pydantic-settings>=2.9.1",
     # Earlier releases break mapped dataclasses on Python 3.14.
     "sqlalchemy[asyncio]>=2.0.45",
 ]

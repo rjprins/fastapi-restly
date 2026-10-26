@@ -19,8 +19,9 @@ class UserSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     change-password action.
 
     ``salary`` is write-only too. The create and update bodies take it, but
-    no CRUD response shows it, and a client cannot filter or sort on it.
-    HR and owners read it on ``GET /users/{id}/with-permissions``.
+    the CRUD routes and ``/users/me`` never return it, and a client cannot
+    filter or sort on it. HR and owners read it on
+    ``GET /users/{id}/with-permissions``.
 
     Soft-delete + audit fields are ReadOnly so they appear in responses
     (e.g. ``deleted_at`` after a soft delete) but PATCH bodies can't spoof
@@ -33,8 +34,7 @@ class UserSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     password: fr.WriteOnly[str] = ""
     role: UserRole = UserRole.MEMBER
     organization_id: fr.ReadOnly[int]
-    # Sensitive field: only HR and owners see it, through
-    # UserView.get_user_with_field_permissions.
+    # Sensitive: only HR and owners see it (UserView.get_user_with_field_permissions)
     salary: fr.WriteOnly[int | None] = None
 
     # Stamped server-side by the view's mixin chain.

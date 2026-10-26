@@ -11,10 +11,19 @@
 </p>
 
 <p align="center">
-  <strong>Build maintainable REST APIs on FastAPI, SQLAlchemy 2.0, and Pydantic v2 — with real class-based views.</strong>
+  <strong>Class-based REST resources for FastAPI and SQLAlchemy 2.0. Write each rule once.</strong>
 </p>
 
-With FastAPI-Restly imported as `fr`, a CRUD resource is four lines once `app`
+Restly turns a SQLAlchemy model into a REST resource: the five CRUD routes,
+their Pydantic schemas, and filtering, sorting and pagination on the list
+route. Each route runs a fixed list of steps. To change one step, you
+override its method, and the other steps stay the same. So you write each
+rule once, even when your API is more than plain CRUD.
+
+Restly is a framework for REST resources, not for your app. It works inside
+the FastAPI app that you already have, and you add it one resource at a time.
+
+With FastAPI-Restly imported as `fr`, a CRUD resource is four lines when `app`
 and `User` exist:
 
 ```python
@@ -27,50 +36,33 @@ class UserView(fr.AsyncRestView):
 `UserView` inherits five CRUD endpoint methods from `AsyncRestView`.
 `include_view` registers them under `/users`.
 
-Read [CRUD Routes](https://www.fastapi-restly.org/crud_routes.html) for the
-full CRUD guide and [Request Lifecycle &
-Hooks](https://www.fastapi-restly.org/lifecycle.html) for changing its
-behavior.
+> **Status:** beta. Restly ran in production for four years before it became
+> public. Until 1.0, a minor release can have breaking changes, and the
+> [changelog](https://github.com/rjprins/fastapi-restly/blob/main/CHANGELOG.md)
+> says what to change in your code. Subscribe to the
+> [newsletter](https://www.fastapi-restly.org/newsletter.html) to get an email
+> when 1.0 is released. If something is broken or missing, please
+> [open an issue](https://github.com/rjprins/fastapi-restly/issues).
 
-> **Status:** public beta release ([changelog](https://github.com/rjprins/fastapi-restly/blob/main/CHANGELOG.md)).
->
-> Restly is public after four years of internal use. The API is settling on the
-> way to `1.0.0`. Until then, each minor release can have breaking changes.
-> Feedback is welcome.
+Install Restly and `aiosqlite`, the async SQLite driver that the Quickstart
+uses:
 
 ```bash
 pip install "fastapi-restly[standard]" aiosqlite
 ```
 
-**Docs:** <https://www.fastapi-restly.org/> ·
-**[Changelog](https://github.com/rjprins/fastapi-restly/blob/main/CHANGELOG.md)** ·
-**[Contributing](https://github.com/rjprins/fastapi-restly/blob/main/CONTRIBUTING.md)** ·
-**[Security](https://github.com/rjprins/fastapi-restly/blob/main/SECURITY.md)** ·
-**[Examples](https://github.com/rjprins/fastapi-restly/tree/main/example-projects)**
-
-## Why FastAPI-Restly?
-
-Restly turns SQLAlchemy models into FastAPI resources without hiding FastAPI.
-Its class-based views are real Python classes: use inheritance, mixins, and
-method overrides to share behavior across resources.
-
-- **Class-based views**: group endpoints on Python classes with inheritance and method overrides.
-- **REST endpoints in minutes**: use `View` for custom endpoint groups, or `AsyncRestView` / `RestView` for default CRUD routes.
-- **Incremental adoption**: use Restly per resource; drop to ordinary FastAPI when needed — see [New & Existing Projects](https://www.fastapi-restly.org/projects.html).
-- **Class-level dependencies**: declare shared dependencies once and read their values from `self`.
-- **Explicit override points**: replace the endpoint method for the HTTP contract, override the business method for domain logic, and call the final handler from custom routes.
-- **Filtering, pagination, sorting**: get list params derived from the schema.
-- **Row visibility as a clause**: declare `default_scope` once on the model's clause namespace, and every list, retrieve, count, and reference check applies it; see [Scopes](https://www.fastapi-restly.org/scopes.html).
-- **Field control**: `ReadOnly` / `WriteOnly` markers, plus foreign-key validation through `MustExist[...]`.
-- **React Admin ready**: `AsyncReactAdminView` / `ReactAdminView` speak `ra-data-simple-rest`.
-- **App utilities**: SQLAlchemy engine/session setup, a 409 for database conflicts, and test fixtures.
+[Docs](https://www.fastapi-restly.org/) ·
+[Changelog](https://github.com/rjprins/fastapi-restly/blob/main/CHANGELOG.md) ·
+[Examples](https://github.com/rjprins/fastapi-restly/tree/main/example-projects) ·
+[Newsletter](https://www.fastapi-restly.org/newsletter.html) ·
+[Contributing](https://github.com/rjprins/fastapi-restly/blob/main/CONTRIBUTING.md) ·
+[Security](https://github.com/rjprins/fastapi-restly/blob/main/SECURITY.md)
 
 ## Quickstart
 
-FastAPI-Restly turns a SQLAlchemy model into a class-based CRUD resource.
-Copy this whole example into `main.py`, and run it with `fastapi dev main.py`.
-It creates the SQLite tables at startup, for local development. Use Alembic
-migrations in production.
+Copy this whole example into `main.py`, run `fastapi dev main.py`, and open
+<http://127.0.0.1:8000/docs>. It creates the SQLite tables at startup, for
+local development. Use Alembic migrations in production.
 
 ```python
 from contextlib import asynccontextmanager
@@ -90,6 +82,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str]
     email: Mapped[str]
+    active: Mapped[bool] = mapped_column(default=True)
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -104,358 +97,229 @@ class UserView(fr.AsyncRestView):
     model = User
 ```
 
-That view exposes these HTTP routes:
+That view has these routes:
 
 ```http
 GET    /users       # list users, with filtering, sorting, and pagination
 POST   /users       # create a user
-GET    /users/{id}   # read one user
-PATCH  /users/{id}   # partially update one user
-DELETE /users/{id}   # delete one user
+GET    /users/{id}  # read one user
+PATCH  /users/{id}  # partially update one user
+DELETE /users/{id}  # delete one user
 ```
 
-Restly generates the Pydantic schemas automatically.
+Restly generates the Pydantic schemas from the model. The list returns a page
+of at most 50 rows, in an envelope:
+`{"data": [...], "total_count": 2, "page": 1, "page_size": 50, "total_pages": 1}`.
 
-The Quickstart uses plain SQLAlchemy on purpose — Restly doesn't hide it, and
-the `Base` stays yours. In real projects you'll usually add `fr.ModelDefaults`
-to that base, for dataclass models, table names from the class name, and
-datetimes with a time zone. Then `fr.IDMixin` gives a model its `id`, and
-`fr.IDSchema` gives a schema its `id`. The examples below use this base:
+The example uses plain SQLAlchemy, and the `Base` stays yours. In a real
+project, add `fr.ModelDefaults` to the base: models become dataclasses, and
+each table gets its name from the class. Then `fr.IDMixin` takes the place of
+the `id` column, and `fr.IDSchema` gives a schema its `id`. The examples below
+use this base and model:
 
 ```python
 class Base(fr.ModelDefaults, DeclarativeBase):
     pass
+
+class User(fr.IDMixin, Base):
+    name: Mapped[str]
+    email: Mapped[str]
+    active: Mapped[bool] = mapped_column(default=True)
 ```
 
-### Not just CRUD
+## What Restly does differently
 
-`View` uses the same class-based machinery without CRUD endpoint methods. Use
-it to group related non-CRUD endpoints (auth flows, webhook receivers,
-actions):
+### Change one step, keep the rest
+
+Each CRUD route runs a fixed list of steps. To change one step, override its
+method. This view overrides `delete`, so that it keeps the row and marks the
+user as inactive:
 
 ```python
 @fr.include_view(app)
-class AuthView(fr.View):
-    prefix = "/auth"
-    tags = ["auth"]
-    session: fr.AsyncSessionDep
+class UserView(fr.AsyncRestView):
+    prefix = "/users"
+    model = User
 
-    @fr.post("/login")
-    async def login(self, credentials: LoginRequest) -> Token: ...
-
-    @fr.post("/logout")
-    async def logout(self) -> None: ...
+    async def delete(self, user):
+        user.active = False  # keep the row
 ```
 
-And because views truly subclass, the biggest everyday win takes only a few lines:
-declare your app's request context once on a base view, and read it from
-`self` everywhere — instead of re-declaring the same `Depends` parameters on
-every function in the project:
+`DELETE /users/{id}` still runs `authorize`, commits and returns 204. The
+other four routes do not change. See
+[Request Lifecycle & Hooks](https://www.fastapi-restly.org/lifecycle.html).
+
+### A hidden row is a 404, a refused action is a 403
+
+A scope on the model decides which rows exist for a request. Restly applies
+it when a view lists, reads, updates or deletes rows of the model, and in
+every reference check. `authorize` decides what the caller may do with a row
+that they can see.
 
 ```python
-class AppView(fr.View):
-    session: fr.AsyncSessionDep
+class PostClauses(fr.ClauseNamespace):
+    model = Post
+
+    default_scope = fr.where_clause(  # published posts, and your own drafts
+        or_(Post.published, Post.author_id == Current.user_id)
+    )
+
+
+class PostView(fr.AsyncRestView):
+    ...
+
+    async def authorize(self, action, obj=None, data=None):
+        if action in (fr.Action.UPDATE, fr.Action.DELETE):
+            if obj.author_id != Current.user_id():
+                raise fr.exc.Forbidden("Only the author can change this")
+```
+
+`Current.user_id()` is the id of the caller. Your app sets it for each
+request; see [Request Context](https://www.fastapi-restly.org/context.html).
+The scope uses `Current.user_id` without a call, so that Restly reads the
+value each time it applies the scope. Another user's draft is a 404 on `GET`,
+`PATCH` and `DELETE`, and the list does not show or count it. See
+[Scopes](https://www.fastapi-restly.org/scopes.html) and
+[Authorization](https://www.fastapi-restly.org/authorization.html).
+
+### One schema for requests and responses
+
+Write one Pydantic schema for the resource. `fr.ReadOnly` marks a field that
+only goes out, and `fr.WriteOnly` marks a field that only comes in. Restly
+builds the response class and the two request bodies from it, with names that
+OpenAPI and generated clients show. Here the `User` model also has
+`password`, `team_id` and `created_at` columns:
+
+```python
+class UserSchema(fr.IDSchema):
+    name: str
+    email: str
+    password: fr.WriteOnly[str]
+    team_id: fr.MustExist[int, Team]
+    created_at: fr.ReadOnly[datetime]
+```
+
+| Class | Used for | Fields |
+|---|---|---|
+| `UserResponse` | every response | `id`, `name`, `email`, `team_id`, `created_at` |
+| `UserCreate` | the body of `POST` | `name`, `email`, `password`, `team_id` |
+| `UserUpdate` | the body of `PATCH` | the same as `UserCreate`, and the client can leave out any of them |
+
+`team_id` is a reference: Restly checks that the team exists, inside the
+scope of `Team`. A wrong id is a 404. To make a body or the response
+different, write that schema yourself and set it on the view. See
+[Schemas & Validation](https://www.fastapi-restly.org/schemas.html).
+
+### SQLAlchemy stays SQLAlchemy, FastAPI stays FastAPI
+
+Your declarative base, your engine and your app stay yours. Add Restly next
+to the routes that you have, one resource at a time. When one route needs
+something that Restly does not do, write it as a plain FastAPI route.
+
+```python
+app = FastAPI()
+app.include_router(orders_router)  # your routes stay as they are
+fr.configure(async_engine=engine)  # Restly uses your engine
+
+@fr.include_view(app)
+class CustomerView(fr.AsyncRestView):
+    prefix = "/customers"
+    model = Customer  # a model on your own Base
+```
+
+See [New & Existing Projects](https://www.fastapi-restly.org/projects.html).
+
+## Declare dependencies once
+
+Views are Python classes, so they share code by inheritance. Declare the
+dependencies of your app once, on a base view, and read them from `self`:
+
+```python
+class AppRestView(fr.AsyncRestView):
     current_user: Annotated[User, Depends(get_current_user)]
 
-class ProfileView(AppView): ...          # custom endpoint groups
-class AppRestView(AppView, fr.AsyncRestView): ...  # CRUD resources, same context
-```
+    async def authorize(self, action, obj=None, data=None):
+        reads = (fr.Action.GET_MANY, fr.Action.GET_ONE)
+        if action not in reads and not self.current_user.is_admin:
+            raise fr.exc.Forbidden("Only admins can change this")
 
-The rule of thumb: a plain FastAPI route for a one-off endpoint, `View` for a
-group of related custom endpoints, `AsyncRestView` / `RestView` for a CRUD
-resource, and `RestView` plus custom `@fr.post` methods for CRUD with actions.
-
-Why a `View` over a bare `APIRouter`?
-
-- Prefix, tags, responses, and dependencies are declared once on the class.
-- Views compose: inheritance and mixins share behavior across endpoint groups.
-- One registration call (`fr.include_view`) per class, bindable to any app or router.
-- When a group grows into a resource, `RestView` adds CRUD endpoint methods and lifecycle hooks on the same class shape.
-
-## Installation
-
-The install command at the top is the whole story: the `standard` extra brings
-the `fastapi dev` toolchain, and `aiosqlite` is the async SQLite driver used in
-the examples (Restly is driver-agnostic — use `asyncpg`/`psycopg` for
-PostgreSQL). The `[testing]` extra adds the test tools; see
-[Testing](https://www.fastapi-restly.org/testing.html).
-
-## Start a project
-
-`restly new` writes a complete project: subject-first packages, an application
-factory, a `users` resource, a test suite, and the settings and Alembic setup.
-
-```bash
-restly new myapp
-```
-
-It asks three questions, each also available as a flag: `--async`/`--sync`,
-`--postgres`/`--sqlite`, and `--alembic`/`--create-all`. Add `--yes` to take
-the defaults. See
-[New & Existing Projects](https://www.fastapi-restly.org/projects.html).
-
-## Main features
-
-### Manual schema definition
-
-For custom validation, aliases, or stable public contracts, write the view's schema yourself:
-
-```python
-from datetime import datetime
-
-class UserSchema(fr.IDSchema):
-    name: str
-    email: str
-    password: fr.WriteOnly[str]
-    created_at: fr.ReadOnly[datetime]
 
 @fr.include_view(app)
-class UserView(fr.AsyncRestView):
-    prefix = "/users"
-    model = User
-    schema = UserSchema
-    # schema_create and schema_update are generated from UserSchema
+class ProjectView(AppRestView):
+    prefix = "/projects"
+    model = Project
 ```
 
-By default, Restly derives the create and update schemas from `UserSchema`.
-The create schema leaves out the `ReadOnly` fields.
-The update schema also lets the client leave out each field, for partial updates.
-Each field keeps its type, so `null` is valid only where the type allows it.
+Every view that inherits from `AppRestView` gets `self.current_user` and the
+same rule. A view can also have custom routes, with `@fr.post` and the other
+route decorators. `fr.View` is a view without the CRUD routes, for a group
+of routes such as login or webhooks. See
+[Views](https://www.fastapi-restly.org/views.html).
 
-Declare a write schema yourself when a request differs from the schema.
-Here the client sets the email when it creates a user, and cannot change it later:
+## Also in Restly
 
-```python
-class UserSchema(fr.IDSchema):
-    name: str
-    email: fr.ReadOnly[str]
-    password: fr.WriteOnly[str]
-    created_at: fr.ReadOnly[datetime]
+- List params: `GET /users?name=John&sort=-id&page=2`, and operators such as
+  `email__icontains=example.com`. The keys come from the response class, and
+  an unknown key is a 422. See
+  [Filtering, Sorting & Pagination](https://www.fastapi-restly.org/filtering.html).
+- Tests: `pip install "fastapi-restly[testing]"` adds pytest fixtures. Each
+  test runs in a transaction that rolls back, so a test needs no cleanup code.
+  See
+  [Testing](https://www.fastapi-restly.org/testing.html).
+- A new project: `restly new myapp` writes a complete project, with a `users`
+  resource and its tests. See
+  [New & Existing Projects](https://www.fastapi-restly.org/projects.html).
+- Database conflicts: a duplicate unique value in a CRUD write or a
+  `write_action` block is a 409, not a 500. See
+  [Errors](https://www.fastapi-restly.org/errors.html).
+- React Admin: `AsyncReactAdminView` works with `ra-data-simple-rest`. See
+  [React Admin](https://www.fastapi-restly.org/react_admin.html).
+- Sync and async: `RestView` and `AsyncRestView` have the same methods.
 
-class UserCreate(fr.BaseSchema):
-    name: str
-    email: str
-    password: str
+## What Restly does not do
 
-@fr.include_view(app)
-class UserView(fr.AsyncRestView):
-    prefix = "/users"
-    model = User
-    schema = UserSchema
-    schema_create = UserCreate
-```
+- Restly does not log users in. FastAPI's security tools find the caller,
+  and Restly decides what that caller can see and do.
+- Restly does not migrate your database. Use Alembic: `restly new` sets it up.
+- Restly is built on SQLAlchemy 2.0. It does not work with other ORMs or with
+  document databases.
+- The default routes are CRUD on one row at a time. A bulk write, or a write
+  of related rows from one body, is code that you add to the view.
 
-`PATCH` uses the update schema that Restly generates from `UserSchema`, which leaves out the `ReadOnly` email.
-
-Use **auto-schema** for prototypes and internal tools. Use an **explicit schema** for public contracts, aliases, and strict validation.
-
-### List endpoint query parameters
-
-List endpoints take list params generated from the view's response class:
-
-```bash
-GET /users?name=John&created_at__gte=2024-01-01
-GET /users?email__icontains=example
-GET /users?sort=-created_at&page=2&page_size=10
-```
-
-Parameter keys use the **public names of the view's response class**; unknown keys are
-rejected with `422`. A view chooses its keys with `include_filters` and
-`include_sort_keys`, which also turn on dotted relation paths such as
-`?vendor.name=`, and adds a typed filter of its own with `@fr.list_filter`.
-
-Pagination is on by default: list endpoints wrap rows in a `data` envelope and
-cap each page at 50 rows. Clients page with `?page=` and `?page_size=`. Set the
-default and a lower ceiling on public endpoints with the view's `pagination`.
-It also renames the parameters:
-
-```python
-class UserView(fr.AsyncRestView):
-    pagination = fr.NumberedPagination(default_page_size=25, max_page_size=200)
-```
-
-See [Filtering, Sorting & Pagination](https://www.fastapi-restly.org/filtering.html) for the full operator surface, alias rules, and pagination guidance.
-
-### Read-only and write-only fields
-
-`IDSchema` already provides a read-only `id`, so don't redeclare it unless you need to narrow the type.
-
-```python
-class UserSchema(fr.IDSchema):
-    name: str
-    email: str
-    password: fr.WriteOnly[str]        # stripped by to_single_response()
-    created_at: fr.ReadOnly[datetime]  # excluded from schema_create / schema_update
-```
-
-### Relationship handling
-
-Validate a foreign-key column on create and update with `fr.MustExist[int, Model]`.
-It keeps the plain id (`customer_id`) and checks the referenced row exists; declare the relationship (`customer`) separately when you also want the nested object.
-
-```python
-class Order(fr.IDMixin, Base):
-    customer_id: Mapped[int] = mapped_column(ForeignKey("customer.id"))
-    customer: Mapped[Customer] = relationship(init=False)
-
-class OrderSchema(fr.IDSchema):
-    customer_id: fr.MustExist[int, Customer]
-    customer: fr.ReadOnly[CustomerSchema]
-```
-
-### Custom endpoints
-
-Add custom routes with FastAPI-style decorators.
-
-- `@fr.get`
-- `@fr.post`
-- `@fr.put`
-- `@fr.patch`
-- `@fr.delete`
-- `@fr.route`
-
-They forward keyword arguments to FastAPI's route registration.
-
-```python
-class UploadView(fr.AsyncRestView):
-    prefix = "/uploads"
-    model = Upload
-
-    @fr.get(
-        "/{id}/download",
-        response_class=FileResponse,
-        responses={200: {"content": {EXCEL_MIME_TYPE: {}}}},
-    )
-    async def download_excel(self, id: int):
-        upload = await self.handle_get_one(id)
-        return to_excel_response(upload)
-```
-
-### React Admin integration
-
-Use `AsyncReactAdminView` (or `ReactAdminView` for a sync stack) for a
-[react-admin](https://marmelab.com/react-admin/) backend compatible with
-[`ra-data-simple-rest`](https://github.com/marmelab/react-admin/tree/master/packages/ra-data-simple-rest):
-
-```python
-@fr.include_view(app)
-class ProductView(fr.AsyncReactAdminView):
-    prefix = "/products"
-    model = Product
-    schema = ProductSchema
-```
-
-The view follows the `ra-data-simple-rest` HTTP contract.
-
-See [React Admin](https://www.fastapi-restly.org/react_admin.html) in the docs for CORS setup and customization.
-
-### Excluding built-in routes
-
-```python
-@fr.include_view(app)
-class UserView(fr.AsyncRestView):
-    prefix = "/users"
-    model = User
-    exclude_routes = (fr.ViewRoute.DELETE,)
-```
-
-### List response envelope
-
-List endpoints return a `data` envelope with pagination metadata:
-
-```json
-{"data": [...], "total_count": 123, "page": 1, "page_size": 50, "total_pages": 3}
-```
-
-Set `pagination = None` to return every matching row in a bare `data` envelope
-(no cap, no metadata):
-
-```python
-@fr.include_view(app)
-class TagView(fr.AsyncRestView):
-    prefix = "/tags"
-    model = Tag
-    pagination = None
-    # Response: {"data": [...]}
-```
-
-For a different response shape, set the pagination's `envelope` to your own
-Pydantic model: rename the fields, drop some, nest them, or return a bare
-array. See [Responses](https://www.fastapi-restly.org/responses.html).
-
-## Testing
-
-`fastapi_restly.pytest_fixtures` provides client and session fixtures with
-savepoint-based isolation. Restly registers them as a pytest plugin
-automatically whenever it and pytest are installed.
-
-Install the testing extra when consuming FastAPI-Restly as a package:
-
-```bash
-pip install "fastapi-restly[testing]"
-```
-
-Configure Restly for your test database in `conftest.py`.
-
-`RestlyTestClient` checks that every response has a success status (2xx), and
-includes the response body on failure:
-
-```python
-# test_users.py
-def test_create_and_fetch_user(restly_client):
-    # Raises AssertionError unless the status is 2xx
-    response = restly_client.post("/users", json={"name": "John", "email": "john@example.com"})
-    user_id = response.json()["id"]
-
-    data = restly_client.get(f"/users/{user_id}").json()
-    assert data["name"] == "John"
-```
-
-Pass an exact code to require it, such as `assert_status_code=422` for an error
-response. Pass `assert_status_code=None` to skip the check.
-
-## Configuration
-
-```python
-# Async SQLite
-fr.configure(async_database_url="sqlite+aiosqlite:///app.db")
-
-# Async PostgreSQL
-fr.configure(async_database_url="postgresql+asyncpg://user:pass@localhost/db")
-
-# Sync SQLite
-fr.configure(database_url="sqlite:///app.db")
-
-# Or hand Restly the engine you already have — it does not need to own it
-fr.configure(async_engine=existing_engine)
-```
-
-Restly has one public process-wide configuration. For per-view databases, read
-replicas, or custom sessions, use a normal FastAPI dependency on that view.
-One rule to know up front: **Restly owns the commit on its views** — custom
-session generators construct and clean up, but never commit.
-To connect Restly to an existing app's engine, sessions, and models, see
-[New & Existing Projects](https://www.fastapi-restly.org/projects.html).
+See [What the default routes do not do](https://www.fastapi-restly.org/crud_routes.html#crud-limits)
+for the details.
 
 ## Documentation
 
-- **[Tutorial](https://www.fastapi-restly.org/tutorial.html)**: build a blog API step by step, from the first model to authors and drafts
-- **[Guide](https://www.fastapi-restly.org/guide.html)**: one page for each part of Restly, how it works and how to use it. Start with [Views](https://www.fastapi-restly.org/views.html), [CRUD Routes](https://www.fastapi-restly.org/crud_routes.html) and [Request Lifecycle & Hooks](https://www.fastapi-restly.org/lifecycle.html)
-- **[API Reference](https://www.fastapi-restly.org/api_reference.html)**: inspect exact signatures and defaults
+- [Tutorial](https://www.fastapi-restly.org/tutorial.html): build a blog API
+  step by step, from the first model to authors and drafts.
+- [Guide](https://www.fastapi-restly.org/guide.html): one page for each part
+  of Restly, how it works and how to use it. Start with
+  [Views](https://www.fastapi-restly.org/views.html),
+  [CRUD Routes](https://www.fastapi-restly.org/crud_routes.html) and
+  [Request Lifecycle & Hooks](https://www.fastapi-restly.org/lifecycle.html).
+- [API Reference](https://www.fastapi-restly.org/api_reference.html): exact
+  signatures and defaults.
 
 ## Examples
 
-Complete applications under [`example-projects/`](https://github.com/rjprins/fastapi-restly/tree/main/example-projects):
+Complete applications in
+[`example-projects/`](https://github.com/rjprins/fastapi-restly/tree/main/example-projects):
 
-- **[Shop](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/shop)** — e-commerce API with products, orders, customers
-- **[Blog](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/blog)** — the blog that the tutorials build, with authors, drafts, and a publish action
-- **[SaaS](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/saas)** — multi-tenant project management API
+- [Shop](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/shop):
+  products, orders and customers.
+- [Blog](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/blog):
+  the blog that the tutorial builds, with authors, drafts and a publish action.
+- [SaaS](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/saas):
+  project management with many tenants.
 
 ## Contributing
 
-Pull requests and issue discussions welcome. See [CONTRIBUTING.md](https://github.com/rjprins/fastapi-restly/blob/main/CONTRIBUTING.md)
-for setup and tests. For security issues, see [SECURITY.md](https://github.com/rjprins/fastapi-restly/blob/main/SECURITY.md).
+Pull requests and issues are welcome. See
+[CONTRIBUTING.md](https://github.com/rjprins/fastapi-restly/blob/main/CONTRIBUTING.md)
+for setup and tests. For security issues, see
+[SECURITY.md](https://github.com/rjprins/fastapi-restly/blob/main/SECURITY.md).
 
 ## License
 
-MIT — see [LICENSE](https://github.com/rjprins/fastapi-restly/blob/main/LICENSE).
+MIT. See [LICENSE](https://github.com/rjprins/fastapi-restly/blob/main/LICENSE).

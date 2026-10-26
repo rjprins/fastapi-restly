@@ -24,7 +24,9 @@ in the project.
 ## Read the database settings from the environment
 
 In production, take the database URL and the pool size from environment
-variables. A small `pydantic-settings` class holds them:
+variables. Install pydantic-settings first, with
+`pip install pydantic-settings`, because Restly does not install it. Then a
+small settings class holds the values:
 
 ```python
 from pydantic_settings import BaseSettings

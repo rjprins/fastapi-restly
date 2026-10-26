@@ -582,3 +582,14 @@ class TestFieldLevelPermissions:
 
         client.get("/users?salary__gte=50000", assert_status_code=422)
         client.get("/users?sort=salary", assert_status_code=422)
+
+    def test_crud_routes_never_return_salary(self, client, auth_context):
+        """The CRUD routes leave salary out for every role, and do not filter on it."""
+        user_id = self._user_with_salary(client, 60000)
+
+        with auth_context(role=UserRole.MEMBER):
+            assert "salary" not in client.get(f"/users/{user_id}").json()
+            assert "salary" not in client.get("/users/me").json()
+            listed = client.get("/users").json()["data"]
+            assert listed and all("salary" not in user for user in listed)
+            client.get("/users?salary__gte=1", assert_status_code=422)
