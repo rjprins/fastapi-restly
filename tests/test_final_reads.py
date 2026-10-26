@@ -352,7 +352,7 @@ def test_a_composite_key_without_where_id_fails_at_registration(base):
     assert "Seat has a composite primary key" in message
     assert "get_one_endpoint, update_endpoint, delete_endpoint" in message
     assert "Set id_type = str, and override where_id(id)" in message
-    assert "exclude_routes" in message
+    assert "leave the item routes out with include_routes or exclude_routes" in message
 
     # without the item routes, the view registers
     class ListOnlySeatView(base):

@@ -474,6 +474,33 @@ def test_the_write_routes_that_include_routes_leaves_out_are_not_linted():
     assert len(_register(UpdateOnlyStampView)) == 1
 
 
+def test_the_put_route_of_a_react_admin_view_lints_the_update_class():
+    """``PUT /{id}`` of a react-admin view takes the update body, as
+    ``PATCH /{id}`` does, so it is linted when the view serves it alone."""
+
+    class PutStampSchema(fr.IDSchema):
+        body: str
+        tenant_id: int | None = None
+
+    class PutStampView(fr.AsyncReactAdminView):
+        prefix = "/put-stamps"
+        model = StampedNote
+        schema = PutStampSchema
+        include_routes = (fr.ViewRoute.GET_ONE, "put")
+
+    messages = _register(PutStampView)
+    assert len(messages) == 1
+    assert "PutStampSchema.tenant_id is writable" in messages[0]
+
+    class ReadStampView(fr.AsyncReactAdminView):
+        prefix = "/read-put-stamps"
+        model = StampedNote
+        schema = PutStampSchema
+        include_routes = (fr.ViewRoute.GET_ONE,)
+
+    assert _register(ReadStampView) == []
+
+
 def test_an_inherited_schema_and_a_declared_update_class_are_linted():
     class BaseStampSchema(fr.IDSchema):
         body: str

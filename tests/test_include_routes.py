@@ -6,6 +6,8 @@ write routes of its base, also a route that the base gets later.
 ``exclude_routes`` leaves out only the routes that it names.
 """
 
+import re
+
 import pytest
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
@@ -161,6 +163,34 @@ def test_an_entry_that_names_no_route_fails_at_registration(tag_view, entry):
         AttributeError,
         match=f"'{entry}' in include_routes is not a route on PublicTagView",
     ):
+        fr.include_view(FastAPI(), PublicTagView)
+
+
+@pytest.mark.parametrize(
+    ("setting", "value", "got", "fix"),
+    [
+        (
+            "include_routes",
+            fr.ViewRoute.GET_MANY,
+            "fr.ViewRoute.GET_MANY",
+            "(fr.ViewRoute.GET_MANY,)",
+        ),
+        ("include_routes", "*", "the string '*'", "('*',)"),
+        ("exclude_routes", "merge", "the string 'merge'", "('merge',)"),
+    ],
+    ids=["view-route", "star", "exclude"],
+)
+def test_a_single_string_fails_at_registration(tag_view, setting, value, got, fix):
+    """A string is a collection of its characters. Without the comma of a
+    tuple, ``(fr.ViewRoute.GET_MANY)`` would name the routes "g", "e" and so
+    on, and ``"*"`` would work only by chance."""
+    PublicTagView = type("PublicTagView", (tag_view,), {setting: value})
+    message = (
+        f"PublicTagView.{setting} must be a tuple of routes, got {got}. "
+        f"For one entry, write {setting} = {fix} with a comma."
+    )
+
+    with pytest.raises(fr.exc.RestlyConfigurationError, match=re.escape(message)):
         fr.include_view(FastAPI(), PublicTagView)
 
 

@@ -999,6 +999,7 @@ class SeatView(fr.AsyncRestView):
 
 A view that keeps the default `where_id` fails when it registers, unless it
 leaves the item routes out with
+{attr}`include_routes <fastapi_restly.views.BaseRestView.include_routes>` or
 {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>`.
 
 The expression narrows the read inside the scope. It never reaches past it,

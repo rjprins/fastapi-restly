@@ -1592,12 +1592,7 @@ def _check_composite_key(cls: Any) -> None:
     if len(sa_inspect(cls.model).primary_key) < 2:
         return
     if getattr(cls.where_id, "__module__", "").startswith("fastapi_restly."):
-        routes = [
-            name
-            for name in _ITEM_ROUTES
-            if _serves_route(cls, name)
-            and hasattr(getattr(cls, name, None), "_api_route_args")
-        ]
+        routes = [name for name in _ITEM_ROUTES if _serves_route(cls, name)]
         if routes:
             raise RestlyConfigurationError(
                 f"{cls.__name__}: {cls.model.__name__} has a composite primary "
@@ -1605,7 +1600,7 @@ def _check_composite_key(cls: Any) -> None:
                 f"item routes ({', '.join(routes)}) need it. Set "
                 "id_type = str, and override where_id(id): split the id, and "
                 "return sqlalchemy.and_(Model.a == a, Model.b == b). Or leave "
-                "the item routes out with exclude_routes."
+                "the item routes out with include_routes or exclude_routes."
             )
 
 
@@ -3535,16 +3530,35 @@ def _guard_list_params(route: Callable) -> Callable:
 
 def _route_names(view_cls: type, setting: str) -> frozenset[str]:
     """The endpoint method names that the view's ``include_routes`` or
-    ``exclude_routes`` names."""
+    ``exclude_routes`` names.
+
+    :raises RestlyConfigurationError: the setting is one string, such as
+        ``(fr.ViewRoute.GET_MANY)`` without the comma of a tuple. A string is
+        a collection of its characters, so it would name the routes ``"g"``,
+        ``"e"`` and so on.
+    """
+    value = getattr(view_cls, setting)
+    if isinstance(value, str):
+        if isinstance(value, ViewRoute):
+            shown = got = f"fr.ViewRoute.{value.name}"
+        else:
+            shown, got = repr(value), f"the string {value!r}"
+        raise RestlyConfigurationError(
+            f"{view_cls.__name__}.{setting}{_set_by(view_cls, setting)} must be "
+            f"a tuple of routes, got {got}. For one entry, write "
+            f"{setting} = ({shown},) with a comma."
+        )
     return frozenset(
-        route.value if isinstance(route, ViewRoute) else route
-        for route in getattr(view_cls, setting)
+        route.value if isinstance(route, ViewRoute) else route for route in value
     )
 
 
 def _serves_route(view_cls: type, method_name: str) -> bool:
-    """True if the CRUD view serves the route method ``method_name``: its
-    ``include_routes`` has it, and its ``exclude_routes`` does not."""
+    """True if the CRUD view serves the route method ``method_name``: it has a
+    route method of that name, its ``include_routes`` has it, and its
+    ``exclude_routes`` does not."""
+    if not hasattr(getattr(view_cls, method_name, None), "_api_route_args"):
+        return False
     included = _route_names(view_cls, "include_routes")
     return ("*" in included or method_name in included) and (
         method_name not in _route_names(view_cls, "exclude_routes")
@@ -3838,11 +3852,12 @@ def _warn_writable_model_set_fields(view_cls: type[View]) -> None:
         return
     # Each write class, and whether Restly derives it from ``schema``.
     write_classes: dict[type[pydantic.BaseModel], bool] = {}
-    for attr, route in (
-        ("schema_create", ViewRoute.CREATE),
-        ("schema_update", ViewRoute.UPDATE),
+    for attr, routes in (
+        ("schema_create", (ViewRoute.CREATE.value,)),
+        # the PUT route of a react-admin view takes the update body too
+        ("schema_update", (ViewRoute.UPDATE.value, "put")),
     ):
-        if not _serves_route(view_cls, route.value):
+        if not any(_serves_route(view_cls, route) for route in routes):
             continue
         if not _needs_generating(view_cls, attr):
             write_classes.setdefault(getattr(view_cls, attr), False)
