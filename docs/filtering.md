@@ -96,10 +96,9 @@ Not every field gets every suffix:
   serializer hides, such as a number shown as `***-1234`. Leave such a field
   out with `exclude_filters` and `exclude_sort_keys`.
 
-A date and time without an offset is UTC, and a time with an offset is
-compared as the same time in UTC. Restly changes a filter value to fit its
-column, as it changes a time in a request body. See
-[A time without an offset is UTC](#utc-times).
+A filter compares a time in UTC: a time without an offset is UTC, and a
+time with an offset is compared as the same time in UTC. See
+[Keep times in UTC](#utc-times).
 
 A `column_property` counts as a column. So a value that SQL computes for
 each row, such as the number of tasks of a project, gets filters and a sort

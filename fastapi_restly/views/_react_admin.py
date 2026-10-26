@@ -41,7 +41,7 @@ from fastapi_restly.views import (
 )
 
 # Private names without a public form yet.
-from .._times import column_time
+from .._times import column_time, value_error_reason
 from ..query._impl import _check_label, _enum_type
 from ..query._shared import _sort_term
 from ..schemas._base import _hides_value
@@ -206,7 +206,7 @@ def _coerce_value(col: Any, value: Any, name: str) -> Any:
         return column_time(col.type, coerced)
     except ValueError as exc:
         raise BadQueryParam(
-            f"Invalid filter value for {name!r}: {value!r}. {exc}"
+            f"Invalid filter value for {name!r}: {value!r}. {value_error_reason(exc)}"
         ) from exc
 
 

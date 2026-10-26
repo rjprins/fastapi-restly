@@ -98,7 +98,7 @@ from .._pagination import (
     _unpaginated_page_info,
 )
 from .._routes import matched_route
-from .._times import column_time
+from .._times import column_time, value_error_reason
 from ..db._config import _fr_config
 from ..exc import (
     NotFound,
@@ -505,7 +505,7 @@ def _time_ready(
     A field without a column keeps its value.
 
     :raises RequestValidationError: the time is out of range in UTC. The error
-        has the shape of FastAPI's own validation errors.
+        is the one that a field of type ``fr.UTCDatetime`` gives.
     """
     if not isinstance(value, datetime):
         return value
@@ -523,8 +523,9 @@ def _time_ready(
                 {
                     "type": "value_error",
                     "loc": ("body", key),
-                    "msg": f"Value error, {exc}",
+                    "msg": value_error_reason(exc),
                     "input": value,
+                    "ctx": {"error": exc},
                 }
             ]
         ) from None

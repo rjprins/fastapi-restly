@@ -40,6 +40,7 @@ from .._pagination import (
     NoPagination,
     NumberedPagination,
 )
+from .._times import in_utc
 from ..clauses import apply_clauses
 from ..clauses._scopes import _default_scope
 from ..exc import NotFound, RestlyConfigurationError
@@ -97,6 +98,12 @@ ReadOnly = Annotated[_T, readonly_marker, Field(json_schema_extra={"readOnly": T
 WriteOnly = Annotated[
     _T, writeonly_marker, Field(json_schema_extra={"writeOnly": True}, exclude=True)
 ]
+
+#: A ``datetime`` field in UTC. It reads a time without an offset as UTC, and
+#: changes a time with an offset to the same time in UTC. So the object of
+#: the schema always has the time in UTC, and JSON shows it with ``Z``, such
+#: as ``2024-01-01T09:30:00Z``. See :ref:`utc-times`.
+UTCDatetime = Annotated[datetime, pydantic.AfterValidator(in_utc)]
 
 
 #: The classes of a type alias. ``type X = ...`` makes a

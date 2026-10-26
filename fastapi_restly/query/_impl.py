@@ -38,7 +38,7 @@ from .._pagination import (
     NumberedPagination,
     _check_query_param,
 )
-from .._times import column_time
+from .._times import column_time, value_error_reason
 from ..exc import BadQueryParam, RestlyConfigurationError
 from ..schemas._base import (
     IDRef,
@@ -1743,5 +1743,6 @@ def _parse_filter_value(
         return column_time(column.type, result)
     except ValueError as exc:
         raise BadQueryParam(
-            f"Invalid filter value for {column_name!r}: {value!r}. {exc}"
+            f"Invalid filter value for {column_name!r}: {value!r}. "
+            f"{value_error_reason(exc)}"
         ) from exc

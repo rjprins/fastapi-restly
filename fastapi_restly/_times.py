@@ -1,11 +1,13 @@
 """The rule for a time that a client sends: a time without an offset is UTC.
 
-A time from a filter or a request body gets the form of its column before
-the database sees it, so that a filter and the stored value never disagree.
-Without the rule, the drivers decide: asyncpg rejects a time with an offset
-for a column without a time zone, and reads a time without one in the time
-zone of the app's Python process. psycopg leaves both to the time zone of the
-database session, and SQLite drops the offset.
+:func:`in_utc` gives a time its meaning: a field of type ``fr.UTCDatetime``
+holds each time in UTC with it. :func:`column_time` gives a time from a
+filter or a request body the form of its column before the database sees it,
+so that a filter and the stored value never disagree. Without it, the drivers
+decide: asyncpg rejects a time with an offset for a column without a time
+zone, and reads a time without one in the time zone of the app's Python
+process. psycopg leaves both to the time zone of the database session, and
+SQLite drops the offset.
 """
 
 import datetime as _dt
@@ -27,6 +29,12 @@ def in_utc(value: _dt.datetime) -> _dt.datetime:
         raise ValueError(
             "In UTC, the time is not between the years 1 and 9999."
         ) from None
+
+
+def value_error_reason(exc: ValueError) -> str:
+    """The reason for ``exc`` as Pydantic words it for the validator of
+    ``fr.UTCDatetime``, so that a field and a column give one text."""
+    return f"Value error, {exc}"
 
 
 def column_time(column_type: Any, value: Any) -> Any:

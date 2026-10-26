@@ -43,7 +43,7 @@ Find the section for your goal:
 | A field that the server owns and clients cannot set | [`ReadOnly`](#readonly-and-writeonly) |
 | A field set on create and frozen afterwards | [Your own request body](#explicit-write-schemas) |
 | A rule that a value must follow | [Validation](#validation) |
-| Times from clients in other time zones | [A time without an offset is UTC](#utc-times) |
+| Times from clients in other time zones | [`UTCDatetime`](#utc-times) |
 | Other field names in the JSON | [Aliases](#field-aliases) |
 | A response that differs from the input | [Your own response class](#own-response-class) |
 | Clear type names in OpenAPI and generated clients | [Name your schemas](#name-your-schemas) |
@@ -325,31 +325,38 @@ caller:
   [`app/tasks/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/tasks/views.py).
 
 (utc-times)=
-## A time without an offset is UTC
+## Keep times in UTC
 
-A browser sends a time with an offset: `toISOString()` gives
-`2024-01-01T09:30:00.000Z`, and `Z` is the offset of UTC. Other clients can
-send a time without an offset, such as `2024-01-01T09:30:00`. Restly reads
-such a time as UTC. Before a time from a request body or a filter goes to the
-database, Restly changes it to fit its column:
+Give each time field the type
+{data}`fr.UTCDatetime <fastapi_restly.schemas.UTCDatetime>`:
 
-| Column | A time with an offset | A time without an offset |
-|---|---|---|
-| With a time zone | becomes the same time in UTC | gets the offset of UTC |
-| Without a time zone | becomes the same time in UTC, without the offset | stays as it is |
+```python
+class MeetingSchema(fr.IDSchema):
+    name: str
+    starts_at: fr.UTCDatetime
+```
 
-On a base with {class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>`,
-a `Mapped[datetime]` column has a time zone. A column with
+The field reads a time without an offset, such as `2024-01-01T09:30:00`, as
+UTC. A time with an offset, such as `2024-01-01T10:30:00+01:00`, becomes the
+same time in UTC. So `create` and `update` get each time in UTC. A response
+shows it with `Z`, the offset of UTC, as JavaScript's `toISOString()` does: a
+client that sends `"starts_at": "2024-01-01T10:30:00+01:00"` gets
+`"starts_at": "2024-01-01T09:30:00Z"` back. A filter value goes through the
+same type, so `?starts_at__gte=2024-01-01T04:15:00-05:00` finds the meeting.
+In a URL, write the `+` of an offset as `%2B`: a plain `+` means a space
+there.
+
+Each column stores the time in UTC. A column without a time zone stores it
+without the offset: `2024-01-01T09:30:00`. On a base with
+{class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>`, a
+`Mapped[datetime]` column has a time zone. A column with
 `mapped_column(DateTime())` has none, and neither has `Mapped[datetime]` on a
-base without `fr.ModelDefaults`. In such a column,
-`2024-01-01T10:30:00+01:00` is stored as `2024-01-01T09:30:00`, and the
-filter `?starts_at__gte=2024-01-01T04:15:00-05:00` finds the row. In a URL,
-write the `+` of an offset as `%2B`: a plain `+` means a space there.
+base without `fr.ModelDefaults`.
 
-For local times in a column without a time zone, such as the start of a
-dinner booking in the time of the restaurant, convert the time with a
-validator on the field. Restly then gets a time without an offset, and keeps
-it as it is:
+For local times, such as the start of a dinner booking in the time of the
+restaurant, use a column without a time zone, and a field of type `datetime`
+with a validator that converts the time. Restly then gets a time without an
+offset, and keeps it as it is:
 
 ```python
 from datetime import datetime
@@ -378,25 +385,41 @@ convert it in the same way. Only the filter of a
 :::{admonition} Details
 :class: details
 
-Without this rule, the database drivers decide, and they do not agree. For a
-column without a time zone, asyncpg rejects a time with an offset, so the
-request fails with a 500, and SQLite drops the offset. For a column with a
-time zone, asyncpg reads a time without an offset in the time zone of the
-app's Python process. psycopg leaves both cases to PostgreSQL, which uses the
-time zone of the database session. SQLite drops the offset of every time.
+Without these rules, the database drivers decide, and they do not agree. For
+a column without a time zone, asyncpg rejects a time with an offset, so the
+request fails with a 500. For a column with a time zone, asyncpg reads a
+time without an offset in the time zone of the app's Python process. psycopg
+leaves both cases to PostgreSQL, which uses the time zone of the database
+session. SQLite drops the offset of every time.
 
-Restly changes a time from a request body when it copies the body onto the
-model, in {func}`fr.objects.make_new_object
-<fastapi_restly.objects.make_new_object>` and
-{func}`fr.objects.update_object <fastapi_restly.objects.update_object>`.
-The business methods `create` and `update` call them. So `authorize` and the
-business methods get the time as the client sent it, and the object that
-`super().create(data)` returns has the time as its column takes it. A field
-follows the rule when the model has a column with its name. Another field
-keeps its time, such as a `WriteOnly` field that only `create` reads. A
-filter method of your own, from
-{func}`fr.list_filter <fastapi_restly.views.list_filter>`, gets the time as
-the client sent it.
+A field of type `datetime` keeps the time that the client sent. Restly still
+changes the time to fit its column before the database sees it: in a filter,
+and when it copies a request body onto the model, in
+{func}`fr.objects.make_new_object <fastapi_restly.objects.make_new_object>`
+and {func}`fr.objects.update_object <fastapi_restly.objects.update_object>`:
+
+| Column | A time with an offset | A time without an offset |
+|---|---|---|
+| With a time zone | becomes the same time in UTC | gets the offset of UTC |
+| Without a time zone | becomes the same time in UTC, without the offset | stays as it is |
+
+So `authorize`, `create` and `update` get the time as the client sent it,
+and a response shows a time from a column without a time zone without an
+offset.
+
+Restly changes a time to fit a column only when the model has a column with
+the name of the field. A field without one, such as a `WriteOnly` field that
+only `create` reads, gets UTC from its type only.
+
+A filter method of your own, from
+{func}`fr.list_filter <fastapi_restly.views.list_filter>`, gets its value as
+the type of its parameter gives it. With `value: fr.UTCDatetime`, it gets the
+time in UTC. Compare it with a column without a time zone as
+`value.replace(tzinfo=None)`.
+
+A time from the database has no offset when its column has no time zone, and
+on SQLite always. To compare it with a time from the schema, give it the
+offset of UTC first, such as `obj.starts_at.replace(tzinfo=timezone.utc)`.
 
 A column with a type of your own, a
 {class}`~sqlalchemy.types.TypeDecorator`, gets a time with an offset as it
@@ -405,15 +428,12 @@ is, and so does a type with a variant for one database, from
 that stores UTC in a column without a time zone does, and a variant may
 store a time zone where the type itself does not. Restly only checks that
 the time fits in UTC. A time without an offset gets the offset of UTC when
-the type stores a time zone.
+the type stores a time zone. SQLAlchemy's recipe stores none, and it refuses
+a time without an offset, so give its column a field of type
+`fr.UTCDatetime`, which gives every time the offset of UTC.
 
 A time that is not between the years 1 and 9999 in UTC, such as
 `9999-12-31T23:30:00-01:00`, gets 422 in a request body and 400 in a filter.
-
-A response has a time from a column without a time zone without an offset,
-as the database stores it. By this rule, it is UTC. JavaScript reads
-`new Date("2024-01-01T09:30:00")` as a local time, so add the `Z` first, as
-in `new Date(value + "Z")`.
 :::
 
 (field-aliases)=

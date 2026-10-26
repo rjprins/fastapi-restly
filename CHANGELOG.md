@@ -95,6 +95,10 @@ replacement, unless it says otherwise.
   `snapshot(new)` in `after_action_commit` is then empty, and an async view
   fails with `MissingGreenlet`. The warning of `fr.configure()` about an async
   session factory with `expire_on_commit=True` has this class too.
+- `fr.UTCDatetime`, a `datetime` field in UTC. A time without an offset is
+  UTC, and a time with an offset becomes the same time in UTC. So the
+  business methods get each time in UTC, and a response shows it with `Z`,
+  also from a column without a time zone.
 
 ### Changed
 

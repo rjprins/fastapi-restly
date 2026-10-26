@@ -68,7 +68,10 @@ def api(request: pytest.FixtureRequest) -> _Api:
     )
 
 
-def _meeting_classes() -> tuple[type[Any], type[Any]]:
+def _meeting_classes(time_type: Any = datetime) -> tuple[type[Any], type[Any]]:
+    """A model with both kinds of column, and a schema with ``time_type``
+    for both times."""
+
     class Meeting(fr.IDMixin, SharedBase):
         name: Mapped[str]
         # a column without a time zone
@@ -78,8 +81,8 @@ def _meeting_classes() -> tuple[type[Any], type[Any]]:
 
     class MeetingSchema(fr.IDSchema):
         name: str
-        starts_at: datetime
-        ends_at: datetime
+        starts_at: time_type
+        ends_at: time_type
 
     return Meeting, MeetingSchema
 
@@ -304,7 +307,7 @@ def test_a_react_admin_filter_compares_a_time_with_an_offset_in_utc(api):
     )
     assert response.json()["detail"] == (
         f"Invalid filter value for 'starts_at': '{late}'. "
-        "In UTC, the time is not between the years 1 and 9999."
+        "Value error, In UTC, the time is not between the years 1 and 9999."
     )
 
 
@@ -363,21 +366,23 @@ def test_a_column_type_of_your_own_gets_the_offset(api):
     assert len(rows["data"]) == 1
 
 
+@pytest.mark.parametrize("time_type", [datetime, fr.UTCDatetime])
 @pytest.mark.parametrize(
     "column_type",
     [DateTime(), DateTime(timezone=True), _TZDateTime()],
     ids=["without-time-zone", "with-time-zone", "type-of-your-own"],
 )
-def test_a_time_out_of_range_in_utc_is_a_client_error(api, column_type):
+def test_a_time_out_of_range_in_utc_is_a_client_error(api, column_type, time_type):
     """The time in UTC is after the year 9999: the filter gets 400 and the
     body 422, both with the name that the client uses. Each kind of column
-    checks the range, also a type of your own."""
+    checks the range, also a type of your own, and gives the same errors as
+    ``fr.UTCDatetime``."""
 
     class Deadline(fr.IDMixin, SharedBase):
         due_at: Mapped[datetime] = mapped_column(column_type)
 
     class DeadlineSchema(fr.IDSchema):
-        due_at: datetime = pydantic.Field(alias="dueAt")
+        due_at: time_type = pydantic.Field(alias="dueAt")
 
     @fr.include_view(api.client.app)
     class DeadlineView(api.view):
@@ -387,7 +392,7 @@ def test_a_time_out_of_range_in_utc_is_a_client_error(api, column_type):
 
     api.create_tables()
     late = "9999-12-31T23:30:00-01:00"
-    reason = "In UTC, the time is not between the years 1 and 9999."
+    reason = "Value error, In UTC, the time is not between the years 1 and 9999."
 
     response = api.client.get(
         "/deadlines", params={"dueAt__gte": late}, assert_status_code=400
@@ -403,8 +408,9 @@ def test_a_time_out_of_range_in_utc_is_a_client_error(api, column_type):
         {
             "type": "value_error",
             "loc": ["body", "dueAt"],
-            "msg": f"Value error, {reason}",
+            "msg": reason,
             "input": late,
+            "ctx": {"error": {}},
         }
     ]
 
@@ -500,3 +506,137 @@ def test_a_validator_on_the_field_keeps_local_times(api):
         "/bookings", params={"local_at": "2024-07-01T17:30:00Z"}
     ).json()
     assert [row["name"] for row in rows["data"]] == ["dinner"]
+
+
+# ---------------------------------------------------------------------------
+# fr.UTCDatetime: a field that holds each time in UTC, so the business
+# methods and the responses have it in UTC too.
+# ---------------------------------------------------------------------------
+
+
+def test_utc_datetime_holds_each_time_in_utc():
+    class Meeting(pydantic.BaseModel):
+        starts_at: fr.UTCDatetime
+        ends_at: fr.UTCDatetime | None = None
+
+    for sent in [
+        "2024-01-01T09:30:00",
+        "2024-01-01T10:30:00+01:00",
+        "2024-01-01T09:30:00Z",
+        1704101400,
+    ]:
+        meeting = Meeting(starts_at=sent)
+        assert meeting.starts_at.isoformat() == "2024-01-01T09:30:00+00:00"
+
+    meeting = Meeting(starts_at="2024-01-01T09:30:00", ends_at="2024-01-01T09:45")
+    assert meeting.model_dump_json() == (
+        '{"starts_at":"2024-01-01T09:30:00Z","ends_at":"2024-01-01T09:45:00Z"}'
+    )
+    # OpenAPI shows a plain date-time
+    properties = Meeting.model_json_schema()["properties"]
+    assert properties["starts_at"]["format"] == "date-time"
+
+
+def test_utc_datetime_gives_the_business_methods_and_the_response_utc(api):
+    """``create`` and ``update`` get each time in UTC, and a response shows it
+    with ``Z``, also from the column without a time zone. Each column stores
+    the time in its own form."""
+    Meeting, MeetingSchema = _meeting_classes(fr.UTCDatetime)
+    seen: list[_Seen] = []
+
+    @fr.include_view(api.client.app)
+    class MeetingView(_recording_view(api.view, seen)):
+        prefix = "/meetings"
+        model = Meeting
+        schema = MeetingSchema
+
+    api.create_tables()
+    created = api.client.post(
+        "/meetings",
+        json={
+            "name": "standup",
+            "starts_at": "2024-01-01T10:30:00+01:00",
+            "ends_at": "2024-01-01T09:45:00",
+        },
+    ).json()
+    updated = api.client.patch(
+        f"/meetings/{created['id']}", json={"ends_at": "2024-01-01T05:00:00-05:00"}
+    ).json()
+
+    made, changed = seen
+    assert made.data.starts_at.isoformat() == "2024-01-01T09:30:00+00:00"
+    assert made.data.ends_at.isoformat() == "2024-01-01T09:45:00+00:00"
+    assert changed.data.ends_at.isoformat() == "2024-01-01T10:00:00+00:00"
+    assert made.starts_at == datetime(2024, 1, 1, 9, 30)
+    assert made.starts_at.tzinfo is None
+    assert created["starts_at"] == "2024-01-01T09:30:00Z"
+    assert created["ends_at"] == "2024-01-01T09:45:00Z"
+    assert updated["ends_at"] == "2024-01-01T10:00:00Z"
+    listed = api.client.get(
+        "/meetings", params={"starts_at__gte": "2024-01-01T10:15:00+01:00"}
+    ).json()
+    assert [row["starts_at"] for row in listed["data"]] == ["2024-01-01T09:30:00Z"]
+
+
+def test_a_filter_method_gets_its_value_as_its_type_gives_it(api):
+    """A filter method of your own with an ``fr.UTCDatetime`` value gets the
+    time in UTC. For a column without a time zone, it takes the offset off."""
+    Meeting, MeetingSchema = _meeting_classes()
+    seen: list[datetime] = []
+
+    @fr.include_view(api.client.app)
+    class MeetingView(api.view):
+        prefix = "/meetings"
+        model = Meeting
+        schema = MeetingSchema
+
+        @fr.list_filter("starts_after")
+        def filter_starts_after(self, value: fr.UTCDatetime) -> Any:
+            seen.append(value)
+            return Meeting.starts_at > value.replace(tzinfo=None)
+
+    api.create_tables()
+    for name, starts_at in [
+        ("early", "2024-01-01T09:00:00"),
+        ("late", "2024-01-01T10:00:00"),
+    ]:
+        api.client.post(
+            "/meetings",
+            json={"name": name, "starts_at": starts_at, "ends_at": starts_at},
+        )
+
+    rows = api.client.get(
+        "/meetings", params={"starts_after": "2024-01-01T10:30:00+01:00"}
+    ).json()
+
+    assert seen[0].isoformat() == "2024-01-01T09:30:00+00:00"
+    assert [row["name"] for row in rows["data"]] == ["late"]
+
+
+def test_utc_datetime_gives_a_column_type_of_your_own_an_offset(api):
+    """SQLAlchemy's recipe refuses a time without an offset. A field of type
+    ``fr.UTCDatetime`` gives every time the offset of UTC, so the recipe
+    takes it, in a body and in a filter."""
+
+    class Stamp(fr.IDMixin, SharedBase):
+        stamped_at: Mapped[datetime] = mapped_column(_TZDateTime())
+
+    class StampSchema(fr.IDSchema):
+        stamped_at: fr.UTCDatetime
+
+    @fr.include_view(api.client.app)
+    class StampView(api.view):
+        prefix = "/stamps"
+        model = Stamp
+        schema = StampSchema
+
+    api.create_tables()
+    created = api.client.post(
+        "/stamps", json={"stamped_at": "2024-01-01T09:30:00"}
+    ).json()
+    rows = api.client.get(
+        "/stamps", params={"stamped_at__gte": "2024-01-01T09:00:00"}
+    ).json()
+
+    assert created["stamped_at"] == "2024-01-01T09:30:00Z"
+    assert len(rows["data"]) == 1

@@ -49,6 +49,7 @@ through `fr`.
 | {data}`fr.SessionDep <fastapi_restly.db.SessionDep>` | FastAPI dependency annotation for a synchronous session. |
 | {class}`fr.TimestampsMixin <fastapi_restly.models.TimestampsMixin>` | Model fields for creation and update timestamps. |
 | {class}`fr.TimestampsSchemaMixin <fastapi_restly.schemas.TimestampsSchemaMixin>` | Read-only creation and update timestamps in a schema. |
+| {data}`fr.UTCDatetime <fastapi_restly.schemas.UTCDatetime>` | A `datetime` field in UTC: a time without an offset is UTC. |
 | {class}`fr.View <fastapi_restly.views.View>` | Base class for a group of endpoint methods. |
 | {class}`fr.ViewRoute <fastapi_restly.views.ViewRoute>` | Default CRUD endpoint names for route exclusion. |
 | {func}`fr.where_clause <fastapi_restly.clauses.where_clause>` | Declare a reusable query predicate. |
