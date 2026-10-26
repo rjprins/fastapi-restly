@@ -187,6 +187,17 @@ replacement, unless it says otherwise.
   not from its parameter names. Annotate it, such as
   `create_endpoint(self, data: ViewCreate) -> ViewResponse`. `list_params`
   still works by its name.
+- A time without an offset is UTC, in request bodies and filters alike. Such
+  a time gets the offset of UTC when its column has a time zone, as in the
+  generated filters before. A time with an offset becomes the same time in
+  UTC, and loses its offset when its column has no time zone, such as a
+  `DateTime()` column. A time that UTC cannot hold gets a 422 in a body and a
+  400 in a filter. Before, SQLite dropped the offset, asyncpg failed with a
+  500, and a body time without an offset was read in the time zone of the
+  app's Python process (asyncpg) or of the database session (psycopg).
+  Restly changes the times of a body when it copies the body onto the model.
+  A column that keeps local times needs a validator on its field that
+  converts the time first.
 
 #### Lists
 

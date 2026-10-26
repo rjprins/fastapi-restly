@@ -22,6 +22,7 @@ import types
 import warnings
 import weakref
 from collections.abc import Collection, Iterable, Mapping, Set
+from datetime import datetime
 from enum import Enum
 from typing import (
     TYPE_CHECKING,
@@ -97,6 +98,7 @@ from .._pagination import (
     _unpaginated_page_info,
 )
 from .._routes import matched_route
+from .._times import column_time
 from ..db._config import _fr_config
 from ..exc import (
     NotFound,
@@ -492,6 +494,42 @@ def _json_ready(model_cls: type[Any], field_name: str, value: Any) -> Any:
     return value
 
 
+def _time_ready(
+    model_cls: type[Any],
+    schema_cls: type[pydantic.BaseModel],
+    field_name: str,
+    value: Any,
+) -> Any:
+    """A time in the form of its column, by the rule of ``column_time``.
+
+    A field without a column keeps its value.
+
+    :raises RequestValidationError: the time is out of range in UTC. The error
+        has the shape of FastAPI's own validation errors.
+    """
+    if not isinstance(value, datetime):
+        return value
+    mapper = sa_inspect(model_cls, raiseerr=False)
+    column = None if mapper is None else mapper.columns.get(field_name)
+    if column is None:
+        return value
+    try:
+        return column_time(column.type, value)
+    except ValueError as exc:
+        field = schema_cls.model_fields.get(field_name)
+        key = field_name if field is None else _client_name(field_name, field)
+        raise RequestValidationError(
+            [
+                {
+                    "type": "value_error",
+                    "loc": ("body", key),
+                    "msg": f"Value error, {exc}",
+                    "input": value,
+                }
+            ]
+        ) from None
+
+
 def _reject_excluded_json_fields(value: Any, column: str) -> None:
     """Reject exclusions and document values that cannot be inspected safely."""
     pending = [value]
@@ -808,8 +846,9 @@ def build_create_plan(
             # default applies. A JSON column would store a None as JSON null.
             continue
 
+        value = _time_ready(model_cls, schema_cls, field_name, _revealed(value))
         value = _collection_ready(
-            model_cls, field_name, _json_ready(model_cls, field_name, _revealed(value))
+            model_cls, field_name, _json_ready(model_cls, field_name, value)
         )
         if _accepts_init_kwarg(model_cls, field_name):
             plan.kwargs[field_name] = value
@@ -892,7 +931,8 @@ def apply_update_to_object(
         if is_mapped_instance(value) and is_reference_field(schema_cls, field_name):
             _apply_resolved_reference_update(obj, field_name, value)
             continue
-        value = _json_ready(type(obj), field_name, _revealed(value))
+        value = _time_ready(type(obj), schema_cls, field_name, _revealed(value))
+        value = _json_ready(type(obj), field_name, value)
         setattr(obj, field_name, _collection_ready(type(obj), field_name, value))
 
 

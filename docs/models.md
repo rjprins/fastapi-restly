@@ -76,8 +76,11 @@ these defaults:
   Set `__tablename__` on a model to choose another name.
 - **Datetimes with a time zone.** `Mapped[datetime]` maps to
   `DateTime(timezone=True)`. Store UTC times in it. PostgreSQL returns them
-  with a time zone, but SQLite returns them without one. For a clock time
-  without a time zone, use `mapped_column(DateTime())` on that column.
+  with a time zone, but SQLite returns them without one. For a time without
+  a time zone, use `mapped_column(DateTime())` on that column. A time from a
+  client follows one rule for both kinds of column:
+  [A time without an offset is UTC](#utc-times). That section also shows a
+  column that keeps local times.
 - **Enums as strings.** A column typed with an `enum.Enum` stores the name of
   the member, such as `RED`, as a string of up to 64 characters. It is not a
   database enum type, so a new member needs no database migration.

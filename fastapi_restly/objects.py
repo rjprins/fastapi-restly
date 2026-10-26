@@ -32,7 +32,8 @@ def make_new_object(
     calls this with the view's model.
 
     The schema of ``data`` decides what is written: every field it
-    declares, except those it marks ``ReadOnly``.
+    declares, except those it marks ``ReadOnly``. A time gets the form of its
+    column; see :ref:`utc-times`.
     """
     from .views._base import (
         apply_create_assignments,
@@ -55,8 +56,9 @@ def update_object(session: _Session, obj: _T, data: _pydantic.BaseModel) -> _T:
 
     This is the schema-to-ORM update primitive. It resolves Restly reference
     fields and applies only writable inputs: the fields the client sent that
-    the schema of ``data`` does not mark ``ReadOnly``. It does not flush.
-    The default ``update`` of a view calls this.
+    the schema of ``data`` does not mark ``ReadOnly``. A time gets the form of
+    its column, as in :func:`make_new_object`. It does not flush. The default
+    ``update`` of a view calls this.
     """
     from .views._base import (
         apply_update_to_object,

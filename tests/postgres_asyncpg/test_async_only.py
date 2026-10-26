@@ -17,7 +17,7 @@ import asyncio
 import os
 import time
 from collections.abc import AsyncIterator, Iterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 from datetime import datetime, timezone
 
 import pytest
@@ -48,11 +48,17 @@ class AsyncpgNote(fr.TimestampsMixin, fr.IDMixin, SharedBase):
 
     text: Mapped[str]
     local_time: Mapped[datetime | None] = mapped_column(DateTime(), default=None)
+    # a column without a time zone, for UTC
+    starts_at: Mapped[datetime | None] = mapped_column(DateTime(), default=None)
+    # a column with a time zone that a request body can set
+    due_at: Mapped[datetime | None] = mapped_column(default=None)
 
 
 class AsyncpgNoteSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     text: str
     local_time: datetime | None = None
+    starts_at: datetime | None = None
+    due_at: datetime | None = None
 
 
 class AsyncpgTag(fr.IDMixin, SharedBase):
@@ -246,6 +252,86 @@ async def test_explicitly_naive_datetime_filter_stays_naive_with_asyncpg(
     assert response.status_code == 200
     assert [item["text"] for item in response.json()["data"]] == ["known wall time"]
     assert response.json()["data"][0]["local_time"] == "2024-07-01T09:30:00"
+
+
+@contextmanager
+def _process_time_zone(name: str) -> Iterator[None]:
+    """Run the block with ``name`` as the local time zone of the process."""
+    original_tz = os.environ.get("TZ")
+    os.environ["TZ"] = name
+    time.tzset()
+    try:
+        yield
+    finally:
+        if original_tz is None:
+            os.environ.pop("TZ", None)
+        else:
+            os.environ["TZ"] = original_tz
+        time.tzset()
+
+
+@pytest.mark.asyncio
+async def test_a_body_time_without_an_offset_is_utc_with_asyncpg(restly_async_client):
+    """asyncpg reads a time without an offset, for a column with a time zone,
+    in the time zone of the process. Restly sends it as UTC, so the filter
+    finds the stored time."""
+    with _process_time_zone("Asia/Tokyo"):
+        created = await restly_async_client.post(
+            "/filtered-notes",
+            json={"text": "due at noon UTC", "due_at": "2024-08-01T12:00:00"},
+        )
+        response = await restly_async_client.get(
+            "/filtered-notes",
+            params={
+                "due_at__gte": "2024-08-01T12:00:00",
+                "due_at__lte": "2024-08-01T12:00:00",
+            },
+        )
+
+    assert created.json()["due_at"] == "2024-08-01T12:00:00Z"
+    assert [item["text"] for item in response.json()["data"]] == ["due at noon UTC"]
+
+
+@pytest.mark.asyncio
+async def test_a_time_with_an_offset_is_utc_for_a_column_without_one_with_asyncpg(
+    restly_async_client,
+):
+    """asyncpg rejects a time with an offset for a column without a time
+    zone. Restly sends the time in UTC, without the offset, in a body and in
+    a filter."""
+    created = await restly_async_client.post(
+        "/filtered-notes",
+        json={"text": "starts in Berlin", "starts_at": "2024-09-01T10:30:00+02:00"},
+    )
+    response = await restly_async_client.get(
+        "/filtered-notes",
+        params={
+            "starts_at__gte": "2024-09-01T10:30:00+02:00",
+            "starts_at__lte": "2024-09-01T08:30:00Z",
+        },
+    )
+
+    assert created.json()["starts_at"] == "2024-09-01T08:30:00"
+    assert response.status_code == 200
+    assert [item["text"] for item in response.json()["data"]] == ["starts in Berlin"]
+
+
+@pytest.mark.asyncio
+async def test_a_time_out_of_range_in_utc_is_a_client_error_with_asyncpg(
+    restly_async_client,
+):
+    """asyncpg turns a time with an offset into UTC for a column with a time
+    zone, and fails for a time that UTC cannot hold. Restly rejects the time
+    first, in a body and in a filter."""
+    late = "9999-12-31T23:30:00-01:00"
+    await restly_async_client.post(
+        "/filtered-notes",
+        json={"text": "too late", "due_at": late},
+        assert_status_code=422,
+    )
+    await restly_async_client.get(
+        "/filtered-notes", params={"due_at__gte": late}, assert_status_code=400
+    )
 
 
 @pytest.mark.asyncio

@@ -96,33 +96,10 @@ Not every field gets every suffix:
   serializer hides, such as a number shown as `***-1234`. Leave such a field
   out with `exclude_filters` and `exclude_sort_keys`.
 
-A date and time without a UTC offset is read as UTC when the column stores a
-time zone. On a base with
-{class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>`,
-`Mapped[datetime]` stores one by default. A column declared `DateTime()`
-compares the value as it is. So Restly passes a value with a UTC offset, such
-as `2024-01-01T10:15:00+01:00`, on as it is: SQLite then drops the offset,
-and asyncpg rejects the value. When such a column stores
-UTC, convert the value in the type of the field. A filter value goes through
-the field's validation, so the filters convert it too, and so does a request
-body:
-
-```python
-from datetime import datetime, timezone
-from typing import Annotated
-
-import pydantic
-
-
-def naive_utc(value: datetime) -> datetime:
-    if value.tzinfo is None:
-        return value
-    return value.astimezone(timezone.utc).replace(tzinfo=None)
-
-
-class EventSchema(fr.IDSchema):
-    starts_at: Annotated[datetime, pydantic.AfterValidator(naive_utc)]
-```
+A date and time without an offset is UTC, and a time with an offset is
+compared as the same time in UTC. Restly changes a filter value to fit its
+column, as it changes a time in a request body. See
+[A time without an offset is UTC](#utc-times).
 
 A `column_property` counts as a column. So a value that SQL computes for
 each row, such as the number of tasks of a project, gets filters and a sort

@@ -1,7 +1,7 @@
 """The dialect-divergent surface, pinned on real PostgreSQL.
 
 Everything here is invisible on SQLite and only runs when the subtree is pointed
-at PostgreSQL (see ``conftest.py``). Six things are covered:
+at PostgreSQL (see ``conftest.py``). Seven things are covered:
 
 * ``contains`` (``LIKE``) is case-sensitive and ``icontains`` (``ILIKE``) folds
   case, for ASCII *and* non-ASCII input. On SQLite ``LIKE`` is
@@ -26,10 +26,14 @@ at PostgreSQL (see ``conftest.py``). Six things are covered:
   ``restly_session`` / ``restly_async_session`` -- the async session runs over
   the sync fixture's pinned connection, so a write through either is visible to
   the other within a test. This path only exists on a psycopg stack.
+* Times: a time without an offset is UTC. psycopg leaves the time zone to
+  PostgreSQL, which reads such a time in the time zone of the session, so
+  these tests give the session another time zone.
 """
 
 import asyncio
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 import httpx
 import pytest
@@ -37,6 +41,7 @@ from fastapi import FastAPI
 from sqlalchemy import (
     JSON,
     CheckConstraint,
+    DateTime,
     Enum,
     ForeignKey,
     and_,
@@ -44,6 +49,7 @@ from sqlalchemy import (
     select,
     text,
 )
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Mapped, mapped_column, sessionmaker
@@ -164,6 +170,26 @@ class PgCheckedSchema(fr.IDSchema):
     amount: int
 
 
+class PgMeeting(fr.IDMixin, SharedBase):
+    name: Mapped[str]
+    # a column without a time zone
+    starts_at: Mapped[datetime] = mapped_column(DateTime())
+    # a column with a time zone, from fr.ModelDefaults
+    ends_at: Mapped[datetime]
+    # a time zone only on PostgreSQL, from a variant
+    held_at: Mapped[datetime | None] = mapped_column(
+        DateTime().with_variant(postgresql.TIMESTAMP(timezone=True), "postgresql"),
+        default=None,
+    )
+
+
+class PgMeetingSchema(fr.IDSchema):
+    name: str
+    starts_at: datetime
+    ends_at: datetime
+    held_at: datetime | None = None
+
+
 @fr.include_view(_app)
 class PgWordView(fr.AsyncRestView):
     prefix = "/words"
@@ -264,6 +290,13 @@ class PgCheckedView(fr.AsyncRestView):
     schema = PgCheckedSchema
 
 
+@fr.include_view(_app)
+class PgMeetingView(fr.AsyncRestView):
+    prefix = "/meetings"
+    model = PgMeeting
+    schema = PgMeetingSchema
+
+
 _MODELS = [
     PgWord,
     PgRanked,
@@ -275,6 +308,7 @@ _MODELS = [
     PgParent,
     PgChild,
     PgChecked,
+    PgMeeting,
 ]
 
 
@@ -596,6 +630,114 @@ async def test_not_null_violation_detail_from_real_error(restly_async_session):
     assert excinfo.value.orig.sqlstate == "23502"  # type: ignore[union-attr]
     detail = _build_integrity_detail(excinfo.value)
     assert detail == "Not-null constraint violated on column 'name'"
+
+
+# ---------------------------------------------------------------------------
+# A time without an offset is UTC. psycopg leaves the time zone to
+# PostgreSQL, which reads such a time in the time zone of the session.
+# ---------------------------------------------------------------------------
+
+
+async def _set_session_time_zone(session, name: str) -> None:
+    """Give the pinned connection of the test another time zone, until the
+    rollback at the end of the test."""
+    await session.execute(text(f"SET LOCAL TIME ZONE '{name}'"))
+    await session.commit()
+
+
+@pytest.mark.asyncio
+async def test_a_body_time_without_an_offset_is_utc_on_psycopg(restly_async_session):
+    await _set_session_time_zone(restly_async_session, "America/New_York")
+    async with _async_client() as client:
+        created = await client.post(
+            "/meetings/",
+            json={
+                "name": "standup",
+                "starts_at": "2024-01-01T09:30:00",
+                "ends_at": "2024-01-01T09:45:00",
+            },
+        )
+        listed = await client.get(
+            "/meetings/",
+            params={
+                "ends_at__gte": "2024-01-01T09:45:00",
+                "ends_at__lte": "2024-01-01T09:45:00",
+            },
+        )
+    assert created.status_code == 201, created.text
+    ends_at = datetime.fromisoformat(created.json()["ends_at"])
+    assert ends_at == datetime(2024, 1, 1, 9, 45, tzinfo=timezone.utc)
+    assert created.json()["starts_at"] == "2024-01-01T09:30:00"
+    assert [row["name"] for row in listed.json()["data"]] == ["standup"]
+
+
+@pytest.mark.asyncio
+async def test_a_time_with_an_offset_is_utc_for_a_column_without_one_on_psycopg(
+    restly_async_session,
+):
+    await _set_session_time_zone(restly_async_session, "America/New_York")
+    async with _async_client() as client:
+        for name, starts_at in [
+            ("early", "2024-01-01T08:30:00Z"),
+            ("late", "2024-01-01T10:30:00+01:00"),
+        ]:
+            created = await client.post(
+                "/meetings/",
+                json={
+                    "name": name,
+                    "starts_at": starts_at,
+                    "ends_at": "2024-01-01T12:00:00Z",
+                },
+            )
+            assert created.status_code == 201, created.text
+        with_offset = await client.get(
+            "/meetings/", params={"starts_at__gte": "2024-01-01T10:15:00+01:00"}
+        )
+        without_offset = await client.get(
+            "/meetings/", params={"starts_at__gte": "2024-01-01T09:15:00"}
+        )
+    assert created.json()["starts_at"] == "2024-01-01T09:30:00"
+    assert [row["name"] for row in with_offset.json()["data"]] == ["late"]
+    assert [row["name"] for row in without_offset.json()["data"]] == ["late"]
+
+
+@pytest.mark.asyncio
+async def test_a_type_with_a_variant_keeps_the_offset_on_psycopg(restly_async_session):
+    """The variant stores a time zone on PostgreSQL, where the type itself has
+    none. Restly passes the time on with its offset, so PostgreSQL stores the
+    right moment, whatever the time zone of the session."""
+    await _set_session_time_zone(restly_async_session, "America/New_York")
+    async with _async_client() as client:
+        created = await client.post(
+            "/meetings/",
+            json={
+                "name": "standup",
+                "starts_at": "2024-01-01T09:30:00",
+                "ends_at": "2024-01-01T09:45:00Z",
+                "held_at": "2024-01-01T10:30:00+01:00",
+            },
+        )
+    assert created.status_code == 201, created.text
+    held_at = datetime.fromisoformat(created.json()["held_at"])
+    assert held_at == datetime(2024, 1, 1, 9, 30, tzinfo=timezone.utc)
+
+
+@pytest.mark.asyncio
+async def test_a_time_out_of_range_in_utc_is_a_client_error_on_psycopg(
+    restly_async_session,
+):
+    """psycopg sends a time with an offset as it is, and PostgreSQL stores a
+    year after 9999, which Python cannot read back. Restly rejects the time
+    first."""
+    late = "9999-12-31T23:30:00-01:00"
+    async with _async_client() as client:
+        created = await client.post(
+            "/meetings/",
+            json={"name": "late", "starts_at": "2024-01-01T09:30:00", "ends_at": late},
+        )
+        listed = await client.get("/meetings/", params={"ends_at__gte": late})
+    assert created.status_code == 422, created.text
+    assert listed.status_code == 400, listed.text
 
 
 # ---------------------------------------------------------------------------

@@ -1735,6 +1735,13 @@ def _parse_filter_value(
     """One filter value as a value for ``column``: validated with the
     validation of its field, and with a time as the column takes it.
 
-    :raises BadQueryParam: when the value fails the validation of its field.
+    :raises BadQueryParam: when the value fails the validation of its field,
+        or when it is a time that is out of range in UTC.
     """
-    return column_time(column.type, _parse_value(schema_cls, column_name, value))
+    result = _parse_value(schema_cls, column_name, value)
+    try:
+        return column_time(column.type, result)
+    except ValueError as exc:
+        raise BadQueryParam(
+            f"Invalid filter value for {column_name!r}: {value!r}. {exc}"
+        ) from exc
