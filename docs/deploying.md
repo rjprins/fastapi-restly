@@ -317,8 +317,9 @@ on its view:
   such as `default_page_size=25` and `max_page_size=100`. `max_page` limits
   how far a client can page. See [Page through a list](#list-pagination).
 - Turn on only the filters and sort keys that clients need, with
-  `include_filters` and `include_sort_keys`. A filter or a sort on a column
-  without an index reads the whole table. See
+  `include_filters` and `include_sort_keys`. Filter keys of your own, from
+  [`@fr.list_filter`](#own-list-filter), are always on, so check those too.
+  A filter or a sort on a column without an index reads the whole table. See
   [Choose the keys of a list](#choose-list-keys).
 - Keep `unknown_query_params = "forbid"`, the default. A mistyped filter is
   then a `422`, not a list with more rows than the client asked for. See
