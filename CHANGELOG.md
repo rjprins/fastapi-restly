@@ -326,6 +326,9 @@ replacement, unless it says otherwise.
   `unknown_query_params = "ignore"`.
 - `react_admin_query_params`. The keys are the fields of the view's
   `schema_list_params`.
+- The `warn_on_misuse` warning for CRUD routes on a plain `View`. Such routes
+  work. The warning also came for views that `RestView` cannot replace, such
+  as a view that keeps its items as JSON in one settings row.
 
 ### Fixed
 

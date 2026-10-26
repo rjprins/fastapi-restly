@@ -3637,12 +3637,11 @@ def _warn_on_misuse(view_cls: type[View]) -> None:
     """
     own = view_cls.__dict__
     name = view_cls.__name__
-    is_crud_view = issubclass(view_cls, BaseRestView)
 
     # 1. Endpoint-method override where a business-method override was likely
     # meant. A replacement that calls the handler, or the endpoint method of
     # its base, keeps the steps: that is how a view changes the HTTP contract.
-    if is_crud_view:
+    if issubclass(view_cls, BaseRestView):
         for endpoint in sorted(_ENDPOINT_METHOD_NAMES & own.keys()):
             verb = endpoint.removesuffix("_endpoint")
             source = _source_of(own[endpoint])
@@ -3682,40 +3681,12 @@ def _warn_on_misuse(view_cls: type[View]) -> None:
                 stacklevel=5,
             )
 
-    # 3. A CRUD route set hand-rolled on a bare View.
-    if not is_crud_view:
-        http_methods: set[str] = set()
-        n_routes = 0
-        for value in own.values():
-            route_args = getattr(value, "_api_route_args", None)
-            if route_args is None:
-                continue
-            _path, route_kwargs = route_args
-            n_routes += 1
-            http_methods.update(
-                method.upper() for method in route_kwargs.get("methods", ["GET"])
-            )
-        if (
-            n_routes >= 3
-            and {"GET", "POST"} <= http_methods
-            and http_methods & {"PATCH", "PUT", "DELETE"}
-        ):
-            warnings.warn(
-                f"{name} hand-rolls a CRUD route set on a bare View. RestView / "
-                f"AsyncRestView already define list/create/get/update/delete "
-                f"endpoint methods. Subclass one and override the business methods "
-                f"(create/update/delete), declare a scope, or override "
-                f"authorize for custom behavior.",
-                RestlyMisuseWarning,
-                stacklevel=5,
-            )
-
-    # 4. A reference type (IDRef/IDSchema) whose name is a scalar FK column:
+    # 3. A reference type (IDRef/IDSchema) whose name is a scalar FK column:
     # the ``post_id: IDRef[Post]`` mistake, where ``data.post_id`` becomes a
     # wrapper instead of the plain id.
     _warn_scalar_named_reference_fields(view_cls)
 
-    # 5. A writable field on a column that the model sets, such as a tenant
+    # 4. A writable field on a column that the model sets, such as a tenant
     # or an audit column: the request body replaces the column default.
     _warn_writable_model_set_fields(view_cls)
 

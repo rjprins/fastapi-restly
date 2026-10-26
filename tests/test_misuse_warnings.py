@@ -2,10 +2,10 @@
 
 ``fr.configure(warn_on_misuse=True)`` makes ``include_view`` lint the
 registered class for the dominant misuse patterns (route-shell override,
-manual ``session.commit()`` in a view method, hand-rolled CRUD on a bare
-``View``, a reference type named after a scalar FK column, a writable field
-on a column that the model sets, and a duplicate registration on the same
-parent) and emit :class:`RestlyMisuseWarning` for each. Off by default.
+manual ``session.commit()`` in a view method, a reference type named after a
+scalar FK column, a writable field on a column that the model sets, and a
+duplicate registration on the same parent) and emit
+:class:`RestlyMisuseWarning` for each. Off by default.
 
 The lint runs before parent endpoints are copied into the subclass, so a clean
 view must not warn even though its ``__dict__`` gains the five shells during
@@ -141,41 +141,31 @@ def test_write_action_method_does_not_warn():
     assert _register(PublishArticleView) == []
 
 
-def test_bare_view_crud_set_warns():
-    class HandRolledView(fr.View):
-        prefix = "/hand-rolled"
+def test_plain_view_with_crud_routes_does_not_warn():
+    """A plain View may have CRUD routes of its own, such as for items that
+    it keeps as JSON in one settings row. RestView cannot serve those, and
+    the code is correct, so it does not warn."""
+
+    class SavedFilterView(fr.View):
+        prefix = "/saved-filters"
 
         @fr.get("/")
-        async def list_items(self) -> Any:
+        async def list_filters(self) -> Any:
             return []
 
         @fr.post("/")
-        async def create_item(self) -> Any:
+        async def add_filter(self) -> Any:
             return {}
 
-        @fr.delete("/{id}")
-        async def delete_item(self, id: int) -> None:
+        @fr.patch("/{name}")
+        async def rename_filter(self, name: str) -> Any:
+            return {}
+
+        @fr.delete("/{name}")
+        async def remove_filter(self, name: str) -> None:
             return None
 
-    messages = _register(HandRolledView)
-    assert len(messages) == 1
-    assert "hand-rolls a CRUD route set on a bare View" in messages[0]
-    assert "RestView" in messages[0]
-
-
-def test_bare_view_few_routes_does_not_warn():
-    class PingView(fr.View):
-        prefix = "/ping"
-
-        @fr.get("/")
-        async def ping(self) -> Any:
-            return {"pong": True}
-
-        @fr.post("/")
-        async def echo(self) -> Any:
-            return {}
-
-    assert _register(PingView) == []
+    assert _register(SavedFilterView) == []
 
 
 def test_clean_restview_does_not_warn():
