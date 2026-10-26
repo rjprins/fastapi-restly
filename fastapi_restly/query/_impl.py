@@ -358,8 +358,9 @@ def _supports_range_operators(field: FieldInfo) -> bool:
         return True
     if issubclass(annotation, bool):
         return False
-    if issubclass(annotation, enum.Enum) and issubclass(annotation, str):
-        # a set of names, as a plain enum, not text with a useful order
+    if issubclass(annotation, enum.Enum):
+        # SQLAlchemy's Enum stores the names of the members, so a range would
+        # compare names; Restly sees only the Python type, not the column
         return False
     if issubclass(annotation, _ORDERABLE_TYPES):
         return True

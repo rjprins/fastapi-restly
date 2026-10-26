@@ -304,29 +304,37 @@ def test_annotated_inside_optional_gets_the_filters_of_the_plain_type():
     assert "owner_annotated.name__contains" in fields
 
 
-def test_a_str_enum_gets_no_range_filters():
-    """A str enum is a set of names, as a plain enum. An order by its text is
-    rarely what a client means, so it gets no ``__gte``, ``__lte``, ``__gt``
-    or ``__lt``, and no ``__contains``, which is for text."""
+def test_an_enum_gets_no_range_filters():
+    """SQLAlchemy's Enum stores the names of the members, so a range would
+    compare names, and Restly sees only the Python type. So no enum gets
+    ``__gte``, ``__lte``, ``__gt`` or ``__lt``, also a str enum or an
+    IntEnum. A str enum gets no ``__contains`` either, which is for text."""
 
     class Direction(str, enum.Enum):
         UP = "up"
         DOWN = "down"
 
+    class Priority(enum.IntEnum):
+        LOW = 1
+        HIGH = 2
+
     class Arrow(fr.IDMixin, SharedBase):
         direction: Mapped[str]
+        priority: Mapped[int]
 
     class ArrowSchema(fr.IDSchema):
         direction: Direction
+        priority: Priority
 
     fields = derive_schema_list_params(ArrowSchema, Arrow).model_fields
 
-    assert [key for key in fields if key.startswith("direction")] == [
-        "direction",
-        "direction__in",
-        "direction__ne",
-        "direction__isnull",
-    ]
+    for name in ("direction", "priority"):
+        assert [key for key in fields if key.startswith(name)] == [
+            name,
+            f"{name}__in",
+            f"{name}__ne",
+            f"{name}__isnull",
+        ]
 
 
 def test_a_schema_that_names_itself_gets_one_level_of_dotted_filters():
