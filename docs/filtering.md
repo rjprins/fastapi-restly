@@ -16,8 +16,8 @@ GET /users?page=2&page_size=50
 Restly builds these list params when the view registers. It reads the
 view's response class, and gives each field that maps to a column one filter,
 plus filters with an operator suffix such as `__gte`. So a client can filter
-and sort only on fields it can see. By default the response class is the
-view's schema without its `WriteOnly` fields; see
+and sort only on the fields that go out. By default the response class is
+the view's schema without its `WriteOnly` fields; see
 [Set your own response class](#own-response-class).
 
 By default a list has the keys of the resource's own fields. A view chooses
@@ -88,9 +88,12 @@ Not every field gets every suffix:
 - A field that holds a `dict` or a `list`, such as a `JSON` or `ARRAY`
   column, gets only `__isnull`. A value from the URL cannot become a
   collection, so the other filters would fail on every request.
-- A {data}`WriteOnly <fastapi_restly.schemas.WriteOnly>` field, or a field
-  with `Field(exclude=True)`, gets no filter and is not a sort key. A filter
-  on it would let a client find out its value.
+- A {data}`WriteOnly <fastapi_restly.schemas.WriteOnly>` field, a field
+  with `Field(exclude=True)`, and a field of Pydantic's secret types, such as
+  `SecretStr`, get no filter and are not a sort key. A filter on such a field
+  would let a client find out its value. Restly cannot see a value that a
+  serializer hides, such as a number shown as `***-1234`. Leave such a field
+  out with `exclude_filters` and `exclude_sort_keys`.
 
 A date and time without a UTC offset is read as UTC when the column stores a
 time zone. On a base with

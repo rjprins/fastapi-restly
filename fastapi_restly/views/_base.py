@@ -124,6 +124,7 @@ from ..schemas import (
     derive_schema_response,
 )
 from ..schemas._base import (
+    _SECRET_TYPES,
     _as_response,
     _client_name,
     _collection_item_type,
@@ -454,6 +455,12 @@ def _collection_ready(model_cls: type[Any], field_name: str, value: Any) -> Any:
     if isinstance(value, tuple) and is_to_many_relationship(model_cls, field_name):
         return list(value)
     return value
+
+
+def _revealed(value: Any) -> Any:
+    """The secret of a Pydantic secret type, such as ``SecretStr``, for the
+    column. A response masks it again."""
+    return value.get_secret_value() if isinstance(value, _SECRET_TYPES) else value
 
 
 def _json_ready(model_cls: type[Any], field_name: str, value: Any) -> Any:
@@ -801,7 +808,7 @@ def build_create_plan(
             continue
 
         value = _collection_ready(
-            model_cls, field_name, _json_ready(model_cls, field_name, value)
+            model_cls, field_name, _json_ready(model_cls, field_name, _revealed(value))
         )
         if _accepts_init_kwarg(model_cls, field_name):
             plan.kwargs[field_name] = value
@@ -884,7 +891,7 @@ def apply_update_to_object(
         if is_mapped_instance(value) and is_reference_field(schema_cls, field_name):
             _apply_resolved_reference_update(obj, field_name, value)
             continue
-        value = _json_ready(type(obj), field_name, value)
+        value = _json_ready(type(obj), field_name, _revealed(value))
         setattr(obj, field_name, _collection_ready(type(obj), field_name, value))
 
 

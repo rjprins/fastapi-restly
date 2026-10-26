@@ -155,6 +155,11 @@ class UserSchema(fr.IDSchema):
     password: fr.WriteOnly[str]
 ```
 
+Pydantic's secret types, such as `SecretStr`, work in a schema too. A write
+stores the secret, and a response shows `**********`, as Pydantic does. So
+a client sees that the field has a value, but not the value. Like a
+`WriteOnly` field, such a field gets no filter and is not a sort key.
+
 :::{admonition} Details
 :class: details
 
@@ -350,7 +355,7 @@ on the view. Everything that goes out follows it:
 
 - every single response, and each item of the list response;
 - the fields that the list filters and sort keys use, so a client can filter
-  only on what it can see;
+  only on the fields that go out;
 - the relationships that the view loads.
 
 The request bodies still follow `schema_create` and `schema_update`, which

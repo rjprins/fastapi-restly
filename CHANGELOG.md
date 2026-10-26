@@ -333,6 +333,11 @@ replacement, unless it says otherwise.
 
 ### Fixed
 
+- A field of Pydantic's secret types, such as `SecretStr`, works in a view.
+  A write stores the secret, and a response masks it, as Pydantic does. Like
+  a `WriteOnly` field, it gets no filter and is not a sort key. Before, a
+  write gave a `500`, its filters gave a `500`, and a sort on it ordered the
+  rows by the secret.
 - A field whose name ends in `_`, such as `type_`, gets filter keys that
   work, such as `?type___in=a,b`. Restly now splits a key at its last `__`.
   Before, it split at the first one, so these keys were in OpenAPI, but every

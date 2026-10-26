@@ -39,7 +39,13 @@ from .._pagination import (
     _check_query_param,
 )
 from ..exc import BadQueryParam, RestlyConfigurationError
-from ..schemas._base import IDRef, IDSchema, _schema_role_name, _unwrap_type
+from ..schemas._base import (
+    IDRef,
+    IDSchema,
+    _hides_value,
+    _schema_role_name,
+    _unwrap_type,
+)
 from ._shared import SortNulls, _append_pk_tiebreak, _escape_like_value, _sort_term
 
 SchemaType = type[pydantic.BaseModel]
@@ -1315,9 +1321,9 @@ def _iter_fields_including_nested(
     _followed: frozenset[SchemaType] = frozenset(),
 ) -> Iterator[tuple[str, FieldInfo]]:
     for name, field in schema_cls.model_fields.items():
-        # A WriteOnly field, or one with ``exclude=True``, never goes out,
-        # so it is never a filter or sort key.
-        if field.exclude is True:
+        # A field whose value a response never shows, such as a WriteOnly
+        # field or a SecretStr, is never a filter or sort key.
+        if _hides_value(field):
             continue
         public_name = field.alias or name
         # Each segment of the public dotted path becomes part of a key of
@@ -1361,9 +1367,9 @@ def _resolve_field_name(schema_cls: SchemaType, public_name: str) -> str | None:
     the schema has ``populate_by_name=True`` (which only affects how Pydantic
     parses input bodies, not the generated list params).
 
-    A field that never goes out, WriteOnly or with ``exclude=True``, never
-    resolves: filtering or sorting on it would let a client read back a value
-    that responses leave out.
+    A field whose value a response never shows never resolves: a WriteOnly
+    field, one with ``exclude=True``, or one of Pydantic's secret types.
+    Filtering or sorting on it would let a client read back the value.
     """
     resolved: str | None = None
     for field_name, field in schema_cls.model_fields.items():
@@ -1374,7 +1380,7 @@ def _resolve_field_name(schema_cls: SchemaType, public_name: str) -> str | None:
         field = schema_cls.model_fields.get(public_name)
         if field is not None and field.alias is None:
             resolved = public_name
-    if resolved is not None and schema_cls.model_fields[resolved].exclude is True:
+    if resolved is not None and _hides_value(schema_cls.model_fields[resolved]):
         return None
     return resolved
 

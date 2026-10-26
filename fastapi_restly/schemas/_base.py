@@ -1280,6 +1280,29 @@ def get_read_only_fields(model_cls: type[pydantic.BaseModel]) -> list[str]:
     return read_only_fields
 
 
+#: Pydantic's secret types. A response shows their value masked, and a write
+#: stores the secret.
+_SECRET_TYPES: tuple[type, ...] = (
+    pydantic.SecretStr,
+    pydantic.SecretBytes,
+    pydantic.Secret,
+)
+
+
+def _hides_value(field: FieldInfo) -> bool:
+    """Whether a response never shows the value of ``field``.
+
+    A WriteOnly field, or one with ``exclude=True``, never goes out. A field
+    of one of Pydantic's secret types goes out masked. A filter or a sort on
+    such a field would let a client find out the value.
+    """
+    if field.exclude is True:
+        return True
+    annotation, _ = _unwrap_type(field.annotation)
+    origin = get_origin(annotation) or annotation
+    return isinstance(origin, type) and issubclass(origin, _SECRET_TYPES)
+
+
 def is_readonly_field(
     model: pydantic.BaseModel | type[pydantic.BaseModel], field_name: str
 ) -> bool:

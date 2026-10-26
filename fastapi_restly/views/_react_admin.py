@@ -42,6 +42,7 @@ from fastapi_restly.views import (
 
 # Private names without a public form yet.
 from ..query._shared import _sort_term
+from ..schemas._base import _hides_value
 from ._base import _how_set, _list_filter_methods, _list_setting, _owner, _set_by
 
 #: Default page size used when the react-admin client does not send a `range`
@@ -140,7 +141,8 @@ def _resolve_column(
 
     Strict: only fields that the response class sends may be filtered or
     sorted. A column that exists on the model but is omitted from the response
-    class (or never sent: WriteOnly or ``exclude=True``) is rejected, so the
+    class (or never shown: WriteOnly, ``exclude=True`` or a secret type such
+    as ``SecretStr``) is rejected, so the
     list endpoint cannot be used as an oracle to filter/sort on -- and thereby
     probe -- hidden data. The generated list params follow the same rule.
 
@@ -149,7 +151,7 @@ def _resolve_column(
     resolved_name: str | None = None
     if schema_cls is not None:
         for name, field in schema_cls.model_fields.items():
-            if field.exclude is True:
+            if _hides_value(field):
                 continue
             if name == field_name or field.alias == field_name:
                 resolved_name = name
