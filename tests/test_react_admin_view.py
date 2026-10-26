@@ -425,6 +425,43 @@ def test_react_admin_filter_values_are_validated_as_the_column_type(client):
         assert response.json()["detail"].startswith(start), filter_
 
 
+def test_react_admin_filter_on_an_enum_column_checks_the_labels(client):
+    """A value that is no label of an Enum column is a 400, as on the
+    generated list params. A native ENUM on PostgreSQL would reject it with
+    an error, which was a 500."""
+
+    class RaDraft(fr.IDMixin, SharedBase):
+        status: Mapped[str] = mapped_column(
+            sqlalchemy.Enum("draft", "published", name="ra_draft_status")
+        )
+
+    class RaDraftSchema(fr.IDSchema):
+        status: str
+
+    @fr.include_view(client.app)
+    class RaDraftView(fr.AsyncReactAdminView):
+        prefix = "/drafts"
+        model = RaDraft
+        schema = RaDraftSchema
+
+    create_tables()
+    client.post("/drafts/", json={"status": "draft"})
+    client.post("/drafts/", json={"status": "published"})
+
+    filter_ = json.dumps({"status": "draft"})
+    rows = client.get("/drafts/", params={"filter": filter_}).json()
+    assert [row["status"] for row in rows] == ["draft"]
+    for value in ("bogus", ["draft", "bogus"]):
+        response = client.get(
+            "/drafts/",
+            params={"filter": json.dumps({"status": value})},
+            assert_status_code=400,
+        )
+        assert response.json()["detail"] == (
+            "Invalid filter value for 'status': 'bogus'. Use one of: draft, published."
+        )
+
+
 def test_react_admin_unknown_filter_field_returns_400(client):
     _setup_async_item_view(client)
     client.get(

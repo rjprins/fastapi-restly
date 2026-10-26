@@ -345,8 +345,8 @@ replacement, unless it says otherwise.
 - A filter on a column of SQLAlchemy's `Enum` type no longer gives a `500`
   on PostgreSQL, where such a column is a native ENUM by default. A value
   that is no label of the column, such as `?status=bogus` for a `str` field,
-  is now a `400` on every database. Before, a native ENUM rejected it with
-  an error. Such a column also gets no `__contains` and `__icontains`: they
+  is now a `400` on every database, also in the `filter` of a react-admin
+  view. Before, a native ENUM rejected it with an error. Such a column also gets no `__contains` and `__icontains`: they
   failed on a native ENUM, and elsewhere they searched the stored names.
 - A sort on a related field, such as `?sort=vendor.name`, keeps the rows
   that have no related row. With the default `sort_nulls`, they come last.

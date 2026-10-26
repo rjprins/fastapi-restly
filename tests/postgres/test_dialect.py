@@ -237,6 +237,13 @@ class PgLabelledView(fr.AsyncRestView):
 
 
 @fr.include_view(_app)
+class PgLabelledAdminView(fr.views.AsyncReactAdminView):
+    prefix = "/admin/labelled"
+    model = PgLabelled
+    schema = PgLabelledSchema
+
+
+@fr.include_view(_app)
 class PgUniqueView(fr.AsyncRestView):
     prefix = "/unique"
     model = PgUnique
@@ -365,6 +372,14 @@ def test_a_value_outside_the_labels_of_a_native_enum_is_a_400(restly_client):
         "Invalid filter value for 'status': 'bogus'. Use one of: draft, published."
     )
     restly_client.get("/labelled/?status__contains=dr", assert_status_code=422)
+    response = restly_client.get(
+        "/admin/labelled/",
+        params={"filter": '{"status": "bogus"}'},
+        assert_status_code=400,
+    )
+    assert response.json()["detail"] == (
+        "Invalid filter value for 'status': 'bogus'. Use one of: draft, published."
+    )
 
 
 def test_nulls_come_last_in_both_directions_by_default(restly_client):

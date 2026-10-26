@@ -41,6 +41,7 @@ from fastapi_restly.views import (
 )
 
 # Private names without a public form yet.
+from ..query._impl import _check_label, _enum_type
 from ..query._shared import _sort_term
 from ..schemas._base import _hides_value
 from ._base import _how_set, _list_filter_methods, _list_setting, _owner, _set_by
@@ -177,7 +178,8 @@ def _coerce_value(col: Any, value: Any, name: str) -> Any:
 
     The value comes from the JSON of ``filter``, so a date or a UUID arrives
     as a string. Pydantic turns it into the column's type, as the generated
-    list params do.
+    list params do. On a column of SQLAlchemy's ``Enum`` type, the value must
+    also be one of its labels.
 
     :param name: The public name that the client used, for the message.
     :raises BadQueryParam: when the value is not valid for the column.
@@ -185,16 +187,20 @@ def _coerce_value(col: Any, value: Any, name: str) -> Any:
     try:
         py_type = col.type.python_type
     except NotImplementedError:
-        return value
-    if isinstance(value, py_type):
-        return value
-    try:
-        return _filter_value_adapter(py_type).validate_python(value)
-    except pydantic.ValidationError as exc:
-        reason = exc.errors()[0]["msg"]
-        raise BadQueryParam(
-            f"Invalid filter value for {name!r}: {value!r}. {reason}"
-        ) from exc
+        py_type = None
+    coerced = value
+    if py_type is not None and not isinstance(value, py_type):
+        try:
+            coerced = _filter_value_adapter(py_type).validate_python(value)
+        except pydantic.ValidationError as exc:
+            reason = exc.errors()[0]["msg"]
+            raise BadQueryParam(
+                f"Invalid filter value for {name!r}: {value!r}. {reason}"
+            ) from exc
+    enum_type = _enum_type(col)
+    if enum_type is not None:
+        _check_label(enum_type, coerced, name, value)
+    return coerced
 
 
 @functools.cache

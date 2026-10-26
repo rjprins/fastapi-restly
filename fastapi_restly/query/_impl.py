@@ -1577,21 +1577,29 @@ def _parse_label(
     column_name: str,
     value: str,
 ) -> Any:
-    """Parse ``value`` with ``parser``, and check that it is a label of the
-    column's ``Enum`` type, as SQLAlchemy accepts it: a label, or a member of
-    the enum class.
+    """Parse ``value`` with ``parser``, and check the result with
+    :func:`_check_label`."""
+    result = parser(value)
+    _check_label(enum_type, result, column_name, value)
+    return result
+
+
+def _check_label(enum_type: sqlalchemy.Enum, value: Any, key: str, raw: Any) -> None:
+    """Check that SQLAlchemy takes ``value`` for a column of ``enum_type``:
+    one of its labels, or a member of its enum class.
 
     SQLAlchemy passes any other string on, and a native ENUM on PostgreSQL
     rejects it with an error, which would be a 500 for the client.
 
+    :param key: The filter key that the client used, and ``raw`` its value,
+        for the message.
     :raises BadQueryParam: the value is no label of the column.
     """
-    result = parser(value)
     members = list(enum_type.enum_class) if enum_type.enum_class else []
-    if result in enum_type.enums or any(result == member for member in members):
-        return result
+    if value in enum_type.enums or any(value == member for member in members):
+        return
     raise BadQueryParam(
-        f"Invalid filter value for {column_name!r}: {value!r}. Use one of: "
+        f"Invalid filter value for {key!r}: {raw!r}. Use one of: "
         f"{', '.join(enum_type.enums)}."
     )
 
