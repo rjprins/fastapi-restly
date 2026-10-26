@@ -32,6 +32,7 @@ at PostgreSQL (see ``conftest.py``). Seven things are covered:
 """
 
 import asyncio
+import json
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
@@ -293,6 +294,13 @@ class PgCheckedView(fr.AsyncRestView):
 @fr.include_view(_app)
 class PgMeetingView(fr.AsyncRestView):
     prefix = "/meetings"
+    model = PgMeeting
+    schema = PgMeetingSchema
+
+
+@fr.include_view(_app)
+class PgMeetingAdminView(fr.views.AsyncReactAdminView):
+    prefix = "/admin/meetings"
     model = PgMeeting
     schema = PgMeetingSchema
 
@@ -738,6 +746,30 @@ async def test_a_time_out_of_range_in_utc_is_a_client_error_on_psycopg(
         listed = await client.get("/meetings/", params={"ends_at__gte": late})
     assert created.status_code == 422, created.text
     assert listed.status_code == 400, listed.text
+
+
+@pytest.mark.asyncio
+async def test_a_react_admin_filter_time_is_utc_on_psycopg(restly_async_session):
+    await _set_session_time_zone(restly_async_session, "America/New_York")
+
+    async def names(client: httpx.AsyncClient, **filter_: str) -> list[str]:
+        params = {"filter": json.dumps(filter_)}
+        response = await client.get("/admin/meetings/", params=params)
+        assert response.status_code == 200, response.text
+        return [row["name"] for row in response.json()]
+
+    async with _async_client() as client:
+        created = await client.post(
+            "/meetings/",
+            json={
+                "name": "standup",
+                "starts_at": "2024-01-01T09:30:00Z",
+                "ends_at": "2024-01-01T09:45:00Z",
+            },
+        )
+        assert created.status_code == 201, created.text
+        assert await names(client, starts_at="2024-01-01T10:30:00+01:00") == ["standup"]
+        assert await names(client, ends_at="2024-01-01T09:45:00") == ["standup"]
 
 
 # ---------------------------------------------------------------------------

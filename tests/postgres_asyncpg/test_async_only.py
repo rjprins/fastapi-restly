@@ -14,6 +14,7 @@ a failure.
 """
 
 import asyncio
+import json
 import os
 import time
 from collections.abc import AsyncIterator, Iterator
@@ -105,6 +106,13 @@ async def count_notes(session: fr.AsyncSessionDep) -> dict[str, int]:
 @fr.include_view(app)
 class AsyncpgNoteView(fr.AsyncRestView):
     prefix = "/filtered-notes"
+    model = AsyncpgNote
+    schema = AsyncpgNoteSchema
+
+
+@fr.include_view(app)
+class AsyncpgNoteAdminView(fr.AsyncReactAdminView):
+    prefix = "/admin/notes"
     model = AsyncpgNote
     schema = AsyncpgNoteSchema
 
@@ -332,6 +340,25 @@ async def test_a_time_out_of_range_in_utc_is_a_client_error_with_asyncpg(
     await restly_async_client.get(
         "/filtered-notes", params={"due_at__gte": late}, assert_status_code=400
     )
+
+
+@pytest.mark.asyncio
+async def test_a_react_admin_filter_time_with_an_offset_is_utc_with_asyncpg(
+    restly_async_client,
+):
+    """The equality filter of a react-admin view, on a column without a time
+    zone, sends the time in UTC too."""
+    await restly_async_client.post(
+        "/filtered-notes",
+        json={"text": "starts in Lisbon", "starts_at": "2024-10-01T08:30:00Z"},
+    )
+    response = await restly_async_client.get(
+        "/admin/notes",
+        params={"filter": json.dumps({"starts_at": "2024-10-01T09:30:00+01:00"})},
+    )
+
+    assert response.status_code == 200
+    assert [item["text"] for item in response.json()] == ["starts in Lisbon"]
 
 
 @pytest.mark.asyncio

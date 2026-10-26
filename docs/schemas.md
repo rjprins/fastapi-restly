@@ -349,8 +349,7 @@ write the `+` of an offset as `%2B`: a plain `+` means a space there.
 For local times in a column without a time zone, such as the start of a
 dinner booking in the time of the restaurant, convert the time with a
 validator on the field. Restly then gets a time without an offset, and keeps
-it as it is. A filter value goes through the field's validation too, so the
-filters convert it in the same way:
+it as it is:
 
 ```python
 from datetime import datetime
@@ -371,6 +370,10 @@ def amsterdam_time(value: datetime) -> datetime:
 class BookingSchema(fr.IDSchema):
     starts_at: Annotated[datetime, pydantic.AfterValidator(amsterdam_time)]
 ```
+
+A filter value goes through the field's validation too, so the filters
+convert it in the same way. Only the filter of a
+[react-admin view](react_admin.md) does not run the validator.
 
 :::{admonition} Details
 :class: details

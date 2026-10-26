@@ -41,6 +41,7 @@ from fastapi_restly.views import (
 )
 
 # Private names without a public form yet.
+from .._times import column_time
 from ..query._impl import _check_label, _enum_type
 from ..query._shared import _sort_term
 from ..schemas._base import _hides_value
@@ -179,7 +180,8 @@ def _coerce_value(col: Any, value: Any, name: str) -> Any:
     The value comes from the JSON of ``filter``, so a date or a UUID arrives
     as a string. Pydantic turns it into the column's type, as the generated
     list params do. On a column of SQLAlchemy's ``Enum`` type, the value must
-    also be one of its labels.
+    also be one of its labels. A time is then made to fit the column, as in
+    the generated filters: a time without an offset is UTC.
 
     :param name: The public name that the client used, for the message.
     :raises BadQueryParam: when the value is not valid for the column.
@@ -200,7 +202,12 @@ def _coerce_value(col: Any, value: Any, name: str) -> Any:
     enum_type = _enum_type(col)
     if enum_type is not None:
         _check_label(enum_type, coerced, name, value)
-    return coerced
+    try:
+        return column_time(col.type, coerced)
+    except ValueError as exc:
+        raise BadQueryParam(
+            f"Invalid filter value for {name!r}: {value!r}. {exc}"
+        ) from exc
 
 
 @functools.cache

@@ -15,6 +15,7 @@ field out. The PostgreSQL legs check the drivers, which otherwise reject such
 a time or read it in a time zone of the server.
 """
 
+import json
 from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any, NamedTuple
@@ -258,6 +259,53 @@ def test_a_filter_compares_a_time_with_an_offset_in_utc(api):
     # without an offset: as it is, and UTC for the column with a time zone
     assert names(starts_at__gte="2024-01-01T09:30:00") == ["late"]
     assert names(ends_at__gte="2024-01-01T09:30:00") == ["late"]
+
+
+def test_a_react_admin_filter_compares_a_time_with_an_offset_in_utc(api):
+    """The filter of a react-admin view follows the same rule."""
+    Meeting, MeetingSchema = _meeting_classes()
+
+    @fr.include_view(api.client.app)
+    class MeetingAdminView(api.admin_view):
+        prefix = "/admin/meetings"
+        model = Meeting
+        schema = MeetingSchema
+
+    api.create_tables()
+    for name, starts_at in [
+        ("early", "2024-01-01T09:00:00"),
+        ("late", "2024-01-01T10:00:00"),
+    ]:
+        api.client.post(
+            "/admin/meetings",
+            json={"name": name, "starts_at": starts_at, "ends_at": starts_at + "Z"},
+        )
+
+    def names(filter_: dict[str, Any]) -> list[str]:
+        params = {"filter": json.dumps(filter_)}
+        return [
+            row["name"]
+            for row in api.client.get("/admin/meetings", params=params).json()
+        ]
+
+    assert names({"starts_at": "2024-01-01T11:00:00+01:00"}) == ["late"]
+    assert names(
+        {"starts_at": ["2024-01-01T10:00:00+01:00", "2024-01-01T11:00:00+01:00"]}
+    ) == ["early", "late"]
+    assert names({"starts_at": "2024-01-01T10:00:00"}) == ["late"]
+    # with an offset, for the column with a time zone: SQLite drops offsets
+    assert names({"ends_at": "2024-01-01T11:00:00+01:00"}) == ["late"]
+
+    late = "9999-12-31T23:30:00-01:00"
+    response = api.client.get(
+        "/admin/meetings",
+        params={"filter": json.dumps({"starts_at": late})},
+        assert_status_code=400,
+    )
+    assert response.json()["detail"] == (
+        f"Invalid filter value for 'starts_at': '{late}'. "
+        "In UTC, the time is not between the years 1 and 9999."
+    )
 
 
 class _TZDateTime(TypeDecorator[datetime]):
