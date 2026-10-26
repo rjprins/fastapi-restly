@@ -357,10 +357,12 @@ def _supports_scalar_operators(field: FieldInfo) -> bool:
     if any(isinstance(item, json_marker) for item in metadata):
         return True
     origin = get_origin(annotation) or annotation
+    # a flag, such as an IntFlag, is a Collection on Python 3.11+ because it
+    # can hold several flags, but a value from the URL is one flag value
     return not (
         isinstance(origin, type)
         and issubclass(origin, _abc.Collection)
-        and not issubclass(origin, (str, bytes))
+        and not issubclass(origin, (str, bytes, enum.Flag))
     )
 
 
@@ -383,8 +385,9 @@ def _supports_range_operators(field: FieldInfo, column: Any) -> bool:
     if issubclass(annotation, bool):
         return False
     if issubclass(annotation, enum.Enum):
-        # labels; an int enum has the order of its numbers
-        return issubclass(annotation, int)
+        # labels; an int enum has the order of its numbers, but the numbers
+        # of a flag have no order
+        return issubclass(annotation, int) and not issubclass(annotation, enum.Flag)
     return issubclass(annotation, _ORDERABLE_TYPES)
 
 

@@ -76,7 +76,8 @@ Not every field gets every suffix:
 - The range suffixes (`__gte`, `__lte`, `__gt`, `__lt`) exist only for types
   that have an order, such as numbers, text and dates. Booleans, UUIDs and
   labels do not get them: an enum, or a `Literal` of strings. An int enum,
-  such as an `IntEnum`, has the order of its numbers and gets them.
+  such as an `IntEnum`, has the order of its numbers and gets them. A flag,
+  such as an `IntFlag`, gets the other filters, but no range.
 - A column of SQLAlchemy's `Enum` type gets no range suffixes, whatever the
   type of the field, because it holds labels. `Mapped[Status]`, with an enum
   `Status`, is such a column by default. So an int enum needs a column that

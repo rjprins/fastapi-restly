@@ -333,6 +333,9 @@ replacement, unless it says otherwise.
 
 ### Fixed
 
+- A field of a flag type, such as `IntFlag`, gets the plain filter, `__in`
+  and `__ne`. Before, it got only `__isnull`, because Python counts a flag
+  as a collection.
 - A field of Pydantic's secret types, such as `SecretStr`, works in a view.
   A write stores the secret, and a response masks it, as Pydantic does. Like
   a `WriteOnly` field, it gets no filter and is not a sort key. Before, a

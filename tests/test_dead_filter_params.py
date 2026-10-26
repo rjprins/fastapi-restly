@@ -378,6 +378,33 @@ def test_labels_get_no_range_filters():
         ]
 
 
+def test_a_flag_gets_the_plain_filters_and_no_range_filters():
+    """A flag counts as a Collection on Python 3.11+, because it can hold
+    several flags, but a value from the URL is one flag value. So it gets the
+    plain filters. It gets no range filters: the numbers of a flag have no
+    order."""
+
+    class Permission(enum.IntFlag):
+        READ = 1
+        WRITE = 2
+        EXECUTE = 4
+
+    class Grant(fr.IDMixin, SharedBase):
+        permission: Mapped[int]
+
+    class GrantSchema(fr.IDSchema):
+        permission: Permission
+
+    fields = derive_schema_list_params(GrantSchema, Grant).model_fields
+
+    assert [key for key in fields if key.startswith("permission")] == [
+        "permission",
+        "permission__in",
+        "permission__ne",
+        "permission__isnull",
+    ]
+
+
 def test_a_field_that_ends_in_an_underscore_has_working_filters(client):
     """The last ``__`` of a key splits the field from the operator, so the
     keys of ``type_`` are ``type___in`` and so on. Before, the first ``__``
