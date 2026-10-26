@@ -233,7 +233,9 @@ def build_pyrightconfig(options: Options) -> str:
 
 
 def build_pyproject(options: Options) -> str:
-    dependencies = [restly_requirement("standard")]
+    # The generated app/settings.py imports pydantic_settings. Restly itself
+    # does not depend on it, so the project lists it.
+    dependencies = [restly_requirement("standard"), "pydantic-settings>=2.9.1"]
     if options.driver is not None:
         dependencies.append(options.driver)
     if options.alembic:

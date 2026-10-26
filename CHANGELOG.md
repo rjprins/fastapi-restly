@@ -14,6 +14,9 @@ replacement, unless it says otherwise.
 1. Declare a base of your own, `class Base(fr.ModelDefaults, DeclarativeBase)`,
    in place of `fr.DataclassBase` and `fr.IDBase`.
 2. Replace `fr.utils.CurrentSettingsMixin` with a `get_settings()` function.
+   If your app imports `pydantic_settings`, add `pydantic-settings` to your
+   dependencies: Restly no longer installs it. This step fails with
+   `ModuleNotFoundError`, not with a message from Restly.
 3. In `create` and `update`, call `super()`, change the object and return
    it. Drop `make_new_object`, `save_object` and each flush that only saved.
    Rename `schema_obj` to `data`.
@@ -290,6 +293,8 @@ replacement, unless it says otherwise.
   Replace `Settings.current` with `get_settings()` in the app factory, and
   `Settings.use(x)` in tests with an argument of the factory, as in
   `create_app(x)`.
+- The dependency on pydantic-settings, which Restly no longer uses. A project
+  from `restly new` lists it in its own dependencies.
 - `route_options`. Replace the endpoint method, pass the route arguments to
   its decorator, as in FastAPI, and call `super()`.
 - `extra_query_params`. Declare the key where your code reads it: with
