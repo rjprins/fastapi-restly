@@ -398,6 +398,40 @@ def test_a_key_with_an_operator_starts_with_a_field():
     )
 
 
+@pytest.mark.parametrize("view_class", [fr.AsyncRestView], indirect=True)
+def test_a_dotted_key_without_an_operator_is_a_field(view_class):
+    """Dotted keys are off by default, so ``vendor.name`` is free for a key of
+    the view's own. A dotted key that is no field fails."""
+
+    class ItemView(view_class):  # type: ignore[valid-type,misc]
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+
+        @fr.list_filter("vendor.name")
+        def filter_vendor_name(self, value: str) -> ColumnElement[bool]:
+            return Item.vendor.has(Vendor.name.ilike(value))
+
+    with client_for(ItemView) as client:
+        assert names(client, **{"vendor.name": "ACME"}) == ["Anvil", "apple"]
+
+    class PopularView(fr.AsyncRestView):
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+
+        @fr.list_filter("vendor.popular")
+        def filter_popular(self, value: bool) -> ColumnElement[bool]:
+            return Item.view_count > 1000
+
+    with pytest.raises(RestlyConfigurationError) as exc_info:
+        fr.include_view(FastAPI(), PopularView)
+    assert str(exc_info.value).startswith(
+        "PopularView.filter_popular: the key 'vendor.popular' is not a field of "
+        "ItemSchema with filters."
+    )
+
+
 def test_a_generated_key_with_an_operator_that_is_on_fails():
     class ItemView(fr.AsyncRestView):
         prefix = "/items"

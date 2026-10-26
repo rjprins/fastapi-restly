@@ -745,11 +745,15 @@ def _check_own_key(
     # field, in every key
     field, _ = _split_key(key)
     if ("__" in key or "." in key) and field not in keys_of_field:
+        what = (
+            f"the key {key!r} starts with {field!r}, which is"
+            if field != key
+            else f"the key {key!r} is"
+        )
         message = (
-            f"{label}: the key {key!r} starts with {field!r}, which is not a "
-            f"field of {schema_name} with filters. A key with '__' or '.' "
-            "starts with a field, as the generated keys do. Or choose a key "
-            "without '__' and '.'."
+            f"{label}: {what} not a field of {schema_name} with filters. A key "
+            "with '__' or '.' starts with a field, as the generated keys do. Or "
+            "choose a key without '__' and '.'."
         )
         if keys_of_field:
             message += f" The fields with filters are: {', '.join(keys_of_field)}."
