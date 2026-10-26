@@ -292,10 +292,25 @@ ordinary route, so that you control its checks and its timeouts.
 
 ## Before you expose an API publicly
 
-Restly's list defaults are generous, and that suits most APIs. A table that
-only grows, such as an audit log, events or imports, is the exception. It
-gets large without anyone noticing, and clients want to filter and sort it.
-Check these settings on its view before the API goes public:
+Restly is made first for APIs with known clients, such as an internal app or
+an admin panel, so its limits on the work that one request can cause are
+generous by default. A page has at most `max_page_size` rows. A client sorts
+and filters only by the keys that the view allows, and uses each sort key only
+once. A dotted key joins another table, so dotted keys are off until the view
+turns them on. If you find a request that has no such limit, please report it
+as a bug.
+
+Access works differently: the rules for what a client may see or change are
+just as strict for an internal API as for a public one.
+
+Restly does not limit how many requests a client sends. Put rate limits,
+timeouts and a maximum body size in the proxy in front of the app, and a
+statement timeout in the database.
+
+For a public API, lower the limits on one request. Start with a table that
+only grows, such as an audit log, events or imports. It gets large without
+anyone noticing, and clients want to filter and sort it. Check these settings
+on its view:
 
 - Lower the page size and its maximum with
   {class}`fr.NumberedPagination <fastapi_restly.views.NumberedPagination>`,
