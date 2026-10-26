@@ -1,5 +1,6 @@
 """Tests for the list-params query layer (filtering, sorting, pagination)."""
 
+import functools
 from datetime import datetime, timezone
 from unittest.mock import patch
 
@@ -18,6 +19,7 @@ from fastapi_restly.query._impl import (
     _apply_pagination,
     _apply_sorting,
     _make_where_clause,
+    _parse_filter_value,
     _parse_value,
 )
 
@@ -634,14 +636,14 @@ class TestMakeWhereClause:
         class AwareRecord(fr.IDMixin, SharedBase):
             occurred_at: Mapped[datetime]
 
-        parser = lambda value: _parse_value(WidgetSchema, "created_at", value)
+        def clause(column):
+            parser = functools.partial(
+                _parse_filter_value, WidgetSchema, "created_at", column
+            )
+            return _make_where_clause(column, "2024-01-01T00:00:00", "eq", parser)
 
-        aware_clause = _make_where_clause(
-            AwareRecord.occurred_at, "2024-01-01T00:00:00", "eq", parser
-        )
-        naive_clause = _make_where_clause(
-            WidgetModel.created_at, "2024-01-01T00:00:00", "eq", parser
-        )
+        aware_clause = clause(AwareRecord.occurred_at)
+        naive_clause = clause(WidgetModel.created_at)
 
         assert aware_clause.right.value == datetime(2024, 1, 1, tzinfo=timezone.utc)
         assert naive_clause.right.value == datetime(2024, 1, 1)

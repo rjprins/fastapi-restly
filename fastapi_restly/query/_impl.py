@@ -38,6 +38,7 @@ from .._pagination import (
     NumberedPagination,
     _check_query_param,
 )
+from .._times import column_time
 from ..exc import BadQueryParam, RestlyConfigurationError
 from ..schemas._base import (
     IDRef,
@@ -1520,7 +1521,7 @@ def _apply_filtering(
         op = op or "eq"
 
         stmt, column = _join_column(stmt, model, column_name, schema_cls, aliases)
-        parser = functools.partial(_parse_value, schema_cls, column_name)
+        parser = functools.partial(_parse_filter_value, schema_cls, column_name, column)
         enum_type = _enum_type(column)
         if enum_type is not None:
             parser = functools.partial(_parse_label, parser, enum_type, column_name)
@@ -1564,7 +1565,7 @@ def _build_clause(
     if not values:
         return None
     if op == "in":
-        return column.in_([_parse_filter_value(column, v, parser) for v in values])
+        return column.in_([parser(v) for v in values])
     clauses = [_make_where_clause(column, v, op, parser) for v in values]
     if len(clauses) == 1:
         return clauses[0]
@@ -1709,7 +1710,7 @@ def _make_where_clause(
     if op == "icontains":
         return column.ilike(f"%{_escape_like_value(filter_value)}%", escape="\\")
 
-    value = _parse_filter_value(column, filter_value, parser)
+    value = parser(filter_value)
     if op == "gte":
         return column >= value
     if op == "lte":
@@ -1726,13 +1727,14 @@ def _make_where_clause(
 
 
 def _parse_filter_value(
-    column: InstrumentedAttribute[Any], raw_value: str, parser: Callable[[str], Any]
+    schema_cls: SchemaType,
+    column_name: str,
+    column: InstrumentedAttribute[Any],
+    value: str,
 ) -> Any:
-    value = parser(raw_value)
-    if (
-        isinstance(value, _dt.datetime)
-        and value.utcoffset() is None
-        and getattr(column.type, "timezone", False)
-    ):
-        return value.replace(tzinfo=_dt.timezone.utc)
-    return value
+    """One filter value as a value for ``column``: validated with the
+    validation of its field, and with a time as the column takes it.
+
+    :raises BadQueryParam: when the value fails the validation of its field.
+    """
+    return column_time(column.type, _parse_value(schema_cls, column_name, value))
