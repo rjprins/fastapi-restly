@@ -270,8 +270,8 @@ def test_apply_list_params_checks_a_sort_that_skipped_validation():
         ),
         (
             {"include_filters": ("active__gte",)},
-            "Only fields with an order, such as numbers, text and dates, have "
-            "__gte, __lte, __gt and __lt.",
+            "Only fields with an order, such as numbers, text, dates and int "
+            "enums, have __gte, __lte, __gt and __lt.",
         ),
         (
             {"include_filters": ("nope",)},

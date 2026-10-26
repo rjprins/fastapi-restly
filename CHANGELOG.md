@@ -197,12 +197,13 @@ replacement, unless it says otherwise.
   `BadQueryParam`, a `400`; before, the list came back with `200`. A
   `default_sort` with a key twice fails when the class is defined, or when
   the view registers for a mixin.
-- A field on a column of SQLAlchemy's `Enum` type gets no range filters
-  (`__gte`, `__lte`, `__gt`, `__lt`), whatever the type of the field. The
-  column stores the names of the members, so a range compared names. Before,
-  an int or `str` enum, or a `str` field, on such a column got them. An int
-  or `str` enum on a column that stores the value, such as `Integer`, keeps
-  them.
+- Labels get no range filters (`__gte`, `__lte`, `__gt`, `__lt`): a `str`
+  enum, a `Literal` of strings, and any field on a column of SQLAlchemy's
+  `Enum` type. Before, they got them, and a range compared the labels as
+  text, except on a native ENUM on PostgreSQL, which orders its labels as
+  they were declared. For a range in that order, write it with
+  `fr.list_filter`. An int enum keeps them on a column that stores the
+  number, such as `Integer`.
 - The `400` texts of a list name the problem: `Unknown sort key: 'nope'`,
   `Unknown filter key: 'nope'`, or `Invalid filter value for 'age': 'old'.`
   with Pydantic's reason. A field validator that raises another exception

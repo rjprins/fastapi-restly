@@ -2,12 +2,22 @@ import collections.abc as _abc
 import dataclasses
 import datetime as _dt
 import decimal as _decimal
+import enum
 import functools
 import re
-import uuid as _uuid
 import weakref
 from collections import defaultdict
-from typing import Annotated, Any, Callable, Iterator, Optional, cast, get_origin
+from typing import (
+    Annotated,
+    Any,
+    Callable,
+    Iterator,
+    Literal,
+    Optional,
+    cast,
+    get_args,
+    get_origin,
+)
 
 import pydantic
 import sqlalchemy
@@ -349,32 +359,37 @@ def _supports_scalar_operators(field: FieldInfo) -> bool:
 
 
 def _supports_range_operators(field: FieldInfo, column: Any) -> bool:
-    if _stores_enum_names(column):
-        # a range would compare the names, whatever the type of the field
+    if _enum_type(column) is not None:
+        # an Enum column holds labels, whatever the type of the field
         return False
     annotation, _ = _unwrap_type(field.annotation)
     if annotation is bool:
         return False
+    if get_origin(annotation) is Literal:
+        # labels too, unless they are numbers
+        return all(
+            isinstance(value, (int, float)) and not isinstance(value, bool)
+            for value in get_args(annotation)
+        )
     # ``Any`` is a class from Python 3.11 on; it is still an unknown type.
     if annotation is Any or not isinstance(annotation, type):
         return True
     if issubclass(annotation, bool):
         return False
-    # an int or str enum has the order of its values
-    if issubclass(annotation, _ORDERABLE_TYPES):
-        return True
-    if issubclass(annotation, _uuid.UUID):
-        return False
-    return False
+    if issubclass(annotation, enum.Enum):
+        # labels; an int enum has the order of its numbers
+        return issubclass(annotation, int)
+    return issubclass(annotation, _ORDERABLE_TYPES)
 
 
-def _stores_enum_names(column: Any) -> bool:
-    """Whether ``column`` has SQLAlchemy's ``Enum`` type, also inside a
-    ``TypeDecorator``. That type stores the names of the members."""
+def _enum_type(column: Any) -> sqlalchemy.Enum | None:
+    """The ``Enum`` type of ``column``, also inside ``TypeDecorator``
+    layers, or ``None``. Such a column holds labels: the names of the
+    members, or the strings that it was given."""
     sql_type = getattr(column, "type", None)
-    if isinstance(sql_type, TypeDecorator):
+    while isinstance(sql_type, TypeDecorator):
         sql_type = sql_type.impl_instance
-    return isinstance(sql_type, sqlalchemy.Enum)
+    return sql_type if isinstance(sql_type, sqlalchemy.Enum) else None
 
 
 def _pagination_offset_validator(pagination: NumberedPagination) -> Any:
@@ -421,9 +436,9 @@ def derive_schema_list_params(
     column of ``model`` gives filter keys, and its type decides which ones.
     Every such field gives the plain key and the keys with the suffixes
     ``__in``, ``__ne`` and ``__isnull``. A type with an order, such as a
-    number, text or a date, also gives ``__gte``, ``__lte``, ``__gt`` and
-    ``__lt``, unless the column has SQLAlchemy's ``Enum`` type, which stores
-    the names of the members. Text also gives ``__contains`` and
+    number, text, a date or an int enum, also gives ``__gte``, ``__lte``,
+    ``__gt`` and ``__lt``, unless the column has SQLAlchemy's ``Enum`` type,
+    which holds labels. Text also gives ``__contains`` and
     ``__icontains``. A field
     that does not map to a column, such as a relationship, gives no keys. A
     WriteOnly field gives none either, because a filter on it would let a
@@ -850,9 +865,9 @@ _SUFFIX_HINTS = {
     "icontains": "Only text fields have __contains and __icontains.",
     **dict.fromkeys(
         ("gte", "lte", "gt", "lt"),
-        "Only fields with an order, such as numbers, text and dates, have "
-        "__gte, __lte, __gt and __lt. A column of SQLAlchemy's Enum type has "
-        "none: it stores the names.",
+        "Only fields with an order, such as numbers, text, dates and int "
+        "enums, have __gte, __lte, __gt and __lt. A column of SQLAlchemy's "
+        "Enum type has none.",
     ),
     **dict.fromkeys(
         ("", "in", "ne"), "A field that holds a dict or a list has only __isnull."

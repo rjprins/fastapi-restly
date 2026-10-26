@@ -17,12 +17,12 @@ from __future__ import annotations
 
 import enum
 from collections.abc import Mapping, Sequence
-from typing import Annotated, Optional
+from typing import Annotated, Literal, Optional
 
 import pydantic
 import pytest
 from fastapi import FastAPI
-from sqlalchemy import JSON, Enum, ForeignKey, TypeDecorator
+from sqlalchemy import JSON, Enum, ForeignKey, Integer, TypeDecorator
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
@@ -304,11 +304,13 @@ def test_annotated_inside_optional_gets_the_filters_of_the_plain_type():
     assert "owner_annotated.name__contains" in fields
 
 
-def test_a_column_of_sqlalchemys_enum_type_gets_no_range_filters():
-    """SQLAlchemy's Enum stores the names of the members, so a range on such
-    a column would compare names, whatever the type of the field. An int or
-    str enum on a column that stores the value has the order of its values,
-    and a plain enum has no order. A str enum gets no ``__contains``, which
+def test_labels_get_no_range_filters():
+    """An enum or a ``Literal`` of strings is a set of labels, and an order of
+    labels is rarely what a client means, so it gets no ``__gte``,
+    ``__lte``, ``__gt`` or ``__lt``. An int enum, or a ``Literal`` of
+    numbers, has the order of its numbers. A column of SQLAlchemy's Enum type
+    holds labels, also inside ``TypeDecorator`` layers, so it gets none,
+    whatever the type of the field. A str enum gets no ``__contains``, which
     is for text."""
 
     class Direction(str, enum.Enum):
@@ -326,16 +328,27 @@ def test_a_column_of_sqlalchemys_enum_type_gets_no_range_filters():
         impl = Enum
         cache_ok = True
 
+    class OuterNamesType(TypeDecorator):
+        impl = NamesType
+        cache_ok = True
+
+    class NumberType(TypeDecorator):
+        impl = Integer
+        cache_ok = True
+
     class Arrow(fr.IDMixin, SharedBase):
-        # the names
+        # columns of SQLAlchemy's Enum type
         direction: Mapped[str] = mapped_column(Enum(Direction))
         priority: Mapped[int] = mapped_column(Enum(Priority))
         status_text: Mapped[str] = mapped_column(Enum(Direction))
-        wrapped: Mapped[str] = mapped_column(NamesType(Direction))
-        # the values
+        wrapped: Mapped[str] = mapped_column(OuterNamesType(Direction))
+        # other columns
         direction_value: Mapped[str]
-        priority_value: Mapped[int]
         color_value: Mapped[str]
+        size: Mapped[str]
+        priority_value: Mapped[int]
+        priority_number: Mapped[int] = mapped_column(NumberType())
+        rank: Mapped[int]
 
     class ArrowSchema(fr.IDSchema):
         direction: Direction
@@ -343,8 +356,11 @@ def test_a_column_of_sqlalchemys_enum_type_gets_no_range_filters():
         status_text: str
         wrapped: Direction
         direction_value: Direction
-        priority_value: Priority
         color_value: Color
+        size: Literal["small", "large"]
+        priority_value: Priority
+        priority_number: Priority
+        rank: Literal[1, 2, 3]
 
     fields = derive_schema_list_params(ArrowSchema, Arrow).model_fields
 
@@ -352,12 +368,13 @@ def test_a_column_of_sqlalchemys_enum_type_gets_no_range_filters():
         return [key for key in fields if key == name or key.startswith(f"{name}__")]
 
     plain = ["", "__in", "__ne", "__isnull"]
-    for name in ("direction", "priority", "wrapped", "color_value"):
+    labels = ("direction", "priority", "wrapped", "direction_value", "color_value")
+    for name in (*labels, "size"):
         assert keys(name) == [name + suffix for suffix in plain]
     assert keys("status_text") == [
         "status_text" + suffix for suffix in [*plain, "__contains", "__icontains"]
     ]
-    for name in ("direction_value", "priority_value"):
+    for name in ("priority_value", "priority_number", "rank"):
         assert keys(name) == [
             name + suffix for suffix in [*plain, "__gte", "__lte", "__gt", "__lt"]
         ]
