@@ -5,6 +5,7 @@ from typing import Any
 import fastapi
 from fastapi import HTTPException
 from pydantic import BaseModel
+from sqlalchemy import ColumnElement
 
 import fastapi_restly as fr
 from fastapi_restly.views import ViewResponse
@@ -93,6 +94,15 @@ class TaskView(TrashView[Task]):
         START = "start"
         COMPLETE = "complete"
         REOPEN = "reopen"
+
+    # No enum gets the generated range keys, because SQLAlchemy's Enum
+    # stores the names. This column stores the number, so the view writes
+    # the range filter itself.
+    @fr.list_filter("priority__gte")
+    def filter_priority_gte(self, value: TaskPriority) -> ColumnElement[bool]:
+        """Tasks with this priority number or a larger one. 1 is critical and
+        4 is low, so ``priority__gte=3`` gives the medium and low tasks."""
+        return Task.priority >= value
 
     async def _validate_cross_resource(self, data: dict[str, Any]) -> None:
         """Validate cross-resource constraints (assignee must be in same org as project)."""

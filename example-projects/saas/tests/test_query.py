@@ -76,6 +76,17 @@ class TestFiltering:
         assert all(t["priority"] == 1 for t in tasks)
         assert len(tasks) >= 2  # At least 2 from our test data
 
+    def test_filter_by_priority_range(self, client):
+        """priority__gte is a filter of the view's own: no enum gets the
+        generated range keys, but this column stores the number."""
+        setup_test_data(client)
+
+        response = client.get("/tasks?priority__gte=3")
+        tasks = response.json()["data"]
+
+        assert {t["title"] for t in tasks} >= {"Task C", "Task D"}
+        assert all(t["priority"] >= 3 for t in tasks)
+
     def test_filter_by_role(self, client):
         """Test filtering users by role."""
         setup_test_data(client)
