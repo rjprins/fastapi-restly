@@ -78,7 +78,8 @@ Not every field gets every suffix:
   enums do not get them, also not a `str` enum or an `IntEnum`. A SQLAlchemy
   `Enum` column stores the names of the members, so a range would compare
   names. If a column stores an int enum as an int, write the range filter
-  yourself; see [Add a filter of your own](#own-list-filter).
+  yourself, with the same key, such as `priority__gte`; see
+  [Add a filter of your own](#own-list-filter).
 - `__contains` and `__icontains` exist only for text fields.
 - A field that holds a `dict` or a `list`, such as a `JSON` or `ARRAY`
   column, gets only `__isnull`. A value from the URL cannot become a
@@ -759,6 +760,20 @@ def filter_allow_archived(self, value: bool = False) -> ColumnElement[bool] | No
     return None if value else ~Item.archived
 ```
 
+A key can also be a field and an operator, as the generated keys are. The
+operator can be a new one:
+
+```python
+@fr.list_filter("name__startswith")
+def filter_name_startswith(self, value: str) -> ColumnElement[bool]:
+    """Items whose name starts with the value."""
+    return Item.name.startswith(value, autoescape=True)
+```
+
+The client sends `?name__startswith=an`. Before `__` comes a field with
+filters, such as `name` or `vendor.name`, so `__` always splits a field from
+an operator. A key without `__`, such as `popular`, needs no field.
+
 A filter on a column lets a client find out the values of that column, one
 request at a time. Write a filter only on data that the client may see.
 
@@ -782,8 +797,8 @@ subquery in the condition is enough, and it is faster than loading ids for
 
 The key is always on: `include_filters` and `exclude_filters` choose among
 the generated keys only. A key with the name of a generated key that is on
-fails when the view registers. To replace `name`, leave the generated key out
-with `exclude_filters = ("name",)`, and decorate your own.
+fails when the view registers. To replace a generated key, such as `name` or
+`name__icontains`, leave it out with `exclude_filters`, and decorate your own.
 
 A subclass inherits the key. It drops the key by setting the name of the
 method to `None`, as in `filter_popular = None`. A type checker rejects
@@ -796,10 +811,10 @@ model of another class, such as one of your own, does not run them, and
 Restly warns with
 {class}`RestlySkippedFilterMethodsWarning <fastapi_restly.exc.RestlySkippedFilterMethodsWarning>`.
 
-A key follows the rules of the page parameters: no `__`, no `.` and no `_`
-at the start. It is not the name of the view's page or sort parameters, such
-as `page`, `page_size` or `sort`, and not the name of a Pydantic model
-attribute, such as `copy`.
+A key does not start with `_`. It has `__` at most once, with a field before
+it and an operator after it, and a `.` only in the field. It is not the name
+of the view's page or sort parameters, such as `page`, `page_size` or `sort`,
+and not the name of a Pydantic model attribute, such as `copy`.
 
 {func}`fr.query.apply_list_params <fastapi_restly.query.apply_list_params>`
 has no view, so it cannot call the method. It raises `ValueError` for list

@@ -609,7 +609,14 @@ def _derive_list_params(
             )
         fields[key] = filter_fields[key]
     for own in own_filters:
-        _check_own_key(_setting_label(owner, own.method), own.key, fields, reserved)
+        _check_own_key(
+            _setting_label(owner, own.method),
+            own.key,
+            fields,
+            reserved,
+            keys_of_field,
+            schema_name,
+        )
         annotation = own.annotation if own.always else Optional[own.annotation]
         default = own.default if own.always else None
         fields[own.key] = (
@@ -673,24 +680,54 @@ def _default_sort_keys(
 
 
 def _check_own_key(
-    label: str, key: str, fields: dict[str, Any], reserved: _abc.Set[str]
+    label: str,
+    key: str,
+    fields: dict[str, Any],
+    reserved: _abc.Set[str],
+    keys_of_field: dict[str, list[str]],
+    schema_name: str,
 ) -> None:
-    """Reject an own filter key that the list params already have.
+    """Reject an own filter key that the list params already have, or that
+    does not read as the generated keys do.
+
+    :param keys_of_field: The generated filter keys of each field, also the
+        keys that are off.
 
     :raises RestlyConfigurationError: the key is a page parameter or the
-        sort parameter, or a generated filter key that is on.
+        sort parameter, or a generated filter key that is on, or it has
+        ``__`` or ``.`` and does not start with a field with filters.
     """
     if key in reserved:
         raise RestlyConfigurationError(
             f"{label}: the key {key!r} is a page parameter or the sort "
             "parameter. Choose another key."
         )
-    if key in fields:
-        raise RestlyConfigurationError(
-            f"{label}: the key {key!r} is also a generated filter key. To "
-            f"replace it, leave it out with exclude_filters = ({key!r},). Then "
-            f"choose what happens to {key}__in and the other keys of the field."
+    # ``__`` splits a field from an operator, and ``.`` walks to a related
+    # field, in every key
+    field = key.partition("__")[0]
+    if ("__" in key or "." in key) and field not in keys_of_field:
+        message = (
+            f"{label}: the key {key!r} starts with {field!r}, which is not a "
+            f"field of {schema_name} with filters. A key with '__' or '.' "
+            "starts with a field, as the generated keys do. Or choose a key "
+            "without '__' and '.'."
         )
+        if keys_of_field:
+            message += f" The fields with filters are: {', '.join(keys_of_field)}."
+        else:
+            message += f" {schema_name} has no fields with filters."
+        raise RestlyConfigurationError(message)
+    if key in fields:
+        message = (
+            f"{label}: the key {key!r} is also a generated filter key. To "
+            f"replace it, leave it out with exclude_filters = ({key!r},)."
+        )
+        if "__" not in key:
+            message += (
+                f" Then choose what happens to {key}__in and the other keys "
+                "of the field."
+            )
+        raise RestlyConfigurationError(message)
 
 
 def _setting_label(owner: str | None, name: str) -> str:

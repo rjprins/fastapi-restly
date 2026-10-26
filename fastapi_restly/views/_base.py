@@ -1252,14 +1252,22 @@ def list_filter(key: str) -> Callable[[_F], _F]:
     relationship (``.has()``/``.any()``) for another table. On an async view
     the method can be ``async def``.
 
+    The key is a name of your own, such as ``popular``, or a field and an
+    operator, such as ``priority__gte`` or ``name__startswith``. The
+    operator may be one that Restly generates for other fields, or a new
+    one. Before ``__`` comes a field with filters, as in the generated keys,
+    such as ``vendor.name``.
+
     The key is always on: ``include_filters`` and ``exclude_filters`` choose
     among the generated keys only. A subclass drops the key by setting the
     method name to ``None``.
 
-    :raises RestlyConfigurationError: ``key`` has ``__`` or ``.``, starts
-        with ``_``, or is the name of a Pydantic model attribute. A key that
-        is a page parameter or the sort parameter fails when the view
-        registers.
+    :raises RestlyConfigurationError: ``key`` starts with ``_``, is the name
+        of a Pydantic model attribute, or has ``__`` without one field before
+        it and one operator after it. A key that is a page parameter, the
+        sort parameter or a generated key that is on fails when the view
+        registers, and so does a key with ``__`` or ``.`` that does not start
+        with a field with filters.
     """
     _check_own_key_name(key)
 
@@ -1271,16 +1279,21 @@ def list_filter(key: str) -> Callable[[_F], _F]:
 
 
 def _check_own_key_name(key: Any) -> None:
-    """Reject a key that cannot be a query parameter of the list params,
-    with the rules of the page parameters."""
+    """Reject a key that cannot be a query parameter of the list params.
+
+    ``__`` splits a field from an operator, as in the generated keys. The
+    view checks the field when it registers.
+    """
     if not isinstance(key, str) or not key:
         raise RestlyConfigurationError(
             f"@fr.list_filter needs a key as a non-empty string, got {key!r}."
         )
-    if "__" in key or "." in key:
+    field, separator, operator = key.partition("__")
+    if separator and (not field or not operator or "__" in operator or "." in operator):
         raise RestlyConfigurationError(
-            f"@fr.list_filter({key!r}): '__' is for the suffixes of the "
-            "generated filters, and '.' for related fields. Choose another key."
+            f"@fr.list_filter({key!r}): '__' splits a field from an operator, "
+            "as in 'name__startswith'. Write it once, with a field before it "
+            "and an operator after it."
         )
     # the list params are a Pydantic model with one field per key
     if key.startswith("_") or hasattr(pydantic.BaseModel, key):

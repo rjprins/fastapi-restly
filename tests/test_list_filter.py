@@ -5,6 +5,7 @@ the method returns a condition, a clause or ``None``.
 """
 
 import asyncio
+import enum
 from collections.abc import Iterator
 from typing import Any
 
@@ -44,6 +45,19 @@ class Item(Base):
     vendor: Mapped[Vendor] = relationship()
 
 
+class Level(enum.IntEnum):
+    LOW = 1
+    MID = 2
+    HIGH = 3
+
+
+class Ticket(Base):
+    __tablename__ = "list_filter_ticket"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # an int enum, stored as an int
+    level: Mapped[int]
+
+
 class VendorSchema(fr.IDSchema):
     name: str
 
@@ -51,6 +65,10 @@ class VendorSchema(fr.IDSchema):
 class ItemSchema(fr.IDSchema):
     name: str
     vendor: VendorSchema
+
+
+class TicketSchema(fr.IDSchema):
+    level: Level
 
 
 class ItemClauses(fr.ClauseNamespace):
@@ -67,6 +85,9 @@ def rows() -> list[Any]:
         Item(id=2, name="axe", view_count=10, archived=False, vendor_id=2),
         Item(id=3, name="apple", view_count=2000, archived=True, vendor_id=1),
         Item(id=4, name="bread", view_count=1, archived=True, vendor_id=2),
+        Ticket(id=1, level=1),
+        Ticket(id=2, level=2),
+        Ticket(id=3, level=3),
     ]
 
 
@@ -331,11 +352,99 @@ def test_a_key_can_replace_a_generated_key_that_is_off(view_class):
         )
 
 
+def test_a_key_can_have_an_operator_of_its_own(view_class):
+    """``__`` splits a field from an operator in every key, and the
+    operator may be a new one, also on a related field."""
+
+    class ItemView(view_class):  # type: ignore[valid-type,misc]
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+
+        @fr.list_filter("name__startswith")
+        def filter_name_startswith(self, value: str) -> ColumnElement[bool]:
+            """Items whose name starts with the value."""
+            return Item.name.startswith(value, autoescape=True)
+
+        @fr.list_filter("vendor.name__startswith")
+        def filter_vendor_starts(self, value: str) -> ColumnElement[bool]:
+            return Item.vendor.has(Vendor.name.startswith(value, autoescape=True))
+
+    with client_for(ItemView) as client:
+        assert names(client, name__startswith="b") == ["bread"]
+        assert names(client, **{"vendor.name__startswith": "g"}) == ["axe", "bread"]
+        assert query_parameter(client, "name__startswith")["description"] == (
+            "Items whose name starts with the value."
+        )
+
+
+def test_a_key_keeps_a_range_that_restly_does_not_generate(view_class):
+    """No enum gets the generated range keys. A column that stores an int
+    enum as an int keeps ``?level__gte=`` with a filter of the view's own."""
+
+    class TicketView(view_class):  # type: ignore[valid-type,misc]
+        prefix = "/tickets"
+        model = Ticket
+        schema = TicketSchema
+
+        @fr.list_filter("level__gte")
+        def filter_level_gte(self, value: Level) -> ColumnElement[bool]:
+            return Ticket.level >= value
+
+    with client_for(TicketView) as client:
+        payload = client.get("/tickets/", params={"level__gte": 2}).json()
+        assert [row["id"] for row in payload["data"]] == [2, 3]
+        client.get("/tickets/", params={"level__gte": 7}, assert_status_code=422)
+
+
+def test_a_key_with_an_operator_starts_with_a_field():
+    class ItemView(fr.AsyncRestView):
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+
+        @fr.list_filter("views__gte")
+        def filter_views(self, value: int) -> ColumnElement[bool]:
+            return Item.view_count >= value
+
+    with pytest.raises(RestlyConfigurationError) as exc_info:
+        fr.include_view(FastAPI(), ItemView)
+
+    assert str(exc_info.value) == (
+        "ItemView.filter_views: the key 'views__gte' starts with 'views', "
+        "which is not a field of ItemSchema with filters. A key with '__' or "
+        "'.' starts with a field, as the generated keys do. Or choose a key "
+        "without '__' and '.'. The fields with filters are: id, name, "
+        "vendor.id, vendor.name."
+    )
+
+
+def test_a_generated_key_with_an_operator_that_is_on_fails():
+    class ItemView(fr.AsyncRestView):
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+
+        @fr.list_filter("name__icontains")
+        def filter_name(self, value: str) -> ColumnElement[bool]:
+            return Item.name.ilike(value)
+
+    with pytest.raises(RestlyConfigurationError) as exc_info:
+        fr.include_view(FastAPI(), ItemView)
+
+    assert str(exc_info.value) == (
+        "ItemView.filter_name: the key 'name__icontains' is also a generated "
+        "filter key. To replace it, leave it out with exclude_filters = "
+        "('name__icontains',)."
+    )
+
+
 @pytest.mark.parametrize(
     ("key", "message"),
     [
-        ("a__b", "'__' is for the suffixes of the generated filters"),
-        ("a.b", "'__' is for the suffixes of the generated filters"),
+        ("a__b__c", "'__' splits a field from an operator"),
+        ("a__", "'__' splits a field from an operator"),
+        ("a__b.c", "'__' splits a field from an operator"),
         ("_private", "cannot start with '_'"),
         ("copy", "be the name of a Pydantic model attribute"),
         ("", "needs a key as a non-empty string"),
