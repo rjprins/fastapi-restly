@@ -22,6 +22,10 @@ class UserSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     (e.g. ``deleted_at`` after a soft delete) but PATCH bodies can't spoof
     them. So is ``organization_id``, the tenant stamp: a user is created in
     the organization the request acts in, never in one the body names.
+
+    ``salary`` is WriteOnly: the CRUD routes and ``/users/me`` never return
+    it, and it is not a list filter or sort key. HR and the owner read it
+    through ``GET /users/{id}/with-permissions``.
     """
 
     email: str
@@ -29,8 +33,8 @@ class UserSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     password: fr.WriteOnly[str] = ""
     role: UserRole = UserRole.MEMBER
     organization_id: fr.ReadOnly[int]
-    # Sensitive field - only visible to HR (see UserView.get_user_with_field_permissions)
-    salary: int | None = None
+    # Sensitive: only HR and the owner see it (UserView.get_user_with_field_permissions)
+    salary: fr.WriteOnly[int | None] = None
 
     # Stamped server-side by the view's mixin chain.
     deleted_at: fr.ReadOnly[datetime | None] = None
