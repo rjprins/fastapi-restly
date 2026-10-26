@@ -281,6 +281,13 @@ class ItemView(fr.AsyncRestView):
             stmt = stmt.order_by(Item.position)
         return await super().apply_list_params(stmt, list_params)
 ```
+
+A column of SQLAlchemy's `Enum` type sorts by its labels, in the order of
+the database. On SQLite and on a column that is not a native enum, such as
+the one that `fr.ModelDefaults` gives `Mapped[Status]`, that is the order
+of the text. A native ENUM on PostgreSQL sorts its labels as they were
+declared. An int enum sorts by its numbers only on a column that stores
+them, such as `Integer`.
 :::
 
 (sort-nulls)=
