@@ -29,8 +29,8 @@ Install FastAPI-Restly along with an async SQLite driver:
 pip install "fastapi-restly[standard]" aiosqlite
 ```
 
-A SQLAlchemy model and a four-line view class make a complete, runnable
-application:
+A SQLAlchemy model and a four-line view class make a complete application.
+Copy this whole example into `main.py`:
 
 ```python
 from contextlib import asynccontextmanager

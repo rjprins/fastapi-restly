@@ -68,8 +68,9 @@ method overrides to share behavior across resources.
 ## Quickstart
 
 FastAPI-Restly turns a SQLAlchemy model into a class-based CRUD resource.
-This example is complete and runnable; it creates SQLite tables at startup for
-local development. Use Alembic migrations in production.
+Copy this whole example into `main.py`, and run it with `fastapi dev main.py`.
+It creates the SQLite tables at startup, for local development. Use Alembic
+migrations in production.
 
 ```python
 from contextlib import asynccontextmanager
