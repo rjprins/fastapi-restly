@@ -452,6 +452,28 @@ def test_only_the_write_routes_of_the_view_are_linted():
     assert len(_register(UpdateOnlyStampView)) == 1
 
 
+def test_the_write_routes_that_include_routes_leaves_out_are_not_linted():
+    class IncludedStampSchema(fr.IDSchema):
+        body: str
+        tenant_id: int | None = None
+
+    class ReadOnlyStampView(fr.AsyncRestView):
+        prefix = "/included-read-stamps"
+        model = StampedNote
+        schema = IncludedStampSchema
+        include_routes = (fr.ViewRoute.GET_MANY, fr.ViewRoute.GET_ONE)
+
+    assert _register(ReadOnlyStampView) == []
+
+    class UpdateOnlyStampView(fr.AsyncRestView):
+        prefix = "/included-update-stamps"
+        model = StampedNote
+        schema = IncludedStampSchema
+        include_routes = (fr.ViewRoute.GET_ONE, fr.ViewRoute.UPDATE)
+
+    assert len(_register(UpdateOnlyStampView)) == 1
+
+
 def test_an_inherited_schema_and_a_declared_update_class_are_linted():
     class BaseStampSchema(fr.IDSchema):
         body: str

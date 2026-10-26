@@ -157,7 +157,7 @@ This table maps each need to its setting:
 | Stable response fields | Declare {attr}`schema <fastapi_restly.views.BaseRestView.schema>` |
 | Other fields or validation on create or update | Declare {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` or {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` ([Explicit write schemas](#explicit-write-schemas)) |
 | Another type for the `{id}` path parameter | Set {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` ([Item paths](#item-route-matching)) |
-| Fewer routes, such as a read-only view | Set {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` ([Exclude CRUD routes](#exclude-crud-routes)) |
+| Fewer routes, such as a read-only view | Set {attr}`include_routes <fastapi_restly.views.BaseRestView.include_routes>` (the routes to serve) or {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` (the routes to leave out) ([Exclude CRUD routes](#exclude-crud-routes)) |
 | Hide rows from every read | Set {attr}`scope <fastapi_restly.views.BaseRestView.scope>`, or `default_scope` on the model ([Scopes](#view-scope)) |
 | No pagination | Set {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` to `None`, or to a {class}`NoPagination <fastapi_restly.views.NoPagination>` to choose its envelope ([Filtering, Sorting & Pagination](#no-pagination)) |
 | Other page limits, parameter names or list envelope | Set {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` to a {class}`NumberedPagination <fastapi_restly.views.NumberedPagination>` ([Pagination settings](#pagination-settings)) |
@@ -209,11 +209,47 @@ the write routes again:
 `exclude_routes = (*ReadOnlyView.exclude_routes, fr.ViewRoute.GET_ONE)`.
 
 `exclude_routes` leaves out only the routes that it names. So a subclass also
-serves the custom routes of its base, such as `POST /tags/merge`. To leave one
-out, add the name of its method, such as `"merge"`. But the subclass also
-serves a write route that someone adds to the base later. So for a read-only
-copy of a view with custom routes, do not subclass that view. Put the shared
-settings in a base view, and subclass it twice:
+serves the custom routes of its base, such as `POST /tags/merge`, and also a
+write route that someone adds to the base later. For a read-only copy of a
+view with custom routes, set
+{attr}`include_routes <fastapi_restly.views.BaseRestView.include_routes>`
+instead. It names the routes to serve, and the view leaves out every other
+route:
+
+```python
+@fr.include_view(app)
+class TagView(fr.AsyncRestView):
+    prefix = "/tags"
+    model = Tag
+
+    @fr.post("/merge")
+    async def merge(self, source_id: int, target_id: int) -> None: ...
+
+
+@fr.include_view(public_router)  # an APIRouter(prefix="/public")
+class PublicTagView(TagView):
+    include_routes = (fr.ViewRoute.GET_MANY, fr.ViewRoute.GET_ONE)
+```
+
+`PublicTagView` serves only `GET /public/tags` and `GET /public/tags/{id}`,
+also when `TagView` gets more routes later.
+
+:::{admonition} Details
+:class: details
+
+Each entry of `include_routes` and `exclude_routes` is a
+{class}`fr.ViewRoute <fastapi_restly.views.ViewRoute>` value, `GET_MANY`,
+`GET_ONE`, `CREATE`, `UPDATE` or `DELETE`, or the name of a route method,
+such as `"delete_endpoint"` or `"merge"`. A name that is not a route of the
+view raises `AttributeError` when you register the view.
+
+The default of `include_routes`, `("*",)`, is every route. A view serves a
+route when `include_routes` has it and `exclude_routes` does not. A subclass
+that sets its own `include_routes` replaces the list of its base.
+
+The other way to make a read-only copy is a base view with the shared
+settings, subclassed twice. Then the copy does not inherit the custom routes
+of `TagView`:
 
 ```python
 class TagBase(fr.AsyncRestView):
@@ -235,15 +271,7 @@ class PublicTagView(TagBase):
 ```
 
 `PublicTagView` serves only the two read routes, also when `TagView` gets more
-routes later.
-
-:::{admonition} Details
-:class: details
-
-Each entry is a {class}`fr.ViewRoute <fastapi_restly.views.ViewRoute>` value,
-`GET_MANY`, `GET_ONE`, `CREATE`, `UPDATE` or `DELETE`, or the name of a route
-method, such as `"delete_endpoint"`. A name that is not a route of the view
-raises `AttributeError` when you register the view.
+routes later. But both views serve a route that `TagBase` gets later.
 :::
 
 (nested-resources)=

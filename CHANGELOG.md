@@ -49,6 +49,11 @@ replacement, unless it says otherwise.
   a key, or a pattern: `*` matches any characters except `.`, so
   `"vendor.*"` is every key on the fields of `vendor`.
   `fr.query.derive_schema_list_params` takes them too.
+- `include_routes` names the routes that a view serves, such as
+  `(fr.ViewRoute.GET_MANY, fr.ViewRoute.GET_ONE)` for a read-only copy of a
+  view. The view leaves out every other route, also a custom route that the
+  base view gets later. The default, `("*",)`, is every route.
+  `exclude_routes` applies after it.
 - `sort_query_param` renames the sort parameter, such as `"order_by"`.
 - `default_sort` is the sort when the request has none, such as
   `"-created_at"`. A `sort` from the client replaces it. OpenAPI shows it as

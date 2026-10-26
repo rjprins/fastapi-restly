@@ -45,7 +45,7 @@ Coverage checklist:
 - [x] Custom extra routes via `@fr.get` and `@fr.route`
 - [x] `perform_*` handler overrides
 - [x] View options: `pagination`
-- [x] View options: `exclude_routes`
+- [x] View options: `include_routes` and `exclude_routes`
 - [x] View options: class-level `dependencies`
 - [x] `AsyncReactAdminView`
 - [x] `ReactAdminView` sync variant

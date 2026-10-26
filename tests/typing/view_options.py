@@ -60,7 +60,15 @@ class ExportTicketView(PagedTicketView):
     pagination = fr.NoPagination().replace(envelope=fr.views.Envelope)
 
 
+@fr.include_view(app)
+class PublicTicketView(TicketBase):
+    prefix = "/public-tickets"
+    include_routes = (fr.ViewRoute.GET_MANY, fr.ViewRoute.GET_ONE)
+
+
 class MappedTicketView(PagedTicketView):
-    # Restly reads exclude_routes more than once, and a map() can be read only
-    # once. mypy's warn_unused_ignores fails here if the type starts to accept it.
+    # Restly reads include_routes and exclude_routes more than once, and a
+    # map() can be read only once. mypy's warn_unused_ignores fails here if
+    # the type starts to accept it.
+    include_routes = map(fr.ViewRoute, ("get_many_endpoint",))  # type: ignore[assignment]
     exclude_routes = map(fr.ViewRoute, ("delete_endpoint",))  # type: ignore[assignment]

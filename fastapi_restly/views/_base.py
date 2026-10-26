@@ -187,7 +187,8 @@ class ListResult(Generic[ModelT]):
 class ViewRoute(str, Enum):
     """Default CRUD route names that can be referenced by view options.
 
-    Values are the endpoint method names so ``exclude_routes`` can drop them.
+    Values are the endpoint method names, so ``include_routes`` and
+    ``exclude_routes`` can name them.
     """
 
     #: ``GET /``: the list.
@@ -1591,11 +1592,10 @@ def _check_composite_key(cls: Any) -> None:
     if len(sa_inspect(cls.model).primary_key) < 2:
         return
     if getattr(cls.where_id, "__module__", "").startswith("fastapi_restly."):
-        excluded = _excluded_route_names(cls)
         routes = [
             name
             for name in _ITEM_ROUTES
-            if name not in excluded
+            if _serves_route(cls, name)
             and hasattr(getattr(cls, name, None), "_api_route_args")
         ]
         if routes:
@@ -2115,10 +2115,19 @@ class BaseRestView(
     #: types. Integer paths accept non-negative digits. An unmatched value
     #: falls through to another route or returns 404, instead of 422.
     id_type: ClassVar[type[Any] | None] = None
-    #: The routes to leave out of the view, such as
-    #: ``(fr.ViewRoute.DELETE,)``: :class:`ViewRoute` values for the CRUD
-    #: routes, or the names of endpoint methods. A subclass that sets its own
-    #: value replaces the list of its base. A name that is not a route
+    #: The routes that the view serves, such as
+    #: ``(fr.ViewRoute.GET_MANY, fr.ViewRoute.GET_ONE)``: :class:`ViewRoute`
+    #: values for the CRUD routes, or the names of route methods, also of a
+    #: custom route. The view leaves out every other route, also a route that
+    #: a base view gets later. The default, ``("*",)``, is every route. A
+    #: subclass that sets its own value replaces the list of its base. A name
+    #: that is not a route raises ``AttributeError`` when the view is
+    #: registered.
+    include_routes: ClassVar[Collection[str | ViewRoute]] = ("*",)
+    #: The routes to leave out of the view, after :attr:`include_routes`,
+    #: such as ``(fr.ViewRoute.DELETE,)``: :class:`ViewRoute` values for the
+    #: CRUD routes, or the names of endpoint methods. A subclass that sets its
+    #: own value replaces the list of its base. A name that is not a route
     #: raises ``AttributeError`` when the view is registered.
     exclude_routes: ClassVar[Collection[str | ViewRoute]] = ()
     #: What a list route does with a query key that it does not read.
@@ -2756,7 +2765,7 @@ class BaseRestView(
                 route = _guard_list_params(route)
                 setattr(cls, name, route)
             _fill_view_types(route, view_types, list_params)
-        _check_exclude_routes(cls)
+        _check_route_settings(cls)
         _check_composite_key(cls)
 
 
@@ -3524,25 +3533,41 @@ def _guard_list_params(route: Callable) -> Callable:
     return guarded
 
 
-def _excluded_route_names(view_cls: type) -> frozenset[str]:
-    """The endpoint method names that the view's ``exclude_routes`` names."""
+def _route_names(view_cls: type, setting: str) -> frozenset[str]:
+    """The endpoint method names that the view's ``include_routes`` or
+    ``exclude_routes`` names."""
     return frozenset(
         route.value if isinstance(route, ViewRoute) else route
-        for route in getattr(view_cls, "exclude_routes", ())
+        for route in getattr(view_cls, setting)
     )
 
 
-def _check_exclude_routes(cls: type[BaseRestView[Any, Any, Any, Any, Any]]):
-    """Raise for a name in ``exclude_routes`` that is no route at all: a typo,
-    or the business method name instead of the ``*_endpoint`` route name.
+def _serves_route(view_cls: type, method_name: str) -> bool:
+    """True if the CRUD view serves the route method ``method_name``: its
+    ``include_routes`` has it, and its ``exclude_routes`` does not."""
+    included = _route_names(view_cls, "include_routes")
+    return ("*" in included or method_name in included) and (
+        method_name not in _route_names(view_cls, "exclude_routes")
+    )
 
-    The excluded endpoints stay routes on the class. The router leaves them
-    out. So a subclass with its own ``exclude_routes`` gets them back, also
+
+def _check_route_settings(cls: type[BaseRestView[Any, Any, Any, Any, Any]]):
+    """Raise for a name in ``include_routes`` or ``exclude_routes`` that is no
+    route at all: a typo, or the business method name instead of the
+    ``*_endpoint`` route name. ``"*"`` in ``include_routes`` is every route.
+
+    The routes that the view leaves out stay routes on the class. The router
+    leaves them out. So a subclass with its own settings gets them back, also
     when the base registered first and copied them into its own namespace.
     """
-    for method_name in sorted(_excluded_route_names(cls)):
-        if not _is_route_name_in_lineage(cls, method_name):
-            raise AttributeError(f"{method_name!r} is not a route on {cls.__name__}")
+    for setting in ("include_routes", "exclude_routes"):
+        for method_name in sorted(_route_names(cls, setting)):
+            if setting == "include_routes" and method_name == "*":
+                continue
+            if not _is_route_name_in_lineage(cls, method_name):
+                raise AttributeError(
+                    f"{method_name!r} in {setting} is not a route on {cls.__name__}"
+                )
 
 
 def _is_route_name_in_lineage(
@@ -3811,14 +3836,13 @@ def _warn_writable_model_set_fields(view_cls: type[View]) -> None:
         return
     if not model_set:
         return
-    excluded = _excluded_route_names(view_cls)
     # Each write class, and whether Restly derives it from ``schema``.
     write_classes: dict[type[pydantic.BaseModel], bool] = {}
     for attr, route in (
         ("schema_create", ViewRoute.CREATE),
         ("schema_update", ViewRoute.UPDATE),
     ):
-        if route.value in excluded:
+        if not _serves_route(view_cls, route.value):
             continue
         if not _needs_generating(view_cls, attr):
             write_classes.setdefault(getattr(view_cls, attr), False)
@@ -4364,10 +4388,11 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
     # Find all endpoint functions in this class and add them to the router
     list_parameters: list[dict[str, Any]] | None = None
     view_types = _view_types(view_cls) if issubclass(view_cls, BaseRestView) else None
-    # exclude_routes is a setting of the CRUD views only
-    excluded = _excluded_route_names(view_cls) if view_types is not None else ()
     for name, attr in view_cls.__dict__.items():
-        if not hasattr(attr, "_api_route_args") or name in excluded:
+        if not hasattr(attr, "_api_route_args"):
+            continue
+        # include_routes and exclude_routes are settings of the CRUD views only
+        if view_types is not None and not _serves_route(view_cls, name):
             continue
         endpoint = attr
         if view_types is not None:

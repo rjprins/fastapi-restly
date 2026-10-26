@@ -182,6 +182,7 @@ decorator and `response_model`; see
 [Use a different schema for the list route](#list-schema).
 
 A route that the view leaves out with
+{attr}`include_routes <fastapi_restly.views.BaseRestView.include_routes>` or
 {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` is
 not in the spec at all; see [Exclude CRUD routes](#exclude-crud-routes).
 

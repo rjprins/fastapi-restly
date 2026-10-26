@@ -709,7 +709,10 @@ def test_exclude_routes_unknown_name_still_raises():
         exclude_routes = ("get_one",)  # business method, not the route name
 
     app = FastAPI()
-    with pytest.raises(AttributeError, match="not a route"):
+    with pytest.raises(
+        AttributeError,
+        match="'get_one' in exclude_routes is not a route on SprocketView",
+    ):
         fr.include_view(app, SprocketView)
 
 
