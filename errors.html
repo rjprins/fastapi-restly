@@ -1,0 +1,855 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" data-theme="auto">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Errors &#8212; FastAPI-Restly 0.12.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "auto";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "auto";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=61ccb1f1"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'errors';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://www.fastapi-restly.org/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script src="_static/newsletter.js?v=7326e93d"></script>
+    <link rel="canonical" href="https://www.fastapi-restly.org/errors.html" />
+    <link rel="icon" href="_static/favicon.svg"/>
+    <link rel="author" title="About these documents" href="about.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="OpenAPI" href="openapi.html" />
+    <link rel="prev" title="Filtering, Sorting &amp; Pagination" href="filtering.html" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.12" />
+<meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700&amp;display=swap"
+      rel="stylesheet" />
+<!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
+<script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="auto">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/fr-monogram.svg" class="logo__image only-light" alt=""/>
+    <img src="_static/fr-monogram-dark.svg" class="logo__image only-dark pst-js-only" alt=""/>
+  
+  
+    <p class="title logo__title">FastAPI-Restly</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="projects.html">New &amp; Existing Projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="database.html">Database &amp; Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
+<li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering, Sorting &amp; Pagination</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Access</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="context.html">Request Context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tenancy.html">Multi-Tenancy</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Testing &amp; Deploying</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="guide.html" class="nav-link">Guide</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Errors</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="errors">
+<h1>Errors<a class="headerlink" href="#errors" title="Link to this heading">#</a></h1>
+<p>Restly’s request errors are FastAPI <code class="docutils literal notranslate"><span class="pre">HTTPException</span></code>s. FastAPI renders each
+one through the exception handlers of the app, so by default every error has
+FastAPI’s body: <code class="docutils literal notranslate"><span class="pre">{&quot;detail&quot;:</span> <span class="pre">...}</span></code>. A database conflict in a write, such as a
+duplicate unique value, becomes one of these errors too: a <code class="docutils literal notranslate"><span class="pre">409</span></code>.</p>
+<p>Your own code raises errors in the same way. Raise one in any method of a
+view, and the request stops there. If the error comes before the commit,
+Restly does not commit the write.</p>
+<p>Errors do not pass through
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response" title="fastapi_restly.views.BaseRestView.to_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_response</span></code></a>. That
+method shapes only successful responses (see
+<a class="reference internal" href="responses.html"><span class="std std-doc">Responses</span></a>). To change the error body, change the
+exception handlers of the app, as in any FastAPI app.</p>
+<section id="raise-an-http-error">
+<span id="raise-http-error"></span><h2>Raise an HTTP error<a class="headerlink" href="#raise-an-http-error" title="Link to this heading">#</a></h2>
+<p>The HTTP errors live in <code class="docutils literal notranslate"><span class="pre">fr.exc</span></code>. Each one is a subclass of
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyHTTPError" title="fastapi_restly.exc.RestlyHTTPError"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.RestlyHTTPError</span></code></a>, which is
+a <code class="docutils literal notranslate"><span class="pre">fastapi.HTTPException</span></code>:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Exception</p></th>
+<th class="head"><p>Status</p></th>
+<th class="head"><p>When</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="api/exc.html#fastapi_restly.exc.NotFound" title="fastapi_restly.exc.NotFound"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.NotFound</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">404</span></code></p></td>
+<td><p>The row does not exist, or the <a class="reference internal" href="scopes.html"><span class="std std-doc">scope</span></a> hides it. Restly raises it for <code class="docutils literal notranslate"><span class="pre">/{id}</span></code> routes and for a <a class="reference internal" href="relationships.html"><span class="std std-doc">reference</span></a> to a missing row.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/exc.html#fastapi_restly.exc.Forbidden" title="fastapi_restly.exc.Forbidden"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.Forbidden</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">403</span></code></p></td>
+<td><p>The caller may not do this action. Raise it in <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/exc.html#fastapi_restly.exc.Conflict" title="fastapi_restly.exc.Conflict"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.Conflict</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">409</span></code></p></td>
+<td><p>The request does not fit the current state of the row, such as publishing a post that is already published. Restly raises it for a <a class="reference internal" href="#default-exception-handling">database conflict</a> in a write.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/exc.html#fastapi_restly.exc.BadQueryParam" title="fastapi_restly.exc.BadQueryParam"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.BadQueryParam</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">400</span></code></p></td>
+<td><p>Restly cannot apply a value of the list params, such as a filter value that fails the validation of its field.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Raise them from your own code: a business method, a hook or a custom route.
+The publish route of the blog example raises <code class="docutils literal notranslate"><span class="pre">Conflict</span></code> inside its write
+action, so the write is not committed:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/publish&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">publish</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Post</span><span class="p">:</span>
+    <span class="n">post</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">PUBLISH</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">post</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">post</span><span class="o">.</span><span class="n">published</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">Conflict</span><span class="p">(</span><span class="s2">&quot;Already published&quot;</span><span class="p">)</span>
+        <span class="n">post</span><span class="o">.</span><span class="n">published</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">return</span> <span class="n">post</span>
+</pre></div>
+</div>
+<p>The full file is
+<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/blog/blog/main.py"><code class="docutils literal notranslate"><span class="pre">blog/main.py</span></code></a>.
+A plain <code class="docutils literal notranslate"><span class="pre">fastapi.HTTPException</span></code> works in the same places, for a status code
+that has no class in <code class="docutils literal notranslate"><span class="pre">fr.exc</span></code>, such as <code class="docutils literal notranslate"><span class="pre">401</span></code>.</p>
+<p>To check whether the caller may do an action, raise <code class="docutils literal notranslate"><span class="pre">Forbidden</span></code> from
+<a class="reference internal" href="authorization.html#authorize-gate"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">authorize</span></code></span></a>. Restly calls it at the right moment, so the
+business methods stay free of permission checks.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>The other names in <code class="docutils literal notranslate"><span class="pre">fr.exc</span></code> are not HTTP errors.
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyError" title="fastapi_restly.exc.RestlyError"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.RestlyError</span></code></a> and
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>
+report a setup mistake. The warnings
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyUncommittedChangesWarning" title="fastapi_restly.exc.RestlyUncommittedChangesWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyUncommittedChangesWarning</span></code></a>,
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyExpireOnCommitWarning" title="fastapi_restly.exc.RestlyExpireOnCommitWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyExpireOnCommitWarning</span></code></a>,
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyMisuseWarning" title="fastapi_restly.exc.RestlyMisuseWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyMisuseWarning</span></code></a>,
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyDuplicateSchemaNameWarning" title="fastapi_restly.exc.RestlyDuplicateSchemaNameWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyDuplicateSchemaNameWarning</span></code></a>
+and
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlySkippedFilterMethodsWarning" title="fastapi_restly.exc.RestlySkippedFilterMethodsWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlySkippedFilterMethodsWarning</span></code></a>
+are there too.</p>
+</div>
+</section>
+<section id="why-a-bad-list-request-returns-422-or-400">
+<span id="list-request-errors"></span><h2>Why a bad list request returns 422 or 400<a class="headerlink" href="#why-a-bad-list-request-returns-422-or-400" title="Link to this heading">#</a></h2>
+<p>Two steps check the query string of a list endpoint, and each has its own
+status code:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">422</span></code>: the query string does not match the
+<a class="reference internal" href="filtering.html"><span class="std std-doc">list params</span></a>. This covers an unknown key,
+such as <code class="docutils literal notranslate"><span class="pre">?nope=1</span></code>, a sort key that the list does not have, such as
+<code class="docutils literal notranslate"><span class="pre">?sort=nope</span></code>, and a value of the wrong type for a typed parameter, such as
+<code class="docutils literal notranslate"><span class="pre">?page_size=oops</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">400</span></code>: the key is known, but Restly cannot apply the value. Restly raises
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.BadQueryParam" title="fastapi_restly.exc.BadQueryParam"><code class="xref py py-class docutils literal notranslate"><span class="pre">BadQueryParam</span></code></a> for a filter
+value that fails the field’s <a class="reference internal" href="filtering.html#filter-value-validation"><span class="std std-ref">validation</span></a>, such
+as <code class="docutils literal notranslate"><span class="pre">?age=old</span></code> on an <code class="docutils literal notranslate"><span class="pre">int</span></code> field.</p></li>
+</ul>
+<p>The <code class="docutils literal notranslate"><span class="pre">detail</span></code> of a <code class="docutils literal notranslate"><span class="pre">400</span></code> names the parameter and says what is wrong:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Invalid filter value for &#39;age&#39;: &#39;old&#39;. Input should be a valid integer, unable to parse string as an integer
+</pre></div>
+</div>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>The text after the value is Pydantic’s reason. For a field validator of
+your own, it is Pydantic’s text for your error, such as
+<code class="docutils literal notranslate"><span class="pre">Value</span> <span class="pre">error,</span> <span class="pre">value</span> <span class="pre">is</span> <span class="pre">too</span> <span class="pre">long</span></code>. An exception that is not a validation
+error, such as an <code class="docutils literal notranslate"><span class="pre">AttributeError</span></code> in your validator, is a bug and returns
+<code class="docutils literal notranslate"><span class="pre">500</span></code>, as it does for a request body.</p>
+<p>A react-admin view follows the same two steps. JSON in <code class="docutils literal notranslate"><span class="pre">sort</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code> or
+<code class="docutils literal notranslate"><span class="pre">filter</span></code> that does not have their shape gets a <code class="docutils literal notranslate"><span class="pre">422</span></code>. A sort key or a filter
+that the view cannot apply raises <code class="docutils literal notranslate"><span class="pre">BadQueryParam</span></code>. It checks a filter value
+against the type of the column, with Pydantic, so <code class="docutils literal notranslate"><span class="pre">&quot;2020-01-01&quot;</span></code> filters a
+date column and <code class="docutils literal notranslate"><span class="pre">&quot;false&quot;</span></code> a boolean column. A handler for
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyHTTPError" title="fastapi_restly.exc.RestlyHTTPError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyHTTPError</span></code></a> shapes all
+these <code class="docutils literal notranslate"><span class="pre">400</span></code> answers; see <a class="reference internal" href="#error-envelope">Change the error body</a>.</p>
+<p>A filter value passes the first step as text. Restly checks it against the
+field only when it builds the query, so a bad filter value returns <code class="docutils literal notranslate"><span class="pre">400</span></code>, not
+<code class="docutils literal notranslate"><span class="pre">422</span></code>.</p>
+</div>
+</section>
+<section id="unique-values-and-other-database-conflicts-409">
+<span id="default-exception-handling"></span><h2>Unique values and other database conflicts: 409<a class="headerlink" href="#unique-values-and-other-database-conflicts-409" title="Link to this heading">#</a></h2>
+<p>A duplicate value in a unique column, a foreign key to a row that does not
+exist, a <code class="docutils literal notranslate"><span class="pre">NULL</span></code> in a <code class="docutils literal notranslate"><span class="pre">NOT</span> <span class="pre">NULL</span></code> column, and a failed check constraint make
+SQLAlchemy raise an <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code>, at a flush or at the commit. In a
+Restly write, the request then returns <code class="docutils literal notranslate"><span class="pre">409</span></code>, not <code class="docutils literal notranslate"><span class="pre">500</span></code>. The response has
+FastAPI’s normal shape:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;detail&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Unique constraint violated on user.email&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">detail</span></code> text depends on the database driver. Restly knows the common
+PostgreSQL error codes and SQLite error messages. For other databases, it uses
+a general conflict message.</p>
+<p>The write block makes the <code class="docutils literal notranslate"><span class="pre">409</span></code>. Each CRUD write, and each
+<a class="reference internal" href="lifecycle.html#custom-action-route"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">write_action</span></code></span></a> block in a custom route, turns the
+<code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> into
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.Conflict" title="fastapi_restly.exc.Conflict"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.Conflict</span></code></a>, with the
+<code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> as its <code class="docutils literal notranslate"><span class="pre">__cause__</span></code>. So a handler for
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyHTTPError" title="fastapi_restly.exc.RestlyHTTPError"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.RestlyHTTPError</span></code></a> shapes
+these conflicts too; see <a class="reference internal" href="#error-envelope">Change the error body</a>.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>Three kinds of code get the raw <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> instead:</p>
+<ul class="simple">
+<li><p>A write inside a
+<a class="reference internal" href="lifecycle.html#shared-write-action-commit"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code></span></a> block. There
+the outermost block turns what escapes it into a <code class="docutils literal notranslate"><span class="pre">409</span></code>, so a bulk route can
+still catch the error of one row.</p></li>
+<li><p>Code outside a write block, such as a bare <code class="docutils literal notranslate"><span class="pre">View</span></code> route or a plain FastAPI
+route that commits itself. It owns its commit, and it must handle its own
+errors.</p></li>
+<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_action_commit" title="fastapi_restly.views.RestView.after_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_action_commit</span></code></a>,
+and the after-hooks that run after a shared commit. The write is already
+saved then, so a <code class="docutils literal notranslate"><span class="pre">409</span></code> would be wrong.</p></li>
+</ul>
+<p>A custom route that catches the conflict of its own <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block
+catches <code class="docutils literal notranslate"><span class="pre">fr.exc.Conflict</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">class</span><span class="w"> </span><span class="nc">Action</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="p">):</span>
+        <span class="n">RENAME</span> <span class="o">=</span> <span class="s2">&quot;rename&quot;</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/rename&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">rename</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">tag</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">RENAME</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">tag</span><span class="p">):</span>
+                <span class="n">tag</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="k">except</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">Conflict</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">Conflict</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;A tag named </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> already exists&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>After a conflict, the session cannot write again until it rolls back. To
+catch the conflict and write again in the same request, see
+<a class="reference internal" href="lifecycle.html#write-action-error"><span class="std std-ref">When a write action raises</span></a>.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">null</span></code> reaches the database only when the type of the schema field allows
+<code class="docutils literal notranslate"><span class="pre">None</span></code>. Otherwise validation rejects it first, with <code class="docutils literal notranslate"><span class="pre">422</span></code>, in the create body
+and in the update body; see <a class="reference internal" href="schemas.html#validation"><span class="std std-ref">Validation</span></a>.</p>
+</div>
+</section>
+<section id="change-the-error-body-for-the-whole-app">
+<span id="error-envelope"></span><h2>Change the error body for the whole app<a class="headerlink" href="#change-the-error-body-for-the-whole-app" title="Link to this heading">#</a></h2>
+<p>To replace the <code class="docutils literal notranslate"><span class="pre">{&quot;detail&quot;:</span> <span class="pre">...}</span></code> body, register a handler for
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyHTTPError" title="fastapi_restly.exc.RestlyHTTPError"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.RestlyHTTPError</span></code></a>.
+FastAPI finds a handler through the class of the exception and its base
+classes, so this one handler covers all four errors in the table above,
+including the <a class="reference internal" href="#default-exception-handling">database conflicts</a>. The
+handler below returns an RFC 9457 problem details body:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.responses</span><span class="w"> </span><span class="kn">import</span> <span class="n">JSONResponse</span>
+
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">exception_handler</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">RestlyHTTPError</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">problem_handler</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">JSONResponse</span><span class="p">(</span>
+        <span class="n">status_code</span><span class="o">=</span><span class="n">exc</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span>
+        <span class="n">content</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;about:blank&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="n">exc</span><span class="o">.</span><span class="n">detail</span><span class="p">,</span>
+            <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="n">exc</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span>
+        <span class="p">},</span>
+        <span class="n">media_type</span><span class="o">=</span><span class="s2">&quot;application/problem+json&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<p>With this handler, a missing row returns
+<code class="docutils literal notranslate"><span class="pre">{&quot;type&quot;:</span> <span class="pre">&quot;about:blank&quot;,</span> <span class="pre">&quot;title&quot;:</span> <span class="pre">&quot;Doc</span> <span class="pre">with</span> <span class="pre">id</span> <span class="pre">999</span> <span class="pre">was</span> <span class="pre">not</span> <span class="pre">found&quot;,</span> <span class="pre">&quot;status&quot;:</span> <span class="pre">404}</span></code>
+with the <code class="docutils literal notranslate"><span class="pre">application/problem+json</span></code> content type. The <code class="docutils literal notranslate"><span class="pre">400</span></code> errors of the
+list routes get the same body, also on a react-admin view.</p>
+<p>Some errors are not a <code class="docutils literal notranslate"><span class="pre">RestlyHTTPError</span></code>, so this handler does not change them:</p>
+<ul class="simple">
+<li><p>A <code class="docutils literal notranslate"><span class="pre">422</span></code> for a request body or a parameter that fails validation, such as
+<code class="docutils literal notranslate"><span class="pre">?page_size=oops</span></code>, and for an unknown key of the list params. This is a
+<code class="docutils literal notranslate"><span class="pre">fastapi.exceptions.RequestValidationError</span></code>. Register a handler for it.</p></li>
+<li><p>A plain <code class="docutils literal notranslate"><span class="pre">fastapi.HTTPException</span></code>. Restly raises one for a foreign key and
+its relationship field that name different rows (<code class="docutils literal notranslate"><span class="pre">422</span></code>). Register a
+handler for <code class="docutils literal notranslate"><span class="pre">fastapi.HTTPException</span></code>.</p></li>
+</ul>
+</section>
+<section id="see-also">
+<h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="lifecycle.html"><span class="std std-doc">Request Lifecycle &amp; Hooks</span></a>: where
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a> and the business
+methods run, and when the commit happens.</p></li>
+<li><p><a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering, Sorting &amp; Pagination</span></a>: the list params that the
+<code class="docutils literal notranslate"><span class="pre">422</span></code> and <code class="docutils literal notranslate"><span class="pre">400</span></code> errors check.</p></li>
+<li><p><a class="reference internal" href="api/exc.html"><span class="doc">Exceptions API</span></a>: every name in <code class="docutils literal notranslate"><span class="pre">fr.exc</span></code>.</p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="filtering.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Filtering, Sorting &amp; Pagination</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="openapi.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">OpenAPI</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#raise-an-http-error">Raise an HTTP error</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#why-a-bad-list-request-returns-422-or-400">Why a bad list request returns 422 or 400</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#unique-values-and-other-database-conflicts-409">Unique values and other database conflicts: 409</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#change-the-error-body-for-the-whole-app">Change the error body for the whole app</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+<p class="sidebar-newsletter">
+  <a href="newsletter.html">Subscribe to newsletter</a>
+</p></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, Rutger Prins.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

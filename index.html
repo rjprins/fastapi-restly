@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>FastAPI-Restly &#8212; FastAPI-Restly 0.11.0 documentation</title>
+    <title>FastAPI-Restly &#8212; FastAPI-Restly 0.12.0 documentation</title>
   
   
   
@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=f3b36f1a"></script>
+    <script src="_static/documentation_options.js?v=61ccb1f1"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -55,17 +55,17 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             false;
         </script>
-    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <script src="_static/newsletter.js?v=7326e93d"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/" />
     <link rel="icon" href="_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Getting Started" href="getting_started.html" />
+    <link rel="next" title="Tutorial: Build a Blog API" href="tutorial.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.11" />
+  <meta name="docsearch:version" content="0.12" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -159,13 +159,6 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
@@ -173,15 +166,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="class_based_views.html">
-    CRUD Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="user_guide.html">
-    How-To
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
   </a>
 </li>
 
@@ -207,13 +193,6 @@
                 </button>
                 <ul id="pst-nav-more-links" class="dropdown-menu">
                     
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
 <li class=" ">
   <a class="nav-link dropdown-item nav-internal" href="about.html">
     About
@@ -335,13 +314,6 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
@@ -349,15 +321,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="class_based_views.html">
-    CRUD Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="user_guide.html">
-    How-To
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
   </a>
 </li>
 
@@ -372,13 +337,6 @@
 <li class="nav-item ">
   <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
     Blog
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
   </a>
 </li>
 
@@ -477,32 +435,40 @@
                   
   <section id="fastapi-restly">
 <h1><img alt="" src="_images/fr-monogram.svg" /> FastAPI-Restly<a class="headerlink" href="#fastapi-restly" title="Link to this heading">#</a></h1>
-<p>FastAPI-Restly (<code class="docutils literal notranslate"><span class="pre">fr</span></code>) is a REST framework for FastAPI, using SQLAlchemy 2.0 and
-Pydantic v2. Views are real Python classes that support inheritance and mixins.
-Designed for customization.</p>
-<blockquote>
-<div><p><strong>Status:</strong> <code class="docutils literal notranslate"><span class="pre">0.11.0</span></code>, a public beta after
-<a class="reference internal" href="about.html"><span class="std std-doc">four years of internal use</span></a>. Until <code class="docutils literal notranslate"><span class="pre">1.0.0</span></code>, each minor release
-can have breaking changes; see the <a class="reference internal" href="changelog.html"><span class="std std-doc">changelog</span></a>.</p>
-</div></blockquote>
-<p>With FastAPI-Restly imported as <code class="docutils literal notranslate"><span class="pre">fr</span></code>, a CRUD resource is four lines once <code class="docutils literal notranslate"><span class="pre">app</span></code>
-and <code class="docutils literal notranslate"><span class="pre">User</span></code> exist:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<p><strong>Class-based REST resources for FastAPI and SQLAlchemy 2.0. Minimal
+boilerplate, full control.</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
-    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>  <span class="c1"># SQLAlchemy model</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>  <span class="c1"># your SQLAlchemy model</span>
 </pre></div>
 </div>
-<p>See <a class="reference internal" href="rest_views.html"><span class="std std-doc">Using RestView</span></a> for the full guide and <a class="reference internal" href="customize.html"><span class="std std-doc">Customizing
-RestView</span></a> for how you can change it.</p>
+<p>This view serves the five CRUD routes under <code class="docutils literal notranslate"><span class="pre">/users</span></code>, with Pydantic schemas
+made from the model, and filtering, sorting and pagination on the list. To
+change one step, override its method, and the rest stays the same.</p>
+<p>Restly is for REST resources, not for your whole app. It works inside the
+FastAPI app that you already have, and you add it one resource at a time;
+see <a class="reference internal" href="projects.html#add-to-existing-app"><span class="std std-ref">Use Restly in an existing project</span></a>.</p>
+<blockquote>
+<div><p><strong>Status:</strong> <code class="docutils literal notranslate"><span class="pre">0.12.0</span></code>, a beta. Restly ran in production for
+<a class="reference internal" href="about.html"><span class="std std-doc">four years</span></a> before it became public. Until 1.0, a minor release
+can have breaking changes, and the <a class="reference internal" href="changelog.html"><span class="std std-doc">changelog</span></a> says what to
+change in your code. Subscribe to the <a class="reference internal" href="#newsletter-signup">newsletter</a> to
+get an email when 1.0 is released. If something is broken or missing,
+please <a class="reference external" href="https://github.com/rjprins/fastapi-restly/issues">open an issue</a>.</p>
+</div></blockquote>
+<p><a class="reference internal" href="guide.html#how-restly-works"><span class="std std-ref">How Restly works</span></a> shows all the parts on one screen, and
+the <a class="reference internal" href="guide.html"><span class="std std-doc">Guide</span></a> explains each part and how you can change it.</p>
 <section id="quick-start">
 <h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading">#</a></h2>
 <p>Install FastAPI-Restly along with an async SQLite driver:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;fastapi-restly[standard]&quot;</span><span class="w"> </span>aiosqlite
 </pre></div>
 </div>
-<p>A SQLAlchemy model and a four-line view class make a complete, runnable
-application:</p>
+<p>A SQLAlchemy model and a four-line view class make a complete application.
+Copy this whole example into <code class="docutils literal notranslate"><span class="pre">main.py</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">asynccontextmanager</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
@@ -540,109 +506,188 @@ application:</p>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
 </pre></div>
 </div>
-<p>That view exposes these routes, with schemas generated from the model:</p>
+<p>Run <code class="docutils literal notranslate"><span class="pre">fastapi</span> <span class="pre">dev</span> <span class="pre">main.py</span></code>, and open <a class="reference external" href="http://127.0.0.1:8000/docs">http://127.0.0.1:8000/docs</a>. The view
+has the routes below. Their Pydantic schemas are
+<a class="reference internal" href="schemas.html#auto-generated-schemas"><span class="std std-ref">generated from the model</span></a>, and you can
+<a class="reference internal" href="schemas.html"><span class="std std-doc">customize them</span></a>.</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET    /users       # list users: filter, sort, paginate via URL params
 POST   /users       # create a user
-GET    /users/{id}   # read one user
-PATCH  /users/{id}   # partially update one user
-DELETE /users/{id}   # delete one user
+GET    /users/{id}  # read one user
+PATCH  /users/{id}  # partially update one user
+DELETE /users/{id}  # delete one user
 </pre></div>
 </div>
-<p>Because the view is a class, changing one behavior means overriding one
-method; routing, validation, and the commit stay framework-owned. Add this
-method to <code class="docutils literal notranslate"><span class="pre">UserView</span></code>:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
-        <span class="n">obj</span><span class="o">.</span><span class="n">active</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># deactivate instead of removing the row</span>
-</pre></div>
-</div>
-<p><code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/users/{id}</span></code> now soft-disables (the row stays readable, with
-<code class="docutils literal notranslate"><span class="pre">active:</span> <span class="pre">false</span></code>); the other four routes are untouched.</p>
-<p>Run it with <code class="docutils literal notranslate"><span class="pre">fastapi</span> <span class="pre">dev</span> <span class="pre">main.py</span></code>. <a class="reference internal" href="getting_started.html"><span class="std std-doc">Getting Started</span></a> walks
-through the same flow step by step: install details, explicit schemas, and a
-first test.</p>
+<p>The list returns a page of at most 50 rows, in an envelope:
+<code class="docutils literal notranslate"><span class="pre">{&quot;data&quot;:</span> <span class="pre">[...],</span> <span class="pre">&quot;total_count&quot;:</span> <span class="pre">2,</span> <span class="pre">&quot;page&quot;:</span> <span class="pre">1,</span> <span class="pre">&quot;page_size&quot;:</span> <span class="pre">50,</span> <span class="pre">&quot;total_pages&quot;:</span> <span class="pre">1}</span></code>.</p>
+<p><a class="reference internal" href="tutorial.html"><span class="std std-doc">Build a Blog API</span></a> teaches Restly step by step, from the first
+model to authors, drafts, and tests.</p>
 </section>
-<section id="features">
-<h2>Features<a class="headerlink" href="#features" title="Link to this heading">#</a></h2>
+<section id="what-restly-does-differently">
+<h2>What Restly does differently<a class="headerlink" href="#what-restly-does-differently" title="Link to this heading">#</a></h2>
+<section id="change-one-step-keep-the-rest">
+<h3>Change one step, keep the rest<a class="headerlink" href="#change-one-step-keep-the-rest" title="Link to this heading">#</a></h3>
+<p>Each CRUD route runs a fixed list of steps. To change one step, override its
+method. Add this <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete" title="fastapi_restly.views.RestView.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a> method
+to <code class="docutils literal notranslate"><span class="pre">UserView</span></code>, so that it keeps the row and marks the user as inactive:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user</span><span class="p">):</span>
+        <span class="n">user</span><span class="o">.</span><span class="n">active</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># keep the row</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/users/{id}</span></code> still runs
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a>, commits and
+returns 204. The other four routes do not change. See
+<a class="reference internal" href="lifecycle.html"><span class="std std-doc">Request Lifecycle &amp; Hooks</span></a>.</p>
+</section>
+<section id="a-hidden-row-is-a-404-a-refused-action-is-a-403">
+<h3>A hidden row is a 404, a refused action is a 403<a class="headerlink" href="#a-hidden-row-is-a-404-a-refused-action-is-a-403" title="Link to this heading">#</a></h3>
+<p>A scope on the model decides which rows exist for a request. Restly applies
+it when a view lists, reads, updates or deletes rows of the model, and in
+every reference check. The blog example shows published posts, and the
+drafts of the caller:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">PostClauses</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ClauseNamespace</span><span class="p">):</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Post</span>
+
+    <span class="n">default_scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span>
+        <span class="n">or_</span><span class="p">(</span><span class="n">Post</span><span class="o">.</span><span class="n">published</span><span class="p">,</span> <span class="n">Post</span><span class="o">.</span><span class="n">author_id</span> <span class="o">==</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">)</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<p>In the scope, <code class="docutils literal notranslate"><span class="pre">Current.user_id</span></code> is a placeholder for the id of the caller.
+Restly fills it in each time it applies the scope; see
+<a class="reference internal" href="context.html"><span class="std std-doc">Request Context</span></a>.
+Another user’s draft is a 404 on <code class="docutils literal notranslate"><span class="pre">GET</span></code>, <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> and <code class="docutils literal notranslate"><span class="pre">DELETE</span></code>, and the list
+does not show or count it.
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a> decides what the
+caller may do with a row that they can see, and a refusal is a 403. See
+<a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a> and <a class="reference internal" href="authorization.html"><span class="std std-doc">Authorization</span></a>.</p>
+</section>
+<section id="one-schema-for-requests-and-responses">
+<h3>One schema for requests and responses<a class="headerlink" href="#one-schema-for-requests-and-responses" title="Link to this heading">#</a></h3>
+<p>Write one Pydantic schema for the resource.
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code></a> marks a field that only
+goes out, and <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.WriteOnly" title="fastapi_restly.schemas.WriteOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.WriteOnly</span></code></a> marks a
+field that only comes in. Restly builds the response class and the two
+request bodies from it, with names that OpenAPI and generated clients show.
+Here the <code class="docutils literal notranslate"><span class="pre">User</span></code> model also has <code class="docutils literal notranslate"><span class="pre">password</span></code>, <code class="docutils literal notranslate"><span class="pre">team_id</span></code> and <code class="docutils literal notranslate"><span class="pre">created_at</span></code>
+columns:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">password</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">WriteOnly</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">team_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">MustExist</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Team</span><span class="p">]</span>
+    <span class="n">created_at</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="n">fr</span><span class="o">.</span><span class="n">UTCDatetime</span><span class="p">]</span>
+</pre></div>
+</div>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Class</p></th>
+<th class="head"><p>Used for</p></th>
+<th class="head"><p>Fields</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">UserResponse</span></code></p></td>
+<td><p>every response</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">id</span></code>, <code class="docutils literal notranslate"><span class="pre">name</span></code>, <code class="docutils literal notranslate"><span class="pre">email</span></code>, <code class="docutils literal notranslate"><span class="pre">team_id</span></code>, <code class="docutils literal notranslate"><span class="pre">created_at</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">UserCreate</span></code></p></td>
+<td><p>the body of <code class="docutils literal notranslate"><span class="pre">POST</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">name</span></code>, <code class="docutils literal notranslate"><span class="pre">email</span></code>, <code class="docutils literal notranslate"><span class="pre">password</span></code>, <code class="docutils literal notranslate"><span class="pre">team_id</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">UserUpdate</span></code></p></td>
+<td><p>the body of <code class="docutils literal notranslate"><span class="pre">PATCH</span></code></p></td>
+<td><p>the same as <code class="docutils literal notranslate"><span class="pre">UserCreate</span></code>, and the client can leave out any of them</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">team_id</span></code> is a reference: Restly checks that the team exists, inside the
+scope of <code class="docutils literal notranslate"><span class="pre">Team</span></code>. A wrong id is a 404. To make a body or the response
+different, write that schema yourself and set it on the view. See
+<a class="reference internal" href="schemas.html"><span class="std std-doc">Schemas &amp; Validation</span></a>.</p>
+</section>
+<section id="sqlalchemy-stays-sqlalchemy-fastapi-stays-fastapi">
+<h3>SQLAlchemy stays SQLAlchemy, FastAPI stays FastAPI<a class="headerlink" href="#sqlalchemy-stays-sqlalchemy-fastapi-stays-fastapi" title="Link to this heading">#</a></h3>
+<p>Your declarative base, your engine and your app stay yours. Add Restly next
+to the routes that you have, one resource at a time. When one route needs
+something that Restly does not do, write it as a plain FastAPI route.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">()</span>
+<span class="n">app</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">orders_router</span><span class="p">)</span>  <span class="c1"># your routes stay as they are</span>
+<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">async_engine</span><span class="o">=</span><span class="n">engine</span><span class="p">)</span>  <span class="c1"># Restly uses your engine</span>
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CustomerView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/customers&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Customer</span>  <span class="c1"># a model on your own Base</span>
+</pre></div>
+</div>
+<p>See <a class="reference internal" href="projects.html"><span class="std std-doc">New &amp; Existing Projects</span></a>.</p>
+</section>
+</section>
+<section id="also-in-restly">
+<h2>Also in Restly<a class="headerlink" href="#also-in-restly" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><strong><a class="reference internal" href="api_details.html#default-crud-routes"><span class="std std-ref">Default CRUD routes</span></a></strong>: GET, POST, PATCH, DELETE with minimal boilerplate</p></li>
-<li><p><strong><a class="reference internal" href="class_based_views.html"><span class="std std-doc">True class-based views</span></a></strong>: inheritance, mixins, and method overrides</p></li>
-<li><p><strong><a class="reference internal" href="customize.html"><span class="std std-doc">Explicit override points</span></a></strong>: every CRUD verb split into an endpoint method and a business method you override, with a final handler between them that custom routes call</p></li>
-<li><p><strong><a class="reference internal" href="howto_react_admin.html"><span class="std std-doc">React Admin ready</span></a></strong>: <code class="docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code> speaks <code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code></p></li>
-<li><p><strong><a class="reference internal" href="getting_started.html"><span class="std std-doc">SQLAlchemy 2.0 support</span></a></strong>: async-first with modern patterns</p></li>
-<li><p><strong><a class="reference internal" href="howto_custom_schema.html"><span class="std std-doc">Pydantic v2 integration</span></a></strong>: validation and serialization for public contracts</p></li>
-<li><p><strong><a class="reference internal" href="technical_details.html#id2"><span class="std std-ref">Automatic schema generation</span></a></strong>: response, create, and update schemas generated automatically</p></li>
-<li><p><strong><a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">List parameters</span></a></strong>: filter, sort, and paginate from a stable URL dialect generated from the view’s schema</p></li>
-<li><p><strong><a class="reference internal" href="howto_current.html"><span class="std std-doc">Current context</span></a></strong>: bind the current user once and read it in application code and column defaults</p></li>
-<li><p><strong><a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a></strong>: row visibility declared once as a clause and applied to every read and reference check</p></li>
-<li><p><strong><a class="reference internal" href="howto_relationship_idschema.html"><span class="std std-doc">Relationship support</span></a></strong>: handle foreign keys and nested objects</p></li>
-<li><p><strong><a class="reference internal" href="howto_testing.html"><span class="std std-doc">Testing utilities</span></a></strong>: built-in test helpers with savepoint isolation</p></li>
+<li><p>Views without CRUD: <a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.View</span></code></a> groups
+custom routes, such as login or webhooks, and declares their dependencies
+once. See <a class="reference internal" href="views.html"><span class="std std-doc">Views</span></a>.</p></li>
+<li><p>List params: <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users?name=John&amp;sort=-id&amp;page=2</span></code>, and operators such as
+<code class="docutils literal notranslate"><span class="pre">email__icontains=example.com</span></code>. The keys come from the response class, and
+an unknown key is a 422. See <a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering, Sorting &amp; Pagination</span></a>.</p></li>
+<li><p>Tests: <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">&quot;fastapi-restly[testing]&quot;</span></code> adds pytest fixtures. Each
+test runs in a transaction that rolls back, so a test needs no cleanup code.
+See <a class="reference internal" href="testing.html"><span class="std std-doc">Testing</span></a>.</p></li>
+<li><p>A new project: <code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span> <span class="pre">myapp</span></code> writes a complete project, with a <code class="docutils literal notranslate"><span class="pre">users</span></code>
+resource and its tests. See <a class="reference internal" href="projects.html"><span class="std std-doc">New &amp; Existing Projects</span></a>.</p></li>
+<li><p>Database conflicts: a duplicate unique value in a CRUD write or a
+<code class="docutils literal notranslate"><span class="pre">write_action</span></code> block is a 409, not a 500. See <a class="reference internal" href="errors.html"><span class="std std-doc">Errors</span></a>.</p></li>
+<li><p>React Admin:
+<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncReactAdminView" title="fastapi_restly.views.AsyncReactAdminView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code></a>
+works with <code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code>. See <a class="reference internal" href="react_admin.html"><span class="std std-doc">React Admin</span></a>.</p></li>
+<li><p>Sync and async: <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> and
+<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> have the same
+methods.</p></li>
 </ul>
+</section>
+<section id="what-restly-does-not-do">
+<h2>What Restly does not do<a class="headerlink" href="#what-restly-does-not-do" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p>Restly does not log users in. FastAPI’s security tools find the caller,
+and Restly decides what that caller can see and do.</p></li>
+<li><p>Restly does not migrate your database. Use Alembic: <code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> sets it up.</p></li>
+<li><p>Restly is built on SQLAlchemy 2.0. It does not work with other ORMs or with
+document databases.</p></li>
+<li><p>The default routes are CRUD on one row at a time. A bulk write, or a write
+of related rows from one body, is code that you add to the view.</p></li>
+</ul>
+<p>See <a class="reference internal" href="crud_routes.html#crud-limits"><span class="std std-ref">What the default routes do not do</span></a> for the details.</p>
 </section>
 <section id="documentation">
 <h2>Documentation<a class="headerlink" href="#documentation" title="Link to this heading">#</a></h2>
 <div class="sd-container-fluid sd-sphinx-override sd-mb-4 docutils">
-<div class="sd-row sd-row-cols-1 sd-row-cols-xs-1 sd-row-cols-sm-2 sd-row-cols-md-2 sd-row-cols-lg-3 sd-g-3 sd-g-xs-3 sd-g-sm-3 sd-g-md-3 sd-g-lg-3 docutils">
+<div class="sd-row sd-row-cols-1 sd-row-cols-xs-1 sd-row-cols-sm-2 sd-row-cols-md-2 sd-row-cols-lg-2 sd-g-3 sd-g-xs-3 sd-g-sm-3 sd-g-md-3 sd-g-lg-3 docutils">
 <div class="sd-col sd-d-flex-row docutils">
 <div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
-Getting Started</div>
-<p class="sd-card-text">Build a working REST API, then continue with a two-model blog API.</p>
+Tutorial</div>
+<p class="sd-card-text">Build a blog API step by step: posts and comments, then authors and drafts.</p>
 </div>
-<a class="sd-stretched-link sd-hide-link-text reference internal" href="getting_started.html"><span class="doc">Getting Started</span></a></div>
-</div>
-<div class="sd-col sd-d-flex-row docutils">
-<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
-<div class="sd-card-body docutils">
-<div class="sd-card-title sd-font-weight-bold docutils">
-Views</div>
-<p class="sd-card-text">Choose a view type, then learn how registration, dependencies, and inheritance
-work.</p>
-</div>
-<a class="sd-stretched-link sd-hide-link-text reference internal" href="class_based_views.html"><span class="doc">Views &amp; CRUD</span></a></div>
+<a class="sd-stretched-link sd-hide-link-text reference internal" href="tutorial.html"><span class="doc">Tutorial: Build a Blog API</span></a></div>
 </div>
 <div class="sd-col sd-d-flex-row docutils">
 <div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
-Using RestView</div>
-<p class="sd-card-text">Define a model-backed CRUD resource and understand its default contract.</p>
+Guide</div>
+<p class="sd-card-text">One page for each part of Restly: how it works, and how to use it.</p>
 </div>
-<a class="sd-stretched-link sd-hide-link-text reference internal" href="rest_views.html"><span class="doc">Using RestView</span></a></div>
-</div>
-<div class="sd-col sd-d-flex-row docutils">
-<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
-<div class="sd-card-body docutils">
-<div class="sd-card-title sd-font-weight-bold docutils">
-Customizing RestView</div>
-<p class="sd-card-text">The three tiers behind every CRUD verb, with recipes for every override
-point.</p>
-</div>
-<a class="sd-stretched-link sd-hide-link-text reference internal" href="customize.html"><span class="doc">Customizing RestView</span></a></div>
+<a class="sd-stretched-link sd-hide-link-text reference internal" href="guide.html"><span class="doc">Guide</span></a></div>
 </div>
 <div class="sd-col sd-d-flex-row docutils">
 <div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
-How-To Guides</div>
-<p class="sd-card-text">Task-focused guides, from adoption in an existing app to deployment.</p>
-</div>
-<a class="sd-stretched-link sd-hide-link-text reference internal" href="user_guide.html"><span class="doc">How-To Guides</span></a></div>
-</div>
-<div class="sd-col sd-d-flex-row docutils">
-<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
-<div class="sd-card-body docutils">
-<div class="sd-card-title sd-font-weight-bold docutils">
-Examples</div>
-<p class="sd-card-text">Complete sample applications from a tiny API to a production-shaped service.</p>
-</div>
-<a class="sd-stretched-link sd-hide-link-text reference internal" href="examples.html"><span class="doc">Examples</span></a></div>
-</div>
-<div class="sd-col sd-d-flex-row docutils">
-<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
-<div class="sd-card-body docutils">
-<div class="sd-card-title sd-font-weight-bold docutils">
-API Reference</div>
+API</div>
 <p class="sd-card-text">Public Python API by module, with signatures and default behavior.</p>
 </div>
 <a class="sd-stretched-link sd-hide-link-text reference internal" href="api_reference.html"><span class="doc">API Reference</span></a></div>
@@ -656,17 +701,24 @@ About</div>
 </div>
 <a class="sd-stretched-link sd-hide-link-text reference internal" href="about.html"><span class="doc">About FastAPI-Restly</span></a></div>
 </div>
-<div class="sd-col sd-d-flex-row docutils">
-<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
-<div class="sd-card-body docutils">
-<div class="sd-card-title sd-font-weight-bold docutils">
-Deploying</div>
-<p class="sd-card-text">Production engine config, Alembic migrations, and an ASGI checklist.</p>
-</div>
-<a class="sd-stretched-link sd-hide-link-text reference internal" href="deploying.html"><span class="doc">Deploying</span></a></div>
 </div>
 </div>
-</div>
+</section>
+<section id="newsletter">
+<span id="newsletter-signup"></span><h2>Newsletter<a class="headerlink" href="#newsletter" title="Link to this heading">#</a></h2>
+<p>An email when there is a new release: what changed, and what is worth
+upgrading for. Subscribe to get an email when 1.0 is released. You can
+unsubscribe from any email.</p>
+<form
+  action="https://buttondown.com/api/emails/embed-subscribe/fastapi-restly"
+  method="post"
+  class="embeddable-buttondown-form"
+>
+  <label for="bd-email">Email address</label>
+  <input type="email" name="email" id="bd-email" placeholder="you@example.com" required />
+  <input type="submit" value="Subscribe" />
+</form>
+<p id="bd-status" class="bd-status" role="status" aria-live="polite" hidden></p>
 <div class="toctree-wrapper compound">
 </div>
 </section>
@@ -683,11 +735,11 @@ Deploying</div>
                   
 <div class="prev-next-area">
     <a class="right-next"
-       href="getting_started.html"
+       href="tutorial.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Getting Started</p>
+        <p class="prev-next-title">Tutorial: Build a Blog API</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -711,8 +763,17 @@ Deploying</div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-start">Quick Start</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#features">Features</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-restly-does-differently">What Restly does differently</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#change-one-step-keep-the-rest">Change one step, keep the rest</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#a-hidden-row-is-a-404-a-refused-action-is-a-403">A hidden row is a 404, a refused action is a 403</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#one-schema-for-requests-and-responses">One schema for requests and responses</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sqlalchemy-stays-sqlalchemy-fastapi-stays-fastapi">SQLAlchemy stays SQLAlchemy, FastAPI stays FastAPI</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#also-in-restly">Also in Restly</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-restly-does-not-do">What Restly does not do</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#documentation">Documentation</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#newsletter">Newsletter</a></li>
 </ul>
   </nav></div>
 

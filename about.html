@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>About FastAPI-Restly &#8212; FastAPI-Restly 0.11.0 documentation</title>
+    <title>About FastAPI-Restly &#8212; FastAPI-Restly 0.12.0 documentation</title>
   
   
   
@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e2851362" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=f3b36f1a"></script>
+    <script src="_static/documentation_options.js?v=61ccb1f1"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -55,17 +55,17 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             false;
         </script>
-    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <script src="_static/newsletter.js?v=7326e93d"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/about.html" />
     <link rel="icon" href="_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="#" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="prev" title="Examples" href="examples.html" />
+    <link rel="prev" title="Changelog" href="changelog.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.11" />
+  <meta name="docsearch:version" content="0.12" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -159,13 +159,6 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
@@ -173,15 +166,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="class_based_views.html">
-    CRUD Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="user_guide.html">
-    How-To
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
   </a>
 </li>
 
@@ -207,13 +193,6 @@
                 </button>
                 <ul id="pst-nav-more-links" class="dropdown-menu">
                     
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="examples.html">
-    Examples
-  </a>
-</li>
-
-
 <li class=" current active">
   <a class="nav-link dropdown-item nav-internal" href="#">
     About
@@ -333,13 +312,6 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="tutorial.html">
     Tutorial
   </a>
@@ -347,15 +319,8 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="class_based_views.html">
-    CRUD Views
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="user_guide.html">
-    How-To
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
   </a>
 </li>
 
@@ -370,13 +335,6 @@
 <li class="nav-item ">
   <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
     Blog
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="examples.html">
-    Examples
   </a>
 </li>
 
@@ -524,20 +482,20 @@ default CRUD routes, query parameters, error translation, and test fixtures.</p>
 <li><p><strong>DRY, but standard.</strong> Reuse should come from conventions on top of the
 stack you already know, not from a parallel abstraction that hides it. You
 can always drop one level down to plain FastAPI or SQLAlchemy.</p></li>
-<li><p><strong>Out of the box.</strong> The common path should not need wiring: engine and
+<li><p><strong>Out of the box.</strong> The common path should need no extra code: engine and
 session setup, commit handling, schema generation,
-<a class="reference internal" href="howto_query_modifiers.html"><span class="std std-doc">list filtering</span></a> with strict validation,
-<a class="reference internal" href="howto_error_responses.html"><span class="std std-doc">error translation</span></a>, and
-<a class="reference internal" href="howto_testing.html"><span class="std std-doc">savepoint-isolated test fixtures</span></a>
+<a class="reference internal" href="filtering.html"><span class="std std-doc">list filtering</span></a> with strict validation,
+<a class="reference internal" href="errors.html"><span class="std std-doc">error translation</span></a>, and
+<a class="reference internal" href="testing.html"><span class="std std-doc">savepoint-isolated test fixtures</span></a>
 all work from <a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure()</span></code></a> onward.</p></li>
 <li><p><strong>Customization is never off the path.</strong> Applications are rarely just CRUD.
 Every CRUD operation has explicit override points, so the default behavior
-is a starting point, not a boundary (see <a class="reference internal" href="customize.html"><span class="std std-doc">three tiers</span></a>).</p></li>
+is a starting point, not a boundary (see <a class="reference internal" href="lifecycle.html"><span class="std std-doc">Request Lifecycle &amp; Hooks</span></a>).</p></li>
 <li><p><strong>Documentation you don’t have to guess at.</strong> Common paths have runnable
 examples and extension points say where custom behavior belongs, for your
 team.</p></li>
 </ul>
-<p>The core patterns (<a class="reference internal" href="class_based_views.html"><span class="std std-doc">class-based views</span></a>, the override
+<p>The core patterns (<a class="reference internal" href="views.html"><span class="std std-doc">class-based views</span></a>, the override
 hierarchy, and schema generation) are proven by four years of internal
 production use. The public
 API surface is still settling on the way to <code class="docutils literal notranslate"><span class="pre">1.0.0</span></code> (see the
@@ -565,8 +523,7 @@ companies for the environments that made it possible.</p>
 open-source, <strong>cookieless</strong> tool. It counts page views and unique visits
 without setting cookies or storing personal data, so nothing tracks you across
 sites and there is nothing to consent to. No data is shared with third parties.</p>
-<p>Ready to try it? <a class="reference internal" href="getting_started.html"><span class="std std-doc">Getting Started</span></a> takes about fifteen
-minutes.</p>
+<p>Ready to try it? <a class="reference internal" href="tutorial.html"><span class="std std-doc">Build a Blog API</span></a> takes about twenty minutes.</p>
 </section>
 </section>
 
@@ -581,12 +538,12 @@ minutes.</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="examples.html"
+       href="changelog.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Examples</p>
+        <p class="prev-next-title">Changelog</p>
       </div>
     </a>
 </div>

@@ -12,5 +12,5 @@ errors that subclass ``fastapi.HTTPException``.
 
 .. seealso::
 
-   :doc:`/howto_error_responses` explains which exception to raise where
+   :doc:`/errors` explains which exception to raise where
    and how to change the error envelope app-wide.
