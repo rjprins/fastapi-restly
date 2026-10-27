@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-27
+
 This release reworks how a view reads and writes. To upgrade, work through
 these steps. A missed step fails with a message that names the replacement.
 A step marked "Silent" gives no error when you miss it.
@@ -865,7 +867,8 @@ First public beta release.
 - Removed duplicate pytest fixture exports from `fastapi_restly.testing`;
   the pytest plugin path is `fastapi_restly.pytest_fixtures`.
 
-[Unreleased]: https://github.com/rjprins/fastapi-restly/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/rjprins/fastapi-restly/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/rjprins/fastapi-restly/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/rjprins/fastapi-restly/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/rjprins/fastapi-restly/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/rjprins/fastapi-restly/compare/v0.8.0...v0.9.0
