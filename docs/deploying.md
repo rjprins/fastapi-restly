@@ -214,7 +214,8 @@ The `env.py` files of the
 and the
 [SaaS example](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/alembic/env.py)
 are complete versions of this setup. They read the database URL from the
-application's settings when Alembic gets none.
+application's settings when Alembic gets none. On PostgreSQL, they run the
+migrations in UTC, as the application's sessions do.
 
 Run the migrations when you release, or when the application starts:
 
@@ -259,7 +260,8 @@ op.alter_column(
 ```
 
 A type change without `postgresql_using` reads the values in the time zone
-of the database session that runs the migration. Keep
+of the database session that runs the migration. The `env.py` that
+`restly new` generates puts that session in UTC. Keep
 `mapped_column(DateTime())` on the model only for a column that has no time
 zone on purpose. Such a column holds UTC without the offset; see
 [Keep times in UTC](#utc-times).

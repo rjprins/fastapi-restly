@@ -48,6 +48,13 @@ def run_migrations_offline() -> None:
 
 def do_run_migrations(connection: Connection) -> None:
     """Run migrations through a synchronous connection adapter."""
+    if connection.dialect.name == "postgresql":
+        # Run in UTC, as the application's sessions do. PostgreSQL reads a stored time
+        # in the zone of the session, for example when a migration gives a column a time
+        # zone. The commit ends the transaction that the SET began, so Alembic begins
+        # and commits its own.
+        connection.exec_driver_sql("SET TIME ZONE 'UTC'")
+        connection.commit()
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
