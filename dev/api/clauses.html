@@ -56,7 +56,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             false;
         </script>
-    <script src="../_static/newsletter.js?v=e342eb53"></script>
+    <script src="../_static/newsletter.js?v=7326e93d"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/dev/api/clauses.html" />
     <link rel="icon" href="../_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="../about.html" />
@@ -519,10 +519,33 @@ express a condition on a related table as EXISTS (relationship
 .any()/.has()). apply_clauses rejects a predicate that references a
 table the statement does not select from.</p>
 <dl class="py class">
+<dt class="sig sig-object py" id="fastapi_restly.clauses.Unscoped">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.clauses.</span></span><span class="sig-name descname"><span class="pre">Unscoped</span></span><a class="headerlink" href="#fastapi_restly.clauses.Unscoped" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#fastapi_restly.clauses.WhereClause" title="fastapi_restly.clauses._runtime.WhereClause"><code class="xref py py-class docutils literal notranslate"><span class="pre">WhereClause</span></code></a></p>
+<p>The clause that accepts every row: explicitly no scope.</p>
+<p><cite>UNSCOPED</cite> is the one instance. Its condition is SQL TRUE, so it goes
+everywhere a clause goes, and calling it returns <code class="docutils literal notranslate"><span class="pre">true()</span></code>.
+The explicit spelling for a view’s <cite>scope</cite> (where <cite>None</cite> means
+“fall back to the model’s default”), a namespace’s <cite>default_scope</cite>
+(where undeclared defers to
+a base model’s namespace, or none), and a <cite>RefExists</cite> scope (where
+<cite>None</cite> is rejected, so a variable that happens to be None can never
+silently unscope). <cite>apply_clauses()</cite> applies nothing for it,
+preserving existing filters and other supplied clauses.
+Boolean composition simplifies it as SQL TRUE: all_of ignores it and
+returns the sole remaining clause unchanged, or UNSCOPED when none
+remain. any_of propagates it, and none_of returns a WhereClause over
+SQL false(). Composition validates other operands before simplifying.
+Searching for UNSCOPED finds explicit uses. Variables and composition
+can pass the sentinel to other scope declarations and read calls.
+Deliberately not re-exported at the top level: the escape is spelled
+in full.</p>
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="fastapi_restly.clauses.ClauseNamespace">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.clauses.</span></span><span class="sig-name descname"><span class="pre">ClauseNamespace</span></span><a class="headerlink" href="#fastapi_restly.clauses.ClauseNamespace" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
-<p>Groups clauses under one named class.</p>
+<dd><p>Groups clauses under one named class.</p>
 <p>Subclass and put the clauses in the class body; earlier names are
 available to later compositions. On definition the namespace
 validates that every public attribute is a clause (catching a bare
@@ -545,22 +568,30 @@ along its MRO: a namespace that does not declare one leaves an
 inherited scope in force, and <cite>default_scope = UNSCOPED</cite> is the
 explicit opt-out. <cite>None</cite> says nothing here and is rejected.</p>
 <dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.clauses.ClauseNamespace.default_scope">
-<span class="sig-name descname"><span class="pre">default_scope</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.15)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#fastapi_restly.clauses.WhereClause" title="fastapi_restly.clauses._runtime.WhereClause"><span class="pre">WhereClause</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">fr.clauses.UNSCOPED</span></em><a class="headerlink" href="#fastapi_restly.clauses.ClauseNamespace.default_scope" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.clauses.ClauseNamespace.model">
 <span class="sig-name descname"><span class="pre">model</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.15)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#fastapi_restly.clauses.ClauseNamespace.model" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dd><p>The model that the namespace belongs to. Setting it makes this class
+the namespace of the model, so its <code class="docutils literal notranslate"><span class="pre">default_scope</span></code> reaches the
+model’s reads and reference checks. A model has at most one such
+namespace. Leave it out for a plain group of clauses.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.clauses.ClauseNamespace.default_scope">
+<span class="sig-name descname"><span class="pre">default_scope</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.15)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#fastapi_restly.clauses.WhereClause" title="fastapi_restly.clauses._runtime.WhereClause"><span class="pre">WhereClause</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">fr.clauses.UNSCOPED</span></em><a class="headerlink" href="#fastapi_restly.clauses.ClauseNamespace.default_scope" title="Link to this definition">#</a></dt>
+<dd><p>The scope of every view read and every reference check on the model,
+unless a view declares its own. A namespace that does not declare it
+takes it from the namespace class that it subclasses, if that class
+declares one, and else from the namespace of a parent model. Declare
+<code class="docutils literal notranslate"><span class="pre">UNSCOPED</span></code> for no scope.</p>
+</dd></dl>
 
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="fastapi_restly.clauses.ContextNamespace">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.clauses.</span></span><span class="sig-name descname"><span class="pre">ContextNamespace</span></span><a class="headerlink" href="#fastapi_restly.clauses.ContextNamespace" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
-<p>Declares the ContextParams of one context, one per annotation.</p>
+<dd><p>Declares the ContextParams of one context, one per annotation.</p>
 <p>Subclass and annotate: each public annotation <cite>name: ContextParam[T]</cite>
 materializes a ContextParam bound under <cite>name</cite>, so the attribute name
 is the bind name and a typo fails at import. Assigning an existing
@@ -588,8 +619,10 @@ values, even if the supplied values are equal.</p>
 <p>Keyword names are member names; each value is the dependency the
 member’s value comes from (a callable, a <code class="docutils literal notranslate"><span class="pre">Depends(...)</span></code>, or an
 <code class="docutils literal notranslate"><span class="pre">Annotated</span></code> alias), so <code class="docutils literal notranslate"><span class="pre">app.dependency_overrides</span></code> keeps
-working. The result drops into a <code class="docutils literal notranslate"><span class="pre">dependencies=[...]</span></code> list at
-app, router, or view level. It is an async dependency underneath:
+working. The result is a <code class="docutils literal notranslate"><span class="pre">Depends</span></code> object: put it in a
+<code class="docutils literal notranslate"><span class="pre">dependencies=[...]</span></code> list at app, router, or view level as it is,
+and do not wrap it in <code class="docutils literal notranslate"><span class="pre">Depends()</span></code> again. It is an async dependency
+underneath:
 the bind lands in the request task, where async and def endpoints
 alike read it.
 Two names for the same member raise TypeError at declaration.</p>
@@ -606,16 +639,17 @@ Two names for the same member raise TypeError at declaration.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="fastapi_restly.clauses.ContextParam">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.clauses.</span></span><span class="sig-name descname"><span class="pre">ContextParam</span></span><a class="headerlink" href="#fastapi_restly.clauses.ContextParam" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Generic" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Generic</span></code></a>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">_T</span></code>]</p>
-<p>One value of a context: bound around a unit of work, read anywhere.</p>
+<dd><p>One value of a context: bound around a unit of work, read anywhere.</p>
 <p>Declared in a ContextNamespace (<code class="docutils literal notranslate"><span class="pre">tenant_id:</span> <span class="pre">ContextParam[UUID]</span></code>),
 never constructed directly: the namespace is its address, and it is
-bound through the namespace’s bind() or depends(). One member, two
-positions. Called, it returns the bound value, or raises LookupError
+bound through the namespace’s bind() or depends(). One member works in
+three places. Called, it returns the bound value, or raises LookupError
 when nothing is bound. Embedded in a SQL expression
 (<code class="docutils literal notranslate"><span class="pre">Item.tenant_id</span> <span class="pre">==</span> <span class="pre">Current.tenant_id</span></code>) it becomes a placeholder,
 filled with the bound value each time a clause that carries it is
-applied.</p>
+applied. As a column default, without parentheses
+(<code class="docutils literal notranslate"><span class="pre">insert_default=Current.user_id</span></code>), SQLAlchemy calls it when it inserts
+the row.</p>
 <p>A member never stands in for its value: comparisons with values and
 truth tests raise. Call the member to read it, and in a SQL expression put
 the column first (<code class="docutils literal notranslate"><span class="pre">Item.role</span> <span class="pre">==</span> <span class="pre">Current.role</span></code>).</p>
@@ -628,34 +662,9 @@ the column first (<code class="docutils literal notranslate"><span class="pre">I
 </dd></dl>
 
 <dl class="py class">
-<dt class="sig sig-object py" id="fastapi_restly.clauses.Unscoped">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.clauses.</span></span><span class="sig-name descname"><span class="pre">Unscoped</span></span><a class="headerlink" href="#fastapi_restly.clauses.Unscoped" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#fastapi_restly.clauses.WhereClause" title="fastapi_restly.clauses._runtime.WhereClause"><code class="xref py py-class docutils literal notranslate"><span class="pre">WhereClause</span></code></a></p>
-<p>The clause that accepts every row: explicitly no scope.</p>
-<p><cite>UNSCOPED</cite> is the one instance. Its condition is SQL TRUE, so it goes
-everywhere a clause goes, and calling it returns <code class="docutils literal notranslate"><span class="pre">true()</span></code>.
-The explicit spelling for a view’s <cite>scope</cite> (where <cite>None</cite> means
-“fall back to the model’s default”), a namespace’s <cite>default_scope</cite>
-(where undeclared defers to
-a base model’s namespace, or none), and a <cite>RefExists</cite> scope (where
-<cite>None</cite> is rejected, so a variable that happens to be None can never
-silently unscope). <cite>apply_clauses()</cite> applies nothing for it,
-preserving existing filters and other supplied clauses.
-Boolean composition simplifies it as SQL TRUE: all_of ignores it and
-returns the sole remaining clause unchanged, or UNSCOPED when none
-remain. any_of propagates it, and none_of returns a WhereClause over
-SQL false(). Composition validates other operands before simplifying.
-Searching for UNSCOPED finds explicit uses. Variables and composition
-can pass the sentinel to other scope declarations and read calls.
-Deliberately not re-exported at the top level: the escape is spelled
-in full.</p>
-</dd></dl>
-
-<dl class="py class">
 <dt class="sig sig-object py" id="fastapi_restly.clauses.WhereClause">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.clauses.</span></span><span class="sig-name descname"><span class="pre">WhereClause</span></span><a class="headerlink" href="#fastapi_restly.clauses.WhereClause" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
-<p>A named, reusable predicate.</p>
+<dd><p>A named, reusable predicate.</p>
 <p>Built by where_clause() and by all_of()/any_of()/none_of(), never
 constructed directly. It takes no arguments and holds no values: a
 value that changes per request or per call is a ContextNamespace
@@ -709,8 +718,9 @@ given.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="fastapi_restly.clauses.none_of">
 <span class="sig-prename descclassname"><span class="pre">fastapi_restly.clauses.</span></span><span class="sig-name descname"><span class="pre">none_of</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">clauses</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.clauses.WhereClause" title="fastapi_restly.clauses._runtime.WhereClause"><span class="pre">WhereClause</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.clauses.WhereClause" title="fastapi_restly.clauses._runtime.WhereClause"><span class="pre">WhereClause</span></a></span></span><a class="headerlink" href="#fastapi_restly.clauses.none_of" title="Link to this definition">#</a></dt>
-<dd><p>True when none of the operands’ predicates hold.</p>
-<p>NOT over the OR of all operands. An UNSCOPED operand returns a
+<dd><p>A clause that matches the rows where none of the operands match.</p>
+<p>It is NOT over the OR of all operands: <code class="docutils literal notranslate"><span class="pre">NOT</span> <span class="pre">(a</span> <span class="pre">OR</span> <span class="pre">b)</span></code>, not
+<code class="docutils literal notranslate"><span class="pre">NOT</span> <span class="pre">(a</span> <span class="pre">AND</span> <span class="pre">b)</span></code>. An UNSCOPED operand returns a
 WhereClause over SQL false(), matching no rows. Other operands are
 validated but not resolved in that case.</p>
 </dd></dl>
@@ -809,9 +819,10 @@ in full.</p>
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.clauses.Unscoped"><code class="docutils literal notranslate"><span class="pre">Unscoped</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.clauses.ClauseNamespace"><code class="docutils literal notranslate"><span class="pre">ClauseNamespace</span></code></a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.clauses.ClauseNamespace.default_scope"><code class="docutils literal notranslate"><span class="pre">ClauseNamespace.default_scope</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.clauses.ClauseNamespace.model"><code class="docutils literal notranslate"><span class="pre">ClauseNamespace.model</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.clauses.ClauseNamespace.default_scope"><code class="docutils literal notranslate"><span class="pre">ClauseNamespace.default_scope</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.clauses.ContextNamespace"><code class="docutils literal notranslate"><span class="pre">ContextNamespace</span></code></a><ul class="visible nav section-nav flex-column">
@@ -824,7 +835,6 @@ in full.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.clauses.ContextParam.__call__"><code class="docutils literal notranslate"><span class="pre">ContextParam.__call__()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.clauses.Unscoped"><code class="docutils literal notranslate"><span class="pre">Unscoped</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.clauses.WhereClause"><code class="docutils literal notranslate"><span class="pre">WhereClause</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.clauses.WhereClause.__call__"><code class="docutils literal notranslate"><span class="pre">WhereClause.__call__()</span></code></a></li>
 </ul>

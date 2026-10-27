@@ -56,7 +56,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             false;
         </script>
-    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <script src="_static/newsletter.js?v=7326e93d"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/dev/view_reference.html" />
     <link rel="icon" href="_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="about.html" />
@@ -494,7 +494,7 @@
 <a class="reference internal" href="api/index.html"><span class="std std-doc">Modules</span></a> documents the complete signatures.</p>
 <section id="view-classes">
 <h2>View classes<a class="headerlink" href="#view-classes" title="Link to this heading">#</a></h2>
-<p>Each class below is a registration entry point:</p>
+<p>The view classes, and the result that a list returns:</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>
 <tr class="row-odd"><th class="head"><p>Symbol</p></th>
@@ -544,11 +544,11 @@
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.View.tags" title="fastapi_restly.views.View.tags"><code class="xref py py-attr docutils literal notranslate"><span class="pre">tags</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[Iterable[str</span> <span class="pre">|</span> <span class="pre">Enum]</span> <span class="pre">|</span> <span class="pre">None]</span></code></p></td>
-<td><p>OpenAPI tags. When unset, the tag is the last part of the prefix in title case (<code class="docutils literal notranslate"><span class="pre">/order-items</span></code> gives <code class="docutils literal notranslate"><span class="pre">Order</span> <span class="pre">Items</span></code>), or the class name when there is no prefix. Setting this replaces that tag.</p></td>
+<td><p>OpenAPI tags. When unset, Restly takes one from the prefix; see the entry.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.View.dependencies" title="fastapi_restly.views.View.dependencies"><code class="xref py py-attr docutils literal notranslate"><span class="pre">dependencies</span></code></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[Sequence[Depends]</span> <span class="pre">|</span> <span class="pre">None]</span></code></p></td>
-<td><p>FastAPI dependencies applied to every route in the view. Each class in the hierarchy adds its own, base first.</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[Any]</span></code></p></td>
+<td><p>A list of FastAPI dependencies, such as <code class="docutils literal notranslate"><span class="pre">[Depends(require_login)]</span></code>, run for every route in the view. Each class in the hierarchy adds its own, base first.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.View.responses" title="fastapi_restly.views.View.responses"><code class="xref py py-attr docutils literal notranslate"><span class="pre">responses</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[dict[int</span> <span class="pre">|</span> <span class="pre">str,</span> <span class="pre">dict[str,</span> <span class="pre">Any]]]</span></code></p></td>
@@ -568,19 +568,19 @@
 <tbody>
 <tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[type[pydantic.BaseModel]]</span></code></p></td>
-<td><p>The view’s schema. Restly derives the response, create and update schemas from it. If omitted, auto-generated from <code class="docutils literal notranslate"><span class="pre">model</span></code> as <code class="docutils literal notranslate"><span class="pre">&lt;Model&gt;Schema</span></code>.</p></td>
+<td><p>The view’s schema. Restly derives the response, create and update schemas from it. If omitted, generated from <code class="docutils literal notranslate"><span class="pre">model</span></code>, such as <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code> for the model <code class="docutils literal notranslate"><span class="pre">User</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_response" title="fastapi_restly.views.BaseRestView.schema_response"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_response</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[type[pydantic.BaseModel]]</span></code></p></td>
-<td><p>The class of everything that goes out: the responses, the list items, the fields the list params filter on, and the relationships the view loads. Auto-derived by removing <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields and named <code class="docutils literal notranslate"><span class="pre">ModelResponse</span></code>. See <a class="reference internal" href="schemas.html#own-response-class"><span class="std std-ref">Set your own response class</span></a>.</p></td>
+<td><p>The class of everything that goes out: the responses, the list items, the fields the list params filter on, and the relationships the view loads. Derived by removing <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields, and named after the view’s schema, such as <code class="docutils literal notranslate"><span class="pre">UserResponse</span></code> for <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code>. See <a class="reference internal" href="schemas.html#own-response-class"><span class="std std-ref">Set your own response class</span></a>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[type[pydantic.BaseModel]]</span></code></p></td>
-<td><p>Schema for <code class="docutils literal notranslate"><span class="pre">POST</span></code> input. Auto-derived by removing <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> fields and named <code class="docutils literal notranslate"><span class="pre">ModelCreate</span></code>.</p></td>
+<td><p>The body of <code class="docutils literal notranslate"><span class="pre">POST</span></code>. Derived by removing <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> fields, and named such as <code class="docutils literal notranslate"><span class="pre">UserCreate</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[type[pydantic.BaseModel]]</span></code></p></td>
-<td><p>Schema for <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> input. Auto-derived by making all writable fields optional and named <code class="docutils literal notranslate"><span class="pre">ModelUpdate</span></code>.</p></td>
+<td><p>The body of <code class="docutils literal notranslate"><span class="pre">PATCH</span></code>. Derived by making all writable fields optional, and named such as <code class="docutils literal notranslate"><span class="pre">UserUpdate</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.model" title="fastapi_restly.views.BaseRestView.model"><code class="xref py py-attr docutils literal notranslate"><span class="pre">model</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[type[Any]]</span></code></p></td>
@@ -590,45 +590,53 @@
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[type</span> <span class="pre">|</span> <span class="pre">None]</span></code></p></td>
 <td><p>Type of the <code class="docutils literal notranslate"><span class="pre">{id}</span></code> path parameter on the default routes. <code class="docutils literal notranslate"><span class="pre">None</span></code> (the default) takes the model’s primary key type; a composite key gets <code class="docutils literal notranslate"><span class="pre">int</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_routes" title="fastapi_restly.views.BaseRestView.exclude_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_routes</span></code></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[Iterable[str</span> <span class="pre">|</span> <span class="pre">ViewRoute]]</span></code></p></td>
-<td><p>Default routes to leave out: <code class="docutils literal notranslate"><span class="pre">fr.ViewRoute</span></code> values (<code class="docutils literal notranslate"><span class="pre">GET_MANY</span></code>, <code class="docutils literal notranslate"><span class="pre">GET_ONE</span></code>, <code class="docutils literal notranslate"><span class="pre">CREATE</span></code>, <code class="docutils literal notranslate"><span class="pre">UPDATE</span></code>, <code class="docutils literal notranslate"><span class="pre">DELETE</span></code>) or endpoint method names such as <code class="docutils literal notranslate"><span class="pre">&quot;delete_endpoint&quot;</span></code>. See <a class="reference internal" href="crud_routes.html#exclude-crud-routes"><span class="std std-ref">Exclude CRUD routes</span></a>.</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.include_routes" title="fastapi_restly.views.BaseRestView.include_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_routes</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[Collection[str</span> <span class="pre">|</span> <span class="pre">ViewRoute]]</span></code></p></td>
+<td><p>The routes to serve: <code class="docutils literal notranslate"><span class="pre">fr.ViewRoute</span></code> values or route method names, also of a custom route, such as <code class="docutils literal notranslate"><span class="pre">&quot;merge&quot;</span></code>. The view leaves out every other route, also one that a base view gets later. <code class="docutils literal notranslate"><span class="pre">(&quot;*&quot;,)</span></code> by default: every route. See <a class="reference internal" href="crud_routes.html#exclude-crud-routes"><span class="std std-ref">Exclude CRUD routes</span></a>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_list_params" title="fastapi_restly.views.BaseRestView.schema_list_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_list_params</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_routes" title="fastapi_restly.views.BaseRestView.exclude_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_routes</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[Collection[str</span> <span class="pre">|</span> <span class="pre">ViewRoute]]</span></code></p></td>
+<td><p>Routes to leave out, after <code class="docutils literal notranslate"><span class="pre">include_routes</span></code>: <code class="docutils literal notranslate"><span class="pre">fr.ViewRoute</span></code> values (<code class="docutils literal notranslate"><span class="pre">GET_MANY</span></code>, <code class="docutils literal notranslate"><span class="pre">GET_ONE</span></code>, <code class="docutils literal notranslate"><span class="pre">CREATE</span></code>, <code class="docutils literal notranslate"><span class="pre">UPDATE</span></code>, <code class="docutils literal notranslate"><span class="pre">DELETE</span></code>) or route method names such as <code class="docutils literal notranslate"><span class="pre">&quot;delete_endpoint&quot;</span></code>. <code class="docutils literal notranslate"><span class="pre">()</span></code> by default. See <a class="reference internal" href="crud_routes.html#exclude-crud-routes"><span class="std std-ref">Exclude CRUD routes</span></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_list_params" title="fastapi_restly.views.BaseRestView.schema_list_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_list_params</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[type[pydantic.BaseModel]]</span></code></p></td>
 <td><p>The list params (filter, sort, page) as a Pydantic model, generated from <code class="docutils literal notranslate"><span class="pre">schema_response</span></code> by <code class="docutils literal notranslate"><span class="pre">fr.query.derive_schema_list_params</span></code>. Any route method that declares a <code class="docutils literal notranslate"><span class="pre">list_params</span></code> parameter is annotated with it, so a custom list route takes the same parameters as <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.include_filters" title="fastapi_restly.views.BaseRestView.include_filters"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_filters</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.include_filters" title="fastapi_restly.views.BaseRestView.include_filters"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_filters</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[tuple[str,</span> <span class="pre">...]]</span></code></p></td>
 <td><p>The filter keys to keep, as keys or patterns. <code class="docutils literal notranslate"><span class="pre">*</span></code> matches any characters except <code class="docutils literal notranslate"><span class="pre">.</span></code>. <code class="docutils literal notranslate"><span class="pre">(&quot;*&quot;,)</span></code> by default: the keys of the resource’s own fields, and no dotted keys. See <a class="reference internal" href="filtering.html#choose-list-keys"><span class="std std-ref">Choose the keys of a list</span></a>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_filters" title="fastapi_restly.views.BaseRestView.exclude_filters"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_filters</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_filters" title="fastapi_restly.views.BaseRestView.exclude_filters"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_filters</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[tuple[str,</span> <span class="pre">...]]</span></code></p></td>
 <td><p>The filter keys to leave out, after <code class="docutils literal notranslate"><span class="pre">include_filters</span></code>. <code class="docutils literal notranslate"><span class="pre">()</span></code> by default.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.include_sort_keys" title="fastapi_restly.views.BaseRestView.include_sort_keys"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_sort_keys</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.include_sort_keys" title="fastapi_restly.views.BaseRestView.include_sort_keys"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_sort_keys</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[tuple[str,</span> <span class="pre">...]]</span></code></p></td>
 <td><p>The keys that <code class="docutils literal notranslate"><span class="pre">sort</span></code> accepts, as keys or patterns. <code class="docutils literal notranslate"><span class="pre">(&quot;*&quot;,)</span></code> by default: the resource’s own fields. <code class="docutils literal notranslate"><span class="pre">()</span></code> removes the <code class="docutils literal notranslate"><span class="pre">sort</span></code> parameter.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_sort_keys" title="fastapi_restly.views.BaseRestView.exclude_sort_keys"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_sort_keys</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_sort_keys" title="fastapi_restly.views.BaseRestView.exclude_sort_keys"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_sort_keys</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[tuple[str,</span> <span class="pre">...]]</span></code></p></td>
 <td><p>The sort keys to leave out, after <code class="docutils literal notranslate"><span class="pre">include_sort_keys</span></code>. <code class="docutils literal notranslate"><span class="pre">()</span></code> by default.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.sort_query_param" title="fastapi_restly.views.BaseRestView.sort_query_param"><code class="xref py py-attr docutils literal notranslate"><span class="pre">sort_query_param</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.sort_query_param" title="fastapi_restly.views.BaseRestView.sort_query_param"><code class="xref py py-attr docutils literal notranslate"><span class="pre">sort_query_param</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[str]</span></code></p></td>
 <td><p>The name of the sort parameter. <code class="docutils literal notranslate"><span class="pre">&quot;sort&quot;</span></code> by default. See <a class="reference internal" href="filtering.html#sort-a-list"><span class="std std-ref">Sort a list</span></a>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.default_sort" title="fastapi_restly.views.BaseRestView.default_sort"><code class="xref py py-attr docutils literal notranslate"><span class="pre">default_sort</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.default_sort" title="fastapi_restly.views.BaseRestView.default_sort"><code class="xref py py-attr docutils literal notranslate"><span class="pre">default_sort</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[str</span> <span class="pre">|</span> <span class="pre">None]</span></code></p></td>
 <td><p>The sort when the request has none, written as the client writes <code class="docutils literal notranslate"><span class="pre">sort</span></code>, such as <code class="docutils literal notranslate"><span class="pre">&quot;-created_at&quot;</span></code>. <code class="docutils literal notranslate"><span class="pre">None</span></code> by default: the primary key order. See <a class="reference internal" href="filtering.html#sort-a-list"><span class="std std-ref">Sort a list</span></a>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.sort_nulls" title="fastapi_restly.views.BaseRestView.sort_nulls"><code class="xref py py-attr docutils literal notranslate"><span class="pre">sort_nulls</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.sort_nulls" title="fastapi_restly.views.BaseRestView.sort_nulls"><code class="xref py py-attr docutils literal notranslate"><span class="pre">sort_nulls</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[Literal[&quot;first&quot;,</span> <span class="pre">&quot;last&quot;]</span> <span class="pre">|</span> <span class="pre">None]</span></code></p></td>
 <td><p>Where a sort puts NULLs. <code class="docutils literal notranslate"><span class="pre">&quot;last&quot;</span></code> by default: last in both directions, on every database. <code class="docutils literal notranslate"><span class="pre">None</span></code> leaves them where the database puts them. See <a class="reference internal" href="filtering.html#sort-nulls"><span class="std std-ref">Where NULLs go</span></a>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.pagination" title="fastapi_restly.views.BaseRestView.pagination"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pagination</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.pagination" title="fastapi_restly.views.BaseRestView.pagination"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pagination</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[NumberedPagination</span> <span class="pre">|</span> <span class="pre">NoPagination</span> <span class="pre">|</span> <span class="pre">None]</span></code></p></td>
 <td><p>How list endpoints paginate, <code class="docutils literal notranslate"><span class="pre">NumberedPagination()</span></code> by default. A <code class="docutils literal notranslate"><span class="pre">NoPagination</span></code> returns every row and runs no count query; <code class="docutils literal notranslate"><span class="pre">None</span></code> is short for <code class="docutils literal notranslate"><span class="pre">NoPagination()</span></code>, a plain <code class="docutils literal notranslate"><span class="pre">Envelope</span></code> (<code class="docutils literal notranslate"><span class="pre">data</span></code> only). Views inherit it, so a project base view sets it once. See <a class="reference internal" href="#pagination-settings">Pagination settings</a>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.scope" title="fastapi_restly.views.BaseRestView.scope"><code class="xref py py-attr docutils literal notranslate"><span class="pre">scope</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[WhereClause</span> <span class="pre">|</span> <span class="pre">None]</span></code></p></td>
+<td><p>The clause every read applies, shared by <code class="docutils literal notranslate"><span class="pre">get_many</span></code>, <code class="docutils literal notranslate"><span class="pre">count</span></code>, and <code class="docutils literal notranslate"><span class="pre">get_one</span></code>. <code class="docutils literal notranslate"><span class="pre">None</span></code> falls back to the model’s declared <code class="docutils literal notranslate"><span class="pre">default_scope</span></code>; <code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code> reads unscoped. See <a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.unknown_query_params" title="fastapi_restly.views.BaseRestView.unknown_query_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">unknown_query_params</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[Literal[&quot;forbid&quot;,</span> <span class="pre">&quot;ignore&quot;]]</span></code></p></td>
@@ -719,9 +727,9 @@ default, filled from <code class="docutils literal notranslate"><span class="pre
 <td><p><code class="docutils literal notranslate"><span class="pre">DELETE</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">204</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">&#64;fr.route(path,</span> <span class="pre">...)</span></code></p></td>
-<td><p>Custom</p></td>
-<td><p>As configured</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">&#64;fr.route(path,</span> <span class="pre">methods=[...])</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">methods=</span></code>, or <code class="docutils literal notranslate"><span class="pre">GET</span></code> without it</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">200</span></code></p></td>
 </tr>
 </tbody>
 </table>
@@ -770,19 +778,19 @@ names are identical between variants.</p>
 <tr class="row-odd"><td><p>Endpoint method</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one_endpoint" title="fastapi_restly.views.RestView.get_one_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one_endpoint</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(id)</span></code></p></td>
-<td><p>response schema</p></td>
+<td><p>response class</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code>; serializes one retrieved object.</p></td>
 </tr>
 <tr class="row-even"><td><p>Endpoint method</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create_endpoint" title="fastapi_restly.views.RestView.create_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create_endpoint</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(data)</span></code></p></td>
-<td><p>response schema</p></td>
+<td><p>response class</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code>; serializes the created object.</p></td>
 </tr>
 <tr class="row-odd"><td><p>Endpoint method</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update_endpoint" title="fastapi_restly.views.RestView.update_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update_endpoint</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(id,</span> <span class="pre">data)</span></code></p></td>
-<td><p>response schema</p></td>
+<td><p>response class</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/{id}</span></code>; serializes the updated object.</p></td>
 </tr>
 <tr class="row-even"><td><p>Endpoint method</p></td>
@@ -881,23 +889,11 @@ names are identical between variants.</p>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p>Mark <code class="docutils literal notranslate"><span class="pre">obj</span></code> for deletion, without a flush. Override (e.g. on a soft-delete mixin) to flip a timestamp instead.</p></td>
 </tr>
-<tr class="row-even"><td><p>Configuration</p></td>
-<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.scope" title="fastapi_restly.views.BaseRestView.scope"><code class="xref py py-attr docutils literal notranslate"><span class="pre">scope</span></code></a></p></td>
-<td><p>class attribute</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">WhereClause</span> <span class="pre">|</span> <span class="pre">None</span></code></p></td>
-<td><p>The clause every read applies, shared by <code class="docutils literal notranslate"><span class="pre">get_many</span></code>, <code class="docutils literal notranslate"><span class="pre">count</span></code>, and <code class="docutils literal notranslate"><span class="pre">get_one</span></code>. <code class="docutils literal notranslate"><span class="pre">None</span></code> falls back to the model’s declared <code class="docutils literal notranslate"><span class="pre">default_scope</span></code>; <code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code> reads unscoped. See <a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a>.</p></td>
-</tr>
-<tr class="row-odd"><td><p>Function</p></td>
-<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.resolve_scope" title="fastapi_restly.views.resolve_scope"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.resolve_scope(view_or_model)</span></code></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">(view_or_model)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">WhereClause</span></code></p></td>
-<td><p>The scope a read applies, resolved down the ladder: the view’s <code class="docutils literal notranslate"><span class="pre">scope</span></code>, the model’s <code class="docutils literal notranslate"><span class="pre">default_scope</span></code>, then <code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code>. Takes a view class or instance, or a mapped model class for the model rung alone. Apply it with <code class="docutils literal notranslate"><span class="pre">fr.apply_clauses</span></code> in a route that builds a statement that <code class="docutils literal notranslate"><span class="pre">self.select()</span></code> cannot start, such as a select of some columns, and the route sees the rows <code class="docutils literal notranslate"><span class="pre">get_one</span></code> and <code class="docutils literal notranslate"><span class="pre">get_many</span></code> see. See <a class="reference internal" href="scopes.html#reading-the-scope"><span class="std std-ref">Use the scope in your own query</span></a>.</p></td>
-</tr>
 <tr class="row-even"><td><p>Override point</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_list_params" title="fastapi_restly.views.RestView.apply_list_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_list_params</span></code></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">(query,</span> <span class="pre">list_params)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">(stmt,</span> <span class="pre">list_params)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">sqlalchemy.Select</span></code></p></td>
-<td><p>Apply the list params to <code class="docutils literal notranslate"><span class="pre">query</span></code>: <code class="docutils literal notranslate"><span class="pre">apply_filters</span></code>, then the sort, then the page. Override for list params of your own.</p></td>
+<td><p>Apply the list params to <code class="docutils literal notranslate"><span class="pre">stmt</span></code>: <code class="docutils literal notranslate"><span class="pre">apply_filters</span></code>, then the sort, then the page. Override for list params of your own.</p></td>
 </tr>
 <tr class="row-odd"><td><p>Override point</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_filters" title="fastapi_restly.views.RestView.apply_filters"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_filters</span></code></a></p></td>
@@ -913,9 +909,9 @@ names are identical between variants.</p>
 </tr>
 <tr class="row-odd"><td><p>Override point</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.count" title="fastapi_restly.views.RestView.count"><code class="xref py py-meth docutils literal notranslate"><span class="pre">count</span></code></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">(query)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">(stmt)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
-<td><p>Total for a paginated list. It gets the same query with the list params applied, leaves out <code class="docutils literal notranslate"><span class="pre">ORDER</span> <span class="pre">BY</span></code>, <code class="docutils literal notranslate"><span class="pre">LIMIT</span></code> and <code class="docutils literal notranslate"><span class="pre">OFFSET</span></code>, and counts the distinct primary keys of the model that the query selects. So a query that joins a to-many relationship does not make the total too high, and a <code class="docutils literal notranslate"><span class="pre">json</span></code> column works on PostgreSQL. A query of columns, not of a model, counts its distinct rows. Unpaginated views skip it. Override for estimated counts on huge tables.</p></td>
+<td><p>Total for a paginated list. It gets the same statement with the list params applied, leaves out <code class="docutils literal notranslate"><span class="pre">ORDER</span> <span class="pre">BY</span></code>, <code class="docutils literal notranslate"><span class="pre">LIMIT</span></code> and <code class="docutils literal notranslate"><span class="pre">OFFSET</span></code>, and counts the distinct primary keys of the model that the statement selects. So a statement that joins a to-many relationship does not make the total too high, and a <code class="docutils literal notranslate"><span class="pre">json</span></code> column works on PostgreSQL. A statement of columns, not of a model, counts its distinct rows. Unpaginated views skip it. Override for estimated counts on huge tables.</p></td>
 </tr>
 <tr class="row-even"><td><p>Override point</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a></p></td>
@@ -939,7 +935,7 @@ names are identical between variants.</p>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response" title="fastapi_restly.views.BaseRestView.to_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_response</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(result,</span> <span class="pre">shape=ResponseShape.SINGLE)</span></code></p></td>
 <td><p>response payload</p></td>
-<td><p>The single response method, called by the endpoint methods with the <code class="docutils literal notranslate"><span class="pre">ResponseShape</span></code> (<code class="docutils literal notranslate"><span class="pre">SINGLE</span></code> / <code class="docutils literal notranslate"><span class="pre">LIST</span></code> / <code class="docutils literal notranslate"><span class="pre">EMPTY</span></code>), not the write action. Override for envelopes or custom status codes; for a per-verb HTTP contract change, override that verb’s endpoint method.</p></td>
+<td><p>The method that builds every response, called by the endpoint methods with the <code class="docutils literal notranslate"><span class="pre">ResponseShape</span></code> (<code class="docutils literal notranslate"><span class="pre">SINGLE</span></code> / <code class="docutils literal notranslate"><span class="pre">LIST</span></code> / <code class="docutils literal notranslate"><span class="pre">EMPTY</span></code>), not the write action. Override for envelopes or custom status codes; for a per-verb HTTP contract change, override that verb’s endpoint method.</p></td>
 </tr>
 <tr class="row-even"><td><p>Override point</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.snapshot" title="fastapi_restly.views.BaseRestView.snapshot"><code class="xref py py-meth docutils literal notranslate"><span class="pre">snapshot</span></code></a></p></td>
@@ -971,6 +967,26 @@ names are identical between variants.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">scope</span></code> argument of the loads and of <code class="docutils literal notranslate"><span class="pre">select</span></code> has the type
 <code class="docutils literal notranslate"><span class="pre">fr.views.ReadScope</span></code>: <code class="docutils literal notranslate"><span class="pre">None</span></code> resolves the view’s scope, a clause replaces it,
 and <code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code> reads unscoped.</p>
+</section>
+<section id="functions">
+<h2>Functions<a class="headerlink" href="#functions" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Function</p></th>
+<th class="head"><p>Signature</p></th>
+<th class="head"><p>Return</p></th>
+<th class="head"><p>Purpose</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.resolve_scope" title="fastapi_restly.views.resolve_scope"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.resolve_scope</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">(target)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">WhereClause</span></code></p></td>
+<td><p>The scope that a read applies: the view’s <code class="docutils literal notranslate"><span class="pre">scope</span></code>, else the model’s <code class="docutils literal notranslate"><span class="pre">default_scope</span></code>, else <code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code>. <code class="docutils literal notranslate"><span class="pre">target</span></code> is a view class or instance, or a mapped model class for the model’s <code class="docutils literal notranslate"><span class="pre">default_scope</span></code> alone. Apply it with <code class="docutils literal notranslate"><span class="pre">fr.apply_clauses</span></code> in a route that builds a statement that <code class="docutils literal notranslate"><span class="pre">self.select()</span></code> cannot start, such as a select of some columns, and the route sees the rows that <code class="docutils literal notranslate"><span class="pre">get_one</span></code> and <code class="docutils literal notranslate"><span class="pre">get_many</span></code> see. See <a class="reference internal" href="scopes.html#reading-the-scope"><span class="std std-ref">Use the scope in your own query</span></a>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
 <p>Internal methods prefixed with <code class="docutils literal notranslate"><span class="pre">_</span></code>, such as <code class="docutils literal notranslate"><span class="pre">_reject_unknown_query_params</span></code>, are implementation details even though they are visible on instances.</p>
 <p>See <a class="reference internal" href="views.html#the-view-hierarchy"><span class="std std-ref">Views</span></a> for the class hierarchy, <a class="reference internal" href="lifecycle.html"><span class="std std-doc">Request Lifecycle &amp; Hooks</span></a> for examples of choosing which method to override, and <a class="reference internal" href="typing.html"><span class="std std-doc">Type Annotations</span></a> for the typed signatures of these methods.</p>
 <section id="the-same-operations-outside-a-view">
@@ -1038,7 +1054,8 @@ other than <code class="docutils literal notranslate"><span class="pre">self.mod
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#endpoint-decorators">Endpoint decorators</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#methods">Methods</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#methods">Methods</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#functions">Functions</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#the-same-operations-outside-a-view">The same operations outside a view</a></li>
 </ul>
 </li>

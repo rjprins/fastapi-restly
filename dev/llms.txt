@@ -1,15 +1,15 @@
 # FastAPI-Restly
 
-> FastAPI-Restly (`fr`) is a REST framework for FastAPI, using SQLAlchemy 2.0 and Pydantic v2, with class-based views that support full customization through inheritance and mixins.
+> **Class-based REST resources for FastAPI and SQLAlchemy 2.0. Write each rule once.**
 
 The Guide has one page for each part of Restly, in five groups. Each page
 starts with how that part works, then shows how to use it. If you are new to
 Restly, start with the tutorial, [Build a Blog API](https://www.fastapi-restly.org/dev/tutorial.html).
 
 You write a SQLAlchemy model and a view class, and Restly turns the view into
-FastAPI routes. This is what happens when a client sends `PATCH /projects/1`.
-FastAPI first checks the request body against the update body,
-`ProjectUpdate`:
+FastAPI routes. For example, when a client sends `PATCH /projects/1`,
+FastAPI first checks the request body against the update schema,
+`ProjectUpdate`. Then these steps run:
 
 ```
 PATCH /projects/1
@@ -53,9 +53,10 @@ These are the parts, and the page that explains each one:
   `before_action_commit` runs just before the commit, and
   `after_action_commit` just after it. A read does not commit. See
   [What commits, and when](https://www.fastapi-restly.org/dev/lifecycle.html#what-commits).
-- **Scope**: the rows of a model that exist for a request. Restly applies it
-  to every read of the model and to every reference to the model, so a hidden
-  row is a 404. A scope is made of clauses, which are named query rules. See
+- **Scope**: a SQL where clause that limits which rows of a model a request
+  can read. Restly applies it to every read of the model and to every
+  reference to the model, so a row outside the scope is a 404. You write a
+  scope as a query clause, a named rule that you can reuse. See
   [Scopes](https://www.fastapi-restly.org/dev/scopes.html) and [Query Clauses](https://www.fastapi-restly.org/dev/clauses.html).
 - **`authorize`**: decides whether the caller may do the action. A refusal
   is a 403. See [Authorization](https://www.fastapi-restly.org/dev/authorization.html).
@@ -77,7 +78,7 @@ These are the parts, and the page that explains each one:
 ## Setup
 
 - [New & Existing Projects](https://www.fastapi-restly.org/dev/projects.html): add Restly to an app that you already have, start a new project with `restly new`, lay out a project as it grows, and serve more than one API version.
-- [Database & Configuration](https://www.fastapi-restly.org/dev/database.html): tell Restly where its database is, reuse the engine or sessionmaker that your app already has, use another database on one view, such as a read replica, and open a session outside a request.
+- [Database & Configuration](https://www.fastapi-restly.org/dev/database.html): tell Restly where its database is, reuse the engine, sessionmaker or session generator that your app already has, use another database on one view, such as a read replica, and open a session outside a request.
 - [Models](https://www.fastapi-restly.org/dev/models.html): add Restly's defaults and common columns to your models, and set the values that every write needs, such as the author or a slug.
 
 ## Views & Routes
@@ -90,8 +91,8 @@ These are the parts, and the page that explains each one:
 
 ## Requests & Responses
 
-- [Schemas & Validation](https://www.fastapi-restly.org/dev/schemas.html): generate the schema or write it, keep a field out of the requests or the responses, validate input, and use other field names in JSON, such as camelCase.
-- [Relationships](https://www.fastapi-restly.org/dev/relationships.html): accept the id of another row, check that the row exists, return related objects, and fix `MissingGreenlet`.
+- [Schemas & Validation](https://www.fastapi-restly.org/dev/schemas.html): generate the schema or write it, keep a field out of the requests or the responses, validate input, keep times in UTC, and use other field names in JSON, such as camelCase.
+- [Relationships](https://www.fastapi-restly.org/dev/relationships.html): accept the id of another row, check that the row exists, link many rows to many rows, return related objects, and fix `MissingGreenlet`.
 - [Responses](https://www.fastapi-restly.org/dev/responses.html): what each route returns, the list envelope, the response of a custom route, and how to change the shape of one route or of all routes.
 - [Filtering, Sorting & Pagination](https://www.fastapi-restly.org/dev/filtering.html): the filters, the sort order and the pages that a client can use on a list, the keys that a view chooses, filters of your own, and list params that you write yourself.
 - [Errors](https://www.fastapi-restly.org/dev/errors.html): raise a 404 or a 403, see why a duplicate value gives a 409, and change the error body.
@@ -108,7 +109,7 @@ These are the parts, and the page that explains each one:
 ## Testing & Deploying
 
 - [Testing](https://www.fastapi-restly.org/dev/testing.html): set up the test suite, build the test schema, and use the test clients and fixtures.
-- [Deploying](https://www.fastapi-restly.org/dev/deploying.html): read the settings from the environment, run the app, set up Alembic and add a health check.
+- [Deploying](https://www.fastapi-restly.org/dev/deploying.html): read the settings from the environment, run the app, set up Alembic, add a health check, and check the list settings before an API goes public.
 
 ## What FastAPI covers
 
@@ -117,7 +118,7 @@ These are the parts, and the page that explains each one:
 - [CORS](https://fastapi.tiangolo.com/tutorial/cors/). For a react-admin frontend, see also [CORS for React Admin](https://www.fastapi-restly.org/dev/react_admin.html#react-admin-cors).
 - [Background tasks](https://fastapi.tiangolo.com/tutorial/background-tasks/). For work that must still happen after a crash, use an outbox row in a [transaction hook](https://www.fastapi-restly.org/dev/lifecycle.html#after-action-commit-raises).
 - [File uploads](https://fastapi.tiangolo.com/tutorial/request-files/).
-- [WebSockets](https://fastapi.tiangolo.com/advanced/websockets/). Declare them on the app or on a router, not on a view.
+- [WebSockets](https://fastapi.tiangolo.com/advanced/websockets/). Declare them on the app or on a router, not on a view: a view has HTTP routes only.
 
 ## API
 

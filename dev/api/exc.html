@@ -56,7 +56,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             false;
         </script>
-    <script src="../_static/newsletter.js?v=e342eb53"></script>
+    <script src="../_static/newsletter.js?v=7326e93d"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/dev/api/exc.html" />
     <link rel="icon" href="../_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="../about.html" />
@@ -504,22 +504,31 @@ raised when the framework is misused before/at setup.</p></li>
 These subclass <a class="reference external" href="https://fastapi.tiangolo.com/reference/exceptions/#fastapi.HTTPException" title="(in FastAPI v0.0.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">fastapi.HTTPException</span></code></a>, so the default responses are
 identical to raising <code class="docutils literal notranslate"><span class="pre">HTTPException</span></code> directly – but a user can
 <code class="docutils literal notranslate"><span class="pre">app.add_exception_handler(fr.exc.NotFound,</span> <span class="pre">...)</span></code> to reshape Restly’s errors
-distinctly (e.g. into RFC 7807 problem+json).</p></li>
+distinctly (e.g. into RFC 9457 problem+json).</p></li>
 </ul>
 <dl class="py exception">
 <dt class="sig sig-object py" id="fastapi_restly.exc.BadQueryParam">
 <em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.exc.</span></span><span class="sig-name descname"><span class="pre">BadQueryParam</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.15)"><span class="pre">object</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.15)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.exc.BadQueryParam" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#fastapi_restly.exc.RestlyHTTPError" title="fastapi_restly.exc.RestlyHTTPError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyHTTPError</span></code></a></p>
-<p>HTTP 400 – an invalid filter/sort/pagination query parameter.</p>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.exc.BadQueryParam.default_detail">
-<span class="sig-name descname"><span class="pre">default_detail</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Invalid</span> <span class="pre">query</span> <span class="pre">parameter'</span></em><a class="headerlink" href="#fastapi_restly.exc.BadQueryParam.default_detail" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
+<p>HTTP 400 – a list query parameter with a known key, whose value
+Restly cannot apply.</p>
+<p>An example is a filter value that fails the validation of its field,
+such as <code class="docutils literal notranslate"><span class="pre">?age=old</span></code> on an <code class="docutils literal notranslate"><span class="pre">int</span></code> field. On a list route, a query
+string that does not match the list params, such as an unknown key or a
+bad page, is a 422 instead: a <code class="docutils literal notranslate"><span class="pre">RequestValidationError</span></code>, in the shape
+that FastAPI uses for a bad parameter.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.exc.BadQueryParam.status_code">
 <span class="sig-name descname"><span class="pre">status_code</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">400</span></em><a class="headerlink" href="#fastapi_restly.exc.BadQueryParam.status_code" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dd><p>The HTTP status of the response. Each error class sets its own.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.exc.BadQueryParam.default_detail">
+<span class="sig-name descname"><span class="pre">default_detail</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Invalid</span> <span class="pre">query</span> <span class="pre">parameter'</span></em><a class="headerlink" href="#fastapi_restly.exc.BadQueryParam.default_detail" title="Link to this definition">#</a></dt>
+<dd><p>The <code class="docutils literal notranslate"><span class="pre">detail</span></code> of the response when the error is raised without a
+detail. Each error class sets its own.</p>
+</dd></dl>
 
 </dd></dl>
 
@@ -532,14 +541,17 @@ distinctly (e.g. into RFC 7807 problem+json).</p></li>
 value, in a CRUD write or a <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block. The SQLAlchemy
 <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> is its <code class="docutils literal notranslate"><span class="pre">__cause__</span></code>.</p>
 <dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.exc.Conflict.default_detail">
-<span class="sig-name descname"><span class="pre">default_detail</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Conflict'</span></em><a class="headerlink" href="#fastapi_restly.exc.Conflict.default_detail" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.exc.Conflict.status_code">
 <span class="sig-name descname"><span class="pre">status_code</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">409</span></em><a class="headerlink" href="#fastapi_restly.exc.Conflict.status_code" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dd><p>The HTTP status of the response. Each error class sets its own.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.exc.Conflict.default_detail">
+<span class="sig-name descname"><span class="pre">default_detail</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Conflict'</span></em><a class="headerlink" href="#fastapi_restly.exc.Conflict.default_detail" title="Link to this definition">#</a></dt>
+<dd><p>The <code class="docutils literal notranslate"><span class="pre">detail</span></code> of the response when the error is raised without a
+detail. Each error class sets its own.</p>
+</dd></dl>
 
 </dd></dl>
 
@@ -549,14 +561,17 @@ value, in a CRUD write or a <code class="docutils literal notranslate"><span cla
 <dd><p>Bases: <a class="reference internal" href="#fastapi_restly.exc.RestlyHTTPError" title="fastapi_restly.exc.RestlyHTTPError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyHTTPError</span></code></a></p>
 <p>HTTP 403 – the request is not authorized.</p>
 <dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.exc.Forbidden.default_detail">
-<span class="sig-name descname"><span class="pre">default_detail</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Forbidden'</span></em><a class="headerlink" href="#fastapi_restly.exc.Forbidden.default_detail" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.exc.Forbidden.status_code">
 <span class="sig-name descname"><span class="pre">status_code</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">403</span></em><a class="headerlink" href="#fastapi_restly.exc.Forbidden.status_code" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dd><p>The HTTP status of the response. Each error class sets its own.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.exc.Forbidden.default_detail">
+<span class="sig-name descname"><span class="pre">default_detail</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Forbidden'</span></em><a class="headerlink" href="#fastapi_restly.exc.Forbidden.default_detail" title="Link to this definition">#</a></dt>
+<dd><p>The <code class="docutils literal notranslate"><span class="pre">detail</span></code> of the response when the error is raised without a
+detail. Each error class sets its own.</p>
+</dd></dl>
 
 </dd></dl>
 
@@ -566,14 +581,17 @@ value, in a CRUD write or a <code class="docutils literal notranslate"><span cla
 <dd><p>Bases: <a class="reference internal" href="#fastapi_restly.exc.RestlyHTTPError" title="fastapi_restly.exc.RestlyHTTPError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyHTTPError</span></code></a></p>
 <p>HTTP 404 – the requested resource does not exist (or is not visible).</p>
 <dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.exc.NotFound.default_detail">
-<span class="sig-name descname"><span class="pre">default_detail</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Not</span> <span class="pre">found'</span></em><a class="headerlink" href="#fastapi_restly.exc.NotFound.default_detail" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.exc.NotFound.status_code">
 <span class="sig-name descname"><span class="pre">status_code</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">404</span></em><a class="headerlink" href="#fastapi_restly.exc.NotFound.status_code" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dd><p>The HTTP status of the response. Each error class sets its own.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.exc.NotFound.default_detail">
+<span class="sig-name descname"><span class="pre">default_detail</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Not</span> <span class="pre">found'</span></em><a class="headerlink" href="#fastapi_restly.exc.NotFound.default_detail" title="Link to this definition">#</a></dt>
+<dd><p>The <code class="docutils literal notranslate"><span class="pre">detail</span></code> of the response when the error is raised without a
+detail. Each error class sets its own.</p>
+</dd></dl>
 
 </dd></dl>
 
@@ -581,7 +599,8 @@ value, in a CRUD write or a <code class="docutils literal notranslate"><span cla
 <dt class="sig sig-object py" id="fastapi_restly.exc.RestlyConfigurationError">
 <em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.exc.</span></span><span class="sig-name descname"><span class="pre">RestlyConfigurationError</span></span><a class="headerlink" href="#fastapi_restly.exc.RestlyConfigurationError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#fastapi_restly.exc.RestlyError" title="fastapi_restly.exc.RestlyError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyError</span></code></a></p>
-<p>Raised when Restly is used before required configuration is available.</p>
+<p>Raised when a setup cannot work: a view, a model, a schema or the test
+setup that is declared wrongly, or Restly used before it is configured.</p>
 </dd></dl>
 
 <dl class="py exception">
@@ -606,7 +625,24 @@ off. A project test can turn the warning into an error with
 <dt class="sig sig-object py" id="fastapi_restly.exc.RestlyError">
 <em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.exc.</span></span><span class="sig-name descname"><span class="pre">RestlyError</span></span><a class="headerlink" href="#fastapi_restly.exc.RestlyError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#Exception" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></a></p>
-<p>Base class for FastAPI-Restly framework errors.</p>
+<p>Base class of Restly’s configuration errors.</p>
+<p>The request-time HTTP errors, such as <a class="reference internal" href="#fastapi_restly.exc.NotFound" title="fastapi_restly.exc.NotFound"><code class="xref py py-class docutils literal notranslate"><span class="pre">NotFound</span></code></a>, do not derive
+from it. They subclass <a class="reference internal" href="#fastapi_restly.exc.RestlyHTTPError" title="fastapi_restly.exc.RestlyHTTPError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyHTTPError</span></code></a>, a
+<a class="reference external" href="https://fastapi.tiangolo.com/reference/exceptions/#fastapi.HTTPException" title="(in FastAPI v0.0.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">fastapi.HTTPException</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="fastapi_restly.exc.RestlyExpireOnCommitWarning">
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.exc.</span></span><span class="sig-name descname"><span class="pre">RestlyExpireOnCommitWarning</span></span><a class="headerlink" href="#fastapi_restly.exc.RestlyExpireOnCommitWarning" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#UserWarning" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">UserWarning</span></code></a></p>
+<p>Emitted when a view writes through a session with
+<code class="docutils literal notranslate"><span class="pre">expire_on_commit=True</span></code>, once for each view.</p>
+<p>The commit expires the loaded attributes of the saved row. So
+<code class="docutils literal notranslate"><span class="pre">snapshot(new)</span></code> in <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> is empty, and the response
+loads the row from the database again. In async code, that raises
+<code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. Restly’s own session factories set
+<code class="docutils literal notranslate"><span class="pre">expire_on_commit=False</span></code>. A sync project that keeps
+<code class="docutils literal notranslate"><span class="pre">expire_on_commit=True</span></code> on purpose can filter this warning by its class.</p>
 </dd></dl>
 
 <dl class="py exception">
@@ -615,14 +651,17 @@ off. A project test can turn the warning into an error with
 <dd><p>Bases: <a class="reference external" href="https://fastapi.tiangolo.com/reference/exceptions/#fastapi.HTTPException" title="(in FastAPI v0.0.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">HTTPException</span></code></a></p>
 <p>Base for Restly’s request-time HTTP errors. Subclasses set a status.</p>
 <dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.exc.RestlyHTTPError.default_detail">
-<span class="sig-name descname"><span class="pre">default_detail</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Error'</span></em><a class="headerlink" href="#fastapi_restly.exc.RestlyHTTPError.default_detail" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.exc.RestlyHTTPError.status_code">
 <span class="sig-name descname"><span class="pre">status_code</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">500</span></em><a class="headerlink" href="#fastapi_restly.exc.RestlyHTTPError.status_code" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dd><p>The HTTP status of the response. Each error class sets its own.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.exc.RestlyHTTPError.default_detail">
+<span class="sig-name descname"><span class="pre">default_detail</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Error'</span></em><a class="headerlink" href="#fastapi_restly.exc.RestlyHTTPError.default_detail" title="Link to this definition">#</a></dt>
+<dd><p>The <code class="docutils literal notranslate"><span class="pre">detail</span></code> of the response when the error is raised without a
+detail. Each error class sets its own.</p>
+</dd></dl>
 
 </dd></dl>
 
@@ -635,12 +674,12 @@ off. A project test can turn the warning into an error with
 class is registered via <code class="docutils literal notranslate"><span class="pre">include_view</span></code>, the framework then flags the
 dominant misuses – overriding an endpoint method (<code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code>) where
 a business-method override was meant, calling <code class="docutils literal notranslate"><span class="pre">session.commit()</span></code> directly in a
-view method, hand-rolling a CRUD route set on a bare <code class="docutils literal notranslate"><span class="pre">View</span></code> instead of
-subclassing <code class="docutils literal notranslate"><span class="pre">RestView</span></code> / <code class="docutils literal notranslate"><span class="pre">AsyncRestView</span></code>, typing a scalar
-foreign-key column (<code class="docutils literal notranslate"><span class="pre">post_id</span></code>) as an <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> / <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> reference
-instead of <code class="docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code>, and a writable field that sets
-a column that the model sets (<code class="docutils literal notranslate"><span class="pre">init=False</span></code> with a default) instead of
-<code class="docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code>.</p>
+view method, typing a scalar foreign-key column (<code class="docutils literal notranslate"><span class="pre">post_id</span></code>) as an
+<code class="docutils literal notranslate"><span class="pre">IDRef</span></code> / <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> reference instead of <code class="docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code>,
+and a writable field that sets a column that the model sets
+(<code class="docutils literal notranslate"><span class="pre">init=False</span></code> with a default) instead of <code class="docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code>. It also flags
+a view that is registered twice on the same app or router: the second
+<code class="docutils literal notranslate"><span class="pre">include_view</span></code> call does nothing.</p>
 </dd></dl>
 
 <dl class="py exception">
@@ -728,31 +767,32 @@ and how to change the error envelope app-wide.</p>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.BadQueryParam"><code class="docutils literal notranslate"><span class="pre">BadQueryParam</span></code></a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.BadQueryParam.default_detail"><code class="docutils literal notranslate"><span class="pre">BadQueryParam.default_detail</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.BadQueryParam.status_code"><code class="docutils literal notranslate"><span class="pre">BadQueryParam.status_code</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.BadQueryParam.default_detail"><code class="docutils literal notranslate"><span class="pre">BadQueryParam.default_detail</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.Conflict"><code class="docutils literal notranslate"><span class="pre">Conflict</span></code></a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.Conflict.default_detail"><code class="docutils literal notranslate"><span class="pre">Conflict.default_detail</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.Conflict.status_code"><code class="docutils literal notranslate"><span class="pre">Conflict.status_code</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.Conflict.default_detail"><code class="docutils literal notranslate"><span class="pre">Conflict.default_detail</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.Forbidden"><code class="docutils literal notranslate"><span class="pre">Forbidden</span></code></a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.Forbidden.default_detail"><code class="docutils literal notranslate"><span class="pre">Forbidden.default_detail</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.Forbidden.status_code"><code class="docutils literal notranslate"><span class="pre">Forbidden.status_code</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.Forbidden.default_detail"><code class="docutils literal notranslate"><span class="pre">Forbidden.default_detail</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.NotFound"><code class="docutils literal notranslate"><span class="pre">NotFound</span></code></a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.NotFound.default_detail"><code class="docutils literal notranslate"><span class="pre">NotFound.default_detail</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.NotFound.status_code"><code class="docutils literal notranslate"><span class="pre">NotFound.status_code</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.NotFound.default_detail"><code class="docutils literal notranslate"><span class="pre">NotFound.default_detail</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.RestlyConfigurationError"><code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.RestlyDuplicateSchemaNameWarning"><code class="docutils literal notranslate"><span class="pre">RestlyDuplicateSchemaNameWarning</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.RestlyError"><code class="docutils literal notranslate"><span class="pre">RestlyError</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.RestlyExpireOnCommitWarning"><code class="docutils literal notranslate"><span class="pre">RestlyExpireOnCommitWarning</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.RestlyHTTPError"><code class="docutils literal notranslate"><span class="pre">RestlyHTTPError</span></code></a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.RestlyHTTPError.default_detail"><code class="docutils literal notranslate"><span class="pre">RestlyHTTPError.default_detail</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.RestlyHTTPError.status_code"><code class="docutils literal notranslate"><span class="pre">RestlyHTTPError.status_code</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.RestlyHTTPError.default_detail"><code class="docutils literal notranslate"><span class="pre">RestlyHTTPError.default_detail</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.exc.RestlyMisuseWarning"><code class="docutils literal notranslate"><span class="pre">RestlyMisuseWarning</span></code></a></li>

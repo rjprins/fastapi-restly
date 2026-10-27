@@ -14,7 +14,8 @@ production, Alembic creates and changes the tables, not the application. Its
 `env.py` imports `main.py`, which imports every model.
 
 The sections below follow that order: the settings, the factory, the command
-that runs it, the migrations, and a health check.
+that runs it, the migrations, and a health check. The last section lists the
+view settings to check before an API goes public.
 [New & Existing Projects](#compose-in-one-place) shows where these files sit
 in the project.
 
@@ -23,7 +24,9 @@ in the project.
 ## Read the database settings from the environment
 
 In production, take the database URL and the pool size from environment
-variables. A small `pydantic-settings` class holds them:
+variables. Install pydantic-settings first, with
+`pip install pydantic-settings`, because Restly does not install it. Then a
+small settings class holds the values:
 
 ```python
 from pydantic_settings import BaseSettings
@@ -55,8 +58,10 @@ Restly does not choose a pool size, so set it yourself. To do that, build the
 engine yourself and pass it to `fr.configure()`, as the template below does.
 Restly's [engine defaults](#engine-defaults) apply only to an engine that
 Restly builds from a URL. For this reason, the template also sets
-`pool_pre_ping=True` itself. If your application already builds an engine,
-pass that one; see [Reuse your existing engine or sessionmaker](#reuse-existing-engine).
+`pool_pre_ping=True` itself, and puts each session in UTC with asyncpg's
+`server_settings`. For psycopg, pass `connect_args={"options": "-c timezone=UTC"}`
+instead. If your application already builds an engine, pass that one; see
+[Reuse your existing engine or sessionmaker](#reuse-existing-engine).
 
 (production-main-template)=
 
@@ -86,6 +91,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         pool_size=settings.db_pool_size,
         max_overflow=settings.db_max_overflow,
         pool_pre_ping=True,
+        connect_args={"server_settings": {"timezone": "UTC"}},
     )
 
     @asynccontextmanager
@@ -208,7 +214,9 @@ The `env.py` files of the
 and the
 [SaaS example](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/alembic/env.py)
 are complete versions of this setup. They read the database URL from the
-application's settings when Alembic gets none.
+application's settings when Alembic gets none. On PostgreSQL, they run the
+migrations in UTC, as the application's sessions do, also in the SQL script
+of `alembic upgrade --sql`.
 
 Run the migrations when you release, or when the application starts:
 
@@ -252,9 +260,12 @@ op.alter_column(
 )
 ```
 
-A type change without `postgresql_using` can read the values in the local
-time zone of the server. Use `mapped_column(DateTime())` on the model only for
-a column that stores a time without a time zone on purpose.
+A type change without `postgresql_using` reads the values in the time zone
+of the database session that runs the migration. The `env.py` that
+`restly new` generates puts that session in UTC. Keep
+`mapped_column(DateTime())` on the model only for a column that has no time
+zone on purpose. Such a column holds UTC without the offset; see
+[Keep times in UTC](#utc-times).
 
 (health-checks)=
 
@@ -286,6 +297,47 @@ livenessProbe:
 A readiness probe takes the instance out of service instead of restarting it.
 That is the place to check the database and other services. Write it as an
 ordinary route, so that you control its checks and its timeouts.
+
+(before-public)=
+
+## Before you expose an API publicly
+
+Restly is made first for APIs with known clients, such as an internal app or
+an admin panel, so its limits on the work that one request can cause are
+generous by default. A page has at most `max_page_size` rows. A client sorts
+and filters only by the keys that the view allows, and uses each sort key only
+once. A dotted key joins another table, so dotted keys are off until the view
+turns them on. If you find a request that has no such limit, please report it
+as a bug.
+
+Access works differently: the rules for what a client may see or change are
+just as strict for an internal API as for a public one.
+
+Restly does not limit how many requests a client sends. Put rate limits,
+timeouts and a maximum body size in the proxy in front of the app, and a
+statement timeout in the database.
+
+For a public API, lower the limits on one request. Start with a table that
+only grows, such as an audit log, events or imports. It gets large without
+anyone noticing, and clients want to filter and sort it. Check these settings
+on its view:
+
+- Lower the page size and its maximum with
+  {class}`fr.NumberedPagination <fastapi_restly.views.NumberedPagination>`,
+  such as `default_page_size=25` and `max_page_size=100`. `max_page` limits
+  how far a client can page. See [Page through a list](#list-pagination).
+- Turn on only the filters and sort keys that clients need, with
+  `include_filters` and `include_sort_keys`. Filter keys of your own, from
+  [`@fr.list_filter`](#own-list-filter), are always on, so check those too.
+  A filter or a sort on a column without an index reads the whole table. See
+  [Choose the keys of a list](#choose-list-keys).
+- Keep `unknown_query_params = "forbid"`, the default. A mistyped filter is
+  then a `422`, not a list with more rows than the client asked for. See
+  [Accept extra query parameters](#extra-query-parameters).
+- Put the rule for which rows a caller may see in a scope, not in code that
+  filters the rows after the read. A scope runs in SQL, so the rows of a
+  list, its count and its pages agree. See
+  [Give one view other rows](#view-scope).
 
 ## See also
 

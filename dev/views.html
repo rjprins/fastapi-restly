@@ -56,7 +56,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             false;
         </script>
-    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <script src="_static/newsletter.js?v=7326e93d"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/dev/views.html" />
     <link rel="icon" href="_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="about.html" />
@@ -515,11 +515,11 @@ and it can override any method.</p>
 <span id="what-is-a-class-based-view"></span><h2>How a view works<a class="headerlink" href="#how-a-view-works" title="Link to this heading">#</a></h2>
 <p>In plain FastAPI, an endpoint is a function, and each function declares what
 it needs:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">,</span> <span class="n">dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">Depends</span><span class="p">(</span><span class="n">require_login</span><span class="p">)])</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="n">session</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">)):</span>
     <span class="o">...</span>
 
-<span class="nd">@app</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">)</span>
+<span class="nd">@app</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">,</span> <span class="n">dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">Depends</span><span class="p">(</span><span class="n">require_login</span><span class="p">)])</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_user</span><span class="p">(</span><span class="n">payload</span><span class="p">:</span> <span class="n">UserCreate</span><span class="p">,</span> <span class="n">session</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">)):</span>
     <span class="o">...</span>
 </pre></div>
@@ -661,12 +661,16 @@ no method and no status code for you:</p>
         <span class="o">...</span>
 </pre></div>
 </div>
-<p>A route method must not have the name of a business method: <code class="docutils literal notranslate"><span class="pre">create</span></code>,
-<code class="docutils literal notranslate"><span class="pre">update</span></code> or <code class="docutils literal notranslate"><span class="pre">delete</span></code>. Registration raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> for such a name, also
-on a plain <code class="docutils literal notranslate"><span class="pre">View</span></code>. A CRUD view class that defines <code class="docutils literal notranslate"><span class="pre">get_one</span></code>, <code class="docutils literal notranslate"><span class="pre">get_many</span></code> or
-<code class="docutils literal notranslate"><span class="pre">select</span></code> fails when Python creates it, because the loads are final. Give the
-route another name. To replace a CRUD route, override its endpoint method,
-such as <code class="docutils literal notranslate"><span class="pre">create_endpoint</span></code>; see
+<p>A route method must not have the name of a view setting, such as <code class="docutils literal notranslate"><span class="pre">tags</span></code> or
+<code class="docutils literal notranslate"><span class="pre">prefix</span></code>, or on a CRUD view <code class="docutils literal notranslate"><span class="pre">model</span></code> or <code class="docutils literal notranslate"><span class="pre">pagination</span></code>: the method would
+replace the setting. On a CRUD view, it must not have the name of a
+business method either: <code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code> or <code class="docutils literal notranslate"><span class="pre">delete</span></code>. Both fail with
+<code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code> when Python creates the class, also for a route
+of a mixin. A plain <code class="docutils literal notranslate"><span class="pre">View</span></code> has no business methods, so these three names are
+free there. A CRUD view class that defines <code class="docutils literal notranslate"><span class="pre">get_one</span></code>, <code class="docutils literal notranslate"><span class="pre">get_many</span></code> or <code class="docutils literal notranslate"><span class="pre">select</span></code>
+fails when Python creates it too, because the loads are final. Give the
+route another name; its path stays the same. To replace a CRUD route,
+override its endpoint method, such as <code class="docutils literal notranslate"><span class="pre">create_endpoint</span></code>; see
 <a class="reference internal" href="lifecycle.html#replace-endpoint-method"><span class="std std-ref">Change the status code or headers of one route</span></a>.</p>
 </div>
 </section>

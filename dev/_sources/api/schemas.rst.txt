@@ -2,7 +2,8 @@ Schemas API
 ===========
 
 ``fastapi_restly.schemas`` implements the Pydantic schema layer: schema base
-classes, the ``ReadOnly`` and ``WriteOnly`` field markers, relationship
+classes, the ``ReadOnly`` and ``WriteOnly`` field markers, the ``UTCDatetime``
+field type and the ``in_utc()`` function for times in UTC, relationship
 reference types, and schema generation from SQLAlchemy models.
 
 .. seealso::

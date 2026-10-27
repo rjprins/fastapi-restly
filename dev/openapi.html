@@ -56,7 +56,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             false;
         </script>
-    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <script src="_static/newsletter.js?v=7326e93d"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/dev/openapi.html" />
     <link rel="icon" href="_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="about.html" />
@@ -696,6 +696,7 @@ decorator and <code class="docutils literal notranslate"><span class="pre">respo
 <a class="reference internal" href="responses.html#one-route-shape"><span class="std std-ref">Change the shape of one route</span></a> and
 <a class="reference internal" href="responses.html#list-schema"><span class="std std-ref">Use a different schema for the list route</span></a>.</p>
 <p>A route that the view leaves out with
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.include_routes" title="fastapi_restly.views.BaseRestView.include_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_routes</span></code></a> or
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_routes" title="fastapi_restly.views.BaseRestView.exclude_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_routes</span></code></a> is
 not in the spec at all; see <a class="reference internal" href="crud_routes.html#exclude-crud-routes"><span class="std std-ref">Exclude CRUD routes</span></a>.</p>
 </section>
@@ -728,6 +729,12 @@ reference types themselves are on
 app, do not get these annotations. The check for two classes with the same
 name still covers them when you pass the app to
 <a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure(app,</span> <span class="pre">...)</span></code></a>.</p>
+<p>Restly adds the annotations in the app’s <code class="docutils literal notranslate"><span class="pre">app.openapi()</span></code>, and checks the
+class names there too. FastAPI’s function <code class="docutils literal notranslate"><span class="pre">get_openapi()</span></code> does neither. So to
+write the spec to a file, call <code class="docutils literal notranslate"><span class="pre">app.openapi()</span></code>. Restly wraps <code class="docutils literal notranslate"><span class="pre">app.openapi</span></code>
+when the first view is included on the app, or when you pass the app to
+<code class="docutils literal notranslate"><span class="pre">fr.configure</span></code>. An <code class="docutils literal notranslate"><span class="pre">app.openapi</span></code> of your own that you set after that replaces
+Restly’s. Set it before, and Restly wraps it.</p>
 </div>
 </section>
 <section id="see-also">

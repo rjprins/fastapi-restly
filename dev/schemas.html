@@ -56,7 +56,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             false;
         </script>
-    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <script src="_static/newsletter.js?v=7326e93d"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/dev/schemas.html" />
     <link rel="icon" href="_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="about.html" />
@@ -577,19 +577,22 @@ Restly generates from the model.</p>
 <tr class="row-even"><td><p>A rule that a value must follow</p></td>
 <td><p><a class="reference internal" href="#validation">Validation</a></p></td>
 </tr>
-<tr class="row-odd"><td><p>Other field names in the JSON</p></td>
+<tr class="row-odd"><td><p>Times from clients in other time zones</p></td>
+<td><p><a class="reference internal" href="#utc-times"><code class="docutils literal notranslate"><span class="pre">UTCDatetime</span></code></a></p></td>
+</tr>
+<tr class="row-even"><td><p>Other field names in the JSON</p></td>
 <td><p><a class="reference internal" href="#field-aliases">Aliases</a></p></td>
 </tr>
-<tr class="row-even"><td><p>A response that differs from the input</p></td>
+<tr class="row-odd"><td><p>A response that differs from the input</p></td>
 <td><p><a class="reference internal" href="#own-response-class">Your own response class</a></p></td>
 </tr>
-<tr class="row-odd"><td><p>Clear type names in OpenAPI and generated clients</p></td>
+<tr class="row-even"><td><p>Clear type names in OpenAPI and generated clients</p></td>
 <td><p><a class="reference internal" href="#name-your-schemas">Name your schemas</a></p></td>
 </tr>
-<tr class="row-even"><td><p>A custom route that returns the view’s classes</p></td>
+<tr class="row-odd"><td><p>A custom route that returns the view’s classes</p></td>
 <td><p><a class="reference internal" href="#name-the-response-classes">Name the classes in a custom route</a></p></td>
 </tr>
-<tr class="row-odd"><td><p>A foreign key, or a relationship as an id or an object</p></td>
+<tr class="row-even"><td><p>A foreign key, or a relationship as an id or an object</p></td>
 <td><p><a class="reference internal" href="relationships.html"><span class="std std-doc">Relationships</span></a></p></td>
 </tr>
 </tbody>
@@ -641,8 +644,8 @@ under <code class="docutils literal notranslate"><span class="pre">IDSchema</spa
 yourself, <code class="docutils literal notranslate"><span class="pre">id</span></code> included. Mark the <code class="docutils literal notranslate"><span class="pre">id</span></code> <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> if clients must not send
 it.</p></li>
 <li><p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.TimestampsSchemaMixin" title="fastapi_restly.schemas.TimestampsSchemaMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.TimestampsSchemaMixin</span></code></a>
-adds read-only <code class="docutils literal notranslate"><span class="pre">created_at</span></code> and <code class="docutils literal notranslate"><span class="pre">updated_at</span></code> fields. Put it before the
-base class.</p></li>
+adds read-only <code class="docutils literal notranslate"><span class="pre">created_at</span></code> and <code class="docutils literal notranslate"><span class="pre">updated_at</span></code> fields, in UTC. Put it before
+the base class.</p></li>
 </ul>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">TimestampsSchemaMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
@@ -684,6 +687,12 @@ it:</p>
     <span class="n">password</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">WriteOnly</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
 </pre></div>
 </div>
+<p>Pydantic’s secret types, such as <code class="docutils literal notranslate"><span class="pre">SecretStr</span></code>, work in a schema too. A write
+stores the secret, and a response shows <code class="docutils literal notranslate"><span class="pre">**********</span></code>, as Pydantic does. So
+a client sees that the field has a value, but not the value. Like a
+<code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> field, such a field gets no filter and is not a sort key. In the
+document of a JSON column, a secret field raises an error instead; see
+<a class="reference internal" href="#json-document-columns">Validate the document in a JSON column</a>.</p>
 <div class="details admonition">
 <p class="admonition-title">Details</p>
 <p>The two markers work in different places. This matters when you use a
@@ -701,7 +710,8 @@ field validates and serializes like any other field. OpenAPI marks it
 </ul>
 <p>A marker must be the outer type of the field. Inside a union or a container,
 as in <code class="docutils literal notranslate"><span class="pre">Optional[WriteOnly[str]]</span></code>, <code class="docutils literal notranslate"><span class="pre">WriteOnly[str]</span> <span class="pre">|</span> <span class="pre">None</span></code> or
-<code class="docutils literal notranslate"><span class="pre">list[WriteOnly[str]]</span></code>, the marker would do nothing. So Restly rejects such a
+<code class="docutils literal notranslate"><span class="pre">list[WriteOnly[str]]</span></code>, the marker would do nothing. The same holds inside a
+type alias, such as <code class="docutils literal notranslate"><span class="pre">type</span> <span class="pre">Secret</span> <span class="pre">=</span> <span class="pre">WriteOnly[str]</span></code>. So Restly rejects such a
 field with a
 <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>.
 For an optional write-only field, write <code class="docutils literal notranslate"><span class="pre">WriteOnly[Optional[str]]</span></code>.</p>
@@ -760,15 +770,19 @@ request body that you write. Otherwise a client can set it.</p>
 <td><p><a class="reference internal" href="#readonly-and-writeonly"><code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code></a>, or <a class="reference internal" href="#explicit-write-schemas">your own request body</a></p></td>
 <td><p>The value is ignored</p></td>
 </tr>
-<tr class="row-even"><td><p>A referenced row must exist</p></td>
+<tr class="row-even"><td><p>A value that its column can hold, such as a number in the range of <code class="docutils literal notranslate"><span class="pre">Integer</span></code></p></td>
+<td><p>Nothing for the generic types of SQLAlchemy, a <code class="docutils literal notranslate"><span class="pre">Field</span></code> constraint for other types; see <a class="reference internal" href="#column-validation">Column validation</a></p></td>
+<td><p>422, or 400 in a filter</p></td>
+</tr>
+<tr class="row-odd"><td><p>A referenced row must exist</p></td>
 <td><p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist</span></code></a> or a reference field; see <a class="reference internal" href="relationships.html#reference-exists"><span class="std std-ref">Relationships</span></a></p></td>
 <td><p>404</p></td>
 </tr>
-<tr class="row-odd"><td><p>A value must be unique</p></td>
+<tr class="row-even"><td><p>A value must be unique</p></td>
 <td><p>A unique constraint on the column; see <a class="reference internal" href="errors.html#default-exception-handling"><span class="std std-ref">Errors</span></a></p></td>
 <td><p>409</p></td>
 </tr>
-<tr class="row-even"><td><p>A rule that needs the database, the stored row or the caller</p></td>
+<tr class="row-odd"><td><p>A rule that needs the database, the stored row or the caller</p></td>
 <td><p>The <code class="docutils literal notranslate"><span class="pre">create</span></code> or <code class="docutils literal notranslate"><span class="pre">update</span></code> business method; see <a class="reference internal" href="lifecycle.html#business-methods"><span class="std std-ref">Request Lifecycle &amp; Hooks</span></a></p></td>
 <td><p>The error that you raise</p></td>
 </tr>
@@ -833,6 +847,94 @@ on the view. The SaaS example does this for organizations
 (<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/organizations/schemas.py"><code class="docutils literal notranslate"><span class="pre">app/organizations/schemas.py</span></code></a>).</p>
 </div>
 </section>
+<section id="column-validation">
+<span id="id1"></span><h3>Column validation<a class="headerlink" href="#column-validation" title="Link to this heading">#</a></h3>
+<p>Restly checks each value from a client against the type of its column,
+before the database sees the value. It checks the generic integer and text
+types of SQLAlchemy, so you do not write a validator for them:</p>
+<ul class="simple">
+<li><p>A number must fit the integer type: 16 bits for <code class="docutils literal notranslate"><span class="pre">SmallInteger</span></code>, 32 bits
+for <code class="docutils literal notranslate"><span class="pre">Integer</span></code>, from -2,147,483,648 to 2,147,483,647, and 64 bits for
+<code class="docutils literal notranslate"><span class="pre">BigInteger</span></code>.</p></li>
+<li><p>Text must not hold a NUL character (<code class="docutils literal notranslate"><span class="pre">\x00</span></code>).</p></li>
+<li><p>Text in a request body must fit the length of a <code class="docutils literal notranslate"><span class="pre">String(n)</span></code> column.</p></li>
+</ul>
+<p>A value that does not fit gets 422 in a request body or in the path, and
+400 in a filter. A reference id that does not fit gets 404, as for a row
+that does not exist.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>The type of the column is the rule on every database. PostgreSQL refuses
+such a value with an error, which would be a 500. SQLite stores it, so the
+tests of an app on SQLite would not see the problem. PostgreSQL cannot store
+a NUL character in text, so Restly refuses it on every database. A column
+that holds bigger numbers needs <code class="docutils literal notranslate"><span class="pre">BigInteger</span></code>, such as a column with a Unix
+time in milliseconds. A filter only compares a value with the column, and
+PostgreSQL compares text of any length, so the length counts only in a
+request body. A <code class="docutils literal notranslate"><span class="pre">CHAR</span></code> without a length holds one character, as in SQL.</p>
+<p>Restly checks these types by their exact class: <code class="docutils literal notranslate"><span class="pre">Integer</span></code>, <code class="docutils literal notranslate"><span class="pre">SmallInteger</span></code>,
+<code class="docutils literal notranslate"><span class="pre">BigInteger</span></code>, <code class="docutils literal notranslate"><span class="pre">String</span></code>, <code class="docutils literal notranslate"><span class="pre">Text</span></code>, <code class="docutils literal notranslate"><span class="pre">Unicode</span></code> and <code class="docutils literal notranslate"><span class="pre">UnicodeText</span></code>, and the same
+types by their SQL names: <code class="docutils literal notranslate"><span class="pre">INTEGER</span></code>, <code class="docutils literal notranslate"><span class="pre">SMALLINT</span></code>, <code class="docutils literal notranslate"><span class="pre">BIGINT</span></code>, <code class="docutils literal notranslate"><span class="pre">VARCHAR</span></code>,
+<code class="docutils literal notranslate"><span class="pre">NVARCHAR</span></code>, <code class="docutils literal notranslate"><span class="pre">CHAR</span></code>, <code class="docutils literal notranslate"><span class="pre">NCHAR</span></code> and <code class="docutils literal notranslate"><span class="pre">TEXT</span></code>. Any other type gets the value as it
+is, as in SQLAlchemy:</p>
+<ul class="simple">
+<li><p>a type of a dialect, such as MySQL’s <code class="docutils literal notranslate"><span class="pre">TINYINT</span></code>,</p></li>
+<li><p>a subclass of a type above, such as <code class="docutils literal notranslate"><span class="pre">Enum</span></code>,</p></li>
+<li><p>a <a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/custom_types.html#sqlalchemy.types.TypeDecorator" title="(in SQLAlchemy v2.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypeDecorator</span></code></a>, such as SQLModel’s
+<code class="docutils literal notranslate"><span class="pre">AutoString</span></code>,</p></li>
+<li><p>a type from <code class="docutils literal notranslate"><span class="pre">with_variant()</span></code>.</p></li>
+</ul>
+<p>The database then checks the value. On PostgreSQL, a value that does not
+fit is an error, and the client gets a 500. For a 422, put the limit on the
+field of the schema. Its validation runs on filter values too; see
+<a class="reference internal" href="filtering.html#filter-value-validation"><span class="std std-ref">Filter values go through the field’s validation</span></a>.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Column</p></th>
+<th class="head"><p>Field of the schema</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Text with a length, in a type that Restly does not check</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Annotated[str,</span> <span class="pre">Field(max_length=50)]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>A smaller integer, such as MySQL’s <code class="docutils literal notranslate"><span class="pre">TINYINT</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Annotated[int,</span> <span class="pre">Field(ge=-128,</span> <span class="pre">le=127)]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Numeric(5,</span> <span class="pre">2)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Annotated[Decimal,</span> <span class="pre">Field(max_digits=5,</span> <span class="pre">decimal_places=2)]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Enum</span></code> or <code class="docutils literal notranslate"><span class="pre">Uuid</span></code></p></td>
+<td><p>The Python type: the enum class, or <code class="docutils literal notranslate"><span class="pre">uuid.UUID</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ARRAY(String(5))</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">list[Annotated[str,</span> <span class="pre">Field(max_length=5)]]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Text without NUL, in a type that Restly does not check</p></td>
+<td><p>An <code class="docutils literal notranslate"><span class="pre">AfterValidator</span></code>, as below</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">AfterValidator</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">no_nul</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">if</span> <span class="s2">&quot;</span><span class="se">\x00</span><span class="s2">&quot;</span> <span class="ow">in</span> <span class="n">text</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The text holds a NUL character.&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">text</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">NoteSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">text</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">AfterValidator</span><span class="p">(</span><span class="n">no_nul</span><span class="p">)]</span>
+</pre></div>
+</div>
+</div>
+</section>
 <section id="database-validation">
 <h3>Database validation<a class="headerlink" href="#database-validation" title="Link to this heading">#</a></h3>
 <p>A schema sees one request. It does not see other rows, the stored row or the
@@ -853,6 +955,130 @@ such rules in
 <a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/tasks/views.py"><code class="docutils literal notranslate"><span class="pre">app/tasks/views.py</span></code></a>.</p></li>
 </ul>
 </section>
+</section>
+<section id="keep-times-in-utc">
+<span id="utc-times"></span><h2>Keep times in UTC<a class="headerlink" href="#keep-times-in-utc" title="Link to this heading">#</a></h2>
+<p>Give each time field the type
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.UTCDatetime" title="fastapi_restly.schemas.UTCDatetime"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.UTCDatetime</span></code></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">MeetingSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">starts_at</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">UTCDatetime</span>
+</pre></div>
+</div>
+<p>The field reads a time without an offset, such as <code class="docutils literal notranslate"><span class="pre">2024-01-01T09:30:00</span></code>, as
+UTC. A time with an offset, such as <code class="docutils literal notranslate"><span class="pre">2024-01-01T10:30:00+01:00</span></code>, becomes the
+same time in UTC. So <code class="docutils literal notranslate"><span class="pre">create</span></code> and <code class="docutils literal notranslate"><span class="pre">update</span></code> get each time in UTC. A response
+shows it with <code class="docutils literal notranslate"><span class="pre">Z</span></code>, the offset of UTC, as JavaScript’s <code class="docutils literal notranslate"><span class="pre">toISOString()</span></code> does: a
+client that sends <code class="docutils literal notranslate"><span class="pre">&quot;starts_at&quot;:</span> <span class="pre">&quot;2024-01-01T10:30:00+01:00&quot;</span></code> gets
+<code class="docutils literal notranslate"><span class="pre">&quot;starts_at&quot;:</span> <span class="pre">&quot;2024-01-01T09:30:00Z&quot;</span></code> back. A schema that Restly generates
+gives each time column this type, and
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.TimestampsSchemaMixin" title="fastapi_restly.schemas.TimestampsSchemaMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.TimestampsSchemaMixin</span></code></a>
+gives it to <code class="docutils literal notranslate"><span class="pre">created_at</span></code> and <code class="docutils literal notranslate"><span class="pre">updated_at</span></code>.</p>
+<p>A filter value goes through the same type, so
+<code class="docutils literal notranslate"><span class="pre">?starts_at__gte=2024-01-01T04:15:00-05:00</span></code> finds the meeting. In a URL,
+write the <code class="docutils literal notranslate"><span class="pre">+</span></code> of an offset as <code class="docutils literal notranslate"><span class="pre">%2B</span></code>: a plain <code class="docutils literal notranslate"><span class="pre">+</span></code> means a space there.</p>
+<p>Each column stores the time in UTC. A column without a time zone stores it
+without the offset: <code class="docutils literal notranslate"><span class="pre">2024-01-01T09:30:00</span></code>. On a base with
+<a class="reference internal" href="api/models.html#fastapi_restly.models.ModelDefaults" title="fastapi_restly.models.ModelDefaults"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code></a>, a
+<code class="docutils literal notranslate"><span class="pre">Mapped[datetime]</span></code> column has a time zone. A column with
+<code class="docutils literal notranslate"><span class="pre">mapped_column(DateTime())</span></code> has none, and neither has <code class="docutils literal notranslate"><span class="pre">Mapped[datetime]</span></code> on a
+base without <code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code>.</p>
+<p>For local times, such as the start of a dinner booking in the time of the
+restaurant, use a column without a time zone, and a field of type <code class="docutils literal notranslate"><span class="pre">datetime</span></code>
+with a validator that converts the time. Restly then gets a time without an
+offset, and keeps it as it is:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">zoneinfo</span><span class="w"> </span><span class="kn">import</span> <span class="n">ZoneInfo</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pydantic</span>
+
+<span class="n">AMSTERDAM</span> <span class="o">=</span> <span class="n">ZoneInfo</span><span class="p">(</span><span class="s2">&quot;Europe/Amsterdam&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">amsterdam_time</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">datetime</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">datetime</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">value</span><span class="o">.</span><span class="n">tzinfo</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">value</span>
+    <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="n">astimezone</span><span class="p">(</span><span class="n">AMSTERDAM</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">tzinfo</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">BookingSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">starts_at</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">datetime</span><span class="p">,</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">AfterValidator</span><span class="p">(</span><span class="n">amsterdam_time</span><span class="p">)]</span>
+</pre></div>
+</div>
+<p>A filter value goes through the field’s validation too, also in the filter
+of a <a class="reference internal" href="react_admin.html"><span class="std std-doc">react-admin view</span></a>, so the filters convert it in the
+same way.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>Without these rules, the database drivers decide, and they do not agree. For
+a column without a time zone, asyncpg rejects a time with an offset, so the
+request fails with a 500. For a column with a time zone, asyncpg reads a
+time without an offset in the time zone of the app’s Python process. psycopg
+leaves both cases to PostgreSQL, which uses the time zone of the database
+session. On an engine that Restly builds from a URL, that session is in UTC;
+see <a class="reference internal" href="database.html#engine-defaults"><span class="std std-ref">Engine defaults</span></a>. SQLite drops the offset of every
+time.</p>
+<p>A field of type <code class="docutils literal notranslate"><span class="pre">datetime</span></code> keeps the time that the client sent. Restly still
+changes the time to fit its column before the database sees it: in a filter,
+and when it copies a request body onto the model, in
+<a class="reference internal" href="api/objects.html#fastapi_restly.objects.make_new_object" title="fastapi_restly.objects.make_new_object"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.objects.make_new_object</span></code></a>
+and <a class="reference internal" href="api/objects.html#fastapi_restly.objects.update_object" title="fastapi_restly.objects.update_object"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.objects.update_object</span></code></a>:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Column</p></th>
+<th class="head"><p>A time with an offset</p></th>
+<th class="head"><p>A time without an offset</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>With a time zone</p></td>
+<td><p>becomes the same time in UTC</p></td>
+<td><p>gets the offset of UTC</p></td>
+</tr>
+<tr class="row-odd"><td><p>Without a time zone</p></td>
+<td><p>becomes the same time in UTC, without the offset</p></td>
+<td><p>stays as it is</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>So <code class="docutils literal notranslate"><span class="pre">authorize</span></code>, <code class="docutils literal notranslate"><span class="pre">create</span></code> and <code class="docutils literal notranslate"><span class="pre">update</span></code> get the time as the client sent it,
+and a response shows a time from a column without a time zone without an
+offset.</p>
+<p>Restly changes a time to fit a column only when the model has a column with
+the name of the field. A field without one, such as a <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> field that
+only <code class="docutils literal notranslate"><span class="pre">create</span></code> reads, gets UTC from its type only.</p>
+<p>A filter method of your own, from
+<a class="reference internal" href="api/views.html#fastapi_restly.views.list_filter" title="fastapi_restly.views.list_filter"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.list_filter</span></code></a>, gets its value as
+the type of its parameter gives it. With <code class="docutils literal notranslate"><span class="pre">value:</span> <span class="pre">fr.UTCDatetime</span></code>, it gets the
+time in UTC. Compare it with a column without a time zone as
+<code class="docutils literal notranslate"><span class="pre">value.replace(tzinfo=None)</span></code>.</p>
+<p>A time from the database has no offset when its column has no time zone, and
+on SQLite always. A time from the schema has an offset. Python cannot order
+such times: <code class="docutils literal notranslate"><span class="pre">&lt;</span></code>, <code class="docutils literal notranslate"><span class="pre">&gt;</span></code> and <code class="docutils literal notranslate"><span class="pre">-</span></code> raise <code class="docutils literal notranslate"><span class="pre">TypeError</span></code>. And <code class="docutils literal notranslate"><span class="pre">==</span></code> is always <code class="docutils literal notranslate"><span class="pre">False</span></code>,
+and <code class="docutils literal notranslate"><span class="pre">!=</span></code> always <code class="docutils literal notranslate"><span class="pre">True</span></code>, without an error. Convert the time from the database
+with <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.in_utc" title="fastapi_restly.schemas.in_utc"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.in_utc</span></code></a> first, as in
+<code class="docutils literal notranslate"><span class="pre">data.ends_at</span> <span class="pre">&gt;</span> <span class="pre">fr.in_utc(obj.starts_at)</span></code>. <code class="docutils literal notranslate"><span class="pre">fr.in_utc</span></code> follows the rule of
+<code class="docutils literal notranslate"><span class="pre">fr.UTCDatetime</span></code>: a time without an offset is UTC, and a time with an offset
+becomes the same time in UTC.</p>
+<p>A column with a type of your own, a
+<a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/custom_types.html#sqlalchemy.types.TypeDecorator" title="(in SQLAlchemy v2.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypeDecorator</span></code></a>, gets a time with an offset as it
+is, and so does a type with a variant for one database, from
+<code class="docutils literal notranslate"><span class="pre">with_variant()</span></code>. Such a type may need the offset, as SQLAlchemy’s recipe
+that stores UTC in a column without a time zone does, and a variant may
+store a time zone where the type itself does not. Restly only checks that
+the time fits in UTC. A time without an offset gets the offset of UTC when
+the type stores a time zone. SQLAlchemy’s recipe stores none, and it refuses
+a time without an offset, so give its column a field of type
+<code class="docutils literal notranslate"><span class="pre">fr.UTCDatetime</span></code>, which gives every time the offset of UTC.</p>
+<p>A time that is not between the years 1 and 9999 in UTC, such as
+<code class="docutils literal notranslate"><span class="pre">9999-12-31T23:30:00-01:00</span></code>, gets 422 in a request body and 400 in a filter.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">date</span></code>, and a time of day of type <code class="docutils literal notranslate"><span class="pre">time</span></code>, have no rule. A time of day has
+no date, so summer time can change its time in UTC. A <code class="docutils literal notranslate"><span class="pre">time</span></code> column without
+a time zone keeps the clock time of a value and drops its offset:
+<code class="docutils literal notranslate"><span class="pre">09:00:00+02:00</span></code> becomes <code class="docutils literal notranslate"><span class="pre">09:00:00</span></code>.</p>
+</div>
 </section>
 <section id="use-other-field-names-in-json">
 <span id="field-aliases"></span><h2>Use other field names in JSON<a class="headerlink" href="#use-other-field-names-in-json" title="Link to this heading">#</a></h2>
@@ -881,7 +1107,7 @@ on the view. Everything that goes out follows it:</p>
 <ul class="simple">
 <li><p>every single response, and each item of the list response;</p></li>
 <li><p>the fields that the list filters and sort keys use, so a client can filter
-only on what it can see;</p></li>
+only on the fields that go out;</p></li>
 <li><p>the relationships that the view loads.</p></li>
 </ul>
 <p>The request bodies still follow <code class="docutils literal notranslate"><span class="pre">schema_create</span></code> and <code class="docutils literal notranslate"><span class="pre">schema_update</span></code>, which
@@ -959,6 +1185,9 @@ the view’s schema <code class="docutils literal notranslate"><span class="pre"
 unless another schema nests it or a custom route names it. The list params
 are not a class in OpenAPI either: OpenAPI shows them as separate query
 parameters.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">404</span></code> for a row that does not exist names the resource too, such as
+<code class="docutils literal notranslate"><span class="pre">User</span> <span class="pre">with</span> <span class="pre">id</span> <span class="pre">5</span> <span class="pre">was</span> <span class="pre">not</span> <span class="pre">found</span></code>. To change the text, override
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.not_found" title="fastapi_restly.views.BaseRestView.not_found"><code class="xref py py-meth docutils literal notranslate"><span class="pre">not_found</span></code></a>.</p>
 <div class="details admonition">
 <p class="admonition-title">Details</p>
 <p>The list response has no view attribute, because it has nothing of its own
@@ -973,7 +1202,7 @@ keeps its full name as the resource: <code class="docutils literal notranslate">
 </div>
 </section>
 <section id="name-your-schemas">
-<span id="id1"></span><h2>Name your schemas<a class="headerlink" href="#name-your-schemas" title="Link to this heading">#</a></h2>
+<span id="id2"></span><h2>Name your schemas<a class="headerlink" href="#name-your-schemas" title="Link to this heading">#</a></h2>
 <p>OpenAPI keeps all classes in one list, by name. It has no modules. A
 generated client uses these names as type names. So each class in your API
 needs its own name, even when Python keeps two classes apart in different
@@ -1147,8 +1376,10 @@ stored document when it is read back.</p>
 <code class="docutils literal notranslate"><span class="pre">Field(exclude=True)</span></code> field raises
 <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>
 before Restly assigns it. This includes such fields in nested models. The dump
-would leave those fields out, so they would not be stored. A document with
-dataclasses or iterators raises the same error. For such documents, use a
+would leave those fields out, so they would not be stored. A field of
+Pydantic’s secret types, such as <code class="docutils literal notranslate"><span class="pre">SecretStr</span></code>, raises the same error: the dump
+masks it, so the column would get <code class="docutils literal notranslate"><span class="pre">**********</span></code>. So does a document with
+dataclasses or iterators. For such documents, use a
 SQLAlchemy <a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/custom_types.html#sqlalchemy.types.TypeDecorator" title="(in SQLAlchemy v2.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypeDecorator</span></code></a> that defines how the
 document is stored. Its bind processor receives the Pydantic model itself, not
 a dump.</p>
@@ -1288,17 +1519,19 @@ column that the server fills, for example with a server default, is
 <strong>not</strong> <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>.</p></li>
 <li><p><strong>Relationships</strong>: never included. A foreign key column, such as
 <code class="docutils literal notranslate"><span class="pre">customer_id</span></code>, is an ordinary field. With <code class="docutils literal notranslate"><span class="pre">init=False</span></code>, it is <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>,
-as the rule above says. To show a related row in a response,
-write the schema yourself, for example with an <code class="docutils literal notranslate"><span class="pre">IDRef[Customer]</span></code> field; see
-<a class="reference internal" href="relationships.html"><span class="std std-doc">Relationships</span></a>.</p></li>
+as the rule above says. To write a relationship, or to show it in a
+response, write the schema yourself: <code class="docutils literal notranslate"><span class="pre">customer:</span> <span class="pre">fr.IDRef[Customer]</span></code> for
+its id, or a nested schema for the whole row. See
+<a class="reference internal" href="relationships.html#reference-styles"><span class="std std-ref">Choose a reference style</span></a>.</p></li>
 </ul>
 <p>A view and a direct call of <code class="docutils literal notranslate"><span class="pre">derive_schema(model)</span></code> give the same schema.</p>
 </section>
 <section id="column-types-and-field-types">
 <h3>Column types and field types<a class="headerlink" href="#column-types-and-field-types" title="Link to this heading">#</a></h3>
 <p><code class="docutils literal notranslate"><span class="pre">convert_sqlalchemy_type_to_pydantic</span></code> maps the Python type of each column,
-from its annotation or its column type, to a Pydantic field type. A type that
-Pydantic already understands stays as it is:</p>
+from its annotation or its column type, to a Pydantic field type, as in this
+table. A type keeps its name, except a time: it gets
+<a class="reference internal" href="#utc-times"><code class="docutils literal notranslate"><span class="pre">fr.UTCDatetime</span></code></a>.</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>
 <tr class="row-odd"><th class="head"><p>SQLAlchemy / Python annotation</p></th>
@@ -1319,7 +1552,7 @@ Pydantic already understands stays as it is:</p>
 <td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">datetime</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">datetime</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">fr.UTCDatetime</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">date</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">date</span></code></p></td>
@@ -1327,41 +1560,47 @@ Pydantic already understands stays as it is:</p>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">time</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">time</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">UUID</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">timedelta</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">timedelta</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">UUID</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">UUID</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Decimal</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Decimal</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Decimal</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">dict</span></code> / <code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">Any]</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">dict</span></code> / <code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">Any]</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">dict</span></code> / <code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">Any]</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">list</span></code> / <code class="docutils literal notranslate"><span class="pre">list[T]</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">list</span></code> / <code class="docutils literal notranslate"><span class="pre">list[T]</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">list</span></code> / <code class="docutils literal notranslate"><span class="pre">list[T]</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">enum.Enum</span></code> subclass</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">enum.Enum</span></code> subclass</p></td>
 <td><p>same enum subclass</p></td>
 </tr>
-<tr class="row-even"><td><p>SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Text</span></code>, <code class="docutils literal notranslate"><span class="pre">String</span></code></p></td>
+<tr class="row-odd"><td><p>SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Text</span></code>, <code class="docutils literal notranslate"><span class="pre">String</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p>SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Integer</span></code></p></td>
+<tr class="row-even"><td><p>SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Integer</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p>SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Float</span></code></p></td>
+<tr class="row-odd"><td><p>SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Float</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p>SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Boolean</span></code></p></td>
+<tr class="row-even"><td><p>SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Boolean</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p>SQLAlchemy <code class="docutils literal notranslate"><span class="pre">DateTime</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">datetime</span></code></p></td>
+<tr class="row-odd"><td><p>SQLAlchemy <code class="docutils literal notranslate"><span class="pre">DateTime</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">fr.UTCDatetime</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p>SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Date</span></code></p></td>
+<tr class="row-even"><td><p>SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Date</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">date</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p>SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Time</span></code></p></td>
+<tr class="row-odd"><td><p>SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Time</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">time</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Interval</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">timedelta</span></code></p></td>
 </tr>
 </tbody>
 </table>
@@ -1439,9 +1678,11 @@ keys that come from the response class.</p></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#write-the-request-body-yourself">Write the request body yourself</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#validate-input">Validate input</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#value-validation">Value validation</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#column-validation">Column validation</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#database-validation">Database validation</a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#keep-times-in-utc">Keep times in UTC</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-other-field-names-in-json">Use other field names in JSON</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#set-your-own-response-class">Set your own response class</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-names-of-the-generated-classes">The names of the generated classes</a></li>

@@ -56,7 +56,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             false;
         </script>
-    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <script src="_static/newsletter.js?v=7326e93d"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/dev/crud_routes.html" />
     <link rel="icon" href="_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="about.html" />
@@ -704,7 +704,7 @@ shows which fields each class takes.</p>
 <td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.id_type" title="fastapi_restly.views.BaseRestView.id_type"><code class="xref py py-attr docutils literal notranslate"><span class="pre">id_type</span></code></a> (<a class="reference internal" href="#item-route-matching">Item paths</a>)</p></td>
 </tr>
 <tr class="row-odd"><td><p>Fewer routes, such as a read-only view</p></td>
-<td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_routes" title="fastapi_restly.views.BaseRestView.exclude_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_routes</span></code></a> (<a class="reference internal" href="#exclude-crud-routes">Exclude CRUD routes</a>)</p></td>
+<td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.include_routes" title="fastapi_restly.views.BaseRestView.include_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_routes</span></code></a> (the routes to serve) or <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_routes" title="fastapi_restly.views.BaseRestView.exclude_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_routes</span></code></a> (the routes to leave out) (<a class="reference internal" href="#exclude-crud-routes">Exclude CRUD routes</a>)</p></td>
 </tr>
 <tr class="row-even"><td><p>Hide rows from every read</p></td>
 <td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.scope" title="fastapi_restly.views.BaseRestView.scope"><code class="xref py py-attr docutils literal notranslate"><span class="pre">scope</span></code></a>, or <code class="docutils literal notranslate"><span class="pre">default_scope</span></code> on the model (<a class="reference internal" href="scopes.html#view-scope"><span class="std std-ref">Scopes</span></a>)</p></td>
@@ -768,12 +768,62 @@ on a base view:</p>
 does not add to it. So repeat the entries of the base, or the subclass serves
 the write routes again:
 <code class="docutils literal notranslate"><span class="pre">exclude_routes</span> <span class="pre">=</span> <span class="pre">(*ReadOnlyView.exclude_routes,</span> <span class="pre">fr.ViewRoute.GET_ONE)</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">exclude_routes</span></code> leaves out only the routes that it names. So a subclass also
+serves the custom routes of its base, such as <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/tags/merge</span></code>, and also a
+write route that someone adds to the base later. For a read-only copy of a
+view with custom routes, set
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.include_routes" title="fastapi_restly.views.BaseRestView.include_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_routes</span></code></a>
+instead. It names the routes to serve, and the view leaves out every other
+route:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TagView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/tags&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Tag</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/merge&quot;</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">merge</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">target_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">public_router</span><span class="p">)</span>  <span class="c1"># an APIRouter(prefix=&quot;/public&quot;)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PublicTagView</span><span class="p">(</span><span class="n">TagView</span><span class="p">):</span>
+    <span class="n">include_routes</span> <span class="o">=</span> <span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">GET_MANY</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">GET_ONE</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">PublicTagView</span></code> serves only <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/public/tags</span></code> and <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/public/tags/{id}</span></code>,
+also when <code class="docutils literal notranslate"><span class="pre">TagView</span></code> gets more routes later.</p>
 <div class="details admonition">
 <p class="admonition-title">Details</p>
-<p>Each entry is a <a class="reference internal" href="api/views.html#fastapi_restly.views.ViewRoute" title="fastapi_restly.views.ViewRoute"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ViewRoute</span></code></a> value,
-<code class="docutils literal notranslate"><span class="pre">GET_MANY</span></code>, <code class="docutils literal notranslate"><span class="pre">GET_ONE</span></code>, <code class="docutils literal notranslate"><span class="pre">CREATE</span></code>, <code class="docutils literal notranslate"><span class="pre">UPDATE</span></code> or <code class="docutils literal notranslate"><span class="pre">DELETE</span></code>, or the name of a route
-method, such as <code class="docutils literal notranslate"><span class="pre">&quot;delete_endpoint&quot;</span></code>. A name that is not a route of the view
-raises <code class="docutils literal notranslate"><span class="pre">AttributeError</span></code> when you register the view.</p>
+<p>Each entry of <code class="docutils literal notranslate"><span class="pre">include_routes</span></code> and <code class="docutils literal notranslate"><span class="pre">exclude_routes</span></code> is a
+<a class="reference internal" href="api/views.html#fastapi_restly.views.ViewRoute" title="fastapi_restly.views.ViewRoute"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ViewRoute</span></code></a> value, <code class="docutils literal notranslate"><span class="pre">GET_MANY</span></code>,
+<code class="docutils literal notranslate"><span class="pre">GET_ONE</span></code>, <code class="docutils literal notranslate"><span class="pre">CREATE</span></code>, <code class="docutils literal notranslate"><span class="pre">UPDATE</span></code> or <code class="docutils literal notranslate"><span class="pre">DELETE</span></code>, or the name of a route method,
+such as <code class="docutils literal notranslate"><span class="pre">&quot;delete_endpoint&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;merge&quot;</span></code>. A name that is not a route of the
+view raises <code class="docutils literal notranslate"><span class="pre">AttributeError</span></code> when you register the view.</p>
+<p>The default of <code class="docutils literal notranslate"><span class="pre">include_routes</span></code>, <code class="docutils literal notranslate"><span class="pre">(&quot;*&quot;,)</span></code>, is every route. A view serves a
+route when <code class="docutils literal notranslate"><span class="pre">include_routes</span></code> has it and <code class="docutils literal notranslate"><span class="pre">exclude_routes</span></code> does not. A subclass
+that sets its own <code class="docutils literal notranslate"><span class="pre">include_routes</span></code> replaces the list of its base.</p>
+<p>The other way to make a read-only copy is a base view with the shared
+settings, subclassed twice. Then the copy does not inherit the custom routes
+of <code class="docutils literal notranslate"><span class="pre">TagView</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">TagBase</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Tag</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TagView</span><span class="p">(</span><span class="n">TagBase</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/tags&quot;</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/merge&quot;</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">merge</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">target_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PublicTagView</span><span class="p">(</span><span class="n">TagBase</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/public/tags&quot;</span>
+    <span class="n">exclude_routes</span> <span class="o">=</span> <span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">CREATE</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">UPDATE</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">DELETE</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">PublicTagView</span></code> serves only the two read routes, also when <code class="docutils literal notranslate"><span class="pre">TagView</span></code> gets more
+routes later. But both views serve a route that <code class="docutils literal notranslate"><span class="pre">TagBase</span></code> gets later.</p>
 </div>
 </section>
 <section id="nest-a-resource-under-its-parent">
@@ -839,11 +889,11 @@ Nest the view when the nested URL is part of your API.</p>
 
 
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">project_from_path</span><span class="p">(</span><span class="n">project_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">session</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncSessionDep</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-    <span class="n">query</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">apply_clauses</span><span class="p">(</span>
+    <span class="n">stmt</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">apply_clauses</span><span class="p">(</span>
         <span class="n">sa</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">Project</span><span class="o">.</span><span class="n">id</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Project</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">project_id</span><span class="p">),</span>
         <span class="n">fr</span><span class="o">.</span><span class="n">resolve_scope</span><span class="p">(</span><span class="n">ProjectView</span><span class="p">),</span>
     <span class="p">)</span>
-    <span class="n">found</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+    <span class="n">found</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="n">stmt</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">found</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">NotFound</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Project with id </span><span class="si">{</span><span class="n">project_id</span><span class="si">}</span><span class="s2"> was not found&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">found</span>
@@ -972,11 +1022,11 @@ example, and its own <code class="docutils literal notranslate"><span class="pre
 
 
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">company_from_path</span><span class="p">(</span><span class="n">company_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">session</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncSessionDep</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-    <span class="n">query</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">apply_clauses</span><span class="p">(</span>
+    <span class="n">stmt</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">apply_clauses</span><span class="p">(</span>
         <span class="n">sa</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">Company</span><span class="o">.</span><span class="n">id</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Company</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">company_id</span><span class="p">),</span>
         <span class="n">fr</span><span class="o">.</span><span class="n">resolve_scope</span><span class="p">(</span><span class="n">Company</span><span class="p">),</span>
     <span class="p">)</span>
-    <span class="n">found</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+    <span class="n">found</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="n">stmt</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">found</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">NotFound</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Company with id </span><span class="si">{</span><span class="n">company_id</span><span class="si">}</span><span class="s2"> was not found&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">found</span>
@@ -987,13 +1037,13 @@ example, and its own <code class="docutils literal notranslate"><span class="pre
     <span class="n">company_id</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">company_from_path</span><span class="p">)],</span>
     <span class="n">session</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncSessionDep</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-    <span class="n">query</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">apply_clauses</span><span class="p">(</span>
+    <span class="n">stmt</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">apply_clauses</span><span class="p">(</span>
         <span class="n">sa</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">Project</span><span class="o">.</span><span class="n">id</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
             <span class="n">Project</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">project_id</span><span class="p">,</span> <span class="n">Project</span><span class="o">.</span><span class="n">company_id</span> <span class="o">==</span> <span class="n">company_id</span>
         <span class="p">),</span>
         <span class="n">fr</span><span class="o">.</span><span class="n">resolve_scope</span><span class="p">(</span><span class="n">Project</span><span class="p">),</span>
     <span class="p">)</span>
-    <span class="n">found</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+    <span class="n">found</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="n">stmt</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">found</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">NotFound</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Project with id </span><span class="si">{</span><span class="n">project_id</span><span class="si">}</span><span class="s2"> was not found&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">found</span>

@@ -56,7 +56,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             false;
         </script>
-    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <script src="_static/newsletter.js?v=7326e93d"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/dev/relationships.html" />
     <link rel="icon" href="_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="about.html" />
@@ -648,13 +648,17 @@ field and the id:</p>
 <div class="details admonition">
 <p class="admonition-title">Details</p>
 <ul class="simple">
+<li><p>The message names a field by the name that the client sends in the body:
+its validation alias when that is a string, else its alias, else its
+name, such as <code class="docutils literal notranslate"><span class="pre">authorId</span></code>.</p></li>
 <li><p>Restly checks the references after <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and before your <code class="docutils literal notranslate"><span class="pre">create</span></code> or
 <code class="docutils literal notranslate"><span class="pre">update</span></code>. So the errors come in this order: the row in the URL (<code class="docutils literal notranslate"><span class="pre">404</span></code>),
 then the permission (<code class="docutils literal notranslate"><span class="pre">403</span></code>), then the references (<code class="docutils literal notranslate"><span class="pre">404</span></code>).</p></li>
 <li><p>Restly checks the data of every write: the CRUD routes, and
 <code class="docutils literal notranslate"><span class="pre">write_action(data=...)</span></code>. It also checks the schemas inside the data, such
 as the lines of an order, and each item when the data is a list. The
-message then names the place: <code class="docutils literal notranslate"><span class="pre">Id</span> <span class="pre">not</span> <span class="pre">found</span> <span class="pre">for</span> <span class="pre">lines[1].product_id:</span> <span class="pre">7</span></code>.</p></li>
+message then names the place: <code class="docutils literal notranslate"><span class="pre">Id</span> <span class="pre">not</span> <span class="pre">found</span> <span class="pre">for</span> <span class="pre">lines[1].product_id:</span> <span class="pre">7</span></code>,
+or <code class="docutils literal notranslate"><span class="pre">lines.k.product_id</span></code> for the key <code class="docutils literal notranslate"><span class="pre">k</span></code> of a dict.</p></li>
 <li><p>One query checks all the ids of one model. Restly checks only the fields
 that the client sent, and it skips a <code class="docutils literal notranslate"><span class="pre">null</span></code> value. In one write, Restly
 does not look up the same row twice.</p></li>
@@ -803,6 +807,119 @@ unless the relationship sets <code class="docutils literal notranslate"><span cl
 <p>A plain list of ids that sets no relationship, such as the projects that a
 route body names, is <code class="docutils literal notranslate"><span class="pre">list[fr.MustExist[int,</span> <span class="pre">Project]]</span></code>. Restly checks each
 id in one query, and the list stays a list of ints.</p>
+</section>
+<section id="many-to-many-relationships">
+<span id="many-to-many"></span><h2>Many-to-many relationships<a class="headerlink" href="#many-to-many-relationships" title="Link to this heading">#</a></h2>
+<p>The products of an order in the shop example above are a many-to-many
+relationship. An order has many products, and a product is in many orders.
+Such a relationship goes through an association table. Map it with
+SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">secondary</span></code>, as in this example of posts and tags:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">Column</span><span class="p">,</span> <span class="n">ForeignKey</span><span class="p">,</span> <span class="n">Table</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mapped</span><span class="p">,</span> <span class="n">relationship</span>
+
+<span class="n">post_tag</span> <span class="o">=</span> <span class="n">Table</span><span class="p">(</span>
+    <span class="s2">&quot;post_tag&quot;</span><span class="p">,</span>
+    <span class="n">Base</span><span class="o">.</span><span class="n">metadata</span><span class="p">,</span>
+    <span class="n">Column</span><span class="p">(</span><span class="s2">&quot;post_id&quot;</span><span class="p">,</span> <span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;post.id&quot;</span><span class="p">),</span> <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+    <span class="n">Column</span><span class="p">(</span><span class="s2">&quot;tag_id&quot;</span><span class="p">,</span> <span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;tag.id&quot;</span><span class="p">),</span> <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+<span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Tag</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDMixin</span><span class="p">,</span> <span class="n">Base</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">posts</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="s2">&quot;Post&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span>
+        <span class="n">secondary</span><span class="o">=</span><span class="n">post_tag</span><span class="p">,</span> <span class="n">back_populates</span><span class="o">=</span><span class="s2">&quot;tags&quot;</span><span class="p">,</span> <span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span>
+    <span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Post</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDMixin</span><span class="p">,</span> <span class="n">Base</span><span class="p">):</span>
+    <span class="n">title</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">tags</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">Tag</span><span class="p">]]</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span>
+        <span class="n">secondary</span><span class="o">=</span><span class="n">post_tag</span><span class="p">,</span> <span class="n">back_populates</span><span class="o">=</span><span class="s2">&quot;posts&quot;</span><span class="p">,</span> <span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span>
+    <span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">PostSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">tags</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">fr</span><span class="o">.</span><span class="n">IDRef</span><span class="p">[</span><span class="n">Tag</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+</pre></div>
+</div>
+<p>The schema takes the tags as a list of ids, as in
+<a class="reference internal" href="#reference-lists">Reference several rows</a>. <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/posts</span></code> with
+<code class="docutils literal notranslate"><span class="pre">&quot;tags&quot;:</span> <span class="pre">[1,</span> <span class="pre">2]</span></code> links the post to those tags. A <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> with <code class="docutils literal notranslate"><span class="pre">&quot;tags&quot;:</span> <span class="pre">[2]</span></code>
+replaces the whole list.</p>
+<p>Responses show the ids, also on an async view. Restly loads each relationship
+that the response class names. So the relationship needs no <code class="docutils literal notranslate"><span class="pre">lazy</span></code> option.</p>
+<p>The schema of a tag can show the ids of its posts with
+<code class="docutils literal notranslate"><span class="pre">posts:</span> <span class="pre">fr.ReadOnly[list[fr.IDRef[Post]]]</span></code>. The field is read-only here.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>To return the tags as objects, while clients still send ids, set your own
+<a class="reference internal" href="schemas.html#own-response-class"><span class="std std-ref">response class</span></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">PostResponse</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">tags</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">TagSchema</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">PostView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/posts&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Post</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">PostSchema</span>
+    <span class="n">schema_response</span> <span class="o">=</span> <span class="n">PostResponse</span>
+</pre></div>
+</div>
+<p>A link with columns of its own, such as the position of a tag on a post, is
+an association object: a model. Give it a view of its own, with a
+<code class="docutils literal notranslate"><span class="pre">fr.MustExist</span></code> for each end:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">ForeignKey</span><span class="p">,</span> <span class="n">UniqueConstraint</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mapped</span><span class="p">,</span> <span class="n">mapped_column</span><span class="p">,</span> <span class="n">relationship</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">PostTag</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDMixin</span><span class="p">,</span> <span class="n">Base</span><span class="p">):</span>
+    <span class="n">__table_args__</span> <span class="o">=</span> <span class="p">(</span><span class="n">UniqueConstraint</span><span class="p">(</span><span class="s2">&quot;post_id&quot;</span><span class="p">,</span> <span class="s2">&quot;tag_id&quot;</span><span class="p">),)</span>
+    <span class="n">post_id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;post.id&quot;</span><span class="p">))</span>
+    <span class="n">tag_id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;tag.id&quot;</span><span class="p">))</span>
+    <span class="n">position</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">tag</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="n">Tag</span><span class="p">]</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Post</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDMixin</span><span class="p">,</span> <span class="n">Base</span><span class="p">):</span>
+    <span class="n">title</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">links</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">PostTag</span><span class="p">]]</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span>
+        <span class="n">cascade</span><span class="o">=</span><span class="n">fr</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">CASCADE_ALL_DELETE_ORPHAN_ASYNC</span><span class="p">,</span> <span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span>
+    <span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">PostTagSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">post_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">MustExist</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Post</span><span class="p">]</span>
+    <span class="n">tag_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">MustExist</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Tag</span><span class="p">]</span>
+    <span class="n">position</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+</pre></div>
+</div>
+<p>The unique constraint answers a second link of the same tag with <code class="docutils literal notranslate"><span class="pre">409</span></code>. The
+cascade deletes the links of a post with the post. Without it, deleting a
+post that has links answers <code class="docutils literal notranslate"><span class="pre">409</span></code>. The post can show its links as a nested
+list, such as <code class="docutils literal notranslate"><span class="pre">links:</span> <span class="pre">fr.ReadOnly[list[PostTagSchema]]</span></code>, and Restly loads
+each level.</p>
+<p>A key of the list params cannot go through a list of related rows. So
+<code class="docutils literal notranslate"><span class="pre">include_filters</span> <span class="pre">=</span> <span class="pre">(&quot;*&quot;,</span> <span class="pre">&quot;tags.*&quot;)</span></code> fails when the view registers, because
+<code class="docutils literal notranslate"><span class="pre">tags.*</span></code> matches no key. Write a <a class="reference internal" href="filtering.html#own-list-filter"><span class="std std-ref">filter of your own</span></a>
+instead:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnElement</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">PostView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="o">...</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">list_filter</span><span class="p">(</span><span class="s2">&quot;tag&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">filter_tag</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">ColumnElement</span><span class="p">[</span><span class="nb">bool</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Posts with one of these tags.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">Post</span><span class="o">.</span><span class="n">tags</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">Tag</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">in_</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>A client then sends <code class="docutils literal notranslate"><span class="pre">?tag=news</span></code>, or <code class="docutils literal notranslate"><span class="pre">?tag=news&amp;tag=tech</span></code> for posts with
+either tag.</p>
+</div>
 </section>
 <section id="declare-the-foreign-key-and-the-relationship-on-the-model">
 <span id="model-relationship-setup"></span><h2>Declare the foreign key and the relationship on the model<a class="headerlink" href="#declare-the-foreign-key-and-the-relationship-on-the-model" title="Link to this heading">#</a></h2>
@@ -1094,12 +1211,17 @@ is not loaded, after a read or after a write. On an async view it raises
 <div class="details admonition">
 <p class="admonition-title">Details</p>
 <p>Restly’s session factories set <code class="docutils literal notranslate"><span class="pre">expire_on_commit=False</span></code>, so an object stays
-readable after the commit. Restly warns when the async session factory that
-you pass has <code class="docutils literal notranslate"><span class="pre">expire_on_commit=True</span></code>; see
-<a class="reference internal" href="database.html#session-factory-defaults"><span class="std std-ref">Session Factory Defaults</span></a>.</p>
+readable after the commit. Restly warns once for each view that writes
+through a session with <code class="docutils literal notranslate"><span class="pre">expire_on_commit=True</span></code>, from any source of sessions;
+see <a class="reference internal" href="database.html#session-factory-defaults"><span class="std std-ref">Session Factory Defaults</span></a>.</p>
 <p>The same error comes from any database access without <code class="docutils literal notranslate"><span class="pre">await</span></code>, not only from
 relationships: a deferred column, an expired attribute that your code reads,
-or a sync database driver behind an async engine. For those cases, see
+or a sync database driver behind an async engine. A relationship with
+<code class="docutils literal notranslate"><span class="pre">cascade=&quot;all&quot;</span></code> expires its related objects when your own code calls
+<code class="docutils literal notranslate"><span class="pre">session.refresh(obj)</span></code>. On an async session, use
+<a class="reference internal" href="api/models.html#fastapi_restly.models.CASCADE_ALL_ASYNC" title="fastapi_restly.models.CASCADE_ALL_ASYNC"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.models.CASCADE_ALL_ASYNC</span></code></a> or
+<a class="reference internal" href="api/models.html#fastapi_restly.models.CASCADE_ALL_DELETE_ORPHAN_ASYNC" title="fastapi_restly.models.CASCADE_ALL_DELETE_ORPHAN_ASYNC"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.models.CASCADE_ALL_DELETE_ORPHAN_ASYNC</span></code></a>
+instead. For all these cases, see
 SQLAlchemy’s
 <a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#preventing-implicit-io-when-using-asyncsession">Preventing Implicit IO when Using AsyncSession</a>.</p>
 </div>
@@ -1209,6 +1331,7 @@ running app.</p></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#name-the-field-after-the-model-attribute">Name the field after the model attribute</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reference-a-relationship-a-flat-id-or-an-object">Reference a relationship: a flat id or an object</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reference-several-rows">Reference several rows</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#many-to-many-relationships">Many-to-many relationships</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#declare-the-foreign-key-and-the-relationship-on-the-model">Declare the foreign key and the relationship on the model</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#filter-a-list-by-a-reference">Filter a list by a reference</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#build-references-in-a-custom-route">Build references in a custom route</a></li>

@@ -12,11 +12,11 @@ In plain FastAPI, an endpoint is a function, and each function declares what
 it needs:
 
 ```python
-@app.get("/users")
+@app.get("/users", dependencies=[Depends(require_login)])
 async def list_users(session: AsyncSession = Depends(get_session)):
     ...
 
-@app.post("/users")
+@app.post("/users", dependencies=[Depends(require_login)])
 async def create_user(payload: UserCreate, session: AsyncSession = Depends(get_session)):
     ...
 ```
@@ -157,12 +157,16 @@ no method and no status code for you:
         ...
 ```
 
-A route method must not have the name of a business method: `create`,
-`update` or `delete`. Registration raises `TypeError` for such a name, also
-on a plain `View`. A CRUD view class that defines `get_one`, `get_many` or
-`select` fails when Python creates it, because the loads are final. Give the
-route another name. To replace a CRUD route, override its endpoint method,
-such as `create_endpoint`; see
+A route method must not have the name of a view setting, such as `tags` or
+`prefix`, or on a CRUD view `model` or `pagination`: the method would
+replace the setting. On a CRUD view, it must not have the name of a
+business method either: `create`, `update` or `delete`. Both fail with
+`RestlyConfigurationError` when Python creates the class, also for a route
+of a mixin. A plain `View` has no business methods, so these three names are
+free there. A CRUD view class that defines `get_one`, `get_many` or `select`
+fails when Python creates it too, because the loads are final. Give the
+route another name; its path stays the same. To replace a CRUD route,
+override its endpoint method, such as `create_endpoint`; see
 [Change the status code or headers of one route](#replace-endpoint-method).
 :::
 

@@ -56,7 +56,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             false;
         </script>
-    <script src="../_static/newsletter.js?v=e342eb53"></script>
+    <script src="../_static/newsletter.js?v=7326e93d"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/dev/api/models.html" />
     <link rel="icon" href="../_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="../about.html" />
@@ -493,25 +493,50 @@
 <h1>Models API<a class="headerlink" href="#models-api" title="Link to this heading">#</a></h1>
 <p><code class="docutils literal notranslate"><span class="pre">fastapi_restly.models</span></code> provides <code class="docutils literal notranslate"><span class="pre">ModelDefaults</span></code>, which adds Restly’s
 defaults to your own declarative base, and the model mixins <code class="docutils literal notranslate"><span class="pre">IDMixin</span></code> and
-<code class="docutils literal notranslate"><span class="pre">TimestampsMixin</span></code>. <a class="reference internal" href="../models.html"><span class="doc">Models</span></a> shows how to use them.</p>
-<dl class="py class" id="module-fastapi_restly.models">
+<code class="docutils literal notranslate"><span class="pre">TimestampsMixin</span></code>. <a class="reference internal" href="../models.html"><span class="doc">Models</span></a> shows how to use them. It also provides
+two cascades for relationships on an async session, <code class="docutils literal notranslate"><span class="pre">CASCADE_ALL_ASYNC</span></code> and
+<code class="docutils literal notranslate"><span class="pre">CASCADE_ALL_DELETE_ORPHAN_ASYNC</span></code>.</p>
+<dl class="py data" id="module-fastapi_restly.models">
+<dt class="sig sig-object py" id="fastapi_restly.models.CASCADE_ALL_ASYNC">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.models.</span></span><span class="sig-name descname"><span class="pre">CASCADE_ALL_ASYNC</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'save-update,</span> <span class="pre">merge,</span> <span class="pre">delete,</span> <span class="pre">expunge'</span></em><a class="headerlink" href="#fastapi_restly.models.CASCADE_ALL_ASYNC" title="Link to this definition">#</a></dt>
+<dd><p>The cascade <code class="docutils literal notranslate"><span class="pre">&quot;all&quot;</span></code> without <code class="docutils literal notranslate"><span class="pre">&quot;refresh-expire&quot;</span></code>, for
+<code class="docutils literal notranslate"><span class="pre">relationship(cascade=...)</span></code> on an async session:
+<code class="docutils literal notranslate"><span class="pre">&quot;save-update,</span> <span class="pre">merge,</span> <span class="pre">delete,</span> <span class="pre">expunge&quot;</span></code>. With <code class="docutils literal notranslate"><span class="pre">&quot;all&quot;</span></code>, your own
+<code class="docutils literal notranslate"><span class="pre">session.refresh(obj)</span></code> also expires the related objects. On an async
+session, the next read of one can then raise <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. Restly’s
+own save after a write refreshes by attribute name and does not cascade,
+so <code class="docutils literal notranslate"><span class="pre">&quot;all&quot;</span></code> is safe on Restly’s write paths. See SQLAlchemy’s
+<a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#preventing-implicit-io-when-using-asyncsession">Preventing Implicit IO when Using AsyncSession</a>.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="fastapi_restly.models.CASCADE_ALL_DELETE_ORPHAN_ASYNC">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.models.</span></span><span class="sig-name descname"><span class="pre">CASCADE_ALL_DELETE_ORPHAN_ASYNC</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'save-update,</span> <span class="pre">merge,</span> <span class="pre">delete,</span> <span class="pre">expunge,</span> <span class="pre">delete-orphan'</span></em><a class="headerlink" href="#fastapi_restly.models.CASCADE_ALL_DELETE_ORPHAN_ASYNC" title="Link to this definition">#</a></dt>
+<dd><p><a class="reference internal" href="#fastapi_restly.models.CASCADE_ALL_ASYNC" title="fastapi_restly.models.CASCADE_ALL_ASYNC"><code class="xref py py-data docutils literal notranslate"><span class="pre">CASCADE_ALL_ASYNC</span></code></a> with <code class="docutils literal notranslate"><span class="pre">&quot;delete-orphan&quot;</span></code>: the cascade
+<code class="docutils literal notranslate"><span class="pre">&quot;all,</span> <span class="pre">delete-orphan&quot;</span></code> without <code class="docutils literal notranslate"><span class="pre">&quot;refresh-expire&quot;</span></code>.</p>
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="fastapi_restly.models.IDMixin">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.models.</span></span><span class="sig-name descname"><span class="pre">IDMixin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">id:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">&lt;sqlalchemy.orm.properties.MappedColumn</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.models.IDMixin" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.models.</span></span><span class="sig-name descname"><span class="pre">IDMixin</span></span><a class="headerlink" href="#fastapi_restly.models.IDMixin" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/mapping_api.html#sqlalchemy.orm.MappedAsDataclass" title="(in SQLAlchemy v2.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">MappedAsDataclass</span></code></a></p>
 <p>Dataclass mixin adding an auto-incrementing integer <cite>id</cite> primary key.</p>
 <p>Made for models on a base with <a class="reference internal" href="#fastapi_restly.models.ModelDefaults" title="fastapi_restly.models.ModelDefaults"><code class="xref py py-class docutils literal notranslate"><span class="pre">ModelDefaults</span></code></a>. On another base,
 SQLAlchemy makes each model that uses it a dataclass.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.models.IDMixin.id">
-<span class="sig-name descname"><span class="pre">id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/internals.html#sqlalchemy.orm.Mapped" title="(in SQLAlchemy v2.0)"><span class="pre">Mapped</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;sqlalchemy.orm.properties.MappedColumn</span> <span class="pre">object&gt;</span></em><a class="headerlink" href="#fastapi_restly.models.IDMixin.id" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/internals.html#sqlalchemy.orm.Mapped" title="(in SQLAlchemy v2.0)"><span class="pre">Mapped</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">mapped_column(...)</span></em><a class="headerlink" href="#fastapi_restly.models.IDMixin.id" title="Link to this definition">#</a></dt>
+<dd><p>The primary key: an integer that the database generates when it
+inserts the row. The constructor does not take it, and it is <code class="docutils literal notranslate"><span class="pre">None</span></code>
+until the session flushes the new object.</p>
+</dd></dl>
 
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="fastapi_restly.models.ModelDefaults">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.models.</span></span><span class="sig-name descname"><span class="pre">ModelDefaults</span></span><a class="headerlink" href="#fastapi_restly.models.ModelDefaults" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#sqlalchemy.ext.asyncio.AsyncAttrs" title="(in SQLAlchemy v2.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncAttrs</span></code></a>, <code class="xref py py-class docutils literal notranslate"><span class="pre">TableNameMixin</span></code>, <a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/mapping_api.html#sqlalchemy.orm.MappedAsDataclass" title="(in SQLAlchemy v2.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">MappedAsDataclass</span></code></a></p>
+<dd><p>Bases: <a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#sqlalchemy.ext.asyncio.AsyncAttrs" title="(in SQLAlchemy v2.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncAttrs</span></code></a>, <a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/mapping_api.html#sqlalchemy.orm.MappedAsDataclass" title="(in SQLAlchemy v2.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">MappedAsDataclass</span></code></a></p>
 <p>Restly’s defaults for SQLAlchemy models, for your own declarative base.</p>
 <p>Add it to your base class, before <code class="docutils literal notranslate"><span class="pre">DeclarativeBase</span></code>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Base</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ModelDefaults</span><span class="p">,</span> <span class="n">DeclarativeBase</span><span class="p">):</span>
@@ -563,33 +588,29 @@ one, and that repr can load a relationship too. Such a model raises
 
 <dl class="py class">
 <dt class="sig sig-object py" id="fastapi_restly.models.TimestampsMixin">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.models.</span></span><span class="sig-name descname"><span class="pre">TimestampsMixin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">created_at:</span> <span class="pre">~datetime.datetime</span> <span class="pre">=</span> <span class="pre">&lt;sqlalchemy.orm.properties.MappedColumn</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">updated_at:</span> <span class="pre">~datetime.datetime</span> <span class="pre">=</span> <span class="pre">&lt;sqlalchemy.orm.properties.MappedColumn</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.models.TimestampsMixin" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.models.</span></span><span class="sig-name descname"><span class="pre">TimestampsMixin</span></span><a class="headerlink" href="#fastapi_restly.models.TimestampsMixin" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/mapping_api.html#sqlalchemy.orm.MappedAsDataclass" title="(in SQLAlchemy v2.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">MappedAsDataclass</span></code></a></p>
-<p>Dataclass mixin adding UTC-aware created_at and updated_at timestamps.</p>
+<p>Dataclass mixin that adds <code class="docutils literal notranslate"><span class="pre">created_at</span></code> and <code class="docutils literal notranslate"><span class="pre">updated_at</span></code>, in UTC.</p>
 <p>Made for models on a base with <a class="reference internal" href="#fastapi_restly.models.ModelDefaults" title="fastapi_restly.models.ModelDefaults"><code class="xref py py-class docutils literal notranslate"><span class="pre">ModelDefaults</span></code></a>. On another base,
 SQLAlchemy makes each model that uses it a dataclass.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.models.TimestampsMixin.created_at">
-<span class="sig-name descname"><span class="pre">created_at</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/internals.html#sqlalchemy.orm.Mapped" title="(in SQLAlchemy v2.0)"><span class="pre">Mapped</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.15)"><span class="pre">datetime</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;sqlalchemy.orm.properties.MappedColumn</span> <span class="pre">object&gt;</span></em><a class="headerlink" href="#fastapi_restly.models.TimestampsMixin.created_at" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">created_at</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/internals.html#sqlalchemy.orm.Mapped" title="(in SQLAlchemy v2.0)"><span class="pre">Mapped</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.15)"><span class="pre">datetime</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">mapped_column(...)</span></em><a class="headerlink" href="#fastapi_restly.models.TimestampsMixin.created_at" title="Link to this definition">#</a></dt>
+<dd><p>When the row was created, in UTC. The model sets it to the current
+time when you create the object. The database sets it when SQL that
+leaves it out inserts a row.</p>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.models.TimestampsMixin.updated_at">
-<span class="sig-name descname"><span class="pre">updated_at</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/internals.html#sqlalchemy.orm.Mapped" title="(in SQLAlchemy v2.0)"><span class="pre">Mapped</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.15)"><span class="pre">datetime</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;sqlalchemy.orm.properties.MappedColumn</span> <span class="pre">object&gt;</span></em><a class="headerlink" href="#fastapi_restly.models.TimestampsMixin.updated_at" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">updated_at</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/internals.html#sqlalchemy.orm.Mapped" title="(in SQLAlchemy v2.0)"><span class="pre">Mapped</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.15)"><span class="pre">datetime</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">mapped_column(...)</span></em><a class="headerlink" href="#fastapi_restly.models.TimestampsMixin.updated_at" title="Link to this definition">#</a></dt>
+<dd><p>When the row last changed, in UTC. The model sets it when you create
+the object, and again in each UPDATE that SQLAlchemy runs for the row.
+The database sets it when SQL that leaves it out inserts a row.</p>
+</dd></dl>
 
 </dd></dl>
 
-<p><code class="docutils literal notranslate"><span class="pre">fastapi_restly.models</span></code> also provides two cascade strings for
-<code class="docutils literal notranslate"><span class="pre">relationship(cascade=...)</span></code> on async sessions. <code class="docutils literal notranslate"><span class="pre">CASCADE_ALL_ASYNC</span></code> is
-<code class="docutils literal notranslate"><span class="pre">&quot;save-update,</span> <span class="pre">merge,</span> <span class="pre">delete,</span> <span class="pre">expunge&quot;</span></code>, and
-<code class="docutils literal notranslate"><span class="pre">CASCADE_ALL_DELETE_ORPHAN_ASYNC</span></code> adds <code class="docutils literal notranslate"><span class="pre">&quot;delete-orphan&quot;</span></code>. SQLAlchemy’s
-<code class="docutils literal notranslate"><span class="pre">&quot;all&quot;</span></code> also includes <code class="docutils literal notranslate"><span class="pre">&quot;refresh-expire&quot;</span></code>: then a plain
-<code class="docutils literal notranslate"><span class="pre">session.refresh(obj)</span></code> expires the related objects, and they lazy-load on the
-next access, which fails on an async session. Restly’s save after a write
-refreshes by attribute name and does not cascade, so <code class="docutils literal notranslate"><span class="pre">&quot;all&quot;</span></code> is safe on
-Restly’s write paths. Use these constants where your own code refreshes an
-object on an async session.</p>
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
 <p><a class="reference internal" href="../models.html"><span class="doc">Models</span></a> shows how to add Restly’s defaults to your own
@@ -645,6 +666,8 @@ shows Restly views on the models you already have.</p>
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.models.CASCADE_ALL_ASYNC"><code class="docutils literal notranslate"><span class="pre">CASCADE_ALL_ASYNC</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.models.CASCADE_ALL_DELETE_ORPHAN_ASYNC"><code class="docutils literal notranslate"><span class="pre">CASCADE_ALL_DELETE_ORPHAN_ASYNC</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.models.IDMixin"><code class="docutils literal notranslate"><span class="pre">IDMixin</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.models.IDMixin.id"><code class="docutils literal notranslate"><span class="pre">IDMixin.id</span></code></a></li>
 </ul>

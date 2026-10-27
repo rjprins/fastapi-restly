@@ -56,7 +56,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             false;
         </script>
-    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <script src="_static/newsletter.js?v=7326e93d"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/dev/api_reference.html" />
     <link rel="icon" href="_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="about.html" />
@@ -508,7 +508,7 @@ convention:</p>
 <td><p>View classes, route decorators, registration, CRUD methods, and action hooks.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/schemas.html#module-fastapi_restly.schemas" title="fastapi_restly.schemas"><code class="xref py py-mod docutils literal notranslate"><span class="pre">fr.schemas</span></code></a></p></td>
-<td><p>Pydantic bases, field markers, relationship references, and schema generation.</p></td>
+<td><p>Pydantic bases, field markers, a field type and a function for times in UTC, relationship references, and schema generation.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/models.html#module-fastapi_restly.models" title="fastapi_restly.models"><code class="xref py py-mod docutils literal notranslate"><span class="pre">fr.models</span></code></a></p></td>
 <td><p>Defaults for your declarative base, and mixins for IDs and timestamps.</p></td>
@@ -520,7 +520,7 @@ convention:</p>
 <td><p>Reusable query predicates, boolean composition, and request context values.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/query.html#module-fastapi_restly.query" title="fastapi_restly.query"><code class="xref py py-mod docutils literal notranslate"><span class="pre">fr.query</span></code></a></p></td>
-<td><p>The list params (filter, sort, and pagination) and how to apply them to SQLAlchemy queries.</p></td>
+<td><p>The list params (filter, sort, and pagination), how to apply them to SQLAlchemy queries, and the tools for list params of your own: their keys, their page fields and the primary key as the last sort term.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/objects.html#module-fastapi_restly.objects" title="fastapi_restly.objects"><code class="xref py py-mod docutils literal notranslate"><span class="pre">fr.objects</span></code></a></p></td>
 <td><p>Functions for building, updating, saving, and deleting ORM objects through a session.</p></td>

@@ -27,17 +27,19 @@ generates.
 ## Add a view next to your existing routes
 
 Call `fr.include_view()` where you already compose your routes. Your
-existing routers and the new views can share the same app or router:
+existing routers and the new views can share the same app or router. They
+also share your login check and your database session:
 
 ```python
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, Depends, FastAPI
 import fastapi_restly as fr
 
-from .db import async_engine          # the async engine your app already builds
+from .auth import require_login       # the login check your routes already use
+from .db import get_db                # the session generator your routes already use
 from .orders import router as orders_router
 
 app = FastAPI()
-fr.configure(app, async_engine=async_engine)
+fr.configure(app, session_generator=get_db)
 
 api = APIRouter(prefix="/api")
 
@@ -46,6 +48,7 @@ api.include_router(orders_router, prefix="/orders")  # existing FastAPI routes
 
 class UserView(fr.AsyncRestView):
     prefix = "/users"
+    dependencies = [Depends(require_login)]
     model = User
     schema = UserSchema
 
@@ -59,6 +62,18 @@ You adopt Restly one resource at a time. In the example, the orders routes
 stay hand-written, and the users routes come from `UserView`. If you add a
 `ProductView` later, the orders router does not change.
 
+`require_login` runs before every route of the view; see
+[Run a dependency on every route](#run-a-dependency-on-every-route).
+FastAPI calls `get_db` once for each request, so the view and your
+dependencies that use `Depends(get_db)`, such as `require_login`, get the
+same session. An override of `get_db` in `app.dependency_overrides` gives the
+views their session too, so a test setup that overrides `get_db` keeps
+working; see
+[Use the view's session in your own dependencies](#share-request-session).
+A sync app passes its generator as `sync_session_generator`, and its views
+are `fr.RestView`. Before you pass `get_db`, check the two rules in the next
+section.
+
 :::{admonition} Details
 :class: details
 
@@ -67,7 +82,10 @@ stay hand-written, and the users routes come from `UserView`. If you add a
 `fr.configure()`, also when the views are on a router. That call checks the
 OpenAPI schema of the app for two classes with the same name, and
 `fr.include_view()` on a router cannot do this; see
-[Database & Configuration](#configure-restly).
+[Database & Configuration](#configure-restly). The check also covers the
+routes that you had before Restly. So the first warning can name two classes
+of your own, which OpenAPI already showed under long names; see
+[Name your schemas](#name-your-schemas).
 
 A plain FastAPI route can also sit next to a view, for an endpoint that is not
 part of the CRUD routes:
@@ -78,6 +96,46 @@ async def export_user(id: int):
     ...
 ```
 :::
+
+(existing-get-db)=
+
+## Two rules for your `get_db`
+
+A `get_db` that works for your own routes can still break the views.
+
+Create its sessionmaker with `expire_on_commit=False`, and for async views
+also with `autoflush=False`, as Restly does:
+
+```python
+SessionLocal = async_sessionmaker(engine, expire_on_commit=False, autoflush=False)
+```
+
+Restly reads the response from the object after the commit. With
+SQLAlchemy's default, `expire_on_commit=True`, that read fails in an async
+view with `MissingGreenlet`, so every `POST` and `PATCH` answers 500. A sync
+view still works, but `snapshot(new)` in `after_action_commit` is empty.
+Restly warns once for each view, sync or async, that writes through such a
+session.
+
+And `get_db` must not commit. A `get_db` that commits after the `yield` saves
+changes that should be rolled back, such as those of a route that forgot to
+commit. Remove that commit:
+
+```python
+async def get_db():
+    async with SessionLocal() as session:
+        yield session
+        # no session.commit() here
+```
+
+:::{warning}
+First add a commit to each of your own routes that writes. A route that
+still relies on the commit in `get_db` answers 200, but its writes are lost,
+and nothing warns you.
+:::
+
+[Build sessions with your own generator](#own-session-generator) has the
+details of both rules.
 
 (hand-written-crud-route)=
 
@@ -161,7 +219,8 @@ Restly can use the database setup and the models that your application
 already has:
 
 - [Reuse your existing engine or sessionmaker](#reuse-existing-engine)
-  shows how to give your engine to `fr.configure()`.
+  shows how to give your engine to `fr.configure()`, for an app that has no
+  session generator.
 - [Use your existing models](#existing-models) shows what Restly needs from
   your models.
 

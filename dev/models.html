@@ -56,7 +56,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             false;
         </script>
-    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <script src="_static/newsletter.js?v=7326e93d"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/dev/models.html" />
     <link rel="icon" href="_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="about.html" />
@@ -577,8 +577,10 @@ repr, which reads every field.</p></li>
 Set <code class="docutils literal notranslate"><span class="pre">__tablename__</span></code> on a model to choose another name.</p></li>
 <li><p><strong>Datetimes with a time zone.</strong> <code class="docutils literal notranslate"><span class="pre">Mapped[datetime]</span></code> maps to
 <code class="docutils literal notranslate"><span class="pre">DateTime(timezone=True)</span></code>. Store UTC times in it. PostgreSQL returns them
-with a time zone, but SQLite returns them without one. For a clock time
-without a time zone, use <code class="docutils literal notranslate"><span class="pre">mapped_column(DateTime())</span></code> on that column.</p></li>
+with a time zone, but SQLite returns them without one. A column with
+<code class="docutils literal notranslate"><span class="pre">mapped_column(DateTime())</span></code> has no time zone, and holds UTC without the
+offset. For the times that clients send, and for a column that keeps local
+times, see <a class="reference internal" href="schemas.html#utc-times"><span class="std std-ref">Keep times in UTC</span></a>.</p></li>
 <li><p><strong>Enums as strings.</strong> A column typed with an <code class="docutils literal notranslate"><span class="pre">enum.Enum</span></code> stores the name of
 the member, such as <code class="docutils literal notranslate"><span class="pre">RED</span></code>, as a string of up to 64 characters. It is not a
 database enum type, so a new member needs no database migration.</p></li>
@@ -638,7 +640,8 @@ base would apply to some models only, and the base raises
 primary key. The database chooses its value, so the constructor does not take
 it.</p>
 <p><a class="reference internal" href="api/models.html#fastapi_restly.models.TimestampsMixin" title="fastapi_restly.models.TimestampsMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.TimestampsMixin</span></code></a> adds
-<code class="docutils literal notranslate"><span class="pre">created_at</span></code> and <code class="docutils literal notranslate"><span class="pre">updated_at</span></code>. Both are UTC datetimes with a time zone.
+<code class="docutils literal notranslate"><span class="pre">created_at</span></code> and <code class="docutils literal notranslate"><span class="pre">updated_at</span></code>. Both hold times in UTC, in columns with a
+time zone.
 The constructor sets both to the current time, and SQLAlchemy sets
 <code class="docutils literal notranslate"><span class="pre">updated_at</span></code> again on every update. A schema can return them with
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.TimestampsSchemaMixin" title="fastapi_restly.schemas.TimestampsSchemaMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.TimestampsSchemaMixin</span></code></a>.</p>

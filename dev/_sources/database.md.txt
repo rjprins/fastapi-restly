@@ -26,8 +26,9 @@ argument:
 | A session generator | `session_generator` | `sync_session_generator` | Calls it for each request |
 
 Pass a URL when Restly may own the engine. Pass your engine or your
-sessionmaker when your application already builds one. Use a generator only
-when sessions must be built in a special way. An application that has both
+sessionmaker when your application already builds one. Pass a generator when
+your routes already get their session from one, such as `get_db`, or when
+sessions must be built in a special way. An application that has both
 async and sync views passes one async and one sync source.
 
 For each request, a view gets a session from that source. An
@@ -82,8 +83,9 @@ If you pass an async sessionmaker, create it with `expire_on_commit=False`.
 :class: details
 
 Restly reads the response from the object after the commit, and in async code
-an expired attribute raises `MissingGreenlet`. Restly warns when it gets an
-async sessionmaker with `expire_on_commit=True`.
+an expired attribute raises `MissingGreenlet`. Restly warns once for each view
+that writes through a session with `expire_on_commit=True`, from any source of
+sessions.
 [Session factory defaults](#session-factory-defaults) explains the options
 that Restly sets on its own factories.
 
@@ -96,10 +98,11 @@ to `fr.configure()`
 
 ## Build sessions with your own generator
 
-Use a session generator when your sessions need special setup, such as
-scoped sessions, routing to a database per tenant, or instrumentation. The
-generator builds a session, yields it, and cleans it up. It must not commit:
-the view commits its write actions.
+Use a session generator when your application already has one, like the
+`get_db` that your routes use. Use one also when your sessions need special
+setup, such as scoped sessions, routing to a database per tenant, or
+instrumentation. The generator builds a session, yields it, and cleans it up.
+It must not commit: the view commits its write actions.
 
 For async views, pass an async generator:
 
@@ -139,10 +142,26 @@ def my_get_db() -> Iterator[Session]:
 fr.configure(sync_session_generator=my_get_db)
 ```
 
-Give your sessions the same options as Restly's own factories, unless you need
-other behavior: `expire_on_commit=False`, and for async sessions also
-`autoflush=False`. [Session factory defaults](#session-factory-defaults)
-explains why.
+Many `get_db` generators commit after the `yield`. Such a commit saves
+changes that should be rolled back: changes that no write action committed,
+such as those of a route that forgot to commit. Restly's warning says that
+these changes are rolled back, but a generator that commits saves them. So
+remove the commit from the generator. The views do not need it.
+
+:::{warning}
+Before you remove the commit, add a commit to each of your own routes that
+writes. A route that still relies on the commit in the generator answers 200,
+but its writes are lost, and nothing warns you. Restly's warning about
+changes that were not committed comes only from views, and from routes that
+get their session through `fr.AsyncSessionDep` or `fr.SessionDep`.
+:::
+
+Give your sessions the same options as Restly's own factories:
+`expire_on_commit=False`, and for async sessions also `autoflush=False`. An
+async view needs `expire_on_commit=False`. Without it, its `POST` and `PATCH`
+routes fail with `MissingGreenlet`. Restly warns once for each view that
+writes through such a session;
+[Session factory defaults](#session-factory-defaults) explains why.
 
 To use the generator outside a request, with
 [`fr.open_session()`](#session-off-request), it must take no arguments. In
@@ -191,7 +210,10 @@ that were not committed, as they do on a view.
 When you configure your own generator, your existing `Depends(my_get_db)`
 gives the same session as the view's `self.session`. FastAPI runs the
 generator once per request, and cleans it up once. FastAPI's own caching rules
-still apply: a dependency with `use_cache=False` gets its own session.
+still apply: a dependency with `use_cache=False` gets its own session. For the
+same reason, an override of `my_get_db` in `app.dependency_overrides` also
+gives the views their session, so a test setup that overrides it keeps
+working.
 :::
 
 (session-dependency-one-view)=
@@ -372,7 +394,7 @@ not set them by default:
 |---|---|
 | SQLite, in memory | `poolclass=StaticPool`, `connect_args={"check_same_thread": False}` |
 | SQLite, any | `PRAGMA foreign_keys=ON`, on every connection |
-| PostgreSQL | `pool_pre_ping=True`, `pool_recycle=1800` |
+| PostgreSQL | `pool_pre_ping=True`, `pool_recycle=1800`, and each session in UTC |
 
 An in-memory SQLite database lives inside its connection. The default pool
 opens one connection per thread, so each thread after the first gets a second,
@@ -392,13 +414,34 @@ replaces connections older than 30 minutes, because proxies such as pgbouncer
 close idle connections without telling the client. Restly does not set the
 pool size: it sets neither `pool_size` nor `max_overflow`.
 
-Each of these options changes only the connection. Restly does not change the
-database itself, so these defaults leave no trace in your data after the
-process exits.
+Each new PostgreSQL session is in UTC, as in Django and Rails. Restly reads
+the time zone that the server reports for the session, and sends
+`SET TIME ZONE 'UTC'` when it is another zone. PostgreSQL then reads a time
+without an offset as UTC, as Restly does: `now()` gives UTC for a column
+without a time zone, and psycopg gives back each time in UTC, as asyncpg
+does. So the functions in your SQL work in UTC too:
+`date_trunc('day', created_at)` gives the days of UTC. asyncpg is different
+in one place: it converts a `datetime` without an offset that your code
+passes for a column with a time zone itself, in the time zone of the Python
+process; see [Keep times in UTC](#utc-times).
+
+For the days of another zone, name the zone in the SQL. For a column with a
+time zone, write `date_trunc('day', created_at AT TIME ZONE 'Europe/Amsterdam')`.
+A column without a time zone holds UTC without the offset, so give it the
+zone UTC first:
+`date_trunc('day', starts_at AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Amsterdam')`.
+
+Each of these options changes only the connection. Restly changes no setting
+of the database itself, such as `journal_mode=WAL` on SQLite, which would
+stay after the process exits.
 
 These defaults apply only to the URL form. If you pass `engine=`,
 `make_session=` or a session generator, Restly uses your object as it is. To
-turn off any of these defaults, build the engine yourself.
+turn off any of these defaults, build the engine yourself. Such an engine
+keeps the time zone of its PostgreSQL sessions. To put them in UTC, pass
+`connect_args={"server_settings": {"timezone": "UTC"}}` to
+`create_async_engine()` for asyncpg, or
+`connect_args={"options": "-c timezone=UTC"}` for psycopg.
 
 (session-factory-defaults)=
 
@@ -420,7 +463,10 @@ commit expires those attributes, so each read loads them from the database
 again. In async code, that read raises `MissingGreenlet`: the response is
 built in plain async code, and SQLAlchemy cannot load from the database there
 without an `await`. In sync code, the read works, but building the response
-now needs the database.
+now needs the database. And in both, `snapshot(new)` in `after_action_commit`
+is empty, because it reads only the loaded attributes. So Restly warns with
+{class}`RestlyExpireOnCommitWarning <fastapi_restly.exc.RestlyExpireOnCommitWarning>`
+once for each view that writes through a session that expires on commit.
 
 The autoflush option is different for async and sync sessions. Async sessions
 turn autoflush off, because autoflush can make a read send a write to the

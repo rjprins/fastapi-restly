@@ -56,7 +56,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             false;
         </script>
-    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <script src="_static/newsletter.js?v=7326e93d"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/dev/database.html" />
     <link rel="icon" href="_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="about.html" />
@@ -553,8 +553,9 @@ argument:</p>
 </table>
 </div>
 <p>Pass a URL when Restly may own the engine. Pass your engine or your
-sessionmaker when your application already builds one. Use a generator only
-when sessions must be built in a special way. An application that has both
+sessionmaker when your application already builds one. Pass a generator when
+your routes already get their session from one, such as <code class="docutils literal notranslate"><span class="pre">get_db</span></code>, or when
+sessions must be built in a special way. An application that has both
 async and sync views passes one async and one sync source.</p>
 <p>For each request, a view gets a session from that source. An
 <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> receives it
@@ -597,8 +598,9 @@ still controls the engine, and Restly applies none of its
 <div class="details admonition">
 <p class="admonition-title">Details</p>
 <p>Restly reads the response from the object after the commit, and in async code
-an expired attribute raises <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. Restly warns when it gets an
-async sessionmaker with <code class="docutils literal notranslate"><span class="pre">expire_on_commit=True</span></code>.
+an expired attribute raises <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. Restly warns once for each view
+that writes through a session with <code class="docutils literal notranslate"><span class="pre">expire_on_commit=True</span></code>, from any source of
+sessions.
 <a class="reference internal" href="#session-factory-defaults">Session factory defaults</a> explains the options
 that Restly sets on its own factories.</p>
 <p>The SaaS example builds its own async engine from its settings and passes it
@@ -608,10 +610,11 @@ to <code class="docutils literal notranslate"><span class="pre">fr.configure()</
 </section>
 <section id="build-sessions-with-your-own-generator">
 <span id="own-session-generator"></span><h2>Build sessions with your own generator<a class="headerlink" href="#build-sessions-with-your-own-generator" title="Link to this heading">#</a></h2>
-<p>Use a session generator when your sessions need special setup, such as
-scoped sessions, routing to a database per tenant, or instrumentation. The
-generator builds a session, yields it, and cleans it up. It must not commit:
-the view commits its write actions.</p>
+<p>Use a session generator when your application already has one, like the
+<code class="docutils literal notranslate"><span class="pre">get_db</span></code> that your routes use. Use one also when your sessions need special
+setup, such as scoped sessions, routing to a database per tenant, or
+instrumentation. The generator builds a session, yields it, and cleans it up.
+It must not commit: the view commits its write actions.</p>
 <p>For async views, pass an async generator:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncIterator</span>
 
@@ -646,10 +649,25 @@ the view commits its write actions.</p>
 <span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">sync_session_generator</span><span class="o">=</span><span class="n">my_get_db</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Give your sessions the same options as Restly’s own factories, unless you need
-other behavior: <code class="docutils literal notranslate"><span class="pre">expire_on_commit=False</span></code>, and for async sessions also
-<code class="docutils literal notranslate"><span class="pre">autoflush=False</span></code>. <a class="reference internal" href="#session-factory-defaults">Session factory defaults</a>
-explains why.</p>
+<p>Many <code class="docutils literal notranslate"><span class="pre">get_db</span></code> generators commit after the <code class="docutils literal notranslate"><span class="pre">yield</span></code>. Such a commit saves
+changes that should be rolled back: changes that no write action committed,
+such as those of a route that forgot to commit. Restly’s warning says that
+these changes are rolled back, but a generator that commits saves them. So
+remove the commit from the generator. The views do not need it.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Before you remove the commit, add a commit to each of your own routes that
+writes. A route that still relies on the commit in the generator answers 200,
+but its writes are lost, and nothing warns you. Restly’s warning about
+changes that were not committed comes only from views, and from routes that
+get their session through <code class="docutils literal notranslate"><span class="pre">fr.AsyncSessionDep</span></code> or <code class="docutils literal notranslate"><span class="pre">fr.SessionDep</span></code>.</p>
+</div>
+<p>Give your sessions the same options as Restly’s own factories:
+<code class="docutils literal notranslate"><span class="pre">expire_on_commit=False</span></code>, and for async sessions also <code class="docutils literal notranslate"><span class="pre">autoflush=False</span></code>. An
+async view needs <code class="docutils literal notranslate"><span class="pre">expire_on_commit=False</span></code>. Without it, its <code class="docutils literal notranslate"><span class="pre">POST</span></code> and <code class="docutils literal notranslate"><span class="pre">PATCH</span></code>
+routes fail with <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. Restly warns once for each view that
+writes through such a session;
+<a class="reference internal" href="#session-factory-defaults">Session factory defaults</a> explains why.</p>
 <p>To use the generator outside a request, with
 <a class="reference internal" href="#session-off-request"><code class="docutils literal notranslate"><span class="pre">fr.open_session()</span></code></a>, it must take no arguments. In
 tests, Restly’s fixtures can replace the generator;
@@ -687,7 +705,10 @@ that were not committed, as they do on a view.</p>
 <p>When you configure your own generator, your existing <code class="docutils literal notranslate"><span class="pre">Depends(my_get_db)</span></code>
 gives the same session as the view’s <code class="docutils literal notranslate"><span class="pre">self.session</span></code>. FastAPI runs the
 generator once per request, and cleans it up once. FastAPI’s own caching rules
-still apply: a dependency with <code class="docutils literal notranslate"><span class="pre">use_cache=False</span></code> gets its own session.</p>
+still apply: a dependency with <code class="docutils literal notranslate"><span class="pre">use_cache=False</span></code> gets its own session. For the
+same reason, an override of <code class="docutils literal notranslate"><span class="pre">my_get_db</span></code> in <code class="docutils literal notranslate"><span class="pre">app.dependency_overrides</span></code> also
+gives the views their session, so a test setup that overrides it keeps
+working.</p>
 </div>
 </section>
 <section id="use-another-database-on-one-view">
@@ -854,7 +875,7 @@ not set them by default:</p>
 <td><p><code class="docutils literal notranslate"><span class="pre">PRAGMA</span> <span class="pre">foreign_keys=ON</span></code>, on every connection</p></td>
 </tr>
 <tr class="row-even"><td><p>PostgreSQL</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">pool_pre_ping=True</span></code>, <code class="docutils literal notranslate"><span class="pre">pool_recycle=1800</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">pool_pre_ping=True</span></code>, <code class="docutils literal notranslate"><span class="pre">pool_recycle=1800</span></code>, and each session in UTC</p></td>
 </tr>
 </tbody>
 </table>
@@ -874,12 +895,31 @@ broke then leads to a new connection instead of an error. <code class="docutils 
 replaces connections older than 30 minutes, because proxies such as pgbouncer
 close idle connections without telling the client. Restly does not set the
 pool size: it sets neither <code class="docutils literal notranslate"><span class="pre">pool_size</span></code> nor <code class="docutils literal notranslate"><span class="pre">max_overflow</span></code>.</p>
-<p>Each of these options changes only the connection. Restly does not change the
-database itself, so these defaults leave no trace in your data after the
-process exits.</p>
+<p>Each new PostgreSQL session is in UTC, as in Django and Rails. Restly reads
+the time zone that the server reports for the session, and sends
+<code class="docutils literal notranslate"><span class="pre">SET</span> <span class="pre">TIME</span> <span class="pre">ZONE</span> <span class="pre">'UTC'</span></code> when it is another zone. PostgreSQL then reads a time
+without an offset as UTC, as Restly does: <code class="docutils literal notranslate"><span class="pre">now()</span></code> gives UTC for a column
+without a time zone, and psycopg gives back each time in UTC, as asyncpg
+does. So the functions in your SQL work in UTC too:
+<code class="docutils literal notranslate"><span class="pre">date_trunc('day',</span> <span class="pre">created_at)</span></code> gives the days of UTC. asyncpg is different
+in one place: it converts a <code class="docutils literal notranslate"><span class="pre">datetime</span></code> without an offset that your code
+passes for a column with a time zone itself, in the time zone of the Python
+process; see <a class="reference internal" href="schemas.html#utc-times"><span class="std std-ref">Keep times in UTC</span></a>.</p>
+<p>For the days of another zone, name the zone in the SQL. For a column with a
+time zone, write <code class="docutils literal notranslate"><span class="pre">date_trunc('day',</span> <span class="pre">created_at</span> <span class="pre">AT</span> <span class="pre">TIME</span> <span class="pre">ZONE</span> <span class="pre">'Europe/Amsterdam')</span></code>.
+A column without a time zone holds UTC without the offset, so give it the
+zone UTC first:
+<code class="docutils literal notranslate"><span class="pre">date_trunc('day',</span> <span class="pre">starts_at</span> <span class="pre">AT</span> <span class="pre">TIME</span> <span class="pre">ZONE</span> <span class="pre">'UTC'</span> <span class="pre">AT</span> <span class="pre">TIME</span> <span class="pre">ZONE</span> <span class="pre">'Europe/Amsterdam')</span></code>.</p>
+<p>Each of these options changes only the connection. Restly changes no setting
+of the database itself, such as <code class="docutils literal notranslate"><span class="pre">journal_mode=WAL</span></code> on SQLite, which would
+stay after the process exits.</p>
 <p>These defaults apply only to the URL form. If you pass <code class="docutils literal notranslate"><span class="pre">engine=</span></code>,
 <code class="docutils literal notranslate"><span class="pre">make_session=</span></code> or a session generator, Restly uses your object as it is. To
-turn off any of these defaults, build the engine yourself.</p>
+turn off any of these defaults, build the engine yourself. Such an engine
+keeps the time zone of its PostgreSQL sessions. To put them in UTC, pass
+<code class="docutils literal notranslate"><span class="pre">connect_args={&quot;server_settings&quot;:</span> <span class="pre">{&quot;timezone&quot;:</span> <span class="pre">&quot;UTC&quot;}}</span></code> to
+<code class="docutils literal notranslate"><span class="pre">create_async_engine()</span></code> for asyncpg, or
+<code class="docutils literal notranslate"><span class="pre">connect_args={&quot;options&quot;:</span> <span class="pre">&quot;-c</span> <span class="pre">timezone=UTC&quot;}</span></code> for psycopg.</p>
 </section>
 <section id="session-factory-defaults">
 <span id="id2"></span><h3>Session factory defaults<a class="headerlink" href="#session-factory-defaults" title="Link to this heading">#</a></h3>
@@ -912,7 +952,10 @@ commit expires those attributes, so each read loads them from the database
 again. In async code, that read raises <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>: the response is
 built in plain async code, and SQLAlchemy cannot load from the database there
 without an <code class="docutils literal notranslate"><span class="pre">await</span></code>. In sync code, the read works, but building the response
-now needs the database.</p>
+now needs the database. And in both, <code class="docutils literal notranslate"><span class="pre">snapshot(new)</span></code> in <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>
+is empty, because it reads only the loaded attributes. So Restly warns with
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyExpireOnCommitWarning" title="fastapi_restly.exc.RestlyExpireOnCommitWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyExpireOnCommitWarning</span></code></a>
+once for each view that writes through a session that expires on commit.</p>
 <p>The autoflush option is different for async and sync sessions. Async sessions
 turn autoflush off, because autoflush can make a read send a write to the
 database, and async code must do database work only at an explicit <code class="docutils literal notranslate"><span class="pre">await</span></code>.

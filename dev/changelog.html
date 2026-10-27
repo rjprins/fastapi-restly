@@ -56,7 +56,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             false;
         </script>
-    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <script src="_static/newsletter.js?v=7326e93d"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/dev/changelog.html" />
     <link rel="icon" href="_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="about.html" />
@@ -504,7 +504,10 @@ replacement, unless it says otherwise.</p>
 <ol class="arabic simple">
 <li><p>Declare a base of your own, <code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">Base(fr.ModelDefaults,</span> <span class="pre">DeclarativeBase)</span></code>,
 in place of <code class="docutils literal notranslate"><span class="pre">fr.DataclassBase</span></code> and <code class="docutils literal notranslate"><span class="pre">fr.IDBase</span></code>.</p></li>
-<li><p>Replace <code class="docutils literal notranslate"><span class="pre">fr.utils.CurrentSettingsMixin</span></code> with a <code class="docutils literal notranslate"><span class="pre">get_settings()</span></code> function.</p></li>
+<li><p>Replace <code class="docutils literal notranslate"><span class="pre">fr.utils.CurrentSettingsMixin</span></code> with a <code class="docutils literal notranslate"><span class="pre">get_settings()</span></code> function.
+If your app imports <code class="docutils literal notranslate"><span class="pre">pydantic_settings</span></code>, add <code class="docutils literal notranslate"><span class="pre">pydantic-settings</span></code> to your
+dependencies: Restly no longer installs it. This step fails with
+<code class="docutils literal notranslate"><span class="pre">ModuleNotFoundError</span></code>, not with a message from Restly.</p></li>
 <li><p>In <code class="docutils literal notranslate"><span class="pre">create</span></code> and <code class="docutils literal notranslate"><span class="pre">update</span></code>, call <code class="docutils literal notranslate"><span class="pre">super()</span></code>, change the object and return
 it. Drop <code class="docutils literal notranslate"><span class="pre">make_new_object</span></code>, <code class="docutils literal notranslate"><span class="pre">save_object</span></code> and each flush that only saved.
 Rename <code class="docutils literal notranslate"><span class="pre">schema_obj</span></code> to <code class="docutils literal notranslate"><span class="pre">data</span></code>.</p></li>
@@ -521,6 +524,44 @@ such as <code class="docutils literal notranslate"><span class="pre">class</span
 the view inherits from it. An action that you miss fails when the route
 runs, not when Python creates the class. <code class="docutils literal notranslate"><span class="pre">Action</span></code> is now a reserved name
 on a view and on the classes it inherits from.</p></li>
+<li><p>Check each column without a time zone, such as <code class="docutils literal notranslate"><span class="pre">mapped_column(DateTime())</span></code>,
+or <code class="docutils literal notranslate"><span class="pre">Mapped[datetime]</span></code> on a base without <code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code>. Restly now
+stores the times that clients send in UTC there, and a generated schema
+shows them with <code class="docutils literal notranslate"><span class="pre">Z</span></code>. If the column holds local times, give its field a
+validator that converts the time; see “Keep times in UTC” in the docs.
+This step does not fail: a column that you miss gets new rows in UTC
+next to its old rows in local time.</p></li>
+<li><p>Where your code compares a time from a request with a time from the
+database, convert the time from the database with <code class="docutils literal notranslate"><span class="pre">fr.in_utc()</span></code> first,
+as in <code class="docutils literal notranslate"><span class="pre">data.ends_at</span> <span class="pre">&gt;</span> <span class="pre">fr.in_utc(obj.starts_at)</span></code>. A missed <code class="docutils literal notranslate"><span class="pre">&lt;</span></code>, <code class="docutils literal notranslate"><span class="pre">&gt;</span></code> or
+<code class="docutils literal notranslate"><span class="pre">-</span></code> fails with <code class="docutils literal notranslate"><span class="pre">TypeError</span></code>, not with a message from Restly. A missed
+<code class="docutils literal notranslate"><span class="pre">==</span></code> or <code class="docutils literal notranslate"><span class="pre">!=</span></code> does not fail: <code class="docutils literal notranslate"><span class="pre">==</span></code> is always <code class="docutils literal notranslate"><span class="pre">False</span></code>, and <code class="docutils literal notranslate"><span class="pre">!=</span></code> always
+<code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+<li><p>Check code of your own that depends on the time zone of the database
+session. On PostgreSQL, an engine that Restly builds from a URL now puts
+each session in UTC. So SQL such as <code class="docutils literal notranslate"><span class="pre">date_trunc('day',</span> <span class="pre">created_at)</span></code>
+gives the days of UTC, and <code class="docutils literal notranslate"><span class="pre">now()</span></code> gives UTC for a column without a
+time zone. For another zone, name it in the SQL; see “Engine defaults”
+in the docs. On psycopg, also code in Python changes: a time without an
+offset that it writes is read as UTC, a time with an offset that it
+writes to a column without a time zone is stored in UTC, and each time
+that psycopg gives back has the zone UTC. This step does not fail.</p></li>
+<li><p>In a react-admin view, check each field validator that reads another
+field from <code class="docutils literal notranslate"><span class="pre">info.data</span></code>. A filter value now goes through the validators
+of its field, without the other fields, so <code class="docutils literal notranslate"><span class="pre">info.data</span></code> is <code class="docutils literal notranslate"><span class="pre">{}</span></code>. Use
+<code class="docutils literal notranslate"><span class="pre">info.data.get(&quot;starts_at&quot;)</span></code> and skip the check when it is <code class="docutils literal notranslate"><span class="pre">None</span></code>. This
+step fails with <code class="docutils literal notranslate"><span class="pre">KeyError</span></code>, a <code class="docutils literal notranslate"><span class="pre">500</span></code>, not with a message from Restly.</p></li>
+<li><p>Give list params of your own the page fields: subclass
+<code class="docutils literal notranslate"><span class="pre">fr.query.PagedListParams</span></code> in place of <code class="docutils literal notranslate"><span class="pre">pydantic.BaseModel</span></code>, or set
+<code class="docutils literal notranslate"><span class="pre">pagination</span> <span class="pre">=</span> <span class="pre">None</span></code> for a list without pages. Page fields that you
+wrote yourself keep working when they have the names of the view’s page
+parameters.</p></li>
+<li><p>On SQLite, check each <code class="docutils literal notranslate"><span class="pre">Integer</span></code> column that holds numbers beyond 32
+bits, such as a Unix time in milliseconds, and each <code class="docutils literal notranslate"><span class="pre">String(n)</span></code> column
+that holds longer text. Restly now refuses such a value in a request.
+Give the column a type that fits, such as <code class="docutils literal notranslate"><span class="pre">BigInteger</span></code>, or <code class="docutils literal notranslate"><span class="pre">String()</span></code>
+without a length. A column that you miss fails only when a request sends
+such a value, with a 422 or a 400.</p></li>
 </ol>
 <section id="added">
 <h3>Added<a class="headerlink" href="#added" title="Link to this heading">#</a></h3>
@@ -541,6 +582,11 @@ no row. Every item route and <code class="docutils literal notranslate"><span cl
 a key, or a pattern: <code class="docutils literal notranslate"><span class="pre">*</span></code> matches any characters except <code class="docutils literal notranslate"><span class="pre">.</span></code>, so
 <code class="docutils literal notranslate"><span class="pre">&quot;vendor.*&quot;</span></code> is every key on the fields of <code class="docutils literal notranslate"><span class="pre">vendor</span></code>.
 <code class="docutils literal notranslate"><span class="pre">fr.query.derive_schema_list_params</span></code> takes them too.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">include_routes</span></code> names the routes that a view serves, such as
+<code class="docutils literal notranslate"><span class="pre">(fr.ViewRoute.GET_MANY,</span> <span class="pre">fr.ViewRoute.GET_ONE)</span></code> for a read-only copy of a
+view. The view leaves out every other route, also a custom route that the
+base view gets later. The default, <code class="docutils literal notranslate"><span class="pre">(&quot;*&quot;,)</span></code>, is every route.
+<code class="docutils literal notranslate"><span class="pre">exclude_routes</span></code> applies after it.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">sort_query_param</span></code> renames the sort parameter, such as <code class="docutils literal notranslate"><span class="pre">&quot;order_by&quot;</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">default_sort</span></code> is the sort when the request has none, such as
 <code class="docutils literal notranslate"><span class="pre">&quot;-created_at&quot;</span></code>. A <code class="docutils literal notranslate"><span class="pre">sort</span></code> from the client replaces it. OpenAPI shows it as
@@ -555,7 +601,8 @@ before.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">&#64;fr.list_filter(&quot;key&quot;)</span></code> makes a view method the filter for a query key.
 The type of its parameter is the type of the key, and its docstring is the
 description. It returns a condition, a clause or <code class="docutils literal notranslate"><span class="pre">None</span></code>, and it may be
-<code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">def</span></code> on an async view.</p></li>
+<code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">def</span></code> on an async view. The key may also be a field and an operator
+that you choose, such as <code class="docutils literal notranslate"><span class="pre">name__length</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">list[fr.MustExist[int,</span> <span class="pre">Model]]</span></code> checks each id of a list, such as the ids
 in the body of a custom route. The message names every missing id.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">apply_filters(stmt,</span> <span class="pre">list_params)</span></code> applies the client’s filters without
@@ -573,6 +620,37 @@ options such as <code class="docutils literal notranslate"><span class="pre">eq=
 <li><p>With <code class="docutils literal notranslate"><span class="pre">warn_on_misuse=True</span></code>, Restly warns about a writable field on a column
 that the model sets itself (<code class="docutils literal notranslate"><span class="pre">init=False</span></code> with a default), such as a tenant
 column.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.exc.RestlyExpireOnCommitWarning</span></code>: a view warns once when it writes
+through a session that expires on commit, from any source of sessions.
+<code class="docutils literal notranslate"><span class="pre">snapshot(new)</span></code> in <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> is then empty, and an async view
+fails with <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. The warning of <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code> about an async
+session factory with <code class="docutils literal notranslate"><span class="pre">expire_on_commit=True</span></code> has this class too.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.UTCDatetime</span></code>, a <code class="docutils literal notranslate"><span class="pre">datetime</span></code> field in UTC. A time without an offset is
+UTC, and a time with an offset becomes the same time in UTC. So the
+business methods get each time in UTC, and a response shows it with <code class="docutils literal notranslate"><span class="pre">Z</span></code>,
+also from a column without a time zone.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.in_utc(value)</span></code>, the rule of <code class="docutils literal notranslate"><span class="pre">fr.UTCDatetime</span></code> as a function. Use it on a
+time from the database before you compare it with a time from a schema,
+as in <code class="docutils literal notranslate"><span class="pre">data.ends_at</span> <span class="pre">&gt;</span> <span class="pre">fr.in_utc(obj.starts_at)</span></code>. A time from a column
+without a time zone has no offset, and on SQLite no time has one.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.query.FilterKey</span></code> and <code class="docutils literal notranslate"><span class="pre">fr.query.SortKey</span></code>, for list params of your own.
+Each finds the field of the response class that a client’s key names, and
+the column of the model. As in the generated list params, a field with an
+alias is a key only by its alias, and a field that a response never shows
+is no key. A hybrid property is a key too, when it has SQL.
+<code class="docutils literal notranslate"><span class="pre">FilterKey.parse(value)</span></code> gives a value the validation of its field and the
+form of its column, as the generated filters do. <code class="docutils literal notranslate"><span class="pre">SortKey.term()</span></code> gives
+the term for <code class="docutils literal notranslate"><span class="pre">order_by()</span></code>, with NULLs where <code class="docutils literal notranslate"><span class="pre">sort_nulls</span></code> says. The
+react-admin views use them.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.query.order_by_primary_key(stmt,</span> <span class="pre">model,</span> <span class="pre">sorted_on=...)</span></code> orders <code class="docutils literal notranslate"><span class="pre">stmt</span></code>
+by the primary key last, so that a row never moves to another page. The
+generated list params do this themselves. List params of your own call it,
+as the react-admin views do.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.query.PagedListParams</span></code>, the base of list params of your own with
+pages. A view fills its <code class="docutils literal notranslate"><span class="pre">page</span></code> and <code class="docutils literal notranslate"><span class="pre">page_size</span></code> fields from its
+<code class="docutils literal notranslate"><span class="pre">pagination</span></code>: their names in the URL, the default page size, the bounds,
+and the check that the offset fits in the database. So one class serves
+views with other pagination.</p></li>
 </ul>
 </section>
 <section id="changed">
@@ -669,6 +747,28 @@ Code outside a write block gets the raw <code class="docutils literal notranslat
 not from its parameter names. Annotate it, such as
 <code class="docutils literal notranslate"><span class="pre">create_endpoint(self,</span> <span class="pre">data:</span> <span class="pre">ViewCreate)</span> <span class="pre">-&gt;</span> <span class="pre">ViewResponse</span></code>. <code class="docutils literal notranslate"><span class="pre">list_params</span></code>
 still works by its name.</p></li>
+<li><p>A time without an offset is UTC, in request bodies and filters alike, also
+in the filter of a react-admin view. Such a time gets the offset of UTC
+when its column has a time zone, as in the generated filters before. A
+time with an offset becomes the same time in UTC, and loses its offset
+when its column has no time zone, such as a <code class="docutils literal notranslate"><span class="pre">DateTime()</span></code> column. A time
+that UTC cannot hold gets a 422 in a body and a 400 in a filter. Before,
+SQLite dropped the offset, asyncpg failed with a 500, and a body time
+without an offset was read in the time zone of the app’s Python process
+(asyncpg) or of the database session (psycopg). Restly changes the times
+of a body when it copies the body onto the model. A column that keeps
+local times needs a validator on its field that converts the time first.</p></li>
+<li><p>A value that its column cannot hold gets a 422 in a body or in the path,
+and a 400 in a filter. Restly checks the generic integer and text types of
+SQLAlchemy, such as <code class="docutils literal notranslate"><span class="pre">Integer</span></code> and <code class="docutils literal notranslate"><span class="pre">String(n)</span></code>, on every database. A number
+must fit the integer type: 16 bits for <code class="docutils literal notranslate"><span class="pre">SmallInteger</span></code>, 32 for <code class="docutils literal notranslate"><span class="pre">Integer</span></code>
+and 64 for <code class="docutils literal notranslate"><span class="pre">BigInteger</span></code>. Text must hold no NUL character, and text in a
+body must fit the length of a <code class="docutils literal notranslate"><span class="pre">String(n)</span></code> column. A reference id that does
+not fit gets a 404, as for a row that does not exist. Before, PostgreSQL
+refused such a value with a 500, and SQLite stored it. Any other type,
+such as a type of a dialect or a <code class="docutils literal notranslate"><span class="pre">TypeDecorator</span></code>, gets the value as it is,
+as in SQLAlchemy. For such a type, put a constraint on the field of the
+schema, such as <code class="docutils literal notranslate"><span class="pre">Field(max_length=50)</span></code>.</p></li>
 </ul>
 </section>
 <section id="lists">
@@ -683,12 +783,30 @@ goes through a to-many relationship.</p></li>
 <li><p>An unknown sort key gets <code class="docutils literal notranslate"><span class="pre">422</span></code>, not <code class="docutils literal notranslate"><span class="pre">400</span></code>. The <code class="docutils literal notranslate"><span class="pre">422</span></code> for an unknown query
 key is a <code class="docutils literal notranslate"><span class="pre">RequestValidationError</span></code>, not an <code class="docutils literal notranslate"><span class="pre">HTTPException</span></code>; the body is the
 same.</p></li>
+<li><p>A sort key that appears twice, such as <code class="docutils literal notranslate"><span class="pre">?sort=name,-name</span></code>, gets <code class="docutils literal notranslate"><span class="pre">422</span></code>.
+Before, the second term had no effect. With hand-written list params, or a
+raw <code class="docutils literal notranslate"><span class="pre">QueryParams</span></code> in <code class="docutils literal notranslate"><span class="pre">fr.query.apply_list_params</span></code>, it raises
+<code class="docutils literal notranslate"><span class="pre">BadQueryParam</span></code>, a <code class="docutils literal notranslate"><span class="pre">400</span></code>; before, the list came back with <code class="docutils literal notranslate"><span class="pre">200</span></code>. A
+<code class="docutils literal notranslate"><span class="pre">default_sort</span></code> with a key twice fails when the class is defined, or when
+the view registers for a mixin.</p></li>
+<li><p>Labels get no range filters (<code class="docutils literal notranslate"><span class="pre">__gte</span></code>, <code class="docutils literal notranslate"><span class="pre">__lte</span></code>, <code class="docutils literal notranslate"><span class="pre">__gt</span></code>, <code class="docutils literal notranslate"><span class="pre">__lt</span></code>): a <code class="docutils literal notranslate"><span class="pre">str</span></code>
+enum, a <code class="docutils literal notranslate"><span class="pre">Literal</span></code> of strings, and any field on a column of SQLAlchemy’s
+<code class="docutils literal notranslate"><span class="pre">Enum</span></code> type. Before, they got them, and a range compared the labels as
+text, except on a native ENUM on PostgreSQL, which orders its labels as
+they were declared. For a range in that order, write it with
+<code class="docutils literal notranslate"><span class="pre">fr.list_filter</span></code>. An int enum keeps them on a column that stores the
+number, such as <code class="docutils literal notranslate"><span class="pre">Integer</span></code>.</p></li>
 <li><p>The <code class="docutils literal notranslate"><span class="pre">400</span></code> texts of a list name the problem: <code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">sort</span> <span class="pre">key:</span> <span class="pre">'nope'</span></code>,
 <code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">filter</span> <span class="pre">key:</span> <span class="pre">'nope'</span></code>, or <code class="docutils literal notranslate"><span class="pre">Invalid</span> <span class="pre">filter</span> <span class="pre">value</span> <span class="pre">for</span> <span class="pre">'age':</span> <span class="pre">'old'.</span></code>
 with Pydantic’s reason. A field validator that raises another exception
 gives <code class="docutils literal notranslate"><span class="pre">500</span></code>.</p></li>
 <li><p>On async views, <code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code> is <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">def</span></code>. An override must match
 its view: <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">def</span></code> on an async view, <code class="docutils literal notranslate"><span class="pre">def</span></code> on a sync one.</p></li>
+<li><p>The statement parameter is called <code class="docutils literal notranslate"><span class="pre">stmt</span></code>, as in the SQLAlchemy docs, not
+<code class="docutils literal notranslate"><span class="pre">query</span></code>: in <code class="docutils literal notranslate"><span class="pre">fr.query.apply_list_params</span></code>, and in the view methods
+<code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code> and <code class="docutils literal notranslate"><span class="pre">count</span></code>. A call that passes <code class="docutils literal notranslate"><span class="pre">query=</span></code> by name must
+pass <code class="docutils literal notranslate"><span class="pre">stmt=</span></code>. Restly passes the statement by position, so an override that
+keeps the name <code class="docutils literal notranslate"><span class="pre">query</span></code> still works.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code> and <code class="docutils literal notranslate"><span class="pre">apply_filters</span></code> validate a <code class="docutils literal notranslate"><span class="pre">QueryParams</span></code> or a
 mapping through <code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code> first, as the list route does. A
 mapping without <code class="docutils literal notranslate"><span class="pre">page_size</span></code> gets the default page size, so
@@ -707,6 +825,15 @@ in a descending sort, and SQLite and MySQL first in an ascending sort. Set
 descending sort on a nullable column needs an index with
 <code class="docutils literal notranslate"><span class="pre">DESC</span> <span class="pre">NULLS</span> <span class="pre">LAST</span></code>. On MySQL and SQL Server, a sort on a nullable column
 cannot use a plain index any more.</p></li>
+<li><p>A field that holds a <code class="docutils literal notranslate"><span class="pre">dict</span></code>, a <code class="docutils literal notranslate"><span class="pre">list</span></code> or a nested model, such as a <code class="docutils literal notranslate"><span class="pre">JSON</span></code>
+column, is no sort key, in the generated list params and in
+<code class="docutils literal notranslate"><span class="pre">fr.query.SortKey</span></code>. A document has no order that a client means, and
+PostgreSQL’s <code class="docutils literal notranslate"><span class="pre">json</span></code> type has none at all: a sort on it gave a <code class="docutils literal notranslate"><span class="pre">500</span></code>.</p></li>
+<li><p>List params of your own on a view with a <code class="docutils literal notranslate"><span class="pre">NumberedPagination</span></code> need the
+page fields of its pagination, or the view fails when it registers.
+Before, such a list returned every row while its response said that it
+had pages, and <code class="docutils literal notranslate"><span class="pre">?page=2</span></code> got <code class="docutils literal notranslate"><span class="pre">422</span></code>. A view that builds its list response
+itself, as a react-admin view does, pages in its own way.</p></li>
 </ul>
 </section>
 <section id="react-admin">
@@ -723,6 +850,16 @@ a dict.</p></li>
 that it cannot apply is a <code class="docutils literal notranslate"><span class="pre">fr.exc.BadQueryParam</span></code> (400).</p></li>
 <li><p>A react-admin view with pagination that it cannot use fails when Python
 creates the class.</p></li>
+<li><p>A react-admin filter value goes through the validation of its field, as in
+the generated filters. Before, it got the Python type of its column. So
+the validators of the field run, also one that keeps local times. They
+get only this field, so <code class="docutils literal notranslate"><span class="pre">info.data</span></code> is <code class="docutils literal notranslate"><span class="pre">{}</span></code>. <code class="docutils literal notranslate"><span class="pre">null</span></code> finds the rows without
+a value where the field allows <code class="docutils literal notranslate"><span class="pre">None</span></code>, also in a list, as in
+<code class="docutils literal notranslate"><span class="pre">{&quot;size&quot;:</span> <span class="pre">[null,</span> <span class="pre">3]}</span></code>. Before, <code class="docutils literal notranslate"><span class="pre">null</span></code> gave <code class="docutils literal notranslate"><span class="pre">400</span></code>. A field of type <code class="docutils literal notranslate"><span class="pre">Any</span></code>,
+such as the <code class="docutils literal notranslate"><span class="pre">id</span></code> of <code class="docutils literal notranslate"><span class="pre">fr.IDSchema</span></code>, still gives the value the Python type
+of its column, so <code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">[...]}</span></code> with UUIDs works. A field with an alias
+is a filter or sort key only by its alias, and a relationship field is an
+<code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">filter</span> <span class="pre">key</span></code> or an <code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">sort</span> <span class="pre">key</span></code>.</p></li>
 </ul>
 </section>
 <section id="schemas-and-models">
@@ -733,6 +870,12 @@ creates the class.</p></li>
 for <code class="docutils literal notranslate"><span class="pre">title:</span> <span class="pre">str</span></code> gets <code class="docutils literal notranslate"><span class="pre">422</span></code> now, not <code class="docutils literal notranslate"><span class="pre">409</span></code> from the database.</p></li>
 <li><p>In a generated schema, a field allows <code class="docutils literal notranslate"><span class="pre">null</span></code> only when its column is
 nullable.</p></li>
+<li><p>A generated schema gives each time column the type <code class="docutils literal notranslate"><span class="pre">fr.UTCDatetime</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">fr.TimestampsSchemaMixin</span></code> gives it to <code class="docutils literal notranslate"><span class="pre">created_at</span></code> and <code class="docutils literal notranslate"><span class="pre">updated_at</span></code>. So
+the business methods get these times in UTC, and a response shows them
+with <code class="docutils literal notranslate"><span class="pre">Z</span></code>, such as <code class="docutils literal notranslate"><span class="pre">2024-01-01T09:30:00Z</span></code>. A time from a column without a
+time zone had no offset before. For local times, write the field yourself,
+with a validator that converts the time.</p></li>
 <li><p>The create body of a generated schema follows the model’s constructor. On a
 dataclass model, a column with only an <code class="docutils literal notranslate"><span class="pre">insert_default</span></code> or a
 <code class="docutils literal notranslate"><span class="pre">server_default</span></code> is now a required field. Add <code class="docutils literal notranslate"><span class="pre">default=None</span></code> to let the
@@ -749,18 +892,35 @@ model for the dataclass repr.</p></li>
 <section id="other">
 <h4>Other<a class="headerlink" href="#other" title="Link to this heading">#</a></h4>
 <ul class="simple">
+<li><p>The <code class="docutils literal notranslate"><span class="pre">alembic/env.py</span></code> that <code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> generates runs the migrations in
+UTC on PostgreSQL, as the application’s sessions do. So a migration that
+gives a column a time zone reads the stored times as UTC, and <code class="docutils literal notranslate"><span class="pre">now()</span></code> in a
+migration gives UTC. The SQL script of <code class="docutils literal notranslate"><span class="pre">alembic</span> <span class="pre">upgrade</span> <span class="pre">--sql</span></code> starts with
+<code class="docutils literal notranslate"><span class="pre">SET</span> <span class="pre">TIME</span> <span class="pre">ZONE</span> <span class="pre">'UTC'</span></code> too. To do the same in an existing project, copy the
+two <code class="docutils literal notranslate"><span class="pre">SET</span> <span class="pre">TIME</span> <span class="pre">ZONE</span> <span class="pre">'UTC'</span></code> steps from the new <code class="docutils literal notranslate"><span class="pre">env.py</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code> is a <code class="docutils literal notranslate"><span class="pre">WhereClause</span></code> with the condition <code class="docutils literal notranslate"><span class="pre">TRUE</span></code>, so it
 goes everywhere a clause goes. <code class="docutils literal notranslate"><span class="pre">isinstance(x,</span> <span class="pre">WhereClause)</span></code> now matches it
 too.</p></li>
 <li><p>The test clients accept any 2xx status by default. Pass
 <code class="docutils literal notranslate"><span class="pre">assert_status_code</span></code> for an exact status. <code class="docutils literal notranslate"><span class="pre">assert_status_code=None</span></code> skips
 the check.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">exclude_routes</span></code> is typed <code class="docutils literal notranslate"><span class="pre">Collection[str</span> <span class="pre">|</span> <span class="pre">ViewRoute]</span></code>, not <code class="docutils literal notranslate"><span class="pre">Iterable</span></code>.
+Restly reads the value more than once, so use a tuple, a list or a set, not
+a <code class="docutils literal notranslate"><span class="pre">map()</span></code> or a generator.</p></li>
+<li><p>On PostgreSQL, an engine that <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code> builds from a URL puts each
+new session in UTC, as Django and Rails do. It sends
+<code class="docutils literal notranslate"><span class="pre">SET</span> <span class="pre">TIME</span> <span class="pre">ZONE</span> <span class="pre">'UTC'</span></code> when the server reports another zone. PostgreSQL
+then reads a time without an offset as UTC, as Restly does, also in
+<code class="docutils literal notranslate"><span class="pre">now()</span></code> for a column without a time zone. psycopg gives back each time in
+UTC, as asyncpg does. An engine that you pass in keeps its zone.</p></li>
 </ul>
 </section>
 </section>
 <section id="removed">
 <h3>Removed<a class="headerlink" href="#removed" title="Link to this heading">#</a></h3>
 <ul>
+<li><p>Python 3.10, which reaches its end of life in October 2026. Restly now
+needs Python 3.11 or later, and so does a project from <code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code>.</p></li>
 <li><p>The view methods <code class="docutils literal notranslate"><span class="pre">make_new_object</span></code>, <code class="docutils literal notranslate"><span class="pre">update_object</span></code> and <code class="docutils literal notranslate"><span class="pre">save_object</span></code>. Use
 <code class="docutils literal notranslate"><span class="pre">super().create(data)</span></code> and <code class="docutils literal notranslate"><span class="pre">super().update(obj,</span> <span class="pre">data)</span></code>, and <code class="docutils literal notranslate"><span class="pre">fr.objects</span></code>
 for another model.</p></li>
@@ -796,6 +956,8 @@ and a <code class="docutils literal notranslate"><span class="pre">get_settings(
 Replace <code class="docutils literal notranslate"><span class="pre">Settings.current</span></code> with <code class="docutils literal notranslate"><span class="pre">get_settings()</span></code> in the app factory, and
 <code class="docutils literal notranslate"><span class="pre">Settings.use(x)</span></code> in tests with an argument of the factory, as in
 <code class="docutils literal notranslate"><span class="pre">create_app(x)</span></code>.</p></li>
+<li><p>The dependency on pydantic-settings, which Restly no longer uses. A project
+from <code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> lists it in its own dependencies.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">route_options</span></code>. Replace the endpoint method, pass the route arguments to
 its decorator, as in FastAPI, and call <code class="docutils literal notranslate"><span class="pre">super()</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">extra_query_params</span></code>. Declare the key where your code reads it: with
@@ -804,11 +966,51 @@ dependency. For keys that are known only at run time, set
 <code class="docutils literal notranslate"><span class="pre">unknown_query_params</span> <span class="pre">=</span> <span class="pre">&quot;ignore&quot;</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">react_admin_query_params</span></code>. The keys are the fields of the view’s
 <code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code>.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">warn_on_misuse</span></code> warning for CRUD routes on a plain <code class="docutils literal notranslate"><span class="pre">View</span></code>. Such routes
+work. The warning also came for views that <code class="docutils literal notranslate"><span class="pre">RestView</span></code> cannot replace, such
+as a view that keeps its items as JSON in one settings row.</p></li>
 </ul>
 </section>
 <section id="fixed">
 <h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>A filter on the <code class="docutils literal notranslate"><span class="pre">id</span></code> of <code class="docutils literal notranslate"><span class="pre">fr.IDSchema</span></code>, such as <code class="docutils literal notranslate"><span class="pre">?id=1</span></code>, gives the value
+the Python type of the key column, as for every field of type <code class="docutils literal notranslate"><span class="pre">Any</span></code>.
+Before, the value stayed text: on PostgreSQL even <code class="docutils literal notranslate"><span class="pre">?id=1</span></code> gave a <code class="docutils literal notranslate"><span class="pre">500</span></code>,
+and on SQLite a filter on a UUID key gave a <code class="docutils literal notranslate"><span class="pre">500</span></code>. On an integer key,
+<code class="docutils literal notranslate"><span class="pre">?id=abc</span></code> now gets a <code class="docutils literal notranslate"><span class="pre">400</span></code>, and so does a number that the column cannot
+hold.</p></li>
+<li><p>A generated schema gives a <code class="docutils literal notranslate"><span class="pre">timedelta</span></code> column, an <code class="docutils literal notranslate"><span class="pre">Interval</span></code>, a field of
+type <code class="docutils literal notranslate"><span class="pre">timedelta</span></code>. JSON shows it as an ISO 8601 duration, such as
+<code class="docutils literal notranslate"><span class="pre">PT1H30M</span></code>. Before, the view failed when it registered, with
+<code class="docutils literal notranslate"><span class="pre">TypeError:</span> <span class="pre">Unsupported</span> <span class="pre">field</span> <span class="pre">type</span></code>. A duration that is too long for the
+column, such as <code class="docutils literal notranslate"><span class="pre">P3000000D</span></code>, gets <code class="docutils literal notranslate"><span class="pre">400</span></code> in a filter and <code class="docutils literal notranslate"><span class="pre">422</span></code> in a body,
+as a time out of range does. SQLite stores a duration as a time after
+1970, which must be before the year 10000.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.query.apply_list_params</span></code> and <code class="docutils literal notranslate"><span class="pre">fr.query.derive_schema_list_params</span></code> take
+a SQLModel table as the <code class="docutils literal notranslate"><span class="pre">model</span></code> in pyright and mypy, as the views do.
+Before, the type checkers wanted a subclass of <code class="docutils literal notranslate"><span class="pre">DeclarativeBase</span></code>.</p></li>
+<li><p>A field of a flag type, such as <code class="docutils literal notranslate"><span class="pre">IntFlag</span></code>, gets the plain filter, <code class="docutils literal notranslate"><span class="pre">__in</span></code>
+and <code class="docutils literal notranslate"><span class="pre">__ne</span></code>. Before, it got only <code class="docutils literal notranslate"><span class="pre">__isnull</span></code>, because Python counts a flag
+as a collection.</p></li>
+<li><p>A field of Pydantic’s secret types, such as <code class="docutils literal notranslate"><span class="pre">SecretStr</span></code>, works in a view.
+A write stores the secret, and a response masks it, as Pydantic does. Like
+a <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> field, it gets no filter and is not a sort key. Before, a
+write gave a <code class="docutils literal notranslate"><span class="pre">500</span></code>, its filters gave a <code class="docutils literal notranslate"><span class="pre">500</span></code>, and a sort on it ordered the
+rows by the secret. A document for a JSON column with a secret field
+raises <code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code> before the write, as one with a
+<code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> field does: a JSON dump masks the secret, so the column would
+get <code class="docutils literal notranslate"><span class="pre">**********</span></code>.</p></li>
+<li><p>A field whose name ends in <code class="docutils literal notranslate"><span class="pre">_</span></code>, such as <code class="docutils literal notranslate"><span class="pre">type_</span></code>, gets filter keys that
+work, such as <code class="docutils literal notranslate"><span class="pre">?type___in=a,b</span></code>. Restly now splits a key at its last <code class="docutils literal notranslate"><span class="pre">__</span></code>.
+Before, it split at the first one, so these keys were in OpenAPI, but every
+request with them got a <code class="docutils literal notranslate"><span class="pre">400</span></code>.</p></li>
+<li><p>A filter on a column of SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">Enum</span></code> type no longer gives a <code class="docutils literal notranslate"><span class="pre">500</span></code>
+on PostgreSQL, where such a column is a native ENUM by default. A value
+that is no label of the column, such as <code class="docutils literal notranslate"><span class="pre">?status=bogus</span></code> for a <code class="docutils literal notranslate"><span class="pre">str</span></code> field,
+is now a <code class="docutils literal notranslate"><span class="pre">400</span></code> on every database, also in the <code class="docutils literal notranslate"><span class="pre">filter</span></code> of a react-admin
+view. Before, a native ENUM rejected it with an error. Such a column also gets no <code class="docutils literal notranslate"><span class="pre">__contains</span></code> and <code class="docutils literal notranslate"><span class="pre">__icontains</span></code>: they
+failed on a native ENUM, and elsewhere they searched the stored names.</p></li>
 <li><p>A sort on a related field, such as <code class="docutils literal notranslate"><span class="pre">?sort=vendor.name</span></code>, keeps the rows
 that have no related row. With the default <code class="docutils literal notranslate"><span class="pre">sort_nulls</span></code>, they come last.
 Before, the list left them out, and <code class="docutils literal notranslate"><span class="pre">total_count</span></code> did not count them.</p></li>
@@ -835,11 +1037,82 @@ needs <code class="docutils literal notranslate"><span class="pre">check_fields=
 filters, as a reference, and in the loads of an async view.</p></li>
 <li><p>A schema that names itself in a to-one field no longer fails with
 <code class="docutils literal notranslate"><span class="pre">RecursionError</span></code>.</p></li>
+<li><p>A field typed with a type alias, such as
+<code class="docutils literal notranslate"><span class="pre">type</span> <span class="pre">AuthorId</span> <span class="pre">=</span> <span class="pre">fr.MustExist[int,</span> <span class="pre">User]</span></code> or <code class="docutils literal notranslate"><span class="pre">type</span> <span class="pre">Many[T]</span> <span class="pre">=</span> <span class="pre">list[T]</span></code>,
+works like the plain type. Before, Restly did not check the reference. A
+<code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> or <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> marker inside a type alias has no effect, so
+Restly now rejects it, as it does a marker inside <code class="docutils literal notranslate"><span class="pre">Optional</span></code>.</p></li>
+<li><p>A to-many field typed <code class="docutils literal notranslate"><span class="pre">Sequence[X]</span></code> or <code class="docutils literal notranslate"><span class="pre">tuple[X,</span> <span class="pre">...]</span></code> works like
+<code class="docutils literal notranslate"><span class="pre">list[X]</span></code>. Before, an async view answered 500 when such a field held a
+nested schema with relationships of its own, and a body with
+<code class="docutils literal notranslate"><span class="pre">tuple[fr.IDRef[Tag],</span> <span class="pre">...]</span></code> answered 500 too.</p></li>
+<li><p>Error texts name things as the client sees them. A <code class="docutils literal notranslate"><span class="pre">404</span></code> for a row names
+the resource as OpenAPI does, such as <code class="docutils literal notranslate"><span class="pre">User</span></code> for the schema <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code>,
+and not the name of the model class. A <code class="docutils literal notranslate"><span class="pre">404</span></code> for a row, and a list of
+missing ids, show an id as it is in the URL, such as a UUID, and not its
+Python form <code class="docutils literal notranslate"><span class="pre">UUID('...')</span></code>. A missing reference and the 422 for two
+references that disagree name a field as the client sends it: its
+validation alias, else its alias, such as <code class="docutils literal notranslate"><span class="pre">Id</span> <span class="pre">not</span> <span class="pre">found</span> <span class="pre">for</span> <span class="pre">authorId:</span> <span class="pre">99</span></code>.</p></li>
+<li><p>A subclass that sets its own <code class="docutils literal notranslate"><span class="pre">exclude_routes</span></code> serves the routes that only
+its base leaves out, also when the base view was registered first. Before,
+the list of the base applied to the subclass too in that case.</p></li>
+<li><p>A plain <code class="docutils literal notranslate"><span class="pre">fr.View</span></code> may name a route method <code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code> or <code class="docutils literal notranslate"><span class="pre">delete</span></code>.
+Before, its registration failed with <code class="docutils literal notranslate"><span class="pre">TypeError</span></code>, as if it had the business
+methods of a CRUD view.</p></li>
+<li><p>A route method with the name of a view setting, such as <code class="docutils literal notranslate"><span class="pre">tags</span></code> or <code class="docutils literal notranslate"><span class="pre">model</span></code>,
+fails when Python defines the class, with a message that names the method
+and the setting. The method would replace the setting. Before, the view
+failed later with an unclear message, such as
+<code class="docutils literal notranslate"><span class="pre">TypeError:</span> <span class="pre">'function'</span> <span class="pre">object</span> <span class="pre">is</span> <span class="pre">not</span> <span class="pre">iterable</span></code>.</p></li>
+<li><p>A route method of a CRUD view with the name of a business method,
+<code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code> or <code class="docutils literal notranslate"><span class="pre">delete</span></code>, also fails when Python defines the class,
+with <code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code>, also when the route comes from a mixin.
+Before, registration raised <code class="docutils literal notranslate"><span class="pre">TypeError</span></code>.</p></li>
+<li><p>Many writes in one <code class="docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code> no longer use memory that
+grows with the square of their number. This happened when every write
+reached the same loaded rows, such as the children of one parent through a
+loaded collection: 1,000 updates kept about 270 MB.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> works after <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span></code>. pip compiles the Python files of
+the project templates, and <code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> read the compiled files as text and
+failed with <code class="docutils literal notranslate"><span class="pre">UnicodeDecodeError</span></code>.</p></li>
+<li><p>In plain SQLAlchemy, a clause that you forget to call, as in
+<code class="docutils literal notranslate"><span class="pre">select(Post).where(mine)</span></code>, now always fails when it runs. Before, it ran
+with <code class="docutils literal notranslate"><span class="pre">NULL</span></code> for its context member once the called form, <code class="docutils literal notranslate"><span class="pre">mine()</span></code>, had
+run. And after the form without the call had failed once, the called form
+failed too.</p></li>
 <li><p>A react-admin view checks a filter value with Pydantic. Before,
 <code class="docutils literal notranslate"><span class="pre">{&quot;active&quot;:</span> <span class="pre">&quot;false&quot;}</span></code> matched the rows where <code class="docutils literal notranslate"><span class="pre">active</span></code> is true, and a bad
 UUID gave <code class="docutils literal notranslate"><span class="pre">500</span></code>.</p></li>
 <li><p>OpenAPI shows the <code class="docutils literal notranslate"><span class="pre">sort</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code> and <code class="docutils literal notranslate"><span class="pre">filter</span></code> parameters of a react-admin
 list. A subclass of a react-admin view keeps the list params of its base.</p></li>
+<li><p>A react-admin filter or sort on a field that the model has only in
+Python, such as a <code class="docutils literal notranslate"><span class="pre">&#64;property</span></code> or a hybrid property without SQL, gets <code class="docutils literal notranslate"><span class="pre">400</span></code>
+with <code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">filter</span> <span class="pre">key</span></code> or <code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">sort</span> <span class="pre">key</span></code>. Before, it gave <code class="docutils literal notranslate"><span class="pre">500</span></code>. A
+hybrid property with SQL still works.</p></li>
+<li><p>A view with generated list params registers when its response class has a
+field for a hybrid property without SQL that fails on the class, such as
+<code class="docutils literal notranslate"><span class="pre">len(self.name)</span></code>. The field gets no filters and no sort key. Before,
+<code class="docutils literal notranslate"><span class="pre">include_view</span></code> failed with the error of the hybrid, such as a <code class="docutils literal notranslate"><span class="pre">TypeError</span></code>.</p></li>
+<li><p>A filter value that equals a member of an <code class="docutils literal notranslate"><span class="pre">IntEnum</span></code>, such as <code class="docutils literal notranslate"><span class="pre">1</span></code>, on a
+column of SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">Enum</span></code> type, finds the rows of that member. Before,
+the database compared the stored name with the number: a <code class="docutils literal notranslate"><span class="pre">500</span></code> on
+PostgreSQL and no rows on SQLite.</p></li>
+<li><p>A react-admin filter on a column with a type of your own, a
+<code class="docutils literal notranslate"><span class="pre">TypeDecorator</span></code>, gets the value of its field. Before, the column got the
+text from the JSON, so SQLAlchemy’s recipe that stores UTC gave a <code class="docutils literal notranslate"><span class="pre">500</span></code>.</p></li>
+<li><p>With <code class="docutils literal notranslate"><span class="pre">fr.configure(warn_on_misuse=True)</span></code>, an endpoint method override that
+calls its <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> handler, or the endpoint method of its base, no
+longer warns. That is how the warning itself says to change the HTTP
+contract.</p></li>
+<li><p>A view whose registration failed, such as for a name in <code class="docutils literal notranslate"><span class="pre">exclude_routes</span></code>
+that is not a route, names its custom routes once when you register it
+again after the fix: <code class="docutils literal notranslate"><span class="pre">widgetview_stats</span></code>, not <code class="docutils literal notranslate"><span class="pre">widgetview_widgetview_stats</span></code>.
+Before, each failed attempt added the class prefix again, also to the
+operation ID.</p></li>
+<li><p>On PostgreSQL with asyncpg, the detail of a <code class="docutils literal notranslate"><span class="pre">409</span></code> names the constraint or
+the column, as with psycopg. An example is
+<code class="docutils literal notranslate"><span class="pre">Unique</span> <span class="pre">constraint</span> <span class="pre">violated:</span> <span class="pre">uq_user_email</span></code>. Before, it named only the kind
+of conflict.</p></li>
 <li><p>Pyright and mypy report an unknown name on <code class="docutils literal notranslate"><span class="pre">fr</span></code>.</p></li>
 <li><p>Fixes for FastAPI 0.115 with <code class="docutils literal notranslate"><span class="pre">from</span> <span class="pre">__future__</span> <span class="pre">import</span> <span class="pre">annotations</span></code>, and for
 Python 3.14.</p></li>
@@ -853,6 +1126,27 @@ foreign keys too. Before, a client could write such a column, such as a
 tenant column, and so put a row in another organization. A client that
 still sends such a field gets no error: Restly ignores the value. To let
 the client write such a column, remove <code class="docutils literal notranslate"><span class="pre">init=False</span></code>.</p></li>
+</ul>
+</section>
+<section id="known-issues">
+<h3>Known issues<a class="headerlink" href="#known-issues" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>A route that catches the error of a write action and goes on must put each
+write action in <code class="docutils literal notranslate"><span class="pre">session.begin_nested()</span></code>. Without the savepoint, the next
+write action can commit the changes of the failed one, such as a row that
+<code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code> refused. After a database error at the flush, such as
+a duplicate value, the next write fails with <code class="docutils literal notranslate"><span class="pre">PendingRollbackError</span></code>. Inside
+<code class="docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code>, Restly raises <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code> in both cases.</p></li>
+<li><p>On SQLite, a <code class="docutils literal notranslate"><span class="pre">session.begin_nested()</span></code> inside <code class="docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code>
+can commit its rows when it ends. This happens with the default settings
+of Python’s <code class="docutils literal notranslate"><span class="pre">sqlite3</span></code> module and of <code class="docutils literal notranslate"><span class="pre">aiosqlite</span></code>. When the block then fails,
+these rows stay saved, and their after-hooks do not run. Restly’s test
+fixtures change these settings in the default rollback mode, so a test does
+not show the problem. On SQLite, prefer the loop of “When a write action
+raises” in the guide, where each row commits on its own. If you change the
+settings as SQLAlchemy shows (“Serializable isolation / Savepoints /
+Transactional DDL”), a write that overlaps another write can fail at once
+with “database is locked”.</p></li>
 </ul>
 </section>
 </section>
@@ -1634,6 +1928,7 @@ the pytest plugin path is <code class="docutils literal notranslate"><span class
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#removed">Removed</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fixed">Fixed</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#security">Security</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#known-issues">Known issues</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">0.11.0 - 2026-10-09</a><ul class="visible nav section-nav flex-column">

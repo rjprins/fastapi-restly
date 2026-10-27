@@ -56,7 +56,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             false;
         </script>
-    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <script src="_static/newsletter.js?v=7326e93d"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/dev/typing.html" />
     <link rel="icon" href="_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="about.html" />
@@ -759,6 +759,14 @@ types, class attributes, and the view methods such as
 <li><p>They help less with the
 <a class="reference internal" href="lifecycle.html#replace-endpoint-method"><span class="std std-ref">endpoint methods</span></a> (<code class="docutils literal notranslate"><span class="pre">*_endpoint</span></code>), whose
 signatures Restly fills in at registration.</p></li>
+<li><p>mypy gives a setting that a base view sets without an annotation the type
+of its value. So after <code class="docutils literal notranslate"><span class="pre">id_type</span> <span class="pre">=</span> <span class="pre">UUID</span></code> on a base view, <code class="docutils literal notranslate"><span class="pre">id_type</span> <span class="pre">=</span> <span class="pre">int</span></code> in a
+subclass is an error. This holds for every setting, such as <code class="docutils literal notranslate"><span class="pre">tags</span></code> and
+<code class="docutils literal notranslate"><span class="pre">include_filters</span></code>. Annotate the setting on the base view with the type that
+Restly declares for it, such as
+<code class="docutils literal notranslate"><span class="pre">id_type:</span> <span class="pre">ClassVar[type[Any]</span> <span class="pre">|</span> <span class="pre">None]</span> <span class="pre">=</span> <span class="pre">UUID</span></code>. The
+<a class="reference internal" href="view_reference.html#view-class-attributes"><span class="std std-ref">View Reference</span></a> lists these types. Pyright needs
+no annotation.</p></li>
 </ul>
 </section>
 <section id="check-your-project">

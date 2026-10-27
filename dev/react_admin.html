@@ -56,7 +56,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             false;
         </script>
-    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <script src="_static/newsletter.js?v=7326e93d"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/dev/react_admin.html" />
     <link rel="icon" href="_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="about.html" />
@@ -647,10 +647,25 @@ no redirect happens.</p>
 422 that names the place, as a bad value of other list params does.</p>
 <p>React-admin uses the <code class="docutils literal notranslate"><span class="pre">id</span></code> array form of <code class="docutils literal notranslate"><span class="pre">filter</span></code> (<code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">[1,</span> <span class="pre">2,</span> <span class="pre">3]}</span></code>) for
 its <code class="docutils literal notranslate"><span class="pre">getMany</span></code> calls. It becomes <code class="docutils literal notranslate"><span class="pre">WHERE</span> <span class="pre">id</span> <span class="pre">IN</span> <span class="pre">(1,</span> <span class="pre">2,</span> <span class="pre">3)</span></code>. Other filter values
-must be equal to the column value. Only fields that the view’s response class
-sends are accepted. Other fields, also react-admin’s full-text search
-parameter <code class="docutils literal notranslate"><span class="pre">q</span></code>, get a 400. For a search on part of a value, or a full-text
-search, override the view’s
+must be equal to the column value. A value goes through the validation of
+its field, as in the generated filters, so the validators of the field run
+too. They get only this field, so <code class="docutils literal notranslate"><span class="pre">info.data</span></code> is <code class="docutils literal notranslate"><span class="pre">{}</span></code>; see
+<a class="reference internal" href="filtering.html#filter-value-validation"><span class="std std-ref">Filter values go through the field’s validation</span></a>.
+<code class="docutils literal notranslate"><span class="pre">null</span></code> finds the rows without a value when the field allows <code class="docutils literal notranslate"><span class="pre">None</span></code>, also in
+a list: <code class="docutils literal notranslate"><span class="pre">{&quot;size&quot;:</span> <span class="pre">[null,</span> <span class="pre">3]}</span></code> finds the rows without a size and the rows
+with size 3. A time follows the same rule as in the other filters; see
+<a class="reference internal" href="schemas.html#utc-times"><span class="std std-ref">Keep times in UTC</span></a>.</p>
+<p>Only fields that the view’s response class sends are accepted, by their
+alias when they have one. The model must have the field in SQL: as a
+column, a <code class="docutils literal notranslate"><span class="pre">column_property</span></code> or a hybrid property with an SQL expression.
+Other fields, also a Python <code class="docutils literal notranslate"><span class="pre">&#64;property</span></code>, a hybrid property that is plain
+Python, and react-admin’s full-text search parameter <code class="docutils literal notranslate"><span class="pre">q</span></code>, get a 400.</p>
+<p>Restly cannot see a value that a serializer hides, such as an email shown as
+<code class="docutils literal notranslate"><span class="pre">a***&#64;example.com</span></code>. A filter or a sort on such a field compares the stored
+value, so a client can find the value out. Type such a field as a subclass
+of <a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/types/#pydantic.types.Secret" title="(in Pydantic v0.0.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pydantic.Secret</span></code></a> with its own
+<code class="docutils literal notranslate"><span class="pre">_display()</span></code>. Then it is no filter or sort key, as a <code class="docutils literal notranslate"><span class="pre">SecretStr</span></code> is not.</p>
+<p>For a search on part of a value, or a full-text search, override the view’s
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_filters" title="fastapi_restly.views.RestView.apply_filters"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_filters</span></code></a>. It gets
 the list params with <code class="docutils literal notranslate"><span class="pre">filter</span></code> as a dict. Take your keys out, and pass the
 rest on:</p>
@@ -665,7 +680,7 @@ rest on:</p>
         <span class="n">rest</span> <span class="o">=</span> <span class="n">list_params</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span><span class="n">update</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;filter&quot;</span><span class="p">:</span> <span class="n">filters</span><span class="p">})</span>
         <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">apply_filters</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="n">rest</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">q</span><span class="p">:</span>
-            <span class="n">stmt</span> <span class="o">=</span> <span class="n">stmt</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Product</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">icontains</span><span class="p">(</span><span class="n">q</span><span class="p">))</span>
+            <span class="n">stmt</span> <span class="o">=</span> <span class="n">stmt</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Product</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">icontains</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">autoescape</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
         <span class="k">return</span> <span class="n">stmt</span>
 </pre></div>
 </div>
@@ -907,7 +922,11 @@ shows the three keys with the shape of their JSON, and an unknown key gets
 the same values: <code class="docutils literal notranslate"><span class="pre">sort</span></code> as <code class="docutils literal notranslate"><span class="pre">(&quot;name&quot;,</span> <span class="pre">&quot;DESC&quot;)</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code> as <code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">24)</span></code> and
 <code class="docutils literal notranslate"><span class="pre">filter</span></code> as a dict. These views do not use the list params that Restly
 generates, which <a class="reference internal" href="filtering.html#list-parameters-lifecycle"><span class="std std-ref">Filtering, Sorting &amp; Pagination</span></a>
-describes.</p>
+describes. They find each field of <code class="docutils literal notranslate"><span class="pre">filter</span></code> and <code class="docutils literal notranslate"><span class="pre">sort</span></code> with
+<a class="reference internal" href="api/query.html#fastapi_restly.query.FilterKey" title="fastapi_restly.query.FilterKey"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.query.FilterKey</span></code></a> and
+<a class="reference internal" href="api/query.html#fastapi_restly.query.SortKey" title="fastapi_restly.query.SortKey"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.query.SortKey</span></code></a>, which a view with
+list params of its own can use too; see
+<a class="reference internal" href="filtering.html#own-list-params-keys"><span class="std std-ref">Filter and sort on the fields of the response</span></a>.</p>
 <p>To add a query key, subclass <code class="docutils literal notranslate"><span class="pre">ReactAdminListParams</span></code> and set the subclass as
 <code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code>. A subclass of the view keeps it. List params that are
 not a <code class="docutils literal notranslate"><span class="pre">ReactAdminListParams</span></code> fail when Python defines the view class.</p>

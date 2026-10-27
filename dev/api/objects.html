@@ -56,7 +56,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             false;
         </script>
-    <script src="../_static/newsletter.js?v=e342eb53"></script>
+    <script src="../_static/newsletter.js?v=7326e93d"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/dev/api/objects.html" />
     <link rel="icon" href="../_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="../about.html" />
@@ -530,20 +530,24 @@ deleting them, and snapshotting loaded column values.</p>
 <dd><p>Build an object of <code class="docutils literal notranslate"><span class="pre">model</span></code> from <code class="docutils literal notranslate"><span class="pre">data</span></code> and add it to <code class="docutils literal notranslate"><span class="pre">session</span></code>.</p>
 <p>This is the schema-to-ORM mapping primitive. It resolves Restly reference
 fields, skips read-only inputs, applies schema defaults, and stages the
-object in the session. A field that the client left out with the value
-<code class="docutils literal notranslate"><span class="pre">None</span></code> is not passed, so the model’s default applies to it. It does not
+object in the session. A field that the client did not send, and whose
+value is <code class="docutils literal notranslate"><span class="pre">None</span></code>, is not passed to the constructor, unless the
+constructor requires it. So the model’s default applies to it. It does not
 flush, so the object has no id yet. The default <code class="docutils literal notranslate"><span class="pre">create</span></code> of a view
 calls this with the view’s model.</p>
 <p>The schema of <code class="docutils literal notranslate"><span class="pre">data</span></code> decides what is written: every field it
-declares, except those it marks <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>.</p>
+declares, except those it marks <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>. A time gets the form of its
+column; see <a class="reference internal" href="../schemas.html#utc-times"><span class="std std-ref">Keep times in UTC</span></a>.</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="fastapi_restly.objects.save_object">
 <span class="sig-prename descclassname"><span class="pre">fastapi_restly.objects.</span></span><span class="sig-name descname"><span class="pre">save_object</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">session</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/session_api.html#sqlalchemy.orm.Session" title="(in SQLAlchemy v2.0)"><span class="pre">Session</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">obj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_T</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">_T</span></span></span><a class="headerlink" href="#fastapi_restly.objects.save_object" title="Link to this definition">#</a></dt>
 <dd><p>Flush the session and refresh <code class="docutils literal notranslate"><span class="pre">obj</span></code> from the database.</p>
-<p>The refresh names <code class="docutils literal notranslate"><span class="pre">obj</span></code>’s own attributes, so it does not cascade into
-related objects; see <code class="xref py py-func docutils literal notranslate"><span class="pre">_refresh_plan()</span></code>. Inside a view, the commit
+<p>The refresh reloads the columns of <code class="docutils literal notranslate"><span class="pre">obj</span></code> and its eagerly loaded
+relationships, and nothing else: it does not reach related objects. Its
+lazy relationships are left unloaded, so a changed foreign key is not
+read from a stale relationship. Inside a view, the commit
 bracket saves the subject of the action and the other rows of the view’s
 model that it wrote. Call this in code outside a view, or for a row of
 another model that must be fresh before the commit. It does not load the
@@ -553,13 +557,14 @@ relationships of a response.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="fastapi_restly.objects.snapshot">
 <span class="sig-prename descclassname"><span class="pre">fastapi_restly.objects.</span></span><span class="sig-name descname"><span class="pre">snapshot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.15)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.objects.snapshot" title="Link to this definition">#</a></dt>
-<dd><p>Frozen capture of an object’s <em>already-loaded</em> column values, for
-old-vs-new dirty detection in the commit hooks.</p>
-<p>Not <code class="docutils literal notranslate"><span class="pre">copy(obj)</span></code> (which shares SQLAlchemy instance state). Reads only
-attributes already present on the instance, so it never triggers a lazy
-load: a deferred/unloaded column is skipped instead of forcing a blocking
-SELECT (which on an async session would raise <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>). No
-session argument: it reads state already on the instance.</p>
+<dd><p>A dict of the column values that are loaded on <code class="docutils literal notranslate"><span class="pre">obj</span></code>, to compare
+old and new values in the commit hooks.</p>
+<p>It is a shallow copy: a mutable value, such as a JSON dict, is shared
+with the object. So a change to such a value in place also shows in the
+snapshot. Assign a new value instead.</p>
+<p>It reads only what is loaded, so it never starts a lazy load. A deferred
+or unloaded column is left out, where a load would raise
+<code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code> on an async session. It needs no session.</p>
 </dd></dl>
 
 <dl class="py function">
@@ -568,8 +573,9 @@ session argument: it reads state already on the instance.</p>
 <dd><p>Apply writable fields from <code class="docutils literal notranslate"><span class="pre">data</span></code> to <code class="docutils literal notranslate"><span class="pre">obj</span></code>.</p>
 <p>This is the schema-to-ORM update primitive. It resolves Restly reference
 fields and applies only writable inputs: the fields the client sent that
-the schema of <code class="docutils literal notranslate"><span class="pre">data</span></code> does not mark <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>. It does not flush.
-The default <code class="docutils literal notranslate"><span class="pre">update</span></code> of a view calls this.</p>
+the schema of <code class="docutils literal notranslate"><span class="pre">data</span></code> does not mark <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>. A time gets the form of
+its column, as in <a class="reference internal" href="#fastapi_restly.objects.make_new_object" title="fastapi_restly.objects.make_new_object"><code class="xref py py-func docutils literal notranslate"><span class="pre">make_new_object()</span></code></a>. It does not flush. The default
+<code class="docutils literal notranslate"><span class="pre">update</span></code> of a view calls this.</p>
 </dd></dl>
 
 <div class="admonition seealso">

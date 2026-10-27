@@ -56,7 +56,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             false;
         </script>
-    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <script src="_static/newsletter.js?v=7326e93d"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/dev/lifecycle.html" />
     <link rel="icon" href="_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="about.html" />
@@ -697,7 +697,7 @@ of some columns, SQLAlchemy leaves the loader options out.</p>
 <tr class="row-odd"><td><p>The keys that a list has</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.include_filters" title="fastapi_restly.views.BaseRestView.include_filters"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_filters</span></code></a> / <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.include_sort_keys" title="fastapi_restly.views.BaseRestView.include_sort_keys"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_sort_keys</span></code></a> (<a class="reference internal" href="filtering.html#choose-list-keys"><span class="std std-ref">Choose the keys of a list</span></a>)</p></td>
 </tr>
-<tr class="row-even"><td><p>A list filter that is not a comparison with a column</p></td>
+<tr class="row-even"><td><p>A list filter that the generated keys do not give</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.list_filter" title="fastapi_restly.views.list_filter"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.list_filter</span></code></a> (<a class="reference internal" href="filtering.html#own-list-filter"><span class="std std-ref">Add a filter of your own</span></a>)</p></td>
 </tr>
 <tr class="row-odd"><td><p>How the list params filter, sort and page</p></td>
@@ -927,7 +927,9 @@ a list of 50 projects still runs one query for the page:</p>
 </div>
 <p>Declare <code class="docutils literal notranslate"><span class="pre">task_count:</span> <span class="pre">fr.ReadOnly[int]</span> <span class="pre">=</span> <span class="pre">0</span></code> in the view’s schema, as for
 <code class="docutils literal notranslate"><span class="pre">can_edit</span></code>. The save after a write loads the value again, so the create and
-update responses show it too. The SaaS example sets two task counts on its
+update responses show it too. The list gets filters and a sort key for it,
+such as <code class="docutils literal notranslate"><span class="pre">?sort=-task_count</span></code>; see <a class="reference internal" href="filtering.html#filter-a-list"><span class="std std-ref">Filter a list</span></a>. The SaaS
+example sets two task counts on its
 projects this way
 (<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/tasks/models.py"><code class="docutils literal notranslate"><span class="pre">app/tasks/models.py</span></code></a>),
 and <code class="docutils literal notranslate"><span class="pre">can_edit</span></code> in <code class="docutils literal notranslate"><span class="pre">ProjectView.to_single_response</span></code>
@@ -1029,7 +1031,8 @@ their sync versions. See
 call <code class="docutils literal notranslate"><span class="pre">authorize</span></code> or the hooks. <code class="docutils literal notranslate"><span class="pre">async_make_new_object</span></code> and
 <code class="docutils literal notranslate"><span class="pre">async_update_object</span></code> check the references too. In a CRUD route the handler
 has checked them first, and the second check does not query the database
-again.</p>
+again. <code class="docutils literal notranslate"><span class="pre">async_save_object</span></code> refreshes the object, but it does not load the
+relationships that the view’s response class names.</p>
 <p>The save writes every change in the session. It refreshes the object that the
 business method returns, and every other row of the view’s model that the
 action wrote. A row of another model that the method changes, such as a line
@@ -1101,9 +1104,51 @@ that are not committed, Restly warns with
 <code class="docutils literal notranslate"><span class="pre">warn_on_uncommitted=False</span></code> to <a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure</span></code></a>.
 A route that rolls back on purpose, such as a dry run, can turn it off for one
 request with <code class="docutils literal notranslate"><span class="pre">session.info[&quot;_fr_suppress_uncommitted&quot;]</span> <span class="pre">=</span> <span class="pre">True</span></code>.</p>
-<p>A <a class="reference internal" href="database.html#own-session-generator"><span class="std std-ref">session generator of your own</span></a> decides how a
-session is made and closed. It does not change who commits.</p>
+<p>A session generator of your own decides how a session is made and closed. It
+does not change who commits, unless it commits itself, which it must not do;
+see <a class="reference internal" href="database.html#own-session-generator"><span class="std std-ref">Build sessions with your own generator</span></a>.</p>
 </div>
+<section id="when-a-write-action-raises">
+<span id="write-action-error"></span><h3>When a write action raises<a class="headerlink" href="#when-a-write-action-raises" title="Link to this heading">#</a></h3>
+<p>To catch the error of a write action and go on, put each write action in
+<a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/session_api.html#sqlalchemy.orm.Session.begin_nested" title="(in SQLAlchemy v2.0)"><code class="xref py py-meth docutils literal notranslate"><span class="pre">session.begin_nested()</span></code></a>. Catch
+the error outside it:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTPException</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/bulk&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">bulk_create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">OrderCreate</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">ViewResponse</span><span class="p">]:</span>
+        <span class="n">orders</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">begin_nested</span><span class="p">():</span>
+                    <span class="n">orders</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_create</span><span class="p">(</span><span class="n">item</span><span class="p">))</span>
+            <span class="k">except</span> <span class="n">HTTPException</span><span class="p">:</span>  <span class="c1"># also fr.exc.Conflict, for a duplicate value</span>
+                <span class="k">continue</span>
+        <span class="k">return</span> <span class="n">orders</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">begin_nested()</span></code> starts a savepoint. When the handler raises before its
+commit, SQLAlchemy rolls back to the savepoint. This undoes what the handler
+changed, and the session stays usable. When the handler succeeds, it
+commits, so each order is saved on its own. On <code class="docutils literal notranslate"><span class="pre">fr.RestView</span></code>, use <code class="docutils literal notranslate"><span class="pre">with</span></code> and
+the sync handlers.</p>
+<p>The savepoint ends at the commit. So an error from <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>
+does not undo the order: the order is saved. See
+<a class="reference internal" href="#after-action-commit-raises">When <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> raises</a>. After an
+error at the commit itself, such as from a deferred constraint, the session
+needs <code class="docutils literal notranslate"><span class="pre">session.rollback()</span></code> before it can write again.</p>
+<p>Without the savepoint, the error skips the commit of the action, but it does
+not undo what the action already changed in the session. So the next write
+action commits that change too, such as a row that <code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code>
+refused. After a database error at the flush, such as a duplicate value, the
+next write fails with SQLAlchemy’s
+<a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/exceptions.html#sqlalchemy.exc.PendingRollbackError" title="(in SQLAlchemy v2.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">PendingRollbackError</span></code></a> instead.
+Inside a <code class="docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code> block, Restly raises <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code>
+in both cases. A route that does not catch the error needs no savepoint: the
+request fails, and the session rolls back when the request ends.</p>
+<p>To save all orders in one commit, see
+<a class="reference internal" href="#shared-write-action-commit">Commit several writes together</a>.</p>
+</section>
 </section>
 <section id="run-code-before-or-after-the-commit">
 <span id="transaction-hooks"></span><h2>Run code before or after the commit<a class="headerlink" href="#run-code-before-or-after-the-commit" title="Link to this heading">#</a></h2>
@@ -1124,7 +1169,9 @@ not call them, and neither do the <code class="docutils literal notranslate"><sp
 custom route gives <code class="docutils literal notranslate"><span class="pre">write_action</span></code>. See <a class="reference internal" href="authorization.html#action-names"><span class="std std-ref">Action names</span></a>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">new</span></code>: the row that the action is about, after the save. It is <code class="docutils literal notranslate"><span class="pre">None</span></code> when
 the action removed the row, as a delete does, or when the action has no
-single row.</p></li>
+single row. On a session that expires on commit, <code class="docutils literal notranslate"><span class="pre">snapshot(new)</span></code> in
+<code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> is empty, and Restly warns; see
+<a class="reference internal" href="database.html#session-factory-defaults"><span class="std std-ref">Session factory defaults</span></a>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">old</span></code>: a dict of that row’s column values before the action, from
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.snapshot" title="fastapi_restly.views.BaseRestView.snapshot"><code class="xref py py-meth docutils literal notranslate"><span class="pre">snapshot</span></code></a>. It holds only
 the columns that were loaded. It is <code class="docutils literal notranslate"><span class="pre">None</span></code> when the row is new, as on a
@@ -1176,6 +1223,33 @@ ORM statement such as <code class="docutils literal notranslate"><span class="pr
 does not tell the session, so the refresh of the row fails with SQLAlchemy’s
 <code class="docutils literal notranslate"><span class="pre">InvalidRequestError</span></code>. Delete the row that <code class="docutils literal notranslate"><span class="pre">obj</span></code> names through the ORM.</p>
 </div>
+<section id="run-the-work-after-the-response">
+<span id="after-commit-background-task"></span><h3>Run the work after the response<a class="headerlink" href="#run-the-work-after-the-response" title="Link to this heading">#</a></h3>
+<p>Work in <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>, such as sending an email, makes the client
+wait for it. To answer first, give the work to FastAPI’s
+<a class="reference external" href="https://fastapi.tiangolo.com/reference/background/#fastapi.BackgroundTasks" title="(in FastAPI v0.0.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">BackgroundTasks</span></code></a>. Declare it as a
+<a class="reference internal" href="views.html#dependency-injection-on-class-attributes"><span class="std std-ref">class attribute</span></a> of the view, and
+add the task in the hook:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">BackgroundTasks</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">OrderView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="o">...</span>
+    <span class="n">background_tasks</span><span class="p">:</span> <span class="n">BackgroundTasks</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">after_action_commit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">new</span><span class="p">,</span> <span class="n">old</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">CREATE</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">background_tasks</span><span class="o">.</span><span class="n">add_task</span><span class="p">(</span><span class="n">send_confirmation_email</span><span class="p">,</span> <span class="n">new</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>FastAPI runs the task after it sends the response. The order is committed
+then, so a task that opens its own session finds it. A task queue works the
+same way: enqueue the job in <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>, with the id of the row.
+Do not enqueue it in <code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code>: a worker can start the job
+before the commit, when other sessions cannot see the row yet, and the commit
+can still fail. A task that fails does not undo the write; see the next
+section.</p>
+</section>
 <section id="when-after-action-commit-raises">
 <span id="after-action-commit-raises"></span><h3>When <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> raises<a class="headerlink" href="#when-after-action-commit-raises" title="Link to this heading">#</a></h3>
 <p>The write is already committed, so an exception from the hook cannot undo it.
@@ -1216,14 +1290,17 @@ response:</p>
     <span class="nd">@fr</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>               <span class="c1"># load through the scope, or 404</span>
-        <span class="n">serialized</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_single_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">)</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>           <span class="c1"># the row as GET /{id} sends it</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_delete</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>               <span class="c1"># authorize, delete, commit</span>
-        <span class="k">return</span> <span class="n">serialized</span>
+        <span class="k">return</span> <span class="n">response</span>
 </pre></div>
 </div>
 <p>The default <code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/{id}</span></code> answers <code class="docutils literal notranslate"><span class="pre">204</span> <span class="pre">No</span> <span class="pre">Content</span></code>. This version answers
 <code class="docutils literal notranslate"><span class="pre">200</span></code> with the deleted row, as React Admin’s <code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code> expects
-(<a class="reference internal" href="react_admin.html"><span class="std std-doc">React Admin</span></a>).</p>
+(<a class="reference internal" href="react_admin.html"><span class="std std-doc">React Admin</span></a>). It builds the response before the row is
+gone. <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response" title="fastapi_restly.views.BaseRestView.to_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_response</span></code></a>
+gives an object of the response class, so only its fields go out, as from
+<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code>.</p>
 <div class="details admonition">
 <p class="admonition-title">Details</p>
 <p>When Restly registers the view, an endpoint method that the class defines
@@ -1262,7 +1339,7 @@ header. Keep the <code class="docutils literal notranslate"><span class="pre">li
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_many_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">):</span>
         <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span><span class="n">list_params</span><span class="p">)</span>
         <span class="n">serialized</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">to_single_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">,</span> <span class="n">by_alias</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">objects</span>
         <span class="p">]</span>
         <span class="k">return</span> <span class="n">fastapi</span><span class="o">.</span><span class="n">Response</span><span class="p">(</span>
@@ -1274,7 +1351,8 @@ header. Keep the <code class="docutils literal notranslate"><span class="pre">li
 </div>
 <p>The route sends a plain list, not the default envelope, so it names its
 <code class="docutils literal notranslate"><span class="pre">response_model</span></code>: a list of the view’s response class. Without it, OpenAPI
-shows no schema for the response.
+shows no schema for the response. The route builds the body itself, so it
+dumps each row <code class="docutils literal notranslate"><span class="pre">by_alias=True</span></code>, as FastAPI does for a response model.
 <a class="reference internal" href="schemas.html#name-the-response-classes"><span class="std std-ref">Name the view’s classes in a custom route</span></a>
 explains the markers, such as <code class="docutils literal notranslate"><span class="pre">ViewResponse</span></code>.</p>
 </section>
@@ -1289,9 +1367,9 @@ List the mixin before the view class, so Python finds its method first:</p>
     <span class="nd">@fr</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="n">ViewID</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewResponse</span><span class="p">:</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
-        <span class="n">serialized</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_single_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">)</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_delete</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">serialized</span>
+        <span class="k">return</span> <span class="n">response</span>
 
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
@@ -1425,6 +1503,7 @@ runs. Then the default item routes work for the model:</p>
 </div>
 <p>A view that keeps the default <code class="docutils literal notranslate"><span class="pre">where_id</span></code> fails when it registers, unless it
 leaves the item routes out with
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.include_routes" title="fastapi_restly.views.BaseRestView.include_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_routes</span></code></a> or
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_routes" title="fastapi_restly.views.BaseRestView.exclude_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_routes</span></code></a>.</p>
 <p>The expression narrows the read inside the scope. It never reaches past it,
 so a row that the view hides stays a 404 under any key. Only
@@ -1608,6 +1687,24 @@ that needs the commit, or an after-hook that has run, goes after the block,
 or in <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>. The route above returns the orders after the
 block, so Restly builds their responses after the commit. On <code class="docutils literal notranslate"><span class="pre">fr.RestView</span></code>, use
 <code class="docutils literal notranslate"><span class="pre">with</span></code> and the sync handlers. The method has the same name.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>On SQLite, a <code class="docutils literal notranslate"><span class="pre">session.begin_nested()</span></code> inside the block can commit its rows
+when it ends. This happens with the default settings of Python’s <code class="docutils literal notranslate"><span class="pre">sqlite3</span></code>
+module and of <code class="docutils literal notranslate"><span class="pre">aiosqlite</span></code>. When the block then fails, these rows stay saved,
+and their after-hooks do not run. Restly’s test fixtures change these
+settings in the default <a class="reference internal" href="testing.html#cleaning-up-between-tests"><span class="std std-ref">rollback mode</span></a>, so a
+test does not show the problem.</p>
+<p>So on SQLite, prefer the loop in
+<a class="reference internal" href="#write-action-error">When a write action raises</a>: each row commits on its
+own, without a shared block. SQLAlchemy shows how to change the settings for
+<a class="reference external" href="https://docs.sqlalchemy.org/en/20/dialects/sqlite.html#pysqlite-serializable"><code class="docutils literal notranslate"><span class="pre">sqlite3</span></code></a>
+and for
+<a class="reference external" href="https://docs.sqlalchemy.org/en/20/dialects/sqlite.html#aiosqlite-serializable"><code class="docutils literal notranslate"><span class="pre">aiosqlite</span></code></a>.
+But then the reads of a write join its transaction. So a write that overlaps
+another write can fail at once with “database is locked”, without waiting
+for the timeout.</p>
+</div>
 <div class="details admonition">
 <p class="admonition-title">Details</p>
 <p>The block can also hold the handlers of other views, for an operation on more
@@ -1818,8 +1915,12 @@ signature.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#run-the-same-logic-in-a-script-or-a-worker">Run the same logic in a script or a worker</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-commits-and-when">What commits, and when</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-commits-and-when">What commits, and when</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#when-a-write-action-raises">When a write action raises</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#run-code-before-or-after-the-commit">Run code before or after the commit</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#run-the-work-after-the-response">Run the work after the response</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#when-after-action-commit-raises">When <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> raises</a></li>
 </ul>
 </li>

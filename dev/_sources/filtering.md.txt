@@ -16,13 +16,13 @@ GET /users?page=2&page_size=50
 Restly builds these list params when the view registers. It reads the
 view's response class, and gives each field that maps to a column one filter,
 plus filters with an operator suffix such as `__gte`. So a client can filter
-and sort only on fields it can see. By default the response class is the
-view's schema without its `WriteOnly` fields; see
+and sort only on the fields that go out. By default the response class is
+the view's schema without its `WriteOnly` fields; see
 [Set your own response class](#own-response-class).
 
 By default a list has the keys of the resource's own fields. A view chooses
 other keys with four settings; see [Choose the keys of a list](#choose-list-keys).
-For a filter that is not a comparison with a column, see
+For a filter that the generated keys do not give, see
 [Add a filter of your own](#own-list-filter).
 
 The filters narrow the rows inside the view's [scope](scopes.md). They can
@@ -74,21 +74,38 @@ A suffix on the name chooses another comparison:
 Not every field gets every suffix:
 
 - The range suffixes (`__gte`, `__lte`, `__gt`, `__lt`) exist only for types
-  that have an order, such as numbers, text and dates. Booleans and UUIDs do
-  not get them.
-- `__contains` and `__icontains` exist only for text fields.
+  that have an order, such as numbers, text and dates. Booleans, UUIDs and
+  labels do not get them: an enum, or a `Literal` of strings. An int enum,
+  such as an `IntEnum`, has the order of its numbers and gets them. A flag,
+  such as an `IntFlag`, gets the other filters, but no range.
+- A column of SQLAlchemy's `Enum` type gets no range suffixes, whatever the
+  type of the field, because it holds labels. `Mapped[Status]`, with an enum
+  `Status`, is such a column by default. So an int enum needs a column that
+  stores the number, such as `Integer`. On PostgreSQL, a native ENUM orders
+  its labels as they were declared. To filter by that order, write the range
+  yourself; see [Add a filter of your own](#own-list-filter).
+- `__contains` and `__icontains` exist only for text fields, and not on a
+  column of SQLAlchemy's `Enum` type.
 - A field that holds a `dict` or a `list`, such as a `JSON` or `ARRAY`
   column, gets only `__isnull`. A value from the URL cannot become a
-  collection, so the other filters would fail on every request.
-- A {data}`WriteOnly <fastapi_restly.schemas.WriteOnly>` field, or a field
-  with `Field(exclude=True)`, gets no filter and is not a sort key. A filter
-  on it would let a client find out its value.
+  collection, so the other filters would fail on every request. Such a field
+  is no sort key either: a document or a list has no order that a client
+  means, and PostgreSQL's `json` type has none at all.
+- A {data}`WriteOnly <fastapi_restly.schemas.WriteOnly>` field, a field
+  with `Field(exclude=True)`, and a field of Pydantic's secret types, such as
+  `SecretStr`, get no filter and are not a sort key. A filter on such a field
+  would let a client find out its value. Restly cannot see a value that a
+  serializer hides, such as a number shown as `***-1234`. Leave such a field
+  out with `exclude_filters` and `exclude_sort_keys`.
 
-A date and time without a UTC offset is read as UTC when the column stores a
-time zone. On a base with
-{class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>`,
-`Mapped[datetime]` stores one by default. A column declared `DateTime()`
-compares the value as it is.
+A filter compares a time in UTC: a time without an offset is UTC, and a
+time with an offset is compared as the same time in UTC. See
+[Keep times in UTC](#utc-times).
+
+A `column_property` counts as a column. So a value that SQL computes for
+each row, such as the number of tasks of a project, gets filters and a sort
+key too, such as `?task_count__gte=1` and `?sort=-task_count`.
+[Add a value to each row](#value-on-each-row) shows such a value.
 :::
 
 (filter-value-validation)=
@@ -96,7 +113,14 @@ compares the value as it is.
 
 Equality, `__ne`, `__in` and the range filters validate each value with the
 field's Pydantic validation, so the field validators of the schema run on
-filter values too. A value that fails returns `400` (see
+filter values too. A field of type `Any`, such as the `id` of
+{class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>`, gives the value the
+Python type of its column, such as a `UUID` from its text. On a column of
+SQLAlchemy's `Enum` type, the value must also be one of its labels. A
+number must fit its integer column, such as the range of `Integer`, and text
+must hold no NUL character; see [Column validation](#column-validation). A
+filter does not check the length of text.
+A value that fails returns `400` (see
 [Why a bad list request returns 422 or 400](#list-request-errors)).
 
 :::{admonition} Details
@@ -109,8 +133,8 @@ Restly validates one value at a time, without the other fields. So:
   also when the URL uses an alias.
 - {attr}`pydantic.ValidationInfo.data` is `{}`.
 
-`__contains` and `__icontains` use the text as it is, and `__isnull` reads a
-boolean.
+`__contains` and `__icontains` use the text as it is. They only refuse a NUL
+character. `__isnull` reads a boolean.
 :::
 
 ### Match one of several values
@@ -162,7 +186,10 @@ Restly also splits one `__contains` or `__icontains` value at each space, so
 parameter when you build the URL yourself: it has only one meaning.
 
 Restly escapes `%`, `_` and `\` before it builds the `LIKE` condition. A
-search finds the text as written; these characters are not wildcards.
+search finds the text as written; these characters are not wildcards. In a
+filter of your own, pass SQLAlchemy's `autoescape=True` for the same result,
+such as `Item.name.icontains(q, autoescape=True)`. Without it, `?q=%` matches
+every row.
 :::
 
 ### Combine filters on one field
@@ -186,8 +213,9 @@ GET /users?sort=-created_at,name
 ```
 
 By default every own field of the resource is a sort key. An unknown sort key
-gets `422`. The description of `sort` in OpenAPI lists the sort keys. To
-choose them, see [Choose the keys of a list](#choose-list-keys).
+gets `422`, and so does a key that appears twice, such as `?sort=name,-name`.
+The description of `sort` in OpenAPI lists the sort keys. To choose them, see
+[Choose the keys of a list](#choose-list-keys).
 
 A dotted key sorts by a related field, when `include_sort_keys` has it:
 `?sort=-city.country.code` orders by that column, and joins each step of the
@@ -219,7 +247,9 @@ A key of `default_sort` must be a field of the response class that can be a
 sort key. `include_sort_keys` does not have to keep it, so a view can sort by
 a field that the client cannot sort by. A key that the response class does
 not have fails when the view registers, also when the view gets
-`default_sort` from a base view. A view without those fields sets
+`default_sort` from a base view. A key that appears twice, such as in
+`"name,-name"`, fails when the class is defined, or when the view registers
+for a mixin. A view without those fields sets
 `default_sort = None` for primary key order. An empty `?sort=` gets the
 default too. An override of
 {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
@@ -239,6 +269,13 @@ class ItemView(fr.AsyncRestView):
             stmt = stmt.order_by(Item.position)
         return await super().apply_list_params(stmt, list_params)
 ```
+
+A column of SQLAlchemy's `Enum` type sorts by its labels, in the order of
+the database. On SQLite and on a column that is not a native enum, such as
+the one that `fr.ModelDefaults` gives `Mapped[Status]`, that is the order
+of the text. A native ENUM on PostgreSQL sorts its labels as they were
+declared. An int enum sorts by its numbers only on a column that stores
+them, such as `Integer`.
 :::
 
 (sort-nulls)=
@@ -502,6 +539,8 @@ filters on again with `("*",)`. An entry that a view inherits may match no
 key, because a base view serves many schemas. For mypy, give the setting a
 type on the base view: `include_filters: ClassVar[tuple[str, ...]] = ()`.
 Without it, mypy takes the type of `()` and rejects `("*",)` in the view.
+The same holds for every setting; see
+[What a type checker cannot see](#typing-limits).
 
 The sort keys are separate from the filter keys, so a view can sort on
 `created_at` without a `?created_at=` filter. A sort key has no suffix. It
@@ -519,7 +558,8 @@ takes the four settings and `sort_query_param` as keywords, so a route
 outside a view can build the same list params.
 
 A key that clients use is part of your API. Removing it later breaks those
-clients.
+clients. A key also goes away when you remove its field from the response
+class.
 :::
 
 (relation-filtering)=
@@ -683,7 +723,7 @@ To use another key in the URL, change the alias.
 (own-list-filter)=
 ## Add a filter of your own
 
-For a filter that is not a comparison with a column, decorate a view method
+For a filter that the generated keys do not give, decorate a view method
 with {func}`fr.list_filter <fastapi_restly.views.list_filter>`:
 
 ```python
@@ -720,6 +760,23 @@ def filter_allow_archived(self, value: bool = False) -> ColumnElement[bool] | No
     return None if value else ~Item.archived
 ```
 
+A key can also be a field and an operator, as the generated keys are. The
+operator can be a new one:
+
+```python
+from sqlalchemy import func
+
+
+@fr.list_filter("name__length")
+def filter_name_length(self, value: int) -> ColumnElement[bool]:
+    """Items whose name has this many characters."""
+    return func.length(Item.name) == value
+```
+
+The client sends `?name__length=5`. Before the last `__` comes a field with
+filters, such as `name` or `vendor.name`, so `__` always splits a field from
+an operator. A key without `__` and `.`, such as `popular`, needs no field.
+
 A filter on a column lets a client find out the values of that column, one
 request at a time. Write a filter only on data that the client may see.
 
@@ -743,8 +800,12 @@ subquery in the condition is enough, and it is faster than loading ids for
 
 The key is always on: `include_filters` and `exclude_filters` choose among
 the generated keys only. A key with the name of a generated key that is on
-fails when the view registers. To replace `name`, leave the generated key out
-with `exclude_filters = ("name",)`, and decorate your own.
+fails when the view registers. To replace a generated key, such as `name` or
+`name__icontains`, leave it out with `exclude_filters`, and decorate your own.
+
+A key with an operator looks like a generated key, but it works as your
+method does. It takes one value of the method's type, so a comma or a
+repeated key does not combine values, as they do for a generated key.
 
 A subclass inherits the key. It drops the key by setting the name of the
 method to `None`, as in `filter_popular = None`. A type checker rejects
@@ -757,10 +818,10 @@ model of another class, such as one of your own, does not run them, and
 Restly warns with
 {class}`RestlySkippedFilterMethodsWarning <fastapi_restly.exc.RestlySkippedFilterMethodsWarning>`.
 
-A key follows the rules of the page parameters: no `__`, no `.` and no `_`
-at the start. It is not the name of the view's page or sort parameters, such
-as `page`, `page_size` or `sort`, and not the name of a Pydantic model
-attribute, such as `copy`.
+A key does not start with `_`. It has `__` at most once, with a field before
+it and an operator after it, and a `.` only in the field. It is not the name
+of the view's page or sort parameters, such as `page`, `page_size` or `sort`,
+and not the name of a Pydantic model attribute, such as `copy`.
 
 {func}`fr.query.apply_list_params <fastapi_restly.query.apply_list_params>`
 has no view, so it cannot call the method. It raises `ValueError` for list
@@ -904,14 +965,10 @@ and apply it to the statement in
 ```python
 from typing import Literal
 
-import pydantic
 
-
-class ItemSearch(pydantic.BaseModel):
+class ItemSearch(fr.query.PagedListParams):
     q: str | None = None
     order: Literal["name", "-name"] = "name"
-    page: int = pydantic.Field(1, ge=1)
-    page_size: int = pydantic.Field(20, ge=1, le=100)
 
 
 class ItemView(fr.AsyncRestView):
@@ -922,7 +979,7 @@ class ItemView(fr.AsyncRestView):
 
     async def apply_filters(self, stmt, list_params: ItemSearch):
         if list_params.q:
-            stmt = stmt.where(Item.name.icontains(list_params.q))
+            stmt = stmt.where(Item.name.icontains(list_params.q, autoescape=True))
         return stmt
 
     async def apply_list_params(self, stmt, list_params: ItemSearch):
@@ -935,16 +992,34 @@ class ItemView(fr.AsyncRestView):
 The client sends `GET /items/?q=axe&order=-name&page=2`. Restly reads the
 model from the query string, as on every list route: a bad value or an
 unknown key gets `422`, and OpenAPI shows each field. The scope still
-applies, and `total_count` counts the rows that `apply_filters` keeps. The
-envelope takes the page and the page size from the fields with the names of
-the pagination parameters, here `page` and `page_size`.
+applies, and `total_count` counts the rows that `apply_filters` keeps.
+
+{class}`fr.query.PagedListParams <fastapi_restly.query.PagedListParams>`
+gives the list params the page fields, `page` and `page_size`. Restly fills
+them from the view's
+{attr}`pagination <fastapi_restly.views.BaseRestView.pagination>`: their
+names in the URL, the default page size and the bounds. Your code reads
+`list_params.page` and `list_params.page_size`, also when the pagination
+renames them, such as `page_size_query_param="size"`. The response reports
+the page that the client gets.
+
+List params of your own on a view with pages need these fields, or the view
+fails when it registers: its list would return every row, while its
+response says that it has pages. For a list without pages, subclass
+`pydantic.BaseModel` and set `pagination = None`.
 
 :::{admonition} Details
 :class: details
 
 On a sync view, the two methods are `def`. `apply_list_params` adds the
 order and the page. Order by a unique column last, such as `Item.id`, so
-that a row never moves to another page.
+that a row never moves to another page. In a base view for several models,
+{func}`fr.query.order_by_primary_key <fastapi_restly.query.order_by_primary_key>`
+adds the primary key of the view's model.
+
+One class of list params serves views with other pagination: each view gets
+its own page fields. Page fields that you write yourself also work, when
+they have the names of the view's page parameters.
 
 The list settings, such as `include_filters`, `sort_query_param` and
 `default_sort`, and
@@ -955,6 +1030,96 @@ your own, give their sort field a default, as `order` has here. A subclass with 
 generated list params, so it declares its own again. The
 [React Admin](react_admin.md) views have list params of their own: `sort`,
 `range` and `filter`.
+:::
+
+(own-list-params-keys)=
+### Filter and sort on the fields of the response
+
+The list params of a client library often name the fields of the resource,
+as in `filter={"category":"tools"}`. For each such key,
+{class}`fr.query.FilterKey <fastapi_restly.query.FilterKey>` finds the field
+and its column. As in the generated filters, a field that the response does
+not show is an unknown key. Here it gets a `400`, not a `422`, because the
+key is inside the value of `filter`; see
+[Why a bad list request returns 422 or 400](#list-request-errors).
+{meth}`parse() <fastapi_restly.query.FilterKey.parse>` gives a value the
+validation of the field and the form of the column, as the generated filters
+do. {class}`fr.query.SortKey <fastapi_restly.query.SortKey>` does the same
+for a sort key:
+
+```python
+from typing import Any
+
+import pydantic
+
+
+class ItemListParams(fr.query.PagedListParams):
+    filter: pydantic.Json[dict[str, Any]] | None = None
+    sort: str | None = None
+
+
+class ItemView(fr.AsyncRestView):
+    prefix = "/items"
+    model = Item
+    schema = ItemSchema
+    schema_list_params = ItemListParams
+
+    async def apply_filters(self, stmt, list_params: ItemListParams):
+        for name, value in (list_params.filter or {}).items():
+            key = fr.query.FilterKey(self.model, self.schema_response, name)
+            stmt = stmt.where(key.column == key.parse(value))
+        return stmt
+
+    async def apply_list_params(self, stmt, list_params: ItemListParams):
+        stmt = await self.apply_filters(stmt, list_params)
+        sorted_on = []
+        if list_params.sort:
+            name = list_params.sort.removeprefix("-")
+            key = fr.query.SortKey(self.model, self.schema_response, name)
+            descending = list_params.sort.startswith("-")
+            stmt = stmt.order_by(
+                key.term(descending=descending, sort_nulls=self.sort_nulls)
+            )
+            sorted_on.append(key.column)
+        stmt = fr.query.order_by_primary_key(stmt, self.model, sorted_on=sorted_on)
+        offset = (list_params.page - 1) * list_params.page_size
+        return stmt.limit(list_params.page_size).offset(offset)
+```
+
+The client sends `GET /items/?filter={"category":"tools"}&sort=-name&page=2`.
+The condition, such as `==`, stays yours. As in the example above, the list
+params get the page fields from
+{class}`PagedListParams <fastapi_restly.query.PagedListParams>`, and
+`apply_list_params` applies the page.
+{func}`order_by_primary_key() <fastapi_restly.query.order_by_primary_key>`
+orders by the primary key last, so that a row never moves to another page;
+`sorted_on` names the column that the list is sorted on already, which does
+not come again. The [React Admin](react_admin.md) views use these classes
+for their `filter` and `sort`.
+
+:::{admonition} Details
+:class: details
+
+A key is the name of a field, or its alias when the field has one. The model
+has an attribute with the name of the field that is one value in SQL: a
+column, a `column_property`, or a hybrid property with an SQL expression. A
+hybrid property that is plain Python, such as `self.deleted_at is not None`,
+is an unknown key. A key with a dot, such as `vendor.name`, needs a join, so
+these classes do not know it.
+
+`parse()` takes text from a URL or a value from JSON, and a number becomes
+text for a text field. The validators of the field get only this field, so
+`info.data` is `{}`; see
+[Filter values go through the field's validation](#filter-value-validation).
+`None` stays `None` when the field allows it, so `key.column == None` gives
+`IS NULL`. A value that fails gets a `400` with the reason. `term()` puts
+NULLs where `sort_nulls` says.
+
+Restly cannot see a value that a serializer hides, such as an email shown as
+`a***@example.com`. A filter or a sort on such a field would let a client
+find out the value. Type such a field as a subclass of
+{class}`pydantic.Secret <pydantic.types.Secret>` with its own `_display()`,
+so it is no key, as a `SecretStr` is not.
 :::
 
 ## Internals

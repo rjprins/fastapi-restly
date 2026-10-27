@@ -56,7 +56,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             false;
         </script>
-    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <script src="_static/newsletter.js?v=7326e93d"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/dev/projects.html" />
     <link rel="icon" href="_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="about.html" />
@@ -530,15 +530,17 @@ generates.</p>
 <section id="add-a-view-next-to-your-existing-routes">
 <span id="add-to-existing-app"></span><h2>Add a view next to your existing routes<a class="headerlink" href="#add-a-view-next-to-your-existing-routes" title="Link to this heading">#</a></h2>
 <p>Call <code class="docutils literal notranslate"><span class="pre">fr.include_view()</span></code> where you already compose your routes. Your
-existing routers and the new views can share the same app or router:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">APIRouter</span><span class="p">,</span> <span class="n">FastAPI</span>
+existing routers and the new views can share the same app or router. They
+also share your login check and your database session:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">APIRouter</span><span class="p">,</span> <span class="n">Depends</span><span class="p">,</span> <span class="n">FastAPI</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">async_engine</span>          <span class="c1"># the async engine your app already builds</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.auth</span><span class="w"> </span><span class="kn">import</span> <span class="n">require_login</span>       <span class="c1"># the login check your routes already use</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_db</span>                <span class="c1"># the session generator your routes already use</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.orders</span><span class="w"> </span><span class="kn">import</span> <span class="n">router</span> <span class="k">as</span> <span class="n">orders_router</span>
 
 <span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">()</span>
-<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">async_engine</span><span class="o">=</span><span class="n">async_engine</span><span class="p">)</span>
+<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">session_generator</span><span class="o">=</span><span class="n">get_db</span><span class="p">)</span>
 
 <span class="n">api</span> <span class="o">=</span> <span class="n">APIRouter</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/api&quot;</span><span class="p">)</span>
 
@@ -547,6 +549,7 @@ existing routers and the new views can share the same app or router:</p>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
+    <span class="n">dependencies</span> <span class="o">=</span> <span class="p">[</span><span class="n">Depends</span><span class="p">(</span><span class="n">require_login</span><span class="p">)]</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
 
@@ -559,6 +562,17 @@ existing routers and the new views can share the same app or router:</p>
 <p>You adopt Restly one resource at a time. In the example, the orders routes
 stay hand-written, and the users routes come from <code class="docutils literal notranslate"><span class="pre">UserView</span></code>. If you add a
 <code class="docutils literal notranslate"><span class="pre">ProductView</span></code> later, the orders router does not change.</p>
+<p><code class="docutils literal notranslate"><span class="pre">require_login</span></code> runs before every route of the view; see
+<a class="reference internal" href="views.html#run-a-dependency-on-every-route"><span class="std std-ref">Run a dependency on every route</span></a>.
+FastAPI calls <code class="docutils literal notranslate"><span class="pre">get_db</span></code> once for each request, so the view and your
+dependencies that use <code class="docutils literal notranslate"><span class="pre">Depends(get_db)</span></code>, such as <code class="docutils literal notranslate"><span class="pre">require_login</span></code>, get the
+same session. An override of <code class="docutils literal notranslate"><span class="pre">get_db</span></code> in <code class="docutils literal notranslate"><span class="pre">app.dependency_overrides</span></code> gives the
+views their session too, so a test setup that overrides <code class="docutils literal notranslate"><span class="pre">get_db</span></code> keeps
+working; see
+<a class="reference internal" href="database.html#share-request-session"><span class="std std-ref">Use the view’s session in your own dependencies</span></a>.
+A sync app passes its generator as <code class="docutils literal notranslate"><span class="pre">sync_session_generator</span></code>, and its views
+are <code class="docutils literal notranslate"><span class="pre">fr.RestView</span></code>. Before you pass <code class="docutils literal notranslate"><span class="pre">get_db</span></code>, check the two rules in the next
+section.</p>
 <div class="details admonition">
 <p class="admonition-title">Details</p>
 <p><code class="docutils literal notranslate"><span class="pre">fr.include_view()</span></code> also works as a class decorator;
@@ -566,7 +580,10 @@ stay hand-written, and the users routes come from <code class="docutils literal 
 <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code>, also when the views are on a router. That call checks the
 OpenAPI schema of the app for two classes with the same name, and
 <code class="docutils literal notranslate"><span class="pre">fr.include_view()</span></code> on a router cannot do this; see
-<a class="reference internal" href="database.html#configure-restly"><span class="std std-ref">Database &amp; Configuration</span></a>.</p>
+<a class="reference internal" href="database.html#configure-restly"><span class="std std-ref">Database &amp; Configuration</span></a>. The check also covers the
+routes that you had before Restly. So the first warning can name two classes
+of your own, which OpenAPI already showed under long names; see
+<a class="reference internal" href="schemas.html#name-your-schemas"><span class="std std-ref">Name your schemas</span></a>.</p>
 <p>A plain FastAPI route can also sit next to a view, for an endpoint that is not
 part of the CRUD routes:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users/</span><span class="si">{id}</span><span class="s2">/export&quot;</span><span class="p">)</span>
@@ -575,6 +592,38 @@ part of the CRUD routes:</p>
 </pre></div>
 </div>
 </div>
+</section>
+<section id="two-rules-for-your-get-db">
+<span id="existing-get-db"></span><h2>Two rules for your <code class="docutils literal notranslate"><span class="pre">get_db</span></code><a class="headerlink" href="#two-rules-for-your-get-db" title="Link to this heading">#</a></h2>
+<p>A <code class="docutils literal notranslate"><span class="pre">get_db</span></code> that works for your own routes can still break the views.</p>
+<p>Create its sessionmaker with <code class="docutils literal notranslate"><span class="pre">expire_on_commit=False</span></code>, and for async views
+also with <code class="docutils literal notranslate"><span class="pre">autoflush=False</span></code>, as Restly does:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">SessionLocal</span> <span class="o">=</span> <span class="n">async_sessionmaker</span><span class="p">(</span><span class="n">engine</span><span class="p">,</span> <span class="n">expire_on_commit</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">autoflush</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Restly reads the response from the object after the commit. With
+SQLAlchemy’s default, <code class="docutils literal notranslate"><span class="pre">expire_on_commit=True</span></code>, that read fails in an async
+view with <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>, so every <code class="docutils literal notranslate"><span class="pre">POST</span></code> and <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> answers 500. A sync
+view still works, but <code class="docutils literal notranslate"><span class="pre">snapshot(new)</span></code> in <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> is empty.
+Restly warns once for each view, sync or async, that writes through such a
+session.</p>
+<p>And <code class="docutils literal notranslate"><span class="pre">get_db</span></code> must not commit. A <code class="docutils literal notranslate"><span class="pre">get_db</span></code> that commits after the <code class="docutils literal notranslate"><span class="pre">yield</span></code> saves
+changes that should be rolled back, such as those of a route that forgot to
+commit. Remove that commit:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_db</span><span class="p">():</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="n">SessionLocal</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">session</span>
+        <span class="c1"># no session.commit() here</span>
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>First add a commit to each of your own routes that writes. A route that
+still relies on the commit in <code class="docutils literal notranslate"><span class="pre">get_db</span></code> answers 200, but its writes are lost,
+and nothing warns you.</p>
+</div>
+<p><a class="reference internal" href="database.html#own-session-generator"><span class="std std-ref">Build sessions with your own generator</span></a> has the
+details of both rules.</p>
 </section>
 <section id="write-one-crud-route-by-hand">
 <span id="hand-written-crud-route"></span><h2>Write one CRUD route by hand<a class="headerlink" href="#write-one-crud-route-by-hand" title="Link to this heading">#</a></h2>
@@ -649,7 +698,8 @@ code then shows at once.</p></li>
 already has:</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="database.html#reuse-existing-engine"><span class="std std-ref">Reuse your existing engine or sessionmaker</span></a>
-shows how to give your engine to <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code>.</p></li>
+shows how to give your engine to <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code>, for an app that has no
+session generator.</p></li>
 <li><p><a class="reference internal" href="models.html#existing-models"><span class="std std-ref">Use your existing models</span></a> shows what Restly needs from
 your models.</p></li>
 </ul>
@@ -985,6 +1035,7 @@ probably has.</p></li>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#add-a-view-next-to-your-existing-routes">Add a view next to your existing routes</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#two-rules-for-your-get-db">Two rules for your <code class="docutils literal notranslate"><span class="pre">get_db</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#write-one-crud-route-by-hand">Write one CRUD route by hand</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#move-a-resource-back-to-plain-fastapi">Move a resource back to plain FastAPI</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#replace-a-hand-written-router-with-a-view">Replace a hand-written router with a view</a></li>

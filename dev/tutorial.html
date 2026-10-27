@@ -56,7 +56,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             false;
         </script>
-    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <script src="_static/newsletter.js?v=7326e93d"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/dev/tutorial.html" />
     <link rel="icon" href="_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="about.html" />
@@ -478,7 +478,7 @@ tutorial takes about twenty minutes. <a class="reference internal" href="tutoria
 Drafts</span></a> continues from the file you build here.</p>
 <section id="install">
 <h2>Install<a class="headerlink" href="#install" title="Link to this heading">#</a></h2>
-<p>Python 3.10 or later is required. Install Restly with FastAPI’s development
+<p>Python 3.11 or later is required. Install Restly with FastAPI’s development
 server, and the async SQLite driver:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;fastapi-restly[standard]&quot;</span><span class="w"> </span>aiosqlite
 </pre></div>
@@ -513,6 +513,7 @@ the app starts. You do not change this block again in this tutorial.</p>
 <span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">(</span><span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">)</span>
 </pre></div>
 </div>
+<p><a class="reference internal" href="models.html"><span class="std std-doc">Models</span></a> explains the base class.</p>
 <p>Below it, add a model and a view:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Post</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>
     <span class="n">__tablename__</span> <span class="o">=</span> <span class="s2">&quot;post&quot;</span>
@@ -767,6 +768,8 @@ It adds the current user, drafts that only their author can see, a publish
 action, and rules for who may change a post.</p>
 <p>These pages go deeper into what this tutorial used:</p>
 <ul class="simple">
+<li><p><a class="reference internal" href="models.html"><span class="std std-doc">Models</span></a>: the base class, and the defaults that
+<code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code> adds to it, such as datetimes with a time zone</p></li>
 <li><p><a class="reference internal" href="crud_routes.html"><span class="std std-doc">CRUD Routes</span></a>: the default CRUD contract and the view
 settings</p></li>
 <li><p><a class="reference internal" href="schemas.html#auto-generated-schemas"><span class="std std-ref">How Restly generates a schema</span></a>: what

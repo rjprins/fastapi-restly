@@ -56,7 +56,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             false;
         </script>
-    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <script src="_static/newsletter.js?v=7326e93d"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/dev/context.html" />
     <link rel="icon" href="_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="about.html" />
@@ -551,49 +551,63 @@ reads <code class="docutils literal notranslate"><span class="pre">Current</span
 <span id="current-request-binding"></span><h2>Bind from a FastAPI dependency<a class="headerlink" href="#bind-from-a-fastapi-dependency" title="Link to this heading">#</a></h2>
 <p>Pass your existing authentication dependency to
 <a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.ContextNamespace.depends" title="fastapi_restly.clauses.ContextNamespace.depends"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Current.depends</span></code></a>.
-This example reads the <code class="docutils literal notranslate"><span class="pre">X-User-ID</span></code> header. It rejects a request without
-that header:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
+Most apps have one that loads the user of the request, such as the
+<code class="docutils literal notranslate"><span class="pre">CurrentUser</span></code> alias of the
+<a class="reference external" href="https://github.com/fastapi/full-stack-fastapi-template">FastAPI full-stack template</a>.
+Pass the alias as it is:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">APIRouter</span><span class="p">,</span> <span class="n">FastAPI</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span><span class="p">,</span> <span class="n">Header</span><span class="p">,</span> <span class="n">HTTPException</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">get_user_id</span><span class="p">(</span>
-    <span class="n">user_id</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">Header</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">&quot;X-User-ID&quot;</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-    <span class="k">if</span> <span class="n">user_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">401</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Authentication required&quot;</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">user_id</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">app.api.deps</span><span class="w"> </span><span class="kn">import</span> <span class="n">CurrentUser</span><span class="p">,</span> <span class="n">get_current_user</span>  <span class="c1"># your authentication</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">app.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">User</span>
 
 
-<span class="n">SetCurrentContextDep</span> <span class="o">=</span> <span class="n">Current</span><span class="o">.</span><span class="n">depends</span><span class="p">(</span><span class="n">user_id</span><span class="o">=</span><span class="n">get_user_id</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Current</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ContextNamespace</span><span class="p">):</span>
+    <span class="n">user</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ContextParam</span><span class="p">[</span><span class="n">User</span><span class="p">]</span>
 
-<span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">(</span><span class="n">dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">SetCurrentContextDep</span><span class="p">])</span>
+
+<span class="n">SetCurrentContextDep</span> <span class="o">=</span> <span class="n">Current</span><span class="o">.</span><span class="n">depends</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="n">CurrentUser</span><span class="p">)</span>
+
+<span class="n">router</span> <span class="o">=</span> <span class="n">APIRouter</span><span class="p">(</span><span class="n">dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">SetCurrentContextDep</span><span class="p">])</span>
 
 
-<span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">me</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
-    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;user_id&quot;</span><span class="p">:</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">()}</span>
+<span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">me</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;email&quot;</span><span class="p">:</span> <span class="n">Current</span><span class="o">.</span><span class="n">user</span><span class="p">()</span><span class="o">.</span><span class="n">email</span><span class="p">}</span>
+
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">()</span>
+<span class="n">app</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">router</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Trust this header only when an authenticating proxy replaces the values that
-clients send, and clients cannot reach the app directly.</p>
-<p>FastAPI calls <code class="docutils literal notranslate"><span class="pre">get_user_id</span></code> before the endpoint. The generated dependency
-binds the result for the request. Both <code class="docutils literal notranslate"><span class="pre">def</span></code> and <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">def</span></code> endpoints can
-read it. Binding only supplies the value. It does not check who the caller is,
-and it does not decide what the caller may do: that is
+<p>FastAPI calls <code class="docutils literal notranslate"><span class="pre">get_current_user</span></code> before each route of the router. The
+generated dependency binds the user for the request, so code in the request
+can read it, such as <code class="docutils literal notranslate"><span class="pre">Current.user().is_superuser</span></code>. Both <code class="docutils literal notranslate"><span class="pre">def</span></code> and
+<code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">def</span></code> endpoints can read it. Keep the routes that a client calls
+before it has a token, such as login and sign-up, out of this router:
+<code class="docutils literal notranslate"><span class="pre">get_current_user</span></code> answers them with 401.</p>
+<p>Binding only supplies the value. It does not check who the caller is, and it
+does not decide what the caller may do: that is
 <a class="reference internal" href="authorization.html#authorize-gate"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">authorize</span></code></span></a>.</p>
+<p>Bind the whole user, as here, when your app already loads it for each
+request. Bind scalars when a worker must bind without loading a row, or when
+a column default or a <a class="reference internal" href="clauses.html#binding-values"><span class="std std-ref">query clause</span></a> should use the member
+directly. The other examples on this page bind a scalar,
+<code class="docutils literal notranslate"><span class="pre">user_id:</span> <span class="pre">fr.ContextParam[int]</span></code>.</p>
 <div class="details admonition">
 <p class="admonition-title">Details</p>
 <p><code class="docutils literal notranslate"><span class="pre">SetCurrentContextDep</span></code> is already a <a class="reference external" href="https://fastapi.tiangolo.com/reference/dependencies/#fastapi.Depends" title="(in FastAPI v0.0.0)"><code class="xref py py-func docutils literal notranslate"><span class="pre">Depends</span></code></a> object.
 Add it directly to <code class="docutils literal notranslate"><span class="pre">dependencies</span></code>, without another <code class="docutils literal notranslate"><span class="pre">Depends(...)</span></code> around it.</p>
-<p>Attach the dependency to the app when every route needs it. Use the
-<code class="docutils literal notranslate"><span class="pre">dependencies</span></code> of an <code class="docutils literal notranslate"><span class="pre">APIRouter</span></code>, or a view’s
-<a class="reference internal" href="api/views.html#fastapi_restly.views.View.dependencies" title="fastapi_restly.views.View.dependencies"><code class="xref py py-attr docutils literal notranslate"><span class="pre">dependencies</span></code></a>, for a smaller
-group of routes. Each source can be a callable, a <code class="docutils literal notranslate"><span class="pre">Depends(...)</span></code> object, or
-an <code class="docutils literal notranslate"><span class="pre">Annotated</span></code> dependency alias.</p>
+<p>Attach the dependency to the app, as in
+<code class="docutils literal notranslate"><span class="pre">FastAPI(dependencies=[SetCurrentContextDep])</span></code>, only when every route needs a
+user. A view’s <a class="reference internal" href="api/views.html#fastapi_restly.views.View.dependencies" title="fastapi_restly.views.View.dependencies"><code class="xref py py-attr docutils literal notranslate"><span class="pre">dependencies</span></code></a>
+also take it, and
+<a class="reference internal" href="api/views.html#fastapi_restly.views.include_view" title="fastapi_restly.views.include_view"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.include_view</span></code></a> registers a view
+on a router as it does on the app. Each source can be a callable, a
+<code class="docutils literal notranslate"><span class="pre">Depends(...)</span></code> object, or an <code class="docutils literal notranslate"><span class="pre">Annotated</span></code> dependency alias.</p>
 <p>One <code class="docutils literal notranslate"><span class="pre">Current.depends(...)</span></code> call can bind several members, each from its own
-dependency. The SaaS example binds four members from its authentication in
+dependency. The SaaS example binds four scalar members from its
+authentication in
 <a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/current.py"><code class="docutils literal notranslate"><span class="pre">app/current.py</span></code></a>.</p>
 </div>
 </section>
@@ -610,6 +624,13 @@ without parentheses:</p>
 So keep the binding active until the flush finishes. <code class="docutils literal notranslate"><span class="pre">Current.user_id()</span></code> with
 parentheses would read the value once, when Python defines the model class.
 No request has bound a value then, so the import fails with <code class="docutils literal notranslate"><span class="pre">LookupError</span></code>.</p>
+<p>A member that holds the whole user needs a lambda. SQLAlchemy calls the
+lambda when it inserts the row, and the lambda reads the member then:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">created_by_id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span>
+    <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">insert_default</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">Current</span><span class="o">.</span><span class="n">user</span><span class="p">()</span><span class="o">.</span><span class="n">id</span>
+<span class="p">)</span>
+</pre></div>
+</div>
 <p><a class="reference internal" href="models.html#server-stamped-fields"><span class="std std-ref">Stamp the fields the server owns</span></a> shows the whole
 recipe, with <code class="docutils literal notranslate"><span class="pre">onupdate</span></code> and <code class="docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code> on the schema.</p>
 </section>
@@ -703,12 +724,12 @@ Override the source, and the generated dependency binds the value that the
 override returns:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.testclient</span><span class="w"> </span><span class="kn">import</span> <span class="n">TestClient</span>
 
-<span class="n">app</span><span class="o">.</span><span class="n">dependency_overrides</span><span class="p">[</span><span class="n">get_user_id</span><span class="p">]</span> <span class="o">=</span> <span class="k">lambda</span><span class="p">:</span> <span class="mi">7</span>
+<span class="n">app</span><span class="o">.</span><span class="n">dependency_overrides</span><span class="p">[</span><span class="n">get_current_user</span><span class="p">]</span> <span class="o">=</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">User</span><span class="p">(</span><span class="n">email</span><span class="o">=</span><span class="s2">&quot;ann@example.com&quot;</span><span class="p">)</span>
 <span class="k">try</span><span class="p">:</span>
     <span class="k">with</span> <span class="n">TestClient</span><span class="p">(</span><span class="n">app</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
-        <span class="k">assert</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">json</span><span class="p">()</span> <span class="o">==</span> <span class="p">{</span><span class="s2">&quot;user_id&quot;</span><span class="p">:</span> <span class="mi">7</span><span class="p">}</span>
+        <span class="k">assert</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">json</span><span class="p">()</span> <span class="o">==</span> <span class="p">{</span><span class="s2">&quot;email&quot;</span><span class="p">:</span> <span class="s2">&quot;ann@example.com&quot;</span><span class="p">}</span>
 <span class="k">finally</span><span class="p">:</span>
-    <span class="n">app</span><span class="o">.</span><span class="n">dependency_overrides</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">get_user_id</span><span class="p">)</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">dependency_overrides</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">get_current_user</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>A test that calls application code directly, without a request, binds the

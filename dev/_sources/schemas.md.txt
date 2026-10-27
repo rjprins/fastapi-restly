@@ -43,6 +43,7 @@ Find the section for your goal:
 | A field that the server owns and clients cannot set | [`ReadOnly`](#readonly-and-writeonly) |
 | A field set on create and frozen afterwards | [Your own request body](#explicit-write-schemas) |
 | A rule that a value must follow | [Validation](#validation) |
+| Times from clients in other time zones | [`UTCDatetime`](#utc-times) |
 | Other field names in the JSON | [Aliases](#field-aliases) |
 | A response that differs from the input | [Your own response class](#own-response-class) |
 | Clear type names in OpenAPI and generated clients | [Name your schemas](#name-your-schemas) |
@@ -102,8 +103,8 @@ Restly has three base classes for a schema:
   yourself, `id` included. Mark the `id` `ReadOnly` if clients must not send
   it.
 - {class}`fr.TimestampsSchemaMixin <fastapi_restly.schemas.TimestampsSchemaMixin>`
-  adds read-only `created_at` and `updated_at` fields. Put it before the
-  base class.
+  adds read-only `created_at` and `updated_at` fields, in UTC. Put it before
+  the base class.
 
 ```python
 class UserSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
@@ -155,6 +156,13 @@ class UserSchema(fr.IDSchema):
     password: fr.WriteOnly[str]
 ```
 
+Pydantic's secret types, such as `SecretStr`, work in a schema too. A write
+stores the secret, and a response shows `**********`, as Pydantic does. So
+a client sees that the field has a value, but not the value. Like a
+`WriteOnly` field, such a field gets no filter and is not a sort key. In the
+document of a JSON column, a secret field raises an error instead; see
+[Validate the document in a JSON column](#json-document-columns).
+
 :::{admonition} Details
 :class: details
 
@@ -173,7 +181,8 @@ schema outside a view:
 
 A marker must be the outer type of the field. Inside a union or a container,
 as in `Optional[WriteOnly[str]]`, `WriteOnly[str] | None` or
-`list[WriteOnly[str]]`, the marker would do nothing. So Restly rejects such a
+`list[WriteOnly[str]]`, the marker would do nothing. The same holds inside a
+type alias, such as `type Secret = WriteOnly[str]`. So Restly rejects such a
 field with a
 {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`.
 For an optional write-only field, write `WriteOnly[Optional[str]]`.
@@ -228,6 +237,7 @@ Each kind of rule has one place:
 |---|---|---|
 | The format or the range of one value | A Pydantic validator or a `Field` constraint on the schema | 422 |
 | A field that a client cannot set | [`ReadOnly`](#readonly-and-writeonly), or [your own request body](#explicit-write-schemas) | The value is ignored |
+| A value that its column can hold, such as a number in the range of `Integer` | Nothing for the generic types of SQLAlchemy, a `Field` constraint for other types; see [Column validation](#column-validation) | 422, or 400 in a filter |
 | A referenced row must exist | {class}`fr.MustExist <fastapi_restly.schemas.MustExist>` or a reference field; see [Relationships](#reference-exists) | 404 |
 | A value must be unique | A unique constraint on the column; see [Errors](#default-exception-handling) | 409 |
 | A rule that needs the database, the stored row or the caller | The `create` or `update` business method; see [Request Lifecycle & Hooks](#business-methods) | The error that you raise |
@@ -297,6 +307,80 @@ on the view. The SaaS example does this for organizations
 ([`app/organizations/schemas.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/organizations/schemas.py)).
 :::
 
+(column-validation)=
+### Column validation
+
+Restly checks each value from a client against the type of its column,
+before the database sees the value. It checks the generic integer and text
+types of SQLAlchemy, so you do not write a validator for them:
+
+- A number must fit the integer type: 16 bits for `SmallInteger`, 32 bits
+  for `Integer`, from -2,147,483,648 to 2,147,483,647, and 64 bits for
+  `BigInteger`.
+- Text must not hold a NUL character (`\x00`).
+- Text in a request body must fit the length of a `String(n)` column.
+
+A value that does not fit gets 422 in a request body or in the path, and
+400 in a filter. A reference id that does not fit gets 404, as for a row
+that does not exist.
+
+:::{admonition} Details
+:class: details
+
+The type of the column is the rule on every database. PostgreSQL refuses
+such a value with an error, which would be a 500. SQLite stores it, so the
+tests of an app on SQLite would not see the problem. PostgreSQL cannot store
+a NUL character in text, so Restly refuses it on every database. A column
+that holds bigger numbers needs `BigInteger`, such as a column with a Unix
+time in milliseconds. A filter only compares a value with the column, and
+PostgreSQL compares text of any length, so the length counts only in a
+request body. A `CHAR` without a length holds one character, as in SQL.
+
+Restly checks these types by their exact class: `Integer`, `SmallInteger`,
+`BigInteger`, `String`, `Text`, `Unicode` and `UnicodeText`, and the same
+types by their SQL names: `INTEGER`, `SMALLINT`, `BIGINT`, `VARCHAR`,
+`NVARCHAR`, `CHAR`, `NCHAR` and `TEXT`. Any other type gets the value as it
+is, as in SQLAlchemy:
+
+- a type of a dialect, such as MySQL's `TINYINT`,
+- a subclass of a type above, such as `Enum`,
+- a {class}`~sqlalchemy.types.TypeDecorator`, such as SQLModel's
+  `AutoString`,
+- a type from `with_variant()`.
+
+The database then checks the value. On PostgreSQL, a value that does not
+fit is an error, and the client gets a 500. For a 422, put the limit on the
+field of the schema. Its validation runs on filter values too; see
+[Filter values go through the field's validation](#filter-value-validation).
+
+| Column | Field of the schema |
+|---|---|
+| Text with a length, in a type that Restly does not check | `Annotated[str, Field(max_length=50)]` |
+| A smaller integer, such as MySQL's `TINYINT` | `Annotated[int, Field(ge=-128, le=127)]` |
+| `Numeric(5, 2)` | `Annotated[Decimal, Field(max_digits=5, decimal_places=2)]` |
+| `Enum` or `Uuid` | The Python type: the enum class, or `uuid.UUID` |
+| `ARRAY(String(5))` | `list[Annotated[str, Field(max_length=5)]]` |
+| Text without NUL, in a type that Restly does not check | An `AfterValidator`, as below |
+
+```python
+from typing import Annotated
+
+from pydantic import AfterValidator
+
+import fastapi_restly as fr
+
+
+def no_nul(text: str) -> str:
+    if "\x00" in text:
+        raise ValueError("The text holds a NUL character.")
+    return text
+
+
+class NoteSchema(fr.IDSchema):
+    text: Annotated[str, AfterValidator(no_nul)]
+```
+:::
+
 ### Database validation
 
 A schema sees one request. It does not see other rows, the stored row or the
@@ -316,6 +400,134 @@ caller:
   [Request Lifecycle & Hooks](#business-methods). The SaaS example checks
   such rules in
   [`app/tasks/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/tasks/views.py).
+
+(utc-times)=
+## Keep times in UTC
+
+Give each time field the type
+{data}`fr.UTCDatetime <fastapi_restly.schemas.UTCDatetime>`:
+
+```python
+class MeetingSchema(fr.IDSchema):
+    name: str
+    starts_at: fr.UTCDatetime
+```
+
+The field reads a time without an offset, such as `2024-01-01T09:30:00`, as
+UTC. A time with an offset, such as `2024-01-01T10:30:00+01:00`, becomes the
+same time in UTC. So `create` and `update` get each time in UTC. A response
+shows it with `Z`, the offset of UTC, as JavaScript's `toISOString()` does: a
+client that sends `"starts_at": "2024-01-01T10:30:00+01:00"` gets
+`"starts_at": "2024-01-01T09:30:00Z"` back. A schema that Restly generates
+gives each time column this type, and
+{class}`fr.TimestampsSchemaMixin <fastapi_restly.schemas.TimestampsSchemaMixin>`
+gives it to `created_at` and `updated_at`.
+
+A filter value goes through the same type, so
+`?starts_at__gte=2024-01-01T04:15:00-05:00` finds the meeting. In a URL,
+write the `+` of an offset as `%2B`: a plain `+` means a space there.
+
+Each column stores the time in UTC. A column without a time zone stores it
+without the offset: `2024-01-01T09:30:00`. On a base with
+{class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>`, a
+`Mapped[datetime]` column has a time zone. A column with
+`mapped_column(DateTime())` has none, and neither has `Mapped[datetime]` on a
+base without `fr.ModelDefaults`.
+
+For local times, such as the start of a dinner booking in the time of the
+restaurant, use a column without a time zone, and a field of type `datetime`
+with a validator that converts the time. Restly then gets a time without an
+offset, and keeps it as it is:
+
+```python
+from datetime import datetime
+from typing import Annotated
+from zoneinfo import ZoneInfo
+
+import pydantic
+
+AMSTERDAM = ZoneInfo("Europe/Amsterdam")
+
+
+def amsterdam_time(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value
+    return value.astimezone(AMSTERDAM).replace(tzinfo=None)
+
+
+class BookingSchema(fr.IDSchema):
+    starts_at: Annotated[datetime, pydantic.AfterValidator(amsterdam_time)]
+```
+
+A filter value goes through the field's validation too, also in the filter
+of a [react-admin view](react_admin.md), so the filters convert it in the
+same way.
+
+:::{admonition} Details
+:class: details
+
+Without these rules, the database drivers decide, and they do not agree. For
+a column without a time zone, asyncpg rejects a time with an offset, so the
+request fails with a 500. For a column with a time zone, asyncpg reads a
+time without an offset in the time zone of the app's Python process. psycopg
+leaves both cases to PostgreSQL, which uses the time zone of the database
+session. On an engine that Restly builds from a URL, that session is in UTC;
+see [Engine defaults](#engine-defaults). SQLite drops the offset of every
+time.
+
+A field of type `datetime` keeps the time that the client sent. Restly still
+changes the time to fit its column before the database sees it: in a filter,
+and when it copies a request body onto the model, in
+{func}`fr.objects.make_new_object <fastapi_restly.objects.make_new_object>`
+and {func}`fr.objects.update_object <fastapi_restly.objects.update_object>`:
+
+| Column | A time with an offset | A time without an offset |
+|---|---|---|
+| With a time zone | becomes the same time in UTC | gets the offset of UTC |
+| Without a time zone | becomes the same time in UTC, without the offset | stays as it is |
+
+So `authorize`, `create` and `update` get the time as the client sent it,
+and a response shows a time from a column without a time zone without an
+offset.
+
+Restly changes a time to fit a column only when the model has a column with
+the name of the field. A field without one, such as a `WriteOnly` field that
+only `create` reads, gets UTC from its type only.
+
+A filter method of your own, from
+{func}`fr.list_filter <fastapi_restly.views.list_filter>`, gets its value as
+the type of its parameter gives it. With `value: fr.UTCDatetime`, it gets the
+time in UTC. Compare it with a column without a time zone as
+`value.replace(tzinfo=None)`.
+
+A time from the database has no offset when its column has no time zone, and
+on SQLite always. A time from the schema has an offset. Python cannot order
+such times: `<`, `>` and `-` raise `TypeError`. And `==` is always `False`,
+and `!=` always `True`, without an error. Convert the time from the database
+with {func}`fr.in_utc <fastapi_restly.schemas.in_utc>` first, as in
+`data.ends_at > fr.in_utc(obj.starts_at)`. `fr.in_utc` follows the rule of
+`fr.UTCDatetime`: a time without an offset is UTC, and a time with an offset
+becomes the same time in UTC.
+
+A column with a type of your own, a
+{class}`~sqlalchemy.types.TypeDecorator`, gets a time with an offset as it
+is, and so does a type with a variant for one database, from
+`with_variant()`. Such a type may need the offset, as SQLAlchemy's recipe
+that stores UTC in a column without a time zone does, and a variant may
+store a time zone where the type itself does not. Restly only checks that
+the time fits in UTC. A time without an offset gets the offset of UTC when
+the type stores a time zone. SQLAlchemy's recipe stores none, and it refuses
+a time without an offset, so give its column a field of type
+`fr.UTCDatetime`, which gives every time the offset of UTC.
+
+A time that is not between the years 1 and 9999 in UTC, such as
+`9999-12-31T23:30:00-01:00`, gets 422 in a request body and 400 in a filter.
+
+A `date`, and a time of day of type `time`, have no rule. A time of day has
+no date, so summer time can change its time in UTC. A `time` column without
+a time zone keeps the clock time of a value and drops its offset:
+`09:00:00+02:00` becomes `09:00:00`.
+:::
 
 (field-aliases)=
 ## Use other field names in JSON
@@ -349,7 +561,7 @@ on the view. Everything that goes out follows it:
 
 - every single response, and each item of the list response;
 - the fields that the list filters and sort keys use, so a client can filter
-  only on what it can see;
+  only on the fields that go out;
 - the relationships that the view loads.
 
 The request bodies still follow `schema_create` and `schema_update`, which
@@ -411,6 +623,10 @@ A client sees these names in OpenAPI. It does not see the view's schema,
 unless another schema nests it or a custom route names it. The list params
 are not a class in OpenAPI either: OpenAPI shows them as separate query
 parameters.
+
+The `404` for a row that does not exist names the resource too, such as
+`User with id 5 was not found`. To change the text, override
+{meth}`not_found <fastapi_restly.views.BaseRestView.not_found>`.
 
 :::{admonition} Details
 :class: details
@@ -597,8 +813,10 @@ A document with a {data}`WriteOnly <fastapi_restly.schemas.WriteOnly>` or a
 `Field(exclude=True)` field raises
 {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
 before Restly assigns it. This includes such fields in nested models. The dump
-would leave those fields out, so they would not be stored. A document with
-dataclasses or iterators raises the same error. For such documents, use a
+would leave those fields out, so they would not be stored. A field of
+Pydantic's secret types, such as `SecretStr`, raises the same error: the dump
+masks it, so the column would get `**********`. So does a document with
+dataclasses or iterators. For such documents, use a
 SQLAlchemy {class}`~sqlalchemy.types.TypeDecorator` that defines how the
 document is stored. Its bind processor receives the Pydantic model itself, not
 a dump.
@@ -747,17 +965,19 @@ Three rules decide the rest:
   **not** `ReadOnly`.
 - **Relationships**: never included. A foreign key column, such as
   `customer_id`, is an ordinary field. With `init=False`, it is `ReadOnly`,
-  as the rule above says. To show a related row in a response,
-  write the schema yourself, for example with an `IDRef[Customer]` field; see
-  [Relationships](relationships.md).
+  as the rule above says. To write a relationship, or to show it in a
+  response, write the schema yourself: `customer: fr.IDRef[Customer]` for
+  its id, or a nested schema for the whole row. See
+  [Choose a reference style](#reference-styles).
 
 A view and a direct call of `derive_schema(model)` give the same schema.
 
 ### Column types and field types
 
 `convert_sqlalchemy_type_to_pydantic` maps the Python type of each column,
-from its annotation or its column type, to a Pydantic field type. A type that
-Pydantic already understands stays as it is:
+from its annotation or its column type, to a Pydantic field type, as in this
+table. A type keeps its name, except a time: it gets
+[`fr.UTCDatetime`](#utc-times).
 
 | SQLAlchemy / Python annotation | Pydantic field type |
 |-------------------------------|---------------------|
@@ -765,9 +985,10 @@ Pydantic already understands stays as it is:
 | `int` | `int` |
 | `float` | `float` |
 | `bool` | `bool` |
-| `datetime` | `datetime` |
+| `datetime` | `fr.UTCDatetime` |
 | `date` | `date` |
 | `time` | `time` |
+| `timedelta` | `timedelta` |
 | `UUID` | `UUID` |
 | `Decimal` | `Decimal` |
 | `dict` / `dict[str, Any]` | `dict` / `dict[str, Any]` |
@@ -777,9 +998,10 @@ Pydantic already understands stays as it is:
 | SQLAlchemy `Integer` | `int` |
 | SQLAlchemy `Float` | `float` |
 | SQLAlchemy `Boolean` | `bool` |
-| SQLAlchemy `DateTime` | `datetime` |
+| SQLAlchemy `DateTime` | `fr.UTCDatetime` |
 | SQLAlchemy `Date` | `date` |
 | SQLAlchemy `Time` | `time` |
+| SQLAlchemy `Interval` | `timedelta` |
 
 `Any` and other generic types, such as `tuple[int, int]`, also stay as they
 are. Any other type raises `TypeError` when Restly generates the schema. For a

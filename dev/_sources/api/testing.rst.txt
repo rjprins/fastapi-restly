@@ -10,7 +10,7 @@ Install the optional testing dependencies before importing this module::
 
     pip install "fastapi-restly[testing]"
 
-The testing extra installs a pytest plugin entry point, so pytest auto-loads the
+The package registers a pytest plugin entry point, so pytest auto-loads the
 fixtures. If your project disables plugin autoloading, add the following line to
 your ``conftest.py``::
 

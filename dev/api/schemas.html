@@ -56,7 +56,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             false;
         </script>
-    <script src="../_static/newsletter.js?v=e342eb53"></script>
+    <script src="../_static/newsletter.js?v=7326e93d"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/dev/api/schemas.html" />
     <link rel="icon" href="../_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="../about.html" />
@@ -492,7 +492,8 @@
   <section id="schemas-api">
 <h1>Schemas API<a class="headerlink" href="#schemas-api" title="Link to this heading">#</a></h1>
 <p><code class="docutils literal notranslate"><span class="pre">fastapi_restly.schemas</span></code> implements the Pydantic schema layer: schema base
-classes, the <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> and <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> field markers, relationship
+classes, the <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> and <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> field markers, the <code class="docutils literal notranslate"><span class="pre">UTCDatetime</span></code>
+field type and the <code class="docutils literal notranslate"><span class="pre">in_utc()</span></code> function for times in UTC, relationship
 reference types, and schema generation from SQLAlchemy models.</p>
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
@@ -519,29 +520,30 @@ See <a class="reference internal" href="../schemas.html#json-document-columns"><
 <dt class="sig sig-object py" id="fastapi_restly.schemas.BaseSchema">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">BaseSchema</span></span><a class="headerlink" href="#fastapi_restly.schemas.BaseSchema" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></a></p>
-<p>Thin Pydantic base for ORM-facing Restly schemas.</p>
-<p>Equivalent to:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">BaseSchema</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
-    <span class="n">model_config</span> <span class="o">=</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">ConfigDict</span><span class="p">(</span><span class="n">from_attributes</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</pre></div>
-</div>
-<p><code class="docutils literal notranslate"><span class="pre">from_attributes=True</span></code> lets Pydantic/FastAPI validate objects by
-attribute when the schema is used directly. The inherited CRUD endpoint
-methods still serialize through <code class="docutils literal notranslate"><span class="pre">to_single_response()</span></code> so Restly-specific
-behavior such as <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> filtering and relationship-id normalization
-is applied.</p>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.schemas.BaseSchema.model_config">
-<span class="sig-name descname"><span class="pre">model_config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">ConfigDict</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'from_attributes':</span> <span class="pre">True}</span></em><a class="headerlink" href="#fastapi_restly.schemas.BaseSchema.model_config" title="Link to this definition">#</a></dt>
-<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
+<p>The base of a Restly schema: a Pydantic model with
+<code class="docutils literal notranslate"><span class="pre">from_attributes=True</span></code>, so it can read a SQLAlchemy object by its
+attributes.</p>
+<p>It also checks where the <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>, <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> and <code class="docutils literal notranslate"><span class="pre">MustExist</span></code>
+markers are placed. A marker deep inside the type of a field, such as
+<code class="docutils literal notranslate"><span class="pre">ReadOnly[int]</span> <span class="pre">|</span> <span class="pre">None</span></code>, would have no effect. So the class raises
+<a class="reference internal" href="exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a> when Python defines
+it. Put the marker around the whole type: <code class="docutils literal notranslate"><span class="pre">ReadOnly[int</span> <span class="pre">|</span> <span class="pre">None]</span></code>.</p>
 </dd></dl>
 
+<dl class="py class">
+<dt class="sig sig-object py" id="fastapi_restly.schemas.MustExist">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">MustExist</span></span><a class="headerlink" href="#fastapi_restly.schemas.MustExist" title="Link to this definition">#</a></dt>
+<dd><p>Existence-checked scalar foreign key: <code class="docutils literal notranslate"><span class="pre">MustExist[int,</span> <span class="pre">Post]</span></code>.</p>
+<p>The first argument is the type of the id, the second the model of the
+row. The field stays the id everywhere (JSON, column,
+<code class="docutils literal notranslate"><span class="pre">data.&lt;field&gt;</span></code>). On write, Restly checks that the row exists (404 on
+a miss), among the rows of the model’s <code class="docutils literal notranslate"><span class="pre">default_scope</span></code>.</p>
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="fastapi_restly.schemas.IDRef">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">IDRef</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">value:</span> <span class="pre">~typing.Any</span> <span class="pre">=</span> <span class="pre">&lt;object</span> <span class="pre">object&gt;,</span> <span class="pre">*,</span> <span class="pre">id:</span> <span class="pre">~typing.Annotated[~typing.Any,</span> <span class="pre">fr.ReadOnly]</span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.schemas.IDRef" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas._base.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Generic" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Generic</span></code></a>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">SQLAlchemyModel</span></code>]</p>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">IDRef</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">...</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><span class="pre">ReadOnly</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.schemas.IDRef" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas._base.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a></p>
 <p>Flat-id reference to a related row, for a RELATIONSHIP-named field.</p>
 <p>Use <code class="docutils literal notranslate"><span class="pre">IDRef[T]</span></code> when the field is named after a relationship
 (<code class="docutils literal notranslate"><span class="pre">author:</span> <span class="pre">IDRef[User]</span></code>, <code class="docutils literal notranslate"><span class="pre">products:</span> <span class="pre">list[IDRef[Product]]</span></code>), not after a
@@ -564,20 +566,14 @@ A session rule, such as a tenant rule added with
 that is already in the session. A rule that is neither goes in
 <code class="docutils literal notranslate"><span class="pre">authorize</span></code>, where <code class="docutils literal notranslate"><span class="pre">data.&lt;field&gt;.id</span></code> is the requested id. See “Which
 rows can a reference reach?” on the Relationships guide page.</p>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.schemas.IDRef.model_config">
-<span class="sig-name descname"><span class="pre">model_config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">ConfigDict</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'from_attributes':</span> <span class="pre">True}</span></em><a class="headerlink" href="#fastapi_restly.schemas.IDRef.model_config" title="Link to this definition">#</a></dt>
-<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
-</dd></dl>
-
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="fastapi_restly.schemas.IDSchema">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">IDSchema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.15)"><span class="pre">Annotated</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">fr.ReadOnly</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.schemas.IDSchema" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#fastapi_restly.schemas.BaseSchema" title="fastapi_restly.schemas._base.BaseSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseSchema</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Generic" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Generic</span></code></a>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">SQLAlchemyModel</span></code>]</p>
-<p>Response-schema base that adds a read-only <code class="docutils literal notranslate"><span class="pre">id</span></code>; parametrized as a
-field type, a nested-object relationship reference.</p>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">IDSchema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><span class="pre">ReadOnly</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.schemas.IDSchema" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#fastapi_restly.schemas.BaseSchema" title="fastapi_restly.schemas._base.BaseSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseSchema</span></code></a></p>
+<p>The base of a view’s schema, which adds a read-only <code class="docutils literal notranslate"><span class="pre">id</span></code>. As the
+type of a field, <code class="docutils literal notranslate"><span class="pre">IDSchema[Model]</span></code> is a reference to a related row.</p>
 <ul class="simple">
 <li><p>As a BASE CLASS (<code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">UserSchema(IDSchema):</span> <span class="pre">...</span></code>) it adds the resource’s
 own read-only <code class="docutils literal notranslate"><span class="pre">id</span></code> – the common use.</p></li>
@@ -589,6 +585,15 @@ the id to the related ORM object, so <code class="docutils literal notranslate">
 <p>For a scalar foreign-key COLUMN (<code class="docutils literal notranslate"><span class="pre">author_id</span></code>), use <code class="docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">T]</span></code>
 rather than <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code>/<code class="docutils literal notranslate"><span class="pre">IDRef</span></code>: it keeps the field a plain checked id
 instead of turning a <code class="docutils literal notranslate"><span class="pre">*_id</span></code> field into an object wrapper.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.schemas.IDSchema.id">
+<span class="sig-name descname"><span class="pre">id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><span class="pre">ReadOnly</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#fastapi_restly.schemas.IDSchema.id" title="Link to this definition">#</a></dt>
+<dd><p>The id of the row. In a view’s schema, it is <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>: the
+responses show it, and the create and update bodies that Restly
+generates leave it out. In a reference field, such as
+<code class="docutils literal notranslate"><span class="pre">author:</span> <span class="pre">fr.IDSchema[Author]</span></code>, the client sends it.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.schemas.IDSchema.get_sql_model_annotation">
 <span class="sig-name descname"><span class="pre">get_sql_model_annotation</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><span class="pre">SQLAlchemyModel</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#fastapi_restly.schemas.IDSchema.get_sql_model_annotation" title="Link to this definition">#</a></dt>
@@ -597,40 +602,19 @@ instead of turning a <code class="docutils literal notranslate"><span class="pre
 <p>This property will return “Foo”.</p>
 </dd></dl>
 
-<dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.schemas.IDSchema.id">
-<span class="sig-name descname"><span class="pre">id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ReadOnly,</span> <span class="pre">FieldInfo(annotation=NoneType,</span> <span class="pre">required=True,</span> <span class="pre">json_schema_extra={'readOnly':</span> <span class="pre">True})]</span></em><a class="headerlink" href="#fastapi_restly.schemas.IDSchema.id" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.schemas.IDSchema.model_config">
-<span class="sig-name descname"><span class="pre">model_config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">ConfigDict</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'from_attributes':</span> <span class="pre">True}</span></em><a class="headerlink" href="#fastapi_restly.schemas.IDSchema.model_config" title="Link to this definition">#</a></dt>
-<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="fastapi_restly.schemas.MustExist">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">MustExist</span></span><a class="headerlink" href="#fastapi_restly.schemas.MustExist" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
-<p>Existence-checked scalar foreign key: <code class="docutils literal notranslate"><span class="pre">MustExist[int,</span> <span class="pre">Post]</span></code>.</p>
-<p>The first argument is the type of the id, the second the model of the
-row. The field stays the id everywhere (JSON, column,
-<code class="docutils literal notranslate"><span class="pre">data.&lt;field&gt;</span></code>). On write, Restly checks that the row exists (404 on
-a miss), among the rows of the model’s <code class="docutils literal notranslate"><span class="pre">default_scope</span></code>.</p>
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="fastapi_restly.schemas.TimestampsSchemaMixin">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">TimestampsSchemaMixin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">created_at</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.15)"><span class="pre">Annotated</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.15)"><span class="pre">datetime</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">fr.ReadOnly</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">updated_at</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.15)"><span class="pre">Annotated</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.15)"><span class="pre">datetime</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">fr.ReadOnly</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.schemas.TimestampsSchemaMixin" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">TimestampsSchemaMixin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">created_at</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><span class="pre">ReadOnly</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#fastapi_restly.schemas.UTCDatetime" title="fastapi_restly.schemas.UTCDatetime"><span class="pre">UTCDatetime</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">updated_at</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><span class="pre">ReadOnly</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#fastapi_restly.schemas.UTCDatetime" title="fastapi_restly.schemas.UTCDatetime"><span class="pre">UTCDatetime</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.schemas.TimestampsSchemaMixin" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></a></p>
 <p>Schema mixin that adds two fields: <code class="docutils literal notranslate"><span class="pre">created_at</span></code> and <code class="docutils literal notranslate"><span class="pre">updated_at</span></code>.</p>
 <p>It is the schema side of <a class="reference internal" href="models.html#fastapi_restly.models.TimestampsMixin" title="fastapi_restly.models.TimestampsMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">TimestampsMixin</span></code></a>.
-Both fields are <code class="docutils literal notranslate"><span class="pre">ReadOnly[datetime]</span></code>, so the responses contain them, and
-the create and update bodies that Restly generates leave them out. When a
-client sends them in a body, Restly ignores them. The fields have no
-default, so the object that a response reads must have both attributes.</p>
+Both fields are <code class="docutils literal notranslate"><span class="pre">ReadOnly[UTCDatetime]</span></code>, so the responses contain them,
+in UTC, and the create and update bodies that Restly generates leave them
+out. When a client sends them in a body, Restly ignores them. The fields
+have no default, so the object that a response reads must have both
+attributes.</p>
 <p>The mixin adds nothing else, so combine it with <a class="reference internal" href="#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a> or
 <a class="reference internal" href="#fastapi_restly.schemas.BaseSchema" title="fastapi_restly.schemas.BaseSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseSchema</span></code></a>. Put it before the base class, so that <code class="docutils literal notranslate"><span class="pre">id</span></code> stays
 the first field in the responses:</p>
@@ -642,20 +626,28 @@ the first field in the responses:</p>
 <code class="docutils literal notranslate"><span class="pre">updated_at</span></code> columns uses this mixin.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.schemas.TimestampsSchemaMixin.created_at">
-<span class="sig-name descname"><span class="pre">created_at</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ReadOnly,</span> <span class="pre">FieldInfo(annotation=NoneType,</span> <span class="pre">required=True,</span> <span class="pre">json_schema_extra={'readOnly':</span> <span class="pre">True})]</span></em><a class="headerlink" href="#fastapi_restly.schemas.TimestampsSchemaMixin.created_at" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.schemas.TimestampsSchemaMixin.model_config">
-<span class="sig-name descname"><span class="pre">model_config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">ConfigDict</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{}</span></em><a class="headerlink" href="#fastapi_restly.schemas.TimestampsSchemaMixin.model_config" title="Link to this definition">#</a></dt>
-<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
+<span class="sig-name descname"><span class="pre">created_at</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><span class="pre">ReadOnly</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#fastapi_restly.schemas.UTCDatetime" title="fastapi_restly.schemas.UTCDatetime"><span class="pre">UTCDatetime</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#fastapi_restly.schemas.TimestampsSchemaMixin.created_at" title="Link to this definition">#</a></dt>
+<dd><p>When the row was created. It is <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>: the responses show it,
+and the create and update bodies that Restly generates leave it out.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.schemas.TimestampsSchemaMixin.updated_at">
-<span class="sig-name descname"><span class="pre">updated_at</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ReadOnly,</span> <span class="pre">FieldInfo(annotation=NoneType,</span> <span class="pre">required=True,</span> <span class="pre">json_schema_extra={'readOnly':</span> <span class="pre">True})]</span></em><a class="headerlink" href="#fastapi_restly.schemas.TimestampsSchemaMixin.updated_at" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">updated_at</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><span class="pre">ReadOnly</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#fastapi_restly.schemas.UTCDatetime" title="fastapi_restly.schemas.UTCDatetime"><span class="pre">UTCDatetime</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#fastapi_restly.schemas.TimestampsSchemaMixin.updated_at" title="Link to this definition">#</a></dt>
+<dd><p>When the row last changed. It is <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>: the responses show it,
+and the create and update bodies that Restly generates leave it out.</p>
+</dd></dl>
 
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="fastapi_restly.schemas.UTCDatetime">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">UTCDatetime</span></span><a class="headerlink" href="#fastapi_restly.schemas.UTCDatetime" title="Link to this definition">#</a></dt>
+<dd><p>A <code class="docutils literal notranslate"><span class="pre">datetime</span></code> field in UTC. It reads a time without an offset as UTC, and
+changes a time with an offset to the same time in UTC. So the object of
+the schema always has the time in UTC, and JSON shows it with <code class="docutils literal notranslate"><span class="pre">Z</span></code>, such
+as <code class="docutils literal notranslate"><span class="pre">2024-01-01T09:30:00Z</span></code>. See <a class="reference internal" href="../schemas.html#utc-times"><span class="std std-ref">Keep times in UTC</span></a>.</p>
+<p>alias of <code class="xref py py-class docutils literal notranslate"><span class="pre">Annotated</span></code>[<a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime</span></code></a>, <a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/functional_validators/#pydantic.functional_validators.AfterValidator" title="(in Pydantic v0.0.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">AfterValidator</span></code></a>(func=<code class="xref py py-class docutils literal notranslate"><span class="pre">in_utc</span></code>)]</p>
 </dd></dl>
 
 <dl class="py function">
@@ -668,6 +660,8 @@ such as <code class="docutils literal notranslate"><span class="pre">author_id</
 These fields are marked <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>: <code class="docutils literal notranslate"><span class="pre">id</span></code>, <code class="docutils literal notranslate"><span class="pre">created_at</span></code> and
 <code class="docutils literal notranslate"><span class="pre">updated_at</span></code>, a <code class="docutils literal notranslate"><span class="pre">column_property</span></code> over a SQL expression, and a column
 that the constructor does not take (<code class="docutils literal notranslate"><span class="pre">init=False</span></code>).</p>
+<p>A time column gets a field of type <a class="reference internal" href="#fastapi_restly.schemas.UTCDatetime" title="fastapi_restly.schemas.UTCDatetime"><code class="xref py py-data docutils literal notranslate"><span class="pre">UTCDatetime</span></code></a>, which holds the
+time in UTC.</p>
 <p>A field allows <code class="docutils literal notranslate"><span class="pre">None</span></code> only when its column is nullable. The create body
 follows the constructor: the client may leave out a field when its
 column is nullable, or when the constructor does not require it and the
@@ -692,7 +686,7 @@ model name followed by <code class="docutils literal notranslate"><span class="p
 
 <dl class="py function">
 <dt class="sig sig-object py" id="fastapi_restly.schemas.derive_schema_list_response">
-<span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">derive_schema_list_response</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema_response</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">pagination</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="views.html#fastapi_restly.views.NumberedPagination" title="fastapi_restly._pagination.NumberedPagination"><span class="pre">NumberedPagination</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="views.html#fastapi_restly.views.NoPagination" title="fastapi_restly._pagination.NoPagination"><span class="pre">NoPagination</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">NumberedPagination(default_page_size=50,</span> <span class="pre">max_page_size=1000,</span> <span class="pre">max_page=None,</span> <span class="pre">page_query_param='page',</span> <span class="pre">page_size_query_param='page_size',</span> <span class="pre">envelope=PaginatedEnvelope)</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.schemas.derive_schema_list_response" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">derive_schema_list_response</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema_response</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">pagination</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="views.html#fastapi_restly.views.NumberedPagination" title="fastapi_restly._pagination.NumberedPagination"><span class="pre">NumberedPagination</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="views.html#fastapi_restly.views.NoPagination" title="fastapi_restly._pagination.NoPagination"><span class="pre">NoPagination</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">NumberedPagination()</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.schemas.derive_schema_list_response" title="Link to this definition">#</a></dt>
 <dd><p>Build the list response class of a view: the envelope of its
 pagination, filled with its response class, named
 <code class="docutils literal notranslate"><span class="pre">&lt;Resource&gt;ListResponse</span></code>.</p>
@@ -764,6 +758,23 @@ view uses:</p>
 </dl>
 </dd></dl>
 
+<dl class="py function">
+<dt class="sig sig-object py" id="fastapi_restly.schemas.in_utc">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">in_utc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.15)"><span class="pre">datetime</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.15)"><span class="pre">datetime</span></a></span></span><a class="headerlink" href="#fastapi_restly.schemas.in_utc" title="Link to this definition">#</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">value</span></code> as the same time in UTC. A time without an offset is UTC.</p>
+<p>This is the rule of
+<a class="reference internal" href="#fastapi_restly.schemas.UTCDatetime" title="fastapi_restly.schemas.UTCDatetime"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.UTCDatetime</span></code></a>, as a
+function. Give a time from the database to it before you compare it with
+a time from a schema, as in <code class="docutils literal notranslate"><span class="pre">data.ends_at</span> <span class="pre">&gt;</span> <span class="pre">fr.in_utc(obj.starts_at)</span></code>.
+A time from a column without a time zone has no offset, and on SQLite no
+time has one. See <a class="reference internal" href="../schemas.html#utc-times"><span class="std std-ref">Keep times in UTC</span></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.15)"><strong>ValueError</strong></a> – the time in UTC is not between the years 1 and 9999.</p>
+</dd>
+</dl>
+</dd></dl>
+
 </section>
 
 
@@ -815,30 +826,24 @@ view uses:</p>
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.ReadOnly"><code class="docutils literal notranslate"><span class="pre">fastapi_restly.schemas.ReadOnly</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.WriteOnly"><code class="docutils literal notranslate"><span class="pre">fastapi_restly.schemas.WriteOnly</span></code></a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.BaseSchema"><code class="docutils literal notranslate"><span class="pre">BaseSchema</span></code></a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.BaseSchema.model_config"><code class="docutils literal notranslate"><span class="pre">BaseSchema.model_config</span></code></a></li>
-</ul>
-</li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.IDRef"><code class="docutils literal notranslate"><span class="pre">IDRef</span></code></a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.IDRef.model_config"><code class="docutils literal notranslate"><span class="pre">IDRef.model_config</span></code></a></li>
-</ul>
-</li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.IDSchema"><code class="docutils literal notranslate"><span class="pre">IDSchema</span></code></a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.IDSchema.get_sql_model_annotation"><code class="docutils literal notranslate"><span class="pre">IDSchema.get_sql_model_annotation()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.IDSchema.id"><code class="docutils literal notranslate"><span class="pre">IDSchema.id</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.IDSchema.model_config"><code class="docutils literal notranslate"><span class="pre">IDSchema.model_config</span></code></a></li>
-</ul>
-</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.BaseSchema"><code class="docutils literal notranslate"><span class="pre">BaseSchema</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.MustExist"><code class="docutils literal notranslate"><span class="pre">MustExist</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.IDRef"><code class="docutils literal notranslate"><span class="pre">IDRef</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.IDSchema"><code class="docutils literal notranslate"><span class="pre">IDSchema</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.IDSchema.id"><code class="docutils literal notranslate"><span class="pre">IDSchema.id</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.IDSchema.get_sql_model_annotation"><code class="docutils literal notranslate"><span class="pre">IDSchema.get_sql_model_annotation()</span></code></a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.TimestampsSchemaMixin"><code class="docutils literal notranslate"><span class="pre">TimestampsSchemaMixin</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.TimestampsSchemaMixin.created_at"><code class="docutils literal notranslate"><span class="pre">TimestampsSchemaMixin.created_at</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.TimestampsSchemaMixin.model_config"><code class="docutils literal notranslate"><span class="pre">TimestampsSchemaMixin.model_config</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.TimestampsSchemaMixin.updated_at"><code class="docutils literal notranslate"><span class="pre">TimestampsSchemaMixin.updated_at</span></code></a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.UTCDatetime"><code class="docutils literal notranslate"><span class="pre">UTCDatetime</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.derive_schema"><code class="docutils literal notranslate"><span class="pre">derive_schema()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.derive_schema_list_response"><code class="docutils literal notranslate"><span class="pre">derive_schema_list_response()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.derive_schema_response"><code class="docutils literal notranslate"><span class="pre">derive_schema_response()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.in_utc"><code class="docutils literal notranslate"><span class="pre">in_utc()</span></code></a></li>
 </ul>
   </nav></div>
 

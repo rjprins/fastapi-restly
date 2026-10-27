@@ -56,7 +56,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             false;
         </script>
-    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <script src="_static/newsletter.js?v=7326e93d"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/dev/guide.html" />
     <link rel="icon" href="_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="about.html" />
@@ -510,9 +510,9 @@ Restly, start with the tutorial, <a class="reference internal" href="tutorial.ht
 <section id="how-restly-works">
 <span id="id1"></span><h2>How Restly works<a class="headerlink" href="#how-restly-works" title="Link to this heading">#</a></h2>
 <p>You write a SQLAlchemy model and a view class, and Restly turns the view into
-FastAPI routes. This is what happens when a client sends <code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/projects/1</span></code>.
-FastAPI first checks the request body against the update body,
-<code class="docutils literal notranslate"><span class="pre">ProjectUpdate</span></code>:</p>
+FastAPI routes. For example, when a client sends <code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/projects/1</span></code>,
+FastAPI first checks the request body against the update schema,
+<code class="docutils literal notranslate"><span class="pre">ProjectUpdate</span></code>. Then these steps run:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>PATCH /projects/1
   └─ update_endpoint(id, data)            # endpoint method: HTTP contract
        ├─ handle_update(id, data)         # handler: runs the steps
@@ -554,9 +554,10 @@ the endpoint method. A handler is final. See
 <code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code> runs just before the commit, and
 <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> just after it. A read does not commit. See
 <a class="reference internal" href="lifecycle.html#what-commits"><span class="std std-ref">What commits, and when</span></a>.</p></li>
-<li><p><strong>Scope</strong>: the rows of a model that exist for a request. Restly applies it
-to every read of the model and to every reference to the model, so a hidden
-row is a 404. A scope is made of clauses, which are named query rules. See
+<li><p><strong>Scope</strong>: a SQL where clause that limits which rows of a model a request
+can read. Restly applies it to every read of the model and to every
+reference to the model, so a row outside the scope is a 404. You write a
+scope as a query clause, a named rule that you can reuse. See
 <a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a> and <a class="reference internal" href="clauses.html"><span class="std std-doc">Query Clauses</span></a>.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">authorize</span></code></strong>: decides whether the caller may do the action. A refusal
 is a 403. See <a class="reference internal" href="authorization.html"><span class="std std-doc">Authorization</span></a>.</p></li>
@@ -582,9 +583,9 @@ ordinary SQLAlchemy models on a declarative base of your own.</p>
 already have, start a new project with <code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code>, lay out a project as
 it grows, and serve more than one API version.</p></li>
 <li><p><a class="reference internal" href="database.html"><span class="std std-doc">Database &amp; Configuration</span></a>: tell Restly where its database
-is, reuse the engine or sessionmaker that your app already has, use another
-database on one view, such as a read replica, and open a session outside a
-request.</p></li>
+is, reuse the engine, sessionmaker or session generator that your app
+already has, use another database on one view, such as a read replica, and
+open a session outside a request.</p></li>
 <li><p><a class="reference internal" href="models.html"><span class="std std-doc">Models</span></a>: add Restly’s defaults and common columns to your
 models, and set the values that every write needs, such as the author or a
 slug.</p></li>
@@ -625,10 +626,11 @@ decides what clients send and what they get back. The list route adds
 filter, sort and page parameters to the URL.</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="schemas.html"><span class="std std-doc">Schemas &amp; Validation</span></a>: generate the schema or write it, keep
-a field out of the requests or the responses, validate input, and use other
-field names in JSON, such as camelCase.</p></li>
+a field out of the requests or the responses, validate input, keep times
+in UTC, and use other field names in JSON, such as camelCase.</p></li>
 <li><p><a class="reference internal" href="relationships.html"><span class="std std-doc">Relationships</span></a>: accept the id of another row, check
-that the row exists, return related objects, and fix <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>.</p></li>
+that the row exists, link many rows to many rows, return related objects,
+and fix <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>.</p></li>
 <li><p><a class="reference internal" href="responses.html"><span class="std std-doc">Responses</span></a>: what each route returns, the list envelope,
 the response of a custom route, and how to change the shape of one route
 or of all routes.</p></li>
@@ -670,7 +672,8 @@ parts that Restly adds need their own page.</p>
 <li><p><a class="reference internal" href="testing.html"><span class="std std-doc">Testing</span></a>: set up the test suite, build the test schema, and
 use the test clients and fixtures.</p></li>
 <li><p><a class="reference internal" href="deploying.html"><span class="std std-doc">Deploying</span></a>: read the settings from the environment, run
-the app, set up Alembic and add a health check.</p></li>
+the app, set up Alembic, add a health check, and check the list settings
+before an API goes public.</p></li>
 </ul>
 </section>
 <section id="what-fastapi-covers">
@@ -690,7 +693,8 @@ For work that must still happen after a crash, use an outbox row in a
 <a class="reference internal" href="lifecycle.html#after-action-commit-raises"><span class="std std-ref">transaction hook</span></a>.</p></li>
 <li><p><a class="reference external" href="https://fastapi.tiangolo.com/tutorial/request-files/">File uploads</a>.</p></li>
 <li><p><a class="reference external" href="https://fastapi.tiangolo.com/advanced/websockets/">WebSockets</a>. Declare
-them on the app or on a router, not on a view.</p></li>
+them on the app or on a router, not on a view: a view has HTTP routes
+only.</p></li>
 </ul>
 <div class="toctree-wrapper compound">
 </div>

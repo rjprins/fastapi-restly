@@ -8,7 +8,7 @@ Drafts](tutorial_customizing.md) continues from the file you build here.
 
 ## Install
 
-Python 3.10 or later is required. Install Restly with FastAPI's development
+Python 3.11 or later is required. Install Restly with FastAPI's development
 server, and the async SQLite driver:
 
 ```bash
@@ -25,6 +25,8 @@ the app starts. You do not change this block again in this tutorial.
 :language: python
 :end-at: app = FastAPI(lifespan=lifespan)
 ```
+
+[Models](models.md) explains the base class.
 
 Below it, add a model and a view:
 
@@ -214,6 +216,8 @@ action, and rules for who may change a post.
 
 These pages go deeper into what this tutorial used:
 
+- [Models](models.md): the base class, and the defaults that
+  `fr.ModelDefaults` adds to it, such as datetimes with a time zone
 - [CRUD Routes](crud_routes.md): the default CRUD contract and the view
   settings
 - [How Restly generates a schema](#auto-generated-schemas): what

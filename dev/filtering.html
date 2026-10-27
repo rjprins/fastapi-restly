@@ -56,7 +56,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             false;
         </script>
-    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <script src="_static/newsletter.js?v=7326e93d"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/dev/filtering.html" />
     <link rel="icon" href="_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="about.html" />
@@ -521,12 +521,12 @@ GET /users?page=2&amp;page_size=50
 <p>Restly builds these list params when the view registers. It reads the
 view’s response class, and gives each field that maps to a column one filter,
 plus filters with an operator suffix such as <code class="docutils literal notranslate"><span class="pre">__gte</span></code>. So a client can filter
-and sort only on fields it can see. By default the response class is the
-view’s schema without its <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields; see
+and sort only on the fields that go out. By default the response class is
+the view’s schema without its <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields; see
 <a class="reference internal" href="schemas.html#own-response-class"><span class="std std-ref">Set your own response class</span></a>.</p>
 <p>By default a list has the keys of the resource’s own fields. A view chooses
 other keys with four settings; see <a class="reference internal" href="#choose-list-keys">Choose the keys of a list</a>.
-For a filter that is not a comparison with a column, see
+For a filter that the generated keys do not give, see
 <a class="reference internal" href="#own-list-filter">Add a filter of your own</a>.</p>
 <p>The filters narrow the rows inside the view’s <a class="reference internal" href="scopes.html"><span class="std std-doc">scope</span></a>. They can
 never show a row that the scope hides. To limit the rows of every list,
@@ -606,27 +606,50 @@ name of the field:</p>
 <p>Not every field gets every suffix:</p>
 <ul class="simple">
 <li><p>The range suffixes (<code class="docutils literal notranslate"><span class="pre">__gte</span></code>, <code class="docutils literal notranslate"><span class="pre">__lte</span></code>, <code class="docutils literal notranslate"><span class="pre">__gt</span></code>, <code class="docutils literal notranslate"><span class="pre">__lt</span></code>) exist only for types
-that have an order, such as numbers, text and dates. Booleans and UUIDs do
-not get them.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">__contains</span></code> and <code class="docutils literal notranslate"><span class="pre">__icontains</span></code> exist only for text fields.</p></li>
+that have an order, such as numbers, text and dates. Booleans, UUIDs and
+labels do not get them: an enum, or a <code class="docutils literal notranslate"><span class="pre">Literal</span></code> of strings. An int enum,
+such as an <code class="docutils literal notranslate"><span class="pre">IntEnum</span></code>, has the order of its numbers and gets them. A flag,
+such as an <code class="docutils literal notranslate"><span class="pre">IntFlag</span></code>, gets the other filters, but no range.</p></li>
+<li><p>A column of SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">Enum</span></code> type gets no range suffixes, whatever the
+type of the field, because it holds labels. <code class="docutils literal notranslate"><span class="pre">Mapped[Status]</span></code>, with an enum
+<code class="docutils literal notranslate"><span class="pre">Status</span></code>, is such a column by default. So an int enum needs a column that
+stores the number, such as <code class="docutils literal notranslate"><span class="pre">Integer</span></code>. On PostgreSQL, a native ENUM orders
+its labels as they were declared. To filter by that order, write the range
+yourself; see <a class="reference internal" href="#own-list-filter">Add a filter of your own</a>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">__contains</span></code> and <code class="docutils literal notranslate"><span class="pre">__icontains</span></code> exist only for text fields, and not on a
+column of SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">Enum</span></code> type.</p></li>
 <li><p>A field that holds a <code class="docutils literal notranslate"><span class="pre">dict</span></code> or a <code class="docutils literal notranslate"><span class="pre">list</span></code>, such as a <code class="docutils literal notranslate"><span class="pre">JSON</span></code> or <code class="docutils literal notranslate"><span class="pre">ARRAY</span></code>
 column, gets only <code class="docutils literal notranslate"><span class="pre">__isnull</span></code>. A value from the URL cannot become a
-collection, so the other filters would fail on every request.</p></li>
-<li><p>A <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.WriteOnly" title="fastapi_restly.schemas.WriteOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">WriteOnly</span></code></a> field, or a field
-with <code class="docutils literal notranslate"><span class="pre">Field(exclude=True)</span></code>, gets no filter and is not a sort key. A filter
-on it would let a client find out its value.</p></li>
+collection, so the other filters would fail on every request. Such a field
+is no sort key either: a document or a list has no order that a client
+means, and PostgreSQL’s <code class="docutils literal notranslate"><span class="pre">json</span></code> type has none at all.</p></li>
+<li><p>A <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.WriteOnly" title="fastapi_restly.schemas.WriteOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">WriteOnly</span></code></a> field, a field
+with <code class="docutils literal notranslate"><span class="pre">Field(exclude=True)</span></code>, and a field of Pydantic’s secret types, such as
+<code class="docutils literal notranslate"><span class="pre">SecretStr</span></code>, get no filter and are not a sort key. A filter on such a field
+would let a client find out its value. Restly cannot see a value that a
+serializer hides, such as a number shown as <code class="docutils literal notranslate"><span class="pre">***-1234</span></code>. Leave such a field
+out with <code class="docutils literal notranslate"><span class="pre">exclude_filters</span></code> and <code class="docutils literal notranslate"><span class="pre">exclude_sort_keys</span></code>.</p></li>
 </ul>
-<p>A date and time without a UTC offset is read as UTC when the column stores a
-time zone. On a base with
-<a class="reference internal" href="api/models.html#fastapi_restly.models.ModelDefaults" title="fastapi_restly.models.ModelDefaults"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code></a>,
-<code class="docutils literal notranslate"><span class="pre">Mapped[datetime]</span></code> stores one by default. A column declared <code class="docutils literal notranslate"><span class="pre">DateTime()</span></code>
-compares the value as it is.</p>
+<p>A filter compares a time in UTC: a time without an offset is UTC, and a
+time with an offset is compared as the same time in UTC. See
+<a class="reference internal" href="schemas.html#utc-times"><span class="std std-ref">Keep times in UTC</span></a>.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">column_property</span></code> counts as a column. So a value that SQL computes for
+each row, such as the number of tasks of a project, gets filters and a sort
+key too, such as <code class="docutils literal notranslate"><span class="pre">?task_count__gte=1</span></code> and <code class="docutils literal notranslate"><span class="pre">?sort=-task_count</span></code>.
+<a class="reference internal" href="lifecycle.html#value-on-each-row"><span class="std std-ref">Add a value to each row</span></a> shows such a value.</p>
 </div>
 <section id="filter-values-go-through-the-field-s-validation">
 <span id="filter-value-validation"></span><h3>Filter values go through the field’s validation<a class="headerlink" href="#filter-values-go-through-the-field-s-validation" title="Link to this heading">#</a></h3>
 <p>Equality, <code class="docutils literal notranslate"><span class="pre">__ne</span></code>, <code class="docutils literal notranslate"><span class="pre">__in</span></code> and the range filters validate each value with the
 field’s Pydantic validation, so the field validators of the schema run on
-filter values too. A value that fails returns <code class="docutils literal notranslate"><span class="pre">400</span></code> (see
+filter values too. A field of type <code class="docutils literal notranslate"><span class="pre">Any</span></code>, such as the <code class="docutils literal notranslate"><span class="pre">id</span></code> of
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDSchema</span></code></a>, gives the value the
+Python type of its column, such as a <code class="docutils literal notranslate"><span class="pre">UUID</span></code> from its text. On a column of
+SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">Enum</span></code> type, the value must also be one of its labels. A
+number must fit its integer column, such as the range of <code class="docutils literal notranslate"><span class="pre">Integer</span></code>, and text
+must hold no NUL character; see <a class="reference internal" href="schemas.html#column-validation"><span class="std std-ref">Column validation</span></a>. A
+filter does not check the length of text.
+A value that fails returns <code class="docutils literal notranslate"><span class="pre">400</span></code> (see
 <a class="reference internal" href="errors.html#list-request-errors"><span class="std std-ref">Why a bad list request returns 422 or 400</span></a>).</p>
 <div class="details admonition">
 <p class="admonition-title">Details</p>
@@ -637,8 +660,8 @@ filter values too. A value that fails returns <code class="docutils literal notr
 also when the URL uses an alias.</p></li>
 <li><p><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic-core/pydantic_core_schema/#pydantic_core.core_schema.ValidationInfo.data" title="(in Pydantic v0.0.0)"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pydantic.ValidationInfo.data</span></code></a> is <code class="docutils literal notranslate"><span class="pre">{}</span></code>.</p></li>
 </ul>
-<p><code class="docutils literal notranslate"><span class="pre">__contains</span></code> and <code class="docutils literal notranslate"><span class="pre">__icontains</span></code> use the text as it is, and <code class="docutils literal notranslate"><span class="pre">__isnull</span></code> reads a
-boolean.</p>
+<p><code class="docutils literal notranslate"><span class="pre">__contains</span></code> and <code class="docutils literal notranslate"><span class="pre">__icontains</span></code> use the text as it is. They only refuse a NUL
+character. <code class="docutils literal notranslate"><span class="pre">__isnull</span></code> reads a boolean.</p>
 </div>
 </section>
 <section id="match-one-of-several-values">
@@ -680,7 +703,10 @@ GET /users?name__icontains=john&amp;name__icontains=doe
 <code class="docutils literal notranslate"><span class="pre">?name__contains=john%20doe</span></code> gives the same result. Prefer the repeated
 parameter when you build the URL yourself: it has only one meaning.</p>
 <p>Restly escapes <code class="docutils literal notranslate"><span class="pre">%</span></code>, <code class="docutils literal notranslate"><span class="pre">_</span></code> and <code class="docutils literal notranslate"><span class="pre">\</span></code> before it builds the <code class="docutils literal notranslate"><span class="pre">LIKE</span></code> condition. A
-search finds the text as written; these characters are not wildcards.</p>
+search finds the text as written; these characters are not wildcards. In a
+filter of your own, pass SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">autoescape=True</span></code> for the same result,
+such as <code class="docutils literal notranslate"><span class="pre">Item.name.icontains(q,</span> <span class="pre">autoescape=True)</span></code>. Without it, <code class="docutils literal notranslate"><span class="pre">?q=%</span></code> matches
+every row.</p>
 </div>
 </section>
 <section id="combine-filters-on-one-field">
@@ -700,8 +726,9 @@ name of a field. A <code class="docutils literal notranslate"><span class="pre">
 </pre></div>
 </div>
 <p>By default every own field of the resource is a sort key. An unknown sort key
-gets <code class="docutils literal notranslate"><span class="pre">422</span></code>. The description of <code class="docutils literal notranslate"><span class="pre">sort</span></code> in OpenAPI lists the sort keys. To
-choose them, see <a class="reference internal" href="#choose-list-keys">Choose the keys of a list</a>.</p>
+gets <code class="docutils literal notranslate"><span class="pre">422</span></code>, and so does a key that appears twice, such as <code class="docutils literal notranslate"><span class="pre">?sort=name,-name</span></code>.
+The description of <code class="docutils literal notranslate"><span class="pre">sort</span></code> in OpenAPI lists the sort keys. To choose them, see
+<a class="reference internal" href="#choose-list-keys">Choose the keys of a list</a>.</p>
 <p>A dotted key sorts by a related field, when <code class="docutils literal notranslate"><span class="pre">include_sort_keys</span></code> has it:
 <code class="docutils literal notranslate"><span class="pre">?sort=-city.country.code</span></code> orders by that column, and joins each step of the
 path. A row without the related row stays in the list. Dotted keys follow
@@ -726,7 +753,9 @@ repeated from one page to the next.</p>
 sort key. <code class="docutils literal notranslate"><span class="pre">include_sort_keys</span></code> does not have to keep it, so a view can sort by
 a field that the client cannot sort by. A key that the response class does
 not have fails when the view registers, also when the view gets
-<code class="docutils literal notranslate"><span class="pre">default_sort</span></code> from a base view. A view without those fields sets
+<code class="docutils literal notranslate"><span class="pre">default_sort</span></code> from a base view. A key that appears twice, such as in
+<code class="docutils literal notranslate"><span class="pre">&quot;name,-name&quot;</span></code>, fails when the class is defined, or when the view registers
+for a mixin. A view without those fields sets
 <code class="docutils literal notranslate"><span class="pre">default_sort</span> <span class="pre">=</span> <span class="pre">None</span></code> for primary key order. An empty <code class="docutils literal notranslate"><span class="pre">?sort=</span></code> gets the
 default too. An override of
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_list_params" title="fastapi_restly.views.RestView.apply_list_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_list_params</span></code></a>
@@ -744,6 +773,12 @@ client sends no sort:</p>
         <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">apply_list_params</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="n">list_params</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>A column of SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">Enum</span></code> type sorts by its labels, in the order of
+the database. On SQLite and on a column that is not a native enum, such as
+the one that <code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code> gives <code class="docutils literal notranslate"><span class="pre">Mapped[Status]</span></code>, that is the order
+of the text. A native ENUM on PostgreSQL sorts its labels as they were
+declared. An int enum sorts by its numbers only on a column that stores
+them, such as <code class="docutils literal notranslate"><span class="pre">Integer</span></code>.</p>
 </div>
 <section id="where-nulls-go">
 <span id="sort-nulls"></span><h3>Where NULLs go<a class="headerlink" href="#where-nulls-go" title="Link to this heading">#</a></h3>
@@ -966,7 +1001,9 @@ project base view can set <code class="docutils literal notranslate"><span class
 filters on again with <code class="docutils literal notranslate"><span class="pre">(&quot;*&quot;,)</span></code>. An entry that a view inherits may match no
 key, because a base view serves many schemas. For mypy, give the setting a
 type on the base view: <code class="docutils literal notranslate"><span class="pre">include_filters:</span> <span class="pre">ClassVar[tuple[str,</span> <span class="pre">...]]</span> <span class="pre">=</span> <span class="pre">()</span></code>.
-Without it, mypy takes the type of <code class="docutils literal notranslate"><span class="pre">()</span></code> and rejects <code class="docutils literal notranslate"><span class="pre">(&quot;*&quot;,)</span></code> in the view.</p>
+Without it, mypy takes the type of <code class="docutils literal notranslate"><span class="pre">()</span></code> and rejects <code class="docutils literal notranslate"><span class="pre">(&quot;*&quot;,)</span></code> in the view.
+The same holds for every setting; see
+<a class="reference internal" href="typing.html#typing-limits"><span class="std std-ref">What a type checker cannot see</span></a>.</p>
 <p>The sort keys are separate from the filter keys, so a view can sort on
 <code class="docutils literal notranslate"><span class="pre">created_at</span></code> without a <code class="docutils literal notranslate"><span class="pre">?created_at=</span></code> filter. A sort key has no suffix. It
 never goes through a list of related rows: an item with several tags has no
@@ -980,7 +1017,8 @@ levels down.</p>
 takes the four settings and <code class="docutils literal notranslate"><span class="pre">sort_query_param</span></code> as keywords, so a route
 outside a view can build the same list params.</p>
 <p>A key that clients use is part of your API. Removing it later breaks those
-clients.</p>
+clients. A key also goes away when you remove its field from the response
+class.</p>
 </div>
 </section>
 <section id="filter-on-a-related-row">
@@ -1118,7 +1156,7 @@ GET /users?user_name=Alice       # rejected: the Python name is not public
 </section>
 <section id="add-a-filter-of-your-own">
 <span id="own-list-filter"></span><h2>Add a filter of your own<a class="headerlink" href="#add-a-filter-of-your-own" title="Link to this heading">#</a></h2>
-<p>For a filter that is not a comparison with a column, decorate a view method
+<p>For a filter that the generated keys do not give, decorate a view method
 with <a class="reference internal" href="api/views.html#fastapi_restly.views.list_filter" title="fastapi_restly.views.list_filter"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.list_filter</span></code></a>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnElement</span>
 
@@ -1149,6 +1187,20 @@ them:</p>
     <span class="k">return</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">value</span> <span class="k">else</span> <span class="o">~</span><span class="n">Item</span><span class="o">.</span><span class="n">archived</span>
 </pre></div>
 </div>
+<p>A key can also be a field and an operator, as the generated keys are. The
+operator can be a new one:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">func</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">list_filter</span><span class="p">(</span><span class="s2">&quot;name__length&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">filter_name_length</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColumnElement</span><span class="p">[</span><span class="nb">bool</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Items whose name has this many characters.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">func</span><span class="o">.</span><span class="n">length</span><span class="p">(</span><span class="n">Item</span><span class="o">.</span><span class="n">name</span><span class="p">)</span> <span class="o">==</span> <span class="n">value</span>
+</pre></div>
+</div>
+<p>The client sends <code class="docutils literal notranslate"><span class="pre">?name__length=5</span></code>. Before the last <code class="docutils literal notranslate"><span class="pre">__</span></code> comes a field with
+filters, such as <code class="docutils literal notranslate"><span class="pre">name</span></code> or <code class="docutils literal notranslate"><span class="pre">vendor.name</span></code>, so <code class="docutils literal notranslate"><span class="pre">__</span></code> always splits a field from
+an operator. A key without <code class="docutils literal notranslate"><span class="pre">__</span></code> and <code class="docutils literal notranslate"><span class="pre">.</span></code>, such as <code class="docutils literal notranslate"><span class="pre">popular</span></code>, needs no field.</p>
 <p>A filter on a column lets a client find out the values of that column, one
 request at a time. Write a filter only on data that the client may see.</p>
 <div class="details admonition">
@@ -1167,8 +1219,11 @@ subquery in the condition is enough, and it is faster than loading ids for
 <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">def</span></code> method fails when the class is defined.</p>
 <p>The key is always on: <code class="docutils literal notranslate"><span class="pre">include_filters</span></code> and <code class="docutils literal notranslate"><span class="pre">exclude_filters</span></code> choose among
 the generated keys only. A key with the name of a generated key that is on
-fails when the view registers. To replace <code class="docutils literal notranslate"><span class="pre">name</span></code>, leave the generated key out
-with <code class="docutils literal notranslate"><span class="pre">exclude_filters</span> <span class="pre">=</span> <span class="pre">(&quot;name&quot;,)</span></code>, and decorate your own.</p>
+fails when the view registers. To replace a generated key, such as <code class="docutils literal notranslate"><span class="pre">name</span></code> or
+<code class="docutils literal notranslate"><span class="pre">name__icontains</span></code>, leave it out with <code class="docutils literal notranslate"><span class="pre">exclude_filters</span></code>, and decorate your own.</p>
+<p>A key with an operator looks like a generated key, but it works as your
+method does. It takes one value of the method’s type, so a comma or a
+repeated key does not combine values, as they do for a generated key.</p>
 <p>A subclass inherits the key. It drops the key by setting the name of the
 method to <code class="docutils literal notranslate"><span class="pre">None</span></code>, as in <code class="docutils literal notranslate"><span class="pre">filter_popular</span> <span class="pre">=</span> <span class="pre">None</span></code>. A type checker rejects
 <code class="docutils literal notranslate"><span class="pre">None</span></code> in place of a method, so give it a type: <code class="docutils literal notranslate"><span class="pre">filter_popular:</span> <span class="pre">Any</span> <span class="pre">=</span> <span class="pre">None</span></code>.
@@ -1178,10 +1233,10 @@ a list route, or a dict or a <code class="docutils literal notranslate"><span cl
 model of another class, such as one of your own, does not run them, and
 Restly warns with
 <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlySkippedFilterMethodsWarning" title="fastapi_restly.exc.RestlySkippedFilterMethodsWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlySkippedFilterMethodsWarning</span></code></a>.</p>
-<p>A key follows the rules of the page parameters: no <code class="docutils literal notranslate"><span class="pre">__</span></code>, no <code class="docutils literal notranslate"><span class="pre">.</span></code> and no <code class="docutils literal notranslate"><span class="pre">_</span></code>
-at the start. It is not the name of the view’s page or sort parameters, such
-as <code class="docutils literal notranslate"><span class="pre">page</span></code>, <code class="docutils literal notranslate"><span class="pre">page_size</span></code> or <code class="docutils literal notranslate"><span class="pre">sort</span></code>, and not the name of a Pydantic model
-attribute, such as <code class="docutils literal notranslate"><span class="pre">copy</span></code>.</p>
+<p>A key does not start with <code class="docutils literal notranslate"><span class="pre">_</span></code>. It has <code class="docutils literal notranslate"><span class="pre">__</span></code> at most once, with a field before
+it and an operator after it, and a <code class="docutils literal notranslate"><span class="pre">.</span></code> only in the field. It is not the name
+of the view’s page or sort parameters, such as <code class="docutils literal notranslate"><span class="pre">page</span></code>, <code class="docutils literal notranslate"><span class="pre">page_size</span></code> or <code class="docutils literal notranslate"><span class="pre">sort</span></code>,
+and not the name of a Pydantic model attribute, such as <code class="docutils literal notranslate"><span class="pre">copy</span></code>.</p>
 <p><a class="reference internal" href="api/query.html#fastapi_restly.query.apply_list_params" title="fastapi_restly.query.apply_list_params"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.query.apply_list_params</span></code></a>
 has no view, so it cannot call the method. It raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> for list
 parameters with a value for the key. A key with a default always has a
@@ -1304,14 +1359,10 @@ and apply it to the statement in
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_list_params" title="fastapi_restly.views.RestView.apply_list_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_list_params</span></code></a>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">pydantic</span>
 
-
-<span class="k">class</span><span class="w"> </span><span class="nc">ItemSearch</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ItemSearch</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">PagedListParams</span><span class="p">):</span>
     <span class="n">q</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">order</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;-name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;name&quot;</span>
-    <span class="n">page</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">Field</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-    <span class="n">page_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">Field</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">le</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">ItemView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
@@ -1322,7 +1373,7 @@ and apply it to the statement in
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">apply_filters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stmt</span><span class="p">,</span> <span class="n">list_params</span><span class="p">:</span> <span class="n">ItemSearch</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">list_params</span><span class="o">.</span><span class="n">q</span><span class="p">:</span>
-            <span class="n">stmt</span> <span class="o">=</span> <span class="n">stmt</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Item</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">icontains</span><span class="p">(</span><span class="n">list_params</span><span class="o">.</span><span class="n">q</span><span class="p">))</span>
+            <span class="n">stmt</span> <span class="o">=</span> <span class="n">stmt</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Item</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">icontains</span><span class="p">(</span><span class="n">list_params</span><span class="o">.</span><span class="n">q</span><span class="p">,</span> <span class="n">autoescape</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
         <span class="k">return</span> <span class="n">stmt</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">apply_list_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stmt</span><span class="p">,</span> <span class="n">list_params</span><span class="p">:</span> <span class="n">ItemSearch</span><span class="p">):</span>
@@ -1335,14 +1386,29 @@ and apply it to the statement in
 <p>The client sends <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/items/?q=axe&amp;order=-name&amp;page=2</span></code>. Restly reads the
 model from the query string, as on every list route: a bad value or an
 unknown key gets <code class="docutils literal notranslate"><span class="pre">422</span></code>, and OpenAPI shows each field. The scope still
-applies, and <code class="docutils literal notranslate"><span class="pre">total_count</span></code> counts the rows that <code class="docutils literal notranslate"><span class="pre">apply_filters</span></code> keeps. The
-envelope takes the page and the page size from the fields with the names of
-the pagination parameters, here <code class="docutils literal notranslate"><span class="pre">page</span></code> and <code class="docutils literal notranslate"><span class="pre">page_size</span></code>.</p>
+applies, and <code class="docutils literal notranslate"><span class="pre">total_count</span></code> counts the rows that <code class="docutils literal notranslate"><span class="pre">apply_filters</span></code> keeps.</p>
+<p><a class="reference internal" href="api/query.html#fastapi_restly.query.PagedListParams" title="fastapi_restly.query.PagedListParams"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.query.PagedListParams</span></code></a>
+gives the list params the page fields, <code class="docutils literal notranslate"><span class="pre">page</span></code> and <code class="docutils literal notranslate"><span class="pre">page_size</span></code>. Restly fills
+them from the view’s
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.pagination" title="fastapi_restly.views.BaseRestView.pagination"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pagination</span></code></a>: their
+names in the URL, the default page size and the bounds. Your code reads
+<code class="docutils literal notranslate"><span class="pre">list_params.page</span></code> and <code class="docutils literal notranslate"><span class="pre">list_params.page_size</span></code>, also when the pagination
+renames them, such as <code class="docutils literal notranslate"><span class="pre">page_size_query_param=&quot;size&quot;</span></code>. The response reports
+the page that the client gets.</p>
+<p>List params of your own on a view with pages need these fields, or the view
+fails when it registers: its list would return every row, while its
+response says that it has pages. For a list without pages, subclass
+<code class="docutils literal notranslate"><span class="pre">pydantic.BaseModel</span></code> and set <code class="docutils literal notranslate"><span class="pre">pagination</span> <span class="pre">=</span> <span class="pre">None</span></code>.</p>
 <div class="details admonition">
 <p class="admonition-title">Details</p>
 <p>On a sync view, the two methods are <code class="docutils literal notranslate"><span class="pre">def</span></code>. <code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code> adds the
 order and the page. Order by a unique column last, such as <code class="docutils literal notranslate"><span class="pre">Item.id</span></code>, so
-that a row never moves to another page.</p>
+that a row never moves to another page. In a base view for several models,
+<a class="reference internal" href="api/query.html#fastapi_restly.query.order_by_primary_key" title="fastapi_restly.query.order_by_primary_key"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.query.order_by_primary_key</span></code></a>
+adds the primary key of the view’s model.</p>
+<p>One class of list params serves views with other pagination: each view gets
+its own page fields. Page fields that you write yourself also work, when
+they have the names of the view’s page parameters.</p>
 <p>The list settings, such as <code class="docutils literal notranslate"><span class="pre">include_filters</span></code>, <code class="docutils literal notranslate"><span class="pre">sort_query_param</span></code> and
 <code class="docutils literal notranslate"><span class="pre">default_sort</span></code>, and
 <a class="reference internal" href="api/views.html#fastapi_restly.views.list_filter" title="fastapi_restly.views.list_filter"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.list_filter</span></code></a> apply to the list
@@ -1353,6 +1419,89 @@ generated list params, so it declares its own again. The
 <a class="reference internal" href="react_admin.html"><span class="std std-doc">React Admin</span></a> views have list params of their own: <code class="docutils literal notranslate"><span class="pre">sort</span></code>,
 <code class="docutils literal notranslate"><span class="pre">range</span></code> and <code class="docutils literal notranslate"><span class="pre">filter</span></code>.</p>
 </div>
+<section id="filter-and-sort-on-the-fields-of-the-response">
+<span id="own-list-params-keys"></span><h3>Filter and sort on the fields of the response<a class="headerlink" href="#filter-and-sort-on-the-fields-of-the-response" title="Link to this heading">#</a></h3>
+<p>The list params of a client library often name the fields of the resource,
+as in <code class="docutils literal notranslate"><span class="pre">filter={&quot;category&quot;:&quot;tools&quot;}</span></code>. For each such key,
+<a class="reference internal" href="api/query.html#fastapi_restly.query.FilterKey" title="fastapi_restly.query.FilterKey"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.query.FilterKey</span></code></a> finds the field
+and its column. As in the generated filters, a field that the response does
+not show is an unknown key. Here it gets a <code class="docutils literal notranslate"><span class="pre">400</span></code>, not a <code class="docutils literal notranslate"><span class="pre">422</span></code>, because the
+key is inside the value of <code class="docutils literal notranslate"><span class="pre">filter</span></code>; see
+<a class="reference internal" href="errors.html#list-request-errors"><span class="std std-ref">Why a bad list request returns 422 or 400</span></a>.
+<a class="reference internal" href="api/query.html#fastapi_restly.query.FilterKey.parse" title="fastapi_restly.query.FilterKey.parse"><code class="xref py py-meth docutils literal notranslate"><span class="pre">parse()</span></code></a> gives a value the
+validation of the field and the form of the column, as the generated filters
+do. <a class="reference internal" href="api/query.html#fastapi_restly.query.SortKey" title="fastapi_restly.query.SortKey"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.query.SortKey</span></code></a> does the same
+for a sort key:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pydantic</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ItemListParams</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">PagedListParams</span><span class="p">):</span>
+    <span class="nb">filter</span><span class="p">:</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">Json</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">sort</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ItemView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/items&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Item</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ItemSchema</span>
+    <span class="n">schema_list_params</span> <span class="o">=</span> <span class="n">ItemListParams</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">apply_filters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stmt</span><span class="p">,</span> <span class="n">list_params</span><span class="p">:</span> <span class="n">ItemListParams</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="p">(</span><span class="n">list_params</span><span class="o">.</span><span class="n">filter</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">key</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">FilterKey</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema_response</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+            <span class="n">stmt</span> <span class="o">=</span> <span class="n">stmt</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">key</span><span class="o">.</span><span class="n">column</span> <span class="o">==</span> <span class="n">key</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">stmt</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">apply_list_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stmt</span><span class="p">,</span> <span class="n">list_params</span><span class="p">:</span> <span class="n">ItemListParams</span><span class="p">):</span>
+        <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply_filters</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="n">list_params</span><span class="p">)</span>
+        <span class="n">sorted_on</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">list_params</span><span class="o">.</span><span class="n">sort</span><span class="p">:</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">list_params</span><span class="o">.</span><span class="n">sort</span><span class="o">.</span><span class="n">removeprefix</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">)</span>
+            <span class="n">key</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">SortKey</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema_response</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+            <span class="n">descending</span> <span class="o">=</span> <span class="n">list_params</span><span class="o">.</span><span class="n">sort</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">)</span>
+            <span class="n">stmt</span> <span class="o">=</span> <span class="n">stmt</span><span class="o">.</span><span class="n">order_by</span><span class="p">(</span>
+                <span class="n">key</span><span class="o">.</span><span class="n">term</span><span class="p">(</span><span class="n">descending</span><span class="o">=</span><span class="n">descending</span><span class="p">,</span> <span class="n">sort_nulls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sort_nulls</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">sorted_on</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key</span><span class="o">.</span><span class="n">column</span><span class="p">)</span>
+        <span class="n">stmt</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">order_by_primary_key</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">sorted_on</span><span class="o">=</span><span class="n">sorted_on</span><span class="p">)</span>
+        <span class="n">offset</span> <span class="o">=</span> <span class="p">(</span><span class="n">list_params</span><span class="o">.</span><span class="n">page</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">list_params</span><span class="o">.</span><span class="n">page_size</span>
+        <span class="k">return</span> <span class="n">stmt</span><span class="o">.</span><span class="n">limit</span><span class="p">(</span><span class="n">list_params</span><span class="o">.</span><span class="n">page_size</span><span class="p">)</span><span class="o">.</span><span class="n">offset</span><span class="p">(</span><span class="n">offset</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The client sends <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/items/?filter={&quot;category&quot;:&quot;tools&quot;}&amp;sort=-name&amp;page=2</span></code>.
+The condition, such as <code class="docutils literal notranslate"><span class="pre">==</span></code>, stays yours. As in the example above, the list
+params get the page fields from
+<a class="reference internal" href="api/query.html#fastapi_restly.query.PagedListParams" title="fastapi_restly.query.PagedListParams"><code class="xref py py-class docutils literal notranslate"><span class="pre">PagedListParams</span></code></a>, and
+<code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code> applies the page.
+<a class="reference internal" href="api/query.html#fastapi_restly.query.order_by_primary_key" title="fastapi_restly.query.order_by_primary_key"><code class="xref py py-func docutils literal notranslate"><span class="pre">order_by_primary_key()</span></code></a>
+orders by the primary key last, so that a row never moves to another page;
+<code class="docutils literal notranslate"><span class="pre">sorted_on</span></code> names the column that the list is sorted on already, which does
+not come again. The <a class="reference internal" href="react_admin.html"><span class="std std-doc">React Admin</span></a> views use these classes
+for their <code class="docutils literal notranslate"><span class="pre">filter</span></code> and <code class="docutils literal notranslate"><span class="pre">sort</span></code>.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>A key is the name of a field, or its alias when the field has one. The model
+has an attribute with the name of the field that is one value in SQL: a
+column, a <code class="docutils literal notranslate"><span class="pre">column_property</span></code>, or a hybrid property with an SQL expression. A
+hybrid property that is plain Python, such as <code class="docutils literal notranslate"><span class="pre">self.deleted_at</span> <span class="pre">is</span> <span class="pre">not</span> <span class="pre">None</span></code>,
+is an unknown key. A key with a dot, such as <code class="docutils literal notranslate"><span class="pre">vendor.name</span></code>, needs a join, so
+these classes do not know it.</p>
+<p><code class="docutils literal notranslate"><span class="pre">parse()</span></code> takes text from a URL or a value from JSON, and a number becomes
+text for a text field. The validators of the field get only this field, so
+<code class="docutils literal notranslate"><span class="pre">info.data</span></code> is <code class="docutils literal notranslate"><span class="pre">{}</span></code>; see
+<a class="reference internal" href="#filter-value-validation">Filter values go through the field’s validation</a>.
+<code class="docutils literal notranslate"><span class="pre">None</span></code> stays <code class="docutils literal notranslate"><span class="pre">None</span></code> when the field allows it, so <code class="docutils literal notranslate"><span class="pre">key.column</span> <span class="pre">==</span> <span class="pre">None</span></code> gives
+<code class="docutils literal notranslate"><span class="pre">IS</span> <span class="pre">NULL</span></code>. A value that fails gets a <code class="docutils literal notranslate"><span class="pre">400</span></code> with the reason. <code class="docutils literal notranslate"><span class="pre">term()</span></code> puts
+NULLs where <code class="docutils literal notranslate"><span class="pre">sort_nulls</span></code> says.</p>
+<p>Restly cannot see a value that a serializer hides, such as an email shown as
+<code class="docutils literal notranslate"><span class="pre">a***&#64;example.com</span></code>. A filter or a sort on such a field would let a client
+find out the value. Type such a field as a subclass of
+<a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/types/#pydantic.types.Secret" title="(in Pydantic v0.0.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pydantic.Secret</span></code></a> with its own <code class="docutils literal notranslate"><span class="pre">_display()</span></code>,
+so it is no key, as a <code class="docutils literal notranslate"><span class="pre">SecretStr</span></code> is not.</p>
+</div>
+</section>
 </section>
 <section id="internals">
 <h2>Internals<a class="headerlink" href="#internals" title="Link to this heading">#</a></h2>
@@ -1464,7 +1613,10 @@ such as <code class="docutils literal notranslate"><span class="pre">/projects/{
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#add-a-filter-of-your-own">Add a filter of your own</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#accept-extra-query-parameters">Accept extra query parameters</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-the-filters-in-a-route-of-your-own">Use the filters in a route of your own</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#write-the-list-params-yourself">Write the list params yourself</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#write-the-list-params-yourself">Write the list params yourself</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#filter-and-sort-on-the-fields-of-the-response">Filter and sort on the fields of the response</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#internals">Internals</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-restly-builds-the-list-params">How Restly builds the list params</a></li>
 </ul>

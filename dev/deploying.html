@@ -56,7 +56,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             false;
         </script>
-    <script src="_static/newsletter.js?v=e342eb53"></script>
+    <script src="_static/newsletter.js?v=7326e93d"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/dev/deploying.html" />
     <link rel="icon" href="_static/favicon.svg"/>
     <link rel="author" title="About these documents" href="about.html" />
@@ -519,13 +519,16 @@ test suite can import your code without a configured environment. In
 production, Alembic creates and changes the tables, not the application. Its
 <code class="docutils literal notranslate"><span class="pre">env.py</span></code> imports <code class="docutils literal notranslate"><span class="pre">main.py</span></code>, which imports every model.</p>
 <p>The sections below follow that order: the settings, the factory, the command
-that runs it, the migrations, and a health check.
+that runs it, the migrations, and a health check. The last section lists the
+view settings to check before an API goes public.
 <a class="reference internal" href="projects.html#compose-in-one-place"><span class="std std-ref">New &amp; Existing Projects</span></a> shows where these files sit
 in the project.</p>
 <section id="read-the-database-settings-from-the-environment">
 <span id="production-settings"></span><h2>Read the database settings from the environment<a class="headerlink" href="#read-the-database-settings-from-the-environment" title="Link to this heading">#</a></h2>
 <p>In production, take the database URL and the pool size from environment
-variables. A small <code class="docutils literal notranslate"><span class="pre">pydantic-settings</span></code> class holds them:</p>
+variables. Install pydantic-settings first, with
+<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">pydantic-settings</span></code>, because Restly does not install it. Then a
+small settings class holds the values:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic_settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseSettings</span>
 
 
@@ -553,8 +556,10 @@ needs none. The project that <code class="docutils literal notranslate"><span cl
 engine yourself and pass it to <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code>, as the template below does.
 Restly’s <a class="reference internal" href="database.html#engine-defaults"><span class="std std-ref">engine defaults</span></a> apply only to an engine that
 Restly builds from a URL. For this reason, the template also sets
-<code class="docutils literal notranslate"><span class="pre">pool_pre_ping=True</span></code> itself. If your application already builds an engine,
-pass that one; see <a class="reference internal" href="database.html#reuse-existing-engine"><span class="std std-ref">Reuse your existing engine or sessionmaker</span></a>.</p>
+<code class="docutils literal notranslate"><span class="pre">pool_pre_ping=True</span></code> itself, and puts each session in UTC with asyncpg’s
+<code class="docutils literal notranslate"><span class="pre">server_settings</span></code>. For psycopg, pass <code class="docutils literal notranslate"><span class="pre">connect_args={&quot;options&quot;:</span> <span class="pre">&quot;-c</span> <span class="pre">timezone=UTC&quot;}</span></code>
+instead. If your application already builds an engine, pass that one; see
+<a class="reference internal" href="database.html#reuse-existing-engine"><span class="std std-ref">Reuse your existing engine or sessionmaker</span></a>.</p>
 </section>
 <section id="a-production-main-py-template">
 <span id="production-main-template"></span><h2>A production <code class="docutils literal notranslate"><span class="pre">main.py</span></code> template<a class="headerlink" href="#a-production-main-py-template" title="Link to this heading">#</a></h2>
@@ -580,6 +585,7 @@ pass that one; see <a class="reference internal" href="database.html#reuse-exist
         <span class="n">pool_size</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">db_pool_size</span><span class="p">,</span>
         <span class="n">max_overflow</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">db_max_overflow</span><span class="p">,</span>
         <span class="n">pool_pre_ping</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">connect_args</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;server_settings&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;timezone&quot;</span><span class="p">:</span> <span class="s2">&quot;UTC&quot;</span><span class="p">}},</span>
     <span class="p">)</span>
 
     <span class="nd">@asynccontextmanager</span>
@@ -684,7 +690,9 @@ a missing model as a dropped table, so you see the mistake.</p>
 and the
 <a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/alembic/env.py">SaaS example</a>
 are complete versions of this setup. They read the database URL from the
-application’s settings when Alembic gets none.</p>
+application’s settings when Alembic gets none. On PostgreSQL, they run the
+migrations in UTC, as the application’s sessions do, also in the SQL script
+of <code class="docutils literal notranslate"><span class="pre">alembic</span> <span class="pre">upgrade</span> <span class="pre">--sql</span></code>.</p>
 <p>Run the migrations when you release, or when the application starts:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>alembic<span class="w"> </span>upgrade<span class="w"> </span>head
 </pre></div>
@@ -718,9 +726,12 @@ migration such as this one, and review it:</p>
 <span class="p">)</span>
 </pre></div>
 </div>
-<p>A type change without <code class="docutils literal notranslate"><span class="pre">postgresql_using</span></code> can read the values in the local
-time zone of the server. Use <code class="docutils literal notranslate"><span class="pre">mapped_column(DateTime())</span></code> on the model only for
-a column that stores a time without a time zone on purpose.</p>
+<p>A type change without <code class="docutils literal notranslate"><span class="pre">postgresql_using</span></code> reads the values in the time zone
+of the database session that runs the migration. The <code class="docutils literal notranslate"><span class="pre">env.py</span></code> that
+<code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> generates puts that session in UTC. Keep
+<code class="docutils literal notranslate"><span class="pre">mapped_column(DateTime())</span></code> on the model only for a column that has no time
+zone on purpose. Such a column holds UTC without the offset; see
+<a class="reference internal" href="schemas.html#utc-times"><span class="std std-ref">Keep times in UTC</span></a>.</p>
 </section>
 </section>
 <section id="add-a-health-check">
@@ -746,6 +757,43 @@ when the check fails:</p>
 <p>A readiness probe takes the instance out of service instead of restarting it.
 That is the place to check the database and other services. Write it as an
 ordinary route, so that you control its checks and its timeouts.</p>
+</section>
+<section id="before-you-expose-an-api-publicly">
+<span id="before-public"></span><h2>Before you expose an API publicly<a class="headerlink" href="#before-you-expose-an-api-publicly" title="Link to this heading">#</a></h2>
+<p>Restly is made first for APIs with known clients, such as an internal app or
+an admin panel, so its limits on the work that one request can cause are
+generous by default. A page has at most <code class="docutils literal notranslate"><span class="pre">max_page_size</span></code> rows. A client sorts
+and filters only by the keys that the view allows, and uses each sort key only
+once. A dotted key joins another table, so dotted keys are off until the view
+turns them on. If you find a request that has no such limit, please report it
+as a bug.</p>
+<p>Access works differently: the rules for what a client may see or change are
+just as strict for an internal API as for a public one.</p>
+<p>Restly does not limit how many requests a client sends. Put rate limits,
+timeouts and a maximum body size in the proxy in front of the app, and a
+statement timeout in the database.</p>
+<p>For a public API, lower the limits on one request. Start with a table that
+only grows, such as an audit log, events or imports. It gets large without
+anyone noticing, and clients want to filter and sort it. Check these settings
+on its view:</p>
+<ul class="simple">
+<li><p>Lower the page size and its maximum with
+<a class="reference internal" href="api/views.html#fastapi_restly.views.NumberedPagination" title="fastapi_restly.views.NumberedPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.NumberedPagination</span></code></a>,
+such as <code class="docutils literal notranslate"><span class="pre">default_page_size=25</span></code> and <code class="docutils literal notranslate"><span class="pre">max_page_size=100</span></code>. <code class="docutils literal notranslate"><span class="pre">max_page</span></code> limits
+how far a client can page. See <a class="reference internal" href="filtering.html#list-pagination"><span class="std std-ref">Page through a list</span></a>.</p></li>
+<li><p>Turn on only the filters and sort keys that clients need, with
+<code class="docutils literal notranslate"><span class="pre">include_filters</span></code> and <code class="docutils literal notranslate"><span class="pre">include_sort_keys</span></code>. Filter keys of your own, from
+<a class="reference internal" href="filtering.html#own-list-filter"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">&#64;fr.list_filter</span></code></span></a>, are always on, so check those too.
+A filter or a sort on a column without an index reads the whole table. See
+<a class="reference internal" href="filtering.html#choose-list-keys"><span class="std std-ref">Choose the keys of a list</span></a>.</p></li>
+<li><p>Keep <code class="docutils literal notranslate"><span class="pre">unknown_query_params</span> <span class="pre">=</span> <span class="pre">&quot;forbid&quot;</span></code>, the default. A mistyped filter is
+then a <code class="docutils literal notranslate"><span class="pre">422</span></code>, not a list with more rows than the client asked for. See
+<a class="reference internal" href="filtering.html#extra-query-parameters"><span class="std std-ref">Accept extra query parameters</span></a>.</p></li>
+<li><p>Put the rule for which rows a caller may see in a scope, not in code that
+filters the rows after the read. A scope runs in SQL, so the rows of a
+list, its count and its pages agree. See
+<a class="reference internal" href="scopes.html#view-scope"><span class="std std-ref">Give one view other rows</span></a>.</p></li>
+</ul>
 </section>
 <section id="see-also">
 <h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
@@ -817,6 +865,7 @@ and tests that run the migrations.</p></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#add-a-health-check">Add a health check</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#before-you-expose-an-api-publicly">Before you expose an API publicly</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>
 </ul>
   </nav></div>
