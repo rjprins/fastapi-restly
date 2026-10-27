@@ -524,20 +524,21 @@ dependencies and inheritance.</p>
 <strong>endpoint method</strong>. It calls
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_create" title="fastapi_restly.views.RestView.handle_create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_create</span></code></a>, the
 <strong>handler</strong>. The handler runs the steps in this order:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>POST /
-  └─ create_endpoint(data)                # endpoint method: the HTTP contract
-       ├─ handle_create(data)             # handler: runs the steps (final)
-       │    ├─ authorize(&quot;create&quot;, data=data)
-       │    ├─ check the references in data   # an id that does not exist: 404
-       │    ├─ create(data)               # business method: builds the object;
-       │    │                             #   nothing is written yet
-       │    ├─ save: flush, refresh obj, load it with the loader options
-       │    ├─ before_action_commit(&quot;create&quot;, new=obj, old=None)
-       │    ├─ commit
-       │    └─ after_action_commit(&quot;create&quot;, new=obj, old=None)
-       └─ to_response(obj)
-</pre></div>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>POST /
+<span class="hll">  └─ create_endpoint(data)                # endpoint method: the HTTP contract
+</span>       ├─ handle_create(data)             # handler: runs the steps (final)
+<span class="hll">       │    ├─ authorize(&quot;create&quot;, data=data)
+</span>       │    ├─ check the references in data   # an id that does not exist: 404
+<span class="hll">       │    ├─ create(data)               # business method: builds the object;
+</span><span class="hll">       │    │                             #   nothing is written yet
+</span>       │    ├─ save: flush, refresh obj, load it with the loader options
+<span class="hll">       │    ├─ before_action_commit(&quot;create&quot;, new=obj, old=None)
+</span>       │    ├─ commit
+<span class="hll">       │    └─ after_action_commit(&quot;create&quot;, new=obj, old=None)
+</span><span class="hll">       └─ to_response(obj)
+</span></pre></div>
 </div>
+<p>The highlighted lines are the methods that you can override in your view.</p>
 <p>Every CRUD route has these three methods. The names follow one pattern for
 all five actions: <code class="docutils literal notranslate"><span class="pre">update_endpoint</span></code> calls <code class="docutils literal notranslate"><span class="pre">handle_update</span></code>, which calls
 <code class="docutils literal notranslate"><span class="pre">update</span></code>, and so on. A read has a load in the place of the business method.</p>
@@ -606,30 +607,31 @@ before each query everywhere else.</p>
 <span id="read-request-steps"></span><h3>A read: visibility, then policy<a class="headerlink" href="#a-read-visibility-then-policy" title="Link to this heading">#</a></h3>
 <p>A read has no commit bracket and no business method. Its load is final. Each
 step of the load comes from a declaration or from a small hook:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>GET /{id}
-  └─ get_one_endpoint(id)                     # endpoint method
-       ├─ handle_get_one(id)                  # handler
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /{id}
+<span class="hll">  └─ get_one_endpoint(id)                     # endpoint method
+</span>       ├─ handle_get_one(id)                  # handler
        │    ├─ get_one(id)                    # the load (final)
        │    │    ├─ select()                  # select(model), the scope, the loader options
        │    │    │                            #   VISIBILITY: a hidden row is a 404 for every caller
-       │    │    ├─ .where(where_id(id))      # hook: the primary key by default
-       │    │    └─ no row: raise not_found(id)   # hook: a 404 by default
-       │    └─ authorize(&quot;get_one&quot;, obj=obj)  # POLICY: checks the loaded row
-       └─ to_response(obj)
-            └─ to_single_response(obj)        # the response of the row
-
+<span class="hll">       │    │    ├─ .where(where_id(id))      # hook: the primary key by default
+</span><span class="hll">       │    │    └─ no row: raise not_found(id)   # hook: a 404 by default
+</span><span class="hll">       │    └─ authorize(&quot;get_one&quot;, obj=obj)  # POLICY: checks the loaded row
+</span><span class="hll">       └─ to_response(obj)
+</span><span class="hll">            └─ to_single_response(obj)        # the response of the row
+</span>
 GET /
-  └─ get_many_endpoint(list_params)
-       ├─ handle_get_many(list_params)
-       │    ├─ authorize(&quot;get_many&quot;)          # POLICY: no row yet
-       │    └─ get_many(list_params)          # the load (final)
+<span class="hll">  └─ get_many_endpoint(list_params)
+</span>       ├─ handle_get_many(list_params)
+<span class="hll">       │    ├─ authorize(&quot;get_many&quot;)          # POLICY: no row yet
+</span>       │    └─ get_many(list_params)          # the load (final)
        │         ├─ select()                  # the same start as get_one
-       │         ├─ apply_list_params(stmt, list_params)   # filters, sort, page
-       │         └─ count(stmt)               # on a paginated view
-       └─ to_response(result, LIST)
-            └─ to_single_response(row)        # for each row
-</pre></div>
+<span class="hll">       │         ├─ apply_list_params(stmt, list_params)   # filters, sort, page
+</span><span class="hll">       │         └─ count(stmt)               # on a paginated view
+</span><span class="hll">       └─ to_response(result, LIST)
+</span><span class="hll">            └─ to_single_response(row)        # for each row
+</span></pre></div>
 </div>
+<p>The highlighted lines are the methods that you can override in your view.</p>
 <ul class="simple">
 <li><p><strong>Visibility.</strong> The load starts from
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.select" title="fastapi_restly.views.BaseRestView.select"><code class="xref py py-meth docutils literal notranslate"><span class="pre">select()</span></code></a>: the model with
@@ -722,10 +724,10 @@ of some columns, SQLAlchemy leaves the loader options out.</p>
 <td><p>a method with <a class="reference internal" href="api/views.html#fastapi_restly.views.get" title="fastapi_restly.views.get"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.get</span></code></a> or <a class="reference internal" href="api/views.html#fastapi_restly.views.post" title="fastapi_restly.views.post"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.post</span></code></a> (<a class="reference internal" href="#custom-read-route">read route</a>, <a class="reference internal" href="#custom-action-route">action route</a>)</p></td>
 </tr>
 <tr class="row-even"><td><p>A lookup by another key, such as a slug or an email</p></td>
-<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_one" title="fastapi_restly.views.RestView.handle_get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_one</span></code></a> with an expression, in a custom route (<a class="reference internal" href="#natural-key-route">below</a>)</p></td>
+<td><p>In a custom route, call <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_one" title="fastapi_restly.views.RestView.handle_get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_one</span></code></a> with an expression (<a class="reference internal" href="#natural-key-route">below</a>)</p></td>
 </tr>
 <tr class="row-odd"><td><p>A list of a subset, such as one project’s tasks</p></td>
-<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_many" title="fastapi_restly.views.RestView.handle_get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_many</span></code></a> with <code class="docutils literal notranslate"><span class="pre">where=</span></code>, in a custom route (<a class="reference internal" href="scopes.html#per-read-where"><span class="std std-ref">Scopes</span></a>)</p></td>
+<td><p>In a custom route, call <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_many" title="fastapi_restly.views.RestView.handle_get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_many</span></code></a> with <code class="docutils literal notranslate"><span class="pre">where=</span></code> (<a class="reference internal" href="scopes.html#per-read-where"><span class="std std-ref">Scopes</span></a>)</p></td>
 </tr>
 <tr class="row-even"><td><p>One action that changes several rows, such as a new order of the rows</p></td>
 <td><p>a <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.write_action" title="fastapi_restly.views.RestView.write_action"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_action</span></code></a> block with <code class="docutils literal notranslate"><span class="pre">obj=None</span></code>, in a custom route (<a class="reference internal" href="#write-several-rows">below</a>)</p></td>

@@ -562,6 +562,12 @@ that holds longer text. Restly now refuses such a value in a request.
 Give the column a type that fits, such as <code class="docutils literal notranslate"><span class="pre">BigInteger</span></code>, or <code class="docutils literal notranslate"><span class="pre">String()</span></code>
 without a length. A column that you miss fails only when a request sends
 such a value, with a 422 or a 400.</p></li>
+<li><p>If your project uses Alembic, add <code class="docutils literal notranslate"><span class="pre">alembic</span></code> to its dependencies: Restly
+no longer installs it. If you miss this step, an environment that is
+installed from the dependencies of your project has no Alembic. The
+<code class="docutils literal notranslate"><span class="pre">alembic</span></code> command is then not found, and code that imports from
+<code class="docutils literal notranslate"><span class="pre">alembic</span></code> fails with <code class="docutils literal notranslate"><span class="pre">ImportError</span></code>. A test suite with <code class="docutils literal notranslate"><span class="pre">alembic_upgrade=</span></code>
+stops with a message from Restly.</p></li>
 </ol>
 <section id="added">
 <h3>Added<a class="headerlink" href="#added" title="Link to this heading">#</a></h3>
@@ -958,6 +964,9 @@ Replace <code class="docutils literal notranslate"><span class="pre">Settings.cu
 <code class="docutils literal notranslate"><span class="pre">create_app(x)</span></code>.</p></li>
 <li><p>The dependency on pydantic-settings, which Restly no longer uses. A project
 from <code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> lists it in its own dependencies.</p></li>
+<li><p>The dependency on Alembic. Restly uses it only for <code class="docutils literal notranslate"><span class="pre">alembic_upgrade=</span></code> in
+<code class="docutils literal notranslate"><span class="pre">configure_tests()</span></code>. A project that uses Alembic lists it in its own
+dependencies, as a project from <code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> with migrations does.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">route_options</span></code>. Replace the endpoint method, pass the route arguments to
 its decorator, as in FastAPI, and call <code class="docutils literal notranslate"><span class="pre">super()</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">extra_query_params</span></code>. Declare the key where your code reads it: with

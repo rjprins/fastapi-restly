@@ -513,20 +513,23 @@ Restly, start with the tutorial, <a class="reference internal" href="tutorial.ht
 FastAPI routes. For example, when a client sends <code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/projects/1</span></code>,
 FastAPI first checks the request body against the update schema,
 <code class="docutils literal notranslate"><span class="pre">ProjectUpdate</span></code>. Then these steps run:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>PATCH /projects/1
-  └─ update_endpoint(id, data)            # endpoint method: HTTP contract
-       ├─ handle_update(id, data)         # handler: runs the steps
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>PATCH /projects/1
+<span class="hll">  └─ update_endpoint(id, data)            # endpoint method: HTTP contract
+</span>       ├─ handle_update(id, data)         # handler: runs the steps
        │    ├─ get_one(id)                # loads through the scope, or 404
-       │    ├─ authorize(&quot;update&quot;, ...)   # may the caller do this? Or 403
-       │    ├─ check the references       # an id that does not exist: 404
-       │    ├─ update(obj, data)          # business method: the change
-       │    ├─ save                       # flush and refresh the row
-       │    ├─ before_action_commit(...)
-       │    ├─ commit
-       │    └─ after_action_commit(...)
-       └─ to_response(obj)                # the response class, as JSON
-</pre></div>
+<span class="hll">       │    ├─ authorize(&quot;update&quot;, ...)   # may the caller do this? Or 403
+</span>       │    ├─ check the references       # an id that does not exist: 404
+<span class="hll">       │    ├─ update(obj, data)          # business method: the change
+</span>       │    ├─ save                       # flush and refresh the row
+<span class="hll">       │    ├─ before_action_commit(...)
+</span>       │    ├─ commit
+<span class="hll">       │    └─ after_action_commit(...)
+</span><span class="hll">       └─ to_response(obj)                # the response class, as JSON
+</span></pre></div>
 </div>
+<p>The highlighted lines are the methods that you can override in your view.
+Restly runs the other steps itself, and the handler and <code class="docutils literal notranslate"><span class="pre">get_one</span></code> are
+final.</p>
 <p>These are the parts, and the page that explains each one:</p>
 <ul class="simple">
 <li><p><strong>Model</strong>: your SQLAlchemy model, on a declarative base of your own.

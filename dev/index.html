@@ -436,15 +436,22 @@
                   
   <section id="fastapi-restly">
 <h1><img alt="" src="_images/fr-monogram.svg" /> FastAPI-Restly<a class="headerlink" href="#fastapi-restly" title="Link to this heading">#</a></h1>
-<p><strong>Class-based REST resources for FastAPI and SQLAlchemy 2.0. Write each rule
-once.</strong></p>
-<p>Restly turns a SQLAlchemy model into a REST resource: the five CRUD routes,
-their Pydantic schemas, and filtering, sorting and pagination on the list
-route. Each route runs a fixed list of steps. To change one step, you
-override its method, and the other steps stay the same. So you write each
-rule once, even when your API is more than plain CRUD.</p>
-<p>Restly is a framework for REST resources, not for your app. It works inside
-the FastAPI app that you already have, and you add it one resource at a time.</p>
+<p><strong>Class-based REST resources for FastAPI and SQLAlchemy 2.0. Minimal
+boilerplate, full control.</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>  <span class="c1"># your SQLAlchemy model</span>
+</pre></div>
+</div>
+<p>This view serves the five CRUD routes under <code class="docutils literal notranslate"><span class="pre">/users</span></code>, with Pydantic schemas
+made from the model, and filtering, sorting and pagination on the list. To
+change one step, override its method, and the rest stays the same.</p>
+<p>Restly is for REST resources, not for your whole app. It works inside the
+FastAPI app that you already have, and you add it one resource at a time;
+see <a class="reference internal" href="projects.html#add-to-existing-app"><span class="std std-ref">Use Restly in an existing project</span></a>.</p>
 <blockquote>
 <div><p><strong>Status:</strong> <code class="docutils literal notranslate"><span class="pre">0.11.0</span></code>, a beta. Restly ran in production for
 <a class="reference internal" href="about.html"><span class="std std-doc">four years</span></a> before it became public. Until 1.0, a minor release
@@ -453,14 +460,6 @@ change in your code. Subscribe to the <a class="reference internal" href="#newsl
 get an email when 1.0 is released. If something is broken or missing,
 please <a class="reference external" href="https://github.com/rjprins/fastapi-restly/issues">open an issue</a>.</p>
 </div></blockquote>
-<p>With FastAPI-Restly imported as <code class="docutils literal notranslate"><span class="pre">fr</span></code>, a CRUD resource is four lines when <code class="docutils literal notranslate"><span class="pre">app</span></code>
-and <code class="docutils literal notranslate"><span class="pre">User</span></code> exist:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
-    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>  <span class="c1"># SQLAlchemy model</span>
-</pre></div>
-</div>
 <p><a class="reference internal" href="guide.html#how-restly-works"><span class="std std-ref">How Restly works</span></a> shows all the parts on one screen, and
 the <a class="reference internal" href="guide.html"><span class="std std-doc">Guide</span></a> explains each part and how you can change it.</p>
 <section id="quick-start">

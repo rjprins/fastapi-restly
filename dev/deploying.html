@@ -662,7 +662,8 @@ requests at the same time. Do not use <code class="docutils literal notranslate"
 </section>
 <section id="set-up-migrations-with-alembic">
 <span id="alembic"></span><h2>Set up migrations with Alembic<a class="headerlink" href="#set-up-migrations-with-alembic" title="Link to this heading">#</a></h2>
-<p>In production, do not call <code class="docutils literal notranslate"><span class="pre">metadata.create_all()</span></code>. Use Alembic. For the
+<p>In production, do not call <code class="docutils literal notranslate"><span class="pre">metadata.create_all()</span></code>. Use Alembic. Install it
+first, with <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">alembic</span></code>, because Restly does not install it. For the
 recommended <code class="docutils literal notranslate"><span class="pre">postgresql+asyncpg</span></code> setup, create the Alembic environment once,
 with Alembic’s async template, in the root of your project:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>alembic<span class="w"> </span>init<span class="w"> </span>-t<span class="w"> </span>async<span class="w"> </span>alembic
