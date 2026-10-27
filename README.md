@@ -11,30 +11,24 @@
 </p>
 
 <p align="center">
-  <strong>Class-based REST resources for FastAPI and SQLAlchemy 2.0. Write each rule once.</strong>
+  <strong>Class-based REST resources for FastAPI and SQLAlchemy 2.0. Minimal boilerplate, full control.</strong>
 </p>
 
-Restly turns a SQLAlchemy model into a REST resource: the five CRUD routes,
-their Pydantic schemas, and filtering, sorting and pagination on the list
-route. Each route runs a fixed list of steps. To change one step, you
-override its method, and the other steps stay the same. So you write each
-rule once, even when your API is more than plain CRUD.
-
-Restly is a framework for REST resources, not for your app. It works inside
-the FastAPI app that you already have, and you add it one resource at a time.
-
-With FastAPI-Restly imported as `fr`, a CRUD resource is four lines when `app`
-and `User` exist:
-
 ```python
+import fastapi_restly as fr
+
 @fr.include_view(app)
 class UserView(fr.AsyncRestView):
     prefix = "/users"
-    model = User  # SQLAlchemy model
+    model = User  # your SQLAlchemy model
 ```
 
-`UserView` inherits five CRUD endpoint methods from `AsyncRestView`.
-`include_view` registers them under `/users`.
+This view serves the five CRUD routes under `/users`, with Pydantic schemas
+made from the model, and filtering, sorting and pagination on the list. To
+change one step, override its method, and the rest stays the same.
+
+Restly is for REST resources, not for your whole app. It works inside the
+FastAPI app that you already have, and you add it one resource at a time.
 
 > **Status:** beta. Restly ran in production for four years before it became
 > public. Until 1.0, a minor release can have breaking changes, and the
