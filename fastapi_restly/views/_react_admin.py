@@ -22,7 +22,7 @@ import sqlalchemy
 from fastapi.exceptions import RequestValidationError
 
 from fastapi_restly.exc import RestlyConfigurationError
-from fastapi_restly.query import FilterKey, SortKey, SortNulls
+from fastapi_restly.query import FilterKey, SortKey, SortNulls, order_by_primary_key
 from fastapi_restly.views import (
     AsyncRestView,
     BaseRestView,
@@ -165,34 +165,17 @@ def _apply_react_admin_sort_and_range(
     sort_nulls: SortNulls = "last",
 ) -> sqlalchemy.Select:
     """The sort and the range (limit/offset) of a react-admin list."""
-    sorted_on: list[str] = []
+    sorted_on = []
     if sort:
         field, direction = sort
         key = SortKey(model, schema_cls, field)
         stmt = stmt.order_by(
             key.term(descending=direction == "DESC", sort_nulls=sort_nulls)
         )
-        sorted_on.append(key.column.key)
-    stmt = _order_by_primary_key(stmt, model, sorted_on)
+        sorted_on.append(key.column)
+    stmt = order_by_primary_key(stmt, model, sorted_on=sorted_on)
 
     return stmt.limit(end - start + 1).offset(start)
-
-
-def _order_by_primary_key(
-    stmt: sqlalchemy.Select, model: type[Any], sorted_on: list[str]
-) -> sqlalchemy.Select:
-    """Order by the primary key last, so that a row with the same sort value
-    as another one never moves to another page.
-
-    :param sorted_on: The attributes that the list is sorted on already. A
-        key column among them is not added again.
-    """
-    mapper = sqlalchemy.inspect(model)
-    for column in mapper.primary_key:
-        key = mapper.get_property_by_column(column).key
-        if key not in sorted_on:
-            stmt = stmt.order_by(getattr(model, key))
-    return stmt
 
 
 def _check_pagination(cls: type) -> None:

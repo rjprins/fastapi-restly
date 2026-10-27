@@ -5,8 +5,10 @@ Query API
 pagination: ``derive_schema_list_params()`` derives the list params, a model
 of the URL parameters, from the view's response class and its model, and
 ``apply_list_params()`` applies validated list params to a SQLAlchemy select.
-``FilterKey`` and ``SortKey`` find the field and the column of one key of
-list params of your own; see :ref:`own-list-params-keys`.
+For list params of your own, ``PagedListParams`` gives the page fields of
+the view's pagination, ``FilterKey`` and ``SortKey`` find the field and the
+column of one key, and ``order_by_primary_key()`` orders by the primary key
+last; see :ref:`own-list-params` and :ref:`own-list-params-keys`.
 
 The view classes call the two functions for you. Call them yourself only in
 a custom endpoint that needs the same list params, and pass validated list

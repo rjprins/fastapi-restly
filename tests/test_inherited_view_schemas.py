@@ -7,7 +7,6 @@ registration generated into the subclass is not a change: it does not make a
 declared schema of the base out of date.
 """
 
-import pydantic
 import pytest
 from fastapi import FastAPI
 from sqlalchemy.orm import Mapped, mapped_column
@@ -184,7 +183,7 @@ def test_declared_list_params_are_inherited(client):
         name: str
         note: str
 
-    class RecListParams(pydantic.BaseModel):
+    class RecListParams(fr.query.PagedListParams):
         note: str | None = None
 
     class Base(fr.AsyncRestView):
@@ -252,7 +251,7 @@ def test_redeclaring_schema_rebuilds_the_list_params_a_parent_declared():
     class RecSchema(fr.IDSchema):
         name: str
 
-    class RecListParams(pydantic.BaseModel):
+    class RecListParams(fr.query.PagedListParams):
         name: str | None = None
 
     class Base(fr.AsyncRestView):
@@ -286,7 +285,7 @@ def test_list_params_declared_next_to_a_new_schema_stay():
         name: str
         note: str
 
-    class RecListParams(pydantic.BaseModel):
+    class RecListParams(fr.query.PagedListParams):
         note: str | None = None
 
     class Base(fr.AsyncRestView):

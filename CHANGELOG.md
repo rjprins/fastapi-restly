@@ -60,6 +60,11 @@ replacement, unless it says otherwise.
     of its field, without the other fields, so `info.data` is `{}`. Use
     `info.data.get("starts_at")` and skip the check when it is `None`. This
     step fails with `KeyError`, a `500`, not with a message from Restly.
+12. Give list params of your own the page fields: subclass
+    `fr.query.PagedListParams` in place of `pydantic.BaseModel`, or set
+    `pagination = None` for a list without pages. Page fields that you
+    wrote yourself keep working when they have the names of the view's page
+    parameters.
 
 ### Added
 
@@ -139,6 +144,15 @@ replacement, unless it says otherwise.
   form of its column, as the generated filters do. `SortKey.term()` gives
   the term for `order_by()`, with NULLs where `sort_nulls` says. The
   react-admin views use them.
+- `fr.query.order_by_primary_key(stmt, model, sorted_on=...)` orders `stmt`
+  by the primary key last, so that a row never moves to another page. The
+  generated list params do this themselves. List params of your own call it,
+  as the react-admin views do.
+- `fr.query.PagedListParams`, the base of list params of your own with
+  pages. A view fills its `page` and `page_size` fields from its
+  `pagination`: their names in the URL, the default page size, the bounds,
+  and the check that the offset fits in the database. So one class serves
+  views with other pagination.
 
 ### Changed
 
@@ -296,6 +310,15 @@ replacement, unless it says otherwise.
   descending sort on a nullable column needs an index with
   `DESC NULLS LAST`. On MySQL and SQL Server, a sort on a nullable column
   cannot use a plain index any more.
+- A field that holds a `dict`, a `list` or a nested model, such as a `JSON`
+  column, is no sort key, in the generated list params and in
+  `fr.query.SortKey`. A document has no order that a client means, and
+  PostgreSQL's `json` type has none at all: a sort on it gave a `500`.
+- List params of your own on a view with a `NumberedPagination` need the
+  page fields of its pagination, or the view fails when it registers.
+  Before, such a list returned every row while its response said that it
+  had pages, and `?page=2` got `422`. A view that builds its list response
+  itself, as a react-admin view does, pages in its own way.
 
 #### React-admin
 

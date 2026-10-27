@@ -533,6 +533,17 @@ def test_react_admin_list_of_a_json_model(restly_client, prefix):
     assert response.headers["content-range"] == "items 0-1/3"
 
 
+def test_a_json_column_is_no_sort_key(restly_client):
+    """PostgreSQL's json type has no order, so a sort on it failed with a 500
+    on every request. The column is no sort key: the generated list params
+    answer 422 and the react-admin view 400."""
+    restly_client.get("/docs/", params={"sort": "data"}, assert_status_code=422)
+    response = restly_client.get(
+        "/admin/docs/", params={"sort": '["data","ASC"]'}, assert_status_code=400
+    )
+    assert response.json()["detail"] == "Unknown sort key: 'data'"
+
+
 @pytest.mark.asyncio
 async def test_psycopg_cross_session_sharing(restly_session, restly_async_session):
     """The documented psycopg sharing: async session runs over the sync fixture's

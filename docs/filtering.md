@@ -88,7 +88,9 @@ Not every field gets every suffix:
   column of SQLAlchemy's `Enum` type.
 - A field that holds a `dict` or a `list`, such as a `JSON` or `ARRAY`
   column, gets only `__isnull`. A value from the URL cannot become a
-  collection, so the other filters would fail on every request.
+  collection, so the other filters would fail on every request. Such a field
+  is no sort key either: a document or a list has no order that a client
+  means, and PostgreSQL's `json` type has none at all.
 - A {data}`WriteOnly <fastapi_restly.schemas.WriteOnly>` field, a field
   with `Field(exclude=True)`, and a field of Pydantic's secret types, such as
   `SecretStr`, get no filter and are not a sort key. A filter on such a field
@@ -957,14 +959,10 @@ and apply it to the statement in
 ```python
 from typing import Literal
 
-import pydantic
 
-
-class ItemSearch(pydantic.BaseModel):
+class ItemSearch(fr.query.PagedListParams):
     q: str | None = None
     order: Literal["name", "-name"] = "name"
-    page: int = pydantic.Field(1, ge=1)
-    page_size: int = pydantic.Field(20, ge=1, le=100)
 
 
 class ItemView(fr.AsyncRestView):
@@ -988,16 +986,34 @@ class ItemView(fr.AsyncRestView):
 The client sends `GET /items/?q=axe&order=-name&page=2`. Restly reads the
 model from the query string, as on every list route: a bad value or an
 unknown key gets `422`, and OpenAPI shows each field. The scope still
-applies, and `total_count` counts the rows that `apply_filters` keeps. The
-envelope takes the page and the page size from the fields with the names of
-the pagination parameters, here `page` and `page_size`.
+applies, and `total_count` counts the rows that `apply_filters` keeps.
+
+{class}`fr.query.PagedListParams <fastapi_restly.query.PagedListParams>`
+gives the list params the page fields, `page` and `page_size`. Restly fills
+them from the view's
+{attr}`pagination <fastapi_restly.views.BaseRestView.pagination>`: their
+names in the URL, the default page size and the bounds. Your code reads
+`list_params.page` and `list_params.page_size`, also when the pagination
+renames them, such as `page_size_query_param="size"`. The response reports
+the page that the client gets.
+
+List params of your own on a view with pages need these fields, or the view
+fails when it registers: its list would return every row, while its
+response says that it has pages. For a list without pages, subclass
+`pydantic.BaseModel` and set `pagination = None`.
 
 :::{admonition} Details
 :class: details
 
 On a sync view, the two methods are `def`. `apply_list_params` adds the
 order and the page. Order by a unique column last, such as `Item.id`, so
-that a row never moves to another page.
+that a row never moves to another page. In a base view for several models,
+{func}`fr.query.order_by_primary_key <fastapi_restly.query.order_by_primary_key>`
+adds the primary key of the view's model.
+
+One class of list params serves views with other pagination: each view gets
+its own page fields. Page fields that you write yourself also work, when
+they have the names of the view's page parameters.
 
 The list settings, such as `include_filters`, `sort_query_param` and
 `default_sort`, and
@@ -1031,11 +1047,9 @@ from typing import Any
 import pydantic
 
 
-class ItemListParams(pydantic.BaseModel):
+class ItemListParams(fr.query.PagedListParams):
     filter: pydantic.Json[dict[str, Any]] | None = None
     sort: str | None = None
-    page: int = pydantic.Field(1, ge=1)
-    page_size: int = pydantic.Field(20, ge=1, le=100)
 
 
 class ItemView(fr.AsyncRestView):
@@ -1052,6 +1066,7 @@ class ItemView(fr.AsyncRestView):
 
     async def apply_list_params(self, stmt, list_params: ItemListParams):
         stmt = await self.apply_filters(stmt, list_params)
+        sorted_on = []
         if list_params.sort:
             name = list_params.sort.removeprefix("-")
             key = fr.query.SortKey(self.model, self.schema_response, name)
@@ -1059,15 +1074,22 @@ class ItemView(fr.AsyncRestView):
             stmt = stmt.order_by(
                 key.term(descending=descending, sort_nulls=self.sort_nulls)
             )
+            sorted_on.append(key.column)
+        stmt = fr.query.order_by_primary_key(stmt, self.model, sorted_on=sorted_on)
         offset = (list_params.page - 1) * list_params.page_size
-        return stmt.order_by(Item.id).limit(list_params.page_size).offset(offset)
+        return stmt.limit(list_params.page_size).offset(offset)
 ```
 
 The client sends `GET /items/?filter={"category":"tools"}&sort=-name&page=2`.
 The condition, such as `==`, stays yours. As in the example above, the list
-params have the page fields, and `apply_list_params` applies the page. The
-[React Admin](react_admin.md) views use these two classes for their
-`filter` and `sort`.
+params get the page fields from
+{class}`PagedListParams <fastapi_restly.query.PagedListParams>`, and
+`apply_list_params` applies the page.
+{func}`order_by_primary_key() <fastapi_restly.query.order_by_primary_key>`
+orders by the primary key last, so that a row never moves to another page;
+`sorted_on` names the column that the list is sorted on already, which does
+not come again. The [React Admin](react_admin.md) views use these classes
+for their `filter` and `sort`.
 
 :::{admonition} Details
 :class: details

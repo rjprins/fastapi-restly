@@ -26,7 +26,7 @@ from sqlalchemy import JSON, ColumnElement, Enum, ForeignKey, Integer, TypeDecor
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
-from fastapi_restly.exc import RestlyConfigurationError
+from fastapi_restly.exc import BadQueryParam, RestlyConfigurationError
 from fastapi_restly.query import derive_schema_list_params
 
 from ._models import SharedBase
@@ -157,6 +157,29 @@ def test_collection_typed_fields_generate_only_isnull():
     # The scalar sibling keeps its full operator set -- no over-removal.
     for alive in ("name", "name__in", "name__ne", "name__isnull", "name__contains"):
         assert alive in fields, alive
+
+
+def test_collection_typed_fields_are_no_sort_keys():
+    """A dict or a list has no order that a client means, and PostgreSQL's
+    ``json`` type has none at all: a sort on it failed on every request. So
+    such a field is no sort key, also for ``fr.query.SortKey``."""
+
+    class RowSchema(fr.BaseSchema):
+        name: str
+        meta: dict | None = None
+        tags: list[str] | None = None
+
+    params = derive_schema_list_params(RowSchema, JsonColumnRow)
+    params.model_validate({"sort": "-name"})
+    for key in ("meta", "tags"):
+        with pytest.raises(pydantic.ValidationError):
+            params.model_validate({"sort": key})
+        with pytest.raises(BadQueryParam) as caught:
+            fr.query.SortKey(JsonColumnRow, RowSchema, key)
+        assert caught.value.detail == f"Unknown sort key: {key!r}"
+    assert fr.query.SortKey(JsonColumnRow, RowSchema, "name").column is (
+        JsonColumnRow.name
+    )
 
 
 def test_json_typed_field_keeps_scalar_filters():

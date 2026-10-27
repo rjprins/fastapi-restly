@@ -32,11 +32,9 @@ class MeetingSchema(fr.IDSchema):
     ends_at: fr.UTCDatetime
 
 
-class MeetingListParams(pydantic.BaseModel):
+class MeetingListParams(fr.query.PagedListParams):
     filter: pydantic.Json[dict[str, Any]] | None = None
     sort: str | None = None
-    page: int = pydantic.Field(1, ge=1)
-    page_size: int = pydantic.Field(20, ge=1, le=100)
 
 
 @fr.include_view(app)
@@ -60,6 +58,7 @@ class MeetingView(
         self, stmt: sqlalchemy.Select[Any], list_params: MeetingListParams
     ) -> sqlalchemy.Select[Any]:
         stmt = await self.apply_filters(stmt, list_params)
+        sorted_on: list[Any] = []
         if list_params.sort:
             name = list_params.sort.removeprefix("-")
             key = fr.query.SortKey(self.model, self.schema_response, name)
@@ -67,8 +66,10 @@ class MeetingView(
             stmt = stmt.order_by(
                 key.term(descending=descending, sort_nulls=self.sort_nulls)
             )
+            sorted_on.append(key.column)
+        stmt = fr.query.order_by_primary_key(stmt, self.model, sorted_on=sorted_on)
         offset = (list_params.page - 1) * list_params.page_size
-        return stmt.order_by(Meeting.id).limit(list_params.page_size).offset(offset)
+        return stmt.limit(list_params.page_size).offset(offset)
 
     async def update(self, obj: Meeting, data: MeetingSchema) -> Meeting:
         if data.ends_at < fr.in_utc(obj.starts_at):

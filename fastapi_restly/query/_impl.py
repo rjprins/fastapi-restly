@@ -368,6 +368,20 @@ def _supports_scalar_operators(field: FieldInfo) -> bool:
     )
 
 
+def _is_sortable(field: FieldInfo) -> bool:
+    """Whether a sort key on ``field`` has an order that a client means.
+
+    A field that gets only ``__isnull``, such as a ``dict`` or a ``list``,
+    gets no sort key either, and neither does a nested model: a document or a
+    list has no such order, and PostgreSQL's ``json`` type has no order at
+    all, so a sort on it fails on every request. A reference, such as
+    ``IDRef[User]``, sorts by its id.
+    """
+    if _get_nested_schema(field) is not None and not _is_idref_field(field):
+        return False
+    return _supports_scalar_operators(field)
+
+
 def _supports_range_operators(field: FieldInfo, column: Any) -> bool:
     if _enum_type(column) is not None:
         # an Enum column holds labels, whatever the type of the field
@@ -405,14 +419,28 @@ def _enum_type(column: Any) -> sqlalchemy.Enum | None:
 
 def _pagination_offset_validator(pagination: NumberedPagination) -> Any:
     """A model validator that rejects a page whose SQL offset would not fit in
-    a signed 64-bit integer."""
+    a signed 64-bit integer. The fields have the names of the parameters."""
     page_param = pagination.page_query_param
     page_size_param = pagination.page_size_query_param
+    return _offset_validator(page_param, page_size_param, page_param, page_size_param)
+
+
+def _offset_validator(
+    page_attr: str, page_size_attr: str, page_param: str, page_size_param: str
+) -> Any:
+    """A model validator that rejects a page whose SQL offset would not fit in
+    a signed 64-bit integer.
+
+    :param page_attr: The field of the page, and ``page_size_attr`` the field
+        of the page size.
+    :param page_param: The name of the page in the URL, and
+        ``page_size_param`` the name of the page size, for the message.
+    """
 
     @pydantic.model_validator(mode="after")
     def _validate_pagination_offset(params: pydantic.BaseModel) -> pydantic.BaseModel:
-        page = cast(int, getattr(params, page_param))
-        page_size = cast(Optional[int], getattr(params, page_size_param))
+        page = cast(int, getattr(params, page_attr))
+        page_size = cast(Optional[int], getattr(params, page_size_attr))
         if page_size is None:
             return params
         if page - 1 > _MAX_PAGINATION_OFFSET // page_size:
@@ -599,7 +627,9 @@ def _derive_list_params(
             continue
         # ``sort=tags.name`` has no clear meaning when an item has several
         # tags, and the join repeats rows.
-        if not any(relationship.property.uselist for relationship in relationships):
+        if _is_sortable(field) and not any(
+            relationship.property.uselist for relationship in relationships
+        ):
             sort_keys.append(name)
         field_filters = _filter_fields(name, field, column)
         filter_fields.update(field_filters)

@@ -365,11 +365,9 @@ def test_list_params_of_your_own_filter_and_sort_with_the_keys(client):
         category: str
         secret: fr.WriteOnly[str] = ""
 
-    class ItemListParams(pydantic.BaseModel):
+    class ItemListParams(fr.query.PagedListParams):
         filter: pydantic.Json[dict[str, Any]] | None = None
         sort: str | None = None
-        page: int = pydantic.Field(1, ge=1)
-        page_size: int = pydantic.Field(20, ge=1, le=100)
 
     @fr.include_view(client.app)
     class ItemView(fr.AsyncRestView):
@@ -386,6 +384,7 @@ def test_list_params_of_your_own_filter_and_sort_with_the_keys(client):
 
         async def apply_list_params(self, stmt, list_params: ItemListParams):
             stmt = await self.apply_filters(stmt, list_params)
+            sorted_on = []
             if list_params.sort:
                 name = list_params.sort.removeprefix("-")
                 key = fr.query.SortKey(self.model, self.schema_response, name)
@@ -393,8 +392,10 @@ def test_list_params_of_your_own_filter_and_sort_with_the_keys(client):
                 stmt = stmt.order_by(
                     key.term(descending=descending, sort_nulls=self.sort_nulls)
                 )
+                sorted_on.append(key.column)
+            stmt = fr.query.order_by_primary_key(stmt, self.model, sorted_on=sorted_on)
             offset = (list_params.page - 1) * list_params.page_size
-            return stmt.order_by(Item.id).limit(list_params.page_size).offset(offset)
+            return stmt.limit(list_params.page_size).offset(offset)
 
     create_tables()
     for name, category in [("axe", "tools"), ("saw", "tools"), ("pie", "food")]:

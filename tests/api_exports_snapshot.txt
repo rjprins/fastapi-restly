@@ -123,10 +123,12 @@ fastapi_restly.query:
   - DEFAULT_PAGE_SIZE
   - FilterKey
   - MAX_PAGE_SIZE
+  - PagedListParams
   - SortKey
   - SortNulls
   - apply_list_params
   - derive_schema_list_params
+  - order_by_primary_key
 fastapi_restly.schemas:
   - BaseSchema
   - IDRef
@@ -228,10 +230,12 @@ fastapi_restly.query:
   - DEFAULT_PAGE_SIZE
   - FilterKey
   - MAX_PAGE_SIZE
+  - PagedListParams
   - SortKey
   - SortNulls
   - apply_list_params
   - derive_schema_list_params
+  - order_by_primary_key
 fastapi_restly.schemas:
   - derive_schema
   - derive_schema_list_response

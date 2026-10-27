@@ -236,6 +236,8 @@ def hand_written_client(sync_db) -> RestlyTestClient:
         prefix = "/items"
         model = Item
         schema_list_params = HandWrittenParams
+        # list params without page fields, on a list without pages
+        pagination = None
 
         @fr.get("/custom")
         def custom(self, list_params) -> dict[str, Any]:
@@ -280,6 +282,7 @@ def test_an_empty_grammar_declares_no_parameter(sync_db):
         prefix = "/items"
         model = Item
         schema_list_params = NoParams
+        pagination = None
 
     operation = app.openapi()["paths"]["/items"]["get"]
     assert operation.get("parameters", []) == []

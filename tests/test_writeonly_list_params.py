@@ -9,7 +9,6 @@ import asyncio
 from collections.abc import Callable, Iterator
 from typing import Any
 
-import pydantic
 import pytest
 from fastapi import FastAPI
 from pydantic import Field
@@ -279,7 +278,7 @@ def test_custom_schema_list_params_cannot_reach_writeonly_column(
 ):
     # Hand-written list params pass the unknown-key guard, so the
     # resolver must still refuse the field.
-    class LeakyParams(pydantic.BaseModel):
+    class LeakyParams(fr.query.PagedListParams):
         pin: str | None = None
         sort: str | None = None
 

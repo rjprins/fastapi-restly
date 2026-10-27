@@ -118,6 +118,7 @@ from ..query._impl import (
     _query_settings,
     _record_of,
 )
+from ..query._paged import PagedListParams, _completed_list_params
 from ..query._shared import SortNulls
 from ..schemas import (
     BaseSchema,
@@ -2518,10 +2519,10 @@ class BaseRestView(
         request = getattr(self, "request", None)
         if request is None:
             return
-        schema_list_params = getattr(self, "schema_list_params", None)
-        if schema_list_params is None:
+        if getattr(self, "schema_list_params", None) is None:
             return
-        list_keys = {key for key, _, _ in _list_params_fields(schema_list_params)}
+        params_model = _schema_list_params(type(self))
+        list_keys = {key for key, _, _ in _list_params_fields(params_model)}
         self._reject_unknown_keys(request.query_params, list_keys)
 
     def _reject_unknown_keys(self, query: QueryParams, allowed: set[str]) -> None:
@@ -2735,12 +2736,13 @@ class BaseRestView(
         must fit the view. List params from ``derive_schema_list_params``
         must have the view's settings: other settings give other keys than
         the view says. Hand-written list params take no settings and no
-        filter methods.
+        filter methods, and have the page fields of the view's pagination.
         """
         declared = _DeclaredListParams(cls, _owner(cls, "schema_list_params"))
         record = _record_of(cls.schema_list_params)
         if record is None:
             declared.check_hand_written()
+            declared.check_pages()
         else:
             declared.check_derived(record)
 
@@ -2800,9 +2802,9 @@ class BaseRestView(
         # dependency reads them rather than a FastAPI query model, which
         # collapses next to any other query parameter (see
         # :func:`_list_params_dependency`).
+        params_model = _schema_list_params(cls)
         list_params = Annotated[
-            cls.schema_list_params,
-            fastapi.Depends(_list_params_dependency(cls.schema_list_params)),
+            params_model, fastapi.Depends(_list_params_dependency(params_model))
         ]
         view_types = _view_types(cls)
         for name, route in list(cls.__dict__.items()):
@@ -2928,6 +2930,44 @@ class _DeclaredListParams:
                     expected=default,
                     on_declarer=self.remove(name, self.declarer),
                 )
+
+    def check_pages(self) -> None:
+        """Hand-written list params of a view with pages have the page fields
+        of its pagination, or the list returns every row while its response
+        says that it has pages. ``fr.query.PagedListParams`` gets the fields
+        from the pagination. A view that builds its list response itself, as
+        a react-admin view does, pages in its own way."""
+        list_params = self.cls.schema_list_params
+        pagination = getattr(self.cls, "pagination", None)
+        if not isinstance(pagination, NumberedPagination):
+            if _is_paged_list_params(list_params):
+                raise RestlyConfigurationError(
+                    f"{self.cls.__name__}.schema_list_params{self.origin} is a "
+                    "fr.query.PagedListParams, but the view has no pages: its "
+                    f"pagination is {pagination!r}. Set a fr.NumberedPagination, "
+                    "or let the list params subclass pydantic.BaseModel."
+                )
+            return
+        if _is_paged_list_params(list_params):
+            return
+        if self.cls.to_list_response is not BaseRestView.to_list_response:
+            return
+        keys = {key for key, _, _ in _list_params_fields(list_params)}
+        missing = [
+            name
+            for name in (pagination.page_query_param, pagination.page_size_query_param)
+            if name not in keys
+        ]
+        if missing:
+            fields = " and no ".join(repr(name) for name in missing)
+            raise RestlyConfigurationError(
+                f"{self.cls.__name__}.schema_list_params{self.origin} has no "
+                f"{fields} field, so the list would return every row while its "
+                "response says that it has pages. Subclass "
+                "fr.query.PagedListParams, which gets the page fields of the "
+                "view's pagination, or set pagination = None for a list "
+                "without pages."
+            )
 
     def check_derived(self, record: Any) -> None:
         """List params from ``derive_schema_list_params`` have the view's
@@ -3121,15 +3161,27 @@ def _derive_view_list_params(view_cls: type) -> type[pydantic.BaseModel]:
 
 
 def _schema_list_params(view_cls: type) -> type[pydantic.BaseModel]:
-    """The list params of a view.
+    """The list params of a view, as its list routes use them.
 
     Registration sets ``schema_list_params``. A view that is not registered
     yet, such as a subclass of a registered view, gets the class that
-    registration would set.
+    registration would set. List params from ``fr.query.PagedListParams``
+    get the page fields of the view's pagination: the attribute keeps the
+    class that the view declares, and each view with other pages gets its
+    own subclass.
     """
     if _needs_generating(view_cls, "schema_list_params"):
         return _derive_view_list_params(view_cls)
-    return view_cls.schema_list_params
+    declared = view_cls.schema_list_params
+    pagination = getattr(view_cls, "pagination", None)
+    if _is_paged_list_params(declared) and isinstance(pagination, NumberedPagination):
+        return _completed_list_params(declared, pagination)
+    return declared
+
+
+def _is_paged_list_params(list_params: Any) -> bool:
+    """Whether ``list_params`` come from ``fr.query.PagedListParams``."""
+    return isinstance(list_params, type) and issubclass(list_params, PagedListParams)
 
 
 #: A ``BaseRestView`` at any parameterization, for the signature below.
@@ -4493,7 +4545,7 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
         if getattr(endpoint, "_fr_list_guard", False):
             if list_parameters is None:
                 list_parameters = _list_openapi_parameters(
-                    cast(Any, view_cls).schema_list_params
+                    _schema_list_params(view_cls)
                 )
             extra = dict(route_kwargs.get("openapi_extra") or {})
             extra["parameters"] = [*list_parameters, *extra.get("parameters", [])]

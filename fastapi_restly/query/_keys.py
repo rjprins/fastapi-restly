@@ -1,15 +1,16 @@
 """One key of list params of your own: a field of the response class, and the
 column of the model that it names."""
 
+from collections.abc import Iterable
 from typing import Any
 
-from sqlalchemy import ColumnElement
+from sqlalchemy import ColumnElement, Select
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.orm import QueryableAttribute, RelationshipProperty
 
 from ..exc import BadQueryParam
-from ._impl import SchemaType, _resolve_field_name, _value_parser
-from ._shared import SortNulls, _sort_term
+from ._impl import SchemaType, _is_sortable, _resolve_field_name, _value_parser
+from ._shared import SortNulls, _append_pk_tiebreak, _sort_term
 
 
 def _find_column(
@@ -124,8 +125,11 @@ class SortKey:
 
     It finds the field and the column as :class:`FilterKey` does. A field
     that a response never shows is no sort key either: the order of the rows
-    would let a client find out its value. The react-admin views use this
-    class for their ``sort``.
+    would let a client find out its value. Neither is a field that holds a
+    ``dict``, a ``list`` or a nested model, as in the generated list params:
+    a document has no order that a client means, and PostgreSQL's ``json``
+    type has none at all. The react-admin views use this class for their
+    ``sort``.
 
     :param model: The model of the rows, such as the view's ``model``.
     :param schema_response: The response class. A view passes its
@@ -144,13 +148,16 @@ class SortKey:
         self.key = key
         self._schema = schema_response
         self._model = model
-        _, self.column = _find_column(model, schema_response, key, "sort")
+        field_name, self.column = _find_column(model, schema_response, key, "sort")
+        if not _is_sortable(schema_response.model_fields[field_name]):
+            raise BadQueryParam(f"Unknown sort key: {key!r}")
 
     def term(
         self, *, descending: bool = False, sort_nulls: SortNulls = "last"
     ) -> ColumnElement[Any]:
-        """The term for ``order_by()``. Order by a unique column after it,
-        such as the primary key, so that a row never moves to another page.
+        """The term for ``order_by()``. Order by the primary key after it,
+        with :func:`order_by_primary_key`, so that a row never moves to
+        another page.
 
         :param descending: Sort from the highest value to the lowest.
         :param sort_nulls: Where the NULLs go: ``"last"`` (the default) or
@@ -161,3 +168,31 @@ class SortKey:
 
     def __repr__(self) -> str:
         return f"SortKey({self._model.__name__}, {self._schema.__name__}, {self.key!r})"
+
+
+def order_by_primary_key(
+    stmt: Select[Any], model: type[Any], *, sorted_on: Iterable[Any] = ()
+) -> Select[Any]:
+    """``stmt`` ordered by the primary key of ``model`` last, after the order
+    that it has.
+
+    Rows with the same sort value come back in any order, so a row can move
+    to another page between two requests. The primary key makes the order
+    unique. The generated list params add it themselves. List params of your
+    own call this function, as the react-admin views do:
+
+    .. code-block:: python
+
+        stmt = stmt.order_by(key.term(descending=True))
+        stmt = fr.query.order_by_primary_key(
+            stmt, self.model, sorted_on=[key.column]
+        )
+
+    A key with several columns gets each column, in the order of the model.
+
+    :param sorted_on: The columns that ``stmt`` is ordered by already, such as
+        the ``column`` of a :class:`SortKey`. A key column among them does
+        not come again: SQL Server refuses a column that is twice in
+        ``ORDER BY``.
+    """
+    return _append_pk_tiebreak(stmt, model, list(sorted_on))

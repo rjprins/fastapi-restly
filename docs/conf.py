@@ -82,6 +82,9 @@ nitpick_ignore = [
     ("py:class", "Path"),
     ("py:class", "fastapi.params.Depends"),
     ("py:class", "starlette.datastructures.QueryParams"),
+    # The bounds of a Pydantic field, in the signature of a model.
+    ("py:class", "annotated_types.Ge"),
+    ("py:class", "annotated_types.Le"),
     ("py:class", "function"),
 ]
 
