@@ -48,7 +48,8 @@ replacement, unless it says otherwise.
     session, such as `date_trunc('day', created_at)`. On PostgreSQL, an
     engine that Restly builds from a URL now puts each session in UTC. For
     another zone, name it in the SQL, such as
-    `created_at AT TIME ZONE 'Europe/Amsterdam'`. This step does not fail.
+    `date_trunc('day', created_at AT TIME ZONE 'Europe/Amsterdam')`. This
+    step does not fail.
 
 ### Added
 

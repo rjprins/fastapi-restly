@@ -421,11 +421,7 @@ without an offset as UTC, as Restly does: `now()` gives UTC for a column
 without a time zone, and psycopg gives back each time in UTC, as asyncpg
 does. So SQL of your own works in UTC too: `date_trunc('day', created_at)`
 gives the days of UTC. For the days of another zone, name the zone in the
-SQL, such as `created_at AT TIME ZONE 'Europe/Amsterdam'`. An engine that
-you build yourself keeps the time zone of its sessions. To put them in UTC,
-pass `connect_args={"server_settings": {"timezone": "UTC"}}` to
-`create_async_engine()` for asyncpg, or
-`connect_args={"options": "-c timezone=UTC"}` for psycopg.
+SQL, such as `date_trunc('day', created_at AT TIME ZONE 'Europe/Amsterdam')`.
 
 Each of these options changes only the connection. Restly does not change the
 database itself, so these defaults leave no trace in your data after the
@@ -433,7 +429,11 @@ process exits.
 
 These defaults apply only to the URL form. If you pass `engine=`,
 `make_session=` or a session generator, Restly uses your object as it is. To
-turn off any of these defaults, build the engine yourself.
+turn off any of these defaults, build the engine yourself. Such an engine
+keeps the time zone of its PostgreSQL sessions. To put them in UTC, pass
+`connect_args={"server_settings": {"timezone": "UTC"}}` to
+`create_async_engine()` for asyncpg, or
+`connect_args={"options": "-c timezone=UTC"}` for psycopg.
 
 (session-factory-defaults)=
 
