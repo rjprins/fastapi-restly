@@ -157,7 +157,14 @@ add it.
    like a method: `schema_create`, `schema_list_params`.
 4. A function starts with a verb. It starts with an action name only if it is
    part of that action: `update_object` is fine, `create_schema_from_model` is
-   not. Getters such as `get_loader_options` are fine.
+   not. Getters such as `get_loader_options` are fine. Two kinds of functions
+   may have another name, as in SQLAlchemy (`and_()`, `func.count()`) and
+   FastAPI (`@app.get`):
+   - A function that builds or converts a value is named after the value
+     that it gives: `fr.all_of()` gives a clause, `fr.in_utc()` a time in
+     UTC, and `key.term()` the term of a sort.
+   - A decorator is named after what it declares: `@fr.get` declares a `GET`
+     route, and `@fr.list_filter` a filter of the list.
 5. A function that builds one of a view's classes is named `derive_schema`
    plus the role: `derive_schema_response` builds `schema_response`, and
    `derive_schema_list_params` builds `schema_list_params`. A role without a
