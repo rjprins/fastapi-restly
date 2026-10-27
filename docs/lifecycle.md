@@ -21,7 +21,9 @@ Take `POST /`, the create route. FastAPI calls
 {meth}`handle_create <fastapi_restly.views.RestView.handle_create>`, the
 **handler**. The handler runs the steps in this order:
 
-```
+```{code-block} text
+:emphasize-lines: 2,4,6,7,9,11,12
+
 POST /
   └─ create_endpoint(data)                # endpoint method: the HTTP contract
        ├─ handle_create(data)             # handler: runs the steps (final)
@@ -35,6 +37,8 @@ POST /
        │    └─ after_action_commit("create", new=obj, old=None)
        └─ to_response(obj)
 ```
+
+The highlighted lines are the methods that you can override in your view.
 
 Every CRUD route has these three methods. The names follow one pattern for
 all five actions: `update_endpoint` calls `handle_update`, which calls
@@ -111,7 +115,9 @@ before each query everywhere else.
 A read has no commit bracket and no business method. Its load is final. Each
 step of the load comes from a declaration or from a small hook:
 
-```
+```{code-block} text
+:emphasize-lines: 2,7,8,9,10,11,14,16,19,20,21,22
+
 GET /{id}
   └─ get_one_endpoint(id)                     # endpoint method
        ├─ handle_get_one(id)                  # handler
@@ -135,6 +141,8 @@ GET /
        └─ to_response(result, LIST)
             └─ to_single_response(row)        # for each row
 ```
+
+The highlighted lines are the methods that you can override in your view.
 
 - **Visibility.** The load starts from
   {meth}`select() <fastapi_restly.views.BaseRestView.select>`: the model with
