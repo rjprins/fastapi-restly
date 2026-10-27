@@ -121,7 +121,9 @@ fastapi_restly.pytest_fixtures:
   - restly_session
 fastapi_restly.query:
   - DEFAULT_PAGE_SIZE
+  - FilterKey
   - MAX_PAGE_SIZE
+  - SortKey
   - SortNulls
   - apply_list_params
   - derive_schema_list_params
@@ -224,7 +226,9 @@ fastapi_restly.pytest_fixtures:
   - restly_session
 fastapi_restly.query:
   - DEFAULT_PAGE_SIZE
+  - FilterKey
   - MAX_PAGE_SIZE
+  - SortKey
   - SortNulls
   - apply_list_params
   - derive_schema_list_params

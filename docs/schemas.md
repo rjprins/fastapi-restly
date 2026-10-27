@@ -382,9 +382,9 @@ class BookingSchema(fr.IDSchema):
     starts_at: Annotated[datetime, pydantic.AfterValidator(amsterdam_time)]
 ```
 
-A filter value goes through the field's validation too, so the filters
-convert it in the same way. Only the filter of a
-[react-admin view](react_admin.md) does not run the validator.
+A filter value goes through the field's validation too, also in the filter
+of a [react-admin view](react_admin.md), so the filters convert it in the
+same way.
 
 :::{admonition} Details
 :class: details

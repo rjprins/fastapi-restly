@@ -119,6 +119,13 @@ replacement, unless it says otherwise.
   time from the database before you compare it with a time from a schema,
   as in `data.ends_at > fr.in_utc(obj.starts_at)`. A time from a column
   without a time zone has no offset, and on SQLite no time has one.
+- `fr.query.FilterKey` and `fr.query.SortKey`, for list params of your own.
+  Each finds the field of the response class and the column of the model
+  that a client's key names, with the rules of the generated list params.
+  `FilterKey.parse(value)` gives a value the validation of its field and the
+  form of its column, as the generated filters do. `SortKey.term()` gives
+  the term for `order_by()`, with NULLs where `sort_nulls` says. The
+  react-admin views use them.
 
 ### Changed
 
@@ -290,6 +297,12 @@ replacement, unless it says otherwise.
   that it cannot apply is a `fr.exc.BadQueryParam` (400).
 - A react-admin view with pagination that it cannot use fails when Python
   creates the class.
+- A react-admin filter value goes through the validation of its field, as in
+  the generated filters. Before, it got the Python type of its column. So
+  the validators of the field run, also one that keeps local times, and
+  `null` finds the rows without a value where the field allows `None`.
+  Before, `null` gave `400`. A field with an alias is a filter or sort key
+  only by its alias, and a relationship field is an `Unknown filter key`.
 
 #### Schemas and models
 
@@ -489,6 +502,9 @@ replacement, unless it says otherwise.
 - A react-admin filter or sort on a field that the model has only in
   Python, such as a `@property`, gets `400` with `Unknown filter key`.
   Before, it gave `500`. A hybrid property still works.
+- A react-admin filter on a column with a type of your own, a
+  `TypeDecorator`, gets the value of its field. Before, the column got the
+  text from the JSON, so SQLAlchemy's recipe that stores UTC gave a `500`.
 - With `fr.configure(warn_on_misuse=True)`, an endpoint method override that
   calls its `handle_<verb>` handler, or the endpoint method of its base, no
   longer warns. That is how the warning itself says to change the HTTP

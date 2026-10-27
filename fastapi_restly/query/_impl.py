@@ -1522,9 +1522,6 @@ def _apply_filtering(
 
         stmt, column = _join_column(stmt, model, column_name, schema_cls, aliases)
         parser = functools.partial(_parse_filter_value, schema_cls, column_name, column)
-        enum_type = _enum_type(column)
-        if enum_type is not None:
-            parser = functools.partial(_parse_label, parser, enum_type, column_name)
 
         if op == "isnull":
             try:
@@ -1575,19 +1572,6 @@ def _build_clause(
     return sqlalchemy.or_(*clauses)
 
 
-def _parse_label(
-    parser: Callable[[str], Any],
-    enum_type: sqlalchemy.Enum,
-    column_name: str,
-    value: str,
-) -> Any:
-    """Parse ``value`` with ``parser``, and check the result with
-    :func:`_check_label`."""
-    result = parser(value)
-    _check_label(enum_type, result, column_name, value)
-    return result
-
-
 def _check_label(enum_type: sqlalchemy.Enum, value: Any, key: str, raw: Any) -> None:
     """Check that SQLAlchemy takes ``value`` for a column of ``enum_type``:
     one of its labels, or a member of its enum class.
@@ -1608,11 +1592,24 @@ def _check_label(enum_type: sqlalchemy.Enum, value: Any, key: str, raw: Any) -> 
     )
 
 
-def _parse_value(schema_cls: SchemaType, column_name: str, value: str) -> Any:
-    """Validate one filter value with the validation of its field.
+def _parse_filter_value(
+    schema_cls: SchemaType, column_name: str, column: Any, value: str
+) -> Any:
+    """One value of a generated filter key, also a dotted one, as a value for
+    ``column``; see :func:`_parse_field_value`.
 
-    :raises BadQueryParam: when the value fails that validation. The message
-        has Pydantic's reason, such as ``Input should be a valid integer``.
+    :param column: The column, or ``None`` to leave a time as the field
+        gives it.
+    """
+    field_schema, field_name = _field_of(schema_cls, column_name)
+    return _parse_field_value(field_schema, field_name, column, column_name, value)
+
+
+def _field_of(schema_cls: SchemaType, column_name: str) -> tuple[SchemaType, str]:
+    """The schema that holds the field of a filter key, also of a dotted
+    one, and the Python name of the field.
+
+    :raises BadQueryParam: ``Unknown filter key``.
     """
     *relations, name = column_name.split(".")
     for relation in relations:
@@ -1627,7 +1624,26 @@ def _parse_value(schema_cls: SchemaType, column_name: str, value: str) -> Any:
     field_name = _resolve_field_name(schema_cls, name)
     if field_name is None:
         raise BadQueryParam(f"Unknown filter key: {column_name!r}")
+    return schema_cls, field_name
 
+
+def _parse_field_value(
+    schema_cls: SchemaType, field_name: str, column: Any, key: str, value: Any
+) -> Any:
+    """One filter value as a value for ``column``.
+
+    The value goes through the validation of its field: a text from a URL,
+    or a value from JSON. An ``IDRef`` gives its id. A column of SQLAlchemy's
+    ``Enum`` type takes only its labels. A time gets the form of its column.
+    The generated filters and :class:`~fastapi_restly.query.FilterKey` use
+    this function.
+
+    :param schema_cls: The schema that holds the field.
+    :param key: The filter key that the client used, for the message.
+    :raises BadQueryParam: when the value fails one of these steps. The
+        message has the reason, such as Pydantic's
+        ``Input should be a valid integer``.
+    """
     # Only a validation error is the client's fault. Another exception from
     # a validator is a bug, as it is for a request body.
     try:
@@ -1637,14 +1653,22 @@ def _parse_value(schema_cls: SchemaType, column_name: str, value: str) -> Any:
     except pydantic.ValidationError as exc:
         reason = exc.errors()[0]["msg"]
         raise BadQueryParam(
-            f"Invalid filter value for {column_name!r}: {value!r}. {reason}"
+            f"Invalid filter value for {key!r}: {value!r}. {reason}"
         ) from exc
     result = values[field_name]
     # An IDRef[T] FK field validates to an IDRef object; the SQL bind value
     # is its scalar id, not the reference wrapper (which cannot bind).
     if isinstance(result, IDSchema):
-        return result.id
-    return result
+        result = result.id
+    enum_type = _enum_type(column)
+    if enum_type is not None:
+        _check_label(enum_type, result, key, value)
+    try:
+        return column_time(getattr(column, "type", None), result)
+    except ValueError as exc:
+        raise BadQueryParam(
+            f"Invalid filter value for {key!r}: {value!r}. {value_error_reason(exc)}"
+        ) from exc
 
 
 @functools.cache
@@ -1658,6 +1682,10 @@ def _field_validator(schema_cls: SchemaType, field_name: str) -> SchemaValidator
     do not. A filter value is one column, so a cross-field rule has nothing to
     compare against and would only reject legal filters (as validating through
     ``validate_assignment`` on a ``model_construct()`` skeleton did).
+
+    A number becomes text for a text field. A value from a URL is text
+    already, and JSON, such as react-admin's ``filter``, has ``5`` for the
+    text ``"5"``.
     """
     core: Any = schema_cls.__pydantic_core_schema__
     definitions = core.get("definitions") if core.get("type") == "definitions" else None
@@ -1687,7 +1715,10 @@ def _field_validator(schema_cls: SchemaType, field_name: str) -> SchemaValidator
             "schema": field_schema,
             "definitions": definitions,
         }
-    return SchemaValidator(field_schema, config)
+    filter_config = cast(
+        core_schema.CoreConfig, {**(config or {}), "coerce_numbers_to_str": True}
+    )
+    return SchemaValidator(field_schema, filter_config)
 
 
 def _get_nested_schema(field: FieldInfo | None) -> SchemaType | None:
@@ -1724,25 +1755,3 @@ def _make_where_clause(
     if op == "eq":
         return column == value
     raise BadQueryParam(f"Unsupported filter operator: {op!r}")
-
-
-def _parse_filter_value(
-    schema_cls: SchemaType,
-    column_name: str,
-    column: InstrumentedAttribute[Any],
-    value: str,
-) -> Any:
-    """One filter value as a value for ``column``: validated with the
-    validation of its field, and with a time as the column takes it.
-
-    :raises BadQueryParam: when the value fails the validation of its field,
-        or when it is a time that is out of range in UTC.
-    """
-    result = _parse_value(schema_cls, column_name, value)
-    try:
-        return column_time(column.type, result)
-    except ValueError as exc:
-        raise BadQueryParam(
-            f"Invalid filter value for {column_name!r}: {value!r}. "
-            f"{value_error_reason(exc)}"
-        ) from exc

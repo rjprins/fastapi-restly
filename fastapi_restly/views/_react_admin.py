@@ -13,18 +13,16 @@ the public API, as a view of yours would. A comment names the ticket of each
 private name that has no public form yet.
 """
 
-import functools
 import json
-from typing import Annotated, Any, ClassVar, Literal, Protocol, cast
+from typing import Any, ClassVar, Literal, Protocol, cast
 
 import fastapi
 import pydantic
 import sqlalchemy
 from fastapi.exceptions import RequestValidationError
-from sqlalchemy.orm import QueryableAttribute, RelationshipProperty
 
-from fastapi_restly.exc import BadQueryParam, RestlyConfigurationError
-from fastapi_restly.query import SortNulls
+from fastapi_restly.exc import RestlyConfigurationError
+from fastapi_restly.query import FilterKey, SortKey, SortNulls
 from fastapi_restly.views import (
     AsyncRestView,
     BaseRestView,
@@ -41,10 +39,6 @@ from fastapi_restly.views import (
 )
 
 # Private names without a public form yet.
-from .._times import column_time, value_error_reason
-from ..query._impl import _check_label, _enum_type
-from ..query._shared import _sort_term
-from ..schemas._base import _hides_value
 from ._base import _how_set, _list_filter_methods, _list_setting, _owner, _set_by
 
 #: Default page size used when the react-admin client does not send a `range`
@@ -135,111 +129,17 @@ class ReactAdminListParams(pydantic.BaseModel):
 # ---------------------------------------------------------------------------
 
 
-def _resolve_column(
-    model: type[Any], schema_cls: Any, field_name: str, *, kind: str = "filter"
-) -> Any:
-    """
-    Resolve a PUBLIC schema field name (or alias) to its SQLAlchemy column.
-
-    Strict: only fields that the response class sends may be filtered or
-    sorted. A column that exists on the model but is omitted from the response
-    class (or never shown: WriteOnly, ``exclude=True`` or a secret type such
-    as ``SecretStr``) is rejected, so the
-    list endpoint cannot be used as an oracle to filter/sort on -- and thereby
-    probe -- hidden data. The generated list params follow the same rule.
-
-    Raises BadQueryParam (400) if the field is not a public, filterable schema field.
-    """
-    resolved_name: str | None = None
-    if schema_cls is not None:
-        for name, field in schema_cls.model_fields.items():
-            if _hides_value(field):
-                continue
-            if name == field_name or field.alias == field_name:
-                resolved_name = name
-                break
-
-    if resolved_name is None:
-        raise BadQueryParam(f"Unknown {kind} key: {field_name!r}")
-
-    col = getattr(model, resolved_name, None)
-    if not isinstance(col, QueryableAttribute):
-        # also a plain class attribute or a Python property, which SQL
-        # cannot filter or sort on; a hybrid property is a QueryableAttribute
-        raise BadQueryParam(f"Unknown {kind} key: {field_name!r}")
-    if hasattr(col, "property") and isinstance(col.property, RelationshipProperty):
-        raise BadQueryParam(
-            f"Cannot sort or filter by relationship field: {field_name!r}"
-        )
-    return col
-
-
-def _coerce_value(col: Any, value: Any, name: str) -> Any:
-    """Validate a filter value as the column's Python type.
-
-    The value comes from the JSON of ``filter``, so a date or a UUID arrives
-    as a string. Pydantic turns it into the column's type, as the generated
-    list params do. On a column of SQLAlchemy's ``Enum`` type, the value must
-    also be one of its labels. A time is then made to fit the column, as in
-    the generated filters: a time without an offset is UTC.
-
-    :param name: The public name that the client used, for the message.
-    :raises BadQueryParam: when the value is not valid for the column.
-    """
-    try:
-        py_type = col.type.python_type
-    except NotImplementedError:
-        py_type = None
-    coerced = value
-    if py_type is not None and not isinstance(value, py_type):
-        try:
-            coerced = _filter_value_adapter(py_type).validate_python(value)
-        except pydantic.ValidationError as exc:
-            reason = exc.errors()[0]["msg"]
-            raise BadQueryParam(
-                f"Invalid filter value for {name!r}: {value!r}. {reason}"
-            ) from exc
-    enum_type = _enum_type(col)
-    if enum_type is not None:
-        _check_label(enum_type, coerced, name, value)
-    try:
-        return column_time(col.type, coerced)
-    except ValueError as exc:
-        raise BadQueryParam(
-            f"Invalid filter value for {name!r}: {value!r}. {value_error_reason(exc)}"
-        ) from exc
-
-
-@functools.cache
-def _filter_value_adapter(py_type: type) -> pydantic.TypeAdapter[Any]:
-    if py_type is str:
-        # A number filters a text column, as ``str(5)`` did.
-        config = pydantic.ConfigDict(coerce_numbers_to_str=True)
-        return pydantic.TypeAdapter(str, config=config)
-    try:
-        return pydantic.TypeAdapter(py_type)
-    except pydantic.PydanticSchemaGenerationError:
-        # A type that Pydantic does not know: call it with the value.
-        def construct(value: Any) -> Any:
-            try:
-                return py_type(value)
-            except (TypeError, ArithmeticError) as exc:
-                raise ValueError(str(exc)) from exc
-
-        return pydantic.TypeAdapter(Annotated[Any, pydantic.AfterValidator(construct)])
-
-
 def _apply_react_admin_filters(
     stmt: sqlalchemy.Select, model: type[Any], schema_cls: Any, filters: dict
 ) -> sqlalchemy.Select:
-    """Apply a react-admin filter dict to a select statement."""
-    for key, value in filters.items():
-        col = _resolve_column(model, schema_cls, key)
+    """Apply a react-admin filter dict to a select statement. A list of
+    values matches each of them."""
+    for name, value in filters.items():
+        key = FilterKey(model, schema_cls, name)
         if isinstance(value, list):
-            coerced = [_coerce_value(col, v, key) for v in value]
-            stmt = stmt.where(col.in_(coerced))
+            stmt = stmt.where(key.column.in_([key.parse(item) for item in value]))
         else:
-            stmt = stmt.where(col == _coerce_value(col, value, key))
+            stmt = stmt.where(key.column == key.parse(value))
     return stmt
 
 
@@ -256,11 +156,11 @@ def _apply_react_admin_sort_and_range(
     sorted_on: list[str] = []
     if sort:
         field, direction = sort
-        col = _resolve_column(model, schema_cls, field, kind="sort")
+        key = SortKey(model, schema_cls, field)
         stmt = stmt.order_by(
-            _sort_term(col, descending=direction == "DESC", nulls=sort_nulls)
+            key.term(descending=direction == "DESC", sort_nulls=sort_nulls)
         )
-        sorted_on.append(col.key)
+        sorted_on.append(key.column.key)
     stmt = _order_by_primary_key(stmt, model, sorted_on)
 
     return stmt.limit(end - start + 1).offset(start)

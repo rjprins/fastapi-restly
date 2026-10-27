@@ -471,8 +471,8 @@ def _amsterdam_time(value: datetime) -> datetime:
 def test_a_validator_on_the_field_keeps_local_times(api):
     """The opt-out of the docs: the validator makes a time local first, so
     Restly gets a time without an offset and keeps it. A filter value goes
-    through the validator too. A field without the validator follows the
-    rule."""
+    through the validator too, also in the filter of a react-admin view. A
+    field without the validator follows the rule."""
 
     class Booking(fr.IDMixin, SharedBase):
         name: Mapped[str]
@@ -489,6 +489,12 @@ def test_a_validator_on_the_field_keeps_local_times(api):
     @fr.include_view(api.client.app)
     class BookingView(api.view):
         prefix = "/bookings"
+        model = Booking
+        schema = BookingSchema
+
+    @fr.include_view(api.client.app)
+    class BookingAdminView(api.admin_view):
+        prefix = "/admin/bookings"
         model = Booking
         schema = BookingSchema
 
@@ -509,6 +515,9 @@ def test_a_validator_on_the_field_keeps_local_times(api):
         "/bookings", params={"local_at": "2024-07-01T17:30:00Z"}
     ).json()
     assert [row["name"] for row in rows["data"]] == ["dinner"]
+    filter_ = json.dumps({"local_at": "2024-07-01T17:30:00.000Z"})
+    rows = api.client.get("/admin/bookings", params={"filter": filter_}).json()
+    assert [row["name"] for row in rows] == ["dinner"]
 
 
 # ---------------------------------------------------------------------------
@@ -682,7 +691,8 @@ def test_a_filter_method_gets_its_value_as_its_type_gives_it(api):
 def test_utc_datetime_gives_a_column_type_of_your_own_an_offset(api):
     """SQLAlchemy's recipe refuses a time without an offset. A field of type
     ``fr.UTCDatetime`` gives every time the offset of UTC, so the recipe
-    takes it, in a body and in a filter."""
+    takes it, in a body and in a filter, also in the filter of a react-admin
+    view. That filter gave the recipe the text before, which was a 500."""
 
     class Stamp(fr.IDMixin, SharedBase):
         stamped_at: Mapped[datetime] = mapped_column(_TZDateTime())
@@ -696,6 +706,12 @@ def test_utc_datetime_gives_a_column_type_of_your_own_an_offset(api):
         model = Stamp
         schema = StampSchema
 
+    @fr.include_view(api.client.app)
+    class StampAdminView(api.admin_view):
+        prefix = "/admin/stamps"
+        model = Stamp
+        schema = StampSchema
+
     api.create_tables()
     created = api.client.post(
         "/stamps", json={"stamped_at": "2024-01-01T09:30:00"}
@@ -706,6 +722,10 @@ def test_utc_datetime_gives_a_column_type_of_your_own_an_offset(api):
 
     assert created["stamped_at"] == "2024-01-01T09:30:00Z"
     assert len(rows["data"]) == 1
+    for sent in ("2024-01-01T09:30:00", "2024-01-01T10:30:00+01:00"):
+        filter_ = json.dumps({"stamped_at": sent})
+        rows = api.client.get("/admin/stamps", params={"filter": filter_}).json()
+        assert len(rows) == 1, sent
 
 
 # ---------------------------------------------------------------------------

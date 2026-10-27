@@ -141,13 +141,15 @@ JSON that does not have the shape of `sort`, `range` or `filter` gets a
 
 React-admin uses the `id` array form of `filter` (`{"id": [1, 2, 3]}`) for
 its `getMany` calls. It becomes `WHERE id IN (1, 2, 3)`. Other filter values
-must be equal to the column value. A value gets the Python type of its
-column, so a validator on the field does not run. A time follows the same
+must be equal to the column value, and `null` finds the rows without a
+value. A value goes through the validation of its field, as in the generated
+filters, so the validators of the field run too. A time follows the same
 rule as in the other filters; see [Keep times in UTC](#utc-times). Only
-fields that the view's response class sends are accepted. The model must
-have the field in SQL: as a column, a `column_property` or a hybrid
-property. Other fields, also a Python `@property` and react-admin's
-full-text search parameter `q`, get a 400. For a search on part of a value,
+fields that the view's response class sends are accepted, by their alias
+when they have one. The model must have the field in SQL: as a column, a
+`column_property` or a hybrid property. Other fields, also a Python
+`@property` and react-admin's full-text search parameter `q`, get a 400.
+For a search on part of a value,
 or a full-text search, override the view's
 {meth}`apply_filters <fastapi_restly.views.RestView.apply_filters>`. It gets
 the list params with `filter` as a dict. Take your keys out, and pass the
@@ -406,7 +408,11 @@ The views use the parsed values where they apply them: in
 the same values: `sort` as `("name", "DESC")`, `range` as `(0, 24)` and
 `filter` as a dict. These views do not use the list params that Restly
 generates, which [Filtering, Sorting & Pagination](#list-parameters-lifecycle)
-describes.
+describes. They find each field of `filter` and `sort` with
+{class}`fr.query.FilterKey <fastapi_restly.query.FilterKey>` and
+{class}`fr.query.SortKey <fastapi_restly.query.SortKey>`, which a view with
+list params of its own can use too; see
+[Filter and sort on the fields of the response](#own-list-params-keys).
 
 To add a query key, subclass `ReactAdminListParams` and set the subclass as
 `schema_list_params`. A subclass of the view keeps it. List params that are

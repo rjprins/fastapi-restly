@@ -1010,6 +1010,71 @@ generated list params, so it declares its own again. The
 `range` and `filter`.
 :::
 
+(own-list-params-keys)=
+### Filter and sort on the fields of the response
+
+The list params of a client library often name the fields of the resource,
+as in `filter={"category":"tools"}`. For each such key,
+{class}`fr.query.FilterKey <fastapi_restly.query.FilterKey>` finds the field
+and its column. A field that the response does not show is an unknown key,
+a `400`, as in the generated filters.
+{meth}`parse() <fastapi_restly.query.FilterKey.parse>` gives a value the
+validation of the field and the form of the column, as the generated filters
+do. {class}`fr.query.SortKey <fastapi_restly.query.SortKey>` does the same
+for a sort key:
+
+```python
+from typing import Any
+
+import pydantic
+
+
+class ItemListParams(pydantic.BaseModel):
+    filter: pydantic.Json[dict[str, Any]] | None = None
+    sort: str | None = None
+
+
+class ItemView(fr.AsyncRestView):
+    prefix = "/items"
+    model = Item
+    schema = ItemSchema
+    schema_list_params = ItemListParams
+
+    async def apply_filters(self, stmt, list_params: ItemListParams):
+        for name, value in (list_params.filter or {}).items():
+            key = fr.query.FilterKey(self.model, self.schema_response, name)
+            stmt = stmt.where(key.column == key.parse(value))
+        return stmt
+
+    async def apply_list_params(self, stmt, list_params: ItemListParams):
+        stmt = await self.apply_filters(stmt, list_params)
+        if list_params.sort:
+            name = list_params.sort.removeprefix("-")
+            key = fr.query.SortKey(self.model, self.schema_response, name)
+            descending = list_params.sort.startswith("-")
+            stmt = stmt.order_by(
+                key.term(descending=descending, sort_nulls=self.sort_nulls)
+            )
+        return stmt.order_by(Item.id)
+```
+
+The client sends `GET /items/?filter={"category":"tools"}&sort=-name`. The
+condition, such as `==`, stays yours. The [React Admin](react_admin.md) views
+use these two classes for their `filter` and `sort`.
+
+:::{admonition} Details
+:class: details
+
+A key is the name of a field, or its alias when the field has one. The model
+has an attribute with the name of the field: a column, a `column_property`
+or a hybrid property. A key with a dot, such as `vendor.name`, needs a join,
+so these classes do not know it.
+
+`parse()` takes text from a URL or a value from JSON, and a number becomes
+text for a text field. A value that fails gets a `400` with the reason.
+`term()` puts NULLs where `sort_nulls` says.
+:::
+
 ## Internals
 
 (list-parameters-lifecycle)=

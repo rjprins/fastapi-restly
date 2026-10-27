@@ -20,7 +20,6 @@ from fastapi_restly.query._impl import (
     _apply_sorting,
     _make_where_clause,
     _parse_filter_value,
-    _parse_value,
 )
 
 from ._models import SharedBase
@@ -571,28 +570,30 @@ class TestApplyListParams:
 class TestParseValue:
     def test_parse_value_string(self):
         """Test parsing string values."""
-        result = _parse_value(WidgetSchema, "name", "John")
+        result = _parse_filter_value(WidgetSchema, "name", None, "John")
         assert result == "John"
 
     def test_parse_value_integer(self):
         """Test parsing integer values."""
-        result = _parse_value(WidgetSchema, "age", "25")
+        result = _parse_filter_value(WidgetSchema, "age", None, "25")
         assert result == 25
 
     def test_parse_value_boolean(self):
         """Test parsing boolean values."""
-        result = _parse_value(WidgetSchema, "is_active", "true")
+        result = _parse_filter_value(WidgetSchema, "is_active", None, "true")
         assert result is True
 
     def test_parse_value_datetime(self):
         """Parsing preserves a timezone-less datetime until its column is known."""
-        result = _parse_value(WidgetSchema, "created_at", "2024-01-01T00:00:00")
+        result = _parse_filter_value(
+            WidgetSchema, "created_at", None, "2024-01-01T00:00:00"
+        )
         assert result == datetime(2024, 1, 1)
 
     def test_parse_value_invalid_field(self):
         """Test parsing with invalid field."""
         with pytest.raises(HTTPException) as exc_info:
-            _parse_value(WidgetSchema, "invalid_field", "value")
+            _parse_filter_value(WidgetSchema, "invalid_field", None, "value")
 
         assert exc_info.value.status_code == 400
 

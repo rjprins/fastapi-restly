@@ -21,21 +21,16 @@ from typing import Annotated
 import pydantic
 import pytest
 import sqlalchemy
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI
 from fastapi.responses import JSONResponse
-from sqlalchemy import ForeignKey
-from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 from starlette.datastructures import QueryParams
 
 import fastapi_restly as fr
 from fastapi_restly.db._config import _fr_config
 from fastapi_restly.exc import RestlyConfigurationError
 from fastapi_restly.testing._client import RestlyTestClient
-from fastapi_restly.views._react_admin import (
-    DEFAULT_REACT_ADMIN_PAGE_SIZE,
-    _resolve_column,
-)
+from fastapi_restly.views._react_admin import DEFAULT_REACT_ADMIN_PAGE_SIZE
 
 from ._models import SharedBase
 from .conftest import create_tables
@@ -373,7 +368,7 @@ def test_react_admin_query_errors_are_bad_query_params(client, params, detail):
         assert body["detail"] == detail
 
 
-def test_react_admin_filter_values_are_validated_as_the_column_type(client):
+def test_react_admin_filter_values_are_validated_with_pydantic(client):
     """A filter value comes from JSON, so a date or a UUID arrives as a
     string. Before, Restly called the column's Python type on it: a valid
     date returned 400, ``"false"`` matched the true rows, and a bad decimal
@@ -423,6 +418,60 @@ def test_react_admin_filter_values_are_validated_as_the_column_type(client):
             "/wares/", params={"filter": json.dumps(filter_)}, assert_status_code=400
         )
         assert response.json()["detail"].startswith(start), filter_
+
+
+@pytest.mark.parametrize("flavor", ["client", "sync_client"])
+def test_react_admin_filter_values_go_through_their_field(flavor, request):
+    """As in the generated filters: the field's validators run, a field with
+    an alias has only its alias as a key, and a number is text for a text
+    field. ``null`` finds the rows without a value, where the field allows
+    ``None``."""
+    client = request.getfixturevalue(flavor)
+
+    class Gizmo(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+        size: Mapped[int | None] = mapped_column(default=None)
+
+    class GizmoSchema(fr.IDSchema):
+        name: Annotated[str, pydantic.AfterValidator(str.lower)]
+        size: int | None = pydantic.Field(None, alias="gizmoSize")
+
+    base = fr.AsyncReactAdminView if flavor == "client" else fr.ReactAdminView
+
+    @fr.include_view(client.app)
+    class GizmoView(base):
+        prefix = "/gizmos"
+        model = Gizmo
+        schema = GizmoSchema
+
+    if flavor == "client":
+        create_tables()
+    else:
+        SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
+    client.post("/gizmos/", json={"name": "big", "gizmoSize": 3})
+    client.post("/gizmos/", json={"name": "small"})
+    client.post("/gizmos/", json={"name": "7"})
+
+    def names(filter_: dict) -> list[str]:
+        rows = client.get("/gizmos/", params={"filter": json.dumps(filter_)}).json()
+        return [row["name"] for row in rows]
+
+    assert names({"name": "BIG"}) == ["big"]
+    assert names({"name": 7}) == ["7"]
+    assert names({"gizmoSize": None}) == ["small", "7"]
+    assert names({"gizmoSize": [3, "3"]}) == ["big"]
+    response = client.get(
+        "/gizmos/", params={"filter": json.dumps({"size": 3})}, assert_status_code=400
+    )
+    assert response.json()["detail"] == "Unknown filter key: 'size'"
+    response = client.get(
+        "/gizmos/",
+        params={"filter": json.dumps({"name": None})},
+        assert_status_code=400,
+    )
+    assert response.json()["detail"] == (
+        "Invalid filter value for 'name': None. Input should be a valid string"
+    )
 
 
 def test_react_admin_filter_on_an_enum_column_checks_the_labels(client):
@@ -609,89 +658,6 @@ def test_react_admin_uncoercible_filter_value_returns_400(client):
         params={"filter": '{"price": "not-a-number"}'},
         assert_status_code=400,
     )
-
-
-# --- Column resolution guards (shared by both view variants) ---
-
-
-def test_resolve_column_rejects_relationship_field():
-    """A relationship field cannot be used to filter or sort (it is not a column)."""
-
-    class RaMaker(fr.IDMixin, SharedBase):
-        name: Mapped[str] = mapped_column()
-
-    class RaMakerSchema(fr.IDSchema):
-        name: str
-
-    class RaGadget(fr.IDMixin, SharedBase):
-        name: Mapped[str] = mapped_column()
-        maker_id: Mapped[int | None] = mapped_column(ForeignKey("ra_maker.id"))
-        maker: Mapped[RaMaker | None] = relationship()
-
-    class RaGadgetSchema(fr.IDSchema):
-        name: str
-        maker: RaMakerSchema
-
-    with pytest.raises(HTTPException) as exc_info:
-        _resolve_column(RaGadget, RaGadgetSchema, "maker")
-
-    assert exc_info.value.status_code == 400
-    assert "relationship" in str(exc_info.value.detail)
-
-
-@pytest.mark.parametrize("hidden", ["writeonly", "exclude"])
-def test_resolve_column_rejects_a_field_that_never_goes_out(hidden):
-    """A WriteOnly field, or one with exclude=True, is not exposed for
-    filtering or sorting."""
-
-    class RaThing(fr.IDMixin, SharedBase):
-        name: Mapped[str] = mapped_column()
-        secret: Mapped[str] = mapped_column()
-
-    class RaThingSchema(fr.IDSchema):
-        name: str
-        if hidden == "writeonly":
-            secret: fr.WriteOnly[str]
-        else:
-            secret: str = pydantic.Field(exclude=True)
-
-    with pytest.raises(HTTPException) as exc_info:
-        _resolve_column(RaThing, RaThingSchema, "secret")
-
-    assert exc_info.value.status_code == 400
-    assert "Unknown filter key" in str(exc_info.value.detail)
-
-
-def test_resolve_column_rejects_a_field_without_a_column():
-    """A response field whose model attribute is not a column, such as a plain
-    class attribute or a Python property, is an unknown key: 400, not 500. A
-    hybrid property is SQL, so it still filters and sorts."""
-
-    class RaLamp(fr.IDMixin, SharedBase):
-        name: Mapped[str] = mapped_column()
-        label = ""
-
-        @property
-        def shout(self) -> str:
-            return self.name.upper()
-
-        @hybrid_property
-        def loud(self) -> str:
-            return self.name + "!"
-
-    class RaLampSchema(fr.IDSchema):
-        name: str
-        label: fr.ReadOnly[str] = ""
-        shout: fr.ReadOnly[str] = ""
-        loud: fr.ReadOnly[str] = ""
-
-    for field in ("label", "shout"):
-        for kind in ("filter", "sort"):
-            with pytest.raises(HTTPException) as exc_info:
-                _resolve_column(RaLamp, RaLampSchema, field, kind=kind)
-            assert exc_info.value.status_code == 400
-            assert exc_info.value.detail == f"Unknown {kind} key: {field!r}"
-    assert str(_resolve_column(RaLamp, RaLampSchema, "loud")) == str(RaLamp.loud)
 
 
 # --- Overrides get the parsed values ---
