@@ -263,12 +263,15 @@ replacement, unless it says otherwise.
   of a body when it copies the body onto the model. A column that keeps
   local times needs a validator on its field that converts the time first.
 - A value that its column cannot hold gets a 422 in a body or in the path,
-  and a 400 in a filter. Restly checks it against the SQLAlchemy type of the
-  column, on every database. A number must fit the integer type: 16 bits for
-  `SmallInteger`, 32 for `Integer` and 64 for `BigInteger`. Text must fit
-  the length of a `String(n)` column and hold no NUL character. A reference
-  id that does not fit gets a 404, as for a row that does not exist. Before,
-  PostgreSQL refused such a value with a 500, and SQLite stored it.
+  and a 400 in a filter. Restly checks the generic integer and text types of
+  SQLAlchemy, such as `Integer` and `String(n)`, on every database. A number
+  must fit the integer type: 16 bits for `SmallInteger`, 32 for `Integer`
+  and 64 for `BigInteger`. Text must hold no NUL character, and text in a
+  body must fit the length of a `String(n)` column. A reference id that does
+  not fit gets a 404, as for a row that does not exist. Before, PostgreSQL
+  refused such a value with a 500, and SQLite stored it. Any other type,
+  such as a type of a dialect or a `TypeDecorator`, gets the value as it is,
+  as in SQLAlchemy. A constraint on the field of the schema checks it.
 
 #### Lists
 

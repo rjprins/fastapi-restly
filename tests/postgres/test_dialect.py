@@ -46,6 +46,7 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    String,
     and_,
     create_engine,
     select,
@@ -81,10 +82,12 @@ _app = FastAPI()
 
 class PgWord(fr.IDMixin, SharedBase):
     name: Mapped[str]
+    code: Mapped[str | None] = mapped_column(String(3), default=None)
 
 
 class PgWordSchema(fr.IDSchema):
     name: str
+    code: str | None = None
 
 
 class PgRanked(fr.IDMixin, SharedBase):
@@ -836,9 +839,10 @@ async def test_a_react_admin_filter_time_is_utc_on_psycopg(restly_async_session)
 async def test_a_value_that_does_not_fit_its_column_is_a_client_error_on_psycopg(
     restly_async_session,
 ):
-    """PostgreSQL refuses a number beyond an INTEGER, and a NUL character in
-    text, with a data error, which was a 500. Restly checks each value against
-    its column first. A reference that cannot fit names no row."""
+    """PostgreSQL refuses a number beyond an INTEGER, a NUL character in
+    text, and stored text longer than a VARCHAR(n), with a data error, which
+    was a 500. Restly checks each value against its column first. A reference
+    that cannot fit names no row. A filter compares text of any length."""
     async with _async_client() as client:
         responses = {
             "filter": await client.get("/ranked/", params={"score": str(2**31)}),
@@ -851,6 +855,10 @@ async def test_a_value_that_does_not_fit_its_column_is_a_client_error_on_psycopg
                 "/words/", params={"name__contains": "a\x00b"}
             ),
             "nul body": await client.post("/words/", json={"name": "a\x00b"}),
+            "long body": await client.post(
+                "/words/", json={"name": "a", "code": "abcd"}
+            ),
+            "long filter": await client.get("/words/", params={"code": "abcd"}),
             "id text": await client.get("/ranked/", params={"id": "abc"}),
             "id range": await client.get("/ranked/", params={"id": str(2**31)}),
             "uuid text": await client.get("/keyed/", params={"id": "nope"}),
@@ -864,6 +872,8 @@ async def test_a_value_that_does_not_fit_its_column_is_a_client_error_on_psycopg
         "nul": 400,
         "nul contains": 400,
         "nul body": 422,
+        "long body": 422,
+        "long filter": 200,
         "id text": 400,
         "id range": 400,
         "uuid text": 400,

@@ -496,6 +496,7 @@ def _column_ready(
 ) -> Any:
     """A value in the form of its column, by the rule of ``column_value``: a
     time gets the form of its column, and a number or a text must fit it.
+    The column stores the value, so text must also fit its length.
 
     A field without a column keeps its value.
 
@@ -511,7 +512,7 @@ def _column_ready(
     if column is None:
         return value
     try:
-        return column_value(column.type, value)
+        return column_value(column.type, value, stored=True)
     except ValueError as exc:
         field = schema_cls.model_fields.get(field_name)
         key = field_name if field is None else _client_name(field_name, field)

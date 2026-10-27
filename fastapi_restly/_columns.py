@@ -1,79 +1,105 @@
 """A value from a client, checked against its column before the database
 sees it.
 
-The SQLAlchemy type of a column is the contract, on every database. A value
-that the column cannot hold is then the client's error: a 422 or a 400 that
-names the field. Without the check, PostgreSQL refuses the value with a data
-error, which is a 500, and SQLite stores what PostgreSQL would refuse, so
-the tests of an app on SQLite would not see it.
+Restly checks the generic integer and text types of SQLAlchemy, used as they
+are, on every database: a number must fit the integer type, text must hold
+no NUL character, and text that the column stores must fit its length.
+SQLite stores such a value, and PostgreSQL refuses it with a data error,
+which is a 500, so the tests of an app on SQLite would not see it. A value
+that does not fit is then the client's error: a 422 or a 400 that names the
+field.
+
+Any other type gets the value as it is, as in SQLAlchemy: a type of a
+dialect, a subclass, a ``TypeDecorator``, or a type with variants from
+``with_variant()``. A constraint on the field of the schema checks its
+values.
 """
 
 import datetime as _dt
 from typing import Any
 
-from sqlalchemy import BigInteger, Enum, Integer, SmallInteger, String, TypeDecorator
+from sqlalchemy import (
+    BIGINT,
+    CHAR,
+    INTEGER,
+    NCHAR,
+    NVARCHAR,
+    SMALLINT,
+    TEXT,
+    VARCHAR,
+    BigInteger,
+    Integer,
+    SmallInteger,
+    String,
+    Text,
+    Unicode,
+    UnicodeText,
+)
 
 from ._times import column_time
 
-#: The bits of each integer type, as PostgreSQL stores it. A subclass comes
-#: before ``Integer``, which it extends.
-_INTEGER_BITS: tuple[tuple[type[Integer], int], ...] = (
-    (SmallInteger, 16),
-    (BigInteger, 64),
-    (Integer, 32),
+#: The integer types that Restly checks, with their bits on PostgreSQL.
+_INTEGER_BITS: dict[type[Any], int] = {
+    SmallInteger: 16,
+    SMALLINT: 16,
+    Integer: 32,
+    INTEGER: 32,
+    BigInteger: 64,
+    BIGINT: 64,
+}
+
+#: The text types that Restly checks.
+_TEXT_TYPES: frozenset[type[Any]] = frozenset(
+    {String, Text, Unicode, UnicodeText, CHAR, NCHAR, VARCHAR, NVARCHAR, TEXT}
 )
 
 
-def column_value(column_type: Any, value: Any) -> Any:
+def column_value(column_type: Any, value: Any, *, stored: bool = False) -> Any:
     """``value`` as a column of ``column_type`` takes it.
 
-    A time or a duration goes through :func:`column_time`. A number must fit
-    the integer type of the column: 16 bits for ``SmallInteger``, 32 for
-    ``Integer`` and 64 for ``BigInteger``, as on PostgreSQL, also on SQLite.
-    An unsigned type of MySQL holds no negative numbers and twice as many
-    positive ones. Text must fit the length of a ``String(n)`` column, and
-    must hold no NUL character. A ``TypeDecorator`` converts the value
-    itself, and a type from ``with_variant()`` is another type on another
-    database, so both get the value as it is.
+    A time or a duration goes through :func:`column_time`. A type in
+    ``_INTEGER_BITS`` or ``_TEXT_TYPES``, by its exact class and without
+    variants, is checked. A number must fit the integer type: 16 bits for
+    ``SmallInteger``, 32 for ``Integer`` and 64 for ``BigInteger``, as on
+    PostgreSQL, also on SQLite. Text must hold no NUL character, and text
+    that the column stores must fit the length of ``String(n)``. Any other
+    type gets the value as it is.
 
+    :param stored: The column stores the value, as for a request body. A
+        filter only compares a value with the column, and PostgreSQL compares
+        text of any length.
     :raises ValueError: the value does not fit the column. The message says
         why, for the client.
     """
     if isinstance(value, _dt.datetime | _dt.timedelta):
         return column_time(column_type, value)
-    if isinstance(column_type, TypeDecorator) or getattr(
-        column_type, "_variant_mapping", None
-    ):
+    if getattr(column_type, "_variant_mapping", None):
+        # another type on another database
         return value
+    kind = type(column_type)
     if isinstance(value, int) and not isinstance(value, bool):
-        _check_integer(column_type, value)
-    elif isinstance(value, str) and isinstance(column_type, String):
-        # an Enum column checks its labels itself
-        if not isinstance(column_type, Enum):
-            check_text(value)
-            if column_type.length is not None and len(value) > column_type.length:
-                raise ValueError(
-                    "The text is too long: the column holds at most "
-                    f"{column_type.length} characters."
-                )
+        bits = _INTEGER_BITS.get(kind)
+        if bits is not None:
+            _check_integer(bits, value)
+    elif isinstance(value, str) and kind in _TEXT_TYPES:
+        check_text(value)
+        length = column_type.length
+        if stored and length is not None and len(value) > length:
+            raise ValueError(
+                f"The text is too long: the column holds at most {length} characters."
+            )
     return value
 
 
-def _check_integer(column_type: Any, value: int) -> None:
-    """:raises ValueError: ``value`` is out of the range of the column's
-    integer type."""
-    for integer_type, bits in _INTEGER_BITS:
-        if isinstance(column_type, integer_type):
-            if getattr(column_type, "unsigned", False):
-                low, high = 0, 2**bits - 1
-            else:
-                low, high = -(2 ** (bits - 1)), 2 ** (bits - 1) - 1
-            if not low <= value <= high:
-                raise ValueError(
-                    "The number is out of range: the column holds numbers from "
-                    f"{low} to {high}."
-                )
-            return
+def _check_integer(bits: int, value: int) -> None:
+    """:raises ValueError: ``value`` does not fit a signed integer of
+    ``bits`` bits."""
+    low, high = -(2 ** (bits - 1)), 2 ** (bits - 1) - 1
+    if not low <= value <= high:
+        raise ValueError(
+            "The number is out of range: the column holds numbers from "
+            f"{low} to {high}."
+        )
 
 
 def check_text(value: str) -> None:

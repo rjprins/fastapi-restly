@@ -1686,8 +1686,10 @@ def _value_parser(
     it. A field of type ``Any``, such as the ``id`` of ``fr.IDSchema``, and
     the id of a reference get the Python type of the column, such as a
     ``UUID`` from its text. Any other value goes through ``column_value``: a
-    time gets the form of its column, and a number or a text must fit the
-    column. The generated filters and
+    time gets the form of its column, a number must fit an integer column,
+    and text must hold no NUL character. Its length is not checked: the
+    filter compares the text, and PostgreSQL compares text of any length.
+    The generated filters and
     :class:`~fastapi_restly.query.FilterKey` build one parser for each key,
     so the work for the key is done once.
 

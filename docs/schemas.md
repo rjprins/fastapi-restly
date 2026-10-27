@@ -237,7 +237,7 @@ Each kind of rule has one place:
 |---|---|---|
 | The format or the range of one value | A Pydantic validator or a `Field` constraint on the schema | 422 |
 | A field that a client cannot set | [`ReadOnly`](#readonly-and-writeonly), or [your own request body](#explicit-write-schemas) | The value is ignored |
-| A value that its column can hold, such as a number in the range of `Integer` | Nothing: Restly checks the type of the column; see [Column validation](#column-validation) | 422, or 400 in a filter |
+| A value that its column can hold, such as a number in the range of `Integer` | Nothing for the generic types of SQLAlchemy, a `Field` constraint for other types; see [Column validation](#column-validation) | 422, or 400 in a filter |
 | A referenced row must exist | {class}`fr.MustExist <fastapi_restly.schemas.MustExist>` or a reference field; see [Relationships](#reference-exists) | 404 |
 | A value must be unique | A unique constraint on the column; see [Errors](#default-exception-handling) | 409 |
 | A rule that needs the database, the stored row or the caller | The `create` or `update` business method; see [Request Lifecycle & Hooks](#business-methods) | The error that you raise |
@@ -310,15 +310,15 @@ on the view. The SaaS example does this for organizations
 (column-validation)=
 ### Column validation
 
-Restly checks each value from a client against the SQLAlchemy type of its
-column, before the database sees the value. You do not write a validator
-for it:
+Restly checks each value from a client against the type of its column,
+before the database sees the value. It checks the generic integer and text
+types of SQLAlchemy, so you do not write a validator for them:
 
 - A number must fit the integer type: 16 bits for `SmallInteger`, 32 bits
   for `Integer`, from -2,147,483,648 to 2,147,483,647, and 64 bits for
   `BigInteger`.
-- Text must fit the length of a `String(n)` column.
 - Text must not hold a NUL character (`\x00`).
+- Text in a request body must fit the length of a `String(n)` column.
 
 A value that does not fit gets 422 in a request body or in the path, and
 400 in a filter. A reference id that does not fit gets 404, as for a row
@@ -332,13 +332,53 @@ such a value with an error, which would be a 500. SQLite stores it, so the
 tests of an app on SQLite would not see the problem. PostgreSQL cannot store
 a NUL character in text, so Restly refuses it on every database. A column
 that holds bigger numbers needs `BigInteger`, such as a column with a Unix
-time in milliseconds.
+time in milliseconds. A filter only compares a value with the column, and
+PostgreSQL compares text of any length, so the length counts only in a
+request body.
 
-An unsigned type of MySQL, such as `INTEGER(unsigned=True)`, holds no
-negative numbers and twice as many positive ones. A column type of your own,
-a {class}`~sqlalchemy.types.TypeDecorator`, converts the value itself, and a
-type from `with_variant()` is another type on another database. Both get
-the value as it is, and the database checks it.
+Restly checks these types by their exact class: `Integer`, `SmallInteger`,
+`BigInteger`, `String`, `Text`, `Unicode` and `UnicodeText`, and the same
+types by their SQL names: `INTEGER`, `SMALLINT`, `BIGINT`, `VARCHAR`,
+`NVARCHAR`, `CHAR`, `NCHAR` and `TEXT`. Any other type gets the value as it
+is, as in SQLAlchemy:
+
+- a type of a dialect, such as MySQL's `TINYINT`,
+- a subclass of a type above, such as `Enum`,
+- a {class}`~sqlalchemy.types.TypeDecorator`, such as SQLModel's
+  `AutoString`,
+- a type from `with_variant()`.
+
+The database then checks the value. On PostgreSQL, a value that does not
+fit is an error, and the client gets a 500. For a 422, put the limit on the
+field of the schema. Its validation runs on filter values too; see
+[Filter values go through the field's validation](#filter-value-validation).
+
+| Column | Field of the schema |
+|---|---|
+| Text with a length, in a type that Restly does not check | `Annotated[str, Field(max_length=50)]` |
+| A smaller integer, such as MySQL's `TINYINT` | `Annotated[int, Field(ge=-128, le=127)]` |
+| `Numeric(5, 2)` | `Annotated[Decimal, Field(max_digits=5, decimal_places=2)]` |
+| `Enum` or `Uuid` | The Python type: the enum class, or `uuid.UUID` |
+| `ARRAY(String(5))` | `list[Annotated[str, Field(max_length=5)]]` |
+| Text without NUL, in a type that Restly does not check | An `AfterValidator`, as below |
+
+```python
+from typing import Annotated
+
+from pydantic import AfterValidator
+
+import fastapi_restly as fr
+
+
+def no_nul(text: str) -> str:
+    if "\x00" in text:
+        raise ValueError("The text holds a NUL character.")
+    return text
+
+
+class NoteSchema(fr.IDSchema):
+    text: Annotated[str, AfterValidator(no_nul)]
+```
 :::
 
 ### Database validation
