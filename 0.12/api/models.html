@@ -1,0 +1,746 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" data-theme="auto">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, follow">
+
+    <title>Models API &#8212; FastAPI-Restly 0.12.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "auto";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "auto";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=643d5ecc" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=61ccb1f1"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api/models';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://www.fastapi-restly.org/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '0.12';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script src="../_static/newsletter.js?v=7326e93d"></script>
+    <link rel="canonical" href="https://www.fastapi-restly.org/0.12/api/models.html" />
+    <link rel="icon" href="../_static/favicon.svg"/>
+    <link rel="author" title="About these documents" href="../about.html" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Objects API" href="objects.html" />
+    <link rel="prev" title="Exceptions API" href="exc.html" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.12" />
+<meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700&amp;display=swap"
+      rel="stylesheet" />
+<!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
+<script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="auto">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/fr-monogram.svg" class="logo__image only-light" alt=""/>
+    <img src="../_static/fr-monogram-dark.svg" class="logo__image only-dark pst-js-only" alt=""/>
+  
+  
+    <p class="title logo__title">FastAPI-Restly</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../guide.html">
+    Guide
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../guide.html">
+    Guide
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../about.html">
+    About
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">Modules</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="package.html">Package API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="clauses.html">Clauses API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="db.html">Database API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="exc.html">Exceptions API</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Models API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="objects.html">Objects API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="query.html">Query API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="schemas.html">Schemas API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="views.html">Views API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="testing.html">Testing API</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="../view_reference.html">View Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../api_reference.html" class="nav-link">API Reference</a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">Modules</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Models API</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="models-api">
+<h1>Models API<a class="headerlink" href="#models-api" title="Link to this heading">#</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">fastapi_restly.models</span></code> provides <code class="docutils literal notranslate"><span class="pre">ModelDefaults</span></code>, which adds Restly’s
+defaults to your own declarative base, and the model mixins <code class="docutils literal notranslate"><span class="pre">IDMixin</span></code> and
+<code class="docutils literal notranslate"><span class="pre">TimestampsMixin</span></code>. <a class="reference internal" href="../models.html"><span class="doc">Models</span></a> shows how to use them. It also provides
+two cascades for relationships on an async session, <code class="docutils literal notranslate"><span class="pre">CASCADE_ALL_ASYNC</span></code> and
+<code class="docutils literal notranslate"><span class="pre">CASCADE_ALL_DELETE_ORPHAN_ASYNC</span></code>.</p>
+<dl class="py data" id="module-fastapi_restly.models">
+<dt class="sig sig-object py" id="fastapi_restly.models.CASCADE_ALL_ASYNC">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.models.</span></span><span class="sig-name descname"><span class="pre">CASCADE_ALL_ASYNC</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'save-update,</span> <span class="pre">merge,</span> <span class="pre">delete,</span> <span class="pre">expunge'</span></em><a class="headerlink" href="#fastapi_restly.models.CASCADE_ALL_ASYNC" title="Link to this definition">#</a></dt>
+<dd><p>The cascade <code class="docutils literal notranslate"><span class="pre">&quot;all&quot;</span></code> without <code class="docutils literal notranslate"><span class="pre">&quot;refresh-expire&quot;</span></code>, for
+<code class="docutils literal notranslate"><span class="pre">relationship(cascade=...)</span></code> on an async session:
+<code class="docutils literal notranslate"><span class="pre">&quot;save-update,</span> <span class="pre">merge,</span> <span class="pre">delete,</span> <span class="pre">expunge&quot;</span></code>. With <code class="docutils literal notranslate"><span class="pre">&quot;all&quot;</span></code>, your own
+<code class="docutils literal notranslate"><span class="pre">session.refresh(obj)</span></code> also expires the related objects. On an async
+session, the next read of one can then raise <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. Restly’s
+own save after a write refreshes by attribute name and does not cascade,
+so <code class="docutils literal notranslate"><span class="pre">&quot;all&quot;</span></code> is safe on Restly’s write paths. See SQLAlchemy’s
+<a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#preventing-implicit-io-when-using-asyncsession">Preventing Implicit IO when Using AsyncSession</a>.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="fastapi_restly.models.CASCADE_ALL_DELETE_ORPHAN_ASYNC">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.models.</span></span><span class="sig-name descname"><span class="pre">CASCADE_ALL_DELETE_ORPHAN_ASYNC</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'save-update,</span> <span class="pre">merge,</span> <span class="pre">delete,</span> <span class="pre">expunge,</span> <span class="pre">delete-orphan'</span></em><a class="headerlink" href="#fastapi_restly.models.CASCADE_ALL_DELETE_ORPHAN_ASYNC" title="Link to this definition">#</a></dt>
+<dd><p><a class="reference internal" href="#fastapi_restly.models.CASCADE_ALL_ASYNC" title="fastapi_restly.models.CASCADE_ALL_ASYNC"><code class="xref py py-data docutils literal notranslate"><span class="pre">CASCADE_ALL_ASYNC</span></code></a> with <code class="docutils literal notranslate"><span class="pre">&quot;delete-orphan&quot;</span></code>: the cascade
+<code class="docutils literal notranslate"><span class="pre">&quot;all,</span> <span class="pre">delete-orphan&quot;</span></code> without <code class="docutils literal notranslate"><span class="pre">&quot;refresh-expire&quot;</span></code>.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="fastapi_restly.models.IDMixin">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.models.</span></span><span class="sig-name descname"><span class="pre">IDMixin</span></span><a class="headerlink" href="#fastapi_restly.models.IDMixin" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/mapping_api.html#sqlalchemy.orm.MappedAsDataclass" title="(in SQLAlchemy v2.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">MappedAsDataclass</span></code></a></p>
+<p>Dataclass mixin adding an auto-incrementing integer <cite>id</cite> primary key.</p>
+<p>Made for models on a base with <a class="reference internal" href="#fastapi_restly.models.ModelDefaults" title="fastapi_restly.models.ModelDefaults"><code class="xref py py-class docutils literal notranslate"><span class="pre">ModelDefaults</span></code></a>. On another base,
+SQLAlchemy makes each model that uses it a dataclass.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.models.IDMixin.id">
+<span class="sig-name descname"><span class="pre">id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/internals.html#sqlalchemy.orm.Mapped" title="(in SQLAlchemy v2.0)"><span class="pre">Mapped</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">mapped_column(...)</span></em><a class="headerlink" href="#fastapi_restly.models.IDMixin.id" title="Link to this definition">#</a></dt>
+<dd><p>The primary key: an integer that the database generates when it
+inserts the row. The constructor does not take it, and it is <code class="docutils literal notranslate"><span class="pre">None</span></code>
+until the session flushes the new object.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="fastapi_restly.models.ModelDefaults">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.models.</span></span><span class="sig-name descname"><span class="pre">ModelDefaults</span></span><a class="headerlink" href="#fastapi_restly.models.ModelDefaults" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#sqlalchemy.ext.asyncio.AsyncAttrs" title="(in SQLAlchemy v2.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncAttrs</span></code></a>, <a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/mapping_api.html#sqlalchemy.orm.MappedAsDataclass" title="(in SQLAlchemy v2.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">MappedAsDataclass</span></code></a></p>
+<p>Restly’s defaults for SQLAlchemy models, for your own declarative base.</p>
+<p>Add it to your base class, before <code class="docutils literal notranslate"><span class="pre">DeclarativeBase</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Base</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ModelDefaults</span><span class="p">,</span> <span class="n">DeclarativeBase</span><span class="p">):</span>
+    <span class="k">pass</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">Base</span></code> stays yours: it has its own registry and <code class="docutils literal notranslate"><span class="pre">MetaData</span></code>, as with
+any <code class="docutils literal notranslate"><span class="pre">DeclarativeBase</span></code>. Your models get:</p>
+<ul class="simple">
+<li><p>A dataclass constructor that takes keyword arguments only. Type checkers
+accept a required field after a field with a default.</p></li>
+<li><p>Equality by identity, as for any SQLAlchemy model: two objects are equal
+only when they are the same object. So a model object can go in a
+<code class="docutils literal notranslate"><span class="pre">set</span></code>, and comparing objects never loads a relationship.</p></li>
+<li><p>A repr that shows the loaded columns and never loads anything, so it
+works in async code. Pass <code class="docutils literal notranslate"><span class="pre">repr=True</span></code> on a model for the dataclass
+repr, which reads every field.</p></li>
+<li><p>A table name in snake_case from the class name: <code class="docutils literal notranslate"><span class="pre">BlogPost</span></code> gets
+<code class="docutils literal notranslate"><span class="pre">blog_post</span></code>. Set <code class="docutils literal notranslate"><span class="pre">__tablename__</span></code> on a model to choose another name.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Mapped[datetime]</span></code> as <code class="docutils literal notranslate"><span class="pre">DateTime(timezone=True)</span></code>. Use
+<code class="docutils literal notranslate"><span class="pre">mapped_column(DateTime())</span></code> for a column without a time zone.</p></li>
+<li><p>An <code class="docutils literal notranslate"><span class="pre">enum.Enum</span></code> as a string column of up to 64 characters that stores
+the member’s name, not a database enum type. A new member then needs no
+migration.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">awaitable_attrs</span></code> from SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">AsyncAttrs</span></code>. An unloaded
+attribute can then be reached from plain async code,
+<code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">obj.awaitable_attrs.items</span></code>, where a bare <code class="docutils literal notranslate"><span class="pre">obj.items</span></code> would
+raise <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. Views eager-load what the response class
+names, so this is for the code that runs outside that: an
+<code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> hook, a custom business method.</p></li>
+</ul>
+<p>Declare your own <code class="docutils literal notranslate"><span class="pre">metadata</span></code> and <code class="docutils literal notranslate"><span class="pre">type_annotation_map</span></code> on <code class="docutils literal notranslate"><span class="pre">Base</span></code> as
+SQLAlchemy documents them. Your type entries win over Restly’s.</p>
+<p>Set dataclass options such as <code class="docutils literal notranslate"><span class="pre">eq=True</span></code> on a model, not on <code class="docutils literal notranslate"><span class="pre">Base</span></code>.
+SQLAlchemy takes the options from the first dataclass class in a model’s
+bases, which is often <a class="reference internal" href="#fastapi_restly.models.IDMixin" title="fastapi_restly.models.IDMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDMixin</span></code></a>, so options on <code class="docutils literal notranslate"><span class="pre">Base</span></code> would apply
+to some models only. <code class="docutils literal notranslate"><span class="pre">Base</span></code> with options raises
+<a class="reference internal" href="exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>.</p>
+<p>For the same reason, a dataclass mixin of your own declares the options
+of <code class="docutils literal notranslate"><span class="pre">fr.IDMixin</span></code>: <code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">Stamped(MappedAsDataclass,</span> <span class="pre">kw_only=True,</span>
+<span class="pre">eq=False,</span> <span class="pre">repr=False)</span></code>. Without <code class="docutils literal notranslate"><span class="pre">eq=False</span></code>, a model with the mixin
+compares fields, and comparing two objects can load a relationship.
+Without <code class="docutils literal notranslate"><span class="pre">repr=False</span></code>, the model gets a dataclass repr instead of this
+one, and that repr can load a relationship too. Such a model raises
+<a class="reference internal" href="exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>, unless it passes
+<code class="docutils literal notranslate"><span class="pre">eq=True</span></code> or <code class="docutils literal notranslate"><span class="pre">repr=True</span></code> itself, or writes its own <code class="docutils literal notranslate"><span class="pre">__eq__</span></code> or
+<code class="docutils literal notranslate"><span class="pre">__repr__</span></code>.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="fastapi_restly.models.TimestampsMixin">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.models.</span></span><span class="sig-name descname"><span class="pre">TimestampsMixin</span></span><a class="headerlink" href="#fastapi_restly.models.TimestampsMixin" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/mapping_api.html#sqlalchemy.orm.MappedAsDataclass" title="(in SQLAlchemy v2.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">MappedAsDataclass</span></code></a></p>
+<p>Dataclass mixin that adds <code class="docutils literal notranslate"><span class="pre">created_at</span></code> and <code class="docutils literal notranslate"><span class="pre">updated_at</span></code>, in UTC.</p>
+<p>Made for models on a base with <a class="reference internal" href="#fastapi_restly.models.ModelDefaults" title="fastapi_restly.models.ModelDefaults"><code class="xref py py-class docutils literal notranslate"><span class="pre">ModelDefaults</span></code></a>. On another base,
+SQLAlchemy makes each model that uses it a dataclass.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.models.TimestampsMixin.created_at">
+<span class="sig-name descname"><span class="pre">created_at</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/internals.html#sqlalchemy.orm.Mapped" title="(in SQLAlchemy v2.0)"><span class="pre">Mapped</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.15)"><span class="pre">datetime</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">mapped_column(...)</span></em><a class="headerlink" href="#fastapi_restly.models.TimestampsMixin.created_at" title="Link to this definition">#</a></dt>
+<dd><p>When the row was created, in UTC. The model sets it to the current
+time when you create the object. The database sets it when SQL that
+leaves it out inserts a row.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.models.TimestampsMixin.updated_at">
+<span class="sig-name descname"><span class="pre">updated_at</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/internals.html#sqlalchemy.orm.Mapped" title="(in SQLAlchemy v2.0)"><span class="pre">Mapped</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.15)"><span class="pre">datetime</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">mapped_column(...)</span></em><a class="headerlink" href="#fastapi_restly.models.TimestampsMixin.updated_at" title="Link to this definition">#</a></dt>
+<dd><p>When the row last changed, in UTC. The model sets it when you create
+the object, and again in each UPDATE that SQLAlchemy runs for the row.
+The database sets it when SQL that leaves it out inserts a row.</p>
+</dd></dl>
+
+</dd></dl>
+
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p><a class="reference internal" href="../models.html"><span class="doc">Models</span></a> shows how to add Restly’s defaults to your own
+declarative base and how to change one. <a class="reference internal" href="../models.html#existing-models"><span class="std std-ref">Use your existing models</span></a>
+shows Restly views on the models you already have.</p>
+</div>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="exc.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Exceptions API</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="objects.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Objects API</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.models.CASCADE_ALL_ASYNC"><code class="docutils literal notranslate"><span class="pre">CASCADE_ALL_ASYNC</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.models.CASCADE_ALL_DELETE_ORPHAN_ASYNC"><code class="docutils literal notranslate"><span class="pre">CASCADE_ALL_DELETE_ORPHAN_ASYNC</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.models.IDMixin"><code class="docutils literal notranslate"><span class="pre">IDMixin</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.models.IDMixin.id"><code class="docutils literal notranslate"><span class="pre">IDMixin.id</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.models.ModelDefaults"><code class="docutils literal notranslate"><span class="pre">ModelDefaults</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.models.TimestampsMixin"><code class="docutils literal notranslate"><span class="pre">TimestampsMixin</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.models.TimestampsMixin.created_at"><code class="docutils literal notranslate"><span class="pre">TimestampsMixin.created_at</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.models.TimestampsMixin.updated_at"><code class="docutils literal notranslate"><span class="pre">TimestampsMixin.updated_at</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+<p class="sidebar-newsletter">
+  <a href="../newsletter.html">Subscribe to newsletter</a>
+</p></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, Rutger Prins.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

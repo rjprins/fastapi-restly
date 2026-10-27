@@ -1,0 +1,1087 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" data-theme="auto">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, follow">
+
+    <title>Models &#8212; FastAPI-Restly 0.12.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "auto";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "auto";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=61ccb1f1"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'models';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://www.fastapi-restly.org/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '0.12';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script src="_static/newsletter.js?v=7326e93d"></script>
+    <link rel="canonical" href="https://www.fastapi-restly.org/0.12/models.html" />
+    <link rel="icon" href="_static/favicon.svg"/>
+    <link rel="author" title="About these documents" href="about.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Views" href="views.html" />
+    <link rel="prev" title="Database &amp; Configuration" href="database.html" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.12" />
+<meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700&amp;display=swap"
+      rel="stylesheet" />
+<!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
+<script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="auto">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/fr-monogram.svg" class="logo__image only-light" alt=""/>
+    <img src="_static/fr-monogram-dark.svg" class="logo__image only-dark pst-js-only" alt=""/>
+  
+  
+    <p class="title logo__title">FastAPI-Restly</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="projects.html">New &amp; Existing Projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="database.html">Database &amp; Configuration</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Models</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
+<li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering, Sorting &amp; Pagination</a></li>
+<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Access</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="context.html">Request Context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tenancy.html">Multi-Tenancy</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Testing &amp; Deploying</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="guide.html" class="nav-link">Guide</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Models</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="models">
+<h1>Models<a class="headerlink" href="#models" title="Link to this heading">#</a></h1>
+<p>Restly works with SQLAlchemy models on a declarative base of your own. The
+base is your class, with its own registry and <code class="docutils literal notranslate"><span class="pre">MetaData</span></code>, as in any
+SQLAlchemy project. Restly does not own it. Restly’s views and schemas work
+with any declarative model, and Restly gives two kinds of optional help:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="api/models.html#fastapi_restly.models.ModelDefaults" title="fastapi_restly.models.ModelDefaults"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code></a> adds
+Restly’s defaults to your base.</p></li>
+<li><p><a class="reference internal" href="api/models.html#fastapi_restly.models.IDMixin" title="fastapi_restly.models.IDMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDMixin</span></code></a> and
+<a class="reference internal" href="api/models.html#fastapi_restly.models.TimestampsMixin" title="fastapi_restly.models.TimestampsMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.TimestampsMixin</span></code></a> add
+common columns to a model.</p></li>
+</ul>
+<p>The model is also the place for the rules that every write must follow. A
+view is only one way to write a row. Scripts, jobs, imports and the
+<a class="reference internal" href="api/objects.html#module-fastapi_restly.objects" title="fastapi_restly.objects"><code class="xref py py-mod docutils literal notranslate"><span class="pre">fr.objects</span></code></a> helpers write rows too, and they
+never run a view. SQLAlchemy runs a column default or a mapper event when it
+writes the row, whatever code built the row. So the model sets each value
+that every write path needs, such as the author or the tenant. A value that
+only the HTTP API sets belongs in the view’s
+<a class="reference internal" href="lifecycle.html#business-methods"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">create</span></code> or <code class="docutils literal notranslate"><span class="pre">update</span></code></span></a>.</p>
+<p><a class="reference internal" href="#structural-pieces">Where tenant, audit and soft-delete rules go</a> lists
+these rules. The
+<a class="reference external" href="https://github.com/rjprins/fastapi-restly/tree/main/example-projects/saas">SaaS example</a>
+runs all of them.</p>
+<section id="add-restly-s-defaults-to-your-base">
+<span id="model-defaults"></span><h2>Add Restly’s defaults to your base<a class="headerlink" href="#add-restly-s-defaults-to-your-base" title="Link to this heading">#</a></h2>
+<p>Put <a class="reference internal" href="api/models.html#fastapi_restly.models.ModelDefaults" title="fastapi_restly.models.ModelDefaults"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code></a> in your
+base class, before <code class="docutils literal notranslate"><span class="pre">DeclarativeBase</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">ForeignKey</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">DeclarativeBase</span><span class="p">,</span> <span class="n">Mapped</span><span class="p">,</span> <span class="n">mapped_column</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Base</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ModelDefaults</span><span class="p">,</span> <span class="n">DeclarativeBase</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">BlogPost</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDMixin</span><span class="p">,</span> <span class="n">Base</span><span class="p">):</span>
+    <span class="n">published</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">title</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Comment</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">TimestampsMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDMixin</span><span class="p">,</span> <span class="n">Base</span><span class="p">):</span>
+    <span class="n">content</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">blog_post_id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;blog_post.id&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code> already includes SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">MappedAsDataclass</span></code> and
+<code class="docutils literal notranslate"><span class="pre">AsyncAttrs</span></code>, so leave those out of the base. Every model on <code class="docutils literal notranslate"><span class="pre">Base</span></code> then gets
+these defaults:</p>
+<ul class="simple">
+<li><p><strong>A dataclass constructor.</strong> The constructor takes keyword arguments only:
+<code class="docutils literal notranslate"><span class="pre">BlogPost(title=&quot;Hello&quot;)</span></code>. So a field with a default can come before a field
+without one, as <code class="docutils literal notranslate"><span class="pre">published</span></code> does above, and type checkers accept that. Use
+<code class="docutils literal notranslate"><span class="pre">mapped_column(init=False)</span></code> for a column that the constructor must not
+take.</p></li>
+<li><p><strong>Equality by identity.</strong> Two model objects are equal only when they are
+the same object, as for any SQLAlchemy model. So a model object can go in a
+<code class="docutils literal notranslate"><span class="pre">set</span></code>, and comparing objects never loads a relationship.</p></li>
+<li><p><strong>A repr that never loads.</strong> <code class="docutils literal notranslate"><span class="pre">repr(post)</span></code> shows the primary key and the
+other columns that are loaded, such as <code class="docutils literal notranslate"><span class="pre">BlogPost(id=1,</span> <span class="pre">title='Hello')</span></code>.
+<code class="docutils literal notranslate"><span class="pre">...</span></code> stands for columns that are not loaded, and relationships are left
+out. So the repr works in async code, for example in a log message or in
+the output of a failed test. Pass <code class="docutils literal notranslate"><span class="pre">repr=True</span></code> on a model for the dataclass
+repr, which reads every field.</p></li>
+<li><p><strong>A table name.</strong> The table name is the class name in snake_case:
+<code class="docutils literal notranslate"><span class="pre">BlogPost</span></code> gets <code class="docutils literal notranslate"><span class="pre">blog_post</span></code>. That is why <code class="docutils literal notranslate"><span class="pre">ForeignKey(&quot;blog_post.id&quot;)</span></code> works.
+Set <code class="docutils literal notranslate"><span class="pre">__tablename__</span></code> on a model to choose another name.</p></li>
+<li><p><strong>Datetimes with a time zone.</strong> <code class="docutils literal notranslate"><span class="pre">Mapped[datetime]</span></code> maps to
+<code class="docutils literal notranslate"><span class="pre">DateTime(timezone=True)</span></code>. Store UTC times in it. PostgreSQL returns them
+with a time zone, but SQLite returns them without one. A column with
+<code class="docutils literal notranslate"><span class="pre">mapped_column(DateTime())</span></code> has no time zone, and holds UTC without the
+offset. For the times that clients send, and for a column that keeps local
+times, see <a class="reference internal" href="schemas.html#utc-times"><span class="std std-ref">Keep times in UTC</span></a>.</p></li>
+<li><p><strong>Enums as strings.</strong> A column typed with an <code class="docutils literal notranslate"><span class="pre">enum.Enum</span></code> stores the name of
+the member, such as <code class="docutils literal notranslate"><span class="pre">RED</span></code>, as a string of up to 64 characters. It is not a
+database enum type, so a new member needs no database migration.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">awaitable_attrs</span></code>.</strong> Code outside a view can await a relationship that is
+not loaded yet, as
+<a class="reference internal" href="relationships.html#relationship-loading"><span class="std std-ref">Return related objects in a response</span></a> shows.</p></li>
+</ul>
+</section>
+<section id="change-a-default">
+<span id="change-model-defaults"></span><h2>Change a default<a class="headerlink" href="#change-a-default" title="Link to this heading">#</a></h2>
+<p>The base is your class, so you change it as SQLAlchemy documents. To give
+constraints predictable names, which Alembic needs to drop them later, set
+<code class="docutils literal notranslate"><span class="pre">metadata</span></code>. To change how a Python type maps to a column type, set
+<code class="docutils literal notranslate"><span class="pre">type_annotation_map</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">decimal</span><span class="w"> </span><span class="kn">import</span> <span class="n">Decimal</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">MetaData</span><span class="p">,</span> <span class="n">Numeric</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">DeclarativeBase</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Base</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ModelDefaults</span><span class="p">,</span> <span class="n">DeclarativeBase</span><span class="p">):</span>
+    <span class="n">metadata</span> <span class="o">=</span> <span class="n">MetaData</span><span class="p">(</span>
+        <span class="n">naming_convention</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;ix&quot;</span><span class="p">:</span> <span class="s2">&quot;ix_</span><span class="si">%(column_0_label)s</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;uq&quot;</span><span class="p">:</span> <span class="s2">&quot;uq_</span><span class="si">%(table_name)s</span><span class="s2">_</span><span class="si">%(column_0_name)s</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;ck&quot;</span><span class="p">:</span> <span class="s2">&quot;ck_</span><span class="si">%(table_name)s</span><span class="s2">_</span><span class="si">%(constraint_name)s</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;fk&quot;</span><span class="p">:</span> <span class="s2">&quot;fk_</span><span class="si">%(table_name)s</span><span class="s2">_</span><span class="si">%(column_0_name)s</span><span class="s2">_</span><span class="si">%(referred_table_name)s</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;pk&quot;</span><span class="p">:</span> <span class="s2">&quot;pk_</span><span class="si">%(table_name)s</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
+    <span class="n">type_annotation_map</span> <span class="o">=</span> <span class="p">{</span><span class="n">Decimal</span><span class="p">:</span> <span class="n">Numeric</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">2</span><span class="p">)}</span>
+</pre></div>
+</div>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>Your <code class="docutils literal notranslate"><span class="pre">type_annotation_map</span></code> entries win over Restly’s. Restly’s entries still
+apply to the types you leave out. So <code class="docutils literal notranslate"><span class="pre">{datetime:</span> <span class="pre">DateTime()}</span></code> stores the
+datetimes on this base without a time zone, and enums are still strings. The
+columns of <code class="docutils literal notranslate"><span class="pre">fr.TimestampsMixin</span></code> keep their time zone, because the mixin sets
+their type itself.</p>
+<p>For one column, pass the type to <code class="docutils literal notranslate"><span class="pre">mapped_column</span></code>, as in
+<code class="docutils literal notranslate"><span class="pre">mapped_column(Enum(Color,</span> <span class="pre">native_enum=True))</span></code>. For one table, set
+<code class="docutils literal notranslate"><span class="pre">__tablename__</span></code>.</p>
+<p>Set dataclass options on each model, not on the base. For example,
+<code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">Post(fr.IDMixin,</span> <span class="pre">Base,</span> <span class="pre">eq=True)</span></code> makes two <code class="docutils literal notranslate"><span class="pre">Post</span></code> objects equal when
+their fields are equal. SQLAlchemy takes the options from the first dataclass
+class in the bases of a model, and that is often a mixin. So options on the
+base would apply to some models only, and the base raises
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.RestlyConfigurationError</span></code></a>.</p>
+</div>
+</section>
+<section id="add-common-columns">
+<span id="model-mixins"></span><h2>Add common columns<a class="headerlink" href="#add-common-columns" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="api/models.html#fastapi_restly.models.IDMixin" title="fastapi_restly.models.IDMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDMixin</span></code></a> adds <code class="docutils literal notranslate"><span class="pre">id</span></code>, an integer
+primary key. The database chooses its value, so the constructor does not take
+it.</p>
+<p><a class="reference internal" href="api/models.html#fastapi_restly.models.TimestampsMixin" title="fastapi_restly.models.TimestampsMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.TimestampsMixin</span></code></a> adds
+<code class="docutils literal notranslate"><span class="pre">created_at</span></code> and <code class="docutils literal notranslate"><span class="pre">updated_at</span></code>. Both hold times in UTC, in columns with a
+time zone.
+The constructor sets both to the current time, and SQLAlchemy sets
+<code class="docutils literal notranslate"><span class="pre">updated_at</span></code> again on every update. A schema can return them with
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.TimestampsSchemaMixin" title="fastapi_restly.schemas.TimestampsSchemaMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.TimestampsSchemaMixin</span></code></a>.</p>
+<p>For a different primary key, declare <code class="docutils literal notranslate"><span class="pre">id</span></code> yourself instead of using
+<code class="docutils literal notranslate"><span class="pre">fr.IDMixin</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">uuid</span><span class="w"> </span><span class="kn">import</span> <span class="n">UUID</span><span class="p">,</span> <span class="n">uuid4</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mapped</span><span class="p">,</span> <span class="n">mapped_column</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Product</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="n">UUID</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span>
+        <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default_factory</span><span class="o">=</span><span class="n">uuid4</span>
+    <span class="p">)</span>
+    <span class="n">name</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+</pre></div>
+</div>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>The two mixins are SQLAlchemy dataclass mixins. On a base without
+<code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code>, SQLAlchemy makes each model that uses them a dataclass.
+The constructor of that model then takes keyword arguments only, and requires
+every field without a default.</p>
+<p>Your own mixins with columns, for a base with <code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code>, must be
+dataclass mixins too. Subclass <code class="docutils literal notranslate"><span class="pre">MappedAsDataclass</span></code> and pass the options of
+<code class="docutils literal notranslate"><span class="pre">fr.IDMixin</span></code>, <code class="docutils literal notranslate"><span class="pre">kw_only=True</span></code>, <code class="docutils literal notranslate"><span class="pre">eq=False</span></code> and <code class="docutils literal notranslate"><span class="pre">repr=False</span></code>, as <code class="docutils literal notranslate"><span class="pre">AuditStamped</span></code>
+<a class="reference internal" href="#server-stamped-fields">below</a> does. SQLAlchemy warns about a mixin that is
+not a dataclass, and SQLAlchemy 2.1 rejects it.</p>
+<p>A dataclass mixin gets Python’s defaults for each option that it does not
+set, not the options of <code class="docutils literal notranslate"><span class="pre">Base</span></code>:</p>
+<ul class="simple">
+<li><p>Without <code class="docutils literal notranslate"><span class="pre">kw_only=True</span></code>, a model that lists the mixin first fails when
+Python reads it, with “non-default argument follows default argument”.
+SQLAlchemy takes a model’s options from the first dataclass class in its
+bases.</p></li>
+<li><p>Without <code class="docutils literal notranslate"><span class="pre">eq=False</span></code>, a model with the mixin compares its objects field by
+field, wherever the mixin is in the bases. Comparing two objects can then
+load a relationship, and an async session raises <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>.</p></li>
+<li><p>Without <code class="docutils literal notranslate"><span class="pre">repr=False</span></code>, a model that lists the mixin before <code class="docutils literal notranslate"><span class="pre">Base</span></code> gets a
+dataclass repr instead of the repr of <code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code>. A dataclass repr
+reads its fields, so in async code it can raise <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code> too.</p></li>
+</ul>
+<p>Restly raises
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>
+for a model that gets <code class="docutils literal notranslate"><span class="pre">__eq__</span></code> or <code class="docutils literal notranslate"><span class="pre">__repr__</span></code> from a mixin without <code class="docutils literal notranslate"><span class="pre">eq=False</span></code>
+or <code class="docutils literal notranslate"><span class="pre">repr=False</span></code>. For the dataclass method, a model passes <code class="docutils literal notranslate"><span class="pre">eq=True</span></code> or
+<code class="docutils literal notranslate"><span class="pre">repr=True</span></code>. A model can also write its own <code class="docutils literal notranslate"><span class="pre">__eq__</span></code> or <code class="docutils literal notranslate"><span class="pre">__repr__</span></code>. A model
+below another model, also an <code class="docutils literal notranslate"><span class="pre">__abstract__</span></code> one, takes the choice of that
+model when it passes <code class="docutils literal notranslate"><span class="pre">eq=True</span></code> or <code class="docutils literal notranslate"><span class="pre">repr=True</span></code>.</p>
+</div>
+</section>
+<section id="use-the-base-in-your-app">
+<h2>Use the base in your app<a class="headerlink" href="#use-the-base-in-your-app" title="Link to this heading">#</a></h2>
+<p>Everything that asks for your models’ tables takes the base:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="api/db.html#fastapi_restly.db.async_create_all" title="fastapi_restly.db.async_create_all"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.db.async_create_all(Base)</span></code></a>
+creates the tables during development.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.testing.configure_tests(base=Base)</span></code> tells the test setup which tables
+to clean between tests, and to create with <code class="docutils literal notranslate"><span class="pre">create_all=True</span></code>.
+<a class="reference internal" href="testing.html"><span class="std std-doc">Testing</span></a> shows it.</p></li>
+<li><p>Alembic’s <code class="docutils literal notranslate"><span class="pre">env.py</span></code> sets <code class="docutils literal notranslate"><span class="pre">target_metadata</span> <span class="pre">=</span> <span class="pre">Base.metadata</span></code>, as
+<a class="reference internal" href="deploying.html"><span class="std std-doc">Deploying</span></a> shows.</p></li>
+</ul>
+<p>A base only knows the models that have been imported.
+<a class="reference internal" href="projects.html"><span class="std std-doc">New &amp; Existing Projects</span></a> shows how one module imports
+them all.</p>
+</section>
+<section id="use-your-existing-models">
+<span id="existing-models"></span><h2>Use your existing models<a class="headerlink" href="#use-your-existing-models" title="Link to this heading">#</a></h2>
+<p>Models that you already have can stay on their own base. Restly’s views and
+schemas work with any SQLAlchemy declarative model, dataclass or not:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">DeclarativeBase</span><span class="p">,</span> <span class="n">Mapped</span><span class="p">,</span> <span class="n">mapped_column</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">AppBase</span><span class="p">(</span><span class="n">DeclarativeBase</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">World</span><span class="p">(</span><span class="n">AppBase</span><span class="p">):</span>
+    <span class="n">__tablename__</span> <span class="o">=</span> <span class="s2">&quot;world&quot;</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">autoincrement</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">message</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">WorldView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/world&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">World</span>
+</pre></div>
+</div>
+<p>The view gives <code class="docutils literal notranslate"><span class="pre">World</span></code> the default CRUD routes and
+<a class="reference internal" href="schemas.html#auto-generated-schemas"><span class="std std-ref">schemas generated from the model</span></a>. Pass the same
+base wherever Restly asks for your models’ tables, as in
+<code class="docutils literal notranslate"><span class="pre">fr.db.async_create_all(AppBase)</span></code> and
+<code class="docutils literal notranslate"><span class="pre">fr.testing.configure_tests(base=AppBase)</span></code>.</p>
+<p>You can add <code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code> to such a base later. It changes the models
+that the base already has:</p>
+<ul class="simple">
+<li><p>Their constructors take keyword arguments only, and require every field
+without a default.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Mapped[datetime]</span></code> columns get a time zone. On PostgreSQL, <code class="docutils literal notranslate"><span class="pre">TIMESTAMP</span></code>
+becomes <code class="docutils literal notranslate"><span class="pre">TIMESTAMP</span> <span class="pre">WITH</span> <span class="pre">TIME</span> <span class="pre">ZONE</span></code>. The migration must say how to read the
+stored values, as <a class="reference internal" href="deploying.html#timezone-migration"><span class="std std-ref">Deploying</span></a> shows.</p></li>
+<li><p>Enum columns become strings. On PostgreSQL, a native <code class="docutils literal notranslate"><span class="pre">ENUM</span></code> becomes
+<code class="docutils literal notranslate"><span class="pre">VARCHAR(64)</span></code>, so that needs a migration too.</p></li>
+</ul>
+<p>Alembic shows these column changes when it generates the migration. Review
+the migration before you run it.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>Put <code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code> on the base itself. On a class below another
+declarative base, it raises
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.RestlyConfigurationError</span></code></a>,
+because Restly’s defaults change the registry of the whole base.</p>
+</div>
+</section>
+<section id="where-tenant-audit-and-soft-delete-rules-go">
+<span id="structural-pieces"></span><h2>Where tenant, audit and soft-delete rules go<a class="headerlink" href="#where-tenant-audit-and-soft-delete-rules-go" title="Link to this heading">#</a></h2>
+<p>Each rule goes where it reaches every write or every read:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Rule</p></th>
+<th class="head"><p>Where it goes</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>A value that every write path must set, such as a slug from the title</p></td>
+<td><p>A column default or a mapper event on the model: <a class="reference internal" href="#write-path-values">Set a value on every write path</a></p></td>
+</tr>
+<tr class="row-odd"><td><p>A value that the server owns, such as the author</p></td>
+<td><p>A column default that reads <code class="docutils literal notranslate"><span class="pre">Current</span></code>: <a class="reference internal" href="#server-stamped-fields">Stamp the fields the server owns</a></p></td>
+</tr>
+<tr class="row-even"><td><p>Each tenant reads and writes only its own rows</p></td>
+<td><p>A session listener and a stamped column: <a class="reference internal" href="tenancy.html#tenant-row-scoping"><span class="std std-ref">Multi-Tenancy</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>Deleted rows are hidden from every read</p></td>
+<td><p>The model’s <a class="reference internal" href="scopes.html#default-scope"><span class="std std-ref">default scope</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">DELETE</span></code> marks the row instead of removing it</p></td>
+<td><p>A view mixin that overrides <code class="docutils literal notranslate"><span class="pre">delete</span></code>: <a class="reference internal" href="scopes.html#soft-delete-mixin"><span class="std std-ref">Soft-delete rows</span></a></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The SaaS example has these rules as mixins. The model mixins <code class="docutils literal notranslate"><span class="pre">TenantOwned</span></code>,
+<code class="docutils literal notranslate"><span class="pre">AuditStamped</span></code> and <code class="docutils literal notranslate"><span class="pre">SoftDeletable</span></code> are in
+<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/models.py"><code class="docutils literal notranslate"><span class="pre">app/models.py</span></code></a>,
+and the view mixin <code class="docutils literal notranslate"><span class="pre">SoftDeleteMixin</span></code> is in
+<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py"><code class="docutils literal notranslate"><span class="pre">app/views.py</span></code></a>.
+Copy them into your project as a starting point.
+<a class="reference internal" href="tenancy.html#composing-on-a-view"><span class="std std-ref">Put the parts together</span></a> shows a model and a view that
+use all of them.</p>
+</section>
+<section id="set-a-value-on-every-write-path">
+<span id="write-path-values"></span><h2>Set a value on every write path<a class="headerlink" href="#set-a-value-on-every-write-path" title="Link to this heading">#</a></h2>
+<p>To decide where a value is set, ask which write paths must set it:</p>
+<ul class="simple">
+<li><p><strong>Every write path</strong>: the views, scripts, jobs, imports and the
+<code class="docutils literal notranslate"><span class="pre">fr.objects</span></code> helpers. Put the value on the model, as a column default or a
+mapper event.</p></li>
+<li><p><strong>Only the HTTP API</strong>: put the value in the view’s
+<a class="reference internal" href="lifecycle.html#business-methods"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">create</span></code> or <code class="docutils literal notranslate"><span class="pre">update</span></code></span></a>, such as a password hash from the
+request body.</p></li>
+</ul>
+<p>A view cannot set a value for every write path. A <code class="docutils literal notranslate"><span class="pre">create</span></code> override often
+builds the row itself, without <code class="docutils literal notranslate"><span class="pre">super()</span></code>. Then a value that a view mixin sets
+in <code class="docutils literal notranslate"><span class="pre">create</span></code> is lost. And a script that builds a row, or calls the
+<a class="reference internal" href="lifecycle.html#domain-utilities"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">fr.objects</span></code> functions</span></a>, never runs a view.</p>
+<p>A value from <code class="docutils literal notranslate"><span class="pre">Current</span></code>, such as the author, is a column default:
+<a class="reference internal" href="#server-stamped-fields">Stamp the fields the server owns</a> shows how. A value
+computed from other columns, such as a slug from the title, is a SQLAlchemy
+<code class="docutils literal notranslate"><span class="pre">before_insert</span></code> mapper event on the model:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">event</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mapped</span><span class="p">,</span> <span class="n">mapped_column</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Article</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDMixin</span><span class="p">,</span> <span class="n">Base</span><span class="p">):</span>
+    <span class="n">title</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">slug</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+
+<span class="nd">@event</span><span class="o">.</span><span class="n">listens_for</span><span class="p">(</span><span class="n">Article</span><span class="p">,</span> <span class="s2">&quot;before_insert&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_set_slug</span><span class="p">(</span><span class="n">mapper</span><span class="p">,</span> <span class="n">connection</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
+    <span class="n">target</span><span class="o">.</span><span class="n">slug</span> <span class="o">=</span> <span class="n">slugify</span><span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">title</span><span class="p">)</span>  <span class="c1"># slugify is your own function</span>
+</pre></div>
+</div>
+<p>SQLAlchemy runs the event during the flush, just before it inserts the row.
+If the slug must change when the title changes, listen to <code class="docutils literal notranslate"><span class="pre">before_update</span></code>
+too. Mark <code class="docutils literal notranslate"><span class="pre">slug</span></code> as <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code></a> on
+the schema, so the request body cannot send it.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>A mapper event may change only the row that it receives, and it may run SQL
+on <code class="docutils literal notranslate"><span class="pre">connection</span></code>. To change other rows in the same flush, use the session’s
+<code class="docutils literal notranslate"><span class="pre">before_flush</span></code> event. SQLAlchemy’s
+<a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/events.html#mapper-events">mapper events documentation</a>
+explains these rules.</p>
+<p>The SaaS example does both. A project’s slug comes from mapper events, with a
+query on <code class="docutils literal notranslate"><span class="pre">connection</span></code> that keeps the slug unique, in
+<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/models.py"><code class="docutils literal notranslate"><span class="pre">app/projects/models.py</span></code></a>.
+The story-point total of a project comes from a <code class="docutils literal notranslate"><span class="pre">before_flush</span></code> event that
+reads the changes of each task, in
+<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/tasks/models.py"><code class="docutils literal notranslate"><span class="pre">app/tasks/models.py</span></code></a>.</p>
+</div>
+</section>
+<section id="stamp-the-fields-the-server-owns">
+<span id="server-stamped-fields"></span><h2>Stamp the fields the server owns<a class="headerlink" href="#stamp-the-fields-the-server-owns" title="Link to this heading">#</a></h2>
+<p>The server decides some fields, such as who created a row and who changed it
+last. Make each one a column default that reads a member of your
+<a class="reference internal" href="context.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">Current</span></code></span></a>. This mixin stamps both fields on each model
+that uses it:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">ForeignKey</span><span class="p">,</span> <span class="n">orm</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">app.current</span><span class="w"> </span><span class="kn">import</span> <span class="n">Current</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">AuditStamped</span><span class="p">(</span><span class="n">orm</span><span class="o">.</span><span class="n">MappedAsDataclass</span><span class="p">,</span> <span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">eq</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="nb">repr</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="n">created_by_id</span><span class="p">:</span> <span class="n">orm</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="n">orm</span><span class="o">.</span><span class="n">mapped_column</span><span class="p">(</span>
+        <span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;user.id&quot;</span><span class="p">),</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">insert_default</span><span class="o">=</span><span class="n">Current</span><span class="o">.</span><span class="n">user_id</span>
+    <span class="p">)</span>
+    <span class="n">updated_by_id</span><span class="p">:</span> <span class="n">orm</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="n">orm</span><span class="o">.</span><span class="n">mapped_column</span><span class="p">(</span>
+        <span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;user.id&quot;</span><span class="p">),</span>
+        <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">insert_default</span><span class="o">=</span><span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">,</span>
+        <span class="n">onupdate</span><span class="o">=</span><span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Document</span><span class="p">(</span><span class="n">AuditStamped</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">TimestampsMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDMixin</span><span class="p">,</span> <span class="n">Base</span><span class="p">):</span>
+    <span class="n">title</span><span class="p">:</span> <span class="n">orm</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Each argument has one job:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">insert_default</span></code> gives the value for a new row. On a base with
+<code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code>, <code class="docutils literal notranslate"><span class="pre">default</span></code> is the default of the constructor, so the
+value for the <code class="docutils literal notranslate"><span class="pre">INSERT</span></code> goes in <code class="docutils literal notranslate"><span class="pre">insert_default</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">onupdate</span></code> gives the value for each <code class="docutils literal notranslate"><span class="pre">UPDATE</span></code> of the row. SQLAlchemy sends
+an <code class="docutils literal notranslate"><span class="pre">UPDATE</span></code> only when a column of the row has changed.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">init=False</span></code> keeps the field out of the constructor.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Current.user_id</span></code> has no parentheses. SQLAlchemy calls it when it writes
+the row, as
+<a class="reference internal" href="context.html#current-column-defaults"><span class="std std-ref">Read the current user in a column default</span></a>
+explains.</p></li>
+</ul>
+<p>Then mark each field
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code></a> on the view’s schema,
+and leave it out of any <a class="reference internal" href="schemas.html#explicit-write-schemas"><span class="std std-ref">explicit write schema</span></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">DocumentSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">TimestampsSchemaMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">created_by_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">updated_by_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+</pre></div>
+</div>
+<p>In a schema that you write, <code class="docutils literal notranslate"><span class="pre">init=False</span></code> does not protect the field from the
+request body. Restly sets each writable field that the constructor does not
+take after it builds the object. So without <code class="docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code>, a client could
+choose the author, and the column default would not run. With <code class="docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code>,
+the value always comes from <code class="docutils literal notranslate"><span class="pre">Current</span></code>. A view without a schema is safe: the
+<a class="reference internal" href="schemas.html#auto-generated-schemas"><span class="std std-ref">schema that Restly generates</span></a> marks each column with
+<code class="docutils literal notranslate"><span class="pre">init=False</span></code> as <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>. With <code class="docutils literal notranslate"><span class="pre">fr.configure(warn_on_misuse=True)</span></code>, Restly
+warns about a writable field on a column with <code class="docutils literal notranslate"><span class="pre">init=False</span></code> and a default, and
+about a writable relationship field whose foreign key is such a column.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>A column default runs on every write path: a view’s <code class="docutils literal notranslate"><span class="pre">create</span></code>, a custom route
+that builds the row itself, the <code class="docutils literal notranslate"><span class="pre">fr.objects</span></code> helpers, a bulk route, a script.
+Each of them must have <code class="docutils literal notranslate"><span class="pre">Current</span></code> bound when it flushes. If the member is not
+bound, the flush raises SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">StatementError</span></code> around a <code class="docutils literal notranslate"><span class="pre">LookupError</span></code>.
+It never writes <code class="docutils literal notranslate"><span class="pre">None</span></code> instead. A script or a job binds the values around its
+writes, as <a class="reference internal" href="context.html#current-manual-binding"><span class="std std-ref">Bind in a script or job</span></a> shows:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">Current</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">user_id</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Document</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">&quot;Imported&quot;</span><span class="p">))</span>
+    <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Make the columns nullable if some rows have no author. In the SaaS example,
+the first admin comes from a migration. A migration writes through its own
+table objects and runs no ORM default, so that row has no creator. The SaaS
+example runs these stamps as <code class="docutils literal notranslate"><span class="pre">AuditStamped</span></code> in
+<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/models.py"><code class="docutils literal notranslate"><span class="pre">app/models.py</span></code></a>.</p>
+</div>
+<section id="two-foreign-keys-to-the-same-table">
+<h3>Two foreign keys to the same table<a class="headerlink" href="#two-foreign-keys-to-the-same-table" title="Link to this heading">#</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">created_by_id</span></code> and <code class="docutils literal notranslate"><span class="pre">updated_by_id</span></code> both point at <code class="docutils literal notranslate"><span class="pre">user.id</span></code>. A model can
+already have a relationship to <code class="docutils literal notranslate"><span class="pre">User</span></code>, such as <code class="docutils literal notranslate"><span class="pre">assignee</span></code> on <code class="docutils literal notranslate"><span class="pre">Task</span></code>. Then
+SQLAlchemy cannot tell which foreign key that relationship uses, and it raises
+<code class="docutils literal notranslate"><span class="pre">AmbiguousForeignKeysError</span></code>. Name the foreign key on the relationship:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Task</span><span class="p">(</span><span class="n">AuditStamped</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">TimestampsMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDMixin</span><span class="p">,</span> <span class="n">Base</span><span class="p">):</span>
+    <span class="n">assignee_id</span><span class="p">:</span> <span class="n">orm</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">orm</span><span class="o">.</span><span class="n">mapped_column</span><span class="p">(</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;user.id&quot;</span><span class="p">))</span>
+    <span class="n">assignee</span><span class="p">:</span> <span class="n">orm</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="n">User</span><span class="p">]</span> <span class="o">=</span> <span class="n">orm</span><span class="o">.</span><span class="n">relationship</span><span class="p">(</span><span class="n">foreign_keys</span><span class="o">=</span><span class="s2">&quot;Task.assignee_id&quot;</span><span class="p">)</span>
+
+    <span class="c1"># AuditStamped adds two more foreign keys to user.id.</span>
+    <span class="c1"># Without foreign_keys=&quot;...&quot;, the assignee relationship is ambiguous.</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="see-also">
+<h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="context.html"><span class="std std-doc">Request Context</span></a>: bind the values that column defaults
+read.</p></li>
+<li><p><a class="reference internal" href="tenancy.html"><span class="std std-doc">Multi-Tenancy</span></a>: the tenant column, and the session rule that
+filters every read.</p></li>
+<li><p><a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a>: hide rows from every read, and
+<a class="reference internal" href="scopes.html#soft-delete-mixin"><span class="std std-ref">soft-delete rows</span></a>.</p></li>
+<li><p><a class="reference internal" href="lifecycle.html#business-methods"><span class="std std-ref">Request Lifecycle &amp; Hooks</span></a>: values that only the HTTP
+API sets, in <code class="docutils literal notranslate"><span class="pre">create</span></code> and <code class="docutils literal notranslate"><span class="pre">update</span></code>.</p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="database.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Database &amp; Configuration</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="views.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Views</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#add-restly-s-defaults-to-your-base">Add Restly’s defaults to your base</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#change-a-default">Change a default</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#add-common-columns">Add common columns</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-the-base-in-your-app">Use the base in your app</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-your-existing-models">Use your existing models</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#where-tenant-audit-and-soft-delete-rules-go">Where tenant, audit and soft-delete rules go</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#set-a-value-on-every-write-path">Set a value on every write path</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#stamp-the-fields-the-server-owns">Stamp the fields the server owns</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#two-foreign-keys-to-the-same-table">Two foreign keys to the same table</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+<p class="sidebar-newsletter">
+  <a href="newsletter.html">Subscribe to newsletter</a>
+</p></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, Rutger Prins.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

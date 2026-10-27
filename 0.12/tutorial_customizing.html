@@ -1,0 +1,1244 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" data-theme="auto">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, follow">
+
+    <title>Tutorial: Add Authors and Drafts &#8212; FastAPI-Restly 0.12.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "auto";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "auto";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=61ccb1f1"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'tutorial_customizing';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://www.fastapi-restly.org/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '0.12';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script src="_static/newsletter.js?v=7326e93d"></script>
+    <link rel="canonical" href="https://www.fastapi-restly.org/0.12/tutorial_customizing.html" />
+    <link rel="icon" href="_static/favicon.svg"/>
+    <link rel="author" title="About these documents" href="about.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Guide" href="guide.html" />
+    <link rel="prev" title="Tutorial: Build a Blog API" href="tutorial.html" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.12" />
+<meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700&amp;display=swap"
+      rel="stylesheet" />
+<!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
+<script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="auto">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/fr-monogram.svg" class="logo__image only-light" alt=""/>
+    <img src="_static/fr-monogram-dark.svg" class="logo__image only-dark pst-js-only" alt=""/>
+  
+  
+    <p class="title logo__title">FastAPI-Restly</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Tutorial: Add Authors and Drafts</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="tutorial.html" class="nav-link">Tutorial: Build a Blog API</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Tutorial: Add Authors and Drafts</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="tutorial-add-authors-and-drafts">
+<h1>Tutorial: Add Authors and Drafts<a class="headerlink" href="#tutorial-add-authors-and-drafts" title="Link to this heading">#</a></h1>
+<p>This tutorial continues <a class="reference internal" href="tutorial.html"><span class="std std-doc">Build a Blog API</span></a>. It turns the blog
+into a blog with several writers:</p>
+<ul class="simple">
+<li><p>Anyone can read published posts.</p></li>
+<li><p>A new post is a draft. Only its author can see it.</p></li>
+<li><p>Only the author can change a post or publish it.</p></li>
+<li><p>Comments follow the same rules.</p></li>
+</ul>
+<p>Each rule is one declaration or one short method that Restly calls. At the
+end, you write tests for the rules. The tutorial takes about forty minutes. Start
+from the complete file of <a class="reference internal" href="tutorial.html"><span class="std std-doc">Build a Blog API</span></a>.</p>
+<section id="know-who-is-calling">
+<h2>Know who is calling<a class="headerlink" href="#know-who-is-calling" title="Link to this heading">#</a></h2>
+<p>Every rule above depends on who is calling. Restly does not log users in.
+Your own authentication decides who is calling. Restly makes the answer
+available to the rest of your code through a <code class="docutils literal notranslate"><span class="pre">Current</span></code> class, a
+<a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.ContextNamespace" title="fastapi_restly.clauses.ContextNamespace"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ContextNamespace</span></code></a>.</p>
+<p>Add <code class="docutils literal notranslate"><span class="pre">from</span> <span class="pre">typing</span> <span class="pre">import</span> <span class="pre">Annotated</span></code> and <code class="docutils literal notranslate"><span class="pre">from</span> <span class="pre">fastapi</span> <span class="pre">import</span> <span class="pre">Header</span></code> to the
+imports. Then put this code above the <code class="docutils literal notranslate"><span class="pre">app</span> <span class="pre">=</span> <span class="pre">FastAPI(...)</span></code> line:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Current</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ContextNamespace</span><span class="p">):</span>
+    <span class="n">user_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ContextParam</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_user_id</span><span class="p">(</span>
+    <span class="n">user_id</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">Header</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">&quot;X-User-ID&quot;</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="c1"># Demo stand-in for real authentication. None means an anonymous reader.</span>
+    <span class="k">return</span> <span class="n">user_id</span>
+</pre></div>
+</div>
+<p>Replace the <code class="docutils literal notranslate"><span class="pre">app</span> <span class="pre">=</span> <span class="pre">FastAPI(...)</span></code> line with this one:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">(</span><span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">,</span> <span class="n">dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">Current</span><span class="o">.</span><span class="n">depends</span><span class="p">(</span><span class="n">user_id</span><span class="o">=</span><span class="n">get_user_id</span><span class="p">)])</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">get_user_id</span></code> takes the user id from an <code class="docutils literal notranslate"><span class="pre">X-User-ID</span></code> header, so you can try
+the API with <code class="docutils literal notranslate"><span class="pre">curl</span></code>. Any client can send this header, so use it only for
+trying things out. In a real app, this function checks a session cookie or
+a token. <a class="reference internal" href="context.html#current-request-binding"><span class="std std-ref">Bind from a FastAPI dependency</span></a> shows
+where your own authentication goes.</p>
+<p><a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.ContextNamespace.depends" title="fastapi_restly.clauses.ContextNamespace.depends"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Current.depends(...)</span></code></a>
+turns <code class="docutils literal notranslate"><span class="pre">get_user_id</span></code> into a FastAPI dependency. For each request, it calls
+<code class="docutils literal notranslate"><span class="pre">get_user_id</span></code> and stores the result in <code class="docutils literal notranslate"><span class="pre">Current</span></code>. All code that runs during
+the request can then read it with <code class="docutils literal notranslate"><span class="pre">Current.user_id()</span></code>. The dependency is on
+the app, so every route gets it. A reader without the header gets <code class="docutils literal notranslate"><span class="pre">None</span></code>,
+because reading the blog does not need a login.</p>
+<p>Reload <a class="reference external" href="http://127.0.0.1:8000/docs">http://127.0.0.1:8000/docs</a>. Every route now has an <code class="docutils literal notranslate"><span class="pre">X-User-ID</span></code>
+header field. The requests in this tutorial play two writers: Anna sends
+<code class="docutils literal notranslate"><span class="pre">X-User-ID:</span> <span class="pre">1</span></code>, and Ben sends <code class="docutils literal notranslate"><span class="pre">X-User-ID:</span> <span class="pre">2</span></code>.</p>
+</section>
+<section id="record-the-author">
+<h2>Record the author<a class="headerlink" href="#record-the-author" title="Link to this heading">#</a></h2>
+<p>The server decides who wrote a post, not the client. A column default on the
+model reads <code class="docutils literal notranslate"><span class="pre">Current</span></code>. Add the <code class="docutils literal notranslate"><span class="pre">author_id</span></code> column to <code class="docutils literal notranslate"><span class="pre">Post</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Post</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>
+    <span class="n">__tablename__</span> <span class="o">=</span> <span class="s2">&quot;post&quot;</span>
+
+    <span class="nb">id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">title</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">content</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">published</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">author_id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">insert_default</span><span class="o">=</span><span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">insert_default=Current.user_id</span></code> sets the column when SQLAlchemy inserts the
+row. Write <code class="docutils literal notranslate"><span class="pre">Current.user_id</span></code> without parentheses. With them, Python would
+read the value when it defines the class. No request has set a value then,
+so that fails.
+<a class="reference internal" href="context.html#current-column-defaults"><span class="std std-ref">Read the current user in a column default</span></a>
+explains this. The default runs on every insert, from any view or script.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">post</span></code> table has a new column now.
+<a class="reference internal" href="api/db.html#fastapi_restly.db.async_create_all" title="fastapi_restly.db.async_create_all"><code class="xref py py-func docutils literal notranslate"><span class="pre">async_create_all</span></code></a> creates missing
+tables, but it does not change a table that exists. Stop the server with
+Ctrl+C, delete the <code class="docutils literal notranslate"><span class="pre">blog.db</span></code> file, and start the server again with
+<code class="docutils literal notranslate"><span class="pre">fastapi</span> <span class="pre">dev</span> <span class="pre">main.py</span></code>. It creates the tables again. Then let Anna write a
+post. She also sends <code class="docutils literal notranslate"><span class="pre">&quot;author_id&quot;:</span> <span class="pre">2</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8000/posts<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;X-User-ID: 1&#39;</span><span class="w"> </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;title&quot;: &quot;Hello&quot;, &quot;content&quot;: &quot;World&quot;, &quot;author_id&quot;: 2}&#39;</span>
+<span class="c1"># 201, with &quot;author_id&quot;: 2</span>
+</pre></div>
+</div>
+<p>Anna has written a post in Ben’s name. Posts still use the schema that Restly
+generated from the model, and that schema accepts every column. So posts need
+a schema of their own, which returns <code class="docutils literal notranslate"><span class="pre">author_id</span></code> but does not accept it.
+Delete the post first:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-X<span class="w"> </span>DELETE<span class="w"> </span>http://127.0.0.1:8000/posts/1
+</pre></div>
+</div>
+<p>Add this schema above <code class="docutils literal notranslate"><span class="pre">PostView</span></code>, and add <code class="docutils literal notranslate"><span class="pre">schema</span> <span class="pre">=</span> <span class="pre">PostSchema</span></code> to the view,
+as you did for comments:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">PostSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">published</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span>
+    <span class="n">author_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>A <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code></a> field appears in
+responses, and Restly ignores it in a request body. <code class="docutils literal notranslate"><span class="pre">published</span></code> is read-only
+too, because a new post is a draft. A route later in this tutorial publishes
+a post. Send Anna’s request again:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8000/posts<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;X-User-ID: 1&#39;</span><span class="w"> </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;title&quot;: &quot;Hello&quot;, &quot;content&quot;: &quot;World&quot;, &quot;author_id&quot;: 2}&#39;</span>
+<span class="c1"># 201, with &quot;author_id&quot;: 1 and &quot;published&quot;: false</span>
+</pre></div>
+</div>
+</section>
+<section id="hide-drafts-from-other-readers">
+<h2>Hide drafts from other readers<a class="headerlink" href="#hide-drafts-from-other-readers" title="Link to this heading">#</a></h2>
+<p>A scope is the rule for which rows a reader can see. Declare it once, for the
+model. Add <code class="docutils literal notranslate"><span class="pre">or_</span></code> to the <code class="docutils literal notranslate"><span class="pre">sqlalchemy</span></code> import, and put this below <code class="docutils literal notranslate"><span class="pre">Post</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">PostClauses</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ClauseNamespace</span><span class="p">):</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Post</span>
+
+    <span class="n">default_scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span>
+        <span class="n">or_</span><span class="p">(</span><span class="n">Post</span><span class="o">.</span><span class="n">published</span><span class="p">,</span> <span class="n">Post</span><span class="o">.</span><span class="n">author_id</span> <span class="o">==</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">)</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.ClauseNamespace" title="fastapi_restly.clauses.ClauseNamespace"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ClauseNamespace</span></code></a> holds
+the query rules of one model, and
+<a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.where_clause" title="fastapi_restly.clauses.where_clause"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.where_clause</span></code></a> turns a
+SQLAlchemy condition into such a rule. The rule named <code class="docutils literal notranslate"><span class="pre">default_scope</span></code> applies
+to every read of posts. The list and its total count show only the posts in
+the scope. A single post outside the scope returns 404, also for <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> and
+<code class="docutils literal notranslate"><span class="pre">DELETE</span></code>.</p>
+<p>Here, <code class="docutils literal notranslate"><span class="pre">Current.user_id</span></code> again has no parentheses. Restly reads the value
+each time it runs the query. For an anonymous reader the value is <code class="docutils literal notranslate"><span class="pre">None</span></code>.
+<code class="docutils literal notranslate"><span class="pre">author_id</span> <span class="pre">=</span> <span class="pre">NULL</span></code> is never true in SQL, so an anonymous reader sees only
+published posts. Try it as Ben, as an anonymous reader, and as Anna:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-H<span class="w"> </span><span class="s1">&#39;X-User-ID: 2&#39;</span><span class="w"> </span>http://127.0.0.1:8000/posts/1
+<span class="c1"># 404</span>
+curl<span class="w"> </span>http://127.0.0.1:8000/posts
+<span class="c1"># 200, with &quot;total_count&quot;: 0</span>
+curl<span class="w"> </span>-H<span class="w"> </span><span class="s1">&#39;X-User-ID: 1&#39;</span><span class="w"> </span>http://127.0.0.1:8000/posts/1
+<span class="c1"># 200</span>
+</pre></div>
+</div>
+<p>The scope also checks references. <code class="docutils literal notranslate"><span class="pre">post_id:</span> <span class="pre">fr.MustExist[int,</span> <span class="pre">Post]</span></code> on
+comments looks for the post inside the scope. So Ben cannot comment on
+Anna’s draft, and this needs no extra code:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8000/comments<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;X-User-ID: 2&#39;</span><span class="w"> </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;content&quot;: &quot;Nice post&quot;, &quot;post_id&quot;: 1}&#39;</span>
+<span class="c1"># 404</span>
+</pre></div>
+</div>
+</section>
+<section id="only-the-author-may-change-a-post">
+<h2>Only the author may change a post<a class="headerlink" href="#only-the-author-may-change-a-post" title="Link to this heading">#</a></h2>
+<p>Writing needs a user. Try to write a post without the header:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8000/posts<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;title&quot;: &quot;Hi&quot;, &quot;content&quot;: &quot;Anonymous&quot;}&#39;</span>
+<span class="c1"># 409, &quot;Not-null constraint violated on post.author_id&quot;</span>
+</pre></div>
+</div>
+<p>The post has no author, so the database refuses it. The answer should come
+before the database, and say what is wrong. And seeing a post does not mean
+that you may change it: another writer can read a published post, but must
+not edit it. Restly calls
+<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView.authorize" title="fastapi_restly.views.AsyncRestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a> before each
+action, so the view overrides it. Add <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">fastapi</span></code> to the imports, and
+add <code class="docutils literal notranslate"><span class="pre">authorize</span></code> to <code class="docutils literal notranslate"><span class="pre">PostView</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PostView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/posts&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Post</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">PostSchema</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">authorize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="ow">in</span> <span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">GET_MANY</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">GET_ONE</span><span class="p">):</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">fastapi</span><span class="o">.</span><span class="n">HTTPException</span><span class="p">(</span><span class="mi">401</span><span class="p">,</span> <span class="s2">&quot;Log in to write&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">CREATE</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">obj</span><span class="o">.</span><span class="n">author_id</span> <span class="o">!=</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">Forbidden</span><span class="p">(</span><span class="s2">&quot;Only the author can change this&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">action</span></code> names the action. <a class="reference internal" href="api/views.html#fastapi_restly.views.Action" title="fastapi_restly.views.Action"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.Action</span></code></a>
+has a constant for each CRUD action: <code class="docutils literal notranslate"><span class="pre">GET_MANY</span></code>, <code class="docutils literal notranslate"><span class="pre">GET_ONE</span></code>, <code class="docutils literal notranslate"><span class="pre">CREATE</span></code>,
+<code class="docutils literal notranslate"><span class="pre">UPDATE</span></code> and <code class="docutils literal notranslate"><span class="pre">DELETE</span></code>.</p></li>
+<li><p>Everyone may read. The scope already decides which posts they see.</p></li>
+<li><p>Every write needs a user, and every user may create a post.</p></li>
+<li><p>Every other write changes one post, and <code class="docutils literal notranslate"><span class="pre">obj</span></code> is that post. Only its
+author passes. A write without <code class="docutils literal notranslate"><span class="pre">obj</span></code> fails, so a new action is safe until
+you allow it.</p></li>
+</ul>
+<p>Send the anonymous request again, and let Ben try to edit Anna’s draft:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8000/posts<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;title&quot;: &quot;Hi&quot;, &quot;content&quot;: &quot;Anonymous&quot;}&#39;</span>
+<span class="c1"># 401, &quot;Log in to write&quot;</span>
+curl<span class="w"> </span>-X<span class="w"> </span>PATCH<span class="w"> </span>http://127.0.0.1:8000/posts/1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;X-User-ID: 2&#39;</span><span class="w"> </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;title&quot;: &quot;Edited&quot;}&#39;</span>
+<span class="c1"># 404</span>
+</pre></div>
+</div>
+<p>Ben gets 404, because the scope hides the draft from him: for this reader,
+the post does not exist. When he can see the post but may not change it,
+<code class="docutils literal notranslate"><span class="pre">authorize</span></code> answers 403. The next section shows this.
+<a class="reference internal" href="authorization.html#authorize-gate"><span class="std std-ref">Allow or refuse an action</span></a> has more examples.</p>
+</section>
+<section id="publish-a-draft">
+<h2>Publish a draft<a class="headerlink" href="#publish-a-draft" title="Link to this heading">#</a></h2>
+<p>Publishing is an action, not a field edit. Add the action and a route for it
+to <code class="docutils literal notranslate"><span class="pre">PostView</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">class</span><span class="w"> </span><span class="nc">Action</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="p">):</span>
+        <span class="n">PUBLISH</span> <span class="o">=</span> <span class="s2">&quot;publish&quot;</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/publish&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">publish</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Post</span><span class="p">:</span>
+        <span class="n">post</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">PUBLISH</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">post</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">post</span><span class="o">.</span><span class="n">published</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">Conflict</span><span class="p">(</span><span class="s2">&quot;Already published&quot;</span><span class="p">)</span>
+            <span class="n">post</span><span class="o">.</span><span class="n">published</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="n">post</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Action</span></code> lists the actions of the view. It inherits the five CRUD actions
+from <a class="reference internal" href="api/views.html#fastapi_restly.views.Action" title="fastapi_restly.views.Action"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.Action</span></code></a> and adds <code class="docutils literal notranslate"><span class="pre">PUBLISH</span></code>.
+<code class="docutils literal notranslate"><span class="pre">write_action</span></code> takes only a name from this class. See
+<a class="reference internal" href="authorization.html#action-names"><span class="std std-ref">Action names</span></a>.</p></li>
+<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.post" title="fastapi_restly.views.post"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;fr.post</span></code></a> adds a route to the view,
+beside the CRUD routes.</p></li>
+<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView.get_one" title="fastapi_restly.views.AsyncRestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> loads the post
+through the scope. Another writer’s draft returns 404.</p></li>
+<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView.write_action" title="fastapi_restly.views.AsyncRestView.write_action"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_action</span></code></a> first
+calls <code class="docutils literal notranslate"><span class="pre">authorize(&quot;publish&quot;,</span> <span class="pre">post)</span></code>. The <code class="docutils literal notranslate"><span class="pre">authorize</span></code> method above lets only
+the author pass. When the block ends, Restly commits the change. If the
+block raises an exception, Restly does not commit.</p></li>
+<li><p>The route returns the post. Its return type is the view’s model, <code class="docutils literal notranslate"><span class="pre">Post</span></code>,
+so Restly sends the post in the same shape as the CRUD routes, and <code class="docutils literal notranslate"><span class="pre">/docs</span></code>
+shows that shape for the new route.</p></li>
+</ul>
+<p>Anna publishes her post. Then everyone can read it, and Ben gets 403 when he
+tries to edit it:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>-H<span class="w"> </span><span class="s1">&#39;X-User-ID: 1&#39;</span><span class="w"> </span>http://127.0.0.1:8000/posts/1/publish
+<span class="c1"># 200, with &quot;published&quot;: true</span>
+curl<span class="w"> </span>http://127.0.0.1:8000/posts/1
+<span class="c1"># 200</span>
+curl<span class="w"> </span>-X<span class="w"> </span>PATCH<span class="w"> </span>http://127.0.0.1:8000/posts/1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;X-User-ID: 2&#39;</span><span class="w"> </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;title&quot;: &quot;Edited&quot;}&#39;</span>
+<span class="c1"># 403, &quot;Only the author can change this&quot;</span>
+curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>-H<span class="w"> </span><span class="s1">&#39;X-User-ID: 1&#39;</span><span class="w"> </span>http://127.0.0.1:8000/posts/1/publish
+<span class="c1"># 409, &quot;Already published&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="tell-subscribers-about-a-new-post">
+<h2>Tell subscribers about a new post<a class="headerlink" href="#tell-subscribers-about-a-new-post" title="Link to this heading">#</a></h2>
+<p>Readers want to hear about a new post. Send the message after the commit, so
+that subscribers never hear about a post that was not saved. Put this
+function above <code class="docutils literal notranslate"><span class="pre">PostView</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">notify_subscribers</span><span class="p">(</span><span class="n">post</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;New post: </span><span class="si">{</span><span class="n">post</span><span class="o">.</span><span class="n">title</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>  <span class="c1"># stand-in for an email or a webhook</span>
+</pre></div>
+</div>
+<p>Add this method to <code class="docutils literal notranslate"><span class="pre">PostView</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">after_action_commit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">new</span><span class="p">,</span> <span class="n">old</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">PUBLISH</span><span class="p">:</span>
+            <span class="k">await</span> <span class="n">notify_subscribers</span><span class="p">(</span><span class="n">new</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Restly calls
+<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView.after_action_commit" title="fastapi_restly.views.AsyncRestView.after_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_action_commit</span></code></a>
+after it commits a write. <code class="docutils literal notranslate"><span class="pre">action</span></code> is the name of the action, and <code class="docutils literal notranslate"><span class="pre">new</span></code> is
+the saved post. The hook runs after the commit, so an error in it cannot
+undo the publish. <a class="reference internal" href="lifecycle.html#after-action-commit-raises"><span class="std std-ref">When <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> raises</span></a>
+shows how to handle such an error.</p>
+<p>Anna writes a second post and publishes it. The server terminal prints
+<code class="docutils literal notranslate"><span class="pre">New</span> <span class="pre">post:</span> <span class="pre">Second</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8000/posts<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;X-User-ID: 1&#39;</span><span class="w"> </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;title&quot;: &quot;Second&quot;, &quot;content&quot;: &quot;More&quot;}&#39;</span>
+curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>-H<span class="w"> </span><span class="s1">&#39;X-User-ID: 1&#39;</span><span class="w"> </span>http://127.0.0.1:8000/posts/2/publish
+</pre></div>
+</div>
+<p>A side effect that must be saved together with the post, such as an audit
+row, goes in
+<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView.before_action_commit" title="fastapi_restly.views.AsyncRestView.before_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_action_commit</span></code></a>
+instead. See <a class="reference internal" href="lifecycle.html#transaction-hooks"><span class="std std-ref">Run code before or after the commit</span></a>.</p>
+</section>
+<section id="share-the-rules-with-comments">
+<h2>Share the rules with comments<a class="headerlink" href="#share-the-rules-with-comments" title="Link to this heading">#</a></h2>
+<p>Comments need the same rules:</p>
+<ul class="simple">
+<li><p>A comment has an author.</p></li>
+<li><p>A comment on a hidden draft stays hidden.</p></li>
+<li><p>Only its author may edit or delete a comment.</p></li>
+</ul>
+<p>The model and the schema get the same author field as posts. The model also
+gets a scope. Add <code class="docutils literal notranslate"><span class="pre">relationship</span></code> to the <code class="docutils literal notranslate"><span class="pre">sqlalchemy.orm</span></code> import, and replace
+<code class="docutils literal notranslate"><span class="pre">Comment</span></code> and <code class="docutils literal notranslate"><span class="pre">CommentSchema</span></code> with this code:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Comment</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>
+    <span class="n">__tablename__</span> <span class="o">=</span> <span class="s2">&quot;comment&quot;</span>
+
+    <span class="nb">id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">content</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">post_id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;post.id&quot;</span><span class="p">))</span>
+    <span class="n">author_id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">insert_default</span><span class="o">=</span><span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">)</span>
+    <span class="n">post</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="n">Post</span><span class="p">]</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">()</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">CommentClauses</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ClauseNamespace</span><span class="p">):</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Comment</span>
+
+    <span class="n">default_scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span><span class="n">Comment</span><span class="o">.</span><span class="n">post</span><span class="o">.</span><span class="n">has</span><span class="p">(</span><span class="n">PostClauses</span><span class="o">.</span><span class="n">default_scope</span><span class="p">))</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">CommentSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">post_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">MustExist</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Post</span><span class="p">]</span>
+    <span class="n">author_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>A scope covers only its own model. The post scope hides a draft, but not the
+comments on it. So comments get their own scope:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">post</span></code> is a relationship from a comment to its post.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Comment.post.has(...)</span></code> is true when the comment’s post matches the
+condition in the brackets.</p></li>
+<li><p>The condition is the post scope, written without parentheses. Restly reads
+its <code class="docutils literal notranslate"><span class="pre">Current.user_id</span></code> each time it applies the comment scope.</p></li>
+</ul>
+<p>Together: a comment is visible when its post is visible.
+<a class="reference internal" href="clauses.html#clause-in-expression"><span class="std std-ref">Use a clause inside another condition</span></a> explains this in more
+detail.</p>
+<p>Views are normal Python classes. Move <code class="docutils literal notranslate"><span class="pre">authorize</span></code> from <code class="docutils literal notranslate"><span class="pre">PostView</span></code> into a
+base class, and put the base class below the <code class="docutils literal notranslate"><span class="pre">app</span> <span class="pre">=</span> <span class="pre">FastAPI(...)</span></code> line:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">AuthoredView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">authorize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="ow">in</span> <span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">GET_MANY</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">GET_ONE</span><span class="p">):</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">fastapi</span><span class="o">.</span><span class="n">HTTPException</span><span class="p">(</span><span class="mi">401</span><span class="p">,</span> <span class="s2">&quot;Log in to write&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">CREATE</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">obj</span><span class="o">.</span><span class="n">author_id</span> <span class="o">!=</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">Forbidden</span><span class="p">(</span><span class="s2">&quot;Only the author can change this&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Both views inherit it:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PostView</span><span class="p">(</span><span class="n">AuthoredView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/posts&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Post</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">PostSchema</span>
+    <span class="c1"># Action, publish and after_action_commit as above</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CommentView</span><span class="p">(</span><span class="n">AuthoredView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/comments&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Comment</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">CommentSchema</span>
+</pre></div>
+</div>
+<p>Register only the views that have a model, not the base class.
+<a class="reference internal" href="views.html#share-behaviour-with-base-views"><span class="std std-ref">Share behavior with base views</span></a> covers inheritance in
+more detail.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">comment</span></code> table has a new column. Stop the server, delete <code class="docutils literal notranslate"><span class="pre">blog.db</span></code>, and
+start the server again. Then try the whole story again, with comments:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Anna writes a post, and a note on her draft.</span>
+curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8000/posts<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;X-User-ID: 1&#39;</span><span class="w"> </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;title&quot;: &quot;Hello&quot;, &quot;content&quot;: &quot;World&quot;}&#39;</span>
+curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8000/comments<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;X-User-ID: 1&#39;</span><span class="w"> </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;content&quot;: &quot;Note to self&quot;, &quot;post_id&quot;: 1}&#39;</span>
+<span class="c1"># 201, with &quot;author_id&quot;: 1</span>
+
+<span class="c1"># Ben does not see the note, because the post is a draft.</span>
+curl<span class="w"> </span>-H<span class="w"> </span><span class="s1">&#39;X-User-ID: 2&#39;</span><span class="w"> </span>http://127.0.0.1:8000/comments
+<span class="c1"># 200, with &quot;total_count&quot;: 0</span>
+
+<span class="c1"># Anna publishes the post. Now Ben can comment on it.</span>
+curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>-H<span class="w"> </span><span class="s1">&#39;X-User-ID: 1&#39;</span><span class="w"> </span>http://127.0.0.1:8000/posts/1/publish
+curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8000/comments<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;X-User-ID: 2&#39;</span><span class="w"> </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;content&quot;: &quot;Nice post&quot;, &quot;post_id&quot;: 1}&#39;</span>
+<span class="c1"># 201, with &quot;author_id&quot;: 2</span>
+
+<span class="c1"># Anna cannot change Ben&#39;s comment.</span>
+curl<span class="w"> </span>-X<span class="w"> </span>PATCH<span class="w"> </span>http://127.0.0.1:8000/comments/2<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;X-User-ID: 1&#39;</span><span class="w"> </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;content&quot;: &quot;Edited&quot;}&#39;</span>
+<span class="c1"># 403, &quot;Only the author can change this&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="test-the-rules">
+<h2>Test the rules<a class="headerlink" href="#test-the-rules" title="Link to this heading">#</a></h2>
+<p>The requests above check each rule by hand. Tests check them after every
+change. Install Restly’s test tools:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;fastapi-restly[testing]&quot;</span>
+</pre></div>
+</div>
+<p>Tests need their own database. Add <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">os</span></code> to the imports, and let an
+environment variable choose the database:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span>
+    <span class="n">async_database_url</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;DATABASE_URL&quot;</span><span class="p">,</span> <span class="s2">&quot;sqlite+aiosqlite:///blog.db&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Create <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> next to <code class="docutils literal notranslate"><span class="pre">main.py</span></code>. It sets the variable before it
+imports the app, because <code class="docutils literal notranslate"><span class="pre">main.py</span></code> configures Restly when it is imported. The
+tests use a database in memory, so each test run creates new tables:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;DATABASE_URL&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;sqlite+aiosqlite://&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>  <span class="c1"># noqa: E402</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">main</span><span class="w"> </span><span class="kn">import</span> <span class="n">Base</span><span class="p">,</span> <span class="n">app</span>  <span class="c1"># noqa: E402</span>
+
+<span class="n">fr</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">configure_tests</span><span class="p">(</span><span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="n">Base</span><span class="p">,</span> <span class="n">create_all</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="api/testing.html#fastapi_restly.testing.configure_tests" title="fastapi_restly.testing.configure_tests"><code class="xref py py-func docutils literal notranslate"><span class="pre">configure_tests</span></code></a> creates the
+tables in the test database, and gives each test a <code class="docutils literal notranslate"><span class="pre">restly_client</span></code> fixture.
+Restly rolls back everything a test writes when the test ends, so each test
+starts from an empty blog. Create <code class="docutils literal notranslate"><span class="pre">test_main.py</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">ANNA</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;X-User-ID&quot;</span><span class="p">:</span> <span class="s2">&quot;1&quot;</span><span class="p">}</span>
+<span class="n">BEN</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;X-User-ID&quot;</span><span class="p">:</span> <span class="s2">&quot;2&quot;</span><span class="p">}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_only_the_author_sees_a_draft</span><span class="p">(</span><span class="n">restly_client</span><span class="p">):</span>
+    <span class="n">post</span> <span class="o">=</span> <span class="n">restly_client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="s2">&quot;/posts&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Hello&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;World&quot;</span><span class="p">},</span> <span class="n">headers</span><span class="o">=</span><span class="n">ANNA</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+    <span class="n">restly_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;/posts/</span><span class="si">{</span><span class="n">post</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">ANNA</span><span class="p">)</span>
+    <span class="n">restly_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;/posts/</span><span class="si">{</span><span class="n">post</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">BEN</span><span class="p">,</span> <span class="n">assert_status_code</span><span class="o">=</span><span class="mi">404</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_only_the_author_changes_a_published_post</span><span class="p">(</span><span class="n">restly_client</span><span class="p">):</span>
+    <span class="n">post</span> <span class="o">=</span> <span class="n">restly_client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="s2">&quot;/posts&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Hello&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;World&quot;</span><span class="p">},</span> <span class="n">headers</span><span class="o">=</span><span class="n">ANNA</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+    <span class="n">restly_client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;/posts/</span><span class="si">{</span><span class="n">post</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">/publish&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">ANNA</span><span class="p">)</span>
+
+    <span class="n">restly_client</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;/posts/</span><span class="si">{</span><span class="n">post</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Edited&quot;</span><span class="p">},</span> <span class="n">headers</span><span class="o">=</span><span class="n">BEN</span><span class="p">,</span> <span class="n">assert_status_code</span><span class="o">=</span><span class="mi">403</span>
+    <span class="p">)</span>
+    <span class="n">restly_client</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;/posts/</span><span class="si">{</span><span class="n">post</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Edited&quot;</span><span class="p">},</span> <span class="n">headers</span><span class="o">=</span><span class="n">ANNA</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The client checks the status code of every response. Without
+<code class="docutils literal notranslate"><span class="pre">assert_status_code</span></code>, it expects a status in the 2xx range. Run the tests:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pytest
+</pre></div>
+</div>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>test_main.py ..                                              [100%]
+2 passed
+</pre></div>
+</div>
+<p>The <a class="reference external" href="https://github.com/rjprins/fastapi-restly/tree/main/example-projects/blog">blog example</a> has a test for every rule in this
+tutorial. <a class="reference internal" href="testing.html"><span class="std std-doc">Testing</span></a> covers the fixtures, and apps that
+build their configuration in a factory.</p>
+</section>
+<section id="the-complete-file">
+<h2>The complete file<a class="headerlink" href="#the-complete-file" title="Link to this heading">#</a></h2>
+<p>Here is the blog with every change from this tutorial. The same file is the
+<a class="reference external" href="https://github.com/rjprins/fastapi-restly/tree/main/example-projects/blog">blog example</a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">asynccontextmanager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span><span class="p">,</span> <span class="n">Header</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">ForeignKey</span><span class="p">,</span> <span class="n">or_</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">DeclarativeBase</span><span class="p">,</span> <span class="n">Mapped</span><span class="p">,</span> <span class="n">mapped_column</span><span class="p">,</span> <span class="n">relationship</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+
+<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span>
+    <span class="n">async_database_url</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;DATABASE_URL&quot;</span><span class="p">,</span> <span class="s2">&quot;sqlite+aiosqlite:///blog.db&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Base</span><span class="p">(</span><span class="n">DeclarativeBase</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="nd">@asynccontextmanager</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">lifespan</span><span class="p">(</span><span class="n">_app</span><span class="p">:</span> <span class="n">FastAPI</span><span class="p">):</span>
+    <span class="k">await</span> <span class="n">fr</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">async_create_all</span><span class="p">(</span><span class="n">Base</span><span class="p">)</span>  <span class="c1"># dev tables; use Alembic in production</span>
+    <span class="k">yield</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Current</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ContextNamespace</span><span class="p">):</span>
+    <span class="n">user_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ContextParam</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_user_id</span><span class="p">(</span>
+    <span class="n">user_id</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">Header</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">&quot;X-User-ID&quot;</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="c1"># Demo stand-in for real authentication. None means an anonymous reader.</span>
+    <span class="k">return</span> <span class="n">user_id</span>
+
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">(</span><span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">,</span> <span class="n">dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">Current</span><span class="o">.</span><span class="n">depends</span><span class="p">(</span><span class="n">user_id</span><span class="o">=</span><span class="n">get_user_id</span><span class="p">)])</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">AuthoredView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">authorize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="ow">in</span> <span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">GET_MANY</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">GET_ONE</span><span class="p">):</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">fastapi</span><span class="o">.</span><span class="n">HTTPException</span><span class="p">(</span><span class="mi">401</span><span class="p">,</span> <span class="s2">&quot;Log in to write&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">CREATE</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">obj</span><span class="o">.</span><span class="n">author_id</span> <span class="o">!=</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">Forbidden</span><span class="p">(</span><span class="s2">&quot;Only the author can change this&quot;</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Post</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>
+    <span class="n">__tablename__</span> <span class="o">=</span> <span class="s2">&quot;post&quot;</span>
+
+    <span class="nb">id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">title</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">content</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">published</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">author_id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">insert_default</span><span class="o">=</span><span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">PostClauses</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ClauseNamespace</span><span class="p">):</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Post</span>
+
+    <span class="n">default_scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span>
+        <span class="n">or_</span><span class="p">(</span><span class="n">Post</span><span class="o">.</span><span class="n">published</span><span class="p">,</span> <span class="n">Post</span><span class="o">.</span><span class="n">author_id</span> <span class="o">==</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">)</span>
+    <span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">PostSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">published</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span>
+    <span class="n">author_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">notify_subscribers</span><span class="p">(</span><span class="n">post</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;New post: </span><span class="si">{</span><span class="n">post</span><span class="o">.</span><span class="n">title</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>  <span class="c1"># stand-in for an email or a webhook</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PostView</span><span class="p">(</span><span class="n">AuthoredView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/posts&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Post</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">PostSchema</span>
+
+    <span class="k">class</span><span class="w"> </span><span class="nc">Action</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="p">):</span>
+        <span class="n">PUBLISH</span> <span class="o">=</span> <span class="s2">&quot;publish&quot;</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/publish&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">publish</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Post</span><span class="p">:</span>
+        <span class="n">post</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">PUBLISH</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">post</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">post</span><span class="o">.</span><span class="n">published</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">Conflict</span><span class="p">(</span><span class="s2">&quot;Already published&quot;</span><span class="p">)</span>
+            <span class="n">post</span><span class="o">.</span><span class="n">published</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="n">post</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">after_action_commit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">new</span><span class="p">,</span> <span class="n">old</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">PUBLISH</span><span class="p">:</span>
+            <span class="k">await</span> <span class="n">notify_subscribers</span><span class="p">(</span><span class="n">new</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Comment</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>
+    <span class="n">__tablename__</span> <span class="o">=</span> <span class="s2">&quot;comment&quot;</span>
+
+    <span class="nb">id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">content</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">post_id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;post.id&quot;</span><span class="p">))</span>
+    <span class="n">author_id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">insert_default</span><span class="o">=</span><span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">)</span>
+    <span class="n">post</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="n">Post</span><span class="p">]</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">()</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">CommentClauses</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ClauseNamespace</span><span class="p">):</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Comment</span>
+
+    <span class="n">default_scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span><span class="n">Comment</span><span class="o">.</span><span class="n">post</span><span class="o">.</span><span class="n">has</span><span class="p">(</span><span class="n">PostClauses</span><span class="o">.</span><span class="n">default_scope</span><span class="p">))</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">CommentSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">post_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">MustExist</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Post</span><span class="p">]</span>
+    <span class="n">author_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CommentView</span><span class="p">(</span><span class="n">AuthoredView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/comments&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Comment</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">CommentSchema</span>
+</pre></div>
+</div>
+</section>
+<section id="exercises">
+<h2>Exercises<a class="headerlink" href="#exercises" title="Link to this heading">#</a></h2>
+<p>Write a test for each exercise.</p>
+<ol class="arabic simple">
+<li><p>Add <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/posts/{id}/unpublish</span></code>. Only the author may call it, and it
+fails with 409 on a draft.</p></li>
+<li><p>Record when a post was published. Add a <code class="docutils literal notranslate"><span class="pre">published_at</span></code> column, set it in
+the publish route, and return it as a read-only field.</p></li>
+<li><p>Let the author of a post delete any comment on it. Override <code class="docutils literal notranslate"><span class="pre">authorize</span></code>
+in <code class="docutils literal notranslate"><span class="pre">CommentView</span></code>, and call <code class="docutils literal notranslate"><span class="pre">super().authorize(...)</span></code> for the other cases.
+Load the post with <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">self.session.get(Post,</span> <span class="pre">obj.post_id)</span></code>, because
+<code class="docutils literal notranslate"><span class="pre">obj.post</span></code> does not load by itself in async code.
+<a class="reference internal" href="relationships.html#relationship-loading"><span class="std std-ref">Return related objects in a response</span></a> explains
+why.</p></li>
+</ol>
+</section>
+<section id="next-steps">
+<h2>Next steps<a class="headerlink" href="#next-steps" title="Link to this heading">#</a></h2>
+<p>These pages cover the topics of this tutorial in more detail:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="context.html"><span class="std std-doc">Request Context</span></a>: bind values in scripts, jobs, and
+tests</p></li>
+<li><p><a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a>: the model scope, view scopes, and a scope for one route</p></li>
+<li><p><a class="reference internal" href="lifecycle.html"><span class="std std-doc">Request Lifecycle &amp; Hooks</span></a>: every method you can override, and
+when to override one</p></li>
+<li><p><a class="reference internal" href="views.html#share-behaviour-with-base-views"><span class="std std-ref">Share behavior with base views</span></a>: the full
+inheritance guide</p></li>
+<li><p><a class="reference internal" href="testing.html"><span class="std std-doc">Testing</span></a>: the test fixtures, and test databases</p></li>
+<li><p><a class="reference internal" href="projects.html"><span class="std std-doc">New &amp; Existing Projects</span></a>: split the file into packages as
+the app grows, generate a project with <code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code>, or add Restly beside
+the routes you already have</p></li>
+<li><p><a class="reference internal" href="deploying.html"><span class="std std-doc">Deploying</span></a>: a production database, and Alembic migrations
+instead of <code class="docutils literal notranslate"><span class="pre">async_create_all</span></code></p></li>
+<li><p><a class="reference internal" href="api_reference.html"><span class="std std-doc">API Reference</span></a></p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="tutorial.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Tutorial: Build a Blog API</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="guide.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Guide</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#know-who-is-calling">Know who is calling</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#record-the-author">Record the author</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#hide-drafts-from-other-readers">Hide drafts from other readers</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#only-the-author-may-change-a-post">Only the author may change a post</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#publish-a-draft">Publish a draft</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#tell-subscribers-about-a-new-post">Tell subscribers about a new post</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#share-the-rules-with-comments">Share the rules with comments</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#test-the-rules">Test the rules</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-complete-file">The complete file</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#exercises">Exercises</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#next-steps">Next steps</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+<p class="sidebar-newsletter">
+  <a href="newsletter.html">Subscribe to newsletter</a>
+</p></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, Rutger Prins.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

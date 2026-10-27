@@ -1,0 +1,1766 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" data-theme="auto">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, follow">
+
+    <title>Schemas &amp; Validation &#8212; FastAPI-Restly 0.12.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "auto";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "auto";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=61ccb1f1"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'schemas';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://www.fastapi-restly.org/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '0.12';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script src="_static/newsletter.js?v=7326e93d"></script>
+    <link rel="canonical" href="https://www.fastapi-restly.org/0.12/schemas.html" />
+    <link rel="icon" href="_static/favicon.svg"/>
+    <link rel="author" title="About these documents" href="about.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Relationships" href="relationships.html" />
+    <link rel="prev" title="Type Annotations" href="typing.html" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.12" />
+<meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700&amp;display=swap"
+      rel="stylesheet" />
+<!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
+<script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="auto">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/fr-monogram.svg" class="logo__image only-light" alt=""/>
+    <img src="_static/fr-monogram-dark.svg" class="logo__image only-dark pst-js-only" alt=""/>
+  
+  
+    <p class="title logo__title">FastAPI-Restly</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="projects.html">New &amp; Existing Projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="database.html">Database &amp; Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
+<li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Schemas &amp; Validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering, Sorting &amp; Pagination</a></li>
+<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Access</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="context.html">Request Context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tenancy.html">Multi-Tenancy</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Testing &amp; Deploying</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="guide.html" class="nav-link">Guide</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Schemas &amp; Validation</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="schemas-validation">
+<h1>Schemas &amp; Validation<a class="headerlink" href="#schemas-validation" title="Link to this heading">#</a></h1>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Restly says <strong>schema</strong> for a Pydantic class and <strong>model</strong> for a SQLAlchemy
+class. A <code class="docutils literal notranslate"><span class="pre">User</span></code> model is the database table. <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code>, the view’s schema,
+is the public API.</p>
+</div>
+<p>A view has several schemas. The main one is the view’s
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a>, a Pydantic class
+that lists the fields of the resource. When you register the view,
+Restly builds the other schemas from it, one for each use:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Class</p></th>
+<th class="head"><p>Used for</p></th>
+<th class="head"><p>What Restly leaves out of the view’s schema</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>response class, <code class="docutils literal notranslate"><span class="pre">UserResponse</span></code></p></td>
+<td><p>everything that goes out</p></td>
+<td><p>the <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields</p></td>
+</tr>
+<tr class="row-odd"><td><p>create body, <code class="docutils literal notranslate"><span class="pre">UserCreate</span></code></p></td>
+<td><p>the body of <code class="docutils literal notranslate"><span class="pre">POST</span></code></p></td>
+<td><p>the <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> fields</p></td>
+</tr>
+<tr class="row-even"><td><p>update body, <code class="docutils literal notranslate"><span class="pre">UserUpdate</span></code></p></td>
+<td><p>the body of <code class="docutils literal notranslate"><span class="pre">PATCH</span></code></p></td>
+<td><p>the <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> fields; every other field is optional</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Each of these classes is a subclass of the view’s schema. So each one keeps
+the field types, the aliases and the validators of the view’s schema. Two
+markers decide which class keeps a field: <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code></a> keeps it out of the request bodies, and
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.WriteOnly" title="fastapi_restly.schemas.WriteOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.WriteOnly</span></code></a> keeps it out of the
+responses. The filters and sort keys of the list route come from the
+response class too; <a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering, Sorting &amp; Pagination</span></a>
+covers them.</p>
+<p>You can set each class on the view yourself, as
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_response" title="fastapi_restly.views.BaseRestView.schema_response"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_response</span></code></a>,
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a> or
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a>.
+Restly then uses your class as you wrote it. A view without a
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a> gets one that
+Restly generates from the model.</p>
+<p>Find the section for your goal:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Goal</p></th>
+<th class="head"><p>Tool</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>A public API that differs from the table</p></td>
+<td><p><a class="reference internal" href="#write-or-generate">Write the schema</a></p></td>
+</tr>
+<tr class="row-odd"><td><p>An input field that responses never show</p></td>
+<td><p><a class="reference internal" href="#readonly-and-writeonly"><code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code></a></p></td>
+</tr>
+<tr class="row-even"><td><p>A field that the server owns and clients cannot set</p></td>
+<td><p><a class="reference internal" href="#readonly-and-writeonly"><code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>A field set on create and frozen afterwards</p></td>
+<td><p><a class="reference internal" href="#explicit-write-schemas">Your own request body</a></p></td>
+</tr>
+<tr class="row-even"><td><p>A rule that a value must follow</p></td>
+<td><p><a class="reference internal" href="#validation">Validation</a></p></td>
+</tr>
+<tr class="row-odd"><td><p>Times from clients in other time zones</p></td>
+<td><p><a class="reference internal" href="#utc-times"><code class="docutils literal notranslate"><span class="pre">UTCDatetime</span></code></a></p></td>
+</tr>
+<tr class="row-even"><td><p>Other field names in the JSON</p></td>
+<td><p><a class="reference internal" href="#field-aliases">Aliases</a></p></td>
+</tr>
+<tr class="row-odd"><td><p>A response that differs from the input</p></td>
+<td><p><a class="reference internal" href="#own-response-class">Your own response class</a></p></td>
+</tr>
+<tr class="row-even"><td><p>Clear type names in OpenAPI and generated clients</p></td>
+<td><p><a class="reference internal" href="#name-your-schemas">Name your schemas</a></p></td>
+</tr>
+<tr class="row-odd"><td><p>A custom route that returns the view’s classes</p></td>
+<td><p><a class="reference internal" href="#name-the-response-classes">Name the classes in a custom route</a></p></td>
+</tr>
+<tr class="row-even"><td><p>A foreign key, or a relationship as an id or an object</p></td>
+<td><p><a class="reference internal" href="relationships.html"><span class="std std-doc">Relationships</span></a></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<section id="generate-the-schema-or-write-it">
+<span id="write-or-generate"></span><h2>Generate the schema or write it<a class="headerlink" href="#generate-the-schema-or-write-it" title="Link to this heading">#</a></h2>
+<p>Without a schema, Restly generates the view’s schema from the model. This is
+enough when the table is already the API you want:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+</pre></div>
+</div>
+<p>The generated schema has one field for each column, and no relationships.
+Restly marks <code class="docutils literal notranslate"><span class="pre">id</span></code>, <code class="docutils literal notranslate"><span class="pre">created_at</span></code>, <code class="docutils literal notranslate"><span class="pre">updated_at</span></code> and each column with
+<code class="docutils literal notranslate"><span class="pre">init=False</span></code> as <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>; see
+<a class="reference internal" href="#auto-generated-schemas">How Restly generates a schema</a> for the details.</p>
+<p>Write the schema yourself when the API differs from the table: other field
+names, fields that only go one way, references to other rows, or rules for
+the values. Write it also when the field names must stay the same while the
+table changes. Set it on the view:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
+</pre></div>
+</div>
+<p>Restly writes each field of a request body to the model attribute with the
+same Python name. So name a field after its column, and use an
+<a class="reference internal" href="#field-aliases">alias</a> when the JSON needs another name.</p>
+</section>
+<section id="choose-a-base-class">
+<span id="schema-base-classes"></span><h2>Choose a base class<a class="headerlink" href="#choose-a-base-class" title="Link to this heading">#</a></h2>
+<p>Restly has three base classes for a schema:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDSchema</span></code></a> adds a read-only
+<code class="docutils literal notranslate"><span class="pre">id</span></code> field, as <code class="docutils literal notranslate"><span class="pre">id:</span> <span class="pre">fr.ReadOnly[Any]</span></code>. Most schemas use it. The <code class="docutils literal notranslate"><span class="pre">id</span></code> is in
+the responses, and the create and update bodies leave it out.</p></li>
+<li><p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.BaseSchema" title="fastapi_restly.schemas.BaseSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.BaseSchema</span></code></a> is the class
+under <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code>, without the <code class="docutils literal notranslate"><span class="pre">id</span></code>. Use it to declare every field
+yourself, <code class="docutils literal notranslate"><span class="pre">id</span></code> included. Mark the <code class="docutils literal notranslate"><span class="pre">id</span></code> <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> if clients must not send
+it.</p></li>
+<li><p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.TimestampsSchemaMixin" title="fastapi_restly.schemas.TimestampsSchemaMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.TimestampsSchemaMixin</span></code></a>
+adds read-only <code class="docutils literal notranslate"><span class="pre">created_at</span></code> and <code class="docutils literal notranslate"><span class="pre">updated_at</span></code> fields, in UTC. Put it before
+the base class.</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">TimestampsSchemaMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
+</pre></div>
+</div>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p><code class="docutils literal notranslate"><span class="pre">BaseSchema</span></code> is a Pydantic <code class="docutils literal notranslate"><span class="pre">BaseModel</span></code> with <code class="docutils literal notranslate"><span class="pre">from_attributes=True</span></code>, so it can
+read the attributes of an ORM object. It also checks that the markers are
+used in the right place; see <a class="reference internal" href="#readonly-and-writeonly">the next section</a>.</p>
+<p>A request body that you set on the view, such as <code class="docutils literal notranslate"><span class="pre">schema_create</span></code>, can also be
+a plain <code class="docutils literal notranslate"><span class="pre">pydantic.BaseModel</span></code>. Its fields can still use <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>,
+<code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> and <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist</span></code></a>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">fr.IDSchema[User]</span></code>, with the model as a type parameter, gives the schema the
+model’s type; <a class="reference internal" href="typing.html"><span class="std std-doc">Type Annotations</span></a> explains when that helps.
+As the type of a field, <code class="docutils literal notranslate"><span class="pre">fr.IDSchema[User]</span></code> is a reference to another row;
+see <a class="reference internal" href="relationships.html"><span class="std std-doc">Relationships</span></a>.</p>
+</div>
+</section>
+<section id="hide-a-field-from-requests-or-from-responses">
+<span id="readonly-and-writeonly"></span><h2>Hide a field from requests or from responses<a class="headerlink" href="#hide-a-field-from-requests-or-from-responses" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.ReadOnly[T]</span></code></a> marks a field that
+only goes out. The create and update bodies leave it out, so a client cannot
+set it. A value that a client sends for it is ignored:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">created_by_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>The server sets such a value. Set it on the model, with a column default, so
+that every write path sets it; see
+<a class="reference internal" href="models.html#server-stamped-fields"><span class="std std-ref">Stamp the fields the server owns</span></a>.</p>
+<p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.WriteOnly" title="fastapi_restly.schemas.WriteOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.WriteOnly[T]</span></code></a> marks a field that
+only comes in. The create and update bodies accept it, and no response shows
+it:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">password</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">WriteOnly</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Pydantic’s secret types, such as <code class="docutils literal notranslate"><span class="pre">SecretStr</span></code>, work in a schema too. A write
+stores the secret, and a response shows <code class="docutils literal notranslate"><span class="pre">**********</span></code>, as Pydantic does. So
+a client sees that the field has a value, but not the value. Like a
+<code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> field, such a field gets no filter and is not a sort key. In the
+document of a JSON column, a secret field raises an error instead; see
+<a class="reference internal" href="#json-document-columns">Validate the document in a JSON column</a>.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>The two markers work in different places. This matters when you use a
+schema outside a view:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> sets Pydantic’s <code class="docutils literal notranslate"><span class="pre">exclude</span></code> on the field. So every serialization
+of the schema drops it: the CRUD responses, a FastAPI <code class="docutils literal notranslate"><span class="pre">response_model</span></code>, and
+your own <code class="docutils literal notranslate"><span class="pre">model_dump()</span></code> calls. This also holds in nested schemas, and the
+response schema in OpenAPI does not show the field.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> works only where Restly applies it: in the create and update
+bodies that Restly generates, and when Restly’s object helpers build or
+update an ORM object. On a schema that you use yourself, a <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>
+field validates and serializes like any other field. OpenAPI marks it
+<code class="docutils literal notranslate"><span class="pre">readOnly</span></code>.</p></li>
+</ul>
+<p>A marker must be the outer type of the field. Inside a union or a container,
+as in <code class="docutils literal notranslate"><span class="pre">Optional[WriteOnly[str]]</span></code>, <code class="docutils literal notranslate"><span class="pre">WriteOnly[str]</span> <span class="pre">|</span> <span class="pre">None</span></code> or
+<code class="docutils literal notranslate"><span class="pre">list[WriteOnly[str]]</span></code>, the marker would do nothing. The same holds inside a
+type alias, such as <code class="docutils literal notranslate"><span class="pre">type</span> <span class="pre">Secret</span> <span class="pre">=</span> <span class="pre">WriteOnly[str]</span></code>. So Restly rejects such a
+field with a
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>.
+For an optional write-only field, write <code class="docutils literal notranslate"><span class="pre">WriteOnly[Optional[str]]</span></code>.</p>
+<p>A JSON column has its own rules for <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields; see
+<a class="reference internal" href="#json-document-columns">Validate the document in a JSON column</a>.</p>
+</div>
+</section>
+<section id="write-the-request-body-yourself">
+<span id="explicit-write-schemas"></span><h2>Write the request body yourself<a class="headerlink" href="#write-the-request-body-yourself" title="Link to this heading">#</a></h2>
+<p>A <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a> or
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a> that
+you set on the view is the whole contract for its request. Restly writes every
+field that it declares, except the fields that the class itself marks
+<code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>. The markers on the view’s schema only shape the bodies that Restly
+generates.</p>
+<p>So you can set a field on create and freeze it afterwards. Mark it <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>
+on the view’s schema, and declare it in your own create body:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">CommentSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">body</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">story_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">CommentCreate</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">BaseSchema</span><span class="p">):</span>
+    <span class="n">body</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">story_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">MustExist</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Story</span><span class="p">]</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">CommentView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/comments&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Comment</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">CommentSchema</span>
+    <span class="n">schema_create</span> <span class="o">=</span> <span class="n">CommentCreate</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/comments</span></code> sets <code class="docutils literal notranslate"><span class="pre">story_id</span></code>. The generated update body leaves it out, so
+<code class="docutils literal notranslate"><span class="pre">PATCH</span></code> ignores it.</p>
+<p>Keep a field that the server stamps, such as a tenant id, out of every
+request body that you write. Otherwise a client can set it.</p>
+</section>
+<section id="validate-input">
+<span id="validation"></span><h2>Validate input<a class="headerlink" href="#validate-input" title="Link to this heading">#</a></h2>
+<p>Each kind of rule has one place:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Rule</p></th>
+<th class="head"><p>Where it goes</p></th>
+<th class="head"><p>What the client gets</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>The format or the range of one value</p></td>
+<td><p>A Pydantic validator or a <code class="docutils literal notranslate"><span class="pre">Field</span></code> constraint on the schema</p></td>
+<td><p>422</p></td>
+</tr>
+<tr class="row-odd"><td><p>A field that a client cannot set</p></td>
+<td><p><a class="reference internal" href="#readonly-and-writeonly"><code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code></a>, or <a class="reference internal" href="#explicit-write-schemas">your own request body</a></p></td>
+<td><p>The value is ignored</p></td>
+</tr>
+<tr class="row-even"><td><p>A value that its column can hold, such as a number in the range of <code class="docutils literal notranslate"><span class="pre">Integer</span></code></p></td>
+<td><p>Nothing for the generic types of SQLAlchemy, a <code class="docutils literal notranslate"><span class="pre">Field</span></code> constraint for other types; see <a class="reference internal" href="#column-validation">Column validation</a></p></td>
+<td><p>422, or 400 in a filter</p></td>
+</tr>
+<tr class="row-odd"><td><p>A referenced row must exist</p></td>
+<td><p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist</span></code></a> or a reference field; see <a class="reference internal" href="relationships.html#reference-exists"><span class="std std-ref">Relationships</span></a></p></td>
+<td><p>404</p></td>
+</tr>
+<tr class="row-even"><td><p>A value must be unique</p></td>
+<td><p>A unique constraint on the column; see <a class="reference internal" href="errors.html#default-exception-handling"><span class="std std-ref">Errors</span></a></p></td>
+<td><p>409</p></td>
+</tr>
+<tr class="row-odd"><td><p>A rule that needs the database, the stored row or the caller</p></td>
+<td><p>The <code class="docutils literal notranslate"><span class="pre">create</span></code> or <code class="docutils literal notranslate"><span class="pre">update</span></code> business method; see <a class="reference internal" href="lifecycle.html#business-methods"><span class="std std-ref">Request Lifecycle &amp; Hooks</span></a></p></td>
+<td><p>The error that you raise</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Whether the caller may run the action at all is not validation. It is a
+policy, and it goes in
+<a class="reference internal" href="authorization.html#authorize-gate"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">authorize</span></code></span></a>, which answers with 403.</p>
+<section id="value-validation">
+<h3>Value validation<a class="headerlink" href="#value-validation" title="Link to this heading">#</a></h3>
+<p>Put a validator or a <code class="docutils literal notranslate"><span class="pre">Field</span></code> constraint on the view’s schema. The create
+body, the update body and the response class are subclasses of the view’s
+schema, so all three run it:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pydantic</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">OrganizationSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">Field</span><span class="p">(</span><span class="n">min_length</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">slug</span><span class="p">:</span> <span class="nb">str</span>
+
+    <span class="nd">@pydantic</span><span class="o">.</span><span class="n">field_validator</span><span class="p">(</span><span class="s2">&quot;slug&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check_slug</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;[a-z0-9]+(-[a-z0-9]+)*&quot;</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;use lowercase letters, digits and hyphens&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">value</span>
+</pre></div>
+</div>
+<p>A value that fails returns 422, with Pydantic’s list of errors.</p>
+<p>A rule that compares two fields, in a <code class="docutils literal notranslate"><span class="pre">model_validator</span></code>, works on the create
+body. The update body holds only the fields that the client sends, and the
+other fields are <code class="docutils literal notranslate"><span class="pre">None</span></code>. Check such a rule in <code class="docutils literal notranslate"><span class="pre">update</span></code>, where you have the
+stored row too. Otherwise a <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> that sends one of the two fields can save
+a row that breaks the rule. The response class runs the validator too, so
+every read of that row, and every list that holds it, then fails with a
+server error.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>The validator also runs in these places:</p>
+<ul class="simple">
+<li><p>In the update body, the client may leave out each field. Pydantic does not
+validate a field that the client leaves out, so the validator does not
+run for it. Each field keeps its type, so <code class="docutils literal notranslate"><span class="pre">null</span></code> is valid only where the
+type allows <code class="docutils literal notranslate"><span class="pre">None</span></code>, as in the create body. <code class="docutils literal notranslate"><span class="pre">{&quot;slug&quot;:</span> <span class="pre">null}</span></code> returns 422
+before the validator runs, so the validator above never gets <code class="docutils literal notranslate"><span class="pre">None</span></code>. A
+validator with <code class="docutils literal notranslate"><span class="pre">mode=&quot;before&quot;</span></code> runs before that check, so it still gets
+the client’s <code class="docutils literal notranslate"><span class="pre">null</span></code>.</p></li>
+<li><p>The response class runs the validator when Restly builds a response from a
+row. A row that breaks the rule, for example one that a script wrote, then
+fails with a server error.</p></li>
+<li><p>List filters run it on each filter value; see
+<a class="reference internal" href="filtering.html#filter-value-validation"><span class="std std-ref">Filter values go through the field’s validation</span></a>.</p></li>
+</ul>
+<p>A class without the field does not run its validator. The request bodies
+have no <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> fields and no primary key that the server generates. The
+response class has no <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields.</p>
+<p>To check only what comes in, put the validator on a request body that you set
+on the view. The SaaS example does this for organizations
+(<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/organizations/schemas.py"><code class="docutils literal notranslate"><span class="pre">app/organizations/schemas.py</span></code></a>).</p>
+</div>
+</section>
+<section id="column-validation">
+<span id="id1"></span><h3>Column validation<a class="headerlink" href="#column-validation" title="Link to this heading">#</a></h3>
+<p>Restly checks each value from a client against the type of its column,
+before the database sees the value. It checks the generic integer and text
+types of SQLAlchemy, so you do not write a validator for them:</p>
+<ul class="simple">
+<li><p>A number must fit the integer type: 16 bits for <code class="docutils literal notranslate"><span class="pre">SmallInteger</span></code>, 32 bits
+for <code class="docutils literal notranslate"><span class="pre">Integer</span></code>, from -2,147,483,648 to 2,147,483,647, and 64 bits for
+<code class="docutils literal notranslate"><span class="pre">BigInteger</span></code>.</p></li>
+<li><p>Text must not hold a NUL character (<code class="docutils literal notranslate"><span class="pre">\x00</span></code>).</p></li>
+<li><p>Text in a request body must fit the length of a <code class="docutils literal notranslate"><span class="pre">String(n)</span></code> column.</p></li>
+</ul>
+<p>A value that does not fit gets 422 in a request body or in the path, and
+400 in a filter. A reference id that does not fit gets 404, as for a row
+that does not exist.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>The type of the column is the rule on every database. PostgreSQL refuses
+such a value with an error, which would be a 500. SQLite stores it, so the
+tests of an app on SQLite would not see the problem. PostgreSQL cannot store
+a NUL character in text, so Restly refuses it on every database. A column
+that holds bigger numbers needs <code class="docutils literal notranslate"><span class="pre">BigInteger</span></code>, such as a column with a Unix
+time in milliseconds. A filter only compares a value with the column, and
+PostgreSQL compares text of any length, so the length counts only in a
+request body. A <code class="docutils literal notranslate"><span class="pre">CHAR</span></code> without a length holds one character, as in SQL.</p>
+<p>Restly checks these types by their exact class: <code class="docutils literal notranslate"><span class="pre">Integer</span></code>, <code class="docutils literal notranslate"><span class="pre">SmallInteger</span></code>,
+<code class="docutils literal notranslate"><span class="pre">BigInteger</span></code>, <code class="docutils literal notranslate"><span class="pre">String</span></code>, <code class="docutils literal notranslate"><span class="pre">Text</span></code>, <code class="docutils literal notranslate"><span class="pre">Unicode</span></code> and <code class="docutils literal notranslate"><span class="pre">UnicodeText</span></code>, and the same
+types by their SQL names: <code class="docutils literal notranslate"><span class="pre">INTEGER</span></code>, <code class="docutils literal notranslate"><span class="pre">SMALLINT</span></code>, <code class="docutils literal notranslate"><span class="pre">BIGINT</span></code>, <code class="docutils literal notranslate"><span class="pre">VARCHAR</span></code>,
+<code class="docutils literal notranslate"><span class="pre">NVARCHAR</span></code>, <code class="docutils literal notranslate"><span class="pre">CHAR</span></code>, <code class="docutils literal notranslate"><span class="pre">NCHAR</span></code> and <code class="docutils literal notranslate"><span class="pre">TEXT</span></code>. Any other type gets the value as it
+is, as in SQLAlchemy:</p>
+<ul class="simple">
+<li><p>a type of a dialect, such as MySQL’s <code class="docutils literal notranslate"><span class="pre">TINYINT</span></code>,</p></li>
+<li><p>a subclass of a type above, such as <code class="docutils literal notranslate"><span class="pre">Enum</span></code>,</p></li>
+<li><p>a <a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/custom_types.html#sqlalchemy.types.TypeDecorator" title="(in SQLAlchemy v2.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypeDecorator</span></code></a>, such as SQLModel’s
+<code class="docutils literal notranslate"><span class="pre">AutoString</span></code>,</p></li>
+<li><p>a type from <code class="docutils literal notranslate"><span class="pre">with_variant()</span></code>.</p></li>
+</ul>
+<p>The database then checks the value. On PostgreSQL, a value that does not
+fit is an error, and the client gets a 500. For a 422, put the limit on the
+field of the schema. Its validation runs on filter values too; see
+<a class="reference internal" href="filtering.html#filter-value-validation"><span class="std std-ref">Filter values go through the field’s validation</span></a>.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Column</p></th>
+<th class="head"><p>Field of the schema</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Text with a length, in a type that Restly does not check</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Annotated[str,</span> <span class="pre">Field(max_length=50)]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>A smaller integer, such as MySQL’s <code class="docutils literal notranslate"><span class="pre">TINYINT</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Annotated[int,</span> <span class="pre">Field(ge=-128,</span> <span class="pre">le=127)]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Numeric(5,</span> <span class="pre">2)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Annotated[Decimal,</span> <span class="pre">Field(max_digits=5,</span> <span class="pre">decimal_places=2)]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Enum</span></code> or <code class="docutils literal notranslate"><span class="pre">Uuid</span></code></p></td>
+<td><p>The Python type: the enum class, or <code class="docutils literal notranslate"><span class="pre">uuid.UUID</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ARRAY(String(5))</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">list[Annotated[str,</span> <span class="pre">Field(max_length=5)]]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Text without NUL, in a type that Restly does not check</p></td>
+<td><p>An <code class="docutils literal notranslate"><span class="pre">AfterValidator</span></code>, as below</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">AfterValidator</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">no_nul</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">if</span> <span class="s2">&quot;</span><span class="se">\x00</span><span class="s2">&quot;</span> <span class="ow">in</span> <span class="n">text</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The text holds a NUL character.&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">text</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">NoteSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">text</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">AfterValidator</span><span class="p">(</span><span class="n">no_nul</span><span class="p">)]</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="database-validation">
+<h3>Database validation<a class="headerlink" href="#database-validation" title="Link to this heading">#</a></h3>
+<p>A schema sees one request. It does not see other rows, the stored row or the
+caller:</p>
+<ul class="simple">
+<li><p>A reference to another row: <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist</span></code></a>,
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDRef</span></code></a> and <code class="docutils literal notranslate"><span class="pre">fr.IDSchema[Model]</span></code>
+check that the row exists, and return 404 if it does not. See
+<a class="reference internal" href="relationships.html#reference-exists"><span class="std std-ref">Relationships</span></a>.</p></li>
+<li><p>A unique value, such as an email address: put a unique constraint on the
+column. The database rejects a second row with the same value, and Restly
+turns the error into a 409; see <a class="reference internal" href="errors.html#default-exception-handling"><span class="std std-ref">Errors</span></a>.</p></li>
+<li><p>A rule that needs the database or the caller, such as “no new tasks in an
+archived project”: check it in the <code class="docutils literal notranslate"><span class="pre">create</span></code> or <code class="docutils literal notranslate"><span class="pre">update</span></code> business method
+and raise an error there; see
+<a class="reference internal" href="lifecycle.html#business-methods"><span class="std std-ref">Request Lifecycle &amp; Hooks</span></a>. The SaaS example checks
+such rules in
+<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/tasks/views.py"><code class="docutils literal notranslate"><span class="pre">app/tasks/views.py</span></code></a>.</p></li>
+</ul>
+</section>
+</section>
+<section id="keep-times-in-utc">
+<span id="utc-times"></span><h2>Keep times in UTC<a class="headerlink" href="#keep-times-in-utc" title="Link to this heading">#</a></h2>
+<p>Give each time field the type
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.UTCDatetime" title="fastapi_restly.schemas.UTCDatetime"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.UTCDatetime</span></code></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">MeetingSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">starts_at</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">UTCDatetime</span>
+</pre></div>
+</div>
+<p>The field reads a time without an offset, such as <code class="docutils literal notranslate"><span class="pre">2024-01-01T09:30:00</span></code>, as
+UTC. A time with an offset, such as <code class="docutils literal notranslate"><span class="pre">2024-01-01T10:30:00+01:00</span></code>, becomes the
+same time in UTC. So <code class="docutils literal notranslate"><span class="pre">create</span></code> and <code class="docutils literal notranslate"><span class="pre">update</span></code> get each time in UTC. A response
+shows it with <code class="docutils literal notranslate"><span class="pre">Z</span></code>, the offset of UTC, as JavaScript’s <code class="docutils literal notranslate"><span class="pre">toISOString()</span></code> does: a
+client that sends <code class="docutils literal notranslate"><span class="pre">&quot;starts_at&quot;:</span> <span class="pre">&quot;2024-01-01T10:30:00+01:00&quot;</span></code> gets
+<code class="docutils literal notranslate"><span class="pre">&quot;starts_at&quot;:</span> <span class="pre">&quot;2024-01-01T09:30:00Z&quot;</span></code> back. A schema that Restly generates
+gives each time column this type, and
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.TimestampsSchemaMixin" title="fastapi_restly.schemas.TimestampsSchemaMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.TimestampsSchemaMixin</span></code></a>
+gives it to <code class="docutils literal notranslate"><span class="pre">created_at</span></code> and <code class="docutils literal notranslate"><span class="pre">updated_at</span></code>.</p>
+<p>A filter value goes through the same type, so
+<code class="docutils literal notranslate"><span class="pre">?starts_at__gte=2024-01-01T04:15:00-05:00</span></code> finds the meeting. In a URL,
+write the <code class="docutils literal notranslate"><span class="pre">+</span></code> of an offset as <code class="docutils literal notranslate"><span class="pre">%2B</span></code>: a plain <code class="docutils literal notranslate"><span class="pre">+</span></code> means a space there.</p>
+<p>Each column stores the time in UTC. A column without a time zone stores it
+without the offset: <code class="docutils literal notranslate"><span class="pre">2024-01-01T09:30:00</span></code>. On a base with
+<a class="reference internal" href="api/models.html#fastapi_restly.models.ModelDefaults" title="fastapi_restly.models.ModelDefaults"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code></a>, a
+<code class="docutils literal notranslate"><span class="pre">Mapped[datetime]</span></code> column has a time zone. A column with
+<code class="docutils literal notranslate"><span class="pre">mapped_column(DateTime())</span></code> has none, and neither has <code class="docutils literal notranslate"><span class="pre">Mapped[datetime]</span></code> on a
+base without <code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code>.</p>
+<p>For local times, such as the start of a dinner booking in the time of the
+restaurant, use a column without a time zone, and a field of type <code class="docutils literal notranslate"><span class="pre">datetime</span></code>
+with a validator that converts the time. Restly then gets a time without an
+offset, and keeps it as it is:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">zoneinfo</span><span class="w"> </span><span class="kn">import</span> <span class="n">ZoneInfo</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pydantic</span>
+
+<span class="n">AMSTERDAM</span> <span class="o">=</span> <span class="n">ZoneInfo</span><span class="p">(</span><span class="s2">&quot;Europe/Amsterdam&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">amsterdam_time</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">datetime</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">datetime</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">value</span><span class="o">.</span><span class="n">tzinfo</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">value</span>
+    <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="n">astimezone</span><span class="p">(</span><span class="n">AMSTERDAM</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">tzinfo</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">BookingSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">starts_at</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">datetime</span><span class="p">,</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">AfterValidator</span><span class="p">(</span><span class="n">amsterdam_time</span><span class="p">)]</span>
+</pre></div>
+</div>
+<p>A filter value goes through the field’s validation too, also in the filter
+of a <a class="reference internal" href="react_admin.html"><span class="std std-doc">react-admin view</span></a>, so the filters convert it in the
+same way.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>Without these rules, the database drivers decide, and they do not agree. For
+a column without a time zone, asyncpg rejects a time with an offset, so the
+request fails with a 500. For a column with a time zone, asyncpg reads a
+time without an offset in the time zone of the app’s Python process. psycopg
+leaves both cases to PostgreSQL, which uses the time zone of the database
+session. On an engine that Restly builds from a URL, that session is in UTC;
+see <a class="reference internal" href="database.html#engine-defaults"><span class="std std-ref">Engine defaults</span></a>. SQLite drops the offset of every
+time.</p>
+<p>A field of type <code class="docutils literal notranslate"><span class="pre">datetime</span></code> keeps the time that the client sent. Restly still
+changes the time to fit its column before the database sees it: in a filter,
+and when it copies a request body onto the model, in
+<a class="reference internal" href="api/objects.html#fastapi_restly.objects.make_new_object" title="fastapi_restly.objects.make_new_object"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.objects.make_new_object</span></code></a>
+and <a class="reference internal" href="api/objects.html#fastapi_restly.objects.update_object" title="fastapi_restly.objects.update_object"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.objects.update_object</span></code></a>:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Column</p></th>
+<th class="head"><p>A time with an offset</p></th>
+<th class="head"><p>A time without an offset</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>With a time zone</p></td>
+<td><p>becomes the same time in UTC</p></td>
+<td><p>gets the offset of UTC</p></td>
+</tr>
+<tr class="row-odd"><td><p>Without a time zone</p></td>
+<td><p>becomes the same time in UTC, without the offset</p></td>
+<td><p>stays as it is</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>So <code class="docutils literal notranslate"><span class="pre">authorize</span></code>, <code class="docutils literal notranslate"><span class="pre">create</span></code> and <code class="docutils literal notranslate"><span class="pre">update</span></code> get the time as the client sent it,
+and a response shows a time from a column without a time zone without an
+offset.</p>
+<p>Restly changes a time to fit a column only when the model has a column with
+the name of the field. A field without one, such as a <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> field that
+only <code class="docutils literal notranslate"><span class="pre">create</span></code> reads, gets UTC from its type only.</p>
+<p>A filter method of your own, from
+<a class="reference internal" href="api/views.html#fastapi_restly.views.list_filter" title="fastapi_restly.views.list_filter"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.list_filter</span></code></a>, gets its value as
+the type of its parameter gives it. With <code class="docutils literal notranslate"><span class="pre">value:</span> <span class="pre">fr.UTCDatetime</span></code>, it gets the
+time in UTC. Compare it with a column without a time zone as
+<code class="docutils literal notranslate"><span class="pre">value.replace(tzinfo=None)</span></code>.</p>
+<p>A time from the database has no offset when its column has no time zone, and
+on SQLite always. A time from the schema has an offset. Python cannot order
+such times: <code class="docutils literal notranslate"><span class="pre">&lt;</span></code>, <code class="docutils literal notranslate"><span class="pre">&gt;</span></code> and <code class="docutils literal notranslate"><span class="pre">-</span></code> raise <code class="docutils literal notranslate"><span class="pre">TypeError</span></code>. And <code class="docutils literal notranslate"><span class="pre">==</span></code> is always <code class="docutils literal notranslate"><span class="pre">False</span></code>,
+and <code class="docutils literal notranslate"><span class="pre">!=</span></code> always <code class="docutils literal notranslate"><span class="pre">True</span></code>, without an error. Convert the time from the database
+with <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.in_utc" title="fastapi_restly.schemas.in_utc"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.in_utc</span></code></a> first, as in
+<code class="docutils literal notranslate"><span class="pre">data.ends_at</span> <span class="pre">&gt;</span> <span class="pre">fr.in_utc(obj.starts_at)</span></code>. <code class="docutils literal notranslate"><span class="pre">fr.in_utc</span></code> follows the rule of
+<code class="docutils literal notranslate"><span class="pre">fr.UTCDatetime</span></code>: a time without an offset is UTC, and a time with an offset
+becomes the same time in UTC.</p>
+<p>A column with a type of your own, a
+<a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/custom_types.html#sqlalchemy.types.TypeDecorator" title="(in SQLAlchemy v2.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypeDecorator</span></code></a>, gets a time with an offset as it
+is, and so does a type with a variant for one database, from
+<code class="docutils literal notranslate"><span class="pre">with_variant()</span></code>. Such a type may need the offset, as SQLAlchemy’s recipe
+that stores UTC in a column without a time zone does, and a variant may
+store a time zone where the type itself does not. Restly only checks that
+the time fits in UTC. A time without an offset gets the offset of UTC when
+the type stores a time zone. SQLAlchemy’s recipe stores none, and it refuses
+a time without an offset, so give its column a field of type
+<code class="docutils literal notranslate"><span class="pre">fr.UTCDatetime</span></code>, which gives every time the offset of UTC.</p>
+<p>A time that is not between the years 1 and 9999 in UTC, such as
+<code class="docutils literal notranslate"><span class="pre">9999-12-31T23:30:00-01:00</span></code>, gets 422 in a request body and 400 in a filter.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">date</span></code>, and a time of day of type <code class="docutils literal notranslate"><span class="pre">time</span></code>, have no rule. A time of day has
+no date, so summer time can change its time in UTC. A <code class="docutils literal notranslate"><span class="pre">time</span></code> column without
+a time zone keeps the clock time of a value and drops its offset:
+<code class="docutils literal notranslate"><span class="pre">09:00:00+02:00</span></code> becomes <code class="docutils literal notranslate"><span class="pre">09:00:00</span></code>.</p>
+</div>
+</section>
+<section id="use-other-field-names-in-json">
+<span id="field-aliases"></span><h2>Use other field names in JSON<a class="headerlink" href="#use-other-field-names-in-json" title="Link to this heading">#</a></h2>
+<p>Use a normal Pydantic alias when the JSON name differs from the Python name:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">first_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">&quot;firstName&quot;</span><span class="p">)</span>
+    <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
+</pre></div>
+</div>
+<p>A request body must use <code class="docutils literal notranslate"><span class="pre">firstName</span></code>. The responses use <code class="docutils literal notranslate"><span class="pre">firstName</span></code> too. The
+Python name stays <code class="docutils literal notranslate"><span class="pre">first_name</span></code>, and Restly writes the value to the model
+attribute with that name. List filters use the alias as well; see
+<a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering, Sorting &amp; Pagination</span></a>.</p>
+</section>
+<section id="set-your-own-response-class">
+<span id="own-response-class"></span><h2>Set your own response class<a class="headerlink" href="#set-your-own-response-class" title="Link to this heading">#</a></h2>
+<p>By default, the response class is the view’s schema without its <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code>
+fields. Restly builds this class even when the schema has no <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code>
+fields, so OpenAPI always shows <code class="docutils literal notranslate"><span class="pre">UserResponse</span></code>.</p>
+<p>When what goes out differs more from what comes in, set
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_response" title="fastapi_restly.views.BaseRestView.schema_response"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_response</span></code></a>
+on the view. Everything that goes out follows it:</p>
+<ul class="simple">
+<li><p>every single response, and each item of the list response;</p></li>
+<li><p>the fields that the list filters and sort keys use, so a client can filter
+only on the fields that go out;</p></li>
+<li><p>the relationships that the view loads.</p></li>
+</ul>
+<p>The request bodies still follow <code class="docutils literal notranslate"><span class="pre">schema_create</span></code> and <code class="docutils literal notranslate"><span class="pre">schema_update</span></code>, which
+Restly derives from <code class="docutils literal notranslate"><span class="pre">schema</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">AccountSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">team_id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">AccountResponse</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">team</span><span class="p">:</span> <span class="n">TeamSchema</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">AccountView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/accounts&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Account</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">AccountSchema</span>
+    <span class="n">schema_response</span> <span class="o">=</span> <span class="n">AccountResponse</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/accounts</span></code> takes <code class="docutils literal notranslate"><span class="pre">name</span></code>, <code class="docutils literal notranslate"><span class="pre">email</span></code> and <code class="docutils literal notranslate"><span class="pre">team_id</span></code>. Every response shows
+<code class="docutils literal notranslate"><span class="pre">id</span></code>, <code class="docutils literal notranslate"><span class="pre">name</span></code> and the nested <code class="docutils literal notranslate"><span class="pre">team</span></code>, which the view loads. <code class="docutils literal notranslate"><span class="pre">?email=...</span></code> is not
+a filter, because a client does not see <code class="docutils literal notranslate"><span class="pre">email</span></code>. Restly uses the class as you
+wrote it: it does not remove <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields from it.</p>
+<p>To change how one object becomes a response, or to send another shape, see
+<a class="reference internal" href="responses.html"><span class="std std-doc">Responses</span></a>.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>Name the class <code class="docutils literal notranslate"><span class="pre">&lt;Resource&gt;Response</span></code>, as in <code class="docutils literal notranslate"><span class="pre">AccountResponse</span></code>. Restly names the
+list response and the list params after it: <code class="docutils literal notranslate"><span class="pre">AccountListResponse</span></code> and
+<code class="docutils literal notranslate"><span class="pre">AccountListParams</span></code>. For type checkers, put the class in the second type
+parameter of the view, as in <code class="docutils literal notranslate"><span class="pre">fr.AsyncRestView[Account,</span> <span class="pre">AccountResponse]</span></code>; see
+<a class="reference internal" href="typing.html#view-generics"><span class="std std-ref">Type Annotations</span></a>.</p>
+</div>
+</section>
+<section id="the-names-of-the-generated-classes">
+<span id="generated-class-names"></span><h2>The names of the generated classes<a class="headerlink" href="#the-names-of-the-generated-classes" title="Link to this heading">#</a></h2>
+<p>A class that Restly generates is named <code class="docutils literal notranslate"><span class="pre">&lt;Resource&gt;&lt;Role&gt;</span></code>. Resource is the
+class name of the view’s schema without a final <code class="docutils literal notranslate"><span class="pre">Schema</span></code> or <code class="docutils literal notranslate"><span class="pre">Response</span></code>. For
+the view’s schema <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code>, the resource is <code class="docutils literal notranslate"><span class="pre">User</span></code>:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Role</p></th>
+<th class="head"><p>Class</p></th>
+<th class="head"><p>View attribute</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>response</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UserResponse</span></code></p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_response" title="fastapi_restly.views.BaseRestView.schema_response"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_response</span></code></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>create body</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UserCreate</span></code></p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a></p></td>
+</tr>
+<tr class="row-even"><td><p>update body</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UserUpdate</span></code></p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>list response</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UserListResponse</span></code></p></td>
+<td><p>none</p></td>
+</tr>
+<tr class="row-even"><td><p>list params</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UserListParams</span></code></p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_list_params" title="fastapi_restly.views.BaseRestView.schema_list_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_list_params</span></code></a></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>A client sees these names in OpenAPI. It does not see the view’s schema,
+unless another schema nests it or a custom route names it. The list params
+are not a class in OpenAPI either: OpenAPI shows them as separate query
+parameters.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">404</span></code> for a row that does not exist names the resource too, such as
+<code class="docutils literal notranslate"><span class="pre">User</span> <span class="pre">with</span> <span class="pre">id</span> <span class="pre">5</span> <span class="pre">was</span> <span class="pre">not</span> <span class="pre">found</span></code>. To change the text, override
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.not_found" title="fastapi_restly.views.BaseRestView.not_found"><code class="xref py py-meth docutils literal notranslate"><span class="pre">not_found</span></code></a>.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>The list response has no view attribute, because it has nothing of its own
+to set. It is the envelope of the view’s
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.pagination" title="fastapi_restly.views.BaseRestView.pagination"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pagination</span></code></a>, filled with
+the response class. To change it, change one of those two; see
+<a class="reference internal" href="responses.html#change-list-envelope"><span class="std std-ref">Change the list envelope</span></a>. A react-admin view has no
+list response class: its list route returns a plain JSON list.</p>
+<p>A view without a schema gets a generated one. For a model named <code class="docutils literal notranslate"><span class="pre">User</span></code> it is
+<code class="docutils literal notranslate"><span class="pre">UserSchema</span></code>, so the names above stay the same. A schema with another name
+keeps its full name as the resource: <code class="docutils literal notranslate"><span class="pre">UserRead</span></code> gives <code class="docutils literal notranslate"><span class="pre">UserReadCreate</span></code>.</p>
+</div>
+</section>
+<section id="name-your-schemas">
+<span id="id2"></span><h2>Name your schemas<a class="headerlink" href="#name-your-schemas" title="Link to this heading">#</a></h2>
+<p>OpenAPI keeps all classes in one list, by name. It has no modules. A
+generated client uses these names as type names. So each class in your API
+needs its own name, even when Python keeps two classes apart in different
+modules.</p>
+<p>Restly names the classes that it generates after the view’s schema; see
+<a class="reference internal" href="#generated-class-names">the names of the generated classes</a>. Follow these
+rules for the classes that you write:</p>
+<ul>
+<li><p>Name the view’s schema after the resource that the client sees:
+<code class="docutils literal notranslate"><span class="pre">UserSchema</span></code>, or <code class="docutils literal notranslate"><span class="pre">AdminUserSchema</span></code> for an admin view of users. Two schemas
+named <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code> in different modules clash.</p></li>
+<li><p>Use the names <code class="docutils literal notranslate"><span class="pre">UserResponse</span></code>, <code class="docutils literal notranslate"><span class="pre">UserCreate</span></code> and <code class="docutils literal notranslate"><span class="pre">UserUpdate</span></code> only for a
+view’s response class and its create and update body, and set the class on
+the view:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">TaskCreate</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">BaseSchema</span><span class="p">):</span>
+    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">TaskView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/tasks&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Task</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">TaskSchema</span>
+    <span class="n">schema_create</span> <span class="o">=</span> <span class="n">TaskCreate</span>
+</pre></div>
+</div>
+<p>A class for another purpose, such as the body of a bulk route, gets a name
+that says what it is: <code class="docutils literal notranslate"><span class="pre">TaskBulkItem</span></code>, <code class="docutils literal notranslate"><span class="pre">UserSummary</span></code>.</p>
+</li>
+<li><p>Two views that share a schema also share the names of the classes that
+Restly generates. When the classes differ, for example because only one
+view is paginated, give one view a schema of its own:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">AllTasksSchema</span><span class="p">(</span><span class="n">TaskSchema</span><span class="p">):</span>
+    <span class="k">pass</span>
+</pre></div>
+</div>
+<p>The list response takes its name from the response class. So when the two
+views set the same <code class="docutils literal notranslate"><span class="pre">schema_response</span></code>, give one view a response class of
+its own in the same way.</p>
+</li>
+</ul>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>Two different classes can still get the same name. For example, two views
+share a schema but only one is paginated, or you wrote a <code class="docutils literal notranslate"><span class="pre">UserCreate</span></code> that is
+not the same as the generated one. OpenAPI then shows both classes under long
+names built from the module path, such as <code class="docutils literal notranslate"><span class="pre">app__users__views__UserCreate</span></code>.
+When the module path is the same too, it numbers them, and the numbers follow
+the order in which the views are registered. These names can change, and a
+generated client then breaks.</p>
+<p>When the app builds its OpenAPI spec, Restly checks for this and warns with a
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyDuplicateSchemaNameWarning" title="fastapi_restly.exc.RestlyDuplicateSchemaNameWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyDuplicateSchemaNameWarning</span></code></a>
+that names the classes and the views. Restly checks an app that you pass to
+<a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure(app,</span> <span class="pre">...)</span></code></a> or
+<a class="reference internal" href="api/testing.html#fastapi_restly.testing.configure_tests" title="fastapi_restly.testing.configure_tests"><code class="xref py py-func docutils literal notranslate"><span class="pre">configure_tests(app=...)</span></code></a>, or
+that you include a view on. Two classes with the same name are not a problem
+when their JSON schemas are the same, docstrings and defaults included:
+OpenAPI then shows them as one.</p>
+</div>
+</section>
+<section id="name-the-view-s-classes-in-a-custom-route">
+<span id="name-the-response-classes"></span><h2>Name the view’s classes in a custom route<a class="headerlink" href="#name-the-view-s-classes-in-a-custom-route" title="Link to this heading">#</a></h2>
+<p>A custom route can show the same types in OpenAPI as the CRUD routes. A route
+decorator runs in the class body, before Restly builds the view’s classes.
+So a custom route names them with markers from <code class="docutils literal notranslate"><span class="pre">fastapi_restly.views</span></code>. When
+the view registers, Restly puts the view’s class in place of each marker:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Marker</p></th>
+<th class="head"><p>The view’s class</p></th>
+<th class="head"><p>On <code class="docutils literal notranslate"><span class="pre">UserView</span></code></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.ViewResponse" title="fastapi_restly.views.ViewResponse"><code class="xref py py-data docutils literal notranslate"><span class="pre">ViewResponse</span></code></a></p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_response" title="fastapi_restly.views.BaseRestView.schema_response"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_response</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UserResponse</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.ViewListResponse" title="fastapi_restly.views.ViewListResponse"><code class="xref py py-data docutils literal notranslate"><span class="pre">ViewListResponse</span></code></a></p></td>
+<td><p>the list response, with the view’s pagination</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UserListResponse</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.ViewCreate" title="fastapi_restly.views.ViewCreate"><code class="xref py py-data docutils literal notranslate"><span class="pre">ViewCreate</span></code></a></p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UserCreate</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.ViewUpdate" title="fastapi_restly.views.ViewUpdate"><code class="xref py py-data docutils literal notranslate"><span class="pre">ViewUpdate</span></code></a></p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UserUpdate</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.ViewID" title="fastapi_restly.views.ViewID"><code class="xref py py-data docutils literal notranslate"><span class="pre">ViewID</span></code></a></p></td>
+<td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.id_type" title="fastapi_restly.views.BaseRestView.id_type"><code class="xref py py-attr docutils literal notranslate"><span class="pre">id_type</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">ViewID</span><span class="p">,</span> <span class="n">ViewListResponse</span><span class="p">,</span> <span class="n">ViewResponse</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">AppView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
+
+    <span class="k">class</span><span class="w"> </span><span class="nc">Action</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="p">):</span>
+        <span class="n">ACTIVATE</span> <span class="o">=</span> <span class="s2">&quot;activate&quot;</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/inactive&quot;</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">inactive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewListResponse</span><span class="p">:</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span><span class="n">list_params</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="n">User</span><span class="o">.</span><span class="n">active</span><span class="o">.</span><span class="n">is_</span><span class="p">(</span><span class="kc">False</span><span class="p">))</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/activate&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">activate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="n">ViewID</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewResponse</span><span class="p">:</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">ACTIVATE</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">user</span><span class="p">):</span>
+            <span class="n">user</span><span class="o">.</span><span class="n">active</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="n">user</span>
+</pre></div>
+</div>
+<p>OpenAPI then shows <code class="docutils literal notranslate"><span class="pre">UserListResponse</span></code> and <code class="docutils literal notranslate"><span class="pre">UserResponse</span></code> for these routes,
+as for the CRUD routes. A path parameter annotated <code class="docutils literal notranslate"><span class="pre">ViewID</span></code> gets the path
+converter of the id type, as the item routes do: here <code class="docutils literal notranslate"><span class="pre">/{id:int}</span></code>; see
+<a class="reference internal" href="crud_routes.html#item-route-matching"><span class="std std-ref">Item paths</span></a>.</p>
+<p>The routes return the list result and the row. Because they declare the
+view’s response, Restly passes these through
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response" title="fastapi_restly.views.BaseRestView.to_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_response</span></code></a>, as the
+CRUD routes do; see
+<a class="reference internal" href="responses.html#custom-route-response"><span class="std std-ref">The response of a custom route</span></a>.</p>
+<p>A marker stands for the class of the view that registers. So a route on a
+base view works for each view that subclasses it, with that view’s classes.
+The <code class="docutils literal notranslate"><span class="pre">TrashView</span></code> of the SaaS example adds a trash list and a restore route to
+two views this way, in
+<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py"><code class="docutils literal notranslate"><span class="pre">app/views.py</span></code></a>.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>A marker works wherever the class could go: in a parameter annotation, in the
+return annotation, in <code class="docutils literal notranslate"><span class="pre">response_model=</span></code>, and inside another type, such as
+<code class="docutils literal notranslate"><span class="pre">list[ViewResponse]</span></code> or <code class="docutils literal notranslate"><span class="pre">ViewResponse</span> <span class="pre">|</span> <span class="pre">None</span></code>. <code class="docutils literal notranslate"><span class="pre">Annotated[ViewID,</span> <span class="pre">Path(ge=1)]</span></code>
+keeps the <code class="docutils literal notranslate"><span class="pre">Path(ge=1)</span></code>. A path that gives a converter, such as <code class="docutils literal notranslate"><span class="pre">/{id:str}</span></code>,
+keeps it.</p>
+<p>For a type checker, each marker is <code class="docutils literal notranslate"><span class="pre">Any</span></code>, so it accepts a marker in any
+annotation. A plain <a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a> has no model and
+no schema, so a route on it cannot use the markers: registration raises
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>.</p>
+<p>To use the classes outside a route, or the classes of another view, build
+them with
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.derive_schema_response" title="fastapi_restly.schemas.derive_schema_response"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_schema_response(schema)</span></code></a>
+and
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.derive_schema_list_response" title="fastapi_restly.schemas.derive_schema_list_response"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_schema_list_response(schema_response,</span> <span class="pre">pagination=...)</span></code></a>.
+They return the same classes that the view uses. Pass the view’s pagination
+as it is, also when it is <code class="docutils literal notranslate"><span class="pre">None</span></code>. A list response with another envelope than
+the view’s has another shape, for example <code class="docutils literal notranslate"><span class="pre">data</span></code> without <code class="docutils literal notranslate"><span class="pre">total_count</span></code>.
+There are then two classes named <code class="docutils literal notranslate"><span class="pre">UserListResponse</span></code>, and Restly warns; see
+<a class="reference internal" href="#name-your-schemas">Name your schemas</a>. A function builds these classes, so
+type checkers do not accept them in an annotation, as in
+<code class="docutils literal notranslate"><span class="pre">data:</span> <span class="pre">UserResponse</span></code>. At runtime they are normal classes, so add
+<code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">type:</span> <span class="pre">ignore[valid-type]</span></code> on such a line.</p>
+<p>A custom route that names <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code> or <code class="docutils literal notranslate"><span class="pre">PaginatedEnvelope[UserSchema]</span></code>
+sends the same JSON, but shows a type of its own in OpenAPI.</p>
+</div>
+</section>
+<section id="validate-the-document-in-a-json-column">
+<span id="json-document-columns"></span><h2>Validate the document in a JSON column<a class="headerlink" href="#validate-the-document-in-a-json-column" title="Link to this heading">#</a></h2>
+<p>A <code class="docutils literal notranslate"><span class="pre">JSON</span></code> column maps to a bare <code class="docutils literal notranslate"><span class="pre">dict</span></code>, which does not check the fields of the
+document. To check its shape, write the schema yourself and give the field a
+nested Pydantic model as its type. Restly calls <code class="docutils literal notranslate"><span class="pre">model_dump(mode=&quot;json&quot;)</span></code>
+before it assigns the document to the column. The view’s schema validates the
+stored document when it is read back.</p>
+<p>A document with a <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.WriteOnly" title="fastapi_restly.schemas.WriteOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">WriteOnly</span></code></a> or a
+<code class="docutils literal notranslate"><span class="pre">Field(exclude=True)</span></code> field raises
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>
+before Restly assigns it. This includes such fields in nested models. The dump
+would leave those fields out, so they would not be stored. A field of
+Pydantic’s secret types, such as <code class="docutils literal notranslate"><span class="pre">SecretStr</span></code>, raises the same error: the dump
+masks it, so the column would get <code class="docutils literal notranslate"><span class="pre">**********</span></code>. So does a document with
+dataclasses or iterators. For such documents, use a
+SQLAlchemy <a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/custom_types.html#sqlalchemy.types.TypeDecorator" title="(in SQLAlchemy v2.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypeDecorator</span></code></a> that defines how the
+document is stored. Its bind processor receives the Pydantic model itself, not
+a dump.</p>
+<p>You can still mark the whole JSON column <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code>. That hides the column
+in responses, and the stored document keeps all its fields.</p>
+</section>
+<section id="internals">
+<h2>Internals<a class="headerlink" href="#internals" title="Link to this heading">#</a></h2>
+<p>This section explains how Restly builds the classes. You do not need it to
+use them.</p>
+<section id="how-the-markers-work">
+<h3>How the markers work<a class="headerlink" href="#how-the-markers-work" title="Link to this heading">#</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> and <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> are <code class="docutils literal notranslate"><span class="pre">typing.Annotated</span></code> aliases. Each one adds a
+marker object and a Pydantic <code class="docutils literal notranslate"><span class="pre">Field</span></code> to the type:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ReadOnly[T]</span></code> is <code class="docutils literal notranslate"><span class="pre">T</span></code> with the read-only marker and a <code class="docutils literal notranslate"><span class="pre">readOnly</span></code> flag for
+the JSON schema.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">WriteOnly[T]</span></code> is <code class="docutils literal notranslate"><span class="pre">T</span></code> with the write-only marker, a <code class="docutils literal notranslate"><span class="pre">writeOnly</span></code> flag for the
+JSON schema, and <code class="docutils literal notranslate"><span class="pre">exclude=True</span></code>. Pydantic’s <code class="docutils literal notranslate"><span class="pre">exclude</span></code> removes the field in
+every serialization of the schema. A value can only leak through a response
+that never passes through the schema, such as a raw dict or ORM object that
+a route returns without a <code class="docutils literal notranslate"><span class="pre">response_model</span></code>.</p></li>
+</ul>
+<p>Restly finds a marker in the field’s top-level metadata. That is why a marker
+inside a union or a container is rejected. <code class="docutils literal notranslate"><span class="pre">BaseSchema</span></code> checks this when the
+class is defined. A view checks its own classes again when it registers, which
+also covers classes that do not derive from <code class="docutils literal notranslate"><span class="pre">BaseSchema</span></code>.</p>
+</section>
+<section id="how-restly-builds-the-request-bodies-and-the-response-class">
+<h3>How Restly builds the request bodies and the response class<a class="headerlink" href="#how-restly-builds-the-request-bodies-and-the-response-class" title="Link to this heading">#</a></h3>
+<p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.before_include_view" title="fastapi_restly.views.BaseRestView.before_include_view"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_include_view()</span></code></a>
+builds the classes. For the view’s schema <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code>:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_response" title="fastapi_restly.views.BaseRestView.schema_response"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_response</span></code></a>
+comes from
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.derive_schema_response" title="fastapi_restly.schemas.derive_schema_response"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_schema_response()</span></code></a>.
+It is a subclass of <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code> that deletes the <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields. Each
+call with the same schema returns the same class, so a custom route can
+name it.</p></li>
+<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a> is
+a subclass of <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code> with <code class="docutils literal notranslate"><span class="pre">OmitReadOnlyMixin</span></code> first in the MRO. That
+mixin deletes the <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> fields from <code class="docutils literal notranslate"><span class="pre">cls.model_fields</span></code> and rebuilds the
+class with <code class="docutils literal notranslate"><span class="pre">model_rebuild(force=True)</span></code>.</p></li>
+<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a>
+adds <code class="docutils literal notranslate"><span class="pre">PatchMixin</span></code> as well. After the <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> fields are gone, it sets the
+default of every field to <code class="docutils literal notranslate"><span class="pre">None</span></code>, so the client may leave out each field.
+The defaults of <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code> are <strong>replaced</strong> by <code class="docutils literal notranslate"><span class="pre">None</span></code>, not kept. Each
+field keeps its type, and Pydantic does not validate the <code class="docutils literal notranslate"><span class="pre">None</span></code> default,
+also when the class sets <code class="docutils literal notranslate"><span class="pre">validate_default=True</span></code> or a validator sets
+<code class="docutils literal notranslate"><span class="pre">always=True</span></code>. A field that the client does not send is not written:
+Restly writes only the fields in <code class="docutils literal notranslate"><span class="pre">model_fields_set</span></code>. In OpenAPI, no field
+of the update body is required.</p></li>
+</ul>
+<p>Both request bodies also leave out a primary key that the server generates,
+even when the schema does not mark it <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>. Generated means an
+autoincrement column, a column with a default, or a dataclass field outside
+<code class="docutils literal notranslate"><span class="pre">__init__</span></code>. A primary key without any of these is a natural key, and the
+client sends it.</p>
+<p>The classes are subclasses, so they keep the validators and serializers of
+<code class="docutils literal notranslate"><span class="pre">UserSchema</span></code>. When a class deletes a field, it keeps the validators and
+serializers of that field too, and Pydantic does not run them there. So a
+validator for a <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> field, a <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> field or a generated primary
+key does not need <code class="docutils literal notranslate"><span class="pre">check_fields=False</span></code>.</p>
+<p>Restly stores the classes on the view when it registers the view. Declare
+<code class="docutils literal notranslate"><span class="pre">schema_response</span></code>, <code class="docutils literal notranslate"><span class="pre">schema_create</span></code> or <code class="docutils literal notranslate"><span class="pre">schema_update</span></code> on the view class to use
+your own class instead.</p>
+</section>
+<section id="when-a-subclass-view-gets-new-classes">
+<h3>When a subclass view gets new classes<a class="headerlink" href="#when-a-subclass-view-gets-new-classes" title="Link to this heading">#</a></h3>
+<p>A subclass inherits the classes that its base view declares. Registration
+builds a class again for the subclass in two cases: Restly generated it for
+the parent, or what it is built from changes. A subclass that declares a new
+<code class="docutils literal notranslate"><span class="pre">schema</span></code> gets a new <code class="docutils literal notranslate"><span class="pre">schema_response</span></code>, <code class="docutils literal notranslate"><span class="pre">schema_create</span></code>, <code class="docutils literal notranslate"><span class="pre">schema_update</span></code> and
+<code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code>. A subclass that declares a new <code class="docutils literal notranslate"><span class="pre">schema_response</span></code> gets
+new <code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code>. A view without a schema builds it from <code class="docutils literal notranslate"><span class="pre">model</span></code>, so
+there a new <code class="docutils literal notranslate"><span class="pre">model</span></code> counts as a new <code class="docutils literal notranslate"><span class="pre">schema</span></code>. A class that Restly generates
+for the subclass is not a change of its own, so it does not replace a class
+that the base declares.</p>
+<p>The list params are also built from <code class="docutils literal notranslate"><span class="pre">pagination</span></code>, the list settings such as
+<code class="docutils literal notranslate"><span class="pre">include_filters</span></code> and <code class="docutils literal notranslate"><span class="pre">sort_query_param</span></code>, and the filter methods. A subclass
+that changes one of them gets new <code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code> when the base declares
+the list params that Restly would generate for it, made with
+<a class="reference internal" href="api/query.html#fastapi_restly.query.derive_schema_list_params" title="fastapi_restly.query.derive_schema_list_params"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_schema_list_params()</span></code></a>.
+Other declared list params stay, such as ones from a narrower schema. A
+subclass with other settings then fails when it registers, and the message
+says what to change. List params that you write by hand take no list
+settings and no filter methods. A new <code class="docutils literal notranslate"><span class="pre">schema</span></code> replaces them too, so a
+subclass with a new schema declares its list params again.</p>
+</section>
+<section id="how-restly-generates-a-schema">
+<span id="auto-generated-schemas"></span><h3>How Restly generates a schema<a class="headerlink" href="#how-restly-generates-a-schema" title="Link to this heading">#</a></h3>
+<p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.derive_schema" title="fastapi_restly.schemas.derive_schema"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_schema(model,</span> <span class="pre">...)</span></code></a>
+builds the schema of a view without one. It makes one field for each column
+on the model’s SQLAlchemy mapper, inherited columns included. A column’s type
+comes from its <code class="docutils literal notranslate"><span class="pre">Mapped[T]</span></code> annotation, or from the plain annotation on a
+SQLModel table. Under <code class="docutils literal notranslate"><span class="pre">from</span> <span class="pre">__future__</span> <span class="pre">import</span> <span class="pre">annotations</span></code>, Restly evaluates
+the annotation string in the model’s module. When no annotation resolves, the
+column type’s <code class="docutils literal notranslate"><span class="pre">python_type</span></code> is used. A column with neither raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code>
+that names the attribute. Synonyms and composites get no field of their own:
+the columns behind them already have one. A field allows <code class="docutils literal notranslate"><span class="pre">null</span></code> (<code class="docutils literal notranslate"><span class="pre">None</span></code> in
+Python) only when its column is nullable. <code class="docutils literal notranslate"><span class="pre">mapped_column(nullable=...)</span></code>
+decides this, as it does for SQLAlchemy, even when the <code class="docutils literal notranslate"><span class="pre">Mapped[...]</span></code>
+annotation says otherwise.</p>
+<p>The create body follows the model’s constructor, as SQLAlchemy does. The
+client may leave out a field when its column is nullable, or when the
+constructor does not require it and the model then still gives the column a
+value. That value comes from the column, such as <code class="docutils literal notranslate"><span class="pre">insert_default</span></code> or
+<code class="docutils literal notranslate"><span class="pre">server_default</span></code>, or from the constructor: a <code class="docutils literal notranslate"><span class="pre">default</span></code> other than <code class="docutils literal notranslate"><span class="pre">None</span></code>, or
+a <code class="docutils literal notranslate"><span class="pre">default_factory</span></code>. Restly calls the constructor with the fields that the
+client sent, so that value applies.</p>
+<p>On a dataclass model, a column with only an <code class="docutils literal notranslate"><span class="pre">insert_default</span></code> or a
+<code class="docutils literal notranslate"><span class="pre">server_default</span></code> is a required argument of the constructor, so its field is
+required. To let the client leave it out, add <code class="docutils literal notranslate"><span class="pre">default=None</span></code>, as SQLAlchemy
+does for a value that the database fills:
+<code class="docutils literal notranslate"><span class="pre">mapped_column(server_default=&quot;x&quot;,</span> <span class="pre">default=None)</span></code>. On SQLAlchemy 2.0, a JSON
+column stores that <code class="docutils literal notranslate"><span class="pre">None</span></code> as JSON <code class="docutils literal notranslate"><span class="pre">null</span></code> instead of its default, so Restly
+keeps such a field required. Use <code class="docutils literal notranslate"><span class="pre">default_factory=list</span></code>, or
+<code class="docutils literal notranslate"><span class="pre">JSON(none_as_null=True)</span></code>, for a JSON column. For a column that the client
+must never write, such as a <code class="docutils literal notranslate"><span class="pre">Computed</span></code> column, use <code class="docutils literal notranslate"><span class="pre">init=False</span></code>, as
+SQLAlchemy does. The field is then <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>.</p>
+<p>Three rules decide the rest:</p>
+<ul class="simple">
+<li><p><strong>Base classes</strong>: Restly checks whether the model has fields <em>named</em>
+<code class="docutils literal notranslate"><span class="pre">id</span></code>, <code class="docutils literal notranslate"><span class="pre">created_at</span></code> and <code class="docutils literal notranslate"><span class="pre">updated_at</span></code>, and picks
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">IDSchema</span></code></a>,
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.TimestampsSchemaMixin" title="fastapi_restly.schemas.TimestampsSchemaMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">TimestampsSchemaMixin</span></code></a>
+and <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.BaseSchema" title="fastapi_restly.schemas.BaseSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseSchema</span></code></a> from that. It
+does <strong>not</strong> look at the model’s Python base classes. A model with a field
+named <code class="docutils literal notranslate"><span class="pre">id</span></code> for another reason also gets <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code>.</p></li>
+<li><p><strong>ReadOnly fields</strong>: the fields <code class="docutils literal notranslate"><span class="pre">id</span></code>, <code class="docutils literal notranslate"><span class="pre">created_at</span></code> and <code class="docutils literal notranslate"><span class="pre">updated_at</span></code> are
+always <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>. So is a <code class="docutils literal notranslate"><span class="pre">column_property</span></code> over a SQL expression, which
+cannot be written. So is a column that the constructor does not take
+(<code class="docutils literal notranslate"><span class="pre">init=False</span></code>), such as a tenant column with an <code class="docutils literal notranslate"><span class="pre">insert_default</span></code>: the model
+or the server sets it, so the client must not. To let the client write such
+a column, remove <code class="docutils literal notranslate"><span class="pre">init=False</span></code>, so that the constructor takes it. Any other
+column that the server fills, for example with a server default, is
+<strong>not</strong> <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>.</p></li>
+<li><p><strong>Relationships</strong>: never included. A foreign key column, such as
+<code class="docutils literal notranslate"><span class="pre">customer_id</span></code>, is an ordinary field. With <code class="docutils literal notranslate"><span class="pre">init=False</span></code>, it is <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>,
+as the rule above says. To write a relationship, or to show it in a
+response, write the schema yourself: <code class="docutils literal notranslate"><span class="pre">customer:</span> <span class="pre">fr.IDRef[Customer]</span></code> for
+its id, or a nested schema for the whole row. See
+<a class="reference internal" href="relationships.html#reference-styles"><span class="std std-ref">Choose a reference style</span></a>.</p></li>
+</ul>
+<p>A view and a direct call of <code class="docutils literal notranslate"><span class="pre">derive_schema(model)</span></code> give the same schema.</p>
+</section>
+<section id="column-types-and-field-types">
+<h3>Column types and field types<a class="headerlink" href="#column-types-and-field-types" title="Link to this heading">#</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">convert_sqlalchemy_type_to_pydantic</span></code> maps the Python type of each column,
+from its annotation or its column type, to a Pydantic field type, as in this
+table. A type keeps its name, except a time: it gets
+<a class="reference internal" href="#utc-times"><code class="docutils literal notranslate"><span class="pre">fr.UTCDatetime</span></code></a>.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>SQLAlchemy / Python annotation</p></th>
+<th class="head"><p>Pydantic field type</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">datetime</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">fr.UTCDatetime</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">date</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">date</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">time</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">time</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">timedelta</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">timedelta</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">UUID</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UUID</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Decimal</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Decimal</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">dict</span></code> / <code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">Any]</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">dict</span></code> / <code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">Any]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">list</span></code> / <code class="docutils literal notranslate"><span class="pre">list[T]</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">list</span></code> / <code class="docutils literal notranslate"><span class="pre">list[T]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">enum.Enum</span></code> subclass</p></td>
+<td><p>same enum subclass</p></td>
+</tr>
+<tr class="row-odd"><td><p>SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Text</span></code>, <code class="docutils literal notranslate"><span class="pre">String</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Integer</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Float</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Boolean</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>SQLAlchemy <code class="docutils literal notranslate"><span class="pre">DateTime</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">fr.UTCDatetime</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Date</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">date</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Time</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">time</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Interval</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">timedelta</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">Any</span></code> and other generic types, such as <code class="docutils literal notranslate"><span class="pre">tuple[int,</span> <span class="pre">int]</span></code>, also stay as they
+are. Any other type raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> when Restly generates the schema. For a
+custom column type, write the schema yourself.</p>
+</section>
+</section>
+<section id="see-also">
+<h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="relationships.html"><span class="std std-doc">Relationships</span></a>: foreign keys and
+relationships as ids or nested objects, and the check that a referenced row
+exists.</p></li>
+<li><p><a class="reference internal" href="responses.html"><span class="std std-doc">Responses</span></a>: how one object becomes a response,
+envelopes, and <a class="reference internal" href="responses.html#list-schema"><span class="std std-ref">a different schema for the list route</span></a>.</p></li>
+<li><p><a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering, Sorting &amp; Pagination</span></a>: the filters and sort
+keys that come from the response class.</p></li>
+<li><p><a class="reference internal" href="models.html"><span class="std std-doc">Models</span></a>: values that the server sets on every write path.</p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="typing.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Type Annotations</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="relationships.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Relationships</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#generate-the-schema-or-write-it">Generate the schema or write it</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#choose-a-base-class">Choose a base class</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#hide-a-field-from-requests-or-from-responses">Hide a field from requests or from responses</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#write-the-request-body-yourself">Write the request body yourself</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#validate-input">Validate input</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#value-validation">Value validation</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#column-validation">Column validation</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#database-validation">Database validation</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#keep-times-in-utc">Keep times in UTC</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-other-field-names-in-json">Use other field names in JSON</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#set-your-own-response-class">Set your own response class</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-names-of-the-generated-classes">The names of the generated classes</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#name-your-schemas">Name your schemas</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#name-the-view-s-classes-in-a-custom-route">Name the view’s classes in a custom route</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#validate-the-document-in-a-json-column">Validate the document in a JSON column</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#internals">Internals</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-the-markers-work">How the markers work</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-restly-builds-the-request-bodies-and-the-response-class">How Restly builds the request bodies and the response class</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#when-a-subclass-view-gets-new-classes">When a subclass view gets new classes</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-restly-generates-a-schema">How Restly generates a schema</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#column-types-and-field-types">Column types and field types</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+<p class="sidebar-newsletter">
+  <a href="newsletter.html">Subscribe to newsletter</a>
+</p></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, Rutger Prins.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

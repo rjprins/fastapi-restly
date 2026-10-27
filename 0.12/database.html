@@ -1,0 +1,1116 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" data-theme="auto">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, follow">
+
+    <title>Database &amp; Configuration &#8212; FastAPI-Restly 0.12.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "auto";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "auto";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=61ccb1f1"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'database';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://www.fastapi-restly.org/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '0.12';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script src="_static/newsletter.js?v=7326e93d"></script>
+    <link rel="canonical" href="https://www.fastapi-restly.org/0.12/database.html" />
+    <link rel="icon" href="_static/favicon.svg"/>
+    <link rel="author" title="About these documents" href="about.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Models" href="models.html" />
+    <link rel="prev" title="New &amp; Existing Projects" href="projects.html" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.12" />
+<meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700&amp;display=swap"
+      rel="stylesheet" />
+<!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
+<script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="auto">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/fr-monogram.svg" class="logo__image only-light" alt=""/>
+    <img src="_static/fr-monogram-dark.svg" class="logo__image only-dark pst-js-only" alt=""/>
+  
+  
+    <p class="title logo__title">FastAPI-Restly</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="projects.html">New &amp; Existing Projects</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Database &amp; Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
+<li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering, Sorting &amp; Pagination</a></li>
+<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Access</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="context.html">Request Context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tenancy.html">Multi-Tenancy</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Testing &amp; Deploying</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="guide.html" class="nav-link">Guide</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Database &amp; Configuration</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="database-configuration">
+<span id="configure-restly"></span><h1>Database &amp; Configuration<a class="headerlink" href="#database-configuration" title="Link to this heading">#</a></h1>
+<p>Every Restly view needs a database session. You tell Restly once, at
+startup, where its sessions come from, and every view uses that source. Call
+<a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure()</span></code></a> before you register your
+views:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">()</span>
+<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">async_database_url</span><span class="o">=</span><span class="s2">&quot;sqlite+aiosqlite:///app.db&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>You can give Restly one of four sources. Each has an async and a sync
+argument:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>You pass</p></th>
+<th class="head"><p>Async argument</p></th>
+<th class="head"><p>Sync argument</p></th>
+<th class="head"><p>What Restly does with it</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>A URL</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">async_database_url</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">database_url</span></code></p></td>
+<td><p>Builds the engine and a sessionmaker</p></td>
+</tr>
+<tr class="row-odd"><td><p>An engine</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">async_engine</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">engine</span></code></p></td>
+<td><p>Builds a sessionmaker on your engine</p></td>
+</tr>
+<tr class="row-even"><td><p>A sessionmaker</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">async_make_session</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">make_session</span></code></p></td>
+<td><p>Uses it as it is</p></td>
+</tr>
+<tr class="row-odd"><td><p>A session generator</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">session_generator</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sync_session_generator</span></code></p></td>
+<td><p>Calls it for each request</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Pass a URL when Restly may own the engine. Pass your engine or your
+sessionmaker when your application already builds one. Pass a generator when
+your routes already get their session from one, such as <code class="docutils literal notranslate"><span class="pre">get_db</span></code>, or when
+sessions must be built in a special way. An application that has both
+async and sync views passes one async and one sync source.</p>
+<p>For each request, a view gets a session from that source. An
+<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> receives it
+through <a class="reference internal" href="api/db.html#fastapi_restly.db.AsyncSessionDep" title="fastapi_restly.db.AsyncSessionDep"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.AsyncSessionDep</span></code></a>, and
+a <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> through
+<a class="reference internal" href="api/db.html#fastapi_restly.db.SessionDep" title="fastapi_restly.db.SessionDep"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.SessionDep</span></code></a>. The source opens the
+session and closes it after the request, but it does not commit; see
+<a class="reference internal" href="lifecycle.html#what-commits"><span class="std std-ref">What commits, and when</span></a>.</p>
+<p id="one-configuration-per-process">There is one configuration for each process. Restly stores it in the process,
+not on the app. A second call to <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code> replaces the sources it
+names, and every app in the process then uses the new ones. Restly has no
+named configurations for different views. To give one view a different
+database, <a class="reference internal" href="#session-dependency-one-view">change the session on that view</a>.</p>
+<p>When you pass <code class="docutils literal notranslate"><span class="pre">app</span></code>, <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code> also prepares that app. It checks the
+OpenAPI schema for
+<a class="reference internal" href="schemas.html#name-your-schemas"><span class="std std-ref">two classes with the same name</span></a>, and with
+<code class="docutils literal notranslate"><span class="pre">health=&quot;/health&quot;</span></code> it adds a <a class="reference internal" href="deploying.html#health-checks"><span class="std std-ref">health check route</span></a>. The
+<a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">reference</span> <span class="pre">entry</span></code></a> lists every argument.</p>
+<section id="reuse-your-existing-engine-or-sessionmaker">
+<span id="reuse-existing-engine"></span><h2>Reuse your existing engine or sessionmaker<a class="headerlink" href="#reuse-your-existing-engine-or-sessionmaker" title="Link to this heading">#</a></h2>
+<p>Your application may already build an engine, with pool settings that you
+trust. Give exactly that object to <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code>. Restly does not need to
+own it:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+
+<span class="c1"># The engine that your app already creates</span>
+<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">async_engine</span><span class="o">=</span><span class="n">existing_async_engine</span><span class="p">)</span>
+
+<span class="c1"># For sync views:</span>
+<span class="c1">#   fr.configure(engine=existing_engine)</span>
+<span class="c1"># Or pass your sessionmaker instead:</span>
+<span class="c1">#   fr.configure(async_make_session=ExistingAsyncSession)</span>
+</pre></div>
+</div>
+<p>With an engine, Restly builds a sessionmaker on top of it. With a
+sessionmaker, Restly uses it as it is. Either way, your application
+still controls the engine, and Restly applies none of its
+<a class="reference internal" href="#engine-defaults">engine defaults</a> to it.</p>
+<p>If you pass an async sessionmaker, create it with <code class="docutils literal notranslate"><span class="pre">expire_on_commit=False</span></code>.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>Restly reads the response from the object after the commit, and in async code
+an expired attribute raises <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. Restly warns once for each view
+that writes through a session with <code class="docutils literal notranslate"><span class="pre">expire_on_commit=True</span></code>, from any source of
+sessions.
+<a class="reference internal" href="#session-factory-defaults">Session factory defaults</a> explains the options
+that Restly sets on its own factories.</p>
+<p>The SaaS example builds its own async engine from its settings and passes it
+to <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code>
+(<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/main.py"><code class="docutils literal notranslate"><span class="pre">app/main.py</span></code></a>).</p>
+</div>
+</section>
+<section id="build-sessions-with-your-own-generator">
+<span id="own-session-generator"></span><h2>Build sessions with your own generator<a class="headerlink" href="#build-sessions-with-your-own-generator" title="Link to this heading">#</a></h2>
+<p>Use a session generator when your application already has one, like the
+<code class="docutils literal notranslate"><span class="pre">get_db</span></code> that your routes use. Use one also when your sessions need special
+setup, such as scoped sessions, routing to a database per tenant, or
+instrumentation. The generator builds a session, yields it, and cleans it up.
+It must not commit: the view commits its write actions.</p>
+<p>For async views, pass an async generator:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncIterator</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.ext.asyncio</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncSession</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">my_get_db</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">AsyncIterator</span><span class="p">[</span><span class="n">AsyncSession</span><span class="p">]:</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="n">MyAsyncSession</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">session</span>
+
+
+<span class="c1"># Before you register views or routes.</span>
+<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">session_generator</span><span class="o">=</span><span class="n">my_get_db</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For sync views, pass a sync generator:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterator</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">Session</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">my_get_db</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">Session</span><span class="p">]:</span>
+    <span class="k">with</span> <span class="n">MySession</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">session</span>
+
+
+<span class="c1"># Before you register views or routes.</span>
+<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">sync_session_generator</span><span class="o">=</span><span class="n">my_get_db</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Many <code class="docutils literal notranslate"><span class="pre">get_db</span></code> generators commit after the <code class="docutils literal notranslate"><span class="pre">yield</span></code>. Such a commit saves
+changes that should be rolled back: changes that no write action committed,
+such as those of a route that forgot to commit. Restly’s warning says that
+these changes are rolled back, but a generator that commits saves them. So
+remove the commit from the generator. The views do not need it.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Before you remove the commit, add a commit to each of your own routes that
+writes. A route that still relies on the commit in the generator answers 200,
+but its writes are lost, and nothing warns you. Restly’s warning about
+changes that were not committed comes only from views, and from routes that
+get their session through <code class="docutils literal notranslate"><span class="pre">fr.AsyncSessionDep</span></code> or <code class="docutils literal notranslate"><span class="pre">fr.SessionDep</span></code>.</p>
+</div>
+<p>Give your sessions the same options as Restly’s own factories:
+<code class="docutils literal notranslate"><span class="pre">expire_on_commit=False</span></code>, and for async sessions also <code class="docutils literal notranslate"><span class="pre">autoflush=False</span></code>. An
+async view needs <code class="docutils literal notranslate"><span class="pre">expire_on_commit=False</span></code>. Without it, its <code class="docutils literal notranslate"><span class="pre">POST</span></code> and <code class="docutils literal notranslate"><span class="pre">PATCH</span></code>
+routes fail with <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. Restly warns once for each view that
+writes through such a session;
+<a class="reference internal" href="#session-factory-defaults">Session factory defaults</a> explains why.</p>
+<p>To use the generator outside a request, with
+<a class="reference internal" href="#session-off-request"><code class="docutils literal notranslate"><span class="pre">fr.open_session()</span></code></a>, it must take no arguments. In
+tests, Restly’s fixtures can replace the generator;
+<a class="reference internal" href="testing.html#restly-session-fixture"><span class="std std-ref">the <code class="docutils literal notranslate"><span class="pre">restly_session</span></code> fixture</span></a> describes when.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>Configure the generator before you register any route that uses
+<code class="docutils literal notranslate"><span class="pre">fr.AsyncSessionDep</span></code> or <code class="docutils literal notranslate"><span class="pre">fr.SessionDep</span></code>. This includes plain FastAPI routes.
+FastAPI fixes the dependencies of a route when you register it. For this
+reason, a call that sets or replaces the generator after that raises
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>.</p>
+</div>
+</section>
+<section id="use-the-view-s-session-in-your-own-dependencies">
+<span id="share-request-session"></span><h2>Use the view’s session in your own dependencies<a class="headerlink" href="#use-the-view-s-session-in-your-own-dependencies" title="Link to this heading">#</a></h2>
+<p>A view and your own dependencies can share one session in a request. So when
+your authentication dependency loads a user, the view can assign that user
+object to a relationship directly.</p>
+<p>When Restly builds the sessions, use its aliases in your dependencies and
+plain routes. This example assumes that your application supplies <code class="docutils literal notranslate"><span class="pre">User</span></code> and
+<code class="docutils literal notranslate"><span class="pre">current_user_id()</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">async_engine</span><span class="o">=</span><span class="n">existing_async_engine</span><span class="p">)</span>
+
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_current_user</span><span class="p">(</span><span class="n">session</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncSessionDep</span><span class="p">):</span>
+    <span class="k">return</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">User</span><span class="p">,</span> <span class="n">current_user_id</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>The views and every dependency that uses <code class="docutils literal notranslate"><span class="pre">fr.AsyncSessionDep</span></code> get the same
+session within a request. Use <code class="docutils literal notranslate"><span class="pre">fr.SessionDep</span></code> for sync code.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>On a plain route, both aliases also warn when the request ends with changes
+that were not committed, as they do on a view.</p>
+<p>When you configure your own generator, your existing <code class="docutils literal notranslate"><span class="pre">Depends(my_get_db)</span></code>
+gives the same session as the view’s <code class="docutils literal notranslate"><span class="pre">self.session</span></code>. FastAPI runs the
+generator once per request, and cleans it up once. FastAPI’s own caching rules
+still apply: a dependency with <code class="docutils literal notranslate"><span class="pre">use_cache=False</span></code> gets its own session. For the
+same reason, an override of <code class="docutils literal notranslate"><span class="pre">my_get_db</span></code> in <code class="docutils literal notranslate"><span class="pre">app.dependency_overrides</span></code> also
+gives the views their session, so a test setup that overrides it keeps
+working.</p>
+</div>
+</section>
+<section id="use-another-database-on-one-view">
+<span id="session-dependency-one-view"></span><h2>Use another database on one view<a class="headerlink" href="#use-another-database-on-one-view" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code> sets the session source for the whole application. To give
+one view a different source, such as a read replica or a reporting database,
+override the view’s <code class="docutils literal notranslate"><span class="pre">session</span></code> dependency:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncIterator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">Depends</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.ext.asyncio</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncSession</span><span class="p">,</span> <span class="n">async_sessionmaker</span><span class="p">,</span> <span class="n">create_async_engine</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+
+
+<span class="n">reporting_engine</span> <span class="o">=</span> <span class="n">create_async_engine</span><span class="p">(</span><span class="s2">&quot;postgresql+asyncpg://user:pass@reports/db&quot;</span><span class="p">)</span>
+<span class="n">ReportingSession</span> <span class="o">=</span> <span class="n">async_sessionmaker</span><span class="p">(</span>
+    <span class="n">bind</span><span class="o">=</span><span class="n">reporting_engine</span><span class="p">,</span>
+    <span class="n">autoflush</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">expire_on_commit</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_reporting_db</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">AsyncIterator</span><span class="p">[</span><span class="n">AsyncSession</span><span class="p">]:</span>
+    <span class="c1"># Build, yield, and clean up. The view owns the commit.</span>
+    <span class="c1"># The context manager rolls back and closes the session at the end.</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="n">ReportingSession</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">session</span>
+
+
+<span class="n">ReportingSessionDep</span> <span class="o">=</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">AsyncSession</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_reporting_db</span><span class="p">)]</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ReportView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/reports&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Report</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ReportSchema</span>
+    <span class="n">session</span><span class="p">:</span> <span class="n">ReportingSessionDep</span>
+</pre></div>
+</div>
+<p>Your dependency builds and cleans up the session. The view still commits its
+write actions. A generator passed to <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code> does not change this
+view: it keeps <code class="docutils literal notranslate"><span class="pre">get_reporting_db</span></code>.</p>
+</section>
+<section id="open-a-session-outside-a-request">
+<span id="session-off-request"></span><h2>Open a session outside a request<a class="headerlink" href="#open-a-session-outside-a-request" title="Link to this heading">#</a></h2>
+<p>Background tasks, scripts and workers run outside a request, so no view gives
+them a session. Open one from Restly’s configured source with
+<a class="reference internal" href="api/db.html#fastapi_restly.db.open_async_session" title="fastapi_restly.db.open_async_session"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.open_async_session()</span></code></a> or
+<a class="reference internal" href="api/db.html#fastapi_restly.db.open_session" title="fastapi_restly.db.open_session"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.open_session()</span></code></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+
+<span class="k">async</span> <span class="k">with</span> <span class="n">fr</span><span class="o">.</span><span class="n">open_async_session</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+
+<span class="c1"># The sync version:</span>
+<span class="k">with</span> <span class="n">fr</span><span class="o">.</span><span class="n">open_session</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>These helpers do not commit. Code outside a request commits its own changes.
+<a class="reference internal" href="lifecycle.html#logic-outside-a-view"><span class="std std-ref">Run the same logic in a script or a worker</span></a> shows how
+to share logic between a view and such code.</p>
+</section>
+<section id="close-the-engine-on-shutdown">
+<span id="engine-disposal"></span><h2>Close the engine on shutdown<a class="headerlink" href="#close-the-engine-on-shutdown" title="Link to this heading">#</a></h2>
+<p>Disposing an engine closes the connections in its pool. Restly never disposes
+an engine, not even one that it built. An engine normally lives as long as the
+process. When the process exits, the operating system closes the connections,
+so most sync applications need to do nothing.</p>
+<p>Async applications should dispose the engine. <code class="docutils literal notranslate"><span class="pre">AsyncEngine.dispose()</span></code> is a
+coroutine, and nothing awaits it when Python shuts down. The database server
+does not mind. But your shutdown output shows a <code class="docutils literal notranslate"><span class="pre">ResourceWarning</span></code> for each
+connection in the pool. If a request is still running, it also shows a
+<code class="docutils literal notranslate"><span class="pre">RuntimeError:</span> <span class="pre">Event</span> <span class="pre">loop</span> <span class="pre">is</span> <span class="pre">closed</span></code> traceback. SQLite has no server and no
+sockets, so this does not apply to it.</p>
+<p>If your application builds its own engine, dispose it in the app’s lifespan,
+as <a class="reference internal" href="deploying.html#production-main-template"><span class="std std-ref">the production template</span></a> does. If you
+configure from a URL, Restly owns the engine, and
+<a class="reference internal" href="api/db.html#fastapi_restly.db.get_async_engine" title="fastapi_restly.db.get_async_engine"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.db.get_async_engine()</span></code></a> returns
+it:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">asynccontextmanager</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span>
+
+
+<span class="nd">@asynccontextmanager</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">lifespan</span><span class="p">(</span><span class="n">app</span><span class="p">:</span> <span class="n">FastAPI</span><span class="p">):</span>
+    <span class="k">yield</span>
+    <span class="k">await</span> <span class="n">fr</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_async_engine</span><span class="p">()</span><span class="o">.</span><span class="n">dispose</span><span class="p">()</span>
+
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">(</span><span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">)</span>
+<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">async_database_url</span><span class="o">=</span><span class="s2">&quot;postgresql+asyncpg://localhost/app&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Sync applications call
+<a class="reference internal" href="api/db.html#fastapi_restly.db.get_engine" title="fastapi_restly.db.get_engine"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.db.get_engine()</span></code></a> and <code class="docutils literal notranslate"><span class="pre">dispose()</span></code>,
+without <code class="docutils literal notranslate"><span class="pre">await</span></code>. Put the call in the lifespan, not in an <code class="docutils literal notranslate"><span class="pre">on_shutdown</span></code>
+handler: Starlette runs those handlers only for an app built without a
+<code class="docutils literal notranslate"><span class="pre">lifespan</span></code> argument.</p>
+<p>An application that disposes its engine in the lifespan cannot use an
+in-memory SQLite database in its tests. Restly’s test clients run the
+lifespan, so the engine is disposed at the end of every test. An in-memory
+database lives inside its connection, so closing the connection deletes the
+tables, and the next test finds none. Use a file database for the tests.</p>
+<p>A second <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code> call does not close the pool of the engine it
+replaces. Python frees that pool later, when the garbage collector runs. So a
+test suite that configures again for each test can have several pools open at
+the same time. If that matters to you, dispose the old engine yourself.</p>
+</section>
+<section id="turn-on-wal-for-sqlite">
+<span id="sqlite-wal"></span><h2>Turn on WAL for SQLite<a class="headerlink" href="#turn-on-wal-for-sqlite" title="Link to this heading">#</a></h2>
+<p>A file-based SQLite database that serves several requests at the same time can
+fail with <code class="docutils literal notranslate"><span class="pre">database</span> <span class="pre">is</span> <span class="pre">locked</span></code>. WAL mode fixes this in most cases: readers can
+then run while a writer holds the database. Restly does not turn WAL on. The
+journal mode is stored in the database file. So the change would stay, also
+for every program that opens the file later. Turn it on yourself:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_engine</span><span class="p">,</span> <span class="n">event</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+
+<span class="n">engine</span> <span class="o">=</span> <span class="n">create_engine</span><span class="p">(</span><span class="s2">&quot;sqlite:///app.db&quot;</span><span class="p">)</span>
+
+
+<span class="nd">@event</span><span class="o">.</span><span class="n">listens_for</span><span class="p">(</span><span class="n">engine</span><span class="p">,</span> <span class="s2">&quot;connect&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_set_sqlite_pragmas</span><span class="p">(</span><span class="n">dbapi_connection</span><span class="p">,</span> <span class="n">connection_record</span><span class="p">):</span>
+    <span class="n">dbapi_connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;PRAGMA journal_mode=WAL&quot;</span><span class="p">)</span>
+    <span class="n">dbapi_connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;PRAGMA foreign_keys=ON&quot;</span><span class="p">)</span>
+
+
+<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="n">engine</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Because you build the engine here, Restly does not add its
+<a class="reference internal" href="#engine-defaults">SQLite defaults</a> to it. The example sets
+<code class="docutils literal notranslate"><span class="pre">PRAGMA</span> <span class="pre">foreign_keys=ON</span></code> itself for that reason.</p>
+<p>WAL adds <code class="docutils literal notranslate"><span class="pre">-wal</span></code> and <code class="docutils literal notranslate"><span class="pre">-shm</span></code> files next to the database. A clean shutdown
+removes them, but they stay after the process is killed. WAL does not work on
+a network file system.</p>
+</section>
+<section id="internals">
+<h2>Internals<a class="headerlink" href="#internals" title="Link to this heading">#</a></h2>
+<section id="engine-defaults">
+<span id="id1"></span><h3>Engine defaults<a class="headerlink" href="#engine-defaults" title="Link to this heading">#</a></h3>
+<p><a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure()</span></code></a> builds an engine only
+when you give it a URL. Restly applies these options to that engine, and to no
+other engine. A web application almost always wants them, but SQLAlchemy does
+not set them by default:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Backend</p></th>
+<th class="head"><p>Applied</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>SQLite, in memory</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">poolclass=StaticPool</span></code>, <code class="docutils literal notranslate"><span class="pre">connect_args={&quot;check_same_thread&quot;:</span> <span class="pre">False}</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>SQLite, any</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">PRAGMA</span> <span class="pre">foreign_keys=ON</span></code>, on every connection</p></td>
+</tr>
+<tr class="row-even"><td><p>PostgreSQL</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">pool_pre_ping=True</span></code>, <code class="docutils literal notranslate"><span class="pre">pool_recycle=1800</span></code>, and each session in UTC</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>An in-memory SQLite database lives inside its connection. The default pool
+opens one connection per thread, so each thread after the first gets a second,
+empty database. FastAPI runs <code class="docutils literal notranslate"><span class="pre">def</span></code> endpoints on a thread pool. <code class="docutils literal notranslate"><span class="pre">StaticPool</span></code>
+keeps every thread on one connection, so an in-memory URL acts as one
+database.</p>
+<p>SQLite checks foreign keys only with <code class="docutils literal notranslate"><span class="pre">PRAGMA</span> <span class="pre">foreign_keys=ON</span></code>. Without it,
+SQLite ignores the <code class="docutils literal notranslate"><span class="pre">ForeignKey</span></code> constraints of your models: <code class="docutils literal notranslate"><span class="pre">ondelete</span></code> never
+runs, and a reference to a missing row is stored instead of raising the
+<code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> that becomes a 409.</p>
+<p>On PostgreSQL, <code class="docutils literal notranslate"><span class="pre">pool_pre_ping=True</span></code> tests a connection from the pool before
+the pool hands it out. A connection that a database restart or a network problem
+broke then leads to a new connection instead of an error. <code class="docutils literal notranslate"><span class="pre">pool_recycle</span></code>
+replaces connections older than 30 minutes, because proxies such as pgbouncer
+close idle connections without telling the client. Restly does not set the
+pool size: it sets neither <code class="docutils literal notranslate"><span class="pre">pool_size</span></code> nor <code class="docutils literal notranslate"><span class="pre">max_overflow</span></code>.</p>
+<p>Each new PostgreSQL session is in UTC, as in Django and Rails. Restly reads
+the time zone that the server reports for the session, and sends
+<code class="docutils literal notranslate"><span class="pre">SET</span> <span class="pre">TIME</span> <span class="pre">ZONE</span> <span class="pre">'UTC'</span></code> when it is another zone. PostgreSQL then reads a time
+without an offset as UTC, as Restly does: <code class="docutils literal notranslate"><span class="pre">now()</span></code> gives UTC for a column
+without a time zone, and psycopg gives back each time in UTC, as asyncpg
+does. So the functions in your SQL work in UTC too:
+<code class="docutils literal notranslate"><span class="pre">date_trunc('day',</span> <span class="pre">created_at)</span></code> gives the days of UTC. asyncpg is different
+in one place: it converts a <code class="docutils literal notranslate"><span class="pre">datetime</span></code> without an offset that your code
+passes for a column with a time zone itself, in the time zone of the Python
+process; see <a class="reference internal" href="schemas.html#utc-times"><span class="std std-ref">Keep times in UTC</span></a>.</p>
+<p>For the days of another zone, name the zone in the SQL. For a column with a
+time zone, write <code class="docutils literal notranslate"><span class="pre">date_trunc('day',</span> <span class="pre">created_at</span> <span class="pre">AT</span> <span class="pre">TIME</span> <span class="pre">ZONE</span> <span class="pre">'Europe/Amsterdam')</span></code>.
+A column without a time zone holds UTC without the offset, so give it the
+zone UTC first:
+<code class="docutils literal notranslate"><span class="pre">date_trunc('day',</span> <span class="pre">starts_at</span> <span class="pre">AT</span> <span class="pre">TIME</span> <span class="pre">ZONE</span> <span class="pre">'UTC'</span> <span class="pre">AT</span> <span class="pre">TIME</span> <span class="pre">ZONE</span> <span class="pre">'Europe/Amsterdam')</span></code>.</p>
+<p>Each of these options changes only the connection. Restly changes no setting
+of the database itself, such as <code class="docutils literal notranslate"><span class="pre">journal_mode=WAL</span></code> on SQLite, which would
+stay after the process exits.</p>
+<p>These defaults apply only to the URL form. If you pass <code class="docutils literal notranslate"><span class="pre">engine=</span></code>,
+<code class="docutils literal notranslate"><span class="pre">make_session=</span></code> or a session generator, Restly uses your object as it is. To
+turn off any of these defaults, build the engine yourself. Such an engine
+keeps the time zone of its PostgreSQL sessions. To put them in UTC, pass
+<code class="docutils literal notranslate"><span class="pre">connect_args={&quot;server_settings&quot;:</span> <span class="pre">{&quot;timezone&quot;:</span> <span class="pre">&quot;UTC&quot;}}</span></code> to
+<code class="docutils literal notranslate"><span class="pre">create_async_engine()</span></code> for asyncpg, or
+<code class="docutils literal notranslate"><span class="pre">connect_args={&quot;options&quot;:</span> <span class="pre">&quot;-c</span> <span class="pre">timezone=UTC&quot;}</span></code> for psycopg.</p>
+</section>
+<section id="session-factory-defaults">
+<span id="id2"></span><h3>Session factory defaults<a class="headerlink" href="#session-factory-defaults" title="Link to this heading">#</a></h3>
+<p>When <a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure()</span></code></a> builds the session
+factory from a URL or an engine, it sets these SQLAlchemy session options:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Factory</p></th>
+<th class="head"><p>Autoflush</p></th>
+<th class="head"><p>Expire on commit</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Async <code class="docutils literal notranslate"><span class="pre">async_sessionmaker</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Sync <code class="docutils literal notranslate"><span class="pre">sessionmaker</span></code></p></td>
+<td><p>SQLAlchemy default (<code class="docutils literal notranslate"><span class="pre">True</span></code>)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Both factories use <code class="docutils literal notranslate"><span class="pre">expire_on_commit=False</span></code>, so ORM objects can still be read
+after a route commits. Restly’s write handlers commit inside the request.
+After the commit, Restly builds the response from the committed object, and an
+<code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> hook may read it too. With <code class="docutils literal notranslate"><span class="pre">expire_on_commit=True</span></code>, the
+commit expires those attributes, so each read loads them from the database
+again. In async code, that read raises <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>: the response is
+built in plain async code, and SQLAlchemy cannot load from the database there
+without an <code class="docutils literal notranslate"><span class="pre">await</span></code>. In sync code, the read works, but building the response
+now needs the database. And in both, <code class="docutils literal notranslate"><span class="pre">snapshot(new)</span></code> in <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>
+is empty, because it reads only the loaded attributes. So Restly warns with
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyExpireOnCommitWarning" title="fastapi_restly.exc.RestlyExpireOnCommitWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyExpireOnCommitWarning</span></code></a>
+once for each view that writes through a session that expires on commit.</p>
+<p>The autoflush option is different for async and sync sessions. Async sessions
+turn autoflush off, because autoflush can make a read send a write to the
+database, and async code must do database work only at an explicit <code class="docutils literal notranslate"><span class="pre">await</span></code>.
+Restly’s async CRUD helpers flush when the writes must reach the database.
+Sync sessions keep SQLAlchemy’s default, so queries see changes that are still
+pending in the session.</p>
+</section>
+<section id="the-session-dependency">
+<h3>The session dependency<a class="headerlink" href="#the-session-dependency" title="Link to this heading">#</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">fr.AsyncSessionDep</span></code> and <code class="docutils literal notranslate"><span class="pre">fr.SessionDep</span></code> wrap the session source as a FastAPI
+sub-dependency. The source is Restly’s built-in generator, or the generator
+that you passed to <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code> before you registered the routes. Because
+the source is a dependency, FastAPI caches its session for the request, so
+your own <code class="docutils literal notranslate"><span class="pre">Depends(get_db)</span></code> gets the same session without any change to the
+view. The wrapper checks for changes that were not committed before the source
+cleans up. The built-in generators roll back and close the session at the end.</p>
+<p>Restly keeps its configuration in a private context object. Its own tests and
+fixtures use that object to keep their state apart. It is not a public way to
+use several databases.</p>
+</section>
+</section>
+<section id="see-also">
+<h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="deploying.html"><span class="std std-doc">Deploying</span></a>: engine settings for production, and Alembic.</p></li>
+<li><p><a class="reference internal" href="testing.html"><span class="std std-doc">Testing</span></a>: how the test fixtures use this configuration.</p></li>
+<li><p><a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure()</span></code></a>: every argument.</p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="projects.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">New &amp; Existing Projects</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="models.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Models</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reuse-your-existing-engine-or-sessionmaker">Reuse your existing engine or sessionmaker</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#build-sessions-with-your-own-generator">Build sessions with your own generator</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-the-view-s-session-in-your-own-dependencies">Use the view’s session in your own dependencies</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-another-database-on-one-view">Use another database on one view</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#open-a-session-outside-a-request">Open a session outside a request</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#close-the-engine-on-shutdown">Close the engine on shutdown</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#turn-on-wal-for-sqlite">Turn on WAL for SQLite</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#internals">Internals</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#engine-defaults">Engine defaults</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#session-factory-defaults">Session factory defaults</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#the-session-dependency">The session dependency</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+<p class="sidebar-newsletter">
+  <a href="newsletter.html">Subscribe to newsletter</a>
+</p></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, Rutger Prins.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
