@@ -872,20 +872,24 @@ def _reference_lookups(
     return {model: (list(ids), rows) for model, (ids, rows) in lookups.items()}
 
 
+def _key_name(model: type[Any]) -> str:
+    """The name of the primary key attribute of ``model``."""
+    mapper = sa_inspect(model)
+    return mapper.get_property_by_column(mapper.primary_key[0]).key
+
+
 def _reference_statements(
     model: type[Any], ids: list[Any], rows: bool
-) -> Iterator[tuple[Any, str]]:
-    """The statements that find the rows of ``model`` for ``ids``, in chunks,
-    and the name of its primary key attribute.
+) -> Iterator[Any]:
+    """The statements that find the rows of ``model`` for ``ids``, in chunks.
 
     The statements are ORM statements over the mapped attribute, so a rule of
     the session (``with_loader_criteria``) reaches them too. An id that does
     not fit the key column names no row, so it is left out: the database
     would refuse it with an error, such as a number beyond an ``INTEGER``.
+    When no id fits, there is no statement.
     """
-    mapper = sa_inspect(model)
-    key = mapper.get_property_by_column(mapper.primary_key[0]).key
-    pk = getattr(model, key)
+    pk = getattr(model, _key_name(model))
     scope = _default_scope(model)
     ids = [id_ for id_ in ids if _fits_key(model, id_)]
     for start in range(0, len(ids), _IN_CHUNK):
@@ -894,7 +898,7 @@ def _reference_statements(
         )
         if scope is not None:
             stmt = apply_clauses(stmt, scope)
-        yield stmt, key
+        yield stmt
 
 
 def _fits_key(model: type[Any], id_: Any) -> bool:
@@ -930,18 +934,16 @@ def _raise_for_missing_references(
 ) -> None:
     """Raise ``NotFound`` for the first field that names a row that was not
     found. A list of references names all its missing ids."""
-    missing: dict[str, list[Any]] = {}
+    missing: dict[str, dict[Any, None]] = {}
     listed: set[str] = set()
     for reference in references:
         if (reference.model, reference.id) in found:
             continue
-        ids = missing.setdefault(reference.path, [])
-        if reference.id not in ids:
-            ids.append(reference.id)
+        missing.setdefault(reference.path, {})[reference.id] = None
         if reference.listed:
             listed.add(reference.path)
     for path, ids in missing.items():
-        shown = _id_list(ids) if path in listed else ids[0]
+        shown = _id_list(list(ids)) if path in listed else next(iter(ids))
         raise NotFound(f"Id not found for {path}: {shown}")
 
 
@@ -960,7 +962,8 @@ def _check_body_references(
     # the query must not write an object that the code is still building
     with session.no_autoflush:
         for model, (ids, rows) in _reference_lookups(references).items():
-            for stmt, key in _reference_statements(model, ids, rows):
+            key = _key_name(model)
+            for stmt in _reference_statements(model, ids, rows):
                 results = session.scalars(stmt).unique()
                 found.update(_found_references(model, ids, rows, key, results))
     _raise_for_missing_references(references, found)
@@ -975,7 +978,8 @@ async def _async_check_body_references(
     found: dict[tuple[type[Any], Any], Any] = {}
     with session.no_autoflush:
         for model, (ids, rows) in _reference_lookups(references).items():
-            for stmt, key in _reference_statements(model, ids, rows):
+            key = _key_name(model)
+            for stmt in _reference_statements(model, ids, rows):
                 results = (await session.scalars(stmt)).unique()
                 found.update(_found_references(model, ids, rows, key, results))
     _raise_for_missing_references(references, found)
@@ -1089,9 +1093,10 @@ async def _async_resolve_ids_to_sqlalchemy_objects(
                 raise NotFound(f"Id not found for {label}: {ids[0]}") from e
             continue
         found: list[Any] = []
-        for stmt, key in _reference_statements(model, ids, rows=True):
+        for stmt in _reference_statements(model, ids, rows=True):
             found.extend((await session.scalars(stmt)).unique())
         label = _public_name(schema_obj, field)
+        key = _key_name(model)
         resolved[field] = _id_schema_rows(label, ids, found, key, is_list)
     return resolved
 
@@ -1134,9 +1139,10 @@ def _resolve_ids_to_sqlalchemy_objects(
                 raise NotFound(f"Id not found for {label}: {ids[0]}") from e
             continue
         found: list[Any] = []
-        for stmt, key in _reference_statements(model, ids, rows=True):
+        for stmt in _reference_statements(model, ids, rows=True):
             found.extend(session.scalars(stmt).unique())
         label = _public_name(schema_obj, field)
+        key = _key_name(model)
         resolved[field] = _id_schema_rows(label, ids, found, key, is_list)
     return resolved
 
@@ -1253,18 +1259,16 @@ def _raise_for_missing_refs(
 ) -> None:
     """Raise ``NotFound`` for the first field with an id that was not found.
     A list of ids names all its missing ids."""
-    missing: dict[str, list[Any]] = {}
+    missing: dict[str, dict[Any, None]] = {}
     listed: set[str] = set()
     for field_name, value, is_listed in items:
         if value in found:
             continue
-        ids = missing.setdefault(field_name, [])
-        if value not in ids:
-            ids.append(value)
+        missing.setdefault(field_name, {})[value] = None
         if is_listed:
             listed.add(field_name)
     for field_name, ids in missing.items():
-        shown = _id_list(ids) if field_name in listed else ids[0]
+        shown = _id_list(list(ids)) if field_name in listed else next(iter(ids))
         raise NotFound(f"Id not found for {field_name}: {shown}")
 
 
@@ -1279,7 +1283,7 @@ def _check_ref_exists(session: SA_Session, schema_obj: pydantic.BaseModel) -> No
     for model, items in _unchecked_ref_exists_fields(session, schema_obj).items():
         ids = list(dict.fromkeys(value for _, value, _ in items))
         found: set[Any] = set()
-        for stmt, _ in _reference_statements(model, ids, rows=False):
+        for stmt in _reference_statements(model, ids, rows=False):
             found.update(session.scalars(stmt))
         _raise_for_missing_refs(items, found)
 
@@ -1291,7 +1295,7 @@ async def _async_check_ref_exists(
     for model, items in _unchecked_ref_exists_fields(session, schema_obj).items():
         ids = list(dict.fromkeys(value for _, value, _ in items))
         found: set[Any] = set()
-        for stmt, _ in _reference_statements(model, ids, rows=False):
+        for stmt in _reference_statements(model, ids, rows=False):
             found.update(await session.scalars(stmt))
         _raise_for_missing_refs(items, found)
 

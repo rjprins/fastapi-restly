@@ -12,11 +12,13 @@ import json
 
 import pytest
 import sqlalchemy
+from fastapi import HTTPException
 from sqlalchemy import BigInteger, ForeignKey, SmallInteger, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
 from fastapi_restly._columns import column_value
+from fastapi_restly.objects import make_new_object
 
 from ._models import SharedBase
 from .conftest import create_tables
@@ -170,3 +172,47 @@ def test_a_value_that_does_not_fit_is_a_client_error(client):
         "/things", json={"name": "a", "shelf_id": 2**40}, assert_status_code=404
     )
     assert detail(response) == f"Id not found for shelf_id: {2**40}"
+
+
+def test_a_reference_that_cannot_fit_is_not_found(sync_db):
+    """The rows of a reference, as ``fr.make_new_object`` finds them: an id
+    that cannot fit the key column names no row."""
+    engine, make_session = sync_db
+
+    class Label(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    class Bottle(fr.IDMixin, SharedBase):
+        maker_id: Mapped[int | None] = mapped_column(
+            ForeignKey("label.id"), default=None
+        )
+        maker: Mapped[Label | None] = relationship(foreign_keys=[maker_id], init=False)
+        labels: Mapped[list[Label]] = relationship(
+            secondary="bottle_label", default_factory=list
+        )
+
+    class BottleLabel(SharedBase):
+        __tablename__ = "bottle_label"
+        bottle_id: Mapped[int] = mapped_column(
+            ForeignKey("bottle.id"), primary_key=True, init=False
+        )
+        label_id: Mapped[int] = mapped_column(
+            ForeignKey("label.id"), primary_key=True, init=False
+        )
+
+    class BottleSchema(fr.BaseSchema):
+        maker_id: fr.IDRef[Label] | None = None
+        labels: list[fr.IDRef[Label]] = []
+
+    # configure now: an unconfigured mapper would break the next test
+    sqlalchemy.orm.configure_mappers()
+    SharedBase.metadata.create_all(engine)
+    with make_session() as session:
+        for data, shown in (
+            ({"labels": [2**40]}, f"labels: [{2**40}]"),
+            ({"maker_id": 2**40}, f"maker_id: {2**40}"),
+        ):
+            with pytest.raises(HTTPException) as caught:
+                make_new_object(session, Bottle, BottleSchema.model_validate(data))
+            assert caught.value.status_code == 404
+            assert caught.value.detail == f"Id not found for {shown}"
