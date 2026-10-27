@@ -570,11 +570,13 @@ replacement, unless it says otherwise.
 - On SQLite, a `session.begin_nested()` inside `shared_write_action_commit()`
   can commit its rows when it ends. This happens with the default settings
   of Python's `sqlite3` module and of `aiosqlite`. When the block then fails,
-  these rows stay saved, and their after-hooks do not run. To keep each
-  savepoint inside the transaction, set up the engine as SQLAlchemy shows in
-  "Serializable isolation / Savepoints / Transactional DDL". Restly's test
-  fixtures do this in the default rollback mode, so a test does not show the
-  problem.
+  these rows stay saved, and their after-hooks do not run. Restly's test
+  fixtures change these settings in the default rollback mode, so a test does
+  not show the problem. On SQLite, prefer the loop of "When a write action
+  raises" in the guide, where each row commits on its own. If you change the
+  settings as SQLAlchemy shows ("Serializable isolation / Savepoints /
+  Transactional DDL"), a write that overlaps another write can fail at once
+  with "database is locked".
 
 ## [0.11.0] - 2026-10-09
 

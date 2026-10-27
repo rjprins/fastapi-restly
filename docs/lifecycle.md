@@ -1256,14 +1256,19 @@ block, so Restly builds their responses after the commit. On `fr.RestView`, use
 On SQLite, a `session.begin_nested()` inside the block can commit its rows
 when it ends. This happens with the default settings of Python's `sqlite3`
 module and of `aiosqlite`. When the block then fails, these rows stay saved,
-and their after-hooks do not run. To keep each savepoint inside the
-transaction, set up the engine as SQLAlchemy shows for
+and their after-hooks do not run. Restly's test fixtures change these
+settings in the default [rollback mode](#cleaning-up-between-tests), so a
+test does not show the problem.
+
+So on SQLite, prefer the loop in
+[When a write action raises](#write-action-error): each row commits on its
+own, without a shared block. SQLAlchemy shows how to change the settings for
 [`sqlite3`](https://docs.sqlalchemy.org/en/20/dialects/sqlite.html#pysqlite-serializable)
 and for
 [`aiosqlite`](https://docs.sqlalchemy.org/en/20/dialects/sqlite.html#aiosqlite-serializable).
-Restly's test fixtures set up the engine this way in the default
-[rollback mode](#cleaning-up-between-tests). So a test does not show the
-problem.
+But then the reads of a write join its transaction. So a write that overlaps
+another write can fail at once with "database is locked", without waiting
+for the timeout.
 :::
 
 :::{admonition} Details
