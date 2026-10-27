@@ -130,6 +130,7 @@ from ..schemas._base import (
     _as_response,
     _client_name,
     _collection_item_type,
+    _hides_value,
     _is_readonly,
     _json_data,
     _model_id_type,
@@ -523,7 +524,9 @@ def _time_ready(
 
 
 def _reject_excluded_json_fields(value: Any, column: str) -> None:
-    """Reject exclusions and document values that cannot be inspected safely."""
+    """Reject exclusions, secrets, and document values that cannot be
+    inspected safely. A JSON dump leaves out an excluded field and masks a
+    secret, so the column would not get the value."""
     pending = [value]
     seen: set[int] = set()
     while pending:
@@ -532,6 +535,13 @@ def _reject_excluded_json_fields(value: Any, column: str) -> None:
             raise RestlyConfigurationError(
                 f"{column}: documents containing dataclasses or iterators cannot "
                 "be stored automatically in a plain JSON column. Use a SQLAlchemy "
+                "TypeDecorator to define their storage representation."
+            )
+        if isinstance(item, _SECRET_TYPES):
+            raise RestlyConfigurationError(
+                f"{column}: the document holds a secret, such as a SecretStr. A "
+                "JSON dump masks a secret, so documents with secrets cannot be "
+                "stored automatically in a plain JSON column. Use a SQLAlchemy "
                 "TypeDecorator to define their storage representation."
             )
         if isinstance(item, str | bytes | bytearray) or not isinstance(
@@ -550,6 +560,16 @@ def _reject_excluded_json_fields(value: Any, column: str) -> None:
                         "Field(exclude=True) fields cannot be stored automatically "
                         "in a plain JSON column. Use a SQLAlchemy TypeDecorator "
                         "to define their storage representation."
+                    )
+                # A secret field, also one without a value yet: the first
+                # write of such a document fails, not the first with a secret.
+                if _hides_value(field):
+                    raise RestlyConfigurationError(
+                        f"{column}: {type(item).__name__}.{name} has a secret "
+                        "type, such as SecretStr, which a JSON dump masks. "
+                        "Documents with secret fields cannot be stored "
+                        "automatically in a plain JSON column. Use a SQLAlchemy "
+                        "TypeDecorator to define their storage representation."
                     )
                 pending.append(getattr(item, name, None))
             if item.model_extra:

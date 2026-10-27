@@ -127,6 +127,21 @@ class _DocumentEnumTree(pydantic.BaseModel):
     choice: _DocumentChoice
 
 
+class _SecretDocument(pydantic.BaseModel):
+    token: pydantic.SecretStr
+
+
+class _NoSecretYetDocument(pydantic.BaseModel):
+    """A secret field without a value fails too, so the first write of such a
+    document fails, not the first with a secret."""
+
+    token: pydantic.SecretStr | None = None
+
+
+class _SecretValuesDocument(pydantic.BaseModel):
+    tokens: dict[str, pydantic.SecretStr]
+
+
 @pytest.mark.parametrize("operation", ["create", "update"])
 @pytest.mark.parametrize(
     "document_type, document",
@@ -149,6 +164,13 @@ class _DocumentEnumTree(pydantic.BaseModel):
         (
             pydantic.RootModel[list[_PrivateDocument]],
             pydantic.RootModel[list[_PrivateDocument]]([_PrivateDocument()]),
+        ),
+        # a JSON dump masks a secret, so the column would get "**********"
+        (_SecretDocument, _SecretDocument(token=pydantic.SecretStr("s3cret"))),
+        (_NoSecretYetDocument, _NoSecretYetDocument()),
+        (
+            _SecretValuesDocument,
+            _SecretValuesDocument(tokens={"api": pydantic.SecretStr("s3cret")}),
         ),
     ],
 )

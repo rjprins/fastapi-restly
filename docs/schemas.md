@@ -159,7 +159,9 @@ class UserSchema(fr.IDSchema):
 Pydantic's secret types, such as `SecretStr`, work in a schema too. A write
 stores the secret, and a response shows `**********`, as Pydantic does. So
 a client sees that the field has a value, but not the value. Like a
-`WriteOnly` field, such a field gets no filter and is not a sort key.
+`WriteOnly` field, such a field gets no filter and is not a sort key. In the
+document of a JSON column, a secret field raises an error instead; see
+[Validate the document in a JSON column](#json-document-columns).
 
 :::{admonition} Details
 :class: details
@@ -736,8 +738,10 @@ A document with a {data}`WriteOnly <fastapi_restly.schemas.WriteOnly>` or a
 `Field(exclude=True)` field raises
 {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
 before Restly assigns it. This includes such fields in nested models. The dump
-would leave those fields out, so they would not be stored. A document with
-dataclasses or iterators raises the same error. For such documents, use a
+would leave those fields out, so they would not be stored. A field of
+Pydantic's secret types, such as `SecretStr`, raises the same error: the dump
+masks it, so the column would get `**********`. So does a document with
+dataclasses or iterators. For such documents, use a
 SQLAlchemy {class}`~sqlalchemy.types.TypeDecorator` that defines how the
 document is stored. Its bind processor receives the Pydantic model itself, not
 a dump.
