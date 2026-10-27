@@ -113,9 +113,12 @@ key too, such as `?task_count__gte=1` and `?sort=-task_count`.
 
 Equality, `__ne`, `__in` and the range filters validate each value with the
 field's Pydantic validation, so the field validators of the schema run on
-filter values too. On a column of SQLAlchemy's `Enum` type, the value must
-also be one of its labels. And each value must fit its column, such as a
-number in the range of `Integer`; see [Column validation](#column-validation).
+filter values too. A field of type `Any`, such as the `id` of
+{class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>`, gives the value the
+Python type of its column, such as a `UUID` from its text. On a column of
+SQLAlchemy's `Enum` type, the value must also be one of its labels. And each
+value must fit its column, such as a number in the range of `Integer`; see
+[Column validation](#column-validation).
 A value that fails returns `400` (see
 [Why a bad list request returns 422 or 400](#list-request-errors)).
 

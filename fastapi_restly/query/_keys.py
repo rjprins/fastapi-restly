@@ -99,9 +99,13 @@ class FilterKey:
         value from JSON, and a number becomes text for a text field. ``None``
         stays ``None`` when the field allows it, so ``key.column == None``
         gives ``IS NULL``. A reference, such as ``IDRef[User]``, gives its
-        id. A column of SQLAlchemy's ``Enum`` type takes only its labels. A
-        model for a ``JSON`` column becomes JSON data, as a write stores it.
-        A time gets the form of its column; see :ref:`utc-times`.
+        id. A field of type ``Any``, such as the ``id`` of ``fr.IDSchema``,
+        and the id of a reference get the Python type of the column, such as
+        a ``UUID`` from its text. A column of SQLAlchemy's ``Enum`` type
+        takes only its labels. A model for a ``JSON`` column becomes JSON
+        data, as a write stores it. A time gets the form of its column; see
+        :ref:`utc-times`. A value must fit its column; see
+        :ref:`column-validation`.
 
         :raises fastapi_restly.exc.BadQueryParam: ``Invalid filter value``,
             with the reason.

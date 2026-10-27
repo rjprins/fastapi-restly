@@ -8,6 +8,8 @@ now validates through the field's own core schema: field validators,
 constraints and the model config still apply, model validators do not.
 """
 
+import json
+import uuid
 from typing import Annotated, Any
 
 import pydantic
@@ -383,3 +385,77 @@ def test_a_bug_in_a_validator_is_not_a_bad_filter_value(client):
     create_tables()
     with pytest.raises(RuntimeError, match="a bug in the validator"):
         client.get("/gadgets/", params={"code": "boom"})
+
+
+def test_a_field_of_type_any_gets_the_python_type_of_its_column(client):
+    """The ``id`` of ``fr.IDSchema`` has the type ``Any``, so its validation
+    gives the text from the URL or the JSON. Such a value gets the Python type
+    of its column. Before, an id filter on a UUID key was a 500 ('str' object
+    has no attribute 'hex'), in the generated filters and, after the filter of
+    react-admin went through the field, in react-admin's ``getMany`` too."""
+
+    class Gadget(SharedBase):
+        id: Mapped[uuid.UUID] = mapped_column(
+            primary_key=True, default_factory=uuid.uuid4
+        )
+        name: Mapped[str]
+
+    class GadgetSchema(fr.IDSchema):
+        name: str
+
+    class Sleeper(fr.IDMixin, SharedBase):
+        name: Mapped[str] = mapped_column(default="")
+
+    class SleeperSchema(fr.IDSchema):
+        name: str = ""
+
+    @fr.include_view(client.app)
+    class GadgetView(fr.AsyncRestView):
+        prefix = "/gadgets"
+        model = Gadget
+        schema = GadgetSchema
+
+    @fr.include_view(client.app)
+    class GadgetAdminView(fr.AsyncReactAdminView):
+        prefix = "/admin/gadgets"
+        model = Gadget
+        schema = GadgetSchema
+
+    @fr.include_view(client.app)
+    class SleeperView(fr.AsyncRestView):
+        prefix = "/sleepers"
+        model = Sleeper
+        schema = SleeperSchema
+
+    create_tables()
+    ids = [client.post("/gadgets", json={"name": n}).json()["id"] for n in "abc"]
+
+    def names(path: str, params: dict) -> list[str]:
+        body = client.get(path, params=params).json()
+        return sorted(row["name"] for row in (body["data"] if "data" in body else body))
+
+    assert names("/gadgets", {"id": ids[0]}) == ["a"]
+    assert names("/gadgets", {"id__in": f"{ids[0]},{ids[1]}"}) == ["a", "b"]
+    assert names("/admin/gadgets", {"filter": json.dumps({"id": ids[:2]})}) == [
+        "a",
+        "b",
+    ]
+    assert names("/admin/gadgets", {"filter": json.dumps({"id": ids[2]})}) == ["c"]
+
+    for path, params in [
+        ("/gadgets", {"id": "nope"}),
+        ("/admin/gadgets", {"filter": json.dumps({"id": ["nope"]})}),
+    ]:
+        response = client.get(path, params=params, assert_status_code=400)
+        assert response.json()["detail"].startswith(
+            "Invalid filter value for 'id': 'nope'. Input should be a valid UUID"
+        )
+
+    # an integer key: text that is no number was no row on SQLite and a 500
+    # on PostgreSQL, and a number beyond the column was a 500 there too
+    response = client.get("/sleepers", params={"id": "abc"}, assert_status_code=400)
+    assert response.json()["detail"].startswith(
+        "Invalid filter value for 'id': 'abc'. Input should be a valid integer"
+    )
+    response = client.get("/sleepers", params={"id": 2**31}, assert_status_code=400)
+    assert "The number is out of range" in response.json()["detail"]

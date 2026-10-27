@@ -33,6 +33,7 @@ at PostgreSQL (see ``conftest.py``). Seven things are covered:
 
 import asyncio
 import json
+import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 
@@ -169,6 +170,16 @@ class PgShelved(fr.IDMixin, SharedBase):
 
 class PgShelvedSchema(fr.IDSchema):
     parent_id: fr.MustExist[int, PgParent] | None = None
+
+
+class PgKeyed(SharedBase):
+    # a UUID key: the id of fr.IDSchema has the type Any
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default_factory=uuid.uuid4)
+    name: Mapped[str] = mapped_column(default="")
+
+
+class PgKeyedSchema(fr.IDSchema):
+    name: str = ""
 
 
 class PgChecked(fr.IDMixin, SharedBase):
@@ -333,6 +344,13 @@ class PgShelvedView(fr.AsyncRestView):
     schema = PgShelvedSchema
 
 
+@fr.include_view(_app)
+class PgKeyedView(fr.AsyncRestView):
+    prefix = "/keyed"
+    model = PgKeyed
+    schema = PgKeyedSchema
+
+
 _MODELS = [
     PgWord,
     PgRanked,
@@ -347,6 +365,7 @@ _MODELS = [
     PgMeeting,
     PgSpan,
     PgShelved,
+    PgKeyed,
 ]
 
 
@@ -832,6 +851,9 @@ async def test_a_value_that_does_not_fit_its_column_is_a_client_error_on_psycopg
                 "/words/", params={"name__contains": "a\x00b"}
             ),
             "nul body": await client.post("/words/", json={"name": "a\x00b"}),
+            "id text": await client.get("/ranked/", params={"id": "abc"}),
+            "id range": await client.get("/ranked/", params={"id": str(2**31)}),
+            "uuid text": await client.get("/keyed/", params={"id": "nope"}),
         }
     assert {name: response.status_code for name, response in responses.items()} == {
         "filter": 400,
@@ -842,7 +864,24 @@ async def test_a_value_that_does_not_fit_its_column_is_a_client_error_on_psycopg
         "nul": 400,
         "nul contains": 400,
         "nul body": 422,
+        "id text": 400,
+        "id range": 400,
+        "uuid text": 400,
     }
+
+
+@pytest.mark.asyncio
+async def test_an_id_filter_on_a_uuid_key_on_psycopg(restly_async_session):
+    """The id of fr.IDSchema has the type Any, so a filter on it gives the
+    value the Python type of the key column."""
+    async with _async_client() as client:
+        made = [(await client.post("/keyed/", json={"name": n})).json() for n in "ab"]
+        one = await client.get("/keyed/", params={"id": made[0]["id"]})
+        both = await client.get(
+            "/keyed/", params={"id__in": ",".join(row["id"] for row in made)}
+        )
+    assert [row["name"] for row in one.json()["data"]] == ["a"]
+    assert sorted(row["name"] for row in both.json()["data"]) == ["a", "b"]
 
 
 @pytest.mark.asyncio

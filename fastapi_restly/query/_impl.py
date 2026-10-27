@@ -1683,10 +1683,13 @@ def _value_parser(
     a value from JSON. ``None`` stays ``None``, for ``IS NULL``. An ``IDRef``
     gives its id. A column of SQLAlchemy's ``Enum`` type takes only its
     labels. A ``JSON`` column takes a model as JSON data, as a write stores
-    it. Any other value goes through ``column_value``: a time gets the form
-    of its column, and a number or a text must fit the column. The
-    generated filters and :class:`~fastapi_restly.query.FilterKey` build one
-    parser for each key, so the work for the key is done once.
+    it. A field of type ``Any``, such as the ``id`` of ``fr.IDSchema``, and
+    the id of a reference get the Python type of the column, such as a
+    ``UUID`` from its text. Any other value goes through ``column_value``: a
+    time gets the form of its column, and a number or a text must fit the
+    column. The generated filters and
+    :class:`~fastapi_restly.query.FilterKey` build one parser for each key,
+    so the work for the key is done once.
 
     :param schema_cls: The schema that holds the field.
     :param column: The column, or ``None`` to leave each value as the field
@@ -1698,6 +1701,10 @@ def _value_parser(
     enum_type = _enum_type(column)
     # A TypeDecorator over JSON binds through its own code, as on a write.
     is_json = isinstance(column_type, sqlalchemy.JSON)
+    # A field of type Any, such as the id of fr.IDSchema, gives the value as
+    # it came, and so does a reference for its id.
+    untyped = _unwrap_type(schema_cls.model_fields[field_name].annotation)[0] is Any
+    to_python_type = _python_type_parser(column_type)
 
     def parse(value: Any) -> Any:
         """``value`` as a value for the column.
@@ -1720,14 +1727,22 @@ def _value_parser(
             return None
         # An IDRef[T] FK field validates to an IDRef object; the SQL bind
         # value is its scalar id, not the reference wrapper (which cannot bind).
-        if isinstance(result, IDSchema):
+        reference = isinstance(result, IDSchema)
+        if reference:
             result = result.id
         elif enum_type is not None:
             return _enum_value(enum_type, result, key, value)
         elif is_json:
             return _json_data(result)
         try:
+            if (untyped or reference) and to_python_type is not None:
+                result = to_python_type(result)
             return column_value(column_type, result)
+        except pydantic.ValidationError as exc:
+            reason = exc.errors()[0]["msg"]
+            raise BadQueryParam(
+                f"Invalid filter value for {key!r}: {value!r}. {reason}"
+            ) from exc
         except ValueError as exc:
             raise BadQueryParam(
                 f"Invalid filter value for {key!r}: {value!r}. "
@@ -1735,6 +1750,47 @@ def _value_parser(
             ) from exc
 
     return parse
+
+
+def _python_type_parser(column_type: Any) -> Callable[[Any], Any] | None:
+    """A function that gives a value the Python type of ``column_type``, such
+    as a ``UUID`` from its text, or ``None`` when the type names none.
+
+    The function raises ``pydantic.ValidationError`` for a value that is not
+    valid for the type.
+    """
+    try:
+        python_type = column_type.python_type
+    except (AttributeError, NotImplementedError):
+        return None
+    adapter = _python_type_adapter(python_type)
+
+    def to_python_type(value: Any) -> Any:
+        if isinstance(value, python_type):
+            return value
+        return adapter.validate_python(value)
+
+    return to_python_type
+
+
+@functools.cache
+def _python_type_adapter(python_type: type) -> pydantic.TypeAdapter[Any]:
+    """The adapter that validates a value as ``python_type``."""
+    if python_type is str:
+        # A number filters a text column: JSON has 5 for the text "5".
+        config = pydantic.ConfigDict(coerce_numbers_to_str=True)
+        return pydantic.TypeAdapter(str, config=config)
+    try:
+        return pydantic.TypeAdapter(python_type)
+    except pydantic.PydanticSchemaGenerationError:
+        # A type that Pydantic does not know: call it with the value.
+        def construct(value: Any) -> Any:
+            try:
+                return python_type(value)
+            except (TypeError, ArithmeticError) as exc:
+                raise ValueError(str(exc)) from exc
+
+        return pydantic.TypeAdapter(Annotated[Any, pydantic.AfterValidator(construct)])
 
 
 @functools.cache

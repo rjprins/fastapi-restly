@@ -205,7 +205,8 @@ def test_orders_list_includes_timestamps(client):
 def test_sort_by_relationship_returns_400(client):
     _post_customer(client)
 
+    # a relationship holds rows, not a value, so it is no sort key
     response = client.get(
         "/customers/", params={"sort": '["orders","ASC"]'}, assert_status_code=400
     )
-    assert "relationship" in response.json()["detail"]
+    assert response.json()["detail"] == "Unknown sort key: 'orders'"
