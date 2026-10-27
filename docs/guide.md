@@ -13,7 +13,9 @@ FastAPI routes. For example, when a client sends `PATCH /projects/1`,
 FastAPI first checks the request body against the update schema,
 `ProjectUpdate`. Then these steps run:
 
-```
+```{code-block} text
+:emphasize-lines: 2,5,7,9,11,12
+
 PATCH /projects/1
   └─ update_endpoint(id, data)            # endpoint method: HTTP contract
        ├─ handle_update(id, data)         # handler: runs the steps
@@ -27,6 +29,10 @@ PATCH /projects/1
        │    └─ after_action_commit(...)
        └─ to_response(obj)                # the response class, as JSON
 ```
+
+The highlighted lines are the methods that you can override in your view.
+Restly runs the other steps itself, and the handler and `get_one` are
+final.
 
 These are the parts, and the page that explains each one:
 
