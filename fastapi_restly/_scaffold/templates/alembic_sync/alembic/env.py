@@ -38,6 +38,9 @@ def run_migrations_offline() -> None:
         dialect_opts={"paramstyle": "named"},
         render_as_batch=RENDER_AS_BATCH,
     )
+    if context.get_context().dialect.name == "postgresql":
+        # The script runs in UTC too, as an online run does.
+        context.execute("SET TIME ZONE 'UTC'")
 
     with context.begin_transaction():
         context.run_migrations()

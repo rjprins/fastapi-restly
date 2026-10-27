@@ -390,8 +390,9 @@ replacement, unless it says otherwise.
 - The `alembic/env.py` that `restly new` generates runs the migrations in
   UTC on PostgreSQL, as the application's sessions do. So a migration that
   gives a column a time zone reads the stored times as UTC, and `now()` in a
-  migration gives UTC. To do the same in an existing project, copy the
-  `SET TIME ZONE 'UTC'` step from the new `env.py`.
+  migration gives UTC. The SQL script of `alembic upgrade --sql` starts with
+  `SET TIME ZONE 'UTC'` too. To do the same in an existing project, copy the
+  two `SET TIME ZONE 'UTC'` steps from the new `env.py`.
 - `fr.clauses.UNSCOPED` is a `WhereClause` with the condition `TRUE`, so it
   goes everywhere a clause goes. `isinstance(x, WhereClause)` now matches it
   too.

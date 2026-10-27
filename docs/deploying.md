@@ -215,7 +215,8 @@ and the
 [SaaS example](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/alembic/env.py)
 are complete versions of this setup. They read the database URL from the
 application's settings when Alembic gets none. On PostgreSQL, they run the
-migrations in UTC, as the application's sessions do.
+migrations in UTC, as the application's sessions do, also in the SQL script
+of `alembic upgrade --sql`.
 
 Run the migrations when you release, or when the application starts:
 
