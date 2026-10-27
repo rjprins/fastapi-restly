@@ -1,5 +1,7 @@
 """Test auto-generated schemas."""
 
+from datetime import timedelta
+
 import pytest
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -253,6 +255,29 @@ def test_derive_schema_preserves_json_dict_types():
     schema = fr_schemas.derive_schema(Event)
 
     assert schema.model_fields["payload"].annotation is dict
+
+
+def test_auto_generated_schema_with_a_timedelta(client):
+    """A ``timedelta`` column, an ``Interval``, gets a field. JSON shows it as
+    an ISO 8601 duration, and it has the range filters."""
+
+    class Task(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+        duration: Mapped[timedelta]
+
+    @fr.include_view(client.app)
+    class TaskView(fr.AsyncRestView):
+        prefix = "/tasks"
+        model = Task
+
+    create_tables()
+    created = client.post("/tasks", json={"name": "long", "duration": "PT1H30M"})
+    client.post("/tasks", json={"name": "short", "duration": "PT10M"})
+    rows = client.get("/tasks", params={"duration__gte": "PT1H"}).json()["data"]
+
+    assert TaskView.schema.model_fields["duration"].annotation is timedelta
+    assert created.json()["duration"] == "PT1H30M"
+    assert [row["name"] for row in rows] == ["long"]
 
 
 def test_derive_schema_names_the_class_after_the_model():

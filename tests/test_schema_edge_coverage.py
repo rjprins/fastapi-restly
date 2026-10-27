@@ -1,5 +1,5 @@
 import enum
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from typing import Any, Optional, get_args
 from unittest.mock import patch
 
@@ -9,7 +9,17 @@ from sqlalchemy import ForeignKey, create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship
 from sqlalchemy.pool import StaticPool
-from sqlalchemy.types import Boolean, Date, DateTime, Float, Integer, String, Text, Time
+from sqlalchemy.types import (
+    Boolean,
+    Date,
+    DateTime,
+    Float,
+    Integer,
+    Interval,
+    String,
+    Text,
+    Time,
+)
 
 import fastapi_restly as fr
 from fastapi_restly.schemas import BaseSchema
@@ -413,6 +423,8 @@ def test_schema_generator_helpers_cover_relationships_defaults_and_type_conversi
     assert convert_sqlalchemy_type_to_pydantic(datetime) is fr.UTCDatetime
     assert convert_sqlalchemy_type_to_pydantic(Date) is date
     assert convert_sqlalchemy_type_to_pydantic(Time) is time
+    assert convert_sqlalchemy_type_to_pydantic(Interval) is timedelta
+    assert convert_sqlalchemy_type_to_pydantic(timedelta) is timedelta
     assert convert_sqlalchemy_type_to_pydantic(Any) is Any
     assert convert_sqlalchemy_type_to_pydantic(Priority) is Priority
     assert convert_sqlalchemy_type_to_pydantic(Customer) is Customer

@@ -379,6 +379,10 @@ replacement, unless it says otherwise.
 
 ### Fixed
 
+- A generated schema gives a `timedelta` column, an `Interval`, a field of
+  type `timedelta`. JSON shows it as an ISO 8601 duration, such as
+  `PT1H30M`. Before, the view failed when it registered, with
+  `TypeError: Unsupported field type`.
 - A field of a flag type, such as `IntFlag`, gets the plain filter, `__in`
   and `__ne`. Before, it got only `__isnull`, because Python counts a flag
   as a collection.

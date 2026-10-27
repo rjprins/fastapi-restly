@@ -9,7 +9,7 @@ import inspect
 import sys
 import types
 from collections.abc import Collection
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Any, ForwardRef, Union, get_args, get_origin
 from uuid import UUID
@@ -425,6 +425,7 @@ def convert_sqlalchemy_type_to_pydantic(
         list,
         date,
         time,
+        timedelta,
         UUID,
         Decimal,
     ):
@@ -451,6 +452,8 @@ def convert_sqlalchemy_type_to_pydantic(
         pydantic_type = date
     elif type_name in {"Time"}:
         pydantic_type = time
+    elif type_name in {"Interval"}:
+        pydantic_type = timedelta
     else:
         raise TypeError(
             f"Unsupported field type for auto-generated schema: {sqlalchemy_type!r}"
