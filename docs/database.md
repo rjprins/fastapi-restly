@@ -419,13 +419,21 @@ the time zone that the server reports for the session, and sends
 `SET TIME ZONE 'UTC'` when it is another zone. PostgreSQL then reads a time
 without an offset as UTC, as Restly does: `now()` gives UTC for a column
 without a time zone, and psycopg gives back each time in UTC, as asyncpg
-does. So SQL of your own works in UTC too: `date_trunc('day', created_at)`
-gives the days of UTC. For the days of another zone, name the zone in the
-SQL, such as `date_trunc('day', created_at AT TIME ZONE 'Europe/Amsterdam')`.
+does. So the functions in your SQL work in UTC too:
+`date_trunc('day', created_at)` gives the days of UTC. asyncpg is different
+in one place: it converts a `datetime` without an offset that your code
+passes for a column with a time zone itself, in the time zone of the Python
+process; see [Keep times in UTC](#utc-times).
 
-Each of these options changes only the connection. Restly does not change the
-database itself, so these defaults leave no trace in your data after the
-process exits.
+For the days of another zone, name the zone in the SQL. For a column with a
+time zone, write `date_trunc('day', created_at AT TIME ZONE 'Europe/Amsterdam')`.
+A column without a time zone holds UTC without the offset, so give it the
+zone UTC first:
+`date_trunc('day', starts_at AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Amsterdam')`.
+
+Each of these options changes only the connection. Restly changes no setting
+of the database itself, such as `journal_mode=WAL` on SQLite, which would
+stay after the process exits.
 
 These defaults apply only to the URL form. If you pass `engine=`,
 `make_session=` or a session generator, Restly uses your object as it is. To

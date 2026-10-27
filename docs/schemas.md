@@ -424,9 +424,10 @@ time in UTC. Compare it with a column without a time zone as
 `value.replace(tzinfo=None)`.
 
 A time from the database has no offset when its column has no time zone, and
-on SQLite always. Python cannot compare such a time with a time from the
-schema, which has an offset. Convert it with
-{func}`fr.in_utc <fastapi_restly.schemas.in_utc>` first, as in
+on SQLite always. A time from the schema has an offset. Python cannot order
+such times: `<`, `>` and `-` raise `TypeError`. And `==` is always `False`,
+and `!=` always `True`, without an error. Convert the time from the database
+with {func}`fr.in_utc <fastapi_restly.schemas.in_utc>` first, as in
 `data.ends_at > fr.in_utc(obj.starts_at)`. `fr.in_utc` follows the rule of
 `fr.UTCDatetime`: a time without an offset is UTC, and a time with an offset
 becomes the same time in UTC.
@@ -895,8 +896,8 @@ A view and a direct call of `derive_schema(model)` give the same schema.
 ### Column types and field types
 
 `convert_sqlalchemy_type_to_pydantic` maps the Python type of each column,
-from its annotation or its column type, to a Pydantic field type. A type that
-Pydantic already understands stays as it is, except a time: it gets
+from its annotation or its column type, to a Pydantic field type, as in this
+table. A type keeps its name, except a time: it gets
 [`fr.UTCDatetime`](#utc-times).
 
 | SQLAlchemy / Python annotation | Pydantic field type |
@@ -908,6 +909,7 @@ Pydantic already understands stays as it is, except a time: it gets
 | `datetime` | `fr.UTCDatetime` |
 | `date` | `date` |
 | `time` | `time` |
+| `timedelta` | `timedelta` |
 | `UUID` | `UUID` |
 | `Decimal` | `Decimal` |
 | `dict` / `dict[str, Any]` | `dict` / `dict[str, Any]` |
@@ -920,6 +922,7 @@ Pydantic already understands stays as it is, except a time: it gets
 | SQLAlchemy `DateTime` | `fr.UTCDatetime` |
 | SQLAlchemy `Date` | `date` |
 | SQLAlchemy `Time` | `time` |
+| SQLAlchemy `Interval` | `timedelta` |
 
 `Any` and other generic types, such as `tuple[int, int]`, also stay as they
 are. Any other type raises `TypeError` when Restly generates the schema. For a

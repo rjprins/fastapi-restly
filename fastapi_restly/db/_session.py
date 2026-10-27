@@ -130,11 +130,11 @@ def configure(
 
     A URL is the one form Restly builds an engine from, and that engine gets
     defaults suited to a web application: ``StaticPool`` for in-memory SQLite,
-    ``PRAGMA foreign_keys=ON`` on every SQLite connection, and ``pool_pre_ping``
-    with ``pool_recycle`` on PostgreSQL. Pool sizing is left alone, and so is
-    anything written into the database itself, which is why ``journal_mode=WAL``
-    is not among them. Every other form is used as given, so passing ``engine=``
-    declines all of this.
+    ``PRAGMA foreign_keys=ON`` on every SQLite connection, and on PostgreSQL
+    ``pool_pre_ping``, ``pool_recycle`` and each session in UTC. Pool sizing is
+    left alone, and so is anything written into the database itself, which is
+    why ``journal_mode=WAL`` is not among them. Every other form is used as
+    given, so passing ``engine=`` declines all of this.
 
     Restly owns the commit: the CRUD handlers and ``write_action`` run
     ``before_action_commit`` -> commit -> ``after_action_commit`` around your domain logic. A

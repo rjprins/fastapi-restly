@@ -58,8 +58,10 @@ Restly does not choose a pool size, so set it yourself. To do that, build the
 engine yourself and pass it to `fr.configure()`, as the template below does.
 Restly's [engine defaults](#engine-defaults) apply only to an engine that
 Restly builds from a URL. For this reason, the template also sets
-`pool_pre_ping=True` itself. If your application already builds an engine,
-pass that one; see [Reuse your existing engine or sessionmaker](#reuse-existing-engine).
+`pool_pre_ping=True` itself, and puts each session in UTC with asyncpg's
+`server_settings`. For psycopg, pass `connect_args={"options": "-c timezone=UTC"}`
+instead. If your application already builds an engine, pass that one; see
+[Reuse your existing engine or sessionmaker](#reuse-existing-engine).
 
 (production-main-template)=
 
@@ -89,6 +91,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         pool_size=settings.db_pool_size,
         max_overflow=settings.db_max_overflow,
         pool_pre_ping=True,
+        connect_args={"server_settings": {"timezone": "UTC"}},
     )
 
     @asynccontextmanager

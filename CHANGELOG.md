@@ -42,14 +42,19 @@ replacement, unless it says otherwise.
    next to its old rows in local time.
 9. Where your code compares a time from a request with a time from the
    database, convert the time from the database with `fr.in_utc()` first,
-   as in `data.ends_at > fr.in_utc(obj.starts_at)`. This step fails with
-   `TypeError`, not with a message from Restly.
-10. Check SQL of your own that depends on the time zone of the database
-    session, such as `date_trunc('day', created_at)`. On PostgreSQL, an
-    engine that Restly builds from a URL now puts each session in UTC. For
-    another zone, name it in the SQL, such as
-    `date_trunc('day', created_at AT TIME ZONE 'Europe/Amsterdam')`. This
-    step does not fail.
+   as in `data.ends_at > fr.in_utc(obj.starts_at)`. A missed `<`, `>` or
+   `-` fails with `TypeError`, not with a message from Restly. A missed
+   `==` or `!=` does not fail: `==` is always `False`, and `!=` always
+   `True`.
+10. Check code of your own that depends on the time zone of the database
+    session. On PostgreSQL, an engine that Restly builds from a URL now puts
+    each session in UTC. So SQL such as `date_trunc('day', created_at)`
+    gives the days of UTC, and `now()` gives UTC for a column without a
+    time zone. For another zone, name it in the SQL; see "Engine defaults"
+    in the docs. On psycopg, also code in Python changes: a time without an
+    offset that it writes is read as UTC, a time with an offset that it
+    writes to a column without a time zone is stored in UTC, and each time
+    that psycopg gives back has the zone UTC. This step does not fail.
 11. In a react-admin view, check each field validator that reads another
     field from `info.data`. A filter value now goes through the validators
     of its field, without the other fields, so `info.data` is `{}`. Use

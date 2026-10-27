@@ -9,9 +9,11 @@ The defaults exist because SQLAlchemy's own are tuned for a library talking to a
 database, while Restly always runs under a web server: many threads or tasks,
 long-lived pools, and connections that outlive the peer that opened them.
 
-They stop at the connection. Restly configures the connections it opens and does
-not modify the database those connections reach, which is what keeps a default
-from leaving a permanent mark on data the caller owns.
+They stop at the connection. Restly configures the connections it opens and
+changes no setting of the database those connections reach, such as SQLite's
+``journal_mode``, which would outlive the process. One default does shape the
+data a session writes: the PostgreSQL session in UTC, in which ``now()`` gives
+UTC for a column without a time zone.
 """
 
 from typing import Any
