@@ -27,10 +27,14 @@ cleanup() { "$engine" rm -f "$name" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 
 echo "Starting throwaway $image container via $engine..."
+# TZ gives the server a default time zone other than UTC, as a server that
+# takes the zone of its machine has. So each engine that Restly builds must
+# put its sessions in UTC itself, as on such a server. CI does the same.
 "$engine" run -d --name "$name" \
     -e POSTGRES_USER=postgres \
     -e POSTGRES_PASSWORD=postgres \
     -e POSTGRES_DB=restly_test \
+    -e TZ=America/New_York \
     -p 127.0.0.1::5432 \
     "$image" >/dev/null
 

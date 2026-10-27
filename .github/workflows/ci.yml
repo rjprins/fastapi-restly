@@ -118,6 +118,10 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: restly_test
+          # A default time zone other than UTC, as a server that takes the
+          # zone of its machine has, and as scripts/with_postgres.sh starts.
+          # So each engine that Restly builds puts its sessions in UTC itself.
+          TZ: America/New_York
         ports:
           - 5432:5432
         options: >-
@@ -131,6 +135,8 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: saas_test
+          # As above: the SaaS engine puts its sessions in UTC itself.
+          TZ: America/New_York
         ports:
           - 5433:5432
         options: >-

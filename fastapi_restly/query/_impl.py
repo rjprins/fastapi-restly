@@ -427,7 +427,7 @@ def _pagination_offset_validator(pagination: NumberedPagination) -> Any:
 
 def derive_schema_list_params(
     schema_response: SchemaType,
-    model: type[DeclarativeBase],
+    model: type[Any],
     *,
     pagination: _AnyPagination = _DEFAULT_PAGINATION,
     include_filters: _abc.Iterable[str] = ("*",),
@@ -994,7 +994,7 @@ def _sort_field(sort_keys: list[str], default: str | None) -> tuple[Any, str | N
 def apply_list_params(
     stmt: Select[Any],
     list_params: pydantic.BaseModel | QueryParams,
-    model: type[DeclarativeBase],
+    model: type[Any],
     schema_response: SchemaType,
     *,
     pagination: _AnyPagination = cast(Any, _FROM_PARAMS),

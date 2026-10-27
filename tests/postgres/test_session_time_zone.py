@@ -9,6 +9,7 @@ listener that runs before Restly's.
 
 import pytest
 from sqlalchemy import Engine, create_engine, event, text
+from sqlalchemy.ext.asyncio import create_async_engine
 
 import fastapi_restly as fr
 from fastapi_restly.db._config import RestlyContext
@@ -54,12 +55,16 @@ def test_an_engine_from_a_url_puts_the_session_in_utc():
 
 @pytest.mark.asyncio
 async def test_an_async_engine_from_a_url_puts_the_session_in_utc():
+    """Also after a rollback: the SET is committed."""
     with RestlyContext():
         fr.configure(async_database_url=ASYNC_URL)
         engine = fr.db.get_async_engine()
         _start_in_new_york(engine.sync_engine)
         try:
             async with engine.connect() as connection:
+                zone = await connection.execute(text("SHOW TIME ZONE"))
+                assert zone.scalar() == "UTC"
+                await connection.rollback()
                 zone = await connection.execute(text("SHOW TIME ZONE"))
                 assert zone.scalar() == "UTC"
         finally:
@@ -79,6 +84,18 @@ def test_an_engine_that_you_pass_in_keeps_the_time_zone_of_its_session():
         own.dispose()
 
 
+def test_an_engine_of_your_own_puts_the_session_in_utc_with_the_docs_recipe():
+    """The recipe of the docs for psycopg: a startup option. It matters on a
+    server whose sessions start in another zone, as the one of
+    ``scripts/with_postgres.sh`` and CI does."""
+    own = create_engine(URL, connect_args={"options": "-c timezone=UTC"})
+    try:
+        with own.connect() as connection:
+            assert connection.execute(text("SHOW TIME ZONE")).scalar() == "UTC"
+    finally:
+        own.dispose()
+
+
 def test_the_time_zone_that_the_server_reports_is_the_one_of_the_session():
     """Restly reads it without a query, so a session in UTC gets no SET."""
     own = create_engine(URL)
@@ -89,3 +106,17 @@ def test_the_time_zone_that_the_server_reports_is_the_one_of_the_session():
             assert reported == shown
     finally:
         own.dispose()
+
+
+@pytest.mark.asyncio
+async def test_the_time_zone_that_async_psycopg_reports_is_the_one_of_the_session():
+    """The same through SQLAlchemy's adapter of psycopg's async connection."""
+    own = create_async_engine(ASYNC_URL)
+    try:
+        async with own.connect() as connection:
+            raw = await connection.get_raw_connection()
+            reported = _session_time_zone(raw.dbapi_connection)
+            shown = await connection.execute(text("SHOW TIME ZONE"))
+            assert reported == shown.scalar()
+    finally:
+        await own.dispose()

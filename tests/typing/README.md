@@ -60,5 +60,6 @@ Coverage checklist:
 - [x] A view's own `schema_response`, and `derive_schema_response` / `derive_schema_list_response` in custom routes
 - [x] The markers of `fastapi_restly.views` (`ViewID`, `ViewResponse`, ...) in a base view and in a concrete view
 - [x] Keyword-only dataclass models: a required column after a defaulted one
+- [x] `fr.query.FilterKey` and `fr.query.SortKey` in list params of your own, also with a SQLModel table, and `fr.in_utc`
 - [ ] Write-only and read-only field markers in consumer schemas
 - [x] Direct override of built-in `get_many/get_one/create/update/delete` route methods as a documented pattern

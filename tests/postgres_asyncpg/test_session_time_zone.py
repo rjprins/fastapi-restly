@@ -62,6 +62,22 @@ async def test_an_engine_that_you_pass_in_keeps_the_time_zone_with_asyncpg():
 
 
 @pytest.mark.asyncio
+async def test_an_engine_of_your_own_puts_the_session_in_utc_with_the_docs_recipe():
+    """The recipe of the docs for asyncpg: a server setting at the start. It
+    matters on a server whose sessions start in another zone, as the one of
+    ``scripts/with_postgres.sh`` and CI does."""
+    own = create_async_engine(
+        URL, connect_args={"server_settings": {"timezone": "UTC"}}
+    )
+    try:
+        async with own.connect() as connection:
+            zone = await connection.execute(text("SHOW TIME ZONE"))
+            assert zone.scalar() == "UTC"
+    finally:
+        await own.dispose()
+
+
+@pytest.mark.asyncio
 async def test_the_time_zone_that_asyncpg_reports_is_the_one_of_the_session():
     """Restly reads it without a query, so a session in UTC gets no SET."""
     own = create_async_engine(URL)

@@ -19,7 +19,7 @@ import os
 import time
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager, contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi import FastAPI
@@ -70,6 +70,14 @@ class AsyncpgTag(fr.IDMixin, SharedBase):
 
 class AsyncpgTagSchema(fr.IDSchema):
     name: str
+
+
+class AsyncpgSpan(fr.IDMixin, SharedBase):
+    __tablename__ = "restly_asyncpg_span"
+
+    name: Mapped[str]
+    # a native INTERVAL on PostgreSQL, with a generated schema
+    duration: Mapped[timedelta]
 
 
 LIFESPAN_EVENTS: list[str] = []
@@ -124,6 +132,12 @@ class AsyncpgTagView(fr.AsyncRestView):
     schema = AsyncpgTagSchema
 
 
+@fr.include_view(app)
+class AsyncpgSpanView(fr.AsyncRestView):
+    prefix = "/spans"
+    model = AsyncpgSpan
+
+
 fr.testing.configure_tests(
     app=app, base=SharedBase, create_all=True, db_cleanup=CLEANUP
 )
@@ -137,6 +151,7 @@ def drop_test_table() -> Iterator[None]:
         async with engine.begin() as connection:
             await connection.run_sync(AsyncpgNote.__table__.drop, checkfirst=True)
             await connection.run_sync(AsyncpgTag.__table__.drop, checkfirst=True)
+            await connection.run_sync(AsyncpgSpan.__table__.drop, checkfirst=True)
         await engine.dispose()
 
     asyncio.run(drop())
@@ -359,6 +374,25 @@ async def test_a_react_admin_filter_time_with_an_offset_is_utc_with_asyncpg(
 
     assert response.status_code == 200
     assert [item["text"] for item in response.json()] == ["starts in Lisbon"]
+
+
+@pytest.mark.asyncio
+async def test_a_timedelta_column_is_a_native_interval_with_asyncpg(
+    restly_async_client,
+):
+    """A generated schema gives an ``Interval`` column a ``timedelta`` field,
+    and its range filters compare durations."""
+    for name, duration in [("long", "PT1H30M"), ("short", "PT10M")]:
+        created = await restly_async_client.post(
+            "/spans", json={"name": name, "duration": duration}
+        )
+        assert created.status_code == 201, created.text
+    response = await restly_async_client.get("/spans", params={"duration__gte": "PT1H"})
+
+    assert response.status_code == 200, response.text
+    assert [(row["name"], row["duration"]) for row in response.json()["data"]] == [
+        ("long", "PT1H30M")
+    ]
 
 
 @pytest.mark.asyncio

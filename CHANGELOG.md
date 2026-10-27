@@ -425,6 +425,9 @@ replacement, unless it says otherwise.
   column, such as `P3000000D`, gets `400` in a filter and `422` in a body,
   as a time out of range does. SQLite stores a duration as a time after
   1970, which must be before the year 10000.
+- `fr.query.apply_list_params` and `fr.query.derive_schema_list_params` take
+  a SQLModel table as the `model` in pyright and mypy, as the views do.
+  Before, the type checkers wanted a subclass of `DeclarativeBase`.
 - A field of a flag type, such as `IntFlag`, gets the plain filter, `__in`
   and `__ne`. Before, it got only `__isnull`, because Python counts a flag
   as a collection.

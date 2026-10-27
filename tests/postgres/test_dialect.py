@@ -34,7 +34,7 @@ at PostgreSQL (see ``conftest.py``). Seven things are covered:
 import asyncio
 import json
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import httpx
 import pytest
@@ -191,6 +191,12 @@ class PgMeetingSchema(fr.IDSchema):
     held_at: datetime | None = None
 
 
+class PgSpan(fr.IDMixin, SharedBase):
+    name: Mapped[str]
+    # a native INTERVAL on PostgreSQL, with a generated schema
+    duration: Mapped[timedelta]
+
+
 @fr.include_view(_app)
 class PgWordView(fr.AsyncRestView):
     prefix = "/words"
@@ -305,6 +311,12 @@ class PgMeetingAdminView(fr.views.AsyncReactAdminView):
     schema = PgMeetingSchema
 
 
+@fr.include_view(_app)
+class PgSpanView(fr.AsyncRestView):
+    prefix = "/spans"
+    model = PgSpan
+
+
 _MODELS = [
     PgWord,
     PgRanked,
@@ -317,6 +329,7 @@ _MODELS = [
     PgChild,
     PgChecked,
     PgMeeting,
+    PgSpan,
 ]
 
 
@@ -770,6 +783,27 @@ async def test_a_react_admin_filter_time_is_utc_on_psycopg(restly_async_session)
         assert created.status_code == 201, created.text
         assert await names(client, starts_at="2024-01-01T10:30:00+01:00") == ["standup"]
         assert await names(client, ends_at="2024-01-01T09:45:00") == ["standup"]
+
+
+@pytest.mark.asyncio
+async def test_a_timedelta_column_is_a_native_interval_on_psycopg(restly_async_session):
+    """A generated schema gives an ``Interval`` column a ``timedelta`` field.
+    On PostgreSQL the column is a native ``INTERVAL``, and its range filters
+    compare durations."""
+    assert str(PgSpan.__table__.c.duration.type.compile(postgresql.dialect())) == (
+        "INTERVAL"
+    )
+    async with _async_client() as client:
+        for name, duration in [("long", "PT1H30M"), ("short", "PT10M")]:
+            created = await client.post(
+                "/spans/", json={"name": name, "duration": duration}
+            )
+            assert created.status_code == 201, created.text
+        listed = await client.get("/spans/", params={"duration__gte": "PT1H"})
+    assert listed.status_code == 200, listed.text
+    assert [(row["name"], row["duration"]) for row in listed.json()["data"]] == [
+        ("long", "PT1H30M")
+    ]
 
 
 # ---------------------------------------------------------------------------
