@@ -22,7 +22,7 @@ import types
 import warnings
 import weakref
 from collections.abc import Collection, Iterable, Mapping, Set
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from typing import (
     TYPE_CHECKING,
@@ -492,14 +492,16 @@ def _time_ready(
     field_name: str,
     value: Any,
 ) -> Any:
-    """A time in the form of its column, by the rule of ``column_time``.
+    """A time or a duration in the form of its column, by the rule of
+    ``column_time``.
 
     A field without a column keeps its value.
 
-    :raises RequestValidationError: the time is out of range in UTC. The error
-        is the one that a field of type ``fr.UTCDatetime`` gives.
+    :raises RequestValidationError: the time is out of range in UTC, or the
+        duration for an ``Interval`` column. The error is the one that a field
+        of type ``fr.UTCDatetime`` gives.
     """
-    if not isinstance(value, datetime):
+    if not isinstance(value, datetime | timedelta):
         return value
     mapper = sa_inspect(model_cls, raiseerr=False)
     column = None if mapper is None else mapper.columns.get(field_name)

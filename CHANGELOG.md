@@ -421,7 +421,10 @@ replacement, unless it says otherwise.
 - A generated schema gives a `timedelta` column, an `Interval`, a field of
   type `timedelta`. JSON shows it as an ISO 8601 duration, such as
   `PT1H30M`. Before, the view failed when it registered, with
-  `TypeError: Unsupported field type`.
+  `TypeError: Unsupported field type`. A duration that is too long for the
+  column, such as `P3000000D`, gets `400` in a filter and `422` in a body,
+  as a time out of range does. SQLite stores a duration as a time after
+  1970, which must be before the year 10000.
 - A field of a flag type, such as `IntFlag`, gets the plain filter, `__in`
   and `__ne`. Before, it got only `__isnull`, because Python counts a flag
   as a collection.

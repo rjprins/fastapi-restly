@@ -279,6 +279,26 @@ def test_auto_generated_schema_with_a_timedelta(client):
     assert created.json()["duration"] == "PT1H30M"
     assert [row["name"] for row in rows] == ["long"]
 
+    # SQLite stores 1970 plus the duration, which must stay before the year
+    # 10000: a longer duration is the client's error, not a 500
+    reason = (
+        "Value error, The duration is out of range: it must be between about "
+        "-1,969 and 8,029 years."
+    )
+    for value in ("P3000000D", "-P800000D"):
+        response = client.get(
+            "/tasks", params={"duration__gte": value}, assert_status_code=400
+        )
+        assert response.json()["detail"] == (
+            f"Invalid filter value for 'duration': {value!r}. {reason}"
+        )
+        response = client.post(
+            "/tasks",
+            json={"name": "endless", "duration": value},
+            assert_status_code=422,
+        )
+        assert response.json()["detail"][0]["msg"] == reason
+
 
 def test_derive_schema_names_the_class_after_the_model():
     class Report(fr.IDMixin, SharedBase):
