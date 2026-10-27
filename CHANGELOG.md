@@ -271,7 +271,8 @@ replacement, unless it says otherwise.
   not fit gets a 404, as for a row that does not exist. Before, PostgreSQL
   refused such a value with a 500, and SQLite stored it. Any other type,
   such as a type of a dialect or a `TypeDecorator`, gets the value as it is,
-  as in SQLAlchemy. A constraint on the field of the schema checks it.
+  as in SQLAlchemy. For such a type, put a constraint on the field of the
+  schema, such as `Field(max_length=50)`.
 
 #### Lists
 
@@ -580,6 +581,10 @@ replacement, unless it says otherwise.
   Python, such as a `@property` or a hybrid property without SQL, gets `400`
   with `Unknown filter key` or `Unknown sort key`. Before, it gave `500`. A
   hybrid property with SQL still works.
+- A view with generated list params registers when its response class has a
+  field for a hybrid property without SQL that fails on the class, such as
+  `len(self.name)`. The field gets no filters and no sort key. Before,
+  `include_view` failed with the error of the hybrid, such as a `TypeError`.
 - A filter value that equals a member of an `IntEnum`, such as `1`, on a
   column of SQLAlchemy's `Enum` type, finds the rows of that member. Before,
   the database compared the stored name with the number: a `500` on

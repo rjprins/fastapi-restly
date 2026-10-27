@@ -116,9 +116,10 @@ field's Pydantic validation, so the field validators of the schema run on
 filter values too. A field of type `Any`, such as the `id` of
 {class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>`, gives the value the
 Python type of its column, such as a `UUID` from its text. On a column of
-SQLAlchemy's `Enum` type, the value must also be one of its labels. And each
-value must fit its column, such as a number in the range of `Integer`; see
-[Column validation](#column-validation).
+SQLAlchemy's `Enum` type, the value must also be one of its labels. A
+number must fit its integer column, such as the range of `Integer`, and text
+must hold no NUL character; see [Column validation](#column-validation). A
+filter does not check the length of text.
 A value that fails returns `400` (see
 [Why a bad list request returns 422 or 400](#list-request-errors)).
 

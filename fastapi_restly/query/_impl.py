@@ -49,7 +49,13 @@ from ..schemas._base import (
     _schema_role_name,
     _unwrap_type,
 )
-from ._shared import SortNulls, _append_pk_tiebreak, _escape_like_value, _sort_term
+from ._shared import (
+    SortNulls,
+    _append_pk_tiebreak,
+    _class_attribute,
+    _escape_like_value,
+    _sort_term,
+)
 
 SchemaType = type[pydantic.BaseModel]
 _JoinAliases = dict[tuple[str, ...], AliasedClass[Any]]
@@ -1494,7 +1500,7 @@ def _resolve_column(
         field_name = _resolve_field_name(current_schema, relation)
         if field_name is None:
             raise unknown
-        rel = getattr(current_model, field_name, None)
+        rel = _class_attribute(current_model, field_name)
         if not isinstance(rel, InstrumentedAttribute) or not hasattr(
             rel.property, "mapper"
         ):
@@ -1510,7 +1516,7 @@ def _resolve_column(
     field_name = _resolve_field_name(current_schema, name)
     if field_name is None:
         raise unknown
-    column = getattr(current_model, field_name, None)
+    column = _class_attribute(current_model, field_name)
     if (
         column is None
         or not isinstance(column, InstrumentedAttribute)

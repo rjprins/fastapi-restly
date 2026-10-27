@@ -62,8 +62,9 @@ def column_value(column_type: Any, value: Any, *, stored: bool = False) -> Any:
     variants, is checked. A number must fit the integer type: 16 bits for
     ``SmallInteger``, 32 for ``Integer`` and 64 for ``BigInteger``, as on
     PostgreSQL, also on SQLite. Text must hold no NUL character, and text
-    that the column stores must fit the length of ``String(n)``. Any other
-    type gets the value as it is.
+    that the column stores must fit the length of ``String(n)``. A ``CHAR``
+    without a length holds one character, as in SQL. Any other type gets the
+    value as it is.
 
     :param stored: The column stores the value, as for a request body. A
         filter only compares a value with the column, and PostgreSQL compares
@@ -84,9 +85,12 @@ def column_value(column_type: Any, value: Any, *, stored: bool = False) -> Any:
     elif isinstance(value, str) and kind in _TEXT_TYPES:
         check_text(value)
         length = column_type.length
+        if length is None and kind in (CHAR, NCHAR):
+            length = 1
         if stored and length is not None and len(value) > length:
+            unit = "character" if length == 1 else "characters"
             raise ValueError(
-                f"The text is too long: the column holds at most {length} characters."
+                f"The text is too long: the column holds at most {length} {unit}."
             )
     return value
 

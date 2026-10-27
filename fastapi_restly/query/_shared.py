@@ -1,8 +1,10 @@
+import inspect
 from typing import Any, Literal, cast
 
 import sqlalchemy
 from sqlalchemy import ColumnElement, Select
 from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.sql.compiler import SQLCompiler
@@ -12,6 +14,28 @@ from sqlalchemy.sql.operators import nulls_first_op, nulls_last_op
 #: Where a sort puts NULLs: first or last in both directions, or where the
 #: database puts them.
 SortNulls = Literal["first", "last"] | None
+
+
+def _class_attribute(model: type[Any], name: str) -> Any:
+    """The attribute ``name`` of the class ``model``, or ``None``, as
+    ``getattr(model, name, None)`` gives it.
+
+    A hybrid property without an expression or a comparator of its own runs
+    its Python body on the class, and that can fail with any error, such as
+    ``len(self.name)``. Such a hybrid has no SQL, so the attribute is
+    ``None``. Any other error is a bug in the model, and it is raised.
+    """
+    descriptor = inspect.getattr_static(model, name, None)
+    if (
+        isinstance(descriptor, hybrid_property)
+        and descriptor.expr is None
+        and descriptor.custom_comparator is None
+    ):
+        try:
+            return getattr(model, name)
+        except Exception:
+            return None
+    return getattr(model, name, None)
 
 
 def _escape_like_value(value: str) -> str:

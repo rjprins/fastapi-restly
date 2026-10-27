@@ -8,17 +8,19 @@ SQLite did not see it. Any other type gets the value as it is, as in
 SQLAlchemy. See ``tests/postgres`` for the same requests on PostgreSQL.
 """
 
+import asyncio
 import json
 
 import pytest
 import sqlalchemy
 from fastapi import HTTPException
 from sqlalchemy import BigInteger, ForeignKey, SmallInteger, String, Text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.orm import Mapped, mapped_column
 
 import fastapi_restly as fr
 from fastapi_restly._columns import column_value
-from fastapi_restly.objects import make_new_object
+from fastapi_restly.objects import async_make_new_object, make_new_object
 
 from ._models import SharedBase
 from .conftest import create_tables
@@ -59,6 +61,10 @@ def test_stored_text_fits_the_length_of_its_column_and_text_holds_no_nul():
     for column_type in (String(5), Text(), String(), sqlalchemy.TEXT()):
         with pytest.raises(ValueError, match="NUL character"):
             column_value(column_type, "a\x00b")
+    # a CHAR without a length holds one character, as in SQL
+    assert column_value(sqlalchemy.CHAR(), "a", stored=True) == "a"
+    with pytest.raises(ValueError, match="at most 1 character\\.$"):
+        column_value(sqlalchemy.CHAR(), "ab", stored=True)
 
 
 def test_another_type_gets_the_value_as_it_is():
@@ -175,44 +181,40 @@ def test_a_value_that_does_not_fit_is_a_client_error(client):
 
 
 def test_a_reference_that_cannot_fit_is_not_found(sync_db):
-    """The rows of a reference, as ``fr.make_new_object`` finds them: an id
-    that cannot fit the key column names no row."""
+    """The rows of a reference, as ``fr.objects.make_new_object`` and its
+    async twin find them outside a view: an id that cannot fit the key column
+    names no row. Without the check, SQLite fails on 2**64 too."""
     engine, make_session = sync_db
 
     class Label(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     class Bottle(fr.IDMixin, SharedBase):
-        maker_id: Mapped[int | None] = mapped_column(
-            ForeignKey("label.id"), default=None
-        )
-        maker: Mapped[Label | None] = relationship(foreign_keys=[maker_id], init=False)
-        labels: Mapped[list[Label]] = relationship(
-            secondary="bottle_label", default_factory=list
-        )
-
-    class BottleLabel(SharedBase):
-        __tablename__ = "bottle_label"
-        bottle_id: Mapped[int] = mapped_column(
-            ForeignKey("bottle.id"), primary_key=True, init=False
-        )
-        label_id: Mapped[int] = mapped_column(
-            ForeignKey("label.id"), primary_key=True, init=False
-        )
+        pass
 
     class BottleSchema(fr.BaseSchema):
         maker_id: fr.IDRef[Label] | None = None
         labels: list[fr.IDRef[Label]] = []
 
-    # configure now: an unconfigured mapper would break the next test
-    sqlalchemy.orm.configure_mappers()
+    cases = [
+        (BottleSchema(labels=[2**64]), f"labels: [{2**64}]"),
+        (BottleSchema(maker_id=2**64), f"maker_id: {2**64}"),
+    ]
     SharedBase.metadata.create_all(engine)
     with make_session() as session:
-        for data, shown in (
-            ({"labels": [2**40]}, f"labels: [{2**40}]"),
-            ({"maker_id": 2**40}, f"maker_id: {2**40}"),
-        ):
+        for data, shown in cases:
             with pytest.raises(HTTPException) as caught:
-                make_new_object(session, Bottle, BottleSchema.model_validate(data))
+                make_new_object(session, Bottle, data)
             assert caught.value.status_code == 404
             assert caught.value.detail == f"Id not found for {shown}"
+
+    async def run_async() -> None:
+        async_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+        async with async_sessionmaker(bind=async_engine)() as session:
+            for data, shown in cases:
+                with pytest.raises(HTTPException) as caught:
+                    await async_make_new_object(session, Bottle, data)
+                assert caught.value.detail == f"Id not found for {shown}"
+        await async_engine.dispose()
+
+    asyncio.run(run_async())

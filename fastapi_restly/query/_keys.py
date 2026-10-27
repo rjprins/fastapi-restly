@@ -6,11 +6,15 @@ from typing import Any
 
 from sqlalchemy import ColumnElement, Select
 from sqlalchemy.exc import InvalidRequestError
-from sqlalchemy.orm import QueryableAttribute, RelationshipProperty
+from sqlalchemy.orm import (
+    InstrumentedAttribute,
+    QueryableAttribute,
+    RelationshipProperty,
+)
 
 from ..exc import BadQueryParam
 from ._impl import SchemaType, _is_sortable, _resolve_field_name, _value_parser
-from ._shared import SortNulls, _append_pk_tiebreak, _sort_term
+from ._shared import SortNulls, _append_pk_tiebreak, _class_attribute, _sort_term
 
 
 def _find_column(
@@ -26,17 +30,14 @@ def _find_column(
     field_name = _resolve_field_name(schema_response, key)
     if field_name is None:
         raise unknown
-    try:
-        column = getattr(model, field_name, None)
-    except (TypeError, NotImplementedError):
-        # a hybrid property that is plain Python runs on the class and
-        # fails, such as len(self.name)
-        raise unknown from None
+    column = _class_attribute(model, field_name)
     # A Python property or a plain class attribute has no SQL, and a
-    # relationship holds rows, not a value. A hybrid property has SQL, and
-    # its proxy has no ``property``.
-    if not isinstance(column, QueryableAttribute) or isinstance(
-        getattr(column, "property", None), RelationshipProperty
+    # relationship holds rows, not a value. A hybrid property has SQL. Its
+    # proxy is no InstrumentedAttribute, and the ``property`` of a
+    # comparator of its own raises.
+    if not isinstance(column, QueryableAttribute) or (
+        isinstance(column, InstrumentedAttribute)
+        and isinstance(column.property, RelationshipProperty)
     ):
         raise unknown
     # A hybrid property that is plain Python, such as
@@ -109,8 +110,9 @@ class FilterKey:
         a ``UUID`` from its text. A column of SQLAlchemy's ``Enum`` type
         takes only its labels. A model for a ``JSON`` column becomes JSON
         data, as a write stores it. A time gets the form of its column; see
-        :ref:`utc-times`. A value must fit its column; see
-        :ref:`column-validation`.
+        :ref:`utc-times`. A number must fit its integer column, and text
+        must hold no NUL character; see :ref:`column-validation`. The length
+        of text is not checked.
 
         :raises fastapi_restly.exc.BadQueryParam: ``Invalid filter value``,
             with the reason.

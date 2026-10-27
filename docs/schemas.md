@@ -334,7 +334,7 @@ a NUL character in text, so Restly refuses it on every database. A column
 that holds bigger numbers needs `BigInteger`, such as a column with a Unix
 time in milliseconds. A filter only compares a value with the column, and
 PostgreSQL compares text of any length, so the length counts only in a
-request body.
+request body. A `CHAR` without a length holds one character, as in SQL.
 
 Restly checks these types by their exact class: `Integer`, `SmallInteger`,
 `BigInteger`, `String`, `Text`, `Unicode` and `UnicodeText`, and the same

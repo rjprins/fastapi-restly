@@ -19,9 +19,10 @@ from typing import Annotated, Any
 import pydantic
 import pytest
 import sqlalchemy
+from fastapi import FastAPI
 from sqlalchemy import DateTime, ForeignKey, select
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.ext.hybrid import Comparator, hybrid_property
 from sqlalchemy.orm import Mapped, composite, mapped_column, relationship
 
 import fastapi_restly as fr
@@ -141,8 +142,8 @@ class _Point:
 def test_a_key_is_unknown_for_a_hybrid_in_python_or_a_composite(key_class, kind):
     """A hybrid property that is plain Python is a Python value on the class,
     so ``==`` would give ``WHERE false`` and the wrong rows, or it fails on
-    the class, such as ``len(self.name)``. A composite is several columns,
-    and a sort on it would reverse only the last one."""
+    the class with any error, such as ``len(self.name)``. A composite is
+    several columns, and a sort on it would reverse only the last one."""
 
     class Gadget(fr.IDMixin, SharedBase):
         name: Mapped[str] = mapped_column(default="")
@@ -167,17 +168,111 @@ def test_a_key_is_unknown_for_a_hybrid_in_python_or_a_composite(key_class, kind)
         def initial(self) -> str:
             return self.name[0]  # NotImplementedError on the class
 
+        @hybrid_property
+        def label(self) -> str:
+            return {"a": "A"}[self.name]  # KeyError on the class
+
+        @hybrid_property
+        def number(self) -> int:
+            return int(str(self.name))  # ValueError on the class
+
     class GadgetSchema(fr.IDSchema):
         is_deleted: fr.ReadOnly[bool] = False
         shout: fr.ReadOnly[str] = ""
         point: fr.ReadOnly[Any] = None
         name_length: fr.ReadOnly[int] = 0
         initial: fr.ReadOnly[str] = ""
+        label: fr.ReadOnly[str] = ""
+        number: fr.ReadOnly[int] = 0
 
-    for key in ("is_deleted", "shout", "point", "name_length", "initial"):
+    keys = ("is_deleted", "shout", "point", "name_length", "initial")
+    for key in (*keys, "label", "number"):
         with pytest.raises(BadQueryParam) as caught:
             key_class(Gadget, GadgetSchema, key)
         assert caught.value.detail == f"Unknown {kind} key: {key!r}", key
+
+
+@KEY_CLASSES
+def test_a_hybrid_with_a_broken_expression_raises_its_error(key_class, kind):
+    """The error of a hybrid property with an expression of its own is a bug
+    in the model, so it is raised, not given to the client as an unknown
+    key."""
+
+    class Gadget(fr.IDMixin, SharedBase):
+        name: Mapped[str] = mapped_column(default="")
+
+        @hybrid_property
+        def name_length(self) -> int:
+            return len(self.name)
+
+        @name_length.inplace.expression
+        @classmethod
+        def _name_length_expression(cls) -> Any:
+            return len(cls.name)  # the bug: SQL needs func.length
+
+    class GadgetSchema(fr.IDSchema):
+        name_length: fr.ReadOnly[int] = 0
+
+    with pytest.raises(TypeError):
+        key_class(Gadget, GadgetSchema, "name_length")
+
+
+@KEY_CLASSES
+def test_a_key_names_a_hybrid_property_with_a_comparator(key_class, kind):
+    """A hybrid property with a comparator of its own has SQL too."""
+
+    class AnyCase(Comparator[str]):
+        def __eq__(self, other: Any) -> Any:  # type: ignore[override]
+            lower = sqlalchemy.func.lower
+            return lower(self.__clause_element__()) == lower(other)
+
+    class Lamp(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+        @hybrid_property
+        def name_any_case(self) -> str:
+            return self.name.lower()
+
+        @name_any_case.inplace.comparator
+        @classmethod
+        def _name_any_case_comparator(cls) -> AnyCase:
+            return AnyCase(cls.name)
+
+    class LampSchema(fr.IDSchema):
+        name: str
+        name_any_case: fr.ReadOnly[str] = ""
+
+    key = key_class(Lamp, LampSchema, "name_any_case")
+    if kind == "filter":
+        assert "lower(" in str(key.column == "Desk")
+
+
+def test_generated_list_params_skip_a_hybrid_that_fails_on_the_class():
+    """A view with generated list params registers when its response class
+    has a field for a hybrid property that fails on the class. As for
+    FilterKey and SortKey, the field gets no filters and no sort key."""
+
+    class Gadget(fr.IDMixin, SharedBase):
+        name: Mapped[str] = mapped_column(default="")
+
+        @hybrid_property
+        def name_length(self) -> int:
+            return len(self.name)
+
+    class GadgetSchema(fr.IDSchema):
+        name: str = ""
+        name_length: fr.ReadOnly[int] = 0
+
+    fields = fr.query.derive_schema_list_params(GadgetSchema, Gadget).model_fields
+    assert "name" in fields
+    assert not [name for name in fields if name.startswith("name_length")]
+
+    class GadgetView(fr.AsyncRestView):
+        prefix = "/gadgets"
+        model = Gadget
+        schema = GadgetSchema
+
+    fr.include_view(FastAPI(), GadgetView)
 
 
 def test_parse_runs_the_validation_of_the_field():
