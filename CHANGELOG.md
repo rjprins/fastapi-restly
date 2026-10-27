@@ -564,9 +564,17 @@ replacement, unless it says otherwise.
 - A route that catches the error of a write action and goes on must put each
   write action in `session.begin_nested()`. Without the savepoint, the next
   write action can commit the changes of the failed one, such as a row that
-  `before_action_commit` refused. After a database error, such as a duplicate
-  value, the next write fails with `PendingRollbackError`. Inside
+  `before_action_commit` refused. After a database error at the flush, such as
+  a duplicate value, the next write fails with `PendingRollbackError`. Inside
   `shared_write_action_commit()`, Restly raises `RuntimeError` in both cases.
+- On SQLite, a `session.begin_nested()` inside `shared_write_action_commit()`
+  can commit its rows when it ends. This happens with the default settings
+  of Python's `sqlite3` module and of `aiosqlite`. When the block then fails,
+  these rows stay saved, and their after-hooks do not run. To keep each
+  savepoint inside the transaction, set up the engine as SQLAlchemy shows in
+  "Serializable isolation / Savepoints / Transactional DDL". Restly's test
+  fixtures do this in the default rollback mode, so a test does not show the
+  problem.
 
 ## [0.11.0] - 2026-10-09
 

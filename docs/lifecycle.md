@@ -621,16 +621,23 @@ the error outside it:
         return orders
 ```
 
-`begin_nested()` starts a savepoint. When the handler raises, SQLAlchemy
-rolls back to the savepoint. This undoes what the handler changed, and the
-session stays usable. When the handler succeeds, it commits, so each order
-is saved on its own. On `fr.RestView`, use `with` and the sync handlers.
+`begin_nested()` starts a savepoint. When the handler raises before its
+commit, SQLAlchemy rolls back to the savepoint. This undoes what the handler
+changed, and the session stays usable. When the handler succeeds, it
+commits, so each order is saved on its own. On `fr.RestView`, use `with` and
+the sync handlers.
+
+The savepoint ends at the commit. So an error from `after_action_commit`
+does not undo the order: the order is saved. See
+[When `after_action_commit` raises](#after-action-commit-raises). After an
+error at the commit itself, such as from a deferred constraint, the session
+needs `session.rollback()` before it can write again.
 
 Without the savepoint, the error skips the commit of the action, but it does
 not undo what the action already changed in the session. So the next write
 action commits that change too, such as a row that `before_action_commit`
-refused. After a database error, such as a duplicate value, the next write
-fails with SQLAlchemy's
+refused. After a database error at the flush, such as a duplicate value, the
+next write fails with SQLAlchemy's
 {class}`PendingRollbackError <sqlalchemy.exc.PendingRollbackError>` instead.
 Inside a `shared_write_action_commit()` block, Restly raises `RuntimeError`
 in both cases. A route that does not catch the error needs no savepoint: the
@@ -1244,6 +1251,20 @@ that needs the commit, or an after-hook that has run, goes after the block,
 or in `after_action_commit`. The route above returns the orders after the
 block, so Restly builds their responses after the commit. On `fr.RestView`, use
 `with` and the sync handlers. The method has the same name.
+
+:::{warning}
+On SQLite, a `session.begin_nested()` inside the block can commit its rows
+when it ends. This happens with the default settings of Python's `sqlite3`
+module and of `aiosqlite`. When the block then fails, these rows stay saved,
+and their after-hooks do not run. To keep each savepoint inside the
+transaction, set up the engine as SQLAlchemy shows for
+[`sqlite3`](https://docs.sqlalchemy.org/en/20/dialects/sqlite.html#pysqlite-serializable)
+and for
+[`aiosqlite`](https://docs.sqlalchemy.org/en/20/dialects/sqlite.html#aiosqlite-serializable).
+Restly's test fixtures set up the engine this way in the default
+[rollback mode](#cleaning-up-between-tests). So a test does not show the
+problem.
+:::
 
 :::{admonition} Details
 :class: details
