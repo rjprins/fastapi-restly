@@ -28,6 +28,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import fastapi_restly as fr
+from fastapi_restly._routes import iter_routes
 
 from ._models import SharedBase
 
@@ -261,7 +262,9 @@ def test_a_read_only_subclass_keeps_the_custom_routes_of_its_base():
     fr.include_view(app, ClosedBadgeView)
 
     posts = {
-        route.path for route in app.routes if "POST" in getattr(route, "methods", ())
+        route.path
+        for route in iter_routes(app.routes)
+        if "POST" in getattr(route, "methods", ())
     }
     assert posts == {"/badges/public/merge"}
 

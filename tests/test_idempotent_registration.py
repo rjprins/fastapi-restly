@@ -679,7 +679,9 @@ def test_failed_registration_is_not_recorded_as_mounted(sync_db):
     assert _duplicate_routes(app) == {}
     paths = {path for path, _ in _effective_route_pairs(app)}
     assert "/winches/" in paths
-    [stats] = [route for route in app.routes if route.path == "/winches/stats"]
+    [stats] = [
+        route for route in iter_routes(app.routes) if route.path == "/winches/stats"
+    ]
     assert stats.name == "winchview_stats"
     assert WinchView.create_endpoint.__name__ == "winchview_create_endpoint"
     operations = app.openapi()["paths"]["/winches/stats"]
