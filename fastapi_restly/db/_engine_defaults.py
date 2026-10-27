@@ -70,20 +70,61 @@ def engine_options(url: str | URL) -> dict[str, Any]:
 #: silently, which is what the pragmas here are for.
 _SQLITE_PRAGMAS = ("PRAGMA foreign_keys=ON",)
 
+#: The names that PostgreSQL gives the time zone of a session in UTC. The
+#: official Docker image starts each session in Etc/UTC.
+_UTC_ZONE_NAMES = frozenset({"UTC", "Etc/UTC"})
+
 
 def apply_connect_hooks(engine: Engine | AsyncEngine) -> None:
     """Register per-connection setup for engines that need it."""
     sync_engine = engine.sync_engine if isinstance(engine, AsyncEngine) else engine
-    if sync_engine.url.get_backend_name() != "sqlite":
-        return
-
     # Per connection, not once per engine: these are connection state, so every
     # new connection the pool opens starts without them.
-    @event.listens_for(sync_engine, "connect")
-    def _set_sqlite_pragmas(dbapi_connection: Any, connection_record: Any) -> None:
-        cursor = dbapi_connection.cursor()
-        try:
-            for pragma in _SQLITE_PRAGMAS:
-                cursor.execute(pragma)
-        finally:
-            cursor.close()
+    backend = sync_engine.url.get_backend_name()
+    if backend == "sqlite":
+        event.listen(sync_engine, "connect", _set_sqlite_pragmas)
+    elif backend == "postgresql":
+        event.listen(sync_engine, "connect", _put_session_in_utc)
+
+
+def _set_sqlite_pragmas(dbapi_connection: Any, connection_record: Any) -> None:
+    cursor = dbapi_connection.cursor()
+    try:
+        for pragma in _SQLITE_PRAGMAS:
+            cursor.execute(pragma)
+    finally:
+        cursor.close()
+
+
+def _put_session_in_utc(dbapi_connection: Any, connection_record: Any) -> None:
+    """Put a new PostgreSQL session in UTC, as Django and Rails do.
+
+    PostgreSQL then reads a time without an offset as UTC, as Restly does: in
+    ``now()`` for a column without a time zone, and when it converts a time.
+    psycopg gives back each time in UTC, as asyncpg does. A session that is in
+    UTC already gets no query.
+    """
+    if _session_time_zone(dbapi_connection) in _UTC_ZONE_NAMES:
+        return
+    cursor = dbapi_connection.cursor()
+    try:
+        cursor.execute("SET TIME ZONE 'UTC'")
+    finally:
+        cursor.close()
+    # A rollback would undo the SET, as it undoes the rest of its transaction.
+    dbapi_connection.commit()
+
+
+def _session_time_zone(dbapi_connection: Any) -> str | None:
+    """The time zone of the session, as the server reports it, or ``None``
+    when the driver does not show it. Reading it sends no query."""
+    driver_connection = getattr(dbapi_connection, "driver_connection", dbapi_connection)
+    info: Any = getattr(driver_connection, "info", None)
+    if hasattr(info, "parameter_status"):
+        # psycopg and psycopg2
+        return info.parameter_status("TimeZone")
+    get_settings = getattr(driver_connection, "get_settings", None)
+    if get_settings is not None:
+        # asyncpg
+        return getattr(get_settings(), "TimeZone", None)
+    return None

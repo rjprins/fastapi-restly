@@ -394,7 +394,9 @@ a column without a time zone, asyncpg rejects a time with an offset, so the
 request fails with a 500. For a column with a time zone, asyncpg reads a
 time without an offset in the time zone of the app's Python process. psycopg
 leaves both cases to PostgreSQL, which uses the time zone of the database
-session. SQLite drops the offset of every time.
+session. On an engine that Restly builds from a URL, that session is in UTC;
+see [Engine defaults](#engine-defaults). SQLite drops the offset of every
+time.
 
 A field of type `datetime` keeps the time that the client sent. Restly still
 changes the time to fit its column before the database sees it: in a filter,

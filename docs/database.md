@@ -394,7 +394,7 @@ not set them by default:
 |---|---|
 | SQLite, in memory | `poolclass=StaticPool`, `connect_args={"check_same_thread": False}` |
 | SQLite, any | `PRAGMA foreign_keys=ON`, on every connection |
-| PostgreSQL | `pool_pre_ping=True`, `pool_recycle=1800` |
+| PostgreSQL | `pool_pre_ping=True`, `pool_recycle=1800`, and each session in UTC |
 
 An in-memory SQLite database lives inside its connection. The default pool
 opens one connection per thread, so each thread after the first gets a second,
@@ -413,6 +413,19 @@ broke then leads to a new connection instead of an error. `pool_recycle`
 replaces connections older than 30 minutes, because proxies such as pgbouncer
 close idle connections without telling the client. Restly does not set the
 pool size: it sets neither `pool_size` nor `max_overflow`.
+
+Each new PostgreSQL session is in UTC, as in Django and Rails. Restly reads
+the time zone that the server reports for the session, and sends
+`SET TIME ZONE 'UTC'` when it is another zone. PostgreSQL then reads a time
+without an offset as UTC, as Restly does: `now()` gives UTC for a column
+without a time zone, and psycopg gives back each time in UTC, as asyncpg
+does. So SQL of your own works in UTC too: `date_trunc('day', created_at)`
+gives the days of UTC. For the days of another zone, name the zone in the
+SQL, such as `created_at AT TIME ZONE 'Europe/Amsterdam'`. An engine that
+you build yourself keeps the time zone of its sessions. To put them in UTC,
+pass `connect_args={"server_settings": {"timezone": "UTC"}}` to
+`create_async_engine()` for asyncpg, or
+`connect_args={"options": "-c timezone=UTC"}` for psycopg.
 
 Each of these options changes only the connection. Restly does not change the
 database itself, so these defaults leave no trace in your data after the

@@ -44,6 +44,11 @@ replacement, unless it says otherwise.
    database, convert the time from the database with `fr.in_utc()` first,
    as in `data.ends_at > fr.in_utc(obj.starts_at)`. This step fails with
    `TypeError`, not with a message from Restly.
+10. Check SQL of your own that depends on the time zone of the database
+    session, such as `date_trunc('day', created_at)`. On PostgreSQL, an
+    engine that Restly builds from a URL now puts each session in UTC. For
+    another zone, name it in the SQL, such as
+    `created_at AT TIME ZONE 'Europe/Amsterdam'`. This step does not fail.
 
 ### Added
 
@@ -322,6 +327,12 @@ replacement, unless it says otherwise.
 - `exclude_routes` is typed `Collection[str | ViewRoute]`, not `Iterable`.
   Restly reads the value more than once, so use a tuple, a list or a set, not
   a `map()` or a generator.
+- On PostgreSQL, an engine that `fr.configure()` builds from a URL puts each
+  new session in UTC, as Django and Rails do. It sends
+  `SET TIME ZONE 'UTC'` when the server reports another zone. PostgreSQL
+  then reads a time without an offset as UTC, as Restly does, also in
+  `now()` for a column without a time zone. psycopg gives back each time in
+  UTC, as asyncpg does. An engine that you pass in keeps its zone.
 
 ### Removed
 

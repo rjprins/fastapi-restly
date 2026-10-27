@@ -8,6 +8,7 @@ decline them.
 
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager, contextmanager
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import create_engine, text
@@ -17,7 +18,12 @@ from sqlalchemy.pool import QueuePool, StaticPool
 
 import fastapi_restly as fr
 from fastapi_restly.db._config import RestlyContext
-from fastapi_restly.db._engine_defaults import engine_options, is_memory_sqlite
+from fastapi_restly.db._engine_defaults import (
+    _put_session_in_utc,
+    _session_time_zone,
+    engine_options,
+    is_memory_sqlite,
+)
 from fastapi_restly.db._session import get_async_engine, get_engine
 
 
@@ -222,6 +228,55 @@ async def test_async_file_sqlite_enables_foreign_keys(tmp_path):
             assert (
                 await conn.execute(text("PRAGMA journal_mode"))
             ).scalar() == "delete"
+
+
+# ---------------------------------------------------------------------------
+# PostgreSQL: the session in UTC. The PostgreSQL legs run it on a server,
+# with each driver.
+# ---------------------------------------------------------------------------
+
+
+class _Psycopg:
+    """What the hook reads and calls on a psycopg connection: the time zone
+    that the server reports, a cursor and the commit."""
+
+    def __init__(self, zone: str) -> None:
+        self.info = SimpleNamespace(parameter_status={"TimeZone": zone}.get)
+        self.sent: list[str] = []
+
+    def cursor(self) -> SimpleNamespace:
+        return SimpleNamespace(execute=self.sent.append, close=lambda: None)
+
+    def commit(self) -> None:
+        self.sent.append("COMMIT")
+
+
+@pytest.mark.parametrize("zone", ["UTC", "Etc/UTC"])
+def test_a_postgres_session_in_utc_gets_no_query(zone):
+    connection = _Psycopg(zone)
+    _put_session_in_utc(connection, None)
+    assert connection.sent == []
+
+
+def test_a_postgres_session_in_another_zone_is_put_in_utc():
+    """The SET is committed, because a rollback would undo it."""
+    connection = _Psycopg("Europe/Amsterdam")
+    _put_session_in_utc(connection, None)
+    assert connection.sent == ["SET TIME ZONE 'UTC'", "COMMIT"]
+
+
+def test_the_time_zone_of_a_session_on_each_driver():
+    """psycopg and psycopg2 show it in ``info``, and asyncpg in its settings,
+    behind SQLAlchemy's adapter. Another driver shows none, so its session
+    always gets the SET."""
+    settings = SimpleNamespace(TimeZone="Etc/UTC")
+    asyncpg = SimpleNamespace(
+        driver_connection=SimpleNamespace(get_settings=lambda: settings)
+    )
+
+    assert _session_time_zone(_Psycopg("Europe/Amsterdam")) == "Europe/Amsterdam"
+    assert _session_time_zone(asyncpg) == "Etc/UTC"
+    assert _session_time_zone(object()) is None
 
 
 # ---------------------------------------------------------------------------
