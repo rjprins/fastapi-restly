@@ -170,8 +170,9 @@ catches `fr.exc.Conflict`:
         return self.to_response(tag)
 ```
 
-After a conflict, the session waits for a rollback. To write again in the
-same request, call `await self.session.rollback()` first.
+After a conflict, the session cannot write again until it rolls back. To
+catch the conflict and write again in the same request, see
+[When a write action raises](#write-action-error).
 
 A `null` reaches the database only when the type of the schema field allows
 `None`. Otherwise validation rejects it first, with `422`, in the create body

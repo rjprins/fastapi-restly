@@ -559,6 +559,15 @@ replacement, unless it says otherwise.
   still sends such a field gets no error: Restly ignores the value. To let
   the client write such a column, remove `init=False`.
 
+### Known issues
+
+- A route that catches the error of a write action and goes on must put each
+  write action in `session.begin_nested()`. Without the savepoint, the next
+  write action can commit the changes of the failed one, such as a row that
+  `before_action_commit` refused. After a database error, such as a duplicate
+  value, the next write fails with `PendingRollbackError`. Inside
+  `shared_write_action_commit()`, Restly raises `RuntimeError` in both cases.
+
 ## [0.11.0] - 2026-10-09
 
 This release has many breaking changes. Before, we said to expect small

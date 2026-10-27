@@ -599,6 +599,46 @@ does not change who commits, unless it commits itself, which it must not do;
 see [Build sessions with your own generator](#own-session-generator).
 :::
 
+(write-action-error)=
+### When a write action raises
+
+To catch the error of a write action and go on, put each write action in
+{meth}`session.begin_nested() <sqlalchemy.orm.Session.begin_nested>`. Catch
+the error outside it:
+
+```python
+    from fastapi import HTTPException
+
+    @fr.post("/bulk", status_code=201)
+    async def bulk_create(self, items: list[OrderCreate]) -> list[ViewResponse]:
+        orders = []
+        for item in items:
+            try:
+                async with self.session.begin_nested():
+                    orders.append(await self.handle_create(item))
+            except HTTPException:  # also fr.exc.Conflict, for a duplicate value
+                continue
+        return orders
+```
+
+`begin_nested()` starts a savepoint. When the handler raises, SQLAlchemy
+rolls back to the savepoint. This undoes what the handler changed, and the
+session stays usable. When the handler succeeds, it commits, so each order
+is saved on its own. On `fr.RestView`, use `with` and the sync handlers.
+
+Without the savepoint, the error skips the commit of the action, but it does
+not undo what the action already changed in the session. So the next write
+action commits that change too, such as a row that `before_action_commit`
+refused. After a database error, such as a duplicate value, the next write
+fails with SQLAlchemy's
+{class}`PendingRollbackError <sqlalchemy.exc.PendingRollbackError>` instead.
+Inside a `shared_write_action_commit()` block, Restly raises `RuntimeError`
+in both cases. A route that does not catch the error needs no savepoint: the
+request fails, and the session rolls back when the request ends.
+
+To save all orders in one commit, see
+[Commit several writes together](#shared-write-action-commit).
+
 (transaction-hooks)=
 ## Run code before or after the commit
 
