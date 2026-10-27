@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, follow">
 
-    <title>Changelog &#8212; FastAPI-Restly 0.11.0 documentation</title>
+    <title>Changelog &#8212; FastAPI-Restly 0.12.0 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=f3b36f1a"></script>
+    <script src="_static/documentation_options.js?v=61ccb1f1"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -67,7 +67,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.11" />
+  <meta name="docsearch:version" content="0.12" />
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -497,678 +497,217 @@ minor version, for example <code class="docutils literal notranslate"><span clas
 <p>The format is based on <a class="reference external" href="https://keepachangelog.com/en/1.1.0/">Keep a Changelog</a>,
 and this project adheres to <a class="reference external" href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
 <section id="unreleased">
-<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.11.0...HEAD">Unreleased</a><a class="headerlink" href="#unreleased" title="Link to this heading">#</a></h2>
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.12.0...HEAD">Unreleased</a><a class="headerlink" href="#unreleased" title="Link to this heading">#</a></h2>
+</section>
+<section id="id1">
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.11.0...v0.12.0">0.12.0</a> - 2026-10-27<a class="headerlink" href="#id1" title="Link to this heading">#</a></h2>
 <p>This release reworks how a view reads and writes. To upgrade, work through
-these steps. A step that you miss fails with a message that names the
-replacement, unless it says otherwise.</p>
+these steps. A missed step fails with a message that names the replacement.
+A step marked “Silent” gives no error when you miss it.</p>
 <ol class="arabic simple">
 <li><p>Declare a base of your own, <code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">Base(fr.ModelDefaults,</span> <span class="pre">DeclarativeBase)</span></code>,
-in place of <code class="docutils literal notranslate"><span class="pre">fr.DataclassBase</span></code> and <code class="docutils literal notranslate"><span class="pre">fr.IDBase</span></code>.</p></li>
-<li><p>Replace <code class="docutils literal notranslate"><span class="pre">fr.utils.CurrentSettingsMixin</span></code> with a <code class="docutils literal notranslate"><span class="pre">get_settings()</span></code> function.
-If your app imports <code class="docutils literal notranslate"><span class="pre">pydantic_settings</span></code>, add <code class="docutils literal notranslate"><span class="pre">pydantic-settings</span></code> to your
-dependencies: Restly no longer installs it. This step fails with
-<code class="docutils literal notranslate"><span class="pre">ModuleNotFoundError</span></code>, not with a message from Restly.</p></li>
-<li><p>In <code class="docutils literal notranslate"><span class="pre">create</span></code> and <code class="docutils literal notranslate"><span class="pre">update</span></code>, call <code class="docutils literal notranslate"><span class="pre">super()</span></code>, change the object and return
-it. Drop <code class="docutils literal notranslate"><span class="pre">make_new_object</span></code>, <code class="docutils literal notranslate"><span class="pre">save_object</span></code> and each flush that only saved.
+in place of <code class="docutils literal notranslate"><span class="pre">fr.DataclassBase</span></code>, and use <code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">Post(fr.IDMixin,</span> <span class="pre">Base)</span></code> in
+place of <code class="docutils literal notranslate"><span class="pre">fr.IDBase</span></code>. Use <code class="docutils literal notranslate"><span class="pre">Base</span></code> everywhere you used <code class="docutils literal notranslate"><span class="pre">fr.DataclassBase</span></code>,
+also in <code class="docutils literal notranslate"><span class="pre">alembic/env.py</span></code>. The tables stay the same.</p></li>
+<li><p>Replace <code class="docutils literal notranslate"><span class="pre">fr.utils.CurrentSettingsMixin</span></code> with a <code class="docutils literal notranslate"><span class="pre">get_settings()</span></code> function.</p></li>
+<li><p>Add <code class="docutils literal notranslate"><span class="pre">pydantic-settings</span></code> and <code class="docutils literal notranslate"><span class="pre">alembic</span></code> to the dependencies of your project
+if it uses them. Restly no longer installs them. A missed step fails with
+<code class="docutils literal notranslate"><span class="pre">ImportError</span></code>.</p></li>
+<li><p>In <code class="docutils literal notranslate"><span class="pre">create</span></code> and <code class="docutils literal notranslate"><span class="pre">update</span></code>, call <code class="docutils literal notranslate"><span class="pre">super()</span></code>, change the object and return it.
+Drop <code class="docutils literal notranslate"><span class="pre">make_new_object</span></code>, <code class="docutils literal notranslate"><span class="pre">save_object</span></code> and each flush that only saved.
 Rename <code class="docutils literal notranslate"><span class="pre">schema_obj</span></code> to <code class="docutils literal notranslate"><span class="pre">data</span></code>.</p></li>
-<li><p>Move a <code class="docutils literal notranslate"><span class="pre">get_one</span></code> or <code class="docutils literal notranslate"><span class="pre">get_many</span></code> override to its new place: <code class="docutils literal notranslate"><span class="pre">scope</span></code>,
-<code class="docutils literal notranslate"><span class="pre">where_id</span></code>, <code class="docutils literal notranslate"><span class="pre">not_found</span></code>, <code class="docutils literal notranslate"><span class="pre">to_single_response</span></code>, or SQL on the model.</p></li>
-<li><p>Pass <code class="docutils literal notranslate"><span class="pre">obj=</span></code> to <code class="docutils literal notranslate"><span class="pre">write_action</span></code>, also for a new object, instead of
-<code class="docutils literal notranslate"><span class="pre">as</span> <span class="pre">w</span></code> and <code class="docutils literal notranslate"><span class="pre">w.obj</span></code>.</p></li>
+<li><p>Move a <code class="docutils literal notranslate"><span class="pre">get_one</span></code> or <code class="docutils literal notranslate"><span class="pre">get_many</span></code> override to <code class="docutils literal notranslate"><span class="pre">scope</span></code>, <code class="docutils literal notranslate"><span class="pre">where_id</span></code>,
+<code class="docutils literal notranslate"><span class="pre">not_found</span></code>, <code class="docutils literal notranslate"><span class="pre">to_single_response</span></code> or SQL on the model.</p></li>
+<li><p>Pass <code class="docutils literal notranslate"><span class="pre">obj=</span></code> to <code class="docutils literal notranslate"><span class="pre">write_action</span></code>, also for a new object, in place of <code class="docutils literal notranslate"><span class="pre">as</span> <span class="pre">w</span></code>
+and <code class="docutils literal notranslate"><span class="pre">w.obj</span></code>.</p></li>
 <li><p>Write each reference as <code class="docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code>, in place of
 <code class="docutils literal notranslate"><span class="pre">fr.MustExist[int]</span></code> and <code class="docutils literal notranslate"><span class="pre">fr.RefExists</span></code>.</p></li>
-<li><p>Declare the names of your custom actions in a class <code class="docutils literal notranslate"><span class="pre">Action</span></code> on the view,
-such as <code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">Action(fr.Action):</span> <span class="pre">PUBLISH</span> <span class="pre">=</span> <span class="pre">&quot;publish&quot;</span></code>, and pass
-<code class="docutils literal notranslate"><span class="pre">self.Action.PUBLISH</span></code> to <code class="docutils literal notranslate"><span class="pre">write_action</span></code>. A mixin whose route calls
-<code class="docutils literal notranslate"><span class="pre">write_action</span></code> with an action of its own declares its own <code class="docutils literal notranslate"><span class="pre">Action</span></code>, and
-the view inherits from it. An action that you miss fails when the route
-runs, not when Python creates the class. <code class="docutils literal notranslate"><span class="pre">Action</span></code> is now a reserved name
-on a view and on the classes it inherits from.</p></li>
-<li><p>Check each column without a time zone, such as <code class="docutils literal notranslate"><span class="pre">mapped_column(DateTime())</span></code>,
-or <code class="docutils literal notranslate"><span class="pre">Mapped[datetime]</span></code> on a base without <code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code>. Restly now
-stores the times that clients send in UTC there, and a generated schema
-shows them with <code class="docutils literal notranslate"><span class="pre">Z</span></code>. If the column holds local times, give its field a
-validator that converts the time; see “Keep times in UTC” in the docs.
-This step does not fail: a column that you miss gets new rows in UTC
-next to its old rows in local time.</p></li>
-<li><p>Where your code compares a time from a request with a time from the
-database, convert the time from the database with <code class="docutils literal notranslate"><span class="pre">fr.in_utc()</span></code> first,
-as in <code class="docutils literal notranslate"><span class="pre">data.ends_at</span> <span class="pre">&gt;</span> <span class="pre">fr.in_utc(obj.starts_at)</span></code>. A missed <code class="docutils literal notranslate"><span class="pre">&lt;</span></code>, <code class="docutils literal notranslate"><span class="pre">&gt;</span></code> or
-<code class="docutils literal notranslate"><span class="pre">-</span></code> fails with <code class="docutils literal notranslate"><span class="pre">TypeError</span></code>, not with a message from Restly. A missed
-<code class="docutils literal notranslate"><span class="pre">==</span></code> or <code class="docutils literal notranslate"><span class="pre">!=</span></code> does not fail: <code class="docutils literal notranslate"><span class="pre">==</span></code> is always <code class="docutils literal notranslate"><span class="pre">False</span></code>, and <code class="docutils literal notranslate"><span class="pre">!=</span></code> always
-<code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
-<li><p>Check code of your own that depends on the time zone of the database
-session. On PostgreSQL, an engine that Restly builds from a URL now puts
-each session in UTC. So SQL such as <code class="docutils literal notranslate"><span class="pre">date_trunc('day',</span> <span class="pre">created_at)</span></code>
-gives the days of UTC, and <code class="docutils literal notranslate"><span class="pre">now()</span></code> gives UTC for a column without a
-time zone. For another zone, name it in the SQL; see “Engine defaults”
-in the docs. On psycopg, also code in Python changes: a time without an
-offset that it writes is read as UTC, a time with an offset that it
-writes to a column without a time zone is stored in UTC, and each time
-that psycopg gives back has the zone UTC. This step does not fail.</p></li>
-<li><p>In a react-admin view, check each field validator that reads another
-field from <code class="docutils literal notranslate"><span class="pre">info.data</span></code>. A filter value now goes through the validators
-of its field, without the other fields, so <code class="docutils literal notranslate"><span class="pre">info.data</span></code> is <code class="docutils literal notranslate"><span class="pre">{}</span></code>. Use
-<code class="docutils literal notranslate"><span class="pre">info.data.get(&quot;starts_at&quot;)</span></code> and skip the check when it is <code class="docutils literal notranslate"><span class="pre">None</span></code>. This
-step fails with <code class="docutils literal notranslate"><span class="pre">KeyError</span></code>, a <code class="docutils literal notranslate"><span class="pre">500</span></code>, not with a message from Restly.</p></li>
-<li><p>Give list params of your own the page fields: subclass
-<code class="docutils literal notranslate"><span class="pre">fr.query.PagedListParams</span></code> in place of <code class="docutils literal notranslate"><span class="pre">pydantic.BaseModel</span></code>, or set
-<code class="docutils literal notranslate"><span class="pre">pagination</span> <span class="pre">=</span> <span class="pre">None</span></code> for a list without pages. Page fields that you
-wrote yourself keep working when they have the names of the view’s page
-parameters.</p></li>
-<li><p>On SQLite, check each <code class="docutils literal notranslate"><span class="pre">Integer</span></code> column that holds numbers beyond 32
-bits, such as a Unix time in milliseconds, and each <code class="docutils literal notranslate"><span class="pre">String(n)</span></code> column
-that holds longer text. Restly now refuses such a value in a request.
-Give the column a type that fits, such as <code class="docutils literal notranslate"><span class="pre">BigInteger</span></code>, or <code class="docutils literal notranslate"><span class="pre">String()</span></code>
-without a length. A column that you miss fails only when a request sends
-such a value, with a 422 or a 400.</p></li>
-<li><p>If your project uses Alembic, add <code class="docutils literal notranslate"><span class="pre">alembic</span></code> to its dependencies: Restly
-no longer installs it. If you miss this step, an environment that is
-installed from the dependencies of your project has no Alembic. The
-<code class="docutils literal notranslate"><span class="pre">alembic</span></code> command is then not found, and code that imports from
-<code class="docutils literal notranslate"><span class="pre">alembic</span></code> fails with <code class="docutils literal notranslate"><span class="pre">ImportError</span></code>. A test suite with <code class="docutils literal notranslate"><span class="pre">alembic_upgrade=</span></code>
-stops with a message from Restly.</p></li>
+<li><p>Declare your own actions in a class <code class="docutils literal notranslate"><span class="pre">Action</span></code> on the view, such as
+<code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">Action(fr.Action):</span> <span class="pre">PUBLISH</span> <span class="pre">=</span> <span class="pre">&quot;publish&quot;</span></code>, and pass
+<code class="docutils literal notranslate"><span class="pre">self.Action.PUBLISH</span></code> to <code class="docutils literal notranslate"><span class="pre">write_action</span></code>. A missed action fails when its
+route runs.</p></li>
+<li><p>Let list params of your own on a view with pages subclass
+<code class="docutils literal notranslate"><span class="pre">fr.query.PagedListParams</span></code>, or set <code class="docutils literal notranslate"><span class="pre">pagination</span> <span class="pre">=</span> <span class="pre">None</span></code> on the view.</p></li>
+<li><p>Silent: Restly now stores the times that clients send in UTC, also in a
+column without a time zone, and a response shows them with <code class="docutils literal notranslate"><span class="pre">Z</span></code>. If a
+column holds local times, give its field a validator that converts them.</p></li>
+<li><p>Compare a time from the database with a time from a request through
+<code class="docutils literal notranslate"><span class="pre">fr.in_utc()</span></code>, as in <code class="docutils literal notranslate"><span class="pre">data.ends_at</span> <span class="pre">&gt;</span> <span class="pre">fr.in_utc(obj.starts_at)</span></code>. A missed
+<code class="docutils literal notranslate"><span class="pre">&lt;</span></code> or <code class="docutils literal notranslate"><span class="pre">&gt;</span></code> raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code>. A missed <code class="docutils literal notranslate"><span class="pre">==</span></code> is silent: it is always
+<code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+<li><p>Silent: on PostgreSQL, an engine that Restly builds puts each session in
+UTC. Check SQL that depends on the time zone of the session, such as
+<code class="docutils literal notranslate"><span class="pre">date_trunc('day',</span> <span class="pre">created_at)</span></code>.</p></li>
+<li><p>Silent: on SQLite, Restly now refuses a number that does not fit an
+<code class="docutils literal notranslate"><span class="pre">Integer</span></code> column, and text longer than a <code class="docutils literal notranslate"><span class="pre">String(n)</span></code> column. Give such a
+column a type that fits, such as <code class="docutils literal notranslate"><span class="pre">BigInteger</span></code>.</p></li>
+<li><p>In a react-admin view, a field validator gets only its own field for a
+filter value, so <code class="docutils literal notranslate"><span class="pre">info.data</span></code> is <code class="docutils literal notranslate"><span class="pre">{}</span></code>. Use <code class="docutils literal notranslate"><span class="pre">info.data.get(...)</span></code>.</p></li>
 </ol>
 <section id="added">
 <h3>Added<a class="headerlink" href="#added" title="Link to this heading">#</a></h3>
 <ul class="simple">
-<li><p>Markers for the view’s own types in <code class="docutils literal notranslate"><span class="pre">fastapi_restly.views</span></code>: <code class="docutils literal notranslate"><span class="pre">ViewID</span></code>,
-<code class="docutils literal notranslate"><span class="pre">ViewResponse</span></code>, <code class="docutils literal notranslate"><span class="pre">ViewListResponse</span></code>, <code class="docutils literal notranslate"><span class="pre">ViewCreate</span></code> and <code class="docutils literal notranslate"><span class="pre">ViewUpdate</span></code>. When
-the view registers, Restly puts the view’s classes in their place, so a
-route on a base view or a mixin gets the classes of each view that uses
-it. They work in annotations, in <code class="docutils literal notranslate"><span class="pre">response_model=</span></code> and inside other types,
-such as <code class="docutils literal notranslate"><span class="pre">list[ViewResponse]</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">self.select(*,</span> <span class="pre">scope=None)</span></code>: <code class="docutils literal notranslate"><span class="pre">select(self.model)</span></code> with the view’s scope
-and loader options. The loads start from it, and so can a custom route.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">where_id(id)</span></code> returns the WHERE for an id from the path, such as
-<code class="docutils literal notranslate"><span class="pre">Recipe.slug</span> <span class="pre">==</span> <span class="pre">id</span></code>. <code class="docutils literal notranslate"><span class="pre">not_found(id)</span></code> returns the error for an id that names
-no row. Every item route and <code class="docutils literal notranslate"><span class="pre">self.get_one(id)</span></code> use them.</p></li>
-<li><p>Four list settings choose the keys of a list: <code class="docutils literal notranslate"><span class="pre">include_filters</span></code>,
-<code class="docutils literal notranslate"><span class="pre">exclude_filters</span></code>, <code class="docutils literal notranslate"><span class="pre">include_sort_keys</span></code> and <code class="docutils literal notranslate"><span class="pre">exclude_sort_keys</span></code>. An entry is
-a key, or a pattern: <code class="docutils literal notranslate"><span class="pre">*</span></code> matches any characters except <code class="docutils literal notranslate"><span class="pre">.</span></code>, so
-<code class="docutils literal notranslate"><span class="pre">&quot;vendor.*&quot;</span></code> is every key on the fields of <code class="docutils literal notranslate"><span class="pre">vendor</span></code>.
-<code class="docutils literal notranslate"><span class="pre">fr.query.derive_schema_list_params</span></code> takes them too.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">include_routes</span></code> names the routes that a view serves, such as
-<code class="docutils literal notranslate"><span class="pre">(fr.ViewRoute.GET_MANY,</span> <span class="pre">fr.ViewRoute.GET_ONE)</span></code> for a read-only copy of a
-view. The view leaves out every other route, also a custom route that the
-base view gets later. The default, <code class="docutils literal notranslate"><span class="pre">(&quot;*&quot;,)</span></code>, is every route.
-<code class="docutils literal notranslate"><span class="pre">exclude_routes</span></code> applies after it.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">sort_query_param</span></code> renames the sort parameter, such as <code class="docutils literal notranslate"><span class="pre">&quot;order_by&quot;</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">default_sort</span></code> is the sort when the request has none, such as
-<code class="docutils literal notranslate"><span class="pre">&quot;-created_at&quot;</span></code>. A <code class="docutils literal notranslate"><span class="pre">sort</span></code> from the client replaces it. OpenAPI shows it as
-the default of the sort parameter. <code class="docutils literal notranslate"><span class="pre">fr.query.derive_schema_list_params</span></code>
-takes it too.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">sort_nulls</span></code> sets where a sort puts NULLs: <code class="docutils literal notranslate"><span class="pre">&quot;last&quot;</span></code> (the default) or
-<code class="docutils literal notranslate"><span class="pre">&quot;first&quot;</span></code> in both directions, or <code class="docutils literal notranslate"><span class="pre">None</span></code> for where the database puts them.
-<code class="docutils literal notranslate"><span class="pre">fr.query.apply_list_params</span></code> takes it too.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">unknown_query_params</span> <span class="pre">=</span> <span class="pre">&quot;ignore&quot;</span></code> leaves out a query key that the route
-does not read, as FastAPI does. The default, <code class="docutils literal notranslate"><span class="pre">&quot;forbid&quot;</span></code>, answers <code class="docutils literal notranslate"><span class="pre">422</span></code>, as
-before.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">&#64;fr.list_filter(&quot;key&quot;)</span></code> makes a view method the filter for a query key.
-The type of its parameter is the type of the key, and its docstring is the
-description. It returns a condition, a clause or <code class="docutils literal notranslate"><span class="pre">None</span></code>, and it may be
-<code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">def</span></code> on an async view. The key may also be a field and an operator
-that you choose, such as <code class="docutils literal notranslate"><span class="pre">name__length</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">list[fr.MustExist[int,</span> <span class="pre">Model]]</span></code> checks each id of a list, such as the ids
-in the body of a custom route. The message names every missing id.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">apply_filters(stmt,</span> <span class="pre">list_params)</span></code> applies the client’s filters without
-the sort and the page, for a route with <code class="docutils literal notranslate"><span class="pre">GROUP</span> <span class="pre">BY</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.views.ReactAdminListParams</span></code>, the list params of a react-admin view.
-Subclass it to add a key, such as a search key.</p></li>
-<li><p>A clause can go into the condition of another clause, such as
-<code class="docutils literal notranslate"><span class="pre">fr.where_clause(Comment.post.has(PostClauses.default_scope))</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code> adds Restly’s model defaults to a base of your own:
-<code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">Base(fr.ModelDefaults,</span> <span class="pre">DeclarativeBase)</span></code>. The models get
-keyword-only dataclass constructors, snake_case table names, timezone-aware
-datetimes, enums stored as strings and <code class="docutils literal notranslate"><span class="pre">awaitable_attrs</span></code>. Set dataclass
-options such as <code class="docutils literal notranslate"><span class="pre">eq=True</span></code> on a model, not on the base.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.IDMixin</span></code> at the top level.</p></li>
-<li><p>With <code class="docutils literal notranslate"><span class="pre">warn_on_misuse=True</span></code>, Restly warns about a writable field on a column
-that the model sets itself (<code class="docutils literal notranslate"><span class="pre">init=False</span></code> with a default), such as a tenant
-column.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.exc.RestlyExpireOnCommitWarning</span></code>: a view warns once when it writes
-through a session that expires on commit, from any source of sessions.
-<code class="docutils literal notranslate"><span class="pre">snapshot(new)</span></code> in <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> is then empty, and an async view
-fails with <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. The warning of <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code> about an async
-session factory with <code class="docutils literal notranslate"><span class="pre">expire_on_commit=True</span></code> has this class too.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.UTCDatetime</span></code>, a <code class="docutils literal notranslate"><span class="pre">datetime</span></code> field in UTC. A time without an offset is
-UTC, and a time with an offset becomes the same time in UTC. So the
-business methods get each time in UTC, and a response shows it with <code class="docutils literal notranslate"><span class="pre">Z</span></code>,
-also from a column without a time zone.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.in_utc(value)</span></code>, the rule of <code class="docutils literal notranslate"><span class="pre">fr.UTCDatetime</span></code> as a function. Use it on a
-time from the database before you compare it with a time from a schema,
-as in <code class="docutils literal notranslate"><span class="pre">data.ends_at</span> <span class="pre">&gt;</span> <span class="pre">fr.in_utc(obj.starts_at)</span></code>. A time from a column
-without a time zone has no offset, and on SQLite no time has one.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.query.FilterKey</span></code> and <code class="docutils literal notranslate"><span class="pre">fr.query.SortKey</span></code>, for list params of your own.
-Each finds the field of the response class that a client’s key names, and
-the column of the model. As in the generated list params, a field with an
-alias is a key only by its alias, and a field that a response never shows
-is no key. A hybrid property is a key too, when it has SQL.
-<code class="docutils literal notranslate"><span class="pre">FilterKey.parse(value)</span></code> gives a value the validation of its field and the
-form of its column, as the generated filters do. <code class="docutils literal notranslate"><span class="pre">SortKey.term()</span></code> gives
-the term for <code class="docutils literal notranslate"><span class="pre">order_by()</span></code>, with NULLs where <code class="docutils literal notranslate"><span class="pre">sort_nulls</span></code> says. The
-react-admin views use them.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.query.order_by_primary_key(stmt,</span> <span class="pre">model,</span> <span class="pre">sorted_on=...)</span></code> orders <code class="docutils literal notranslate"><span class="pre">stmt</span></code>
-by the primary key last, so that a row never moves to another page. The
-generated list params do this themselves. List params of your own call it,
-as the react-admin views do.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.query.PagedListParams</span></code>, the base of list params of your own with
-pages. A view fills its <code class="docutils literal notranslate"><span class="pre">page</span></code> and <code class="docutils literal notranslate"><span class="pre">page_size</span></code> fields from its
-<code class="docutils literal notranslate"><span class="pre">pagination</span></code>: their names in the URL, the default page size, the bounds,
-and the check that the offset fits in the database. So one class serves
-views with other pagination.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code> and <code class="docutils literal notranslate"><span class="pre">fr.IDMixin</span></code>, for a base of your own.</p></li>
+<li><p>Hooks for the loads: <code class="docutils literal notranslate"><span class="pre">self.select()</span></code>, <code class="docutils literal notranslate"><span class="pre">where_id(id)</span></code> and <code class="docutils literal notranslate"><span class="pre">not_found(id)</span></code>.</p></li>
+<li><p>Markers for the view’s own types, for routes on a base view or a mixin:
+<code class="docutils literal notranslate"><span class="pre">ViewID</span></code>, <code class="docutils literal notranslate"><span class="pre">ViewResponse</span></code>, <code class="docutils literal notranslate"><span class="pre">ViewListResponse</span></code>, <code class="docutils literal notranslate"><span class="pre">ViewCreate</span></code> and
+<code class="docutils literal notranslate"><span class="pre">ViewUpdate</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">include_routes</span></code>, the routes that a view serves.</p></li>
+<li><p>List settings: <code class="docutils literal notranslate"><span class="pre">include_filters</span></code>, <code class="docutils literal notranslate"><span class="pre">exclude_filters</span></code>, <code class="docutils literal notranslate"><span class="pre">include_sort_keys</span></code>,
+<code class="docutils literal notranslate"><span class="pre">exclude_sort_keys</span></code>, <code class="docutils literal notranslate"><span class="pre">sort_query_param</span></code>, <code class="docutils literal notranslate"><span class="pre">default_sort</span></code>, <code class="docutils literal notranslate"><span class="pre">sort_nulls</span></code> and
+<code class="docutils literal notranslate"><span class="pre">unknown_query_params</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&#64;fr.list_filter(&quot;key&quot;)</span></code>, a view method as the filter for a query key.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">apply_filters(stmt,</span> <span class="pre">list_params)</span></code>: the filters, without the sort and the
+page.</p></li>
+<li><p>For list params of your own: <code class="docutils literal notranslate"><span class="pre">fr.query.PagedListParams</span></code>,
+<code class="docutils literal notranslate"><span class="pre">fr.query.FilterKey</span></code>, <code class="docutils literal notranslate"><span class="pre">fr.query.SortKey</span></code>, <code class="docutils literal notranslate"><span class="pre">fr.query.order_by_primary_key</span></code>
+and <code class="docutils literal notranslate"><span class="pre">fr.views.ReactAdminListParams</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">list[fr.MustExist[int,</span> <span class="pre">Model]]</span></code> checks each id of a list.</p></li>
+<li><p>A clause can go into the condition of another clause.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.UTCDatetime</span></code>, a <code class="docutils literal notranslate"><span class="pre">datetime</span></code> field in UTC, and <code class="docutils literal notranslate"><span class="pre">fr.in_utc()</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.exc.RestlyExpireOnCommitWarning</span></code>, for a session that expires on commit.</p></li>
+<li><p>With <code class="docutils literal notranslate"><span class="pre">warn_on_misuse=True</span></code>, a warning for a writable field on a column that
+the model sets itself.</p></li>
 </ul>
 </section>
 <section id="changed">
 <h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">#</a></h3>
-<section id="reads">
-<h4>Reads<a class="headerlink" href="#reads" title="Link to this heading">#</a></h4>
+<p>Reads:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">get_one</span></code> and <code class="docutils literal notranslate"><span class="pre">get_many</span></code> are final, as the handlers are. A view class that
-defines one, or <code class="docutils literal notranslate"><span class="pre">select</span></code>, fails when Python creates the class. Change the
-rows with <code class="docutils literal notranslate"><span class="pre">scope</span></code>, the lookup with <code class="docutils literal notranslate"><span class="pre">where_id</span></code>, the list with
-<code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code>, and the loads with <code class="docutils literal notranslate"><span class="pre">get_loader_options</span></code>. A value on
-each row that needs no query goes in <code class="docutils literal notranslate"><span class="pre">to_single_response</span></code>, as
-<code class="docutils literal notranslate"><span class="pre">super().to_single_response(obj).model_copy(update={...})</span></code>. A value from
-SQL goes on the model as a <code class="docutils literal notranslate"><span class="pre">column_property</span></code>, or in <code class="docutils literal notranslate"><span class="pre">get_loader_options</span></code>
-as a <code class="docutils literal notranslate"><span class="pre">with_expression</span></code>. A read from another source replaces the endpoint
-method. <code class="docutils literal notranslate"><span class="pre">get_many</span></code> takes <code class="docutils literal notranslate"><span class="pre">where=</span></code>.</p></li>
-<li><p>A model with a composite primary key needs <code class="docutils literal notranslate"><span class="pre">where_id</span></code> for its item routes,
-and <code class="docutils literal notranslate"><span class="pre">id_type</span> <span class="pre">=</span> <span class="pre">str</span></code> for an id such as <code class="docutils literal notranslate"><span class="pre">3-7</span></code>. Without <code class="docutils literal notranslate"><span class="pre">where_id</span></code>, the view
-fails when it registers.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code> is now <code class="docutils literal notranslate"><span class="pre">get_loader_options</span></code>. It holds
-everything that a read loads, a <code class="docutils literal notranslate"><span class="pre">with_expression</span></code> too.</p></li>
-<li><p>A custom route that declares the view’s response goes through the view’s
-response step, so it can return the row. A row under <code class="docutils literal notranslate"><span class="pre">ViewResponse</span></code> goes
-through <code class="docutils literal notranslate"><span class="pre">to_response</span></code>, each row under <code class="docutils literal notranslate"><span class="pre">list[ViewResponse]</span></code> through
-<code class="docutils literal notranslate"><span class="pre">to_single_response</span></code>, and a <code class="docutils literal notranslate"><span class="pre">ListResult</span></code> under <code class="docutils literal notranslate"><span class="pre">ViewListResponse</span></code> through
-the list response. <code class="docutils literal notranslate"><span class="pre">-&gt;</span> <span class="pre">Project</span></code> or <code class="docutils literal notranslate"><span class="pre">-&gt;</span> <span class="pre">list[Project]</span></code> for the view’s own
-model works like <code class="docutils literal notranslate"><span class="pre">ViewResponse</span></code>, and so does the view’s own response
-class, such as the 0.11 form
-<code class="docutils literal notranslate"><span class="pre">response_model=fr.schemas.derive_schema_response(ProjectSchema)</span></code>. A route
-that names another Pydantic class keeps FastAPI’s behaviour and skips
-<code class="docutils literal notranslate"><span class="pre">to_single_response</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">get_one</span></code>, <code class="docutils literal notranslate"><span class="pre">get_many</span></code> and <code class="docutils literal notranslate"><span class="pre">select</span></code> are final. <code class="docutils literal notranslate"><span class="pre">get_many</span></code> takes <code class="docutils literal notranslate"><span class="pre">where=</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">get_relationship_loader_options</span></code> is now <code class="docutils literal notranslate"><span class="pre">get_loader_options</span></code>.</p></li>
+<li><p>A model with a composite primary key needs <code class="docutils literal notranslate"><span class="pre">where_id</span></code>.</p></li>
+<li><p>A custom route that declares <code class="docutils literal notranslate"><span class="pre">ViewResponse</span></code>, or returns the view’s model,
+goes through the view’s response step.</p></li>
 </ul>
-</section>
-<section id="writes">
-<h4>Writes<a class="headerlink" href="#writes" title="Link to this heading">#</a></h4>
+<p>Writes:</p>
 <ul class="simple">
-<li><p>The write business methods no longer flush. <code class="docutils literal notranslate"><span class="pre">create</span></code> and <code class="docutils literal notranslate"><span class="pre">update</span></code> return
-the object, and <code class="docutils literal notranslate"><span class="pre">delete</span></code> only marks the row. After them, the commit bracket
-saves: it adds a new object, flushes, refreshes it and the other rows of
-the view’s model that the action wrote, and loads them with the loader
-options. So a change after <code class="docutils literal notranslate"><span class="pre">super().create()</span></code> is part of the INSERT. Inside
-<code class="docutils literal notranslate"><span class="pre">create</span></code>, the new object has no id yet: code that needs it goes in
-<code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code>, which runs after the save, or calls
-<code class="docutils literal notranslate"><span class="pre">session.flush()</span></code>. A <code class="docutils literal notranslate"><span class="pre">try</span></code> around <code class="docutils literal notranslate"><span class="pre">super().create()</span></code> no longer catches an
-error of the INSERT.</p></li>
-<li><p>A business method and a <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block run under
-<code class="docutils literal notranslate"><span class="pre">session.no_autoflush</span></code>, also on a sync view. A query there does not see your
-unflushed changes, so a get-or-create loop or a count against a limit calls
-<code class="docutils literal notranslate"><span class="pre">flush()</span></code> first.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">write_action(action,</span> <span class="pre">*,</span> <span class="pre">obj,</span> <span class="pre">data=None)</span></code>: <code class="docutils literal notranslate"><span class="pre">obj</span></code> is required. It is a row
-from the database, a new object that the action creates, or <code class="docutils literal notranslate"><span class="pre">None</span></code> for an
-action on several rows. Restly adds a new object to the session when the
-block starts, so a <code class="docutils literal notranslate"><span class="pre">flush()</span></code> in the block gives it an id, and <code class="docutils literal notranslate"><span class="pre">authorize</span></code>
-gets <code class="docutils literal notranslate"><span class="pre">obj=None</span></code>. A detached row is added back, and a row
-that another open session holds raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code>. The block gets nothing
-from <code class="docutils literal notranslate"><span class="pre">as</span></code>: pass the new object as <code class="docutils literal notranslate"><span class="pre">obj</span></code> instead of setting <code class="docutils literal notranslate"><span class="pre">w.obj</span></code>.</p></li>
-<li><p>Each view has a class <code class="docutils literal notranslate"><span class="pre">Action</span></code> that lists all its actions. It is
-<code class="docutils literal notranslate"><span class="pre">fr.Action</span></code>, with the five CRUD actions, until the view declares a subclass
-with actions of its own. An action has an UPPER_CASE name, and its value is
-that name in lower case: <code class="docutils literal notranslate"><span class="pre">PUBLISH</span> <span class="pre">=</span> <span class="pre">&quot;publish&quot;</span></code>. <code class="docutils literal notranslate"><span class="pre">write_action</span></code> takes only an
-action that the view’s <code class="docutils literal notranslate"><span class="pre">Action</span></code> declares, and raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> for
-another value. A view whose <code class="docutils literal notranslate"><span class="pre">Action</span></code> does not inherit from the <code class="docutils literal notranslate"><span class="pre">Action</span></code> of
-a base class, such as a mixin’s, fails when Python creates the class. So
-<code class="docutils literal notranslate"><span class="pre">PostView.Action</span></code> shows every action that <code class="docutils literal notranslate"><span class="pre">write_action</span></code> and the CRUD routes
-pass to <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and the hooks, also in your editor.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">new</span></code> and <code class="docutils literal notranslate"><span class="pre">old</span></code> in the hooks follow the row that the action is about. So a
-soft delete through <code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/{id}</span></code> gives the row as <code class="docutils literal notranslate"><span class="pre">new</span></code>, and a block that
-deletes its <code class="docutils literal notranslate"><span class="pre">obj</span></code> gives <code class="docutils literal notranslate"><span class="pre">new=None</span></code>.</p></li>
-<li><p>A <code class="docutils literal notranslate"><span class="pre">create</span></code> or <code class="docutils literal notranslate"><span class="pre">update</span></code> that does not return one object of a model raises
-<code class="docutils literal notranslate"><span class="pre">TypeError</span></code>, and nothing is committed.</p></li>
-<li><p>The request body is <code class="docutils literal notranslate"><span class="pre">data</span></code> in every view method: <code class="docutils literal notranslate"><span class="pre">create(self,</span> <span class="pre">data)</span></code>,
-<code class="docutils literal notranslate"><span class="pre">update(self,</span> <span class="pre">obj,</span> <span class="pre">data)</span></code>, the handlers and the endpoint methods. Rename the
-parameter in your overrides; Pyright reports the old name. The functions in
-<code class="docutils literal notranslate"><span class="pre">fr.objects</span></code> take <code class="docutils literal notranslate"><span class="pre">model</span></code> and <code class="docutils literal notranslate"><span class="pre">data</span></code> too, not <code class="docutils literal notranslate"><span class="pre">model_cls</span></code> and
-<code class="docutils literal notranslate"><span class="pre">schema_obj</span></code>.</p></li>
-<li><p>The write bracket checks the references in the data after <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and
-before the business method, also in nested schemas and in each item of a
-list. So a <code class="docutils literal notranslate"><span class="pre">create</span></code> that builds the object itself is checked, and so is the
-<code class="docutils literal notranslate"><span class="pre">data=</span></code> of <code class="docutils literal notranslate"><span class="pre">write_action</span></code>.</p></li>
-<li><p>A handler or a <code class="docutils literal notranslate"><span class="pre">write_action</span></code> inside a <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block joins its
-commit, as inside <code class="docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code>. A direct
-<code class="docutils literal notranslate"><span class="pre">session.commit()</span></code> inside a block raises <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code>.</p></li>
-<li><p>Inside a shared commit, a write action that raises after it changed objects,
-or after it ran a statement such as <code class="docutils literal notranslate"><span class="pre">session.execute(update(...))</span></code>, stops
-the commit, also when the route catches the error. Put
-<code class="docutils literal notranslate"><span class="pre">session.begin_nested()</span></code> around each write that may fail.</p></li>
-<li><p>A database conflict in a write is a <code class="docutils literal notranslate"><span class="pre">fr.exc.Conflict</span></code> (409), raised by the
-write block, with the <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> as its <code class="docutils literal notranslate"><span class="pre">__cause__</span></code>. So a handler or
-an <code class="docutils literal notranslate"><span class="pre">except</span></code> for <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> around a block no longer sees it: catch
-<code class="docutils literal notranslate"><span class="pre">fr.exc.Conflict</span></code> instead. Inside <code class="docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code> the error
-stays raw. A handler for <code class="docutils literal notranslate"><span class="pre">fr.exc.RestlyHTTPError</span></code> now shapes conflicts too.
-Code outside a write block gets the raw <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code>.</p></li>
-<li><p>A replaced endpoint method gets the view’s types only from the markers,
-not from its parameter names. Annotate it, such as
-<code class="docutils literal notranslate"><span class="pre">create_endpoint(self,</span> <span class="pre">data:</span> <span class="pre">ViewCreate)</span> <span class="pre">-&gt;</span> <span class="pre">ViewResponse</span></code>. <code class="docutils literal notranslate"><span class="pre">list_params</span></code>
-still works by its name.</p></li>
-<li><p>A time without an offset is UTC, in request bodies and filters alike, also
-in the filter of a react-admin view. Such a time gets the offset of UTC
-when its column has a time zone, as in the generated filters before. A
-time with an offset becomes the same time in UTC, and loses its offset
-when its column has no time zone, such as a <code class="docutils literal notranslate"><span class="pre">DateTime()</span></code> column. A time
-that UTC cannot hold gets a 422 in a body and a 400 in a filter. Before,
-SQLite dropped the offset, asyncpg failed with a 500, and a body time
-without an offset was read in the time zone of the app’s Python process
-(asyncpg) or of the database session (psycopg). Restly changes the times
-of a body when it copies the body onto the model. A column that keeps
-local times needs a validator on its field that converts the time first.</p></li>
-<li><p>A value that its column cannot hold gets a 422 in a body or in the path,
-and a 400 in a filter. Restly checks the generic integer and text types of
-SQLAlchemy, such as <code class="docutils literal notranslate"><span class="pre">Integer</span></code> and <code class="docutils literal notranslate"><span class="pre">String(n)</span></code>, on every database. A number
-must fit the integer type: 16 bits for <code class="docutils literal notranslate"><span class="pre">SmallInteger</span></code>, 32 for <code class="docutils literal notranslate"><span class="pre">Integer</span></code>
-and 64 for <code class="docutils literal notranslate"><span class="pre">BigInteger</span></code>. Text must hold no NUL character, and text in a
-body must fit the length of a <code class="docutils literal notranslate"><span class="pre">String(n)</span></code> column. A reference id that does
-not fit gets a 404, as for a row that does not exist. Before, PostgreSQL
-refused such a value with a 500, and SQLite stored it. Any other type,
-such as a type of a dialect or a <code class="docutils literal notranslate"><span class="pre">TypeDecorator</span></code>, gets the value as it is,
-as in SQLAlchemy. For such a type, put a constraint on the field of the
-schema, such as <code class="docutils literal notranslate"><span class="pre">Field(max_length=50)</span></code>.</p></li>
+<li><p>The business methods no longer flush. Restly saves after them, so inside
+<code class="docutils literal notranslate"><span class="pre">create</span></code> the object has no id yet. Use <code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code> or
+<code class="docutils literal notranslate"><span class="pre">session.flush()</span></code> for code that needs it.</p></li>
+<li><p>Business methods and <code class="docutils literal notranslate"><span class="pre">write_action</span></code> blocks run under
+<code class="docutils literal notranslate"><span class="pre">session.no_autoflush</span></code>.</p></li>
+<li><p>The request body is <code class="docutils literal notranslate"><span class="pre">data</span></code> everywhere, also in <code class="docutils literal notranslate"><span class="pre">fr.objects</span></code>.</p></li>
+<li><p>Restly checks the references after <code class="docutils literal notranslate"><span class="pre">authorize</span></code>, also in nested schemas.</p></li>
+<li><p>A write inside a <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block joins its commit. A direct
+<code class="docutils literal notranslate"><span class="pre">session.commit()</span></code> there raises <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code>.</p></li>
+<li><p>A database conflict is a <code class="docutils literal notranslate"><span class="pre">fr.exc.Conflict</span></code> (409), with the <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code>
+as its <code class="docutils literal notranslate"><span class="pre">__cause__</span></code>. Catch <code class="docutils literal notranslate"><span class="pre">Conflict</span></code>, not <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">new</span></code> and <code class="docutils literal notranslate"><span class="pre">old</span></code> in the hooks follow the row that the action is about.</p></li>
+<li><p>A replaced endpoint method gets the view’s types only from the markers.</p></li>
+<li><p>A time without an offset is UTC, in bodies and in filters.</p></li>
+<li><p>A value that its column cannot hold gets a 422 or a 400, not a 500 on
+PostgreSQL. Restly checks only SQLAlchemy’s generic integer and text types.</p></li>
 </ul>
-</section>
-<section id="lists">
-<h4>Lists<a class="headerlink" href="#lists" title="Link to this heading">#</a></h4>
+<p>Lists:</p>
 <ul class="simple">
-<li><p>A list has no dotted filter keys and no dotted sort keys by default, such as
-<code class="docutils literal notranslate"><span class="pre">?vendor.name=</span></code>. Turn them on with <code class="docutils literal notranslate"><span class="pre">include_filters</span> <span class="pre">=</span> <span class="pre">(&quot;*&quot;,</span> <span class="pre">&quot;*.*&quot;)</span></code> and
-<code class="docutils literal notranslate"><span class="pre">include_sort_keys</span> <span class="pre">=</span> <span class="pre">(&quot;*&quot;,</span> <span class="pre">&quot;*.*&quot;)</span></code>, with one <code class="docutils literal notranslate"><span class="pre">*</span></code> for each level, or with a
-narrower pattern.
-<code class="docutils literal notranslate"><span class="pre">fr.query.derive_schema_list_params</span></code> has the same default. A sort key never
-goes through a to-many relationship.</p></li>
-<li><p>An unknown sort key gets <code class="docutils literal notranslate"><span class="pre">422</span></code>, not <code class="docutils literal notranslate"><span class="pre">400</span></code>. The <code class="docutils literal notranslate"><span class="pre">422</span></code> for an unknown query
-key is a <code class="docutils literal notranslate"><span class="pre">RequestValidationError</span></code>, not an <code class="docutils literal notranslate"><span class="pre">HTTPException</span></code>; the body is the
-same.</p></li>
-<li><p>A sort key that appears twice, such as <code class="docutils literal notranslate"><span class="pre">?sort=name,-name</span></code>, gets <code class="docutils literal notranslate"><span class="pre">422</span></code>.
-Before, the second term had no effect. With hand-written list params, or a
-raw <code class="docutils literal notranslate"><span class="pre">QueryParams</span></code> in <code class="docutils literal notranslate"><span class="pre">fr.query.apply_list_params</span></code>, it raises
-<code class="docutils literal notranslate"><span class="pre">BadQueryParam</span></code>, a <code class="docutils literal notranslate"><span class="pre">400</span></code>; before, the list came back with <code class="docutils literal notranslate"><span class="pre">200</span></code>. A
-<code class="docutils literal notranslate"><span class="pre">default_sort</span></code> with a key twice fails when the class is defined, or when
-the view registers for a mixin.</p></li>
-<li><p>Labels get no range filters (<code class="docutils literal notranslate"><span class="pre">__gte</span></code>, <code class="docutils literal notranslate"><span class="pre">__lte</span></code>, <code class="docutils literal notranslate"><span class="pre">__gt</span></code>, <code class="docutils literal notranslate"><span class="pre">__lt</span></code>): a <code class="docutils literal notranslate"><span class="pre">str</span></code>
-enum, a <code class="docutils literal notranslate"><span class="pre">Literal</span></code> of strings, and any field on a column of SQLAlchemy’s
-<code class="docutils literal notranslate"><span class="pre">Enum</span></code> type. Before, they got them, and a range compared the labels as
-text, except on a native ENUM on PostgreSQL, which orders its labels as
-they were declared. For a range in that order, write it with
-<code class="docutils literal notranslate"><span class="pre">fr.list_filter</span></code>. An int enum keeps them on a column that stores the
-number, such as <code class="docutils literal notranslate"><span class="pre">Integer</span></code>.</p></li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">400</span></code> texts of a list name the problem: <code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">sort</span> <span class="pre">key:</span> <span class="pre">'nope'</span></code>,
-<code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">filter</span> <span class="pre">key:</span> <span class="pre">'nope'</span></code>, or <code class="docutils literal notranslate"><span class="pre">Invalid</span> <span class="pre">filter</span> <span class="pre">value</span> <span class="pre">for</span> <span class="pre">'age':</span> <span class="pre">'old'.</span></code>
-with Pydantic’s reason. A field validator that raises another exception
-gives <code class="docutils literal notranslate"><span class="pre">500</span></code>.</p></li>
-<li><p>On async views, <code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code> is <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">def</span></code>. An override must match
-its view: <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">def</span></code> on an async view, <code class="docutils literal notranslate"><span class="pre">def</span></code> on a sync one.</p></li>
-<li><p>The statement parameter is called <code class="docutils literal notranslate"><span class="pre">stmt</span></code>, as in the SQLAlchemy docs, not
-<code class="docutils literal notranslate"><span class="pre">query</span></code>: in <code class="docutils literal notranslate"><span class="pre">fr.query.apply_list_params</span></code>, and in the view methods
-<code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code> and <code class="docutils literal notranslate"><span class="pre">count</span></code>. A call that passes <code class="docutils literal notranslate"><span class="pre">query=</span></code> by name must
-pass <code class="docutils literal notranslate"><span class="pre">stmt=</span></code>. Restly passes the statement by position, so an override that
-keeps the name <code class="docutils literal notranslate"><span class="pre">query</span></code> still works.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code> and <code class="docutils literal notranslate"><span class="pre">apply_filters</span></code> validate a <code class="docutils literal notranslate"><span class="pre">QueryParams</span></code> or a
-mapping through <code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code> first, as the list route does. A
-mapping without <code class="docutils literal notranslate"><span class="pre">page_size</span></code> gets the default page size, so
-<code class="docutils literal notranslate"><span class="pre">get_many({})</span></code> returns the first page, not every row.</p></li>
-<li><p>A response field named like a pagination parameter, such as <code class="docutils literal notranslate"><span class="pre">page</span></code>, fails
-only when it gets a filter key. Leave the key out with
-<code class="docutils literal notranslate"><span class="pre">exclude_filters</span> <span class="pre">=</span> <span class="pre">(&quot;page&quot;,)</span></code>.</p></li>
-<li><p>A declared <code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code> must follow the view’s list settings and
-filter methods, or the view fails when it registers. A subclass that
-changes <code class="docutils literal notranslate"><span class="pre">pagination</span></code> or a list setting gets new list params when its base
-uses generated ones.</p></li>
-<li><p>A sort puts NULLs last in both directions, on every database, also on a
-react-admin view. Before, the database decided: PostgreSQL put them first
-in a descending sort, and SQLite and MySQL first in an ascending sort. Set
-<code class="docutils literal notranslate"><span class="pre">sort_nulls</span> <span class="pre">=</span> <span class="pre">None</span></code> for the old place of NULLs. On PostgreSQL, a fast
-descending sort on a nullable column needs an index with
-<code class="docutils literal notranslate"><span class="pre">DESC</span> <span class="pre">NULLS</span> <span class="pre">LAST</span></code>. On MySQL and SQL Server, a sort on a nullable column
-cannot use a plain index any more.</p></li>
-<li><p>A field that holds a <code class="docutils literal notranslate"><span class="pre">dict</span></code>, a <code class="docutils literal notranslate"><span class="pre">list</span></code> or a nested model, such as a <code class="docutils literal notranslate"><span class="pre">JSON</span></code>
-column, is no sort key, in the generated list params and in
-<code class="docutils literal notranslate"><span class="pre">fr.query.SortKey</span></code>. A document has no order that a client means, and
-PostgreSQL’s <code class="docutils literal notranslate"><span class="pre">json</span></code> type has none at all: a sort on it gave a <code class="docutils literal notranslate"><span class="pre">500</span></code>.</p></li>
-<li><p>List params of your own on a view with a <code class="docutils literal notranslate"><span class="pre">NumberedPagination</span></code> need the
-page fields of its pagination, or the view fails when it registers.
-Before, such a list returned every row while its response said that it
-had pages, and <code class="docutils literal notranslate"><span class="pre">?page=2</span></code> got <code class="docutils literal notranslate"><span class="pre">422</span></code>. A view that builds its list response
-itself, as a react-admin view does, pages in its own way.</p></li>
+<li><p>Dotted filter and sort keys are off by default. Turn them on with
+<code class="docutils literal notranslate"><span class="pre">include_filters</span> <span class="pre">=</span> <span class="pre">(&quot;*&quot;,</span> <span class="pre">&quot;*.*&quot;)</span></code> and <code class="docutils literal notranslate"><span class="pre">include_sort_keys</span> <span class="pre">=</span> <span class="pre">(&quot;*&quot;,</span> <span class="pre">&quot;*.*&quot;)</span></code>.</p></li>
+<li><p>An unknown or repeated sort key gets a 422.</p></li>
+<li><p>String enums, <code class="docutils literal notranslate"><span class="pre">Literal</span></code>s of strings and <code class="docutils literal notranslate"><span class="pre">Enum</span></code> columns get no range filters.</p></li>
+<li><p>NULLs sort last, on every database. <code class="docutils literal notranslate"><span class="pre">sort_nulls</span> <span class="pre">=</span> <span class="pre">None</span></code> gives the old order.</p></li>
+<li><p>A <code class="docutils literal notranslate"><span class="pre">dict</span></code>, <code class="docutils literal notranslate"><span class="pre">list</span></code> or JSON field is no sort key.</p></li>
+<li><p>The statement parameter is <code class="docutils literal notranslate"><span class="pre">stmt</span></code>, not <code class="docutils literal notranslate"><span class="pre">query</span></code>. On async views,
+<code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code> is <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">def</span></code>.</p></li>
+<li><p>The texts of a 400 name the problem, such as <code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">sort</span> <span class="pre">key:</span> <span class="pre">'nope'</span></code>.</p></li>
 </ul>
-</section>
-<section id="react-admin">
-<h4>React-admin<a class="headerlink" href="#react-admin" title="Link to this heading">#</a></h4>
+<p>React-admin:</p>
 <ul class="simple">
-<li><p>React-admin views reject the list key settings, <code class="docutils literal notranslate"><span class="pre">sort_query_param</span></code>,
+<li><p>A filter value goes through the validation of its field, as in the
+generated filters. <code class="docutils literal notranslate"><span class="pre">null</span></code> works.</p></li>
+<li><p>A <code class="docutils literal notranslate"><span class="pre">sort</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code> or <code class="docutils literal notranslate"><span class="pre">filter</span></code> with the wrong shape gets a 422.</p></li>
+<li><p>React-admin views refuse the key settings, <code class="docutils literal notranslate"><span class="pre">sort_query_param</span></code>,
 <code class="docutils literal notranslate"><span class="pre">default_sort</span></code> and <code class="docutils literal notranslate"><span class="pre">&#64;fr.list_filter</span></code>.</p></li>
-<li><p>The list route of a react-admin view declares <code class="docutils literal notranslate"><span class="pre">list_params</span></code>. Overrides of
-<code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code>, <code class="docutils literal notranslate"><span class="pre">apply_filters</span></code> and <code class="docutils literal notranslate"><span class="pre">to_list_response</span></code> get the parsed
-values: <code class="docutils literal notranslate"><span class="pre">sort</span></code> as <code class="docutils literal notranslate"><span class="pre">(&quot;name&quot;,</span> <span class="pre">&quot;DESC&quot;)</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code> as <code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">24)</span></code> and <code class="docutils literal notranslate"><span class="pre">filter</span></code> as
-a dict.</p></li>
-<li><p>A react-admin view answers <code class="docutils literal notranslate"><span class="pre">422</span></code> instead of <code class="docutils literal notranslate"><span class="pre">400</span></code> for a <code class="docutils literal notranslate"><span class="pre">sort</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code> or
-<code class="docutils literal notranslate"><span class="pre">filter</span></code> with the wrong shape, and for a bad <code class="docutils literal notranslate"><span class="pre">range</span></code>. A sort key or a filter
-that it cannot apply is a <code class="docutils literal notranslate"><span class="pre">fr.exc.BadQueryParam</span></code> (400).</p></li>
-<li><p>A react-admin view with pagination that it cannot use fails when Python
-creates the class.</p></li>
-<li><p>A react-admin filter value goes through the validation of its field, as in
-the generated filters. Before, it got the Python type of its column. So
-the validators of the field run, also one that keeps local times. They
-get only this field, so <code class="docutils literal notranslate"><span class="pre">info.data</span></code> is <code class="docutils literal notranslate"><span class="pre">{}</span></code>. <code class="docutils literal notranslate"><span class="pre">null</span></code> finds the rows without
-a value where the field allows <code class="docutils literal notranslate"><span class="pre">None</span></code>, also in a list, as in
-<code class="docutils literal notranslate"><span class="pre">{&quot;size&quot;:</span> <span class="pre">[null,</span> <span class="pre">3]}</span></code>. Before, <code class="docutils literal notranslate"><span class="pre">null</span></code> gave <code class="docutils literal notranslate"><span class="pre">400</span></code>. A field of type <code class="docutils literal notranslate"><span class="pre">Any</span></code>,
-such as the <code class="docutils literal notranslate"><span class="pre">id</span></code> of <code class="docutils literal notranslate"><span class="pre">fr.IDSchema</span></code>, still gives the value the Python type
-of its column, so <code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">[...]}</span></code> with UUIDs works. A field with an alias
-is a filter or sort key only by its alias, and a relationship field is an
-<code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">filter</span> <span class="pre">key</span></code> or an <code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">sort</span> <span class="pre">key</span></code>.</p></li>
 </ul>
-</section>
-<section id="schemas-and-models">
-<h4>Schemas and models<a class="headerlink" href="#schemas-and-models" title="Link to this heading">#</a></h4>
+<p>Schemas and models:</p>
 <ul class="simple">
-<li><p>Each field of the update body keeps its type from the view’s schema, so
-<code class="docutils literal notranslate"><span class="pre">null</span></code> is valid only where the type allows <code class="docutils literal notranslate"><span class="pre">None</span></code>. <code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">{&quot;title&quot;:</span> <span class="pre">null}</span></code>
-for <code class="docutils literal notranslate"><span class="pre">title:</span> <span class="pre">str</span></code> gets <code class="docutils literal notranslate"><span class="pre">422</span></code> now, not <code class="docutils literal notranslate"><span class="pre">409</span></code> from the database.</p></li>
+<li><p>The update body keeps the type of each field, so <code class="docutils literal notranslate"><span class="pre">null</span></code> is valid only where
+the type allows <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
 <li><p>In a generated schema, a field allows <code class="docutils literal notranslate"><span class="pre">null</span></code> only when its column is
-nullable.</p></li>
-<li><p>A generated schema gives each time column the type <code class="docutils literal notranslate"><span class="pre">fr.UTCDatetime</span></code>, and
-<code class="docutils literal notranslate"><span class="pre">fr.TimestampsSchemaMixin</span></code> gives it to <code class="docutils literal notranslate"><span class="pre">created_at</span></code> and <code class="docutils literal notranslate"><span class="pre">updated_at</span></code>. So
-the business methods get these times in UTC, and a response shows them
-with <code class="docutils literal notranslate"><span class="pre">Z</span></code>, such as <code class="docutils literal notranslate"><span class="pre">2024-01-01T09:30:00Z</span></code>. A time from a column without a
-time zone had no offset before. For local times, write the field yourself,
-with a validator that converts the time.</p></li>
-<li><p>The create body of a generated schema follows the model’s constructor. On a
-dataclass model, a column with only an <code class="docutils literal notranslate"><span class="pre">insert_default</span></code> or a
-<code class="docutils literal notranslate"><span class="pre">server_default</span></code> is now a required field. Add <code class="docutils literal notranslate"><span class="pre">default=None</span></code> to let the
-client leave it out.</p></li>
-<li><p>Models compare by identity, as plain SQLAlchemy models do. Pass <code class="docutils literal notranslate"><span class="pre">eq=True</span></code>
-on a model to compare its fields. A dataclass mixin of your own declares
-<code class="docutils literal notranslate"><span class="pre">kw_only=True,</span> <span class="pre">eq=False,</span> <span class="pre">repr=False</span></code>, as <code class="docutils literal notranslate"><span class="pre">fr.IDMixin</span></code> does.</p></li>
-<li><p>The repr of a model on <code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code> shows the loaded columns and loads
-nothing, so it no longer raises <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. Pass <code class="docutils literal notranslate"><span class="pre">repr=True</span></code> on a
-model for the dataclass repr.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> generates the project’s own <code class="docutils literal notranslate"><span class="pre">Base</span></code> in <code class="docutils literal notranslate"><span class="pre">app/models.py</span></code>.</p></li>
+nullable, and each time column is a <code class="docutils literal notranslate"><span class="pre">fr.UTCDatetime</span></code>.</p></li>
+<li><p>In a generated create schema, a column with only an <code class="docutils literal notranslate"><span class="pre">insert_default</span></code> or a
+<code class="docutils literal notranslate"><span class="pre">server_default</span></code> is required. Add <code class="docutils literal notranslate"><span class="pre">default=None</span></code> to let clients leave it
+out.</p></li>
+<li><p>Models compare by identity. Their repr loads nothing.</p></li>
 </ul>
-</section>
-<section id="other">
-<h4>Other<a class="headerlink" href="#other" title="Link to this heading">#</a></h4>
+<p>Other:</p>
 <ul class="simple">
-<li><p>The <code class="docutils literal notranslate"><span class="pre">alembic/env.py</span></code> that <code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> generates runs the migrations in
-UTC on PostgreSQL, as the application’s sessions do. So a migration that
-gives a column a time zone reads the stored times as UTC, and <code class="docutils literal notranslate"><span class="pre">now()</span></code> in a
-migration gives UTC. The SQL script of <code class="docutils literal notranslate"><span class="pre">alembic</span> <span class="pre">upgrade</span> <span class="pre">--sql</span></code> starts with
-<code class="docutils literal notranslate"><span class="pre">SET</span> <span class="pre">TIME</span> <span class="pre">ZONE</span> <span class="pre">'UTC'</span></code> too. To do the same in an existing project, copy the
-two <code class="docutils literal notranslate"><span class="pre">SET</span> <span class="pre">TIME</span> <span class="pre">ZONE</span> <span class="pre">'UTC'</span></code> steps from the new <code class="docutils literal notranslate"><span class="pre">env.py</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code> is a <code class="docutils literal notranslate"><span class="pre">WhereClause</span></code> with the condition <code class="docutils literal notranslate"><span class="pre">TRUE</span></code>, so it
-goes everywhere a clause goes. <code class="docutils literal notranslate"><span class="pre">isinstance(x,</span> <span class="pre">WhereClause)</span></code> now matches it
-too.</p></li>
-<li><p>The test clients accept any 2xx status by default. Pass
-<code class="docutils literal notranslate"><span class="pre">assert_status_code</span></code> for an exact status. <code class="docutils literal notranslate"><span class="pre">assert_status_code=None</span></code> skips
-the check.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">exclude_routes</span></code> is typed <code class="docutils literal notranslate"><span class="pre">Collection[str</span> <span class="pre">|</span> <span class="pre">ViewRoute]</span></code>, not <code class="docutils literal notranslate"><span class="pre">Iterable</span></code>.
-Restly reads the value more than once, so use a tuple, a list or a set, not
-a <code class="docutils literal notranslate"><span class="pre">map()</span></code> or a generator.</p></li>
-<li><p>On PostgreSQL, an engine that <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code> builds from a URL puts each
-new session in UTC, as Django and Rails do. It sends
-<code class="docutils literal notranslate"><span class="pre">SET</span> <span class="pre">TIME</span> <span class="pre">ZONE</span> <span class="pre">'UTC'</span></code> when the server reports another zone. PostgreSQL
-then reads a time without an offset as UTC, as Restly does, also in
-<code class="docutils literal notranslate"><span class="pre">now()</span></code> for a column without a time zone. psycopg gives back each time in
-UTC, as asyncpg does. An engine that you pass in keeps its zone.</p></li>
+<li><p>On PostgreSQL, an engine from a URL puts each session in UTC, and the
+<code class="docutils literal notranslate"><span class="pre">alembic/env.py</span></code> of <code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> runs migrations in UTC.</p></li>
+<li><p>The test clients accept any 2xx status by default.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code> is a <code class="docutils literal notranslate"><span class="pre">WhereClause</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">exclude_routes</span></code> is a <code class="docutils literal notranslate"><span class="pre">Collection</span></code>, not an <code class="docutils literal notranslate"><span class="pre">Iterable</span></code>.</p></li>
 </ul>
-</section>
 </section>
 <section id="removed">
 <h3>Removed<a class="headerlink" href="#removed" title="Link to this heading">#</a></h3>
-<ul>
-<li><p>Python 3.10, which reaches its end of life in October 2026. Restly now
-needs Python 3.11 or later, and so does a project from <code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code>.</p></li>
-<li><p>The view methods <code class="docutils literal notranslate"><span class="pre">make_new_object</span></code>, <code class="docutils literal notranslate"><span class="pre">update_object</span></code> and <code class="docutils literal notranslate"><span class="pre">save_object</span></code>. Use
-<code class="docutils literal notranslate"><span class="pre">super().create(data)</span></code> and <code class="docutils literal notranslate"><span class="pre">super().update(obj,</span> <span class="pre">data)</span></code>, and <code class="docutils literal notranslate"><span class="pre">fr.objects</span></code>
-for another model.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">run_write_action</span></code> and <code class="docutils literal notranslate"><span class="pre">async_run_write_action</span></code>. Use <code class="docutils literal notranslate"><span class="pre">self.write_action()</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.RefExists</span></code> and the <code class="docutils literal notranslate"><span class="pre">scope=</span></code> of a reference check. Write
-<code class="docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Post]</span></code>. A tenant rule goes on the session. A rule for one
-caller goes in <code class="docutils literal notranslate"><span class="pre">authorize</span></code>: raise <code class="docutils literal notranslate"><span class="pre">fr.exc.NotFound</span></code> there to keep the
-404.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.MustExist[int]</span></code> without a model. Name the model:
-<code class="docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Project]</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.DataclassBase</span></code> and <code class="docutils literal notranslate"><span class="pre">fr.IDBase</span></code>. Declare one base of your own for the
-app:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Base</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ModelDefaults</span><span class="p">,</span> <span class="n">DeclarativeBase</span><span class="p">):</span>
-    <span class="k">pass</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">Post</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDMixin</span><span class="p">,</span> <span class="n">Base</span><span class="p">):</span>  <span class="c1"># was: class Post(fr.IDBase)</span>
-    <span class="n">title</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
-</pre></div>
-</div>
-<p>Mixins, such as <code class="docutils literal notranslate"><span class="pre">fr.TimestampsMixin</span></code>, go before <code class="docutils literal notranslate"><span class="pre">Base</span></code>. Use <code class="docutils literal notranslate"><span class="pre">Base</span></code> where
-you used <code class="docutils literal notranslate"><span class="pre">fr.DataclassBase</span></code>: in the models,
-<code class="docutils literal notranslate"><span class="pre">sa.Table(...,</span> <span class="pre">Base.metadata,</span> <span class="pre">...)</span></code>, <code class="docutils literal notranslate"><span class="pre">configure_tests(base=Base)</span></code>,
-<code class="docutils literal notranslate"><span class="pre">create_all(Base)</span></code> and <code class="docutils literal notranslate"><span class="pre">target_metadata</span></code> in <code class="docutils literal notranslate"><span class="pre">alembic/env.py</span></code>. The tables
-stay the same, so Alembic finds no difference.</p>
-</li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">install_default_exception_handlers</span></code> argument of <code class="docutils literal notranslate"><span class="pre">fr.configure</span></code>, and the
-<code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> handler that Restly installed. For your own body, register
-a handler for <code class="docutils literal notranslate"><span class="pre">fr.exc.Conflict</span></code> or <code class="docutils literal notranslate"><span class="pre">fr.exc.RestlyHTTPError</span></code>; the original
-error is <code class="docutils literal notranslate"><span class="pre">exc.__cause__</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.utils</span></code> with <code class="docutils literal notranslate"><span class="pre">CurrentSettingsMixin</span></code>. Use a plain pydantic-settings class
-and a <code class="docutils literal notranslate"><span class="pre">get_settings()</span></code> function, as the project from <code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> does.
-Replace <code class="docutils literal notranslate"><span class="pre">Settings.current</span></code> with <code class="docutils literal notranslate"><span class="pre">get_settings()</span></code> in the app factory, and
-<code class="docutils literal notranslate"><span class="pre">Settings.use(x)</span></code> in tests with an argument of the factory, as in
-<code class="docutils literal notranslate"><span class="pre">create_app(x)</span></code>.</p></li>
-<li><p>The dependency on pydantic-settings, which Restly no longer uses. A project
-from <code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> lists it in its own dependencies.</p></li>
-<li><p>The dependency on Alembic. Restly uses it only for <code class="docutils literal notranslate"><span class="pre">alembic_upgrade=</span></code> in
-<code class="docutils literal notranslate"><span class="pre">configure_tests()</span></code>. A project that uses Alembic lists it in its own
-dependencies, as a project from <code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> with migrations does.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">route_options</span></code>. Replace the endpoint method, pass the route arguments to
-its decorator, as in FastAPI, and call <code class="docutils literal notranslate"><span class="pre">super()</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">extra_query_params</span></code>. Declare the key where your code reads it: with
-<code class="docutils literal notranslate"><span class="pre">&#64;fr.list_filter</span></code>, as a parameter of the endpoint method, or as a
-dependency. For keys that are known only at run time, set
-<code class="docutils literal notranslate"><span class="pre">unknown_query_params</span> <span class="pre">=</span> <span class="pre">&quot;ignore&quot;</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">react_admin_query_params</span></code>. The keys are the fields of the view’s
-<code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code>.</p></li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">warn_on_misuse</span></code> warning for CRUD routes on a plain <code class="docutils literal notranslate"><span class="pre">View</span></code>. Such routes
-work. The warning also came for views that <code class="docutils literal notranslate"><span class="pre">RestView</span></code> cannot replace, such
-as a view that keeps its items as JSON in one settings row.</p></li>
+<ul class="simple">
+<li><p>Python 3.10.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fr.DataclassBase</span></code>, <code class="docutils literal notranslate"><span class="pre">fr.IDBase</span></code>, <code class="docutils literal notranslate"><span class="pre">fr.utils</span></code>, <code class="docutils literal notranslate"><span class="pre">fr.RefExists</span></code> and
+<code class="docutils literal notranslate"><span class="pre">fr.MustExist[int]</span></code> without a model. See the upgrade steps.</p></li>
+<li><p>The view methods <code class="docutils literal notranslate"><span class="pre">make_new_object</span></code>, <code class="docutils literal notranslate"><span class="pre">update_object</span></code> and <code class="docutils literal notranslate"><span class="pre">save_object</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">run_write_action</span></code>. Use <code class="docutils literal notranslate"><span class="pre">super()</span></code> and <code class="docutils literal notranslate"><span class="pre">self.write_action()</span></code>.</p></li>
+<li><p>The dependencies on pydantic-settings and Alembic.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">install_default_exception_handlers</span></code> and Restly’s handler for
+<code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code>. Register a handler for <code class="docutils literal notranslate"><span class="pre">fr.exc.Conflict</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">route_options</span></code>, <code class="docutils literal notranslate"><span class="pre">extra_query_params</span></code> and <code class="docutils literal notranslate"><span class="pre">react_admin_query_params</span></code>.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">warn_on_misuse</span></code> warning for CRUD routes on a plain <code class="docutils literal notranslate"><span class="pre">View</span></code>.</p></li>
 </ul>
 </section>
 <section id="fixed">
 <h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
+<p>These gave a 500 or wrong data before:</p>
 <ul class="simple">
-<li><p>A filter on the <code class="docutils literal notranslate"><span class="pre">id</span></code> of <code class="docutils literal notranslate"><span class="pre">fr.IDSchema</span></code>, such as <code class="docutils literal notranslate"><span class="pre">?id=1</span></code>, gives the value
-the Python type of the key column, as for every field of type <code class="docutils literal notranslate"><span class="pre">Any</span></code>.
-Before, the value stayed text: on PostgreSQL even <code class="docutils literal notranslate"><span class="pre">?id=1</span></code> gave a <code class="docutils literal notranslate"><span class="pre">500</span></code>,
-and on SQLite a filter on a UUID key gave a <code class="docutils literal notranslate"><span class="pre">500</span></code>. On an integer key,
-<code class="docutils literal notranslate"><span class="pre">?id=abc</span></code> now gets a <code class="docutils literal notranslate"><span class="pre">400</span></code>, and so does a number that the column cannot
-hold.</p></li>
-<li><p>A generated schema gives a <code class="docutils literal notranslate"><span class="pre">timedelta</span></code> column, an <code class="docutils literal notranslate"><span class="pre">Interval</span></code>, a field of
-type <code class="docutils literal notranslate"><span class="pre">timedelta</span></code>. JSON shows it as an ISO 8601 duration, such as
-<code class="docutils literal notranslate"><span class="pre">PT1H30M</span></code>. Before, the view failed when it registered, with
-<code class="docutils literal notranslate"><span class="pre">TypeError:</span> <span class="pre">Unsupported</span> <span class="pre">field</span> <span class="pre">type</span></code>. A duration that is too long for the
-column, such as <code class="docutils literal notranslate"><span class="pre">P3000000D</span></code>, gets <code class="docutils literal notranslate"><span class="pre">400</span></code> in a filter and <code class="docutils literal notranslate"><span class="pre">422</span></code> in a body,
-as a time out of range does. SQLite stores a duration as a time after
-1970, which must be before the year 10000.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fr.query.apply_list_params</span></code> and <code class="docutils literal notranslate"><span class="pre">fr.query.derive_schema_list_params</span></code> take
-a SQLModel table as the <code class="docutils literal notranslate"><span class="pre">model</span></code> in pyright and mypy, as the views do.
-Before, the type checkers wanted a subclass of <code class="docutils literal notranslate"><span class="pre">DeclarativeBase</span></code>.</p></li>
-<li><p>A field of a flag type, such as <code class="docutils literal notranslate"><span class="pre">IntFlag</span></code>, gets the plain filter, <code class="docutils literal notranslate"><span class="pre">__in</span></code>
-and <code class="docutils literal notranslate"><span class="pre">__ne</span></code>. Before, it got only <code class="docutils literal notranslate"><span class="pre">__isnull</span></code>, because Python counts a flag
-as a collection.</p></li>
-<li><p>A field of Pydantic’s secret types, such as <code class="docutils literal notranslate"><span class="pre">SecretStr</span></code>, works in a view.
-A write stores the secret, and a response masks it, as Pydantic does. Like
-a <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> field, it gets no filter and is not a sort key. Before, a
-write gave a <code class="docutils literal notranslate"><span class="pre">500</span></code>, its filters gave a <code class="docutils literal notranslate"><span class="pre">500</span></code>, and a sort on it ordered the
-rows by the secret. A document for a JSON column with a secret field
-raises <code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code> before the write, as one with a
-<code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> field does: a JSON dump masks the secret, so the column would
-get <code class="docutils literal notranslate"><span class="pre">**********</span></code>.</p></li>
-<li><p>A field whose name ends in <code class="docutils literal notranslate"><span class="pre">_</span></code>, such as <code class="docutils literal notranslate"><span class="pre">type_</span></code>, gets filter keys that
-work, such as <code class="docutils literal notranslate"><span class="pre">?type___in=a,b</span></code>. Restly now splits a key at its last <code class="docutils literal notranslate"><span class="pre">__</span></code>.
-Before, it split at the first one, so these keys were in OpenAPI, but every
-request with them got a <code class="docutils literal notranslate"><span class="pre">400</span></code>.</p></li>
-<li><p>A filter on a column of SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">Enum</span></code> type no longer gives a <code class="docutils literal notranslate"><span class="pre">500</span></code>
-on PostgreSQL, where such a column is a native ENUM by default. A value
-that is no label of the column, such as <code class="docutils literal notranslate"><span class="pre">?status=bogus</span></code> for a <code class="docutils literal notranslate"><span class="pre">str</span></code> field,
-is now a <code class="docutils literal notranslate"><span class="pre">400</span></code> on every database, also in the <code class="docutils literal notranslate"><span class="pre">filter</span></code> of a react-admin
-view. Before, a native ENUM rejected it with an error. Such a column also gets no <code class="docutils literal notranslate"><span class="pre">__contains</span></code> and <code class="docutils literal notranslate"><span class="pre">__icontains</span></code>: they
-failed on a native ENUM, and elsewhere they searched the stored names.</p></li>
-<li><p>A sort on a related field, such as <code class="docutils literal notranslate"><span class="pre">?sort=vendor.name</span></code>, keeps the rows
-that have no related row. With the default <code class="docutils literal notranslate"><span class="pre">sort_nulls</span></code>, they come last.
-Before, the list left them out, and <code class="docutils literal notranslate"><span class="pre">total_count</span></code> did not count them.</p></li>
-<li><p>A response that nests a row of another model, such as the lines of an
-order, shows the new related row after a write set a foreign key column of
-that row. Before, it showed the old one.</p></li>
-<li><p>On an async view, a <code class="docutils literal notranslate"><span class="pre">to_single_response</span></code> that reads a relationship from
-<code class="docutils literal notranslate"><span class="pre">get_loader_options</span></code> no longer fails after <code class="docutils literal notranslate"><span class="pre">PATCH</span></code>, and a <code class="docutils literal notranslate"><span class="pre">with_expression</span></code>
-value is there after <code class="docutils literal notranslate"><span class="pre">POST</span></code> and <code class="docutils literal notranslate"><span class="pre">PATCH</span></code>.</p></li>
-<li><p>An expression in place of an id that names a column of another table, such
-as <code class="docutils literal notranslate"><span class="pre">get_one(Shelf.id</span> <span class="pre">==</span> <span class="pre">2)</span></code> in a view of books, raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code>. Before,
-SQL joined every row of that table, so a write could change a wrong row.</p></li>
-<li><p>On PostgreSQL, a paginated list of a model with a <code class="docutils literal notranslate"><span class="pre">json</span></code> column works. The
-count now counts the primary keys, so it also no longer computes a
-<code class="docutils literal notranslate"><span class="pre">column_property</span></code> for every row.</p></li>
-<li><p>Restly no longer passes <code class="docutils literal notranslate"><span class="pre">None</span></code> to the model’s constructor for a field that
-the client left out, unless the constructor requires it. So the model’s
-defaults apply. Before, a left-out JSON field stored <code class="docutils literal notranslate"><span class="pre">null</span></code>, and a
-<code class="docutils literal notranslate"><span class="pre">default_factory</span></code> was lost.</p></li>
-<li><p>A validator for a <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> field or for a generated primary key no longer
-needs <code class="docutils literal notranslate"><span class="pre">check_fields=False</span></code>.</p></li>
-<li><p>A field type with <code class="docutils literal notranslate"><span class="pre">Annotated</span></code> inside <code class="docutils literal notranslate"><span class="pre">Optional</span></code>, such as
-<code class="docutils literal notranslate"><span class="pre">fr.MustExist[UUID,</span> <span class="pre">Team]</span> <span class="pre">|</span> <span class="pre">None</span></code>, works like the plain type: in the list
-filters, as a reference, and in the loads of an async view.</p></li>
-<li><p>A schema that names itself in a to-one field no longer fails with
-<code class="docutils literal notranslate"><span class="pre">RecursionError</span></code>.</p></li>
-<li><p>A field typed with a type alias, such as
-<code class="docutils literal notranslate"><span class="pre">type</span> <span class="pre">AuthorId</span> <span class="pre">=</span> <span class="pre">fr.MustExist[int,</span> <span class="pre">User]</span></code> or <code class="docutils literal notranslate"><span class="pre">type</span> <span class="pre">Many[T]</span> <span class="pre">=</span> <span class="pre">list[T]</span></code>,
-works like the plain type. Before, Restly did not check the reference. A
-<code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> or <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> marker inside a type alias has no effect, so
-Restly now rejects it, as it does a marker inside <code class="docutils literal notranslate"><span class="pre">Optional</span></code>.</p></li>
-<li><p>A to-many field typed <code class="docutils literal notranslate"><span class="pre">Sequence[X]</span></code> or <code class="docutils literal notranslate"><span class="pre">tuple[X,</span> <span class="pre">...]</span></code> works like
-<code class="docutils literal notranslate"><span class="pre">list[X]</span></code>. Before, an async view answered 500 when such a field held a
-nested schema with relationships of its own, and a body with
-<code class="docutils literal notranslate"><span class="pre">tuple[fr.IDRef[Tag],</span> <span class="pre">...]</span></code> answered 500 too.</p></li>
-<li><p>Error texts name things as the client sees them. A <code class="docutils literal notranslate"><span class="pre">404</span></code> for a row names
-the resource as OpenAPI does, such as <code class="docutils literal notranslate"><span class="pre">User</span></code> for the schema <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code>,
-and not the name of the model class. A <code class="docutils literal notranslate"><span class="pre">404</span></code> for a row, and a list of
-missing ids, show an id as it is in the URL, such as a UUID, and not its
-Python form <code class="docutils literal notranslate"><span class="pre">UUID('...')</span></code>. A missing reference and the 422 for two
-references that disagree name a field as the client sends it: its
-validation alias, else its alias, such as <code class="docutils literal notranslate"><span class="pre">Id</span> <span class="pre">not</span> <span class="pre">found</span> <span class="pre">for</span> <span class="pre">authorId:</span> <span class="pre">99</span></code>.</p></li>
-<li><p>A subclass that sets its own <code class="docutils literal notranslate"><span class="pre">exclude_routes</span></code> serves the routes that only
-its base leaves out, also when the base view was registered first. Before,
-the list of the base applied to the subclass too in that case.</p></li>
-<li><p>A plain <code class="docutils literal notranslate"><span class="pre">fr.View</span></code> may name a route method <code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code> or <code class="docutils literal notranslate"><span class="pre">delete</span></code>.
-Before, its registration failed with <code class="docutils literal notranslate"><span class="pre">TypeError</span></code>, as if it had the business
-methods of a CRUD view.</p></li>
-<li><p>A route method with the name of a view setting, such as <code class="docutils literal notranslate"><span class="pre">tags</span></code> or <code class="docutils literal notranslate"><span class="pre">model</span></code>,
-fails when Python defines the class, with a message that names the method
-and the setting. The method would replace the setting. Before, the view
-failed later with an unclear message, such as
-<code class="docutils literal notranslate"><span class="pre">TypeError:</span> <span class="pre">'function'</span> <span class="pre">object</span> <span class="pre">is</span> <span class="pre">not</span> <span class="pre">iterable</span></code>.</p></li>
-<li><p>A route method of a CRUD view with the name of a business method,
-<code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code> or <code class="docutils literal notranslate"><span class="pre">delete</span></code>, also fails when Python defines the class,
-with <code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code>, also when the route comes from a mixin.
-Before, registration raised <code class="docutils literal notranslate"><span class="pre">TypeError</span></code>.</p></li>
-<li><p>Many writes in one <code class="docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code> no longer use memory that
-grows with the square of their number. This happened when every write
-reached the same loaded rows, such as the children of one parent through a
-loaded collection: 1,000 updates kept about 270 MB.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> works after <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span></code>. pip compiles the Python files of
-the project templates, and <code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> read the compiled files as text and
-failed with <code class="docutils literal notranslate"><span class="pre">UnicodeDecodeError</span></code>.</p></li>
-<li><p>In plain SQLAlchemy, a clause that you forget to call, as in
-<code class="docutils literal notranslate"><span class="pre">select(Post).where(mine)</span></code>, now always fails when it runs. Before, it ran
-with <code class="docutils literal notranslate"><span class="pre">NULL</span></code> for its context member once the called form, <code class="docutils literal notranslate"><span class="pre">mine()</span></code>, had
-run. And after the form without the call had failed once, the called form
-failed too.</p></li>
-<li><p>A react-admin view checks a filter value with Pydantic. Before,
-<code class="docutils literal notranslate"><span class="pre">{&quot;active&quot;:</span> <span class="pre">&quot;false&quot;}</span></code> matched the rows where <code class="docutils literal notranslate"><span class="pre">active</span></code> is true, and a bad
-UUID gave <code class="docutils literal notranslate"><span class="pre">500</span></code>.</p></li>
-<li><p>OpenAPI shows the <code class="docutils literal notranslate"><span class="pre">sort</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code> and <code class="docutils literal notranslate"><span class="pre">filter</span></code> parameters of a react-admin
-list. A subclass of a react-admin view keeps the list params of its base.</p></li>
-<li><p>A react-admin filter or sort on a field that the model has only in
-Python, such as a <code class="docutils literal notranslate"><span class="pre">&#64;property</span></code> or a hybrid property without SQL, gets <code class="docutils literal notranslate"><span class="pre">400</span></code>
-with <code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">filter</span> <span class="pre">key</span></code> or <code class="docutils literal notranslate"><span class="pre">Unknown</span> <span class="pre">sort</span> <span class="pre">key</span></code>. Before, it gave <code class="docutils literal notranslate"><span class="pre">500</span></code>. A
-hybrid property with SQL still works.</p></li>
-<li><p>A view with generated list params registers when its response class has a
-field for a hybrid property without SQL that fails on the class, such as
-<code class="docutils literal notranslate"><span class="pre">len(self.name)</span></code>. The field gets no filters and no sort key. Before,
-<code class="docutils literal notranslate"><span class="pre">include_view</span></code> failed with the error of the hybrid, such as a <code class="docutils literal notranslate"><span class="pre">TypeError</span></code>.</p></li>
-<li><p>A filter value that equals a member of an <code class="docutils literal notranslate"><span class="pre">IntEnum</span></code>, such as <code class="docutils literal notranslate"><span class="pre">1</span></code>, on a
-column of SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">Enum</span></code> type, finds the rows of that member. Before,
-the database compared the stored name with the number: a <code class="docutils literal notranslate"><span class="pre">500</span></code> on
-PostgreSQL and no rows on SQLite.</p></li>
-<li><p>A react-admin filter on a column with a type of your own, a
-<code class="docutils literal notranslate"><span class="pre">TypeDecorator</span></code>, gets the value of its field. Before, the column got the
-text from the JSON, so SQLAlchemy’s recipe that stores UTC gave a <code class="docutils literal notranslate"><span class="pre">500</span></code>.</p></li>
-<li><p>With <code class="docutils literal notranslate"><span class="pre">fr.configure(warn_on_misuse=True)</span></code>, an endpoint method override that
-calls its <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> handler, or the endpoint method of its base, no
-longer warns. That is how the warning itself says to change the HTTP
-contract.</p></li>
-<li><p>A view whose registration failed, such as for a name in <code class="docutils literal notranslate"><span class="pre">exclude_routes</span></code>
-that is not a route, names its custom routes once when you register it
-again after the fix: <code class="docutils literal notranslate"><span class="pre">widgetview_stats</span></code>, not <code class="docutils literal notranslate"><span class="pre">widgetview_widgetview_stats</span></code>.
-Before, each failed attempt added the class prefix again, also to the
-operation ID.</p></li>
-<li><p>On PostgreSQL with asyncpg, the detail of a <code class="docutils literal notranslate"><span class="pre">409</span></code> names the constraint or
-the column, as with psycopg. An example is
-<code class="docutils literal notranslate"><span class="pre">Unique</span> <span class="pre">constraint</span> <span class="pre">violated:</span> <span class="pre">uq_user_email</span></code>. Before, it named only the kind
-of conflict.</p></li>
-<li><p>Pyright and mypy report an unknown name on <code class="docutils literal notranslate"><span class="pre">fr</span></code>.</p></li>
-<li><p>Fixes for FastAPI 0.115 with <code class="docutils literal notranslate"><span class="pre">from</span> <span class="pre">__future__</span> <span class="pre">import</span> <span class="pre">annotations</span></code>, and for
-Python 3.14.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">?id=1</span></code> on PostgreSQL, and an id filter on a UUID key.</p></li>
+<li><p>A filter on an <code class="docutils literal notranslate"><span class="pre">Enum</span></code> column on PostgreSQL, and an <code class="docutils literal notranslate"><span class="pre">IntEnum</span></code> value.</p></li>
+<li><p>A list with pages of a model with a <code class="docutils literal notranslate"><span class="pre">json</span></code> column on PostgreSQL.</p></li>
+<li><p>A field of a secret type, such as <code class="docutils literal notranslate"><span class="pre">SecretStr</span></code>.</p></li>
+<li><p>A <code class="docutils literal notranslate"><span class="pre">timedelta</span></code> column: its view failed to register.</p></li>
+<li><p>A sort on a related field left out the rows without a related row.</p></li>
+<li><p>An expression for another table in <code class="docutils literal notranslate"><span class="pre">get_one</span></code> could change a wrong row.</p></li>
+<li><p>A field that the client left out stored <code class="docutils literal notranslate"><span class="pre">null</span></code> instead of the model’s
+default.</p></li>
+<li><p>A react-admin filter: <code class="docutils literal notranslate"><span class="pre">&quot;false&quot;</span></code> matched the rows that are true, and a bad
+UUID gave a 500.</p></li>
+<li><p>A field name that ends in <code class="docutils literal notranslate"><span class="pre">_</span></code>, a flag type, a type alias, a <code class="docutils literal notranslate"><span class="pre">Sequence</span></code>
+field, <code class="docutils literal notranslate"><span class="pre">Annotated</span></code> inside <code class="docutils literal notranslate"><span class="pre">Optional</span></code>, and a schema that names itself.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">restly</span> <span class="pre">new</span></code> after <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span></code>.</p></li>
+<li><p>Many writes in one shared commit used memory that grew with the square of
+their number.</p></li>
 </ul>
+<p>Other fixes give clearer errors, and fix type checking, FastAPI 0.115 and
+Python 3.14.</p>
 </section>
 <section id="security">
 <h3>Security<a class="headerlink" href="#security" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>A generated schema marks each column with <code class="docutils literal notranslate"><span class="pre">init=False</span></code> as <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>,
 foreign keys too. Before, a client could write such a column, such as a
-tenant column, and so put a row in another organization. A client that
-still sends such a field gets no error: Restly ignores the value. To let
-the client write such a column, remove <code class="docutils literal notranslate"><span class="pre">init=False</span></code>.</p></li>
+tenant column.</p></li>
 </ul>
 </section>
 <section id="known-issues">
 <h3>Known issues<a class="headerlink" href="#known-issues" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>A route that catches the error of a write action and goes on must put each
-write action in <code class="docutils literal notranslate"><span class="pre">session.begin_nested()</span></code>. Without the savepoint, the next
-write action can commit the changes of the failed one, such as a row that
-<code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code> refused. After a database error at the flush, such as
-a duplicate value, the next write fails with <code class="docutils literal notranslate"><span class="pre">PendingRollbackError</span></code>. Inside
-<code class="docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code>, Restly raises <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code> in both cases.</p></li>
+write action in <code class="docutils literal notranslate"><span class="pre">session.begin_nested()</span></code>. See “When a write action raises”
+in the guide.</p></li>
 <li><p>On SQLite, a <code class="docutils literal notranslate"><span class="pre">session.begin_nested()</span></code> inside <code class="docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code>
-can commit its rows when it ends. This happens with the default settings
-of Python’s <code class="docutils literal notranslate"><span class="pre">sqlite3</span></code> module and of <code class="docutils literal notranslate"><span class="pre">aiosqlite</span></code>. When the block then fails,
-these rows stay saved, and their after-hooks do not run. Restly’s test
-fixtures change these settings in the default rollback mode, so a test does
-not show the problem. On SQLite, prefer the loop of “When a write action
-raises” in the guide, where each row commits on its own. If you change the
-settings as SQLAlchemy shows (“Serializable isolation / Savepoints /
-Transactional DDL”), a write that overlaps another write can fail at once
-with “database is locked”.</p></li>
+can commit its rows too early. See the warning in “Commit several writes
+together” in the guide.</p></li>
 </ul>
 </section>
 </section>
-<section id="id1">
-<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.10.0...v0.11.0">0.11.0</a> - 2026-10-09<a class="headerlink" href="#id1" title="Link to this heading">#</a></h2>
+<section id="id2">
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.10.0...v0.11.0">0.11.0</a> - 2026-10-09<a class="headerlink" href="#id2" title="Link to this heading">#</a></h2>
 <p>This release has many breaking changes. Before, we said to expect small
 breaking changes in deeper extension points, and this release changes more
 than that. If this affects your project: First of all, thank you for being one
 of the very first users. Secondly, we are working towards the best API we can
 make before freezing it in 1.0. That’s when the promise of stability comes.
 There will be more breaking changes every minor release until that time.</p>
-<section id="id2">
-<h3>Added<a class="headerlink" href="#id2" title="Link to this heading">#</a></h3>
+<section id="id3">
+<h3>Added<a class="headerlink" href="#id3" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">fr.NumberedPagination</span></code> and <code class="docutils literal notranslate"><span class="pre">fr.NoPagination</span></code> hold a view’s pagination
 settings, including the model of the list response.</p></li>
@@ -1179,8 +718,8 @@ route can use <code class="docutils literal notranslate"><span class="pre">fr.sc
 OpenAPI spec have the same name.</p></li>
 </ul>
 </section>
-<section id="id3">
-<h3>Changed<a class="headerlink" href="#id3" title="Link to this heading">#</a></h3>
+<section id="id4">
+<h3>Changed<a class="headerlink" href="#id4" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Names around lists and schemas follow the rules in CONTRIBUTING.md. A view
 that still uses an old name fails with an error that names the new one.</p>
@@ -1250,8 +789,8 @@ raises <code class="docutils literal notranslate"><span class="pre">RestlyConfig
 method instead.</p></li>
 </ul>
 </section>
-<section id="id4">
-<h3>Fixed<a class="headerlink" href="#id4" title="Link to this heading">#</a></h3>
+<section id="id5">
+<h3>Fixed<a class="headerlink" href="#id5" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Restly works with FastAPI 0.137 and later.</p></li>
 <li><p>A field with a <code class="docutils literal notranslate"><span class="pre">default_factory</span></code> no longer makes <code class="docutils literal notranslate"><span class="pre">/openapi.json</span></code> answer
@@ -1280,8 +819,8 @@ that are not dataclasses.</p></li>
 <li><p>Fixes for SQLAlchemy 2.1, Python 3.10, Python 3.14, mypy and pyright.</p></li>
 </ul>
 </section>
-<section id="id5">
-<h3>Security<a class="headerlink" href="#id5" title="Link to this heading">#</a></h3>
+<section id="id6">
+<h3>Security<a class="headerlink" href="#id6" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>List endpoints no longer filter or sort on <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields or on fields
 with <code class="docutils literal notranslate"><span class="pre">Field(exclude=True)</span></code>, which let a client read a hidden value back. A
@@ -1290,10 +829,10 @@ response with <code class="docutils literal notranslate"><span class="pre">extra
 </ul>
 </section>
 </section>
-<section id="id6">
-<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.9.0...v0.10.0">0.10.0</a> - 2026-09-23<a class="headerlink" href="#id6" title="Link to this heading">#</a></h2>
 <section id="id7">
-<h3>Added<a class="headerlink" href="#id7" title="Link to this heading">#</a></h3>
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.9.0...v0.10.0">0.10.0</a> - 2026-09-23<a class="headerlink" href="#id7" title="Link to this heading">#</a></h2>
+<section id="id8">
+<h3>Added<a class="headerlink" href="#id8" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">fr.ContextNamespace</span></code> and <code class="docutils literal notranslate"><span class="pre">fr.ContextParam</span></code> support an application-defined
 <code class="docutils literal notranslate"><span class="pre">Current</span></code> context, with manual and FastAPI dependency binding.</p></li>
@@ -1312,8 +851,8 @@ identify rows by natural or composite keys.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">fr.utils.CurrentSettingsMixin</span></code> provides a shared <code class="docutils literal notranslate"><span class="pre">Settings.current</span></code> instance.</p></li>
 </ul>
 </section>
-<section id="id8">
-<h3>Changed<a class="headerlink" href="#id8" title="Link to this heading">#</a></h3>
+<section id="id9">
+<h3>Changed<a class="headerlink" href="#id9" title="Link to this heading">#</a></h3>
 <ul>
 <li><p><code class="docutils literal notranslate"><span class="pre">Mapped[datetime]</span></code> and <code class="docutils literal notranslate"><span class="pre">TimestampsMixin</span></code> now use <code class="docutils literal notranslate"><span class="pre">DateTime(timezone=True)</span></code>.
 Datetime filters without an offset use UTC for these columns.</p>
@@ -1342,8 +881,8 @@ Allow custom keys with <code class="docutils literal notranslate"><span class="p
 <li><p>Pydantic 2.11.7 or newer is required.</p></li>
 </ul>
 </section>
-<section id="id9">
-<h3>Removed<a class="headerlink" href="#id9" title="Link to this heading">#</a></h3>
+<section id="id10">
+<h3>Removed<a class="headerlink" href="#id10" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">build_query</span></code>. Move visibility rules to <code class="docutils literal notranslate"><span class="pre">default_scope</span></code> or the view’s
 <code class="docutils literal notranslate"><span class="pre">scope</span></code>, listing joins and ordering to <code class="docutils literal notranslate"><span class="pre">apply_query_params</span></code>, and eager loading
@@ -1352,8 +891,8 @@ to <code class="docutils literal notranslate"><span class="pre">get_relationship
 for soft deletion. The <code class="docutils literal notranslate"><span class="pre">fr.objects</span></code> deletion helpers remain available.</p></li>
 </ul>
 </section>
-<section id="id10">
-<h3>Fixed<a class="headerlink" href="#id10" title="Link to this heading">#</a></h3>
+<section id="id11">
+<h3>Fixed<a class="headerlink" href="#id11" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Query filters support recursive and frozen schemas without running
 cross-field validators. Field validators receive the correct field name.</p></li>
@@ -1366,10 +905,10 @@ unsupported document shapes require an explicit <code class="docutils literal no
 </ul>
 </section>
 </section>
-<section id="id11">
-<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.8.0...v0.9.0">0.9.0</a> - 2026-08-13<a class="headerlink" href="#id11" title="Link to this heading">#</a></h2>
 <section id="id12">
-<h3>Added<a class="headerlink" href="#id12" title="Link to this heading">#</a></h3>
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.8.0...v0.9.0">0.9.0</a> - 2026-08-13<a class="headerlink" href="#id12" title="Link to this heading">#</a></h2>
+<section id="id13">
+<h3>Added<a class="headerlink" href="#id13" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">fr.testing.configure_tests()</span></code> for schema setup and per-test database isolation.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">db_cleanup=</span></code> modes (<code class="docutils literal notranslate"><span class="pre">rollback</span></code>, <code class="docutils literal notranslate"><span class="pre">delete</span></code>, and <code class="docutils literal notranslate"><span class="pre">none</span></code>) with per-run
@@ -1384,8 +923,8 @@ engine is required.</p></li>
 <li><p>Public <code class="docutils literal notranslate"><span class="pre">Envelope</span></code> and <code class="docutils literal notranslate"><span class="pre">PaginatedEnvelope</span></code> response models.</p></li>
 </ul>
 </section>
-<section id="id13">
-<h3>Changed<a class="headerlink" href="#id13" title="Link to this heading">#</a></h3>
+<section id="id14">
+<h3>Changed<a class="headerlink" href="#id14" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>List endpoints now paginate by default. <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/things</span></code> changes from an
 unbounded bare array to
@@ -1420,8 +959,8 @@ of skipping. Configure the corresponding database URL, engine, or
 sessionmaker as well so Restly can build the isolated session.</p></li>
 </ul>
 </section>
-<section id="id14">
-<h3>Fixed<a class="headerlink" href="#id14" title="Link to this heading">#</a></h3>
+<section id="id15">
+<h3>Fixed<a class="headerlink" href="#id15" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">restly_client</span></code> now runs application lifespan startup and shutdown once per
 test. A view registered through <code class="docutils literal notranslate"><span class="pre">restly_client.app</span></code> after the fixture has
@@ -1440,8 +979,8 @@ test.</p></li>
 <li><p>Engine and schema helpers now work inside session fixtures.</p></li>
 </ul>
 </section>
-<section id="id15">
-<h3>Removed<a class="headerlink" href="#id15" title="Link to this heading">#</a></h3>
+<section id="id16">
+<h3>Removed<a class="headerlink" href="#id16" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">activate_savepoint_only_mode()</span></code> and <code class="docutils literal notranslate"><span class="pre">deactivate_savepoint_only_mode()</span></code> are
 removed. They isolated each session separately rather than the whole test, so
@@ -1452,10 +991,10 @@ the whole test.</p></li>
 </ul>
 </section>
 </section>
-<section id="id16">
-<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.7.0...v0.8.0">0.8.0</a> - 2026-07-22<a class="headerlink" href="#id16" title="Link to this heading">#</a></h2>
 <section id="id17">
-<h3>Added<a class="headerlink" href="#id17" title="Link to this heading">#</a></h3>
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.7.0...v0.8.0">0.8.0</a> - 2026-07-22<a class="headerlink" href="#id17" title="Link to this heading">#</a></h2>
+<section id="id18">
+<h3>Added<a class="headerlink" href="#id18" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Post]</span></code> — an existence-checked scalar foreign key.
 <code class="docutils literal notranslate"><span class="pre">post_id:</span> <span class="pre">fr.MustExist[int,</span> <span class="pre">Post]</span></code> validates that the referenced row exists (a
@@ -1474,8 +1013,8 @@ now documented as relationship-named types, with <code class="docutils literal n
 <code class="docutils literal notranslate"><span class="pre">MustExist</span></code>.</p></li>
 </ul>
 </section>
-<section id="id18">
-<h3>Changed<a class="headerlink" href="#id18" title="Link to this heading">#</a></h3>
+<section id="id19">
+<h3>Changed<a class="headerlink" href="#id19" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>The tier vocabulary in docstrings and error messages now matches the docs:
 <em>endpoint method</em> (was “route shell”), <em>handler</em> (was “request handler”), and
@@ -1498,8 +1037,8 @@ Starlette, which signals the absence as <code class="docutils literal notranslat
 rather than a missing <code class="docutils literal notranslate"><span class="pre">httpx</span></code>.</p></li>
 </ul>
 </section>
-<section id="id19">
-<h3>Removed<a class="headerlink" href="#id19" title="Link to this heading">#</a></h3>
+<section id="id20">
+<h3>Removed<a class="headerlink" href="#id20" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>The <code class="docutils literal notranslate"><span class="pre">orjson</span></code> dependency and the orjson serializer on URL-created engines.
 <code class="docutils literal notranslate"><span class="pre">JSON</span></code> columns now use SQLAlchemy’s default encoder (the standard library
@@ -1510,8 +1049,8 @@ own engine with <code class="docutils literal notranslate"><span class="pre">jso
 <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code>.</p></li>
 </ul>
 </section>
-<section id="id20">
-<h3>Fixed<a class="headerlink" href="#id20" title="Link to this heading">#</a></h3>
+<section id="id21">
+<h3>Fixed<a class="headerlink" href="#id21" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Filtering on a dotted path deeper than one relationship hop
 (<code class="docutils literal notranslate"><span class="pre">?city.country.code=NL</span></code>) no longer fails with a 500. Deep paths were
@@ -1583,10 +1122,10 @@ scalar id along a single path. Response output is unchanged.</p></li>
 </ul>
 </section>
 </section>
-<section id="id21">
-<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.6.1...v0.7.0">0.7.0</a> - 2026-06-11<a class="headerlink" href="#id21" title="Link to this heading">#</a></h2>
 <section id="id22">
-<h3>Added<a class="headerlink" href="#id22" title="Link to this heading">#</a></h3>
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.6.1...v0.7.0">0.7.0</a> - 2026-06-11<a class="headerlink" href="#id22" title="Link to this heading">#</a></h2>
+<section id="id23">
+<h3>Added<a class="headerlink" href="#id23" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>The generated route shells (<code class="docutils literal notranslate"><span class="pre">get_many_endpoint</span></code>, <code class="docutils literal notranslate"><span class="pre">create_endpoint</span></code>, …)
 now carry one-line override-redirect docstrings, so <code class="docutils literal notranslate"><span class="pre">help(RestView)</span></code>, source
@@ -1622,8 +1161,8 @@ hand-rolling a CRUD route set on a bare <code class="docutils literal notranslat
 default; intended for development, project templates, and CI.</p></li>
 </ul>
 </section>
-<section id="id23">
-<h3>Changed<a class="headerlink" href="#id23" title="Link to this heading">#</a></h3>
+<section id="id24">
+<h3>Changed<a class="headerlink" href="#id24" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>The <code class="docutils literal notranslate"><span class="pre">RestlyUncommittedChangesWarning</span></code> message now leads with the fix
 (bracket the mutation with <code class="docutils literal notranslate"><span class="pre">write_action(...)</span></code> or reuse a <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code>)
@@ -1649,8 +1188,8 @@ helpers/dependencies, and the view support types (<code class="docutils literal 
 <code class="docutils literal notranslate"><span class="pre">fr.get_async_engine</span></code> → <code class="docutils literal notranslate"><span class="pre">fr.db.get_async_engine</span></code>.</p></li>
 </ul>
 </section>
-<section id="id24">
-<h3>Fixed<a class="headerlink" href="#id24" title="Link to this heading">#</a></h3>
+<section id="id25">
+<h3>Fixed<a class="headerlink" href="#id25" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">fr.open_session()</span></code> / <code class="docutils literal notranslate"><span class="pre">fr.open_async_session()</span></code> now resolve the same session
 source as <code class="docutils literal notranslate"><span class="pre">SessionDep</span></code> / <code class="docutils literal notranslate"><span class="pre">AsyncSessionDep</span></code>: a custom session generator passed
@@ -1663,10 +1202,10 @@ session entry points are now consistent.</p></li>
 </ul>
 </section>
 </section>
-<section id="id25">
-<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.6.0...v0.6.1">0.6.1</a> - 2026-06-02<a class="headerlink" href="#id25" title="Link to this heading">#</a></h2>
 <section id="id26">
-<h3>Changed<a class="headerlink" href="#id26" title="Link to this heading">#</a></h3>
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.6.0...v0.6.1">0.6.1</a> - 2026-06-02<a class="headerlink" href="#id26" title="Link to this heading">#</a></h2>
+<section id="id27">
+<h3>Changed<a class="headerlink" href="#id27" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Reference resolution (<code class="docutils literal notranslate"><span class="pre">IDRef</span></code>/<code class="docutils literal notranslate"><span class="pre">IDSchema</span></code>) no longer mutates the validated
 request model in place. The resolver now returns a <code class="docutils literal notranslate"><span class="pre">{field:</span> <span class="pre">resolved}</span></code> mapping
@@ -1693,8 +1232,8 @@ those dependencies remain in the <code class="docutils literal notranslate"><spa
 are now <code class="docutils literal notranslate"><span class="pre">standard</span></code> and <code class="docutils literal notranslate"><span class="pre">testing</span></code>.</p></li>
 </ul>
 </section>
-<section id="id27">
-<h3>Fixed<a class="headerlink" href="#id27" title="Link to this heading">#</a></h3>
+<section id="id28">
+<h3>Fixed<a class="headerlink" href="#id28" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">RestlyUncommittedChangesWarning</span></code> no longer false-positives on every write run
 under the savepoint test fixtures: the patched <code class="docutils literal notranslate"><span class="pre">commit</span></code> clears the
@@ -1725,8 +1264,8 @@ required argument.)</p></li>
 </ul>
 </section>
 </section>
-<section id="id28">
-<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.5.1...v0.6.0">0.6.0</a> - 2026-06-01<a class="headerlink" href="#id28" title="Link to this heading">#</a></h2>
+<section id="id29">
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.5.1...v0.6.0">0.6.0</a> - 2026-06-01<a class="headerlink" href="#id29" title="Link to this heading">#</a></h2>
 <p>Reworks the class-based view API around a three-tier “handle” design. This is a
 breaking change; views written for 0.5.x need updating.</p>
 <section id="changed-breaking">
@@ -1750,8 +1289,8 @@ and clean up sessions but do not own commits.</p></li>
 <code class="docutils literal notranslate"><span class="pre">ViewRoute.LIST</span></code>/<code class="docutils literal notranslate"><span class="pre">GET</span></code> → <code class="docutils literal notranslate"><span class="pre">ViewRoute.GET_MANY</span></code>/<code class="docutils literal notranslate"><span class="pre">GET_ONE</span></code>.</p></li>
 </ul>
 </section>
-<section id="id29">
-<h3>Added<a class="headerlink" href="#id29" title="Link to this heading">#</a></h3>
+<section id="id30">
+<h3>Added<a class="headerlink" href="#id30" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">authorize(action,</span> <span class="pre">obj,</span> <span class="pre">data)</span></code> override — an empty override by default; raise
 <code class="docutils literal notranslate"><span class="pre">fr.Forbidden</span></code> / <code class="docutils literal notranslate"><span class="pre">fr.NotFound</span></code> to gate a verb (row visibility goes in
@@ -1772,8 +1311,8 @@ disable) when a request finishes with uncommitted changes — the tell of a
 write route that forgot to commit.</p></li>
 </ul>
 </section>
-<section id="id30">
-<h3>Fixed<a class="headerlink" href="#id30" title="Link to this heading">#</a></h3>
+<section id="id31">
+<h3>Fixed<a class="headerlink" href="#id31" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>A <code class="docutils literal notranslate"><span class="pre">&#64;route</span></code> method named like a bare verb (<code class="docutils literal notranslate"><span class="pre">create</span></code>/<code class="docutils literal notranslate"><span class="pre">update</span></code>/<code class="docutils literal notranslate"><span class="pre">delete</span></code>/
 <code class="docutils literal notranslate"><span class="pre">get_one</span></code>/<code class="docutils literal notranslate"><span class="pre">get_many</span></code>) is now rejected at registration: it shadowed the verb
@@ -1799,20 +1338,20 @@ not excluded.</p></li>
 </ul>
 </section>
 </section>
-<section id="id31">
-<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.5.0...v0.5.1">0.5.1</a> - 2026-05-11<a class="headerlink" href="#id31" title="Link to this heading">#</a></h2>
 <section id="id32">
-<h3>Fixed<a class="headerlink" href="#id32" title="Link to this heading">#</a></h3>
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/compare/v0.5.0...v0.5.1">0.5.1</a> - 2026-05-11<a class="headerlink" href="#id32" title="Link to this heading">#</a></h2>
+<section id="id33">
+<h3>Fixed<a class="headerlink" href="#id33" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fixed <code class="docutils literal notranslate"><span class="pre">fr.include_view(...)</span></code> registration on <code class="docutils literal notranslate"><span class="pre">fastapi.APIRouter</span></code> parents.</p></li>
 </ul>
 </section>
 </section>
-<section id="id33">
-<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/releases/tag/v0.5.0">0.5.0</a> - 2026-05-06<a class="headerlink" href="#id33" title="Link to this heading">#</a></h2>
-<p>First public beta release.</p>
 <section id="id34">
-<h3>Added<a class="headerlink" href="#id34" title="Link to this heading">#</a></h3>
+<h2><a class="reference external" href="https://github.com/rjprins/fastapi-restly/releases/tag/v0.5.0">0.5.0</a> - 2026-05-06<a class="headerlink" href="#id34" title="Link to this heading">#</a></h2>
+<p>First public beta release.</p>
+<section id="id35">
+<h3>Added<a class="headerlink" href="#id35" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Class-based CRUD views for async and sync SQLAlchemy sessions with generated
 list, get, create, update, and delete routes.</p></li>
@@ -1827,8 +1366,8 @@ aliases, and pagination metadata.</p></li>
 and the <code class="docutils literal notranslate"><span class="pre">fastapi_restly.pytest_fixtures</span></code> pytest plugin.</p></li>
 </ul>
 </section>
-<section id="id35">
-<h3>Changed<a class="headerlink" href="#id35" title="Link to this heading">#</a></h3>
+<section id="id36">
+<h3>Changed<a class="headerlink" href="#id36" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Consolidated framework setup on <code class="docutils literal notranslate"><span class="pre">fr.configure(...)</span></code>, including async/sync
 engine configuration and response-session commit policy.</p></li>
@@ -1857,8 +1396,8 @@ with async equivalents. The view methods use the same names for the mapping
 hooks and keep persistence at the <code class="docutils literal notranslate"><span class="pre">save_object</span></code> / <code class="docutils literal notranslate"><span class="pre">delete_object</span></code> boundary.</p></li>
 </ul>
 </section>
-<section id="id36">
-<h3>Removed<a class="headerlink" href="#id36" title="Link to this heading">#</a></h3>
+<section id="id37">
+<h3>Removed<a class="headerlink" href="#id37" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Removed the pre-stable <code class="docutils literal notranslate"><span class="pre">query=</span></code> argument from <code class="docutils literal notranslate"><span class="pre">perform_listing</span></code>. Override
 <code class="docutils literal notranslate"><span class="pre">build_query()</span></code> for SQL-level base query changes so listing, pagination
@@ -1923,76 +1462,69 @@ the pytest plugin path is <code class="docutils literal notranslate"><span class
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#unreleased">Unreleased</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#unreleased">Unreleased</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">0.12.0 - 2026-10-27</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#added">Added</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#changed">Changed</a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#reads">Reads</a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#writes">Writes</a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#lists">Lists</a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#react-admin">React-admin</a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#schemas-and-models">Schemas and models</a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#other">Other</a></li>
-</ul>
-</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#changed">Changed</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#removed">Removed</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fixed">Fixed</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#security">Security</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#known-issues">Known issues</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">0.11.0 - 2026-10-09</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">Added</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id3">Changed</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id4">Fixed</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id5">Security</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">0.11.0 - 2026-10-09</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id3">Added</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id4">Changed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id5">Fixed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id6">Security</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id6">0.10.0 - 2026-09-23</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id7">Added</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id8">Changed</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id9">Removed</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id10">Fixed</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id7">0.10.0 - 2026-09-23</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id8">Added</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id9">Changed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id10">Removed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id11">Fixed</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id11">0.9.0 - 2026-08-13</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id12">Added</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id13">Changed</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id14">Fixed</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id15">Removed</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id12">0.9.0 - 2026-08-13</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id13">Added</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id14">Changed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id15">Fixed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id16">Removed</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id16">0.8.0 - 2026-07-22</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id17">Added</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id18">Changed</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id19">Removed</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id20">Fixed</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id17">0.8.0 - 2026-07-22</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id18">Added</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id19">Changed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id20">Removed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id21">Fixed</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id21">0.7.0 - 2026-06-11</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id22">Added</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id23">Changed</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id24">Fixed</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id22">0.7.0 - 2026-06-11</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id23">Added</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id24">Changed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id25">Fixed</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id25">0.6.1 - 2026-06-02</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id26">Changed</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id27">Fixed</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id26">0.6.1 - 2026-06-02</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id27">Changed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id28">Fixed</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id28">0.6.0 - 2026-06-01</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id29">0.6.0 - 2026-06-01</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#changed-breaking">Changed (breaking)</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id29">Added</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id30">Fixed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id30">Added</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id31">Fixed</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id31">0.5.1 - 2026-05-11</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id32">Fixed</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id32">0.5.1 - 2026-05-11</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id33">Fixed</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id33">0.5.0 - 2026-05-06</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id34">Added</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id35">Changed</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id36">Removed</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id34">0.5.0 - 2026-05-06</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id35">Added</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id36">Changed</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id37">Removed</a></li>
 </ul>
 </li>
 </ul>
