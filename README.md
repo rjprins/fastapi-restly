@@ -28,7 +28,8 @@ made from the model, and filtering, sorting and pagination on the list. To
 change one step, override its method, and the rest stays the same.
 
 Restly is for REST resources, not for your whole app. It works inside the
-FastAPI app that you already have, and you add it one resource at a time.
+FastAPI app that you already have, and you add it one resource at a time;
+see [Use Restly in an existing project](https://www.fastapi-restly.org/projects.html#add-to-existing-app).
 
 > **Status:** beta. Restly ran in production for four years before it became
 > public. Until 1.0, a minor release can have breaking changes, and the
