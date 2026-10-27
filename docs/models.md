@@ -76,10 +76,10 @@ these defaults:
   Set `__tablename__` on a model to choose another name.
 - **Datetimes with a time zone.** `Mapped[datetime]` maps to
   `DateTime(timezone=True)`. Store UTC times in it. PostgreSQL returns them
-  with a time zone, but SQLite returns them without one. For a time without
-  a time zone, use `mapped_column(DateTime())` on that column. For the times
-  that clients send, see [Keep times in UTC](#utc-times). That section also
-  shows a column that keeps local times.
+  with a time zone, but SQLite returns them without one. A column with
+  `mapped_column(DateTime())` has no time zone, and holds UTC without the
+  offset. For the times that clients send, and for a column that keeps local
+  times, see [Keep times in UTC](#utc-times).
 - **Enums as strings.** A column typed with an `enum.Enum` stores the name of
   the member, such as `RED`, as a string of up to 64 characters. It is not a
   database enum type, so a new member needs no database migration.
@@ -148,7 +148,8 @@ primary key. The database chooses its value, so the constructor does not take
 it.
 
 {class}`fr.TimestampsMixin <fastapi_restly.models.TimestampsMixin>` adds
-`created_at` and `updated_at`. Both are UTC datetimes with a time zone.
+`created_at` and `updated_at`. Both hold times in UTC, in columns with a
+time zone.
 The constructor sets both to the current time, and SQLAlchemy sets
 `updated_at` again on every update. A schema can return them with
 {class}`fr.TimestampsSchemaMixin <fastapi_restly.schemas.TimestampsSchemaMixin>`.

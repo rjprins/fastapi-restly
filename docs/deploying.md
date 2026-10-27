@@ -255,9 +255,11 @@ op.alter_column(
 )
 ```
 
-A type change without `postgresql_using` can read the values in the local
-time zone of the server. Use `mapped_column(DateTime())` on the model only for
-a column that stores a time without a time zone on purpose.
+A type change without `postgresql_using` reads the values in the time zone
+of the database session that runs the migration. Keep
+`mapped_column(DateTime())` on the model only for a column that has no time
+zone on purpose. Such a column holds UTC without the offset; see
+[Keep times in UTC](#utc-times).
 
 (health-checks)=
 

@@ -135,7 +135,7 @@ def utc_now() -> datetime:
 
 class TimestampsMixin(MappedAsDataclass, kw_only=True, eq=False, repr=False):
     """
-    Dataclass mixin adding UTC-aware created_at and updated_at timestamps.
+    Dataclass mixin that adds ``created_at`` and ``updated_at``, in UTC.
 
     Made for models on a base with :class:`ModelDefaults`. On another base,
     SQLAlchemy makes each model that uses it a dataclass.
@@ -227,9 +227,9 @@ class _KwOnlyDataclassMeta(DCTransformDeclarative):
 
 
 _TYPE_ANNOTATION_MAP: dict[Any, Any] = {
-    # Datetimes represent UTC instants by default. PostgreSQL enforces this
-    # with TIMESTAMP WITH TIME ZONE. Use mapped_column(DateTime()) to opt a
-    # specific column into naive wall-clock semantics.
+    # A datetime column has a time zone, so PostgreSQL stores each time as
+    # an instant. A column with mapped_column(DateTime()) has none, and holds
+    # UTC without the offset; see "Keep times in UTC" in the docs.
     datetime: DateTime(timezone=True),
     # native_enum=False so enums are persisted as strings in the
     # database, not as Postgres TYPE objects. This prevents

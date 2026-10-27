@@ -33,6 +33,17 @@ replacement, unless it says otherwise.
    the view inherits from it. An action that you miss fails when the route
    runs, not when Python creates the class. `Action` is now a reserved name
    on a view and on the classes it inherits from.
+8. Check each column without a time zone, such as `mapped_column(DateTime())`,
+   or `Mapped[datetime]` on a base without `fr.ModelDefaults`. Restly now
+   stores the times that clients send in UTC there, and a generated schema
+   shows them with `Z`. If the column holds local times, give its field a
+   validator that converts the time; see "Keep times in UTC" in the docs.
+   This step does not fail: a column that you miss gets new rows in UTC
+   next to its old rows in local time.
+9. Where your code compares a time from a request with a time from the
+   database, convert the time from the database with `fr.in_utc()` first,
+   as in `data.ends_at > fr.in_utc(obj.starts_at)`. This step fails with
+   `TypeError`, not with a message from Restly.
 
 ### Added
 

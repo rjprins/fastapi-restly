@@ -442,6 +442,11 @@ a time without an offset, so give its column a field of type
 
 A time that is not between the years 1 and 9999 in UTC, such as
 `9999-12-31T23:30:00-01:00`, gets 422 in a request body and 400 in a filter.
+
+A `date`, and a time of day of type `time`, have no rule. A time of day has
+no date, so summer time can change its time in UTC. A `time` column without
+a time zone keeps the clock time of a value and drops its offset:
+`09:00:00+02:00` becomes `09:00:00`.
 :::
 
 (field-aliases)=
