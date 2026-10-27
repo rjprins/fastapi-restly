@@ -465,11 +465,12 @@ replacement, unless it says otherwise.
 
 ### Fixed
 
-- A filter on the `id` of `fr.IDSchema`, such as `?id=...`, gives the value
-  the Python type of the key column, as for every field of type `Any`. So
-  the filter works on a UUID key. Before, the value stayed text, which gave
-  a `500` on SQLite. On an integer key, `?id=abc` now gets a `400`, and so
-  does a number that the column cannot hold.
+- A filter on the `id` of `fr.IDSchema`, such as `?id=1`, gives the value
+  the Python type of the key column, as for every field of type `Any`.
+  Before, the value stayed text: on PostgreSQL even `?id=1` gave a `500`,
+  and on SQLite a filter on a UUID key gave a `500`. On an integer key,
+  `?id=abc` now gets a `400`, and so does a number that the column cannot
+  hold.
 - A generated schema gives a `timedelta` column, an `Interval`, a field of
   type `timedelta`. JSON shows it as an ISO 8601 duration, such as
   `PT1H30M`. Before, the view failed when it registered, with
