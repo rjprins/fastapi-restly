@@ -71,6 +71,12 @@ replacement, unless it says otherwise.
     Give the column a type that fits, such as `BigInteger`, or `String()`
     without a length. A column that you miss fails only when a request sends
     such a value, with a 422 or a 400.
+14. If your project uses Alembic, add `alembic` to its dependencies: Restly
+    no longer installs it. If you miss this step, an environment that is
+    installed from the dependencies of your project has no Alembic. The
+    `alembic` command is then not found, and code that imports from
+    `alembic` fails with `ImportError`. A test suite with `alembic_upgrade=`
+    stops with a message from Restly.
 
 ### Added
 
@@ -452,6 +458,9 @@ replacement, unless it says otherwise.
   `create_app(x)`.
 - The dependency on pydantic-settings, which Restly no longer uses. A project
   from `restly new` lists it in its own dependencies.
+- The dependency on Alembic. Restly uses it only for `alembic_upgrade=` in
+  `configure_tests()`. A project that uses Alembic lists it in its own
+  dependencies, as a project from `restly new` with migrations does.
 - `route_options`. Replace the endpoint method, pass the route arguments to
   its decorator, as in FastAPI, and call `super()`.
 - `extra_query_params`. Declare the key where your code reads it: with

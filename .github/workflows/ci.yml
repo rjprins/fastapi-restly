@@ -309,6 +309,9 @@ jobs:
       # floor versions of the TestClient stack (anyio/httpx) leak AF_UNIX
       # socketpairs that surface as GC-timing-dependent ResourceWarnings.
       # Not a Restly leak -- the latest-deps suite stays strict.
+      #
+      # Alembic is not a dependency of Restly, but the suite tests
+      # alembic_upgrade=, at the floor that `restly new` writes.
       - name: Run framework tests with minimum direct dependency versions
         run: >-
           uv run
@@ -317,6 +320,7 @@ jobs:
           --resolution lowest-direct
           --extra testing
           --with "aiosqlite>=0.21.0"
+          --with "alembic>=1.15.2"
           pytest tests/ -q
           -W "default::ResourceWarning"
           -W "default::pytest.PytestUnraisableExceptionWarning"

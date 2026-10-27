@@ -181,7 +181,8 @@ requests at the same time. Do not use `--reload` in production.
 
 ## Set up migrations with Alembic
 
-In production, do not call `metadata.create_all()`. Use Alembic. For the
+In production, do not call `metadata.create_all()`. Use Alembic. Install it
+first, with `pip install alembic`, because Restly does not install it. For the
 recommended `postgresql+asyncpg` setup, create the Alembic environment once,
 with Alembic's async template, in the root of your project:
 
