@@ -131,6 +131,7 @@ from ..schemas._base import (
     _client_name,
     _collection_item_type,
     _is_readonly,
+    _json_data,
     _model_id_type,
     _reject_buried_markers,
     _response_adapter,
@@ -474,24 +475,14 @@ def _json_ready(model_cls: type[Any], field_name: str, value: Any) -> Any:
     owns the schema-to-model translation, so it does the dump here rather than
     letting the driver fail at flush with the model in the bind parameters.
     """
-    if isinstance(value, pydantic.BaseModel):
-        if not _is_json_column(model_cls, field_name):
-            return value
-        _reject_excluded_json_fields(value, f"{model_cls.__name__}.{field_name}")
-        return value.model_dump(mode="json")
-    if isinstance(value, list | tuple) and any(
-        isinstance(item, pydantic.BaseModel) for item in value
-    ):
-        if not _is_json_column(model_cls, field_name):
-            return value
-        _reject_excluded_json_fields(value, f"{model_cls.__name__}.{field_name}")
-        return [
-            item.model_dump(mode="json")
-            if isinstance(item, pydantic.BaseModel)
-            else item
-            for item in value
-        ]
-    return value
+    holds_model = isinstance(value, pydantic.BaseModel) or (
+        isinstance(value, list | tuple)
+        and any(isinstance(item, pydantic.BaseModel) for item in value)
+    )
+    if not holds_model or not _is_json_column(model_cls, field_name):
+        return value
+    _reject_excluded_json_fields(value, f"{model_cls.__name__}.{field_name}")
+    return _json_data(value)
 
 
 def _time_ready(

@@ -1016,8 +1016,10 @@ generated list params, so it declares its own again. The
 The list params of a client library often name the fields of the resource,
 as in `filter={"category":"tools"}`. For each such key,
 {class}`fr.query.FilterKey <fastapi_restly.query.FilterKey>` finds the field
-and its column. A field that the response does not show is an unknown key,
-a `400`, as in the generated filters.
+and its column. As in the generated filters, a field that the response does
+not show is an unknown key. Here it gets a `400`, not a `422`, because the
+key is inside the value of `filter`; see
+[Why a bad list request returns 422 or 400](#list-request-errors).
 {meth}`parse() <fastapi_restly.query.FilterKey.parse>` gives a value the
 validation of the field and the form of the column, as the generated filters
 do. {class}`fr.query.SortKey <fastapi_restly.query.SortKey>` does the same
@@ -1032,6 +1034,8 @@ import pydantic
 class ItemListParams(pydantic.BaseModel):
     filter: pydantic.Json[dict[str, Any]] | None = None
     sort: str | None = None
+    page: int = pydantic.Field(1, ge=1)
+    page_size: int = pydantic.Field(20, ge=1, le=100)
 
 
 class ItemView(fr.AsyncRestView):
@@ -1055,24 +1059,39 @@ class ItemView(fr.AsyncRestView):
             stmt = stmt.order_by(
                 key.term(descending=descending, sort_nulls=self.sort_nulls)
             )
-        return stmt.order_by(Item.id)
+        offset = (list_params.page - 1) * list_params.page_size
+        return stmt.order_by(Item.id).limit(list_params.page_size).offset(offset)
 ```
 
-The client sends `GET /items/?filter={"category":"tools"}&sort=-name`. The
-condition, such as `==`, stays yours. The [React Admin](react_admin.md) views
-use these two classes for their `filter` and `sort`.
+The client sends `GET /items/?filter={"category":"tools"}&sort=-name&page=2`.
+The condition, such as `==`, stays yours. As in the example above, the list
+params have the page fields, and `apply_list_params` applies the page. The
+[React Admin](react_admin.md) views use these two classes for their
+`filter` and `sort`.
 
 :::{admonition} Details
 :class: details
 
 A key is the name of a field, or its alias when the field has one. The model
-has an attribute with the name of the field: a column, a `column_property`
-or a hybrid property. A key with a dot, such as `vendor.name`, needs a join,
-so these classes do not know it.
+has an attribute with the name of the field that is one value in SQL: a
+column, a `column_property`, or a hybrid property with an SQL expression. A
+hybrid property that is plain Python, such as `self.deleted_at is not None`,
+is an unknown key. A key with a dot, such as `vendor.name`, needs a join, so
+these classes do not know it.
 
 `parse()` takes text from a URL or a value from JSON, and a number becomes
-text for a text field. A value that fails gets a `400` with the reason.
-`term()` puts NULLs where `sort_nulls` says.
+text for a text field. The validators of the field get only this field, so
+`info.data` is `{}`; see
+[Filter values go through the field's validation](#filter-value-validation).
+`None` stays `None` when the field allows it, so `key.column == None` gives
+`IS NULL`. A value that fails gets a `400` with the reason. `term()` puts
+NULLs where `sort_nulls` says.
+
+Restly cannot see a value that a serializer hides, such as an email shown as
+`a***@example.com`. A filter or a sort on such a field would let a client
+find out the value. Type such a field as a subclass of
+{class}`pydantic.Secret <pydantic.types.Secret>` with its own `_display()`,
+so it is no key, as a `SecretStr` is not.
 :::
 
 ## Internals

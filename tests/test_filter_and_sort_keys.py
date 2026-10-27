@@ -2,13 +2,16 @@
 your own.
 
 Each finds the field of the response class that a client's key names, and
-the column of the model, with the rules of the generated list params: the
-alias when a field has one, and no key for a field that a response never
-shows. ``FilterKey.parse`` gives a value the validation of its field and the
-form of its column, as the generated filters do. The react-admin views use
-both, so a view with list params of its own can do what they do.
+the column of the model. As in the generated list params, a field with an
+alias has only its alias as a key, and a field that a response never shows
+is no key. A hybrid property is a key too, when it has SQL.
+``FilterKey.parse`` gives a value the validation of its field and the form
+of its column, as the generated filters do. The react-admin views use both,
+so a view with list params of its own can do what they do.
 """
 
+import dataclasses
+import enum
 import json
 from datetime import datetime, timezone
 from typing import Annotated, Any
@@ -19,7 +22,7 @@ import sqlalchemy
 from sqlalchemy import DateTime, ForeignKey, select
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, composite, mapped_column, relationship
 
 import fastapi_restly as fr
 from fastapi_restly.exc import BadQueryParam
@@ -128,6 +131,44 @@ def test_a_key_names_a_hybrid_property(key_class, kind):
         assert key.parse("Desk!") == "Desk!"
 
 
+@dataclasses.dataclass
+class _Point:
+    x: int
+    y: int
+
+
+@KEY_CLASSES
+def test_a_key_is_unknown_for_a_hybrid_in_python_or_a_composite(key_class, kind):
+    """A hybrid property that is plain Python is a Python value on the class,
+    so ``==`` would give ``WHERE false`` and the wrong rows. A composite is
+    several columns, and a sort on it would reverse only the last one."""
+
+    class Gadget(fr.IDMixin, SharedBase):
+        name: Mapped[str] = mapped_column(default="")
+        x: Mapped[int] = mapped_column(default=0)
+        y: Mapped[int] = mapped_column(default=0)
+        deleted_at: Mapped[datetime | None] = mapped_column(default=None)
+        point: Mapped[_Point] = composite("x", "y", init=False)
+
+        @hybrid_property
+        def is_deleted(self) -> bool:
+            return self.deleted_at is not None
+
+        @hybrid_property
+        def shout(self) -> str:
+            return f"{self.name}!"
+
+    class GadgetSchema(fr.IDSchema):
+        is_deleted: fr.ReadOnly[bool] = False
+        shout: fr.ReadOnly[str] = ""
+        point: fr.ReadOnly[Any] = None
+
+    for key in ("is_deleted", "shout", "point"):
+        with pytest.raises(BadQueryParam) as caught:
+            key_class(Gadget, GadgetSchema, key)
+        assert caught.value.detail == f"Unknown {kind} key: {key!r}", key
+
+
 def test_parse_runs_the_validation_of_the_field():
     """A text from a URL becomes the type of the field, and the field's
     validators run. A number from JSON becomes text for a text field."""
@@ -178,6 +219,75 @@ def test_parse_gives_a_reference_its_id_and_checks_the_labels_of_an_enum():
     assert caught.value.detail == (
         "Invalid filter value for 'status': 'bogus'. Use one of: draft, published."
     )
+
+
+class _Color(enum.Enum):
+    RED = "red"
+    BLUE = "blue"
+
+
+class _Priority(enum.IntEnum):
+    LOW = 1
+    HIGH = 2
+
+
+def test_parse_keeps_none_where_the_field_allows_it():
+    """``None`` gives ``IS NULL``, also on a column of SQLAlchemy's ``Enum``
+    type, which has no label for it. A field that does not allow ``None``
+    refuses it."""
+
+    class Gadget(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+        color: Mapped[_Color | None] = mapped_column(default=None)
+        note: Mapped[str | None] = mapped_column(default=None)
+
+    class GadgetSchema(fr.IDSchema):
+        name: str
+        color: _Color | None = None
+        note: str | None = None
+
+    for key in ("color", "note"):
+        assert fr.query.FilterKey(Gadget, GadgetSchema, key).parse(None) is None
+    with pytest.raises(BadQueryParam) as caught:
+        fr.query.FilterKey(Gadget, GadgetSchema, "name").parse(None)
+    assert caught.value.detail.startswith("Invalid filter value for 'name': None.")
+
+
+def test_parse_gives_the_member_for_a_number_of_an_int_enum():
+    """A column of SQLAlchemy's ``Enum`` type holds the names of the members.
+    SQLAlchemy binds a plain ``1`` as a number, so the value becomes the
+    member that it equals, which binds as its name."""
+
+    class Task(fr.IDMixin, SharedBase):
+        priority: Mapped[_Priority]
+
+    class TaskSchema(fr.IDSchema):
+        priority: int
+
+    priority = fr.query.FilterKey(Task, TaskSchema, "priority")
+    assert priority.parse("1") is _Priority.LOW
+    sql = select(Task.id).where(priority.column == priority.parse(2))
+    compiled = sql.compile(compile_kwargs={"literal_binds": True})
+    assert "task.priority = 'HIGH'" in str(compiled)
+
+
+def test_parse_gives_json_data_for_a_model_in_a_json_column():
+    """A field typed as a model validates to a model, and a ``JSON`` column
+    binds through ``json.dumps``. The value becomes JSON data, as a write
+    stores it."""
+
+    class Settings(pydantic.BaseModel):
+        theme: str
+        size: int = 12
+
+    class Profile(fr.IDMixin, SharedBase):
+        settings: Mapped[dict[str, Any]] = mapped_column(sqlalchemy.JSON)
+
+    class ProfileSchema(fr.IDSchema):
+        settings: Settings
+
+    key = fr.query.FilterKey(Profile, ProfileSchema, "settings")
+    assert key.parse({"theme": "dark"}) == {"theme": "dark", "size": 12}
 
 
 def test_parse_gives_a_time_the_form_of_its_column():
@@ -258,6 +368,8 @@ def test_list_params_of_your_own_filter_and_sort_with_the_keys(client):
     class ItemListParams(pydantic.BaseModel):
         filter: pydantic.Json[dict[str, Any]] | None = None
         sort: str | None = None
+        page: int = pydantic.Field(1, ge=1)
+        page_size: int = pydantic.Field(20, ge=1, le=100)
 
     @fr.include_view(client.app)
     class ItemView(fr.AsyncRestView):
@@ -281,7 +393,8 @@ def test_list_params_of_your_own_filter_and_sort_with_the_keys(client):
                 stmt = stmt.order_by(
                     key.term(descending=descending, sort_nulls=self.sort_nulls)
                 )
-            return stmt.order_by(Item.id)
+            offset = (list_params.page - 1) * list_params.page_size
+            return stmt.order_by(Item.id).limit(list_params.page_size).offset(offset)
 
     create_tables()
     for name, category in [("axe", "tools"), ("saw", "tools"), ("pie", "food")]:
@@ -295,6 +408,17 @@ def test_list_params_of_your_own_filter_and_sort_with_the_keys(client):
         "saw",
         "axe",
     ]
+    # the page fields page the rows, and the envelope tells the client so
+    body = client.get(
+        "/items", params={"sort": "name", "page": "2", "page_size": "2"}
+    ).json()
+    assert [row["name"] for row in body["data"]] == ["saw"]
+    assert {key: body[key] for key in body if key != "data"} == {
+        "total_count": 3,
+        "page": 2,
+        "page_size": 2,
+        "total_pages": 2,
+    }
     for params, detail in [
         ({"filter": json.dumps({"secret": ""})}, "Unknown filter key: 'secret'"),
         ({"sort": "secret"}, "Unknown sort key: 'secret'"),

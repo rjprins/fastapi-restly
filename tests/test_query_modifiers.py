@@ -1,6 +1,5 @@
 """Tests for the list-params query layer (filtering, sorting, pagination)."""
 
-import functools
 from datetime import datetime, timezone
 from unittest.mock import patch
 
@@ -18,8 +17,8 @@ from fastapi_restly.query._impl import (
     _apply_filtering,
     _apply_pagination,
     _apply_sorting,
+    _filter_value_parser,
     _make_where_clause,
-    _parse_filter_value,
 )
 
 from ._models import SharedBase
@@ -567,33 +566,33 @@ class TestApplyListParams:
                     mock_paginate.assert_called_once()
 
 
-class TestParseValue:
+class TestFilterValueParser:
     def test_parse_value_string(self):
         """Test parsing string values."""
-        result = _parse_filter_value(WidgetSchema, "name", None, "John")
+        result = _filter_value_parser(WidgetSchema, "name", None)("John")
         assert result == "John"
 
     def test_parse_value_integer(self):
         """Test parsing integer values."""
-        result = _parse_filter_value(WidgetSchema, "age", None, "25")
+        result = _filter_value_parser(WidgetSchema, "age", None)("25")
         assert result == 25
 
     def test_parse_value_boolean(self):
         """Test parsing boolean values."""
-        result = _parse_filter_value(WidgetSchema, "is_active", None, "true")
+        result = _filter_value_parser(WidgetSchema, "is_active", None)("true")
         assert result is True
 
     def test_parse_value_datetime(self):
         """Parsing preserves a timezone-less datetime until its column is known."""
-        result = _parse_filter_value(
-            WidgetSchema, "created_at", None, "2024-01-01T00:00:00"
+        result = _filter_value_parser(WidgetSchema, "created_at", None)(
+            "2024-01-01T00:00:00"
         )
         assert result == datetime(2024, 1, 1)
 
     def test_parse_value_invalid_field(self):
         """Test parsing with invalid field."""
         with pytest.raises(HTTPException) as exc_info:
-            _parse_filter_value(WidgetSchema, "invalid_field", None, "value")
+            _filter_value_parser(WidgetSchema, "invalid_field", None)("value")
 
         assert exc_info.value.status_code == 400
 
@@ -638,9 +637,7 @@ class TestMakeWhereClause:
             occurred_at: Mapped[datetime]
 
         def clause(column):
-            parser = functools.partial(
-                _parse_filter_value, WidgetSchema, "created_at", column
-            )
+            parser = _filter_value_parser(WidgetSchema, "created_at", column)
             return _make_where_clause(column, "2024-01-01T00:00:00", "eq", parser)
 
         aware_clause = clause(AwareRecord.occurred_at)

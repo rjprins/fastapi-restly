@@ -137,10 +137,22 @@ def _apply_react_admin_filters(
     for name, value in filters.items():
         key = FilterKey(model, schema_cls, name)
         if isinstance(value, list):
-            stmt = stmt.where(key.column.in_([key.parse(item) for item in value]))
+            stmt = stmt.where(_is_one_of(key.column, [key.parse(v) for v in value]))
         else:
             stmt = stmt.where(key.column == key.parse(value))
     return stmt
+
+
+def _is_one_of(column: Any, values: list[Any]) -> sqlalchemy.ColumnElement[bool]:
+    """``column IN (values)``. SQL's ``IN`` never matches NULL, so ``None``
+    among the values adds ``OR column IS NULL``, as a single ``null`` finds
+    the rows without a value."""
+    present = [value for value in values if value is not None]
+    if len(present) == len(values):
+        return column.in_(values)
+    if not present:
+        return column.is_(None)
+    return sqlalchemy.or_(column.in_(present), column.is_(None))
 
 
 def _apply_react_admin_sort_and_range(

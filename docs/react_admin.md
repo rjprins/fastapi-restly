@@ -143,14 +143,26 @@ React-admin uses the `id` array form of `filter` (`{"id": [1, 2, 3]}`) for
 its `getMany` calls. It becomes `WHERE id IN (1, 2, 3)`. Other filter values
 must be equal to the column value. A value goes through the validation of
 its field, as in the generated filters, so the validators of the field run
-too, and `null` finds the rows without a value when the field allows
-`None`. A time follows the same rule as in the other filters; see
-[Keep times in UTC](#utc-times). Only fields that the view's response class
-sends are accepted, by their alias when they have one. The model must have
-the field in SQL: as a column, a `column_property` or a hybrid property.
-Other fields, also a Python `@property` and react-admin's full-text search
-parameter `q`, get a 400. For a search on part of a value, or a full-text
-search, override the view's
+too. They get only this field, so `info.data` is `{}`; see
+[Filter values go through the field's validation](#filter-value-validation).
+`null` finds the rows without a value when the field allows `None`, also in
+a list: `{"size": [null, 3]}` finds the rows without a size and the rows
+with size 3. A time follows the same rule as in the other filters; see
+[Keep times in UTC](#utc-times).
+
+Only fields that the view's response class sends are accepted, by their
+alias when they have one. The model must have the field in SQL: as a
+column, a `column_property` or a hybrid property with an SQL expression.
+Other fields, also a Python `@property`, a hybrid property that is plain
+Python, and react-admin's full-text search parameter `q`, get a 400.
+
+Restly cannot see a value that a serializer hides, such as an email shown as
+`a***@example.com`. A filter or a sort on such a field compares the stored
+value, so a client can find the value out. Type such a field as a subclass
+of {class}`pydantic.Secret <pydantic.types.Secret>` with its own
+`_display()`. Then it is no filter or sort key, as a `SecretStr` is not.
+
+For a search on part of a value, or a full-text search, override the view's
 {meth}`apply_filters <fastapi_restly.views.RestView.apply_filters>`. It gets
 the list params with `filter` as a dict. Take your keys out, and pass the
 rest on:

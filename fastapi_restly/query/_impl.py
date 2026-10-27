@@ -44,6 +44,7 @@ from ..schemas._base import (
     IDRef,
     IDSchema,
     _hides_value,
+    _json_data,
     _schema_role_name,
     _unwrap_type,
 )
@@ -344,7 +345,7 @@ def _supports_scalar_operators(field: FieldInfo) -> bool:
     only ``__isnull`` is generated -- the same advertise-only-what-works
     principle applied to non-column fields.
 
-    The check mirrors what the request path's ``_parse_value`` (full Pydantic
+    The check mirrors what the request path's ``_value_parser`` (full Pydantic
     field validation) will accept. A ``pydantic.Json[...]`` field counts as
     scalar: its validation parses the query string as JSON, so its filters
     work. ``str``/``bytes`` are collections in the abc sense but coerce fine,
@@ -790,7 +791,7 @@ def _filter_fields(name: str, field: FieldInfo, column: Any) -> dict[str, Any]:
     fields: dict[str, Any] = {}
     # Type filter parameters as ``Optional[list[str]]`` instead of the
     # column's true type) so FastAPI/Starlette preserve repeated query
-    # parameters as a list and downstream ``_parse_value`` can perform
+    # parameters as a list and downstream ``_value_parser`` can perform
     # field-type coercion. ``__isnull`` stays a scalar bool because
     # repeating it makes no sense.
     # Collection/JSON-typed fields (``dict``, ``list[str]``) resolve to
@@ -1521,7 +1522,6 @@ def _apply_filtering(
         op = op or "eq"
 
         stmt, column = _join_column(stmt, model, column_name, schema_cls, aliases)
-        parser = functools.partial(_parse_filter_value, schema_cls, column_name, column)
 
         if op == "isnull":
             try:
@@ -1534,6 +1534,7 @@ def _apply_filtering(
             filters[column].append(column.is_(None) if value else column.isnot(None))
             continue
 
+        parser = _filter_value_parser(schema_cls, column_name, column)
         clause = _build_clause(column, raw_value, op, parser)
         if clause is not None:
             filters[column].append(clause)
@@ -1572,37 +1573,42 @@ def _build_clause(
     return sqlalchemy.or_(*clauses)
 
 
-def _check_label(enum_type: sqlalchemy.Enum, value: Any, key: str, raw: Any) -> None:
-    """Check that SQLAlchemy takes ``value`` for a column of ``enum_type``:
-    one of its labels, or a member of its enum class.
+def _enum_value(enum_type: sqlalchemy.Enum, value: Any, key: str, raw: Any) -> Any:
+    """``value`` as a column of ``enum_type`` takes it: one of its labels, or
+    a member of its enum class.
 
-    SQLAlchemy passes any other string on, and a native ENUM on PostgreSQL
-    rejects it with an error, which would be a 500 for the client.
+    A value that equals a member, such as ``1`` for a member of an
+    ``IntEnum``, becomes that member: SQLAlchemy binds a plain number as a
+    number, and the column holds labels. SQLAlchemy passes any other string
+    on, and a native ENUM on PostgreSQL rejects it with an error, which would
+    be a 500 for the client.
 
     :param key: The filter key that the client used, and ``raw`` its value,
         for the message.
     :raises BadQueryParam: the value is no label of the column.
     """
-    members = list(enum_type.enum_class) if enum_type.enum_class else []
-    if value in enum_type.enums or any(value == member for member in members):
-        return
+    if value in enum_type.enums:
+        return value
+    for member in enum_type.enum_class or ():
+        if value == member:
+            return member
     raise BadQueryParam(
         f"Invalid filter value for {key!r}: {raw!r}. Use one of: "
         f"{', '.join(enum_type.enums)}."
     )
 
 
-def _parse_filter_value(
-    schema_cls: SchemaType, column_name: str, column: Any, value: str
-) -> Any:
-    """One value of a generated filter key, also a dotted one, as a value for
-    ``column``; see :func:`_parse_field_value`.
+def _filter_value_parser(
+    schema_cls: SchemaType, column_name: str, column: Any
+) -> Callable[[Any], Any]:
+    """The parser of the values of a generated filter key, also a dotted one;
+    see :func:`_value_parser`.
 
-    :param column: The column, or ``None`` to leave a time as the field
+    :param column: The column, or ``None`` to leave each value as the field
         gives it.
     """
     field_schema, field_name = _field_of(schema_cls, column_name)
-    return _parse_field_value(field_schema, field_name, column, column_name, value)
+    return _value_parser(field_schema, field_name, column, column_name)
 
 
 def _field_of(schema_cls: SchemaType, column_name: str) -> tuple[SchemaType, str]:
@@ -1627,48 +1633,67 @@ def _field_of(schema_cls: SchemaType, column_name: str) -> tuple[SchemaType, str
     return schema_cls, field_name
 
 
-def _parse_field_value(
-    schema_cls: SchemaType, field_name: str, column: Any, key: str, value: Any
-) -> Any:
-    """One filter value as a value for ``column``.
+def _value_parser(
+    schema_cls: SchemaType, field_name: str, column: Any, key: str
+) -> Callable[[Any], Any]:
+    """The parser of the values of one filter key: each value as a value for
+    ``column``.
 
-    The value goes through the validation of its field: a text from a URL,
-    or a value from JSON. An ``IDRef`` gives its id. A column of SQLAlchemy's
-    ``Enum`` type takes only its labels. A time gets the form of its column.
-    The generated filters and :class:`~fastapi_restly.query.FilterKey` use
-    this function.
+    A value goes through the validation of its field: a text from a URL, or
+    a value from JSON. ``None`` stays ``None``, for ``IS NULL``. An ``IDRef``
+    gives its id. A column of SQLAlchemy's ``Enum`` type takes only its
+    labels. A ``JSON`` column takes a model as JSON data, as a write stores
+    it. A time gets the form of its column. The generated filters and
+    :class:`~fastapi_restly.query.FilterKey` build one parser for each key,
+    so the work for the key is done once.
 
     :param schema_cls: The schema that holds the field.
+    :param column: The column, or ``None`` to leave each value as the field
+        gives it.
     :param key: The filter key that the client used, for the message.
-    :raises BadQueryParam: when the value fails one of these steps. The
-        message has the reason, such as Pydantic's
-        ``Input should be a valid integer``.
     """
-    # Only a validation error is the client's fault. Another exception from
-    # a validator is a bug, as it is for a request body.
-    try:
-        values, _, _ = _field_validator(schema_cls, field_name).validate_python(
-            {field_name: value}
-        )
-    except pydantic.ValidationError as exc:
-        reason = exc.errors()[0]["msg"]
-        raise BadQueryParam(
-            f"Invalid filter value for {key!r}: {value!r}. {reason}"
-        ) from exc
-    result = values[field_name]
-    # An IDRef[T] FK field validates to an IDRef object; the SQL bind value
-    # is its scalar id, not the reference wrapper (which cannot bind).
-    if isinstance(result, IDSchema):
-        result = result.id
+    validator = _field_validator(schema_cls, field_name)
+    column_type = getattr(column, "type", None)
     enum_type = _enum_type(column)
-    if enum_type is not None:
-        _check_label(enum_type, result, key, value)
-    try:
-        return column_time(getattr(column, "type", None), result)
-    except ValueError as exc:
-        raise BadQueryParam(
-            f"Invalid filter value for {key!r}: {value!r}. {value_error_reason(exc)}"
-        ) from exc
+    # A TypeDecorator over JSON binds through its own code, as on a write.
+    is_json = isinstance(column_type, sqlalchemy.JSON)
+
+    def parse(value: Any) -> Any:
+        """``value`` as a value for the column.
+
+        :raises BadQueryParam: when the value fails one of the steps. The
+            message has the reason, such as Pydantic's
+            ``Input should be a valid integer``.
+        """
+        # Only a validation error is the client's fault. Another exception
+        # from a validator is a bug, as it is for a request body.
+        try:
+            values, _, _ = validator.validate_python({field_name: value})
+        except pydantic.ValidationError as exc:
+            reason = exc.errors()[0]["msg"]
+            raise BadQueryParam(
+                f"Invalid filter value for {key!r}: {value!r}. {reason}"
+            ) from exc
+        result = values[field_name]
+        if result is None:
+            return None
+        # An IDRef[T] FK field validates to an IDRef object; the SQL bind
+        # value is its scalar id, not the reference wrapper (which cannot bind).
+        if isinstance(result, IDSchema):
+            return result.id
+        if enum_type is not None:
+            return _enum_value(enum_type, result, key, value)
+        if is_json:
+            return _json_data(result)
+        try:
+            return column_time(column_type, result)
+        except ValueError as exc:
+            raise BadQueryParam(
+                f"Invalid filter value for {key!r}: {value!r}. "
+                f"{value_error_reason(exc)}"
+            ) from exc
+
+    return parse
 
 
 @functools.cache

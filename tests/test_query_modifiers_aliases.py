@@ -13,8 +13,8 @@ from starlette.datastructures import QueryParams
 from fastapi_restly.query._impl import (
     _apply_filtering,
     _apply_sorting,
+    _filter_value_parser,
     _iter_fields_including_nested,
-    _parse_filter_value,
     apply_list_params,
     derive_schema_list_params,
 )
@@ -148,24 +148,24 @@ class TestIterFieldsIncludingNestedWithAliases:
         assert "is_active" in field_names
 
 
-class TestParseValueWithAliases:
+class TestFilterValueParserWithAliases:
     def test_parse_value_with_aliases(self):
         """Test value parsing with aliases."""
         # Test with alias
-        result = _parse_filter_value(SchemaWithAliases, "userName", None, "John Doe")
+        result = _filter_value_parser(SchemaWithAliases, "userName", None)("John Doe")
         assert result == "John Doe"
 
         # Test with field name (should fail)
         with pytest.raises(HTTPException) as exc_info:
-            _parse_filter_value(SchemaWithAliases, "user_name", None, "John Doe")
+            _filter_value_parser(SchemaWithAliases, "user_name", None)("John Doe")
         assert exc_info.value.status_code == 400
 
     def test_parse_value_with_populate_by_name_uses_alias_only(self):
         """``populate_by_name=True`` does NOT extend the list-params URL surface
         with Python field names. The alias is the only public name."""
         # Alias resolves.
-        result = _parse_filter_value(
-            SchemaWithPopulateByName, "userName", None, "John Doe"
+        result = _filter_value_parser(SchemaWithPopulateByName, "userName", None)(
+            "John Doe"
         )
         assert result == "John Doe"
 
@@ -174,20 +174,22 @@ class TestParseValueWithAliases:
         # parameter, so accepting it via the raw helper would be a
         # contract divergence.
         with pytest.raises(HTTPException) as exc_info:
-            _parse_filter_value(SchemaWithPopulateByName, "user_name", None, "John Doe")
+            _filter_value_parser(SchemaWithPopulateByName, "user_name", None)(
+                "John Doe"
+            )
         assert exc_info.value.status_code == 400
 
     def test_parse_value_without_aliases(self):
         """Test value parsing without aliases."""
         # Test with field name
-        result = _parse_filter_value(
-            SchemaWithoutAliases, "user_name", None, "John Doe"
+        result = _filter_value_parser(SchemaWithoutAliases, "user_name", None)(
+            "John Doe"
         )
         assert result == "John Doe"
 
         # Test with non-existent field
         with pytest.raises(HTTPException) as exc_info:
-            _parse_filter_value(SchemaWithoutAliases, "userName", None, "John Doe")
+            _filter_value_parser(SchemaWithoutAliases, "userName", None)("John Doe")
         assert exc_info.value.status_code == 400
 
 

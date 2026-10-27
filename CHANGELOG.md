@@ -50,6 +50,11 @@ replacement, unless it says otherwise.
     another zone, name it in the SQL, such as
     `date_trunc('day', created_at AT TIME ZONE 'Europe/Amsterdam')`. This
     step does not fail.
+11. In a react-admin view, check each field validator that reads another
+    field from `info.data`. A filter value now goes through the validators
+    of its field, without the other fields, so `info.data` is `{}`. Use
+    `info.data.get("starts_at")` and skip the check when it is `None`. This
+    step fails with `KeyError`, a `500`, not with a message from Restly.
 
 ### Added
 
@@ -121,8 +126,10 @@ replacement, unless it says otherwise.
   as in `data.ends_at > fr.in_utc(obj.starts_at)`. A time from a column
   without a time zone has no offset, and on SQLite no time has one.
 - `fr.query.FilterKey` and `fr.query.SortKey`, for list params of your own.
-  Each finds the field of the response class and the column of the model
-  that a client's key names, with the rules of the generated list params.
+  Each finds the field of the response class that a client's key names, and
+  the column of the model. As in the generated list params, a field with an
+  alias is a key only by its alias, and a field that a response never shows
+  is no key. A hybrid property is a key too, when it has SQL.
   `FilterKey.parse(value)` gives a value the validation of its field and the
   form of its column, as the generated filters do. `SortKey.term()` gives
   the term for `order_by()`, with NULLs where `sort_nulls` says. The
@@ -300,10 +307,12 @@ replacement, unless it says otherwise.
   creates the class.
 - A react-admin filter value goes through the validation of its field, as in
   the generated filters. Before, it got the Python type of its column. So
-  the validators of the field run, also one that keeps local times, and
-  `null` finds the rows without a value where the field allows `None`.
-  Before, `null` gave `400`. A field with an alias is a filter or sort key
-  only by its alias, and a relationship field is an `Unknown filter key`.
+  the validators of the field run, also one that keeps local times. They
+  get only this field, so `info.data` is `{}`. `null` finds the rows without
+  a value where the field allows `None`, also in a list, as in
+  `{"size": [null, 3]}`. Before, `null` gave `400`. A field with an alias is
+  a filter or sort key only by its alias, and a relationship field is an
+  `Unknown filter key`.
 
 #### Schemas and models
 
@@ -501,8 +510,13 @@ replacement, unless it says otherwise.
 - OpenAPI shows the `sort`, `range` and `filter` parameters of a react-admin
   list. A subclass of a react-admin view keeps the list params of its base.
 - A react-admin filter or sort on a field that the model has only in
-  Python, such as a `@property`, gets `400` with `Unknown filter key`.
-  Before, it gave `500`. A hybrid property still works.
+  Python, such as a `@property` or a hybrid property without SQL, gets `400`
+  with `Unknown filter key`. Before, it gave `500`. A hybrid property with
+  SQL still works.
+- A filter value that equals a member of an `IntEnum`, such as `1`, on a
+  column of SQLAlchemy's `Enum` type, finds the rows of that member. Before,
+  the database compared the stored name with the number: a `500` on
+  PostgreSQL and no rows on SQLite.
 - A react-admin filter on a column with a type of your own, a
   `TypeDecorator`, gets the value of its field. Before, the column got the
   text from the JSON, so SQLAlchemy's recipe that stores UTC gave a `500`.

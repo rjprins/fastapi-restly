@@ -23,6 +23,7 @@ import pytest
 import sqlalchemy
 from fastapi import Depends, FastAPI
 from fastapi.responses import JSONResponse
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column
 from starlette.datastructures import QueryParams
 
@@ -460,6 +461,9 @@ def test_react_admin_filter_values_go_through_their_field(flavor, request):
     assert names({"name": 7}) == ["7"]
     assert names({"gizmoSize": None}) == ["small", "7"]
     assert names({"gizmoSize": [3, "3"]}) == ["big"]
+    # SQL's IN never matches NULL, so a null in a list adds IS NULL
+    assert names({"gizmoSize": [None]}) == ["small", "7"]
+    assert names({"gizmoSize": [None, 3]}) == ["big", "small", "7"]
     response = client.get(
         "/gizmos/", params={"filter": json.dumps({"size": 3})}, assert_status_code=400
     )
@@ -509,6 +513,79 @@ def test_react_admin_filter_on_an_enum_column_checks_the_labels(client):
         assert response.json()["detail"] == (
             "Invalid filter value for 'status': 'bogus'. Use one of: draft, published."
         )
+
+
+def test_react_admin_filter_null_on_an_enum_and_a_document_in_a_json_column(client):
+    """``null`` finds the rows without a value also on a column of
+    SQLAlchemy's ``Enum`` type, which has no label for it. A field typed as
+    a model over a ``JSON`` column compares the document as a write stores
+    it."""
+
+    class RaTheme(pydantic.BaseModel):
+        name: str
+        size: int = 12
+
+    class RaPage(fr.IDMixin, SharedBase):
+        status: Mapped[str | None] = mapped_column(
+            sqlalchemy.Enum("draft", "published", name="ra_page_status"), default=None
+        )
+        theme: Mapped[dict | None] = mapped_column(sqlalchemy.JSON, default=None)
+
+    class RaPageSchema(fr.IDSchema):
+        status: str | None = None
+        theme: RaTheme | None = None
+
+    @fr.include_view(client.app)
+    class RaPageView(fr.AsyncReactAdminView):
+        prefix = "/pages"
+        model = RaPage
+        schema = RaPageSchema
+
+    create_tables()
+    client.post("/pages/", json={"status": "draft", "theme": {"name": "dark"}})
+    client.post("/pages/", json={})
+
+    def ids(filter_: dict) -> list[int]:
+        rows = client.get("/pages/", params={"filter": json.dumps(filter_)}).json()
+        return [row["id"] for row in rows]
+
+    assert ids({"status": None}) == [2]
+    assert ids({"status": [None, "draft"]}) == [1, 2]
+    assert ids({"theme": {"name": "dark"}}) == [1]
+    assert ids({"theme": {"name": "light"}}) == []
+
+
+def test_react_admin_filter_on_a_hybrid_in_python_returns_400(client):
+    """A hybrid property that is plain Python has no SQL. Its ``==`` would
+    give ``WHERE false``, so it is an unknown key, as a ``@property`` is."""
+
+    class RaBin(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+        deleted_at: Mapped[datetime.datetime | None] = mapped_column(default=None)
+
+        @hybrid_property
+        def is_deleted(self) -> bool:
+            return self.deleted_at is not None
+
+    class RaBinSchema(fr.IDSchema):
+        name: str
+        is_deleted: fr.ReadOnly[bool] = False
+
+    @fr.include_view(client.app)
+    class RaBinView(fr.AsyncReactAdminView):
+        prefix = "/bins"
+        model = RaBin
+        schema = RaBinSchema
+
+    create_tables()
+    client.post("/bins/", json={"name": "kept"})
+
+    for params, detail in [
+        ({"filter": json.dumps({"is_deleted": False})}, "Unknown filter key"),
+        ({"sort": json.dumps(["is_deleted", "ASC"])}, "Unknown sort key"),
+    ]:
+        response = client.get("/bins/", params=params, assert_status_code=400)
+        assert response.json()["detail"] == f"{detail}: 'is_deleted'"
 
 
 def test_react_admin_unknown_filter_field_returns_400(client):

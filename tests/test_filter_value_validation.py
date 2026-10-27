@@ -18,7 +18,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 import fastapi_restly as fr
 from fastapi_restly.exc import BadQueryParam
-from fastapi_restly.query._impl import _parse_filter_value
+from fastapi_restly.query._impl import _filter_value_parser
 
 from ._models import SharedBase
 from .conftest import create_tables
@@ -39,8 +39,8 @@ class TicketSchema(pydantic.BaseModel):
 
 
 def test_after_model_validator_does_not_reject_a_filter():
-    assert _parse_filter_value(TicketSchema, "title", None, "x") == "x"
-    assert _parse_filter_value(TicketSchema, "severity", None, "3") == 3
+    assert _filter_value_parser(TicketSchema, "title", None)("x") == "x"
+    assert _filter_value_parser(TicketSchema, "severity", None)("3") == 3
 
 
 def test_before_model_validator_is_not_run():
@@ -55,7 +55,7 @@ def test_before_model_validator_is_not_run():
             calls.append(data)
             return data
 
-    assert _parse_filter_value(Schema, "name", None, "x") == "x"
+    assert _filter_value_parser(Schema, "name", None)("x") == "x"
     assert calls == []
 
 
@@ -68,7 +68,7 @@ def test_field_validator_still_applies():
         def _lower(cls, value: str) -> str:
             return value.strip().lower()
 
-    assert _parse_filter_value(Schema, "name", None, "  Foo ") == "foo"
+    assert _filter_value_parser(Schema, "name", None)("  Foo ") == "foo"
 
 
 @pytest.mark.parametrize("mode", ["before", "after", "plain", "wrap"])
@@ -103,11 +103,12 @@ def test_filter_validator_receives_field_name_and_empty_data(mode, recursive):
         schema_cls = Schema
 
     assert (
-        _parse_filter_value(schema_cls, "firstName", None, "Alice")
+        _filter_value_parser(schema_cls, "firstName", None)("Alice")
         == "first_name:Alice"
     )
     assert (
-        _parse_filter_value(schema_cls, "last_name", None, "Smith") == "last_name:Smith"
+        _filter_value_parser(schema_cls, "last_name", None)("Smith")
+        == "last_name:Smith"
     )
     assert seen == [("first_name", {}), ("last_name", {})]
 
@@ -153,15 +154,15 @@ def test_field_constraint_still_rejects():
     class Schema(pydantic.BaseModel):
         score: Annotated[int, Field(gt=0)]
 
-    assert _parse_filter_value(Schema, "score", None, "5") == 5
+    assert _filter_value_parser(Schema, "score", None)("5") == 5
     with pytest.raises(BadQueryParam):
-        _parse_filter_value(Schema, "score", None, "0")
+        _filter_value_parser(Schema, "score", None)("0")
 
 
 def test_bad_type_still_rejects():
-    assert _parse_filter_value(TicketSchema, "severity", None, "3") == 3
+    assert _filter_value_parser(TicketSchema, "severity", None)("3") == 3
     with pytest.raises(BadQueryParam):
-        _parse_filter_value(TicketSchema, "severity", None, "three")
+        _filter_value_parser(TicketSchema, "severity", None)("three")
 
 
 def test_model_config_still_applies():
@@ -169,7 +170,7 @@ def test_model_config_still_applies():
         model_config = ConfigDict(str_strip_whitespace=True, str_to_lower=True)
         name: str
 
-    assert _parse_filter_value(Schema, "name", None, "  Foo ") == "foo"
+    assert _filter_value_parser(Schema, "name", None)("  Foo ") == "foo"
 
 
 def test_frozen_schema_filters():
@@ -179,7 +180,7 @@ def test_frozen_schema_filters():
         model_config = ConfigDict(frozen=True)
         name: str
 
-    assert _parse_filter_value(Schema, "name", None, "x") == "x"
+    assert _filter_value_parser(Schema, "name", None)("x") == "x"
 
 
 def test_definition_ref_field_validates():
@@ -199,9 +200,9 @@ def test_definition_ref_field_validates():
     while node["type"] != "model-fields":
         node = node["schema"]
     assert node["fields"]["post"]["schema"]["type"] == "definition-ref"
-    assert _parse_filter_value(Schema, "post", None, "5") == 5
+    assert _filter_value_parser(Schema, "post", None)("5") == 5
     with pytest.raises(BadQueryParam):
-        _parse_filter_value(Schema, "post", None, "x")
+        _filter_value_parser(Schema, "post", None)("x")
 
 
 def test_recursive_schema_scalar_filters():
@@ -215,9 +216,9 @@ def test_recursive_schema_scalar_filters():
         def _lower(cls, value: str) -> str:
             return value.lower()
 
-    assert _parse_filter_value(Node, "nodeName", None, "  Alice ") == "alice"
+    assert _filter_value_parser(Node, "nodeName", None)("  Alice ") == "alice"
     with pytest.raises(BadQueryParam):
-        _parse_filter_value(Node, "nodeName", None, " ")
+        _filter_value_parser(Node, "nodeName", None)(" ")
 
 
 def test_recursive_schema_model_validators_are_not_run():
@@ -239,7 +240,7 @@ def test_recursive_schema_model_validators_are_not_run():
         def _after(self):
             raise AssertionError("model after-validator ran for a filter")
 
-    assert _parse_filter_value(Node, "name", None, "Alice") == "Alice"
+    assert _filter_value_parser(Node, "name", None)("Alice") == "Alice"
 
 
 def test_mutually_recursive_schema_scalar_filters():
@@ -253,9 +254,9 @@ def test_mutually_recursive_schema_scalar_filters():
 
     Parent.model_rebuild()
 
-    assert _parse_filter_value(Parent, "name", None, "Alice") == "Alice"
-    assert _parse_filter_value(Child, "age", None, "5") == 5
-    assert _parse_filter_value(Child, "parent.name", None, "Alice") == "Alice"
+    assert _filter_value_parser(Parent, "name", None)("Alice") == "Alice"
+    assert _filter_value_parser(Child, "age", None)("5") == 5
+    assert _filter_value_parser(Child, "parent.name", None)("Alice") == "Alice"
 
 
 def test_list_scalar_filter_with_recursive_schema(client):

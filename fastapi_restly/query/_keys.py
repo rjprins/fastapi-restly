@@ -4,15 +4,16 @@ column of the model that it names."""
 from typing import Any
 
 from sqlalchemy import ColumnElement
-from sqlalchemy.orm import DeclarativeBase, QueryableAttribute, RelationshipProperty
+from sqlalchemy.exc import InvalidRequestError
+from sqlalchemy.orm import QueryableAttribute, RelationshipProperty
 
 from ..exc import BadQueryParam
-from ._impl import SchemaType, _parse_field_value, _resolve_field_name
+from ._impl import SchemaType, _resolve_field_name, _value_parser
 from ._shared import SortNulls, _sort_term
 
 
 def _find_column(
-    model: type[DeclarativeBase], schema_response: SchemaType, key: str, kind: str
+    model: type[Any], schema_response: SchemaType, key: str, kind: str
 ) -> tuple[str, QueryableAttribute[Any]]:
     """The Python name of the field that ``key`` names, and the attribute of
     ``model`` with that name.
@@ -32,6 +33,15 @@ def _find_column(
         getattr(column, "property", None), RelationshipProperty
     ):
         raise unknown
+    # A hybrid property that is plain Python, such as
+    # ``self.deleted_at is not None``, is a Python value on the class, and a
+    # composite is several columns. Neither is one value in SQL.
+    try:
+        expression = column.expression
+    except InvalidRequestError:
+        raise unknown from None
+    if not isinstance(expression, ColumnElement):
+        raise unknown
     return field_name, column
 
 
@@ -44,14 +54,18 @@ class FilterKey:
         key = fr.query.FilterKey(self.model, self.schema_response, "status")
         stmt = stmt.where(key.column == key.parse("active"))
 
-    The rules are those of the generated filters. The key is the name of a
-    field, or its alias when the field has one. The model has an attribute
-    with the name of the field: a column, a ``column_property`` or a hybrid
-    property. A field that a response never shows is no filter key: a
-    ``WriteOnly`` field, one with ``exclude=True``, or one of Pydantic's
-    secret types. A filter on it would let a client find out its value. A
-    key with a dot, such as ``vendor.name``, needs a join, so it is unknown
-    here. The react-admin views use this class for their ``filter``.
+    The key is the name of a field, or its alias when the field has one, as
+    in the generated filters. The model has an attribute with the name of
+    the field that is one value in SQL: a column, a ``column_property``, or
+    a hybrid property with an SQL expression. A hybrid property that is
+    plain Python, such as ``self.deleted_at is not None``, is no filter key.
+    Neither is a field that a response never shows: a ``WriteOnly`` field,
+    one with ``exclude=True``, or one of Pydantic's secret types. A filter on
+    it would let a client find out its value. Restly cannot see a value that
+    a serializer hides; type such a field as a subclass of
+    :class:`pydantic.Secret <pydantic.types.Secret>` instead. A key with a
+    dot, such as ``vendor.name``, needs a join, so it is unknown here. The
+    react-admin views use this class for their ``filter``.
 
     :param model: The model of the rows, such as the view's ``model``.
     :param schema_response: The response class. A view passes its
@@ -66,33 +80,32 @@ class FilterKey:
     #: ``Item.status``.
     column: QueryableAttribute[Any]
 
-    def __init__(
-        self, model: type[DeclarativeBase], schema_response: SchemaType, key: str
-    ) -> None:
+    def __init__(self, model: type[Any], schema_response: SchemaType, key: str) -> None:
         self.key = key
         self._schema = schema_response
         self._model = model
-        self._field_name, self.column = _find_column(
-            model, schema_response, key, "filter"
-        )
+        field_name, self.column = _find_column(model, schema_response, key, "filter")
+        self._parse = _value_parser(schema_response, field_name, self.column, key)
 
     def parse(self, value: Any) -> Any:
         """``value`` as the column takes it, for a condition such as
         ``key.column == key.parse(value)``.
 
         The value goes through the validation of the field, as in the
-        generated filters, so the validators of the field run too. It can be
-        text from a URL or a value from JSON, and a number becomes text for a
-        text field. A reference, such as ``IDRef[User]``, gives its id. A
-        column of SQLAlchemy's ``Enum`` type takes only its labels. A time
-        gets the form of its column; see :ref:`utc-times`.
+        generated filters, so the validators of the field run too. They get
+        only this field, so ``info.data`` is ``{}``; see
+        :ref:`filter-value-validation`. The value can be text from a URL or a
+        value from JSON, and a number becomes text for a text field. ``None``
+        stays ``None`` when the field allows it, so ``key.column == None``
+        gives ``IS NULL``. A reference, such as ``IDRef[User]``, gives its
+        id. A column of SQLAlchemy's ``Enum`` type takes only its labels. A
+        model for a ``JSON`` column becomes JSON data, as a write stores it.
+        A time gets the form of its column; see :ref:`utc-times`.
 
         :raises fastapi_restly.exc.BadQueryParam: ``Invalid filter value``,
             with the reason.
         """
-        return _parse_field_value(
-            self._schema, self._field_name, self.column, self.key, value
-        )
+        return self._parse(value)
 
     def __repr__(self) -> str:
         return (
@@ -127,9 +140,7 @@ class SortKey:
     #: ``Item.name``.
     column: QueryableAttribute[Any]
 
-    def __init__(
-        self, model: type[DeclarativeBase], schema_response: SchemaType, key: str
-    ) -> None:
+    def __init__(self, model: type[Any], schema_response: SchemaType, key: str) -> None:
         self.key = key
         self._schema = schema_response
         self._model = model
