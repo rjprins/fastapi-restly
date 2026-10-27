@@ -196,8 +196,8 @@ of some columns, SQLAlchemy leaves the loader options out.
 | The response shape of every route | {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>` ([Responses](#to-response)) |
 | The HTTP contract of one route: status, headers, parameters | `<verb>_endpoint` ([below](#replace-endpoint-method)) |
 | A path that is not CRUD: a lookup, an action such as publish | a method with {func}`@fr.get <fastapi_restly.views.get>` or {func}`@fr.post <fastapi_restly.views.post>` ([read route](#custom-read-route), [action route](#custom-action-route)) |
-| A lookup by another key, such as a slug or an email | {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>` with an expression, in a custom route ([below](#natural-key-route)) |
-| A list of a subset, such as one project's tasks | {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>` with `where=`, in a custom route ([Scopes](#per-read-where)) |
+| A lookup by another key, such as a slug or an email | In a custom route, call {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>` with an expression ([below](#natural-key-route)) |
+| A list of a subset, such as one project's tasks | In a custom route, call {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>` with `where=` ([Scopes](#per-read-where)) |
 | One action that changes several rows, such as a new order of the rows | a {meth}`write_action <fastapi_restly.views.RestView.write_action>` block with `obj=None`, in a custom route ([below](#write-several-rows)) |
 | One commit over several writes | {meth}`shared_write_action_commit <fastapi_restly.views.RestView.shared_write_action_commit>` in a custom route ([below](#shared-write-action-commit)) |
 | The same change on several views | a base view or a mixin ([Views](#share-behaviour-with-base-views)) |
