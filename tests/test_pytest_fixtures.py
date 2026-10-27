@@ -1,3 +1,4 @@
+import re
 from importlib.metadata import entry_points
 
 import pytest
@@ -121,6 +122,19 @@ def test_scope_was_the_last_database_owner_to_finish():
     result.assert_outcomes(passed=2)
 
 
+_FIXTURE_LINE = re.compile(r"^(\w+)(?: \[[^\]]*\])? -- ")
+
+
+def _fixture_names(result: pytest.RunResult) -> set[str]:
+    """The names of the fixtures that ``pytest --fixtures`` lists."""
+    names = set()
+    for line in result.outlines:
+        match = _FIXTURE_LINE.match(line)
+        if match:
+            names.add(match.group(1))
+    return names
+
+
 def test_public_plugin_uses_prefixed_fixture_names(pytester: pytest.Pytester):
     pytester.makefile(
         ".toml",
@@ -129,12 +143,8 @@ def test_public_plugin_uses_prefixed_fixture_names(pytester: pytest.Pytester):
 asyncio_default_fixture_loop_scope = "function"
 """,
     )
-    pytester.makepyfile(
-        """
-def test_fixture_names(pytestconfig):
-    fixture_names = set(
-        pytestconfig.pluginmanager.get_plugin("funcmanage")._arg2fixturedefs
-    )
+
+    fixture_names = _fixture_names(pytester.runpytest_subprocess("--fixtures"))
 
     assert {
         "restly_app",
@@ -152,11 +162,6 @@ def test_fixture_names(pytestconfig):
         "autouse_alembic_upgrade",
         "autouse_savepoint_only_mode_sessions",
     }.isdisjoint(fixture_names)
-"""
-    )
-
-    result = pytester.runpytest("-q")
-    result.assert_outcomes(passed=1)
 
 
 def test_pytest_entry_point_auto_loads_fixture_plugin(pytester: pytest.Pytester):
@@ -181,12 +186,7 @@ asyncio_default_fixture_loop_scope = "function"
             "[pytest11]\nfastapi_restly = fastapi_restly.pytest_fixtures\n"
         )
 
-    pytester.makepyfile(
-        """
-def test_fixture_auto_loaded(pytestconfig):
-    fixture_names = set(
-        pytestconfig.pluginmanager.get_plugin("funcmanage")._arg2fixturedefs
-    )
+    fixture_names = _fixture_names(pytester.runpytest_subprocess("--fixtures"))
 
     assert {
         "restly_app",
@@ -195,8 +195,3 @@ def test_fixture_auto_loaded(pytestconfig):
         "restly_async_session",
         "restly_project_root",
     } <= fixture_names
-"""
-    )
-
-    result = pytester.runpytest_subprocess("-q")
-    result.assert_outcomes(passed=1)
