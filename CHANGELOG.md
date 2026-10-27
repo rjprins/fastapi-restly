@@ -8,642 +8,191 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 This release reworks how a view reads and writes. To upgrade, work through
-these steps. A step that you miss fails with a message that names the
-replacement, unless it says otherwise.
+these steps. A missed step fails with a message that names the replacement.
+A step marked "Silent" gives no error when you miss it.
 
 1. Declare a base of your own, `class Base(fr.ModelDefaults, DeclarativeBase)`,
-   in place of `fr.DataclassBase` and `fr.IDBase`.
+   in place of `fr.DataclassBase`, and use `class Post(fr.IDMixin, Base)` in
+   place of `fr.IDBase`. Use `Base` everywhere you used `fr.DataclassBase`,
+   also in `alembic/env.py`. The tables stay the same.
 2. Replace `fr.utils.CurrentSettingsMixin` with a `get_settings()` function.
-   If your app imports `pydantic_settings`, add `pydantic-settings` to your
-   dependencies: Restly no longer installs it. This step fails with
-   `ModuleNotFoundError`, not with a message from Restly.
-3. In `create` and `update`, call `super()`, change the object and return
-   it. Drop `make_new_object`, `save_object` and each flush that only saved.
+3. Add `pydantic-settings` and `alembic` to the dependencies of your project
+   if it uses them. Restly no longer installs them. A missed step fails with
+   `ImportError`.
+4. In `create` and `update`, call `super()`, change the object and return it.
+   Drop `make_new_object`, `save_object` and each flush that only saved.
    Rename `schema_obj` to `data`.
-4. Move a `get_one` or `get_many` override to its new place: `scope`,
-   `where_id`, `not_found`, `to_single_response`, or SQL on the model.
-5. Pass `obj=` to `write_action`, also for a new object, instead of
-   `as w` and `w.obj`.
-6. Write each reference as `fr.MustExist[int, Model]`, in place of
+5. Move a `get_one` or `get_many` override to `scope`, `where_id`,
+   `not_found`, `to_single_response` or SQL on the model.
+6. Pass `obj=` to `write_action`, also for a new object, in place of `as w`
+   and `w.obj`.
+7. Write each reference as `fr.MustExist[int, Model]`, in place of
    `fr.MustExist[int]` and `fr.RefExists`.
-7. Declare the names of your custom actions in a class `Action` on the view,
-   such as `class Action(fr.Action): PUBLISH = "publish"`, and pass
-   `self.Action.PUBLISH` to `write_action`. A mixin whose route calls
-   `write_action` with an action of its own declares its own `Action`, and
-   the view inherits from it. An action that you miss fails when the route
-   runs, not when Python creates the class. `Action` is now a reserved name
-   on a view and on the classes it inherits from.
-8. Check each column without a time zone, such as `mapped_column(DateTime())`,
-   or `Mapped[datetime]` on a base without `fr.ModelDefaults`. Restly now
-   stores the times that clients send in UTC there, and a generated schema
-   shows them with `Z`. If the column holds local times, give its field a
-   validator that converts the time; see "Keep times in UTC" in the docs.
-   This step does not fail: a column that you miss gets new rows in UTC
-   next to its old rows in local time.
-9. Where your code compares a time from a request with a time from the
-   database, convert the time from the database with `fr.in_utc()` first,
-   as in `data.ends_at > fr.in_utc(obj.starts_at)`. A missed `<`, `>` or
-   `-` fails with `TypeError`, not with a message from Restly. A missed
-   `==` or `!=` does not fail: `==` is always `False`, and `!=` always
-   `True`.
-10. Check code of your own that depends on the time zone of the database
-    session. On PostgreSQL, an engine that Restly builds from a URL now puts
-    each session in UTC. So SQL such as `date_trunc('day', created_at)`
-    gives the days of UTC, and `now()` gives UTC for a column without a
-    time zone. For another zone, name it in the SQL; see "Engine defaults"
-    in the docs. On psycopg, also code in Python changes: a time without an
-    offset that it writes is read as UTC, a time with an offset that it
-    writes to a column without a time zone is stored in UTC, and each time
-    that psycopg gives back has the zone UTC. This step does not fail.
-11. In a react-admin view, check each field validator that reads another
-    field from `info.data`. A filter value now goes through the validators
-    of its field, without the other fields, so `info.data` is `{}`. Use
-    `info.data.get("starts_at")` and skip the check when it is `None`. This
-    step fails with `KeyError`, a `500`, not with a message from Restly.
-12. Give list params of your own the page fields: subclass
-    `fr.query.PagedListParams` in place of `pydantic.BaseModel`, or set
-    `pagination = None` for a list without pages. Page fields that you
-    wrote yourself keep working when they have the names of the view's page
-    parameters.
-13. On SQLite, check each `Integer` column that holds numbers beyond 32
-    bits, such as a Unix time in milliseconds, and each `String(n)` column
-    that holds longer text. Restly now refuses such a value in a request.
-    Give the column a type that fits, such as `BigInteger`, or `String()`
-    without a length. A column that you miss fails only when a request sends
-    such a value, with a 422 or a 400.
-14. If your project uses Alembic, add `alembic` to its dependencies: Restly
-    no longer installs it. If you miss this step, an environment that is
-    installed from the dependencies of your project has no Alembic. The
-    `alembic` command is then not found, and code that imports from
-    `alembic` fails with `ImportError`. A test suite with `alembic_upgrade=`
-    stops with a message from Restly.
+8. Declare your own actions in a class `Action` on the view, such as
+   `class Action(fr.Action): PUBLISH = "publish"`, and pass
+   `self.Action.PUBLISH` to `write_action`. A missed action fails when its
+   route runs.
+9. Let list params of your own on a view with pages subclass
+   `fr.query.PagedListParams`, or set `pagination = None` on the view.
+10. Silent: Restly now stores the times that clients send in UTC, also in a
+    column without a time zone, and a response shows them with `Z`. If a
+    column holds local times, give its field a validator that converts them.
+11. Compare a time from the database with a time from a request through
+    `fr.in_utc()`, as in `data.ends_at > fr.in_utc(obj.starts_at)`. A missed
+    `<` or `>` raises `TypeError`. A missed `==` is silent: it is always
+    `False`.
+12. Silent: on PostgreSQL, an engine that Restly builds puts each session in
+    UTC. Check SQL that depends on the time zone of the session, such as
+    `date_trunc('day', created_at)`.
+13. Silent: on SQLite, Restly now refuses a number that does not fit an
+    `Integer` column, and text longer than a `String(n)` column. Give such a
+    column a type that fits, such as `BigInteger`.
+14. In a react-admin view, a field validator gets only its own field for a
+    filter value, so `info.data` is `{}`. Use `info.data.get(...)`.
 
 ### Added
 
-- Markers for the view's own types in `fastapi_restly.views`: `ViewID`,
-  `ViewResponse`, `ViewListResponse`, `ViewCreate` and `ViewUpdate`. When
-  the view registers, Restly puts the view's classes in their place, so a
-  route on a base view or a mixin gets the classes of each view that uses
-  it. They work in annotations, in `response_model=` and inside other types,
-  such as `list[ViewResponse]`.
-- `self.select(*, scope=None)`: `select(self.model)` with the view's scope
-  and loader options. The loads start from it, and so can a custom route.
-- `where_id(id)` returns the WHERE for an id from the path, such as
-  `Recipe.slug == id`. `not_found(id)` returns the error for an id that names
-  no row. Every item route and `self.get_one(id)` use them.
-- Four list settings choose the keys of a list: `include_filters`,
-  `exclude_filters`, `include_sort_keys` and `exclude_sort_keys`. An entry is
-  a key, or a pattern: `*` matches any characters except `.`, so
-  `"vendor.*"` is every key on the fields of `vendor`.
-  `fr.query.derive_schema_list_params` takes them too.
-- `include_routes` names the routes that a view serves, such as
-  `(fr.ViewRoute.GET_MANY, fr.ViewRoute.GET_ONE)` for a read-only copy of a
-  view. The view leaves out every other route, also a custom route that the
-  base view gets later. The default, `("*",)`, is every route.
-  `exclude_routes` applies after it.
-- `sort_query_param` renames the sort parameter, such as `"order_by"`.
-- `default_sort` is the sort when the request has none, such as
-  `"-created_at"`. A `sort` from the client replaces it. OpenAPI shows it as
-  the default of the sort parameter. `fr.query.derive_schema_list_params`
-  takes it too.
-- `sort_nulls` sets where a sort puts NULLs: `"last"` (the default) or
-  `"first"` in both directions, or `None` for where the database puts them.
-  `fr.query.apply_list_params` takes it too.
-- `unknown_query_params = "ignore"` leaves out a query key that the route
-  does not read, as FastAPI does. The default, `"forbid"`, answers `422`, as
-  before.
-- `@fr.list_filter("key")` makes a view method the filter for a query key.
-  The type of its parameter is the type of the key, and its docstring is the
-  description. It returns a condition, a clause or `None`, and it may be
-  `async def` on an async view. The key may also be a field and an operator
-  that you choose, such as `name__length`.
-- `list[fr.MustExist[int, Model]]` checks each id of a list, such as the ids
-  in the body of a custom route. The message names every missing id.
-- `apply_filters(stmt, list_params)` applies the client's filters without
-  the sort and the page, for a route with `GROUP BY`.
-- `fr.views.ReactAdminListParams`, the list params of a react-admin view.
-  Subclass it to add a key, such as a search key.
-- A clause can go into the condition of another clause, such as
-  `fr.where_clause(Comment.post.has(PostClauses.default_scope))`.
-- `fr.ModelDefaults` adds Restly's model defaults to a base of your own:
-  `class Base(fr.ModelDefaults, DeclarativeBase)`. The models get
-  keyword-only dataclass constructors, snake_case table names, timezone-aware
-  datetimes, enums stored as strings and `awaitable_attrs`. Set dataclass
-  options such as `eq=True` on a model, not on the base.
-- `fr.IDMixin` at the top level.
-- With `warn_on_misuse=True`, Restly warns about a writable field on a column
-  that the model sets itself (`init=False` with a default), such as a tenant
-  column.
-- `fr.exc.RestlyExpireOnCommitWarning`: a view warns once when it writes
-  through a session that expires on commit, from any source of sessions.
-  `snapshot(new)` in `after_action_commit` is then empty, and an async view
-  fails with `MissingGreenlet`. The warning of `fr.configure()` about an async
-  session factory with `expire_on_commit=True` has this class too.
-- `fr.UTCDatetime`, a `datetime` field in UTC. A time without an offset is
-  UTC, and a time with an offset becomes the same time in UTC. So the
-  business methods get each time in UTC, and a response shows it with `Z`,
-  also from a column without a time zone.
-- `fr.in_utc(value)`, the rule of `fr.UTCDatetime` as a function. Use it on a
-  time from the database before you compare it with a time from a schema,
-  as in `data.ends_at > fr.in_utc(obj.starts_at)`. A time from a column
-  without a time zone has no offset, and on SQLite no time has one.
-- `fr.query.FilterKey` and `fr.query.SortKey`, for list params of your own.
-  Each finds the field of the response class that a client's key names, and
-  the column of the model. As in the generated list params, a field with an
-  alias is a key only by its alias, and a field that a response never shows
-  is no key. A hybrid property is a key too, when it has SQL.
-  `FilterKey.parse(value)` gives a value the validation of its field and the
-  form of its column, as the generated filters do. `SortKey.term()` gives
-  the term for `order_by()`, with NULLs where `sort_nulls` says. The
-  react-admin views use them.
-- `fr.query.order_by_primary_key(stmt, model, sorted_on=...)` orders `stmt`
-  by the primary key last, so that a row never moves to another page. The
-  generated list params do this themselves. List params of your own call it,
-  as the react-admin views do.
-- `fr.query.PagedListParams`, the base of list params of your own with
-  pages. A view fills its `page` and `page_size` fields from its
-  `pagination`: their names in the URL, the default page size, the bounds,
-  and the check that the offset fits in the database. So one class serves
-  views with other pagination.
+- `fr.ModelDefaults` and `fr.IDMixin`, for a base of your own.
+- Hooks for the loads: `self.select()`, `where_id(id)` and `not_found(id)`.
+- Markers for the view's own types, for routes on a base view or a mixin:
+  `ViewID`, `ViewResponse`, `ViewListResponse`, `ViewCreate` and
+  `ViewUpdate`.
+- `include_routes`, the routes that a view serves.
+- List settings: `include_filters`, `exclude_filters`, `include_sort_keys`,
+  `exclude_sort_keys`, `sort_query_param`, `default_sort`, `sort_nulls` and
+  `unknown_query_params`.
+- `@fr.list_filter("key")`, a view method as the filter for a query key.
+- `apply_filters(stmt, list_params)`: the filters, without the sort and the
+  page.
+- For list params of your own: `fr.query.PagedListParams`,
+  `fr.query.FilterKey`, `fr.query.SortKey`, `fr.query.order_by_primary_key`
+  and `fr.views.ReactAdminListParams`.
+- `list[fr.MustExist[int, Model]]` checks each id of a list.
+- A clause can go into the condition of another clause.
+- `fr.UTCDatetime`, a `datetime` field in UTC, and `fr.in_utc()`.
+- `fr.exc.RestlyExpireOnCommitWarning`, for a session that expires on commit.
+- With `warn_on_misuse=True`, a warning for a writable field on a column that
+  the model sets itself.
 
 ### Changed
 
-#### Reads
+Reads:
 
-- `get_one` and `get_many` are final, as the handlers are. A view class that
-  defines one, or `select`, fails when Python creates the class. Change the
-  rows with `scope`, the lookup with `where_id`, the list with
-  `apply_list_params`, and the loads with `get_loader_options`. A value on
-  each row that needs no query goes in `to_single_response`, as
-  `super().to_single_response(obj).model_copy(update={...})`. A value from
-  SQL goes on the model as a `column_property`, or in `get_loader_options`
-  as a `with_expression`. A read from another source replaces the endpoint
-  method. `get_many` takes `where=`.
-- A model with a composite primary key needs `where_id` for its item routes,
-  and `id_type = str` for an id such as `3-7`. Without `where_id`, the view
-  fails when it registers.
-- `get_relationship_loader_options` is now `get_loader_options`. It holds
-  everything that a read loads, a `with_expression` too.
-- A custom route that declares the view's response goes through the view's
-  response step, so it can return the row. A row under `ViewResponse` goes
-  through `to_response`, each row under `list[ViewResponse]` through
-  `to_single_response`, and a `ListResult` under `ViewListResponse` through
-  the list response. `-> Project` or `-> list[Project]` for the view's own
-  model works like `ViewResponse`, and so does the view's own response
-  class, such as the 0.11 form
-  `response_model=fr.schemas.derive_schema_response(ProjectSchema)`. A route
-  that names another Pydantic class keeps FastAPI's behaviour and skips
-  `to_single_response`.
+- `get_one`, `get_many` and `select` are final. `get_many` takes `where=`.
+- `get_relationship_loader_options` is now `get_loader_options`.
+- A model with a composite primary key needs `where_id`.
+- A custom route that declares `ViewResponse`, or returns the view's model,
+  goes through the view's response step.
 
-#### Writes
+Writes:
 
-- The write business methods no longer flush. `create` and `update` return
-  the object, and `delete` only marks the row. After them, the commit bracket
-  saves: it adds a new object, flushes, refreshes it and the other rows of
-  the view's model that the action wrote, and loads them with the loader
-  options. So a change after `super().create()` is part of the INSERT. Inside
-  `create`, the new object has no id yet: code that needs it goes in
-  `before_action_commit`, which runs after the save, or calls
-  `session.flush()`. A `try` around `super().create()` no longer catches an
-  error of the INSERT.
-- A business method and a `write_action` block run under
-  `session.no_autoflush`, also on a sync view. A query there does not see your
-  unflushed changes, so a get-or-create loop or a count against a limit calls
-  `flush()` first.
-- `write_action(action, *, obj, data=None)`: `obj` is required. It is a row
-  from the database, a new object that the action creates, or `None` for an
-  action on several rows. Restly adds a new object to the session when the
-  block starts, so a `flush()` in the block gives it an id, and `authorize`
-  gets `obj=None`. A detached row is added back, and a row
-  that another open session holds raises `TypeError`. The block gets nothing
-  from `as`: pass the new object as `obj` instead of setting `w.obj`.
-- Each view has a class `Action` that lists all its actions. It is
-  `fr.Action`, with the five CRUD actions, until the view declares a subclass
-  with actions of its own. An action has an UPPER_CASE name, and its value is
-  that name in lower case: `PUBLISH = "publish"`. `write_action` takes only an
-  action that the view's `Action` declares, and raises `ValueError` for
-  another value. A view whose `Action` does not inherit from the `Action` of
-  a base class, such as a mixin's, fails when Python creates the class. So
-  `PostView.Action` shows every action that `write_action` and the CRUD routes
-  pass to `authorize` and the hooks, also in your editor.
-- `new` and `old` in the hooks follow the row that the action is about. So a
-  soft delete through `DELETE /{id}` gives the row as `new`, and a block that
-  deletes its `obj` gives `new=None`.
-- A `create` or `update` that does not return one object of a model raises
-  `TypeError`, and nothing is committed.
-- The request body is `data` in every view method: `create(self, data)`,
-  `update(self, obj, data)`, the handlers and the endpoint methods. Rename the
-  parameter in your overrides; Pyright reports the old name. The functions in
-  `fr.objects` take `model` and `data` too, not `model_cls` and
-  `schema_obj`.
-- The write bracket checks the references in the data after `authorize` and
-  before the business method, also in nested schemas and in each item of a
-  list. So a `create` that builds the object itself is checked, and so is the
-  `data=` of `write_action`.
-- A handler or a `write_action` inside a `write_action` block joins its
-  commit, as inside `shared_write_action_commit()`. A direct
-  `session.commit()` inside a block raises `RuntimeError`.
-- Inside a shared commit, a write action that raises after it changed objects,
-  or after it ran a statement such as `session.execute(update(...))`, stops
-  the commit, also when the route catches the error. Put
-  `session.begin_nested()` around each write that may fail.
-- A database conflict in a write is a `fr.exc.Conflict` (409), raised by the
-  write block, with the `IntegrityError` as its `__cause__`. So a handler or
-  an `except` for `IntegrityError` around a block no longer sees it: catch
-  `fr.exc.Conflict` instead. Inside `shared_write_action_commit()` the error
-  stays raw. A handler for `fr.exc.RestlyHTTPError` now shapes conflicts too.
-  Code outside a write block gets the raw `IntegrityError`.
-- A replaced endpoint method gets the view's types only from the markers,
-  not from its parameter names. Annotate it, such as
-  `create_endpoint(self, data: ViewCreate) -> ViewResponse`. `list_params`
-  still works by its name.
-- A time without an offset is UTC, in request bodies and filters alike, also
-  in the filter of a react-admin view. Such a time gets the offset of UTC
-  when its column has a time zone, as in the generated filters before. A
-  time with an offset becomes the same time in UTC, and loses its offset
-  when its column has no time zone, such as a `DateTime()` column. A time
-  that UTC cannot hold gets a 422 in a body and a 400 in a filter. Before,
-  SQLite dropped the offset, asyncpg failed with a 500, and a body time
-  without an offset was read in the time zone of the app's Python process
-  (asyncpg) or of the database session (psycopg). Restly changes the times
-  of a body when it copies the body onto the model. A column that keeps
-  local times needs a validator on its field that converts the time first.
-- A value that its column cannot hold gets a 422 in a body or in the path,
-  and a 400 in a filter. Restly checks the generic integer and text types of
-  SQLAlchemy, such as `Integer` and `String(n)`, on every database. A number
-  must fit the integer type: 16 bits for `SmallInteger`, 32 for `Integer`
-  and 64 for `BigInteger`. Text must hold no NUL character, and text in a
-  body must fit the length of a `String(n)` column. A reference id that does
-  not fit gets a 404, as for a row that does not exist. Before, PostgreSQL
-  refused such a value with a 500, and SQLite stored it. Any other type,
-  such as a type of a dialect or a `TypeDecorator`, gets the value as it is,
-  as in SQLAlchemy. For such a type, put a constraint on the field of the
-  schema, such as `Field(max_length=50)`.
+- The business methods no longer flush. Restly saves after them, so inside
+  `create` the object has no id yet. Use `before_action_commit` or
+  `session.flush()` for code that needs it.
+- Business methods and `write_action` blocks run under
+  `session.no_autoflush`.
+- The request body is `data` everywhere, also in `fr.objects`.
+- Restly checks the references after `authorize`, also in nested schemas.
+- A write inside a `write_action` block joins its commit. A direct
+  `session.commit()` there raises `RuntimeError`.
+- A database conflict is a `fr.exc.Conflict` (409), with the `IntegrityError`
+  as its `__cause__`. Catch `Conflict`, not `IntegrityError`.
+- `new` and `old` in the hooks follow the row that the action is about.
+- A replaced endpoint method gets the view's types only from the markers.
+- A time without an offset is UTC, in bodies and in filters.
+- A value that its column cannot hold gets a 422 or a 400, not a 500 on
+  PostgreSQL. Restly checks only SQLAlchemy's generic integer and text types.
 
-#### Lists
+Lists:
 
-- A list has no dotted filter keys and no dotted sort keys by default, such as
-  `?vendor.name=`. Turn them on with `include_filters = ("*", "*.*")` and
-  `include_sort_keys = ("*", "*.*")`, with one `*` for each level, or with a
-  narrower pattern.
-  `fr.query.derive_schema_list_params` has the same default. A sort key never
-  goes through a to-many relationship.
-- An unknown sort key gets `422`, not `400`. The `422` for an unknown query
-  key is a `RequestValidationError`, not an `HTTPException`; the body is the
-  same.
-- A sort key that appears twice, such as `?sort=name,-name`, gets `422`.
-  Before, the second term had no effect. With hand-written list params, or a
-  raw `QueryParams` in `fr.query.apply_list_params`, it raises
-  `BadQueryParam`, a `400`; before, the list came back with `200`. A
-  `default_sort` with a key twice fails when the class is defined, or when
-  the view registers for a mixin.
-- Labels get no range filters (`__gte`, `__lte`, `__gt`, `__lt`): a `str`
-  enum, a `Literal` of strings, and any field on a column of SQLAlchemy's
-  `Enum` type. Before, they got them, and a range compared the labels as
-  text, except on a native ENUM on PostgreSQL, which orders its labels as
-  they were declared. For a range in that order, write it with
-  `fr.list_filter`. An int enum keeps them on a column that stores the
-  number, such as `Integer`.
-- The `400` texts of a list name the problem: `Unknown sort key: 'nope'`,
-  `Unknown filter key: 'nope'`, or `Invalid filter value for 'age': 'old'.`
-  with Pydantic's reason. A field validator that raises another exception
-  gives `500`.
-- On async views, `apply_list_params` is `async def`. An override must match
-  its view: `async def` on an async view, `def` on a sync one.
-- The statement parameter is called `stmt`, as in the SQLAlchemy docs, not
-  `query`: in `fr.query.apply_list_params`, and in the view methods
-  `apply_list_params` and `count`. A call that passes `query=` by name must
-  pass `stmt=`. Restly passes the statement by position, so an override that
-  keeps the name `query` still works.
-- `apply_list_params` and `apply_filters` validate a `QueryParams` or a
-  mapping through `schema_list_params` first, as the list route does. A
-  mapping without `page_size` gets the default page size, so
-  `get_many({})` returns the first page, not every row.
-- A response field named like a pagination parameter, such as `page`, fails
-  only when it gets a filter key. Leave the key out with
-  `exclude_filters = ("page",)`.
-- A declared `schema_list_params` must follow the view's list settings and
-  filter methods, or the view fails when it registers. A subclass that
-  changes `pagination` or a list setting gets new list params when its base
-  uses generated ones.
-- A sort puts NULLs last in both directions, on every database, also on a
-  react-admin view. Before, the database decided: PostgreSQL put them first
-  in a descending sort, and SQLite and MySQL first in an ascending sort. Set
-  `sort_nulls = None` for the old place of NULLs. On PostgreSQL, a fast
-  descending sort on a nullable column needs an index with
-  `DESC NULLS LAST`. On MySQL and SQL Server, a sort on a nullable column
-  cannot use a plain index any more.
-- A field that holds a `dict`, a `list` or a nested model, such as a `JSON`
-  column, is no sort key, in the generated list params and in
-  `fr.query.SortKey`. A document has no order that a client means, and
-  PostgreSQL's `json` type has none at all: a sort on it gave a `500`.
-- List params of your own on a view with a `NumberedPagination` need the
-  page fields of its pagination, or the view fails when it registers.
-  Before, such a list returned every row while its response said that it
-  had pages, and `?page=2` got `422`. A view that builds its list response
-  itself, as a react-admin view does, pages in its own way.
+- Dotted filter and sort keys are off by default. Turn them on with
+  `include_filters = ("*", "*.*")` and `include_sort_keys = ("*", "*.*")`.
+- An unknown or repeated sort key gets a 422.
+- String enums, `Literal`s of strings and `Enum` columns get no range filters.
+- NULLs sort last, on every database. `sort_nulls = None` gives the old order.
+- A `dict`, `list` or JSON field is no sort key.
+- The statement parameter is `stmt`, not `query`. On async views,
+  `apply_list_params` is `async def`.
+- The texts of a 400 name the problem, such as `Unknown sort key: 'nope'`.
 
-#### React-admin
+React-admin:
 
-- React-admin views reject the list key settings, `sort_query_param`,
+- A filter value goes through the validation of its field, as in the
+  generated filters. `null` works.
+- A `sort`, `range` or `filter` with the wrong shape gets a 422.
+- React-admin views refuse the key settings, `sort_query_param`,
   `default_sort` and `@fr.list_filter`.
-- The list route of a react-admin view declares `list_params`. Overrides of
-  `apply_list_params`, `apply_filters` and `to_list_response` get the parsed
-  values: `sort` as `("name", "DESC")`, `range` as `(0, 24)` and `filter` as
-  a dict.
-- A react-admin view answers `422` instead of `400` for a `sort`, `range` or
-  `filter` with the wrong shape, and for a bad `range`. A sort key or a filter
-  that it cannot apply is a `fr.exc.BadQueryParam` (400).
-- A react-admin view with pagination that it cannot use fails when Python
-  creates the class.
-- A react-admin filter value goes through the validation of its field, as in
-  the generated filters. Before, it got the Python type of its column. So
-  the validators of the field run, also one that keeps local times. They
-  get only this field, so `info.data` is `{}`. `null` finds the rows without
-  a value where the field allows `None`, also in a list, as in
-  `{"size": [null, 3]}`. Before, `null` gave `400`. A field of type `Any`,
-  such as the `id` of `fr.IDSchema`, still gives the value the Python type
-  of its column, so `{"id": [...]}` with UUIDs works. A field with an alias
-  is a filter or sort key only by its alias, and a relationship field is an
-  `Unknown filter key` or an `Unknown sort key`.
 
-#### Schemas and models
+Schemas and models:
 
-- Each field of the update body keeps its type from the view's schema, so
-  `null` is valid only where the type allows `None`. `PATCH {"title": null}`
-  for `title: str` gets `422` now, not `409` from the database.
+- The update body keeps the type of each field, so `null` is valid only where
+  the type allows `None`.
 - In a generated schema, a field allows `null` only when its column is
-  nullable.
-- A generated schema gives each time column the type `fr.UTCDatetime`, and
-  `fr.TimestampsSchemaMixin` gives it to `created_at` and `updated_at`. So
-  the business methods get these times in UTC, and a response shows them
-  with `Z`, such as `2024-01-01T09:30:00Z`. A time from a column without a
-  time zone had no offset before. For local times, write the field yourself,
-  with a validator that converts the time.
-- The create body of a generated schema follows the model's constructor. On a
-  dataclass model, a column with only an `insert_default` or a
-  `server_default` is now a required field. Add `default=None` to let the
-  client leave it out.
-- Models compare by identity, as plain SQLAlchemy models do. Pass `eq=True`
-  on a model to compare its fields. A dataclass mixin of your own declares
-  `kw_only=True, eq=False, repr=False`, as `fr.IDMixin` does.
-- The repr of a model on `fr.ModelDefaults` shows the loaded columns and loads
-  nothing, so it no longer raises `MissingGreenlet`. Pass `repr=True` on a
-  model for the dataclass repr.
-- `restly new` generates the project's own `Base` in `app/models.py`.
+  nullable, and each time column is a `fr.UTCDatetime`.
+- In a generated create schema, a column with only an `insert_default` or a
+  `server_default` is required. Add `default=None` to let clients leave it
+  out.
+- Models compare by identity. Their repr loads nothing.
 
-#### Other
+Other:
 
-- The `alembic/env.py` that `restly new` generates runs the migrations in
-  UTC on PostgreSQL, as the application's sessions do. So a migration that
-  gives a column a time zone reads the stored times as UTC, and `now()` in a
-  migration gives UTC. The SQL script of `alembic upgrade --sql` starts with
-  `SET TIME ZONE 'UTC'` too. To do the same in an existing project, copy the
-  two `SET TIME ZONE 'UTC'` steps from the new `env.py`.
-- `fr.clauses.UNSCOPED` is a `WhereClause` with the condition `TRUE`, so it
-  goes everywhere a clause goes. `isinstance(x, WhereClause)` now matches it
-  too.
-- The test clients accept any 2xx status by default. Pass
-  `assert_status_code` for an exact status. `assert_status_code=None` skips
-  the check.
-- `exclude_routes` is typed `Collection[str | ViewRoute]`, not `Iterable`.
-  Restly reads the value more than once, so use a tuple, a list or a set, not
-  a `map()` or a generator.
-- On PostgreSQL, an engine that `fr.configure()` builds from a URL puts each
-  new session in UTC, as Django and Rails do. It sends
-  `SET TIME ZONE 'UTC'` when the server reports another zone. PostgreSQL
-  then reads a time without an offset as UTC, as Restly does, also in
-  `now()` for a column without a time zone. psycopg gives back each time in
-  UTC, as asyncpg does. An engine that you pass in keeps its zone.
+- On PostgreSQL, an engine from a URL puts each session in UTC, and the
+  `alembic/env.py` of `restly new` runs migrations in UTC.
+- The test clients accept any 2xx status by default.
+- `fr.clauses.UNSCOPED` is a `WhereClause`.
+- `exclude_routes` is a `Collection`, not an `Iterable`.
 
 ### Removed
 
-- Python 3.10, which reaches its end of life in October 2026. Restly now
-  needs Python 3.11 or later, and so does a project from `restly new`.
-- The view methods `make_new_object`, `update_object` and `save_object`. Use
-  `super().create(data)` and `super().update(obj, data)`, and `fr.objects`
-  for another model.
-- `run_write_action` and `async_run_write_action`. Use `self.write_action()`.
-- `fr.RefExists` and the `scope=` of a reference check. Write
-  `fr.MustExist[int, Post]`. A tenant rule goes on the session. A rule for one
-  caller goes in `authorize`: raise `fr.exc.NotFound` there to keep the
-  404.
-- `fr.MustExist[int]` without a model. Name the model:
-  `fr.MustExist[int, Project]`.
-- `fr.DataclassBase` and `fr.IDBase`. Declare one base of your own for the
-  app:
-
-  ```python
-  class Base(fr.ModelDefaults, DeclarativeBase):
-      pass
-
-
-  class Post(fr.IDMixin, Base):  # was: class Post(fr.IDBase)
-      title: Mapped[str]
-  ```
-
-  Mixins, such as `fr.TimestampsMixin`, go before `Base`. Use `Base` where
-  you used `fr.DataclassBase`: in the models,
-  `sa.Table(..., Base.metadata, ...)`, `configure_tests(base=Base)`,
-  `create_all(Base)` and `target_metadata` in `alembic/env.py`. The tables
-  stay the same, so Alembic finds no difference.
-- The `install_default_exception_handlers` argument of `fr.configure`, and the
-  `IntegrityError` handler that Restly installed. For your own body, register
-  a handler for `fr.exc.Conflict` or `fr.exc.RestlyHTTPError`; the original
-  error is `exc.__cause__`.
-- `fr.utils` with `CurrentSettingsMixin`. Use a plain pydantic-settings class
-  and a `get_settings()` function, as the project from `restly new` does.
-  Replace `Settings.current` with `get_settings()` in the app factory, and
-  `Settings.use(x)` in tests with an argument of the factory, as in
-  `create_app(x)`.
-- The dependency on pydantic-settings, which Restly no longer uses. A project
-  from `restly new` lists it in its own dependencies.
-- The dependency on Alembic. Restly uses it only for `alembic_upgrade=` in
-  `configure_tests()`. A project that uses Alembic lists it in its own
-  dependencies, as a project from `restly new` with migrations does.
-- `route_options`. Replace the endpoint method, pass the route arguments to
-  its decorator, as in FastAPI, and call `super()`.
-- `extra_query_params`. Declare the key where your code reads it: with
-  `@fr.list_filter`, as a parameter of the endpoint method, or as a
-  dependency. For keys that are known only at run time, set
-  `unknown_query_params = "ignore"`.
-- `react_admin_query_params`. The keys are the fields of the view's
-  `schema_list_params`.
-- The `warn_on_misuse` warning for CRUD routes on a plain `View`. Such routes
-  work. The warning also came for views that `RestView` cannot replace, such
-  as a view that keeps its items as JSON in one settings row.
+- Python 3.10.
+- `fr.DataclassBase`, `fr.IDBase`, `fr.utils`, `fr.RefExists` and
+  `fr.MustExist[int]` without a model. See the upgrade steps.
+- The view methods `make_new_object`, `update_object` and `save_object`, and
+  `run_write_action`. Use `super()` and `self.write_action()`.
+- The dependencies on pydantic-settings and Alembic.
+- `install_default_exception_handlers` and Restly's handler for
+  `IntegrityError`. Register a handler for `fr.exc.Conflict`.
+- `route_options`, `extra_query_params` and `react_admin_query_params`.
+- The `warn_on_misuse` warning for CRUD routes on a plain `View`.
 
 ### Fixed
 
-- A filter on the `id` of `fr.IDSchema`, such as `?id=1`, gives the value
-  the Python type of the key column, as for every field of type `Any`.
-  Before, the value stayed text: on PostgreSQL even `?id=1` gave a `500`,
-  and on SQLite a filter on a UUID key gave a `500`. On an integer key,
-  `?id=abc` now gets a `400`, and so does a number that the column cannot
-  hold.
-- A generated schema gives a `timedelta` column, an `Interval`, a field of
-  type `timedelta`. JSON shows it as an ISO 8601 duration, such as
-  `PT1H30M`. Before, the view failed when it registered, with
-  `TypeError: Unsupported field type`. A duration that is too long for the
-  column, such as `P3000000D`, gets `400` in a filter and `422` in a body,
-  as a time out of range does. SQLite stores a duration as a time after
-  1970, which must be before the year 10000.
-- `fr.query.apply_list_params` and `fr.query.derive_schema_list_params` take
-  a SQLModel table as the `model` in pyright and mypy, as the views do.
-  Before, the type checkers wanted a subclass of `DeclarativeBase`.
-- A field of a flag type, such as `IntFlag`, gets the plain filter, `__in`
-  and `__ne`. Before, it got only `__isnull`, because Python counts a flag
-  as a collection.
-- A field of Pydantic's secret types, such as `SecretStr`, works in a view.
-  A write stores the secret, and a response masks it, as Pydantic does. Like
-  a `WriteOnly` field, it gets no filter and is not a sort key. Before, a
-  write gave a `500`, its filters gave a `500`, and a sort on it ordered the
-  rows by the secret. A document for a JSON column with a secret field
-  raises `RestlyConfigurationError` before the write, as one with a
-  `WriteOnly` field does: a JSON dump masks the secret, so the column would
-  get `**********`.
-- A field whose name ends in `_`, such as `type_`, gets filter keys that
-  work, such as `?type___in=a,b`. Restly now splits a key at its last `__`.
-  Before, it split at the first one, so these keys were in OpenAPI, but every
-  request with them got a `400`.
-- A filter on a column of SQLAlchemy's `Enum` type no longer gives a `500`
-  on PostgreSQL, where such a column is a native ENUM by default. A value
-  that is no label of the column, such as `?status=bogus` for a `str` field,
-  is now a `400` on every database, also in the `filter` of a react-admin
-  view. Before, a native ENUM rejected it with an error. Such a column also gets no `__contains` and `__icontains`: they
-  failed on a native ENUM, and elsewhere they searched the stored names.
-- A sort on a related field, such as `?sort=vendor.name`, keeps the rows
-  that have no related row. With the default `sort_nulls`, they come last.
-  Before, the list left them out, and `total_count` did not count them.
-- A response that nests a row of another model, such as the lines of an
-  order, shows the new related row after a write set a foreign key column of
-  that row. Before, it showed the old one.
-- On an async view, a `to_single_response` that reads a relationship from
-  `get_loader_options` no longer fails after `PATCH`, and a `with_expression`
-  value is there after `POST` and `PATCH`.
-- An expression in place of an id that names a column of another table, such
-  as `get_one(Shelf.id == 2)` in a view of books, raises `TypeError`. Before,
-  SQL joined every row of that table, so a write could change a wrong row.
-- On PostgreSQL, a paginated list of a model with a `json` column works. The
-  count now counts the primary keys, so it also no longer computes a
-  `column_property` for every row.
-- Restly no longer passes `None` to the model's constructor for a field that
-  the client left out, unless the constructor requires it. So the model's
-  defaults apply. Before, a left-out JSON field stored `null`, and a
-  `default_factory` was lost.
-- A validator for a `ReadOnly` field or for a generated primary key no longer
-  needs `check_fields=False`.
-- A field type with `Annotated` inside `Optional`, such as
-  `fr.MustExist[UUID, Team] | None`, works like the plain type: in the list
-  filters, as a reference, and in the loads of an async view.
-- A schema that names itself in a to-one field no longer fails with
-  `RecursionError`.
-- A field typed with a type alias, such as
-  `type AuthorId = fr.MustExist[int, User]` or `type Many[T] = list[T]`,
-  works like the plain type. Before, Restly did not check the reference. A
-  `ReadOnly` or `WriteOnly` marker inside a type alias has no effect, so
-  Restly now rejects it, as it does a marker inside `Optional`.
-- A to-many field typed `Sequence[X]` or `tuple[X, ...]` works like
-  `list[X]`. Before, an async view answered 500 when such a field held a
-  nested schema with relationships of its own, and a body with
-  `tuple[fr.IDRef[Tag], ...]` answered 500 too.
-- Error texts name things as the client sees them. A `404` for a row names
-  the resource as OpenAPI does, such as `User` for the schema `UserSchema`,
-  and not the name of the model class. A `404` for a row, and a list of
-  missing ids, show an id as it is in the URL, such as a UUID, and not its
-  Python form `UUID('...')`. A missing reference and the 422 for two
-  references that disagree name a field as the client sends it: its
-  validation alias, else its alias, such as `Id not found for authorId: 99`.
-- A subclass that sets its own `exclude_routes` serves the routes that only
-  its base leaves out, also when the base view was registered first. Before,
-  the list of the base applied to the subclass too in that case.
-- A plain `fr.View` may name a route method `create`, `update` or `delete`.
-  Before, its registration failed with `TypeError`, as if it had the business
-  methods of a CRUD view.
-- A route method with the name of a view setting, such as `tags` or `model`,
-  fails when Python defines the class, with a message that names the method
-  and the setting. The method would replace the setting. Before, the view
-  failed later with an unclear message, such as
-  `TypeError: 'function' object is not iterable`.
-- A route method of a CRUD view with the name of a business method,
-  `create`, `update` or `delete`, also fails when Python defines the class,
-  with `RestlyConfigurationError`, also when the route comes from a mixin.
-  Before, registration raised `TypeError`.
-- Many writes in one `shared_write_action_commit()` no longer use memory that
-  grows with the square of their number. This happened when every write
-  reached the same loaded rows, such as the children of one parent through a
-  loaded collection: 1,000 updates kept about 270 MB.
-- `restly new` works after `pip install`. pip compiles the Python files of
-  the project templates, and `restly new` read the compiled files as text and
-  failed with `UnicodeDecodeError`.
-- In plain SQLAlchemy, a clause that you forget to call, as in
-  `select(Post).where(mine)`, now always fails when it runs. Before, it ran
-  with `NULL` for its context member once the called form, `mine()`, had
-  run. And after the form without the call had failed once, the called form
-  failed too.
-- A react-admin view checks a filter value with Pydantic. Before,
-  `{"active": "false"}` matched the rows where `active` is true, and a bad
-  UUID gave `500`.
-- OpenAPI shows the `sort`, `range` and `filter` parameters of a react-admin
-  list. A subclass of a react-admin view keeps the list params of its base.
-- A react-admin filter or sort on a field that the model has only in
-  Python, such as a `@property` or a hybrid property without SQL, gets `400`
-  with `Unknown filter key` or `Unknown sort key`. Before, it gave `500`. A
-  hybrid property with SQL still works.
-- A view with generated list params registers when its response class has a
-  field for a hybrid property without SQL that fails on the class, such as
-  `len(self.name)`. The field gets no filters and no sort key. Before,
-  `include_view` failed with the error of the hybrid, such as a `TypeError`.
-- A filter value that equals a member of an `IntEnum`, such as `1`, on a
-  column of SQLAlchemy's `Enum` type, finds the rows of that member. Before,
-  the database compared the stored name with the number: a `500` on
-  PostgreSQL and no rows on SQLite.
-- A react-admin filter on a column with a type of your own, a
-  `TypeDecorator`, gets the value of its field. Before, the column got the
-  text from the JSON, so SQLAlchemy's recipe that stores UTC gave a `500`.
-- With `fr.configure(warn_on_misuse=True)`, an endpoint method override that
-  calls its `handle_<verb>` handler, or the endpoint method of its base, no
-  longer warns. That is how the warning itself says to change the HTTP
-  contract.
-- A view whose registration failed, such as for a name in `exclude_routes`
-  that is not a route, names its custom routes once when you register it
-  again after the fix: `widgetview_stats`, not `widgetview_widgetview_stats`.
-  Before, each failed attempt added the class prefix again, also to the
-  operation ID.
-- On PostgreSQL with asyncpg, the detail of a `409` names the constraint or
-  the column, as with psycopg. An example is
-  `Unique constraint violated: uq_user_email`. Before, it named only the kind
-  of conflict.
-- Pyright and mypy report an unknown name on `fr`.
-- Fixes for FastAPI 0.115 with `from __future__ import annotations`, and for
-  Python 3.14.
+These gave a 500 or wrong data before:
+
+- `?id=1` on PostgreSQL, and an id filter on a UUID key.
+- A filter on an `Enum` column on PostgreSQL, and an `IntEnum` value.
+- A list with pages of a model with a `json` column on PostgreSQL.
+- A field of a secret type, such as `SecretStr`.
+- A `timedelta` column: its view failed to register.
+- A sort on a related field left out the rows without a related row.
+- An expression for another table in `get_one` could change a wrong row.
+- A field that the client left out stored `null` instead of the model's
+  default.
+- A react-admin filter: `"false"` matched the rows that are true, and a bad
+  UUID gave a 500.
+- A field name that ends in `_`, a flag type, a type alias, a `Sequence`
+  field, `Annotated` inside `Optional`, and a schema that names itself.
+- `restly new` after `pip install`.
+- Many writes in one shared commit used memory that grew with the square of
+  their number.
+
+Other fixes give clearer errors, and fix type checking, FastAPI 0.115 and
+Python 3.14.
 
 ### Security
 
 - A generated schema marks each column with `init=False` as `ReadOnly`,
   foreign keys too. Before, a client could write such a column, such as a
-  tenant column, and so put a row in another organization. A client that
-  still sends such a field gets no error: Restly ignores the value. To let
-  the client write such a column, remove `init=False`.
+  tenant column.
 
 ### Known issues
 
 - A route that catches the error of a write action and goes on must put each
-  write action in `session.begin_nested()`. Without the savepoint, the next
-  write action can commit the changes of the failed one, such as a row that
-  `before_action_commit` refused. After a database error at the flush, such as
-  a duplicate value, the next write fails with `PendingRollbackError`. Inside
-  `shared_write_action_commit()`, Restly raises `RuntimeError` in both cases.
+  write action in `session.begin_nested()`. See "When a write action raises"
+  in the guide.
 - On SQLite, a `session.begin_nested()` inside `shared_write_action_commit()`
-  can commit its rows when it ends. This happens with the default settings
-  of Python's `sqlite3` module and of `aiosqlite`. When the block then fails,
-  these rows stay saved, and their after-hooks do not run. Restly's test
-  fixtures change these settings in the default rollback mode, so a test does
-  not show the problem. On SQLite, prefer the loop of "When a write action
-  raises" in the guide, where each row commits on its own. If you change the
-  settings as SQLAlchemy shows ("Serializable isolation / Savepoints /
-  Transactional DDL"), a write that overlaps another write can fail at once
-  with "database is locked".
+  can commit its rows too early. See the warning in "Commit several writes
+  together" in the guide.
 
 ## [0.11.0] - 2026-10-09
 
