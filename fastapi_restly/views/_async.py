@@ -275,10 +275,13 @@ class AsyncRestView(
         exception. A write action that raises after it changed objects stops
         the commit too, unless the rollback of a savepoint around it undid the
         change: run each write that a route may refuse in
-        ``session.begin_nested()``. Rollback belongs to the session owner. An
-        ``IntegrityError`` inside the block stays raw, so a route can catch the
-        error of one row; one that escapes the outermost block, or that its
-        commit raises, becomes :class:`~fastapi_restly.exc.Conflict` (409).
+        ``session.begin_nested()``. On SQLite, such a savepoint can commit its
+        rows when it ends, with the default settings of the driver; see
+        :ref:`shared-write-action-commit`. Rollback belongs to the session
+        owner. An ``IntegrityError`` inside the block stays raw, so a route can
+        catch the error of one row; one that escapes the outermost block, or
+        that its commit raises, becomes :class:`~fastapi_restly.exc.Conflict`
+        (409).
 
         After-hooks run in queue order and stop on the first exception. ``new``
         is the live object after all writes, while ``old`` is each action's
