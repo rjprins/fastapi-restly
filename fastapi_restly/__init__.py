@@ -40,6 +40,7 @@ from .schemas import (
     TimestampsSchemaMixin,
     UTCDatetime,
     WriteOnly,
+    in_utc,
 )
 
 # Views
@@ -112,6 +113,7 @@ __all__ = [
     "WriteOnly",
     "TimestampsSchemaMixin",
     "UTCDatetime",
+    "in_utc",
     # Views
     "RestView",
     "AsyncRestView",

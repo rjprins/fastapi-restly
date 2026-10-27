@@ -540,6 +540,69 @@ def test_utc_datetime_holds_each_time_in_utc():
     assert properties["starts_at"]["format"] == "date-time"
 
 
+def test_in_utc_is_the_rule_as_a_function():
+    """``fr.in_utc`` reads a time without an offset as UTC, and changes a time
+    with an offset to the same time in UTC, as ``fr.UTCDatetime`` does."""
+    utc = datetime(2024, 1, 1, 9, 30, tzinfo=timezone.utc)
+
+    assert fr.in_utc(datetime(2024, 1, 1, 9, 30)) == utc
+    assert fr.in_utc(datetime(2024, 1, 1, 9, 30)).utcoffset() == timedelta(0)
+    new_york = fr.in_utc(
+        datetime(2024, 1, 1, 4, 30, tzinfo=ZoneInfo("America/New_York"))
+    )
+    assert new_york.isoformat() == "2024-01-01T09:30:00+00:00"
+    assert fr.in_utc(utc) == utc
+    with pytest.raises(ValueError, match="not between the years 1 and 9999"):
+        fr.in_utc(datetime(9999, 12, 31, 23, 30, tzinfo=MINUS_ONE))
+    assert fr.schemas.in_utc is fr.in_utc
+
+
+def test_in_utc_compares_a_time_from_the_database_with_one_from_the_schema(api):
+    """SQLite gives each time back without an offset, and a time from the
+    schema has one. With ``fr.in_utc``, ``update`` can compare them, as the
+    docs show."""
+    Meeting, MeetingSchema = _meeting_classes(fr.UTCDatetime)
+    seen: list[bool] = []
+
+    if issubclass(api.view, fr.AsyncRestView):
+
+        class AsyncChecking(fr.AsyncRestView):
+            async def update(self, obj: Any, data: Any) -> Any:
+                seen.append(data.ends_at > fr.in_utc(obj.starts_at))
+                return await super().update(obj, data)
+
+        base: type[Any] = AsyncChecking
+    else:
+
+        class Checking(fr.RestView):
+            def update(self, obj: Any, data: Any) -> Any:
+                seen.append(data.ends_at > fr.in_utc(obj.starts_at))
+                return super().update(obj, data)
+
+        base = Checking
+
+    @fr.include_view(api.client.app)
+    class MeetingView(base):
+        prefix = "/meetings"
+        model = Meeting
+        schema = MeetingSchema
+
+    api.create_tables()
+    created = api.client.post(
+        "/meetings",
+        json={
+            "name": "standup",
+            "starts_at": "2024-01-01T09:30:00Z",
+            "ends_at": "2024-01-01T09:45:00Z",
+        },
+    ).json()
+    for ends_at in ("2024-01-01T10:00:00+01:00", "2024-01-01T11:00:00+01:00"):
+        api.client.patch(f"/meetings/{created['id']}", json={"ends_at": ends_at})
+
+    # 10:00+01:00 is 09:00 in UTC, before the start; 11:00+01:00 is after it
+    assert seen == [False, True]
+
+
 def test_utc_datetime_gives_the_business_methods_and_the_response_utc(api):
     """``create`` and ``update`` get each time in UTC, and a response shows it
     with ``Z``, also from the column without a time zone. Each column stores

@@ -422,8 +422,12 @@ time in UTC. Compare it with a column without a time zone as
 `value.replace(tzinfo=None)`.
 
 A time from the database has no offset when its column has no time zone, and
-on SQLite always. To compare it with a time from the schema, give it the
-offset of UTC first, such as `obj.starts_at.replace(tzinfo=timezone.utc)`.
+on SQLite always. Python cannot compare such a time with a time from the
+schema, which has an offset. Convert it with
+{func}`fr.in_utc <fastapi_restly.schemas.in_utc>` first, as in
+`data.ends_at > fr.in_utc(obj.starts_at)`. `fr.in_utc` follows the rule of
+`fr.UTCDatetime`: a time without an offset is UTC, and a time with an offset
+becomes the same time in UTC.
 
 A column with a type of your own, a
 {class}`~sqlalchemy.types.TypeDecorator`, gets a time with an offset as it

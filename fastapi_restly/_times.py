@@ -19,6 +19,13 @@ from sqlalchemy import DateTime, TypeDecorator
 def in_utc(value: _dt.datetime) -> _dt.datetime:
     """``value`` as the same time in UTC. A time without an offset is UTC.
 
+    This is the rule of
+    :data:`fr.UTCDatetime <fastapi_restly.schemas.UTCDatetime>`, as a
+    function. Give a time from the database to it before you compare it with
+    a time from a schema, as in ``data.ends_at > fr.in_utc(obj.starts_at)``.
+    A time from a column without a time zone has no offset, and on SQLite no
+    time has one. See :ref:`utc-times`.
+
     :raises ValueError: the time in UTC is not between the years 1 and 9999.
     """
     if value.utcoffset() is None:

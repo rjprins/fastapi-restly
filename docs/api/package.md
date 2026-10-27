@@ -27,6 +27,7 @@ through `fr`.
 | {class}`fr.IDMixin <fastapi_restly.models.IDMixin>` | Model field for an integer primary key named `id`. |
 | {class}`fr.IDRef <fastapi_restly.schemas.IDRef>` | Relationship reference serialized as a scalar ID. |
 | {class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>` | Schema base with a read-only ID, or a nested relationship reference when parameterized. |
+| {func}`fr.in_utc <fastapi_restly.schemas.in_utc>` | The same time in UTC. A time without an offset is UTC. |
 | {func}`fr.include_view <fastapi_restly.views.include_view>` | Register a view's endpoint methods on an app or router. |
 | {func}`fr.list_filter <fastapi_restly.views.list_filter>` | Make a view method the filter for a key of the list params. |
 | {class}`fr.ListResult <fastapi_restly.views.ListResult>` | The objects, total count, and list params of a list, before response serialization. |

@@ -1,5 +1,6 @@
 import typing as _typing
 
+from .._times import in_utc
 from ._base import (
     _REF_EXISTS_REMOVED,
     BaseSchema,
@@ -37,6 +38,7 @@ __all__ = [
     "derive_schema",
     "derive_schema_list_response",
     "derive_schema_response",
+    "in_utc",
 ]
 
 if not _typing.TYPE_CHECKING:

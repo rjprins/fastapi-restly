@@ -36,6 +36,7 @@ fastapi_restly:
   - delete
   - exc
   - get
+  - in_utc
   - include_view
   - list_filter
   - models
@@ -136,6 +137,7 @@ fastapi_restly.schemas:
   - derive_schema
   - derive_schema_list_response
   - derive_schema_response
+  - in_utc
 fastapi_restly.testing:
   - AsyncRestlyTestClient
   - RestlyTestClient

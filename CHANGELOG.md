@@ -99,6 +99,10 @@ replacement, unless it says otherwise.
   UTC, and a time with an offset becomes the same time in UTC. So the
   business methods get each time in UTC, and a response shows it with `Z`,
   also from a column without a time zone.
+- `fr.in_utc(value)`, the rule of `fr.UTCDatetime` as a function. Use it on a
+  time from the database before you compare it with a time from a schema,
+  as in `data.ends_at > fr.in_utc(obj.starts_at)`. A time from a column
+  without a time zone has no offset, and on SQLite no time has one.
 
 ### Changed
 
