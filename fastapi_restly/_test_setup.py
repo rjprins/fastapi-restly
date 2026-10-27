@@ -673,11 +673,21 @@ def _run_alembic_upgrade(
     try:
         from alembic import command
         from alembic.config import Config
-    except ModuleNotFoundError as exc:  # pragma: no cover - depends on the env
-        raise ModuleNotFoundError(
-            "fr.testing.configure_tests(alembic_upgrade=...) requires Alembic. "
-            "Install it with: pip install alembic",
-            name="alembic",
+    except ImportError as exc:  # pragma: no cover -- exercised via
+        # subprocess in test_configure_tests.py (alembic hidden)
+        # Without Alembic, `alembic` is not found at all, or it is the alembic/
+        # folder of `alembic init` on sys.path, which imports as a namespace
+        # package without `command`. In both cases the error has no path. A
+        # module of your own named alembic, or a module that Alembic itself
+        # imports, keeps its own error.
+        if exc.name != "alembic" or exc.path is not None:
+            raise
+        # A configuration error, so that pytest prints it as a usage error. A
+        # plain import error from the collection hook is an INTERNALERROR.
+        raise RestlyConfigurationError(
+            "fr.testing.configure_tests(alembic_upgrade=...) needs Alembic, "
+            "which is not installed. Restly does not depend on it. Install it "
+            "with: pip install alembic"
         ) from exc
 
     base = root if root is not None else Path.cwd()

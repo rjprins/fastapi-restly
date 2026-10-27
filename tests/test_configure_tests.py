@@ -1615,6 +1615,58 @@ def test_alembic_accepts_a_percent_encoded_password(tmp_path: Path):
     assert captured["url"] == url
 
 
+@pytest.mark.parametrize(
+    "alembic_folder", [False, True], ids=["no-folder", "alembic-folder"]
+)
+def test_alembic_upgrade_without_alembic_says_to_install_it(
+    tmp_path: Path, alembic_folder: bool
+):
+    """Without Alembic, the run stops with one line that says to install it,
+    not with a pytest INTERNALERROR. Python imports the alembic/ folder that
+    `alembic init` makes as a namespace package. The import then fails with an
+    ImportError, not with a ModuleNotFoundError."""
+    if alembic_folder:
+        (tmp_path / "alembic").mkdir()
+        (tmp_path / "alembic" / "env.py").write_text("")
+    _write_project(
+        tmp_path,
+        """
+        import os
+        import sys
+        from importlib.machinery import PathFinder
+
+        os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
+
+
+        # As if Alembic were not installed: `alembic` is only looked for in
+        # the project.
+        class AlembicNotInstalled:
+            def find_spec(self, name, path=None, target=None):
+                if name != "alembic":
+                    return None
+                spec = PathFinder.find_spec(name, [os.path.dirname(__file__)])
+                if spec is None:
+                    raise ModuleNotFoundError(f"No module named {name!r}", name=name)
+                return spec
+
+
+        sys.meta_path.insert(0, AlembicNotInstalled())
+
+        import fastapi_restly as fr
+        from myapp import Base, app
+
+        fr.testing.configure_tests(app=app, base=Base, alembic_upgrade=True)
+        """,
+        "def test_never_runs():\n    assert True\n",
+    )
+    result = _run_pytest(tmp_path)
+
+    output = result.stdout + result.stderr
+    assert result.returncode != 0
+    assert "pip install alembic" in output
+    assert "INTERNALERROR" not in output
+
+
 def test_error_messages_name_a_function_that_exists():
     """The rename left messages pointing at fr.testing.configure()."""
     import fastapi_restly.testing as testing
