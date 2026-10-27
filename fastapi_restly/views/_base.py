@@ -85,6 +85,7 @@ ReadScope = WhereClause | None
 # all_of takes. Private: only the final list handler accepts one, so no
 # override spells it.
 _ReadWhere = ColumnElement[bool] | WhereClause | None
+from .._columns import column_value
 from .._mapping import is_mapped_class, is_mapped_instance, is_to_many_relationship
 from .._pagination import (
     _DEFAULT_PAGINATION,
@@ -98,7 +99,7 @@ from .._pagination import (
     _unpaginated_page_info,
 )
 from .._routes import matched_route
-from .._times import column_time, value_error_reason
+from .._times import value_error_reason
 from ..db._config import _fr_config
 from ..exc import (
     NotFound,
@@ -487,29 +488,30 @@ def _json_ready(model_cls: type[Any], field_name: str, value: Any) -> Any:
     return _json_data(value)
 
 
-def _time_ready(
+def _column_ready(
     model_cls: type[Any],
     schema_cls: type[pydantic.BaseModel],
     field_name: str,
     value: Any,
 ) -> Any:
-    """A time or a duration in the form of its column, by the rule of
-    ``column_time``.
+    """A value in the form of its column, by the rule of ``column_value``: a
+    time gets the form of its column, and a number or a text must fit it.
 
     A field without a column keeps its value.
 
-    :raises RequestValidationError: the time is out of range in UTC, or the
-        duration for an ``Interval`` column. The error is the one that a field
-        of type ``fr.UTCDatetime`` gives.
+    :raises RequestValidationError: the value does not fit the column, such as
+        a time out of range in UTC, or a number out of the range of an
+        ``Integer``. The error has the form of a field's validation error, as
+        ``fr.UTCDatetime`` gives it.
     """
-    if not isinstance(value, datetime | timedelta):
+    if not isinstance(value, datetime | timedelta | int | str):
         return value
     mapper = sa_inspect(model_cls, raiseerr=False)
     column = None if mapper is None else mapper.columns.get(field_name)
     if column is None:
         return value
     try:
-        return column_time(column.type, value)
+        return column_value(column.type, value)
     except ValueError as exc:
         field = schema_cls.model_fields.get(field_name)
         key = field_name if field is None else _client_name(field_name, field)
@@ -861,7 +863,7 @@ def build_create_plan(
             # default applies. A JSON column would store a None as JSON null.
             continue
 
-        value = _time_ready(model_cls, schema_cls, field_name, _revealed(value))
+        value = _column_ready(model_cls, schema_cls, field_name, _revealed(value))
         value = _collection_ready(
             model_cls, field_name, _json_ready(model_cls, field_name, value)
         )
@@ -946,7 +948,7 @@ def apply_update_to_object(
         if is_mapped_instance(value) and is_reference_field(schema_cls, field_name):
             _apply_resolved_reference_update(obj, field_name, value)
             continue
-        value = _time_ready(type(obj), schema_cls, field_name, _revealed(value))
+        value = _column_ready(type(obj), schema_cls, field_name, _revealed(value))
         value = _json_ready(type(obj), field_name, value)
         setattr(obj, field_name, _collection_ready(type(obj), field_name, value))
 
@@ -3321,7 +3323,12 @@ def _reject_bad_row_identity(label: str, id: Any) -> None:
 
 
 def _primary_key_criterion(model_cls: type[Any], id: Any) -> ColumnElement[bool]:
-    """The default :meth:`BaseRestView.where_id`: the primary key is ``id``."""
+    """The default :meth:`BaseRestView.where_id`: the primary key is ``id``.
+
+    :raises RequestValidationError: ``id`` does not fit the key column, such
+        as a number out of the range of an ``Integer``. The database would
+        refuse it with an error.
+    """
     pk_cols = sa_inspect(model_cls).primary_key
     if len(pk_cols) != 1:
         raise NotImplementedError(
@@ -3329,6 +3336,20 @@ def _primary_key_criterion(model_cls: type[Any], id: Any) -> ColumnElement[bool]
             "not name one row. Override where_id(id): split the id from the "
             "path, and return sqlalchemy.and_(Model.a == a, Model.b == b)."
         )
+    try:
+        id = column_value(pk_cols[0].type, id)
+    except ValueError as exc:
+        raise RequestValidationError(
+            [
+                {
+                    "type": "value_error",
+                    "loc": ("path", "id"),
+                    "msg": value_error_reason(exc),
+                    "input": id,
+                    "ctx": {"error": exc},
+                }
+            ]
+        ) from None
     return pk_cols[0] == id
 
 

@@ -162,6 +162,15 @@ class PgChildSchema(fr.IDSchema):
     parent_id: int
 
 
+class PgShelved(fr.IDMixin, SharedBase):
+    # a reference that Restly checks before the insert
+    parent_id: Mapped[int | None] = mapped_column(ForeignKey(PgParent.id), default=None)
+
+
+class PgShelvedSchema(fr.IDSchema):
+    parent_id: fr.MustExist[int, PgParent] | None = None
+
+
 class PgChecked(fr.IDMixin, SharedBase):
     amount: Mapped[int]
     __table_args__ = (CheckConstraint("amount >= 0", name="pg_checked_amount_nonneg"),)
@@ -317,6 +326,13 @@ class PgSpanView(fr.AsyncRestView):
     model = PgSpan
 
 
+@fr.include_view(_app)
+class PgShelvedView(fr.AsyncRestView):
+    prefix = "/shelved"
+    model = PgShelved
+    schema = PgShelvedSchema
+
+
 _MODELS = [
     PgWord,
     PgRanked,
@@ -330,6 +346,7 @@ _MODELS = [
     PgChecked,
     PgMeeting,
     PgSpan,
+    PgShelved,
 ]
 
 
@@ -794,6 +811,38 @@ async def test_a_react_admin_filter_time_is_utc_on_psycopg(restly_async_session)
         assert created.status_code == 201, created.text
         assert await names(client, starts_at="2024-01-01T10:30:00+01:00") == ["standup"]
         assert await names(client, ends_at="2024-01-01T09:45:00") == ["standup"]
+
+
+@pytest.mark.asyncio
+async def test_a_value_that_does_not_fit_its_column_is_a_client_error_on_psycopg(
+    restly_async_session,
+):
+    """PostgreSQL refuses a number beyond an INTEGER, and a NUL character in
+    text, with a data error, which was a 500. Restly checks each value against
+    its column first. A reference that cannot fit names no row."""
+    async with _async_client() as client:
+        responses = {
+            "filter": await client.get("/ranked/", params={"score": str(2**31)}),
+            "in": await client.get("/ranked/", params={"score__in": f"1,{2**40}"}),
+            "path": await client.get(f"/ranked/{2**31}"),
+            "body": await client.post("/children/", json={"parent_id": 2**31}),
+            "reference": await client.post("/shelved/", json={"parent_id": 2**40}),
+            "nul": await client.get("/words/", params={"name": "a\x00b"}),
+            "nul contains": await client.get(
+                "/words/", params={"name__contains": "a\x00b"}
+            ),
+            "nul body": await client.post("/words/", json={"name": "a\x00b"}),
+        }
+    assert {name: response.status_code for name, response in responses.items()} == {
+        "filter": 400,
+        "in": 400,
+        "path": 422,
+        "body": 422,
+        "reference": 404,
+        "nul": 400,
+        "nul contains": 400,
+        "nul body": 422,
+    }
 
 
 @pytest.mark.asyncio

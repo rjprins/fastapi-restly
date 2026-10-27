@@ -377,6 +377,19 @@ async def test_a_react_admin_filter_time_with_an_offset_is_utc_with_asyncpg(
 
 
 @pytest.mark.asyncio
+async def test_a_value_that_does_not_fit_its_column_is_a_client_error_with_asyncpg(
+    restly_async_client,
+):
+    """asyncpg refuses a number beyond an INTEGER and PostgreSQL a NUL
+    character in text, with an error that was a 500. Restly checks each value
+    against its column first."""
+    await restly_async_client.get(f"/tags/{2**31}", assert_status_code=422)
+    await restly_async_client.post(
+        "/tags", json={"name": "a\x00b"}, assert_status_code=422
+    )
+
+
+@pytest.mark.asyncio
 async def test_a_timedelta_column_is_a_native_interval_with_asyncpg(
     restly_async_client,
 ):

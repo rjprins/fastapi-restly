@@ -65,6 +65,12 @@ replacement, unless it says otherwise.
     `pagination = None` for a list without pages. Page fields that you
     wrote yourself keep working when they have the names of the view's page
     parameters.
+13. On SQLite, check each `Integer` column that holds numbers beyond 32
+    bits, such as a Unix time in milliseconds, and each `String(n)` column
+    that holds longer text. Restly now refuses such a value in a request.
+    Give the column a type that fits, such as `BigInteger`, or `String()`
+    without a length. A column that you miss fails only when a request sends
+    such a value, with a 422 or a 400.
 
 ### Added
 
@@ -256,6 +262,13 @@ replacement, unless it says otherwise.
   (asyncpg) or of the database session (psycopg). Restly changes the times
   of a body when it copies the body onto the model. A column that keeps
   local times needs a validator on its field that converts the time first.
+- A value that its column cannot hold gets a 422 in a body or in the path,
+  and a 400 in a filter. Restly checks it against the SQLAlchemy type of the
+  column, on every database. A number must fit the integer type: 16 bits for
+  `SmallInteger`, 32 for `Integer` and 64 for `BigInteger`. Text must fit
+  the length of a `String(n)` column and hold no NUL character. A reference
+  id that does not fit gets a 404, as for a row that does not exist. Before,
+  PostgreSQL refused such a value with a 500, and SQLite stored it.
 
 #### Lists
 

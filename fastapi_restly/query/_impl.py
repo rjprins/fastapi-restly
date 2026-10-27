@@ -31,6 +31,7 @@ from sqlalchemy.orm.properties import ColumnProperty
 from sqlalchemy.orm.util import AliasedClass
 from starlette.datastructures import QueryParams
 
+from .._columns import check_text, column_value
 from .._pagination import (
     _DEFAULT_PAGINATION,
     _SORT_QUERY_PARAM,
@@ -38,7 +39,7 @@ from .._pagination import (
     NumberedPagination,
     _check_query_param,
 )
-from .._times import column_time, value_error_reason
+from .._times import value_error_reason
 from ..exc import BadQueryParam, RestlyConfigurationError
 from ..schemas._base import (
     IDRef,
@@ -1564,6 +1565,15 @@ def _apply_filtering(
             filters[column].append(column.is_(None) if value else column.isnot(None))
             continue
 
+        if op in {"contains", "icontains"}:
+            # LIKE takes the text as it is, without the field's validation
+            try:
+                check_text(raw_value)
+            except ValueError as exc:
+                raise BadQueryParam(
+                    f"Invalid filter value for {column_name!r}: {raw_value!r}. "
+                    f"{value_error_reason(exc)}"
+                ) from exc
         parser = _filter_value_parser(schema_cls, column_name, column)
         clause = _build_clause(column, raw_value, op, parser)
         if clause is not None:
@@ -1673,9 +1683,10 @@ def _value_parser(
     a value from JSON. ``None`` stays ``None``, for ``IS NULL``. An ``IDRef``
     gives its id. A column of SQLAlchemy's ``Enum`` type takes only its
     labels. A ``JSON`` column takes a model as JSON data, as a write stores
-    it. A time gets the form of its column. The generated filters and
-    :class:`~fastapi_restly.query.FilterKey` build one parser for each key,
-    so the work for the key is done once.
+    it. Any other value goes through ``column_value``: a time gets the form
+    of its column, and a number or a text must fit the column. The
+    generated filters and :class:`~fastapi_restly.query.FilterKey` build one
+    parser for each key, so the work for the key is done once.
 
     :param schema_cls: The schema that holds the field.
     :param column: The column, or ``None`` to leave each value as the field
@@ -1710,13 +1721,13 @@ def _value_parser(
         # An IDRef[T] FK field validates to an IDRef object; the SQL bind
         # value is its scalar id, not the reference wrapper (which cannot bind).
         if isinstance(result, IDSchema):
-            return result.id
-        if enum_type is not None:
+            result = result.id
+        elif enum_type is not None:
             return _enum_value(enum_type, result, key, value)
-        if is_json:
+        elif is_json:
             return _json_data(result)
         try:
-            return column_time(column_type, result)
+            return column_value(column_type, result)
         except ValueError as exc:
             raise BadQueryParam(
                 f"Invalid filter value for {key!r}: {value!r}. "

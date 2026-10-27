@@ -33,6 +33,7 @@ from sqlalchemy.ext.asyncio.session import AsyncSession as SA_AsyncSession
 from sqlalchemy.orm.session import Session as SA_Session
 from typing_extensions import TypeAliasType, TypeVar
 
+from .._columns import column_value
 from .._mapping import is_mapped_instance, is_to_many_relationship
 from .._pagination import (
     _DEFAULT_PAGINATION,
@@ -878,12 +879,15 @@ def _reference_statements(
     and the name of its primary key attribute.
 
     The statements are ORM statements over the mapped attribute, so a rule of
-    the session (``with_loader_criteria``) reaches them too.
+    the session (``with_loader_criteria``) reaches them too. An id that does
+    not fit the key column names no row, so it is left out: the database
+    would refuse it with an error, such as a number beyond an ``INTEGER``.
     """
     mapper = sa_inspect(model)
     key = mapper.get_property_by_column(mapper.primary_key[0]).key
     pk = getattr(model, key)
     scope = _default_scope(model)
+    ids = [id_ for id_ in ids if _fits_key(model, id_)]
     for start in range(0, len(ids), _IN_CHUNK):
         stmt = select(model if rows else pk).where(
             pk.in_(ids[start : start + _IN_CHUNK])
@@ -891,6 +895,17 @@ def _reference_statements(
         if scope is not None:
             stmt = apply_clauses(stmt, scope)
         yield stmt, key
+
+
+def _fits_key(model: type[Any], id_: Any) -> bool:
+    """Whether ``id_`` fits the primary key column of ``model``, by the rule
+    of ``column_value``. An id that does not fit names no row."""
+    column = sa_inspect(model).primary_key[0]
+    try:
+        column_value(column.type, id_)
+    except ValueError:
+        return False
+    return True
 
 
 def _found_references(
@@ -1066,6 +1081,8 @@ async def _async_resolve_ids_to_sqlalchemy_objects(
         if not is_list and _default_scope(model) is None:
             # unscoped: keep get_one, which serves identity-map hits
             try:
+                if not _fits_key(model, ids[0]):
+                    raise NoResultFound
                 resolved[field] = await session.get_one(model, ids[0])
             except NoResultFound as e:
                 label = _public_name(schema_obj, field)
@@ -1109,6 +1126,8 @@ def _resolve_ids_to_sqlalchemy_objects(
         if not is_list and _default_scope(model) is None:
             # unscoped: keep get_one, which serves identity-map hits
             try:
+                if not _fits_key(model, ids[0]):
+                    raise NoResultFound
                 resolved[field] = session.get_one(model, ids[0])
             except NoResultFound as e:
                 label = _public_name(schema_obj, field)

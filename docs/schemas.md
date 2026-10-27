@@ -237,6 +237,7 @@ Each kind of rule has one place:
 |---|---|---|
 | The format or the range of one value | A Pydantic validator or a `Field` constraint on the schema | 422 |
 | A field that a client cannot set | [`ReadOnly`](#readonly-and-writeonly), or [your own request body](#explicit-write-schemas) | The value is ignored |
+| A value that its column can hold, such as a number in the range of `Integer` | Nothing: Restly checks the type of the column; see [Column validation](#column-validation) | 422, or 400 in a filter |
 | A referenced row must exist | {class}`fr.MustExist <fastapi_restly.schemas.MustExist>` or a reference field; see [Relationships](#reference-exists) | 404 |
 | A value must be unique | A unique constraint on the column; see [Errors](#default-exception-handling) | 409 |
 | A rule that needs the database, the stored row or the caller | The `create` or `update` business method; see [Request Lifecycle & Hooks](#business-methods) | The error that you raise |
@@ -304,6 +305,40 @@ response class has no `WriteOnly` fields.
 To check only what comes in, put the validator on a request body that you set
 on the view. The SaaS example does this for organizations
 ([`app/organizations/schemas.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/organizations/schemas.py)).
+:::
+
+(column-validation)=
+### Column validation
+
+Restly checks each value from a client against the SQLAlchemy type of its
+column, before the database sees the value. You do not write a validator
+for it:
+
+- A number must fit the integer type: 16 bits for `SmallInteger`, 32 bits
+  for `Integer`, from -2,147,483,648 to 2,147,483,647, and 64 bits for
+  `BigInteger`.
+- Text must fit the length of a `String(n)` column.
+- Text must not hold a NUL character (`\x00`).
+
+A value that does not fit gets 422 in a request body or in the path, and
+400 in a filter. A reference id that does not fit gets 404, as for a row
+that does not exist.
+
+:::{admonition} Details
+:class: details
+
+The type of the column is the rule on every database. PostgreSQL refuses
+such a value with an error, which would be a 500. SQLite stores it, so the
+tests of an app on SQLite would not see the problem. PostgreSQL cannot store
+a NUL character in text, so Restly refuses it on every database. A column
+that holds bigger numbers needs `BigInteger`, such as a column with a Unix
+time in milliseconds.
+
+An unsigned type of MySQL, such as `INTEGER(unsigned=True)`, holds no
+negative numbers and twice as many positive ones. A column type of your own,
+a {class}`~sqlalchemy.types.TypeDecorator`, converts the value itself, and a
+type from `with_variant()` is another type on another database. Both get
+the value as it is, and the database checks it.
 :::
 
 ### Database validation

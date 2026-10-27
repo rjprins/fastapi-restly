@@ -114,7 +114,9 @@ key too, such as `?task_count__gte=1` and `?sort=-task_count`.
 Equality, `__ne`, `__in` and the range filters validate each value with the
 field's Pydantic validation, so the field validators of the schema run on
 filter values too. On a column of SQLAlchemy's `Enum` type, the value must
-also be one of its labels. A value that fails returns `400` (see
+also be one of its labels. And each value must fit its column, such as a
+number in the range of `Integer`; see [Column validation](#column-validation).
+A value that fails returns `400` (see
 [Why a bad list request returns 422 or 400](#list-request-errors)).
 
 :::{admonition} Details
@@ -127,8 +129,8 @@ Restly validates one value at a time, without the other fields. So:
   also when the URL uses an alias.
 - {attr}`pydantic.ValidationInfo.data` is `{}`.
 
-`__contains` and `__icontains` use the text as it is, and `__isnull` reads a
-boolean.
+`__contains` and `__icontains` use the text as it is. They only refuse a NUL
+character. `__isnull` reads a boolean.
 :::
 
 ### Match one of several values
