@@ -140,8 +140,9 @@ class _Point:
 @KEY_CLASSES
 def test_a_key_is_unknown_for_a_hybrid_in_python_or_a_composite(key_class, kind):
     """A hybrid property that is plain Python is a Python value on the class,
-    so ``==`` would give ``WHERE false`` and the wrong rows. A composite is
-    several columns, and a sort on it would reverse only the last one."""
+    so ``==`` would give ``WHERE false`` and the wrong rows, or it fails on
+    the class, such as ``len(self.name)``. A composite is several columns,
+    and a sort on it would reverse only the last one."""
 
     class Gadget(fr.IDMixin, SharedBase):
         name: Mapped[str] = mapped_column(default="")
@@ -158,12 +159,22 @@ def test_a_key_is_unknown_for_a_hybrid_in_python_or_a_composite(key_class, kind)
         def shout(self) -> str:
             return f"{self.name}!"
 
+        @hybrid_property
+        def name_length(self) -> int:
+            return len(self.name)  # TypeError on the class
+
+        @hybrid_property
+        def initial(self) -> str:
+            return self.name[0]  # NotImplementedError on the class
+
     class GadgetSchema(fr.IDSchema):
         is_deleted: fr.ReadOnly[bool] = False
         shout: fr.ReadOnly[str] = ""
         point: fr.ReadOnly[Any] = None
+        name_length: fr.ReadOnly[int] = 0
+        initial: fr.ReadOnly[str] = ""
 
-    for key in ("is_deleted", "shout", "point"):
+    for key in ("is_deleted", "shout", "point", "name_length", "initial"):
         with pytest.raises(BadQueryParam) as caught:
             key_class(Gadget, GadgetSchema, key)
         assert caught.value.detail == f"Unknown {kind} key: {key!r}", key

@@ -576,8 +576,8 @@ replacement, unless it says otherwise.
   list. A subclass of a react-admin view keeps the list params of its base.
 - A react-admin filter or sort on a field that the model has only in
   Python, such as a `@property` or a hybrid property without SQL, gets `400`
-  with `Unknown filter key`. Before, it gave `500`. A hybrid property with
-  SQL still works.
+  with `Unknown filter key` or `Unknown sort key`. Before, it gave `500`. A
+  hybrid property with SQL still works.
 - A filter value that equals a member of an `IntEnum`, such as `1`, on a
   column of SQLAlchemy's `Enum` type, finds the rows of that member. Before,
   the database compared the stored name with the number: a `500` on

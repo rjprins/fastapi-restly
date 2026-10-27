@@ -26,7 +26,12 @@ def _find_column(
     field_name = _resolve_field_name(schema_response, key)
     if field_name is None:
         raise unknown
-    column = getattr(model, field_name, None)
+    try:
+        column = getattr(model, field_name, None)
+    except (TypeError, NotImplementedError):
+        # a hybrid property that is plain Python runs on the class and
+        # fails, such as len(self.name)
+        raise unknown from None
     # A Python property or a plain class attribute has no SQL, and a
     # relationship holds rows, not a value. A hybrid property has SQL, and
     # its proxy has no ``property``.
