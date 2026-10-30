@@ -732,21 +732,25 @@ def test_a_reference_to_a_model_with_a_joined_collection_async():
 
 def test_the_check_does_not_write_an_object_that_is_being_built(api):
     """The check queries without autoflush: a pending object that the code
-    finishes inside the block is not written half-built."""
+    finishes inside the block is not written half-built. The object is added
+    inside a shared block, because an outermost write action flushes what is
+    pending when it opens its savepoint."""
     Task, TaskIn = api.models.Task, api.models.TaskIn
 
     def rename(self, body: TaskIn):
-        task = Task(title=None, project_id=body.project_id)  # type: ignore[arg-type]
-        self.session.add(task)
-        with self.write_action("rename", obj=task, data=body):
-            task.title = body.title
+        with self.shared_write_action_commit():
+            task = Task(title=None, project_id=body.project_id)  # type: ignore[arg-type]
+            self.session.add(task)
+            with self.write_action("rename", obj=task, data=body):
+                task.title = body.title
         return {"id": task.id}
 
     async def async_rename(self, body: TaskIn):
-        task = Task(title=None, project_id=body.project_id)  # type: ignore[arg-type]
-        self.session.add(task)
-        async with self.write_action("rename", obj=task, data=body):
-            task.title = body.title
+        async with self.shared_write_action_commit():
+            task = Task(title=None, project_id=body.project_id)  # type: ignore[arg-type]
+            self.session.add(task)
+            async with self.write_action("rename", obj=task, data=body):
+                task.title = body.title
         return {"id": task.id}
 
     route = fr.post("/rename")(api.pick(rename, async_rename))

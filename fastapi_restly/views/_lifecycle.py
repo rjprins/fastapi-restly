@@ -24,6 +24,16 @@ when its row is gone (a hard delete) or when there is no subject.
 
 The outermost bracket on a session owns the commit and the after-hooks: a
 bracket inside it joins it, as inside ``shared_write_action_commit``.
+
+The outermost bracket also opens a savepoint, where its change begins: after
+``authorize``, the reference check and the snapshot, which only read. An
+outermost ``shared_write_action_commit`` block opens it at its start. An
+exception that leaves the outermost bracket rolls back to the savepoint. This
+undoes only the changes of the bracket and keeps the other loaded objects, so
+the session stays usable, and a route can catch the error and write again.
+When the savepoint is gone, because a commit released it, the whole
+transaction rolls back, as ``with session.begin():`` does. The commit releases
+the savepoint, then commits.
 """
 
 import contextlib
@@ -436,7 +446,7 @@ async def _async_bracket(
     """
     _warn_if_session_expires(host)
     commit = (
-        _async_shared_write_action_commit(host.session)
+        _async_shared_write_action_commit(host.session, savepoint_at_start=False)
         if _shared_write_action_commit_owner(host.session) is None
         else contextlib.nullcontext()
     )
@@ -456,6 +466,8 @@ async def _async_joined_bracket(
     await host.authorize(action, obj=row, data=data)
     checked = await _async_check_body_references(session, data)
     old = host.snapshot(row) if row is not None else None
+    if owner.savepoint is None:
+        await session.run_sync(owner.begin_savepoint)
     bracket = _Bracket(obj)
     with _record_written_rows(session.sync_session, host.model) as written:
         written.before = _Pending.of(session.sync_session)
@@ -476,7 +488,7 @@ def _bracket(host: WriteHost, action: str, obj: Any, data: Any) -> Iterator[_Bra
     """Sync variant of :func:`_async_bracket`."""
     _warn_if_session_expires(host)
     commit = (
-        _shared_write_action_commit(host.session)
+        _shared_write_action_commit(host.session, savepoint_at_start=False)
         if _shared_write_action_commit_owner(host.session) is None
         else contextlib.nullcontext()
     )
@@ -496,6 +508,7 @@ def _joined_bracket(
     host.authorize(action, obj=row, data=data)
     checked = _check_body_references(session, data)
     old = host.snapshot(row) if row is not None else None
+    owner.begin_savepoint(session)
     bracket = _Bracket(obj)
     with _record_written_rows(session, host.model) as written:
         written.before = _Pending.of(session)
@@ -534,11 +547,14 @@ def sync_write_action(
 
 @contextlib.asynccontextmanager
 async def _async_shared_write_action_commit(
-    session: AsyncSession,
+    session: AsyncSession, *, savepoint_at_start: bool = True
 ) -> AsyncIterator[None]:
     """Commit once after the outermost block, then await its surviving hooks.
 
-    The outermost block turns an ``IntegrityError`` that escapes it, or that
+    The outermost block opens the savepoint at its start, unless it is the
+    block of a write action, which opens it where its change begins. An
+    exception that leaves the outermost block rolls back to the savepoint. The
+    outermost block also turns an ``IntegrityError`` that escapes it, or that
     its commit raises, into :class:`~fastapi_restly.exc.Conflict`.
     """
     pending: tuple[_QueuedAfterHook, ...] = ()
@@ -549,11 +565,18 @@ async def _async_shared_write_action_commit(
             session.sync_session, asynchronous=True
         ) as owner,
     ):
-        yield
-        if owner.depth == 1:
-            owner.require_active()
-            await _async_commit_shared_write_actions(session, owner)
-            pending = tuple(owner.pending)
+        try:
+            if outermost and savepoint_at_start:
+                await session.run_sync(owner.begin_savepoint)
+            yield
+            if owner.depth == 1:
+                owner.require_active()
+                await _async_commit_shared_write_actions(session, owner)
+                pending = tuple(owner.pending)
+        except BaseException:
+            if outermost:
+                await session.run_sync(owner.undo)
+            raise
 
     # Drop the owner before hooks run, so no hook can join a finished commit.
     with after_commit():
@@ -567,7 +590,9 @@ async def _async_shared_write_action_commit(
 
 
 @contextlib.contextmanager
-def _shared_write_action_commit(session: Session) -> Iterator[None]:
+def _shared_write_action_commit(
+    session: Session, *, savepoint_at_start: bool = True
+) -> Iterator[None]:
     """Sync counterpart of :func:`_async_shared_write_action_commit`."""
     pending: tuple[_QueuedAfterHook, ...] = ()
     outermost = _shared_write_action_commit_owner(session) is None
@@ -575,11 +600,18 @@ def _shared_write_action_commit(session: Session) -> Iterator[None]:
         translate_integrity_errors(outermost=outermost),
         _join_shared_write_action_commit(session) as owner,
     ):
-        yield
-        if owner.depth == 1:
-            owner.require_active()
-            _commit_shared_write_actions(session, owner)
-            pending = tuple(owner.pending)
+        try:
+            if outermost and savepoint_at_start:
+                owner.begin_savepoint(session)
+            yield
+            if owner.depth == 1:
+                owner.require_active()
+                _commit_shared_write_actions(session, owner)
+                pending = tuple(owner.pending)
+        except BaseException:
+            if outermost:
+                owner.undo(session)
+            raise
 
     with after_commit():
         for entry in pending:
@@ -617,14 +649,39 @@ class _SharedWriteActionCommit:
     loaded: dict[SessionTransaction | None, _LoadedObjects] = field(
         default_factory=dict
     )
+    #: The savepoint of the outermost block, which an error rolls back to.
+    savepoint: SessionTransaction | None = None
+
+    def begin_savepoint(self, session: Session) -> None:
+        """Open the savepoint of the outermost block, once.
+
+        ``begin_nested()`` first flushes what is pending, so the changes from
+        before the block stay outside the savepoint.
+        """
+        if self.savepoint is None:
+            self.savepoint = session.begin_nested()
+
+    def undo(self, session: Session) -> None:
+        """Undo the changes of the outermost block after an exception.
+
+        The rollback of the savepoint undoes only these changes, and it
+        expires only the objects that they changed. When the savepoint is
+        gone, because a commit released it, roll back the whole transaction.
+        Do the same when no savepoint was opened, but the transaction cannot
+        go on, such as after the flush of ``begin_nested()`` failed.
+        """
+        savepoint = self.savepoint
+        if savepoint is not None and _is_open(session, savepoint):
+            savepoint.rollback()
+        elif savepoint is not None or not session.is_active:
+            session.rollback()
 
     def require_active(self, *, asynchronous: bool = False) -> None:
         if self.aborted:
             raise RuntimeError(
                 "The write was aborted: an exception left a write_action() or "
                 "shared_write_action_commit() block, or a rollback ended its "
-                "transaction. The session owner must roll back before retrying "
-                "the operation."
+                "transaction. The outermost block commits nothing."
             )
         if asynchronous and not self.asynchronous:
             raise RuntimeError(
@@ -849,8 +906,19 @@ def _listen_once(session: Session) -> None:
 
 
 def _reject_direct_commit(session: Session) -> None:
+    """Refuse a commit inside a block, before it flushes.
+
+    ``session.commit()`` first releases each open savepoint, and SQLAlchemy
+    calls ``before_commit`` for each. So refuse it at the savepoint of the
+    outermost block already: on SQLite, with the default settings of the
+    driver, its release can commit. The release of a savepoint that the caller
+    opened is not a commit, so it goes on.
+    """
     owner = _shared_write_action_commit_owner(session)
-    if owner is None or owner.committing or session.in_nested_transaction():
+    if owner is None or owner.committing:
+        return
+    savepoint = session.get_nested_transaction()
+    if savepoint is not None and savepoint is not owner.savepoint:
         return
     owner.abort()
     raise RuntimeError(
@@ -879,7 +947,9 @@ def _discard_rolled_back_hooks(
     # A failed flush reports an internal marker under the actual rollback.
     while transaction.parent is not None and not transaction.nested:
         transaction = transaction.parent
-    if transaction.parent is None:
+    # The savepoint of the outermost block holds all its actions, as the
+    # transaction does when there is no savepoint.
+    if transaction.parent is None or transaction is owner.savepoint:
         owner.abort()
         return
     owner.pending[:] = [
@@ -905,3 +975,10 @@ def _belongs_to_transaction(
             return True
         transaction = transaction.parent
     return False
+
+
+def _is_open(session: Session, savepoint: SessionTransaction) -> bool:
+    """Whether ``savepoint`` is still open in ``session``: a commit or a
+    rollback closes it. A failed flush leaves it open, waiting for its
+    rollback."""
+    return _belongs_to_transaction(session.get_nested_transaction(), savepoint)

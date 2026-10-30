@@ -610,9 +610,9 @@ see [Build sessions with your own generator](#own-session-generator).
 (write-action-error)=
 ### When a write action raises
 
-To catch the error of a write action and go on, put each write action in
-{meth}`session.begin_nested() <sqlalchemy.orm.Session.begin_nested>`. Catch
-the error outside it:
+When a write action raises, Restly rolls back what the action changed, and
+the session stays usable. So a route can catch the error of one write and go
+on:
 
 ```python
     from fastapi import HTTPException
@@ -622,37 +622,49 @@ the error outside it:
         orders = []
         for item in items:
             try:
-                async with self.session.begin_nested():
-                    orders.append(await self.handle_create(item))
+                orders.append(await self.handle_create(item))
             except HTTPException:  # also fr.exc.Conflict, for a duplicate value
                 continue
         return orders
 ```
 
-`begin_nested()` starts a savepoint. When the handler raises before its
-commit, SQLAlchemy rolls back to the savepoint. This undoes what the handler
-changed, and the session stays usable. When the handler succeeds, it
-commits, so each order is saved on its own. On `fr.RestView`, use `with` and
-the sync handlers.
-
-The savepoint ends at the commit. So an error from `after_action_commit`
-does not undo the order: the order is saved. See
-[When `after_action_commit` raises](#after-action-commit-raises). After an
-error at the commit itself, such as from a deferred constraint, the session
-needs `session.rollback()` before it can write again.
-
-Without the savepoint, the error skips the commit of the action, but it does
-not undo what the action already changed in the session. So the next write
-action commits that change too, such as a row that `before_action_commit`
-refused. After a database error at the flush, such as a duplicate value, the
-next write fails with SQLAlchemy's
-{class}`PendingRollbackError <sqlalchemy.exc.PendingRollbackError>` instead.
-Inside a `shared_write_action_commit()` block, Restly raises `RuntimeError`
-in both cases. A route that does not catch the error needs no savepoint: the
-request fails, and the session rolls back when the request ends.
-
+Each order is committed on its own. On `fr.RestView`, use the sync handlers.
 To save all orders in one commit, see
 [Commit several writes together](#shared-write-action-commit).
+
+:::{admonition} Details
+:class: details
+
+Each write action runs in a savepoint, SQLAlchemy's
+{meth}`session.begin_nested() <sqlalchemy.orm.Session.begin_nested>`. The
+savepoint begins after `authorize`, the reference check and the snapshot, and
+it ends at the commit. When the action raises before the commit, Restly rolls
+back to the savepoint. This undoes only what the action changed. The rows that
+were loaded before stay loaded, so async code can still read them. Inside a
+`shared_write_action_commit()` block, or inside the block of another action,
+an action has no savepoint of its own; see
+[Commit several writes together](#shared-write-action-commit).
+
+A savepoint begins with a flush of what is pending in the session, as
+`begin_nested()` always does. So an object that a route adds to the session
+before the write action is written when the action begins, and an error in
+the action does not undo it. Give a new object to `write_action` as `obj`,
+without `session.add()`: the action then adds it inside its savepoint.
+
+An error from `after_action_commit` does not undo the order: the order is
+saved. See [When `after_action_commit` raises](#after-action-commit-raises).
+When the commit itself fails, for example on a deferred constraint, the
+savepoint has ended already. Then Restly rolls back the whole transaction.
+This also expires the rows that were loaded before.
+
+SQLAlchemy calls the `before_commit` and `after_commit` listeners of the
+session also when a savepoint ends. So for each write action, they run twice:
+when the savepoint ends, and at the commit. A listener that must run only at
+the commit returns early when `session.in_nested_transaction()` is true. Work
+that must wait for the commit, such as an email, belongs in
+`after_action_commit`. On SQLite, the savepoint can also make
+`database is locked` come sooner; see [Turn on WAL for SQLite](#sqlite-wal).
+:::
 
 (transaction-hooks)=
 ## Run code before or after the commit
@@ -1260,25 +1272,6 @@ or in `after_action_commit`. The route above returns the orders after the
 block, so Restly builds their responses after the commit. On `fr.RestView`, use
 `with` and the sync handlers. The method has the same name.
 
-:::{warning}
-On SQLite, a `session.begin_nested()` inside the block can commit its rows
-when it ends. This happens with the default settings of Python's `sqlite3`
-module and of `aiosqlite`. When the block then fails, these rows stay saved,
-and their after-hooks do not run. Restly's test fixtures change these
-settings in the default [rollback mode](#cleaning-up-between-tests), so a
-test does not show the problem.
-
-So on SQLite, prefer the loop in
-[When a write action raises](#write-action-error): each row commits on its
-own, without a shared block. SQLAlchemy shows how to change the settings for
-[`sqlite3`](https://docs.sqlalchemy.org/en/20/dialects/sqlite.html#pysqlite-serializable)
-and for
-[`aiosqlite`](https://docs.sqlalchemy.org/en/20/dialects/sqlite.html#aiosqlite-serializable).
-But then the reads of a write join its transaction. So a write that overlaps
-another write can fail at once with "database is locked", without waiting
-for the timeout.
-:::
-
 :::{admonition} Details
 :class: details
 
@@ -1307,9 +1300,10 @@ An exception that leaves a `shared_write_action_commit()` block cancels the
 shared commit and drops the queued hooks. This also happens when an outer
 block catches the exception. For a write action that raises inside the
 block, see the savepoint below.
-Rolling back stays the job of the session's owner. A direct `session.commit()`
-inside the block raises `RuntimeError`, because the outermost block owns the
-commit.
+The outermost block runs in a savepoint of its own. When an exception leaves
+it, Restly rolls back to that savepoint: what the block changed is undone, and
+the session can write again. A direct `session.commit()` inside the block
+raises `RuntimeError`, because the outermost block owns the commit.
 
 When some rows may fail and the others must still be saved, put SQLAlchemy's
 `session.begin_nested()` around each handler call. Catch the error outside
@@ -1377,7 +1371,9 @@ bracket on a session owns the commit. So inside a `write_action` or a
 `shared_write_action_commit()` block, a bracket flushes instead of
 committing and queues its after-hook for the outermost block. A handler
 hands the object that `create` or `update` returns to the bracket as the
-subject. `write_action` gets its subject from `obj`.
+subject. `write_action` gets its subject from `obj`. The outermost bracket
+opens a savepoint after the snapshot, and an exception rolls back to it; see
+[When a write action raises](#write-action-error).
 
 ## See also
 

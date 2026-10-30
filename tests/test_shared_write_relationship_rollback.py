@@ -289,7 +289,9 @@ async def test_shared_write_without_rollback_does_not_reload_related_objects(
         )
         writes.statements.clear()
 
-    assert writes.statements == []
+    # The commit releases the savepoint of the block, and reads nothing.
+    assert [statement.split()[0] for statement in writes.statements] == ["RELEASE"]
+    writes.statements.clear()
     assert view.to_response(document).owner.name == "Alice"
     assert writes.statements == []
     assert {"internal_note", "owners"} <= inspect(document.owner.company).unloaded

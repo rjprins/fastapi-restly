@@ -379,6 +379,14 @@ WAL adds `-wal` and `-shm` files next to the database. A clean shutdown
 removes them, but they stay after the process is killed. WAL does not work on
 a network file system.
 
+Each write action runs in a savepoint; see
+[When a write action raises](#write-action-error). So on SQLite, a query in
+the change of an action, such as in a business method, keeps a read lock until
+the commit. When another request writes at that moment, the action cannot get
+the write lock. It then fails at once with `database is locked`, without
+waiting, also with WAL. A create or an update without a query of your own
+reads nothing there.
+
 ## Internals
 
 (engine-defaults)=

@@ -269,18 +269,17 @@ async def test_other_sessions_do_not_join_the_deferred_commit(writes):
     assert await _names(writes, writes.model) == ["independent", "deferred"]
 
 
-async def test_scope_failure_leaves_rollback_to_the_session_owner(writes):
+async def test_an_exception_that_leaves_the_block_rolls_it_back(writes):
     with pytest.raises(ValueError, match="abort"):
         async with _enter(writes.view.shared_write_action_commit()):
             await _call(writes.view.handle_create(writes.schema(name="pending")))
             raise ValueError("abort")
 
     assert all(phase not in ("commit", "after") for phase, _ in writes.events)
-    assert list(await _call(writes.session.scalars(select(writes.model.name)))) == [
-        "pending"
-    ]
+    # The rollback of the block's savepoint undid the row, without a
+    # rollback by the session owner.
+    assert list(await _call(writes.session.scalars(select(writes.model.name)))) == []
     assert await _names(writes, writes.model) == []
-    await _call(writes.session.rollback())
 
     # A later ordinary action must neither defer nor replay the abandoned hook.
     writes.events.clear()
@@ -669,4 +668,6 @@ async def test_sync_owner_rejects_async_work_before_mutation(writes, nested_bloc
                 await writes.view.handle_create(writes.schema(name="never"))
 
     assert writes.events == []
-    assert not writes.session.in_transaction()
+    # The savepoint of the sync block was rolled back; the transaction that
+    # begin_nested() began stays, as with SQLAlchemy's own begin_nested().
+    assert not writes.session.in_nested_transaction()

@@ -170,8 +170,8 @@ catches `fr.exc.Conflict`:
         return self.to_response(tag)
 ```
 
-After a conflict, the session cannot write again until it rolls back. To
-catch the conflict and write again in the same request, see
+Restly rolls back the change of the action that caused the conflict, so the
+route can catch the conflict and write again in the same request; see
 [When a write action raises](#write-action-error).
 
 A `null` reaches the database only when the type of the schema field allows

@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Each write action, and each outermost `shared_write_action_commit()` block,
+  runs in a savepoint. An exception rolls back to it, so the session stays
+  usable.
+- What a route added to the session before a write action is written when the
+  action begins, outside its savepoint.
+- The `before_commit` and `after_commit` listeners of the session also run
+  when the savepoint ends. To run only at the commit, return early when
+  `session.in_nested_transaction()` is true.
+
+### Fixed
+
+- A write that raised is no longer committed by the next write, and a caught
+  `Conflict` no longer breaks the session. A route can catch the error of one
+  write and go on, without `session.begin_nested()`.
+- On SQLite, a `session.begin_nested()` inside `shared_write_action_commit()`
+  no longer commits its rows too early.
+
 ## [0.12.0] - 2026-10-27
 
 This release reworks how a view reads and writes. To upgrade, work through
