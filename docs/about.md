@@ -30,8 +30,8 @@ default CRUD routes, query parameters, error translation, and test fixtures.
   team.
 
 The core patterns ([class-based views](views.md), the override
-hierarchy, and schema generation) are proven by four years of internal
-production use. The public
+hierarchy, and schema generation) are proven in production at two
+companies. The public
 API surface is still settling on the way to `1.0.0` (see the
 [changelog](changelog.md)); a broader user base will find corners we haven't
 hit yet. If you find something broken or missing,
@@ -48,8 +48,8 @@ needed. It was never released publicly.
 When FastAPI and SQLAlchemy 2 matured, the approach was rebuilt as Restly at
 **Clearblue Markets**, which later allowed the work to be shared publicly,
 and then developed and refined in production at **Brenntag**. Those
-deployments (four years of internal use, plus the lessons of the earlier
-Flask framework) are what became the public project. We thank all three
+deployments, and the lessons of the earlier Flask framework, are what
+became the public project. We thank all three
 companies for the environments that made it possible.
 
 ## Privacy

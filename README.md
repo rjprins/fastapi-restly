@@ -31,8 +31,8 @@ Restly is for REST resources, not for your whole app. It works inside the
 FastAPI app that you already have, and you add it one resource at a time;
 see [Use Restly in an existing project](https://www.fastapi-restly.org/projects.html#add-to-existing-app).
 
-> **Status:** beta. Restly ran in production for four years before it became
-> public. Until 1.0, a minor release can have breaking changes, and the
+> **Status:** beta. Restly ran in production at two companies before it
+> became public. Until 1.0, a minor release can have breaking changes, and the
 > [changelog](https://github.com/rjprins/fastapi-restly/blob/main/CHANGELOG.md)
 > says what to change in your code. Subscribe to the
 > [newsletter](https://www.fastapi-restly.org/newsletter.html) to get an email
