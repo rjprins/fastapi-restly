@@ -17,7 +17,7 @@ from fastapi_restly.pytest_fixtures import restly_client as restly_client
 from ._models import SharedBase
 
 # _cleanup_registry below scrubs SQLAlchemy's private declarative registry
-# between tests (see fznb.7 for why the suite depends on these internals).
+# between tests (its docstring says why the suite depends on these internals).
 # Importing the marker types here is the first tripwire: if SA renames either,
 # collection fails immediately naming the symbol, instead of the nested walk
 # going silently inert and resurrecting the SAWarning flood e4e5623 / 389a800
@@ -35,7 +35,7 @@ def _cleanup_registry(base_cls: type) -> None:
     """Drop test-local model registrations from ``base_cls``'s SQLAlchemy registry.
 
     Tests declare models in function locals on shared bases, so their
-    registrations leak across tests without this scrub (fznb.7). Every access to
+    registrations leak across tests without this scrub. Every access to
     SQLAlchemy's private registry internals is direct: a moved or renamed
     internal raises here, naming what moved, rather than skipping the walk and
     letting the SAWarning flood return.
@@ -49,13 +49,13 @@ def _cleanup_registry(base_cls: type) -> None:
         if any(key != _SA_MODULE_REGISTRY_KEY for key in class_registry):
             raise RuntimeError(
                 f"class_registry holds classes but no {_SA_MODULE_REGISTRY_KEY!r}; "
-                "SQLAlchemy moved the module tree -- update this cleanup (fznb.7)."
+                "SQLAlchemy moved the module tree -- update this cleanup."
             )
     elif not isinstance(module_registry, _ModuleMarker):
         raise RuntimeError(
             f"{_SA_MODULE_REGISTRY_KEY!r} is a {type(module_registry).__name__}, "
             "expected _ModuleMarker; SQLAlchemy internals moved -- update this "
-            "cleanup (fznb.7)."
+            "cleanup."
         )
 
     # Outer pass: drop locally-scoped classes and name-collision markers from the
@@ -82,7 +82,7 @@ def _cleanup_registry(base_cls: type) -> None:
         if not isinstance(module_marker, _ModuleMarker):
             raise RuntimeError(
                 f"module tree holds a {type(module_marker).__name__}, expected "
-                "_ModuleMarker; SQLAlchemy internals moved (fznb.7)."
+                "_ModuleMarker; SQLAlchemy internals moved."
             )
         entries = module_marker.contents
         for name, marker in list(entries.items()):
@@ -91,7 +91,7 @@ def _cleanup_registry(base_cls: type) -> None:
             else:
                 raise RuntimeError(
                     f"unexpected {type(marker).__name__} under {module_marker.name!r} "
-                    "in SQLAlchemy's module tree -- update this cleanup (fznb.7)."
+                    "in SQLAlchemy's module tree -- update this cleanup."
                 )
 
 

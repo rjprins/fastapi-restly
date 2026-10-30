@@ -114,7 +114,7 @@ def _install_sqlite_savepoint_fix(engine: Engine | AsyncEngine) -> None:
     ``BEGIN`` explicitly, so every ``SAVEPOINT`` nests inside a real transaction.
 
     Fixtures-only, sqlite-only, idempotent per engine. Deliberately NOT applied to
-    production engines (fznb.12): an adopter may pass their own engine, so an
+    production engines: an adopter may pass their own engine, so an
     engine-wide fix could never be complete, and it would change production
     locking and DDL semantics. On Python 3.12+ the connect handler is a one-liner
     (``dbapi_connection.autocommit = False``); the ``isolation_level = None`` form

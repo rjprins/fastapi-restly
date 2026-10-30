@@ -48,7 +48,7 @@ def test_find_project_root_walks_up_to_nearest_pyproject(tmp_path: Path):
 
 
 def test_find_project_root_resolves_nested_subproject_not_outer(tmp_path: Path):
-    # Monorepo (fznb.9): an outer project and an inner sub-project each own a
+    # Monorepo: an outer project and an inner sub-project each own a
     # pyproject.toml. Discovery stops at the inner one that owns the test, rather
     # than walking past it to the outer root.
     outer = tmp_path / "monorepo"
@@ -344,7 +344,7 @@ async def test_async_fixture_begin_context_flushes_on_successful_exit():
 
 @pytest.mark.asyncio
 async def test_async_fixture_reuses_configured_sync_connection():
-    # Regression (fznb.11): when a sync sessionmaker is also configured,
+    # Regression: when a sync sessionmaker is also configured,
     # _shared_connection is a real sync connection. The async fixture must bind
     # to it, not error. It used to enter a pre-bound AsyncConnection, which
     # raises "connection is already started" on every test of a hybrid project.

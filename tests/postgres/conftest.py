@@ -1,4 +1,4 @@
-"""fznb.6 -- gating and fixture overrides for the PostgreSQL leg.
+"""Gating and fixture overrides for the PostgreSQL leg.
 
 The rest of the suite runs on SQLite, where the dialect-divergent surface is
 invisible: SQLite's ``LIKE`` is ASCII-case-insensitive, so ``contains`` and

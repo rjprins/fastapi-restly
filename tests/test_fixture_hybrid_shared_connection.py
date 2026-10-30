@@ -1,4 +1,4 @@
-"""Regression (fznb.11): a project that configures both a sync and an async
+"""Regression: a project that configures both a sync and an async
 session source must be able to use ``restly_async_session``.
 
 ``restly_async_session`` binds to the connection the sync fixture already opened

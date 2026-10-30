@@ -1,4 +1,4 @@
-"""fznb.7 -- the conftest registry scrub fails loudly on SQLAlchemy churn.
+"""The conftest registry scrub fails loudly on SQLAlchemy churn.
 
 ``_cleanup_registry`` walks SQLAlchemy's private declarative-registry internals
 to drop test-local model registrations between tests. These tests pin the

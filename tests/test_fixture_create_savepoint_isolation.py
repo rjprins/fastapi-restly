@@ -1,4 +1,4 @@
-"""fznb.12: the session fixtures isolate through ``create_savepoint`` on a
+"""The session fixtures isolate through ``create_savepoint`` on a
 pinned connection rather than by patching ``Session`` / ``AsyncSession``.
 
 Each request during a test builds its own real session that joins a
@@ -10,7 +10,7 @@ old class-patching mechanism could not:
 - Production-faithful ``rollback()``: a request that rolls back discards only its
   own work, not everything back to the last commit.
 
-These tests also cover fznb.3: with the factory bound to a pinned Connection,
+These tests also check that, with the factory bound to a pinned Connection,
 ``get_engine`` / ``create_all`` still resolve the real engine and create tables
 where the test can see them, instead of silently no-opping on a MagicMock.
 """
@@ -46,7 +46,7 @@ _SYNC_SESSION_REQUEST = SimpleNamespace(fixturenames=["restly_session"])
 
 
 def test_get_engine_and_create_all_work_inside_the_sync_fixture():
-    # fznb.3: the isolated factory is bound to a pinned Connection, yet
+    # The isolated factory is bound to a pinned Connection, yet
     # get_engine() still returns the real Engine and create_all() lands on the
     # pinned connection instead of silently no-opping.
     engine = create_engine(

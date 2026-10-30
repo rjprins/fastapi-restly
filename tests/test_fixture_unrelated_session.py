@@ -1,4 +1,4 @@
-"""Regression (fznb.2): the session fixtures must not hijack unrelated sessions.
+"""Regression: the session fixtures must not hijack unrelated sessions.
 
 ``restly_session`` / ``restly_async_session`` patch ``commit`` and the context
 exit on the *class* (``Session`` / ``AsyncSession``), so those overrides fire for
