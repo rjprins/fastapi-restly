@@ -471,18 +471,15 @@ def _revealed(value: Any) -> Any:
 
 
 def _json_ready(model_cls: type[Any], field_name: str, value: Any) -> Any:
-    """Dump pydantic models on their way into a JSON column.
+    """Dump a value as JSON data on its way into a JSON column.
 
     A schema field typed as a nested model validates to a model instance, and
-    a JSON column binds through ``json.dumps``, which cannot take one. Restly
-    owns the schema-to-model translation, so it does the dump here rather than
-    letting the driver fail at flush with the model in the bind parameters.
+    one typed ``list[datetime]`` to datetimes. A JSON column binds through
+    ``json.dumps``, which cannot take them. Restly owns the schema-to-model
+    translation, so it does the dump here rather than letting the driver fail
+    at flush with the value in the bind parameters.
     """
-    holds_model = isinstance(value, pydantic.BaseModel) or (
-        isinstance(value, list | tuple)
-        and any(isinstance(item, pydantic.BaseModel) for item in value)
-    )
-    if not holds_model or not _is_json_column(model_cls, field_name):
+    if not _is_json_column(model_cls, field_name):
         return value
     _reject_excluded_json_fields(value, f"{model_cls.__name__}.{field_name}")
     return _json_data(value)

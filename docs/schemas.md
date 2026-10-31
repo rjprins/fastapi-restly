@@ -805,9 +805,12 @@ sends the same JSON, but shows a type of its own in OpenAPI.
 
 A `JSON` column maps to a bare `dict`, which does not check the fields of the
 document. To check its shape, write the schema yourself and give the field a
-nested Pydantic model as its type. Restly calls `model_dump(mode="json")`
-before it assigns the document to the column. The view's schema validates the
-stored document when it is read back.
+nested Pydantic model as its type. Before Restly assigns the document to the
+column, it dumps the value as Pydantic does in JSON mode. A model becomes what
+`model_dump(mode="json")` gives, also a model in a dict or a list. A
+`datetime`, a `UUID` or a `Decimal` becomes text, and a set becomes a list. So
+a field such as `dict[str, Address]` or `list[datetime]` works too. The view's
+schema validates the stored document when it is read back.
 
 A document with a {data}`WriteOnly <fastapi_restly.schemas.WriteOnly>` or a
 `Field(exclude=True)` field raises

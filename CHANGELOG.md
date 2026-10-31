@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   write and go on, without `session.begin_nested()`.
 - On SQLite, a `session.begin_nested()` inside `shared_write_action_commit()`
   no longer commits its rows too early.
+- A JSON column with a field such as `dict[str, Address]` or `list[datetime]`
+  no longer gives a 500 error on each write. Restly dumps the whole value as
+  Pydantic does in JSON mode, also for a filter. A secret in a dict or a list
+  raises `RestlyConfigurationError`, as a secret in a model does.
 
 ## [0.12.0] - 2026-10-27
 

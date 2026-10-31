@@ -396,6 +396,27 @@ def test_parse_gives_json_data_for_a_model_in_a_json_column():
     assert key.parse({"theme": "dark"}) == {"theme": "dark", "size": 12}
 
 
+def test_parse_gives_json_data_for_a_container_in_a_json_column():
+    """Also a model in a dict, and a time in a list: the value becomes JSON
+    data, as a write stores it."""
+
+    class Settings(pydantic.BaseModel):
+        theme: str
+
+    class Board(fr.IDMixin, SharedBase):
+        panels: Mapped[dict[str, Any]] = mapped_column(sqlalchemy.JSON)
+        stamps: Mapped[list[Any]] = mapped_column(sqlalchemy.JSON)
+
+    class BoardSchema(fr.IDSchema):
+        panels: dict[str, Settings]
+        stamps: list[datetime]
+
+    panels = fr.query.FilterKey(Board, BoardSchema, "panels")
+    stamps = fr.query.FilterKey(Board, BoardSchema, "stamps")
+    assert panels.parse({"left": {"theme": "dark"}}) == {"left": {"theme": "dark"}}
+    assert stamps.parse(["2026-01-02T03:04:05Z"]) == ["2026-01-02T03:04:05Z"]
+
+
 def test_parse_gives_a_time_the_form_of_its_column():
     """A time without an offset is UTC; see ``tests/test_utc_times.py``."""
 

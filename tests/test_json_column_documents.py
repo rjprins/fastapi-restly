@@ -11,12 +11,15 @@ A ``TypeDecorator`` over ``JSON`` is left alone: it has its own bind
 processor, and may well want the object as it stands.
 """
 
+import asyncio
 import dataclasses
 import json
 from collections import deque
 from collections.abc import Iterable, Iterator
+from datetime import datetime
 from enum import Enum, IntEnum
 from typing import Any
+from uuid import UUID
 
 import pydantic
 import pytest
@@ -172,6 +175,9 @@ class _SecretValuesDocument(pydantic.BaseModel):
             _SecretValuesDocument,
             _SecretValuesDocument(tokens={"api": pydantic.SecretStr("s3cret")}),
         ),
+        # not in a model: the dump of a dict or a list masks a secret too
+        (dict[str, pydantic.SecretStr], {"api": pydantic.SecretStr("s3cret")}),
+        (list[_DataclassDocument], [_DataclassDocument()]),
     ],
 )
 def test_unsupported_documents_are_rejected_before_writing(
@@ -315,6 +321,80 @@ def test_the_stored_value_is_a_dict_not_a_model(sync_client):
         row = session.get(Doc, 1)
         assert isinstance(row.address, dict)
         assert row.history == [{"street": "O", "number": 0}]
+
+
+_UUID = "6f1c3b0e-8a52-4d2b-9a77-0c4e5f6a7b8c"
+
+
+@pytest.mark.parametrize("asynchronous", [True, False], ids=["async", "sync"])
+@pytest.mark.parametrize(
+    "field_type, sent, stored",
+    [
+        pytest.param(
+            dict[str, Address],
+            {"home": {"street": "Main"}},
+            {"home": {"street": "Main", "number": 0}},
+            id="dict-of-models",
+        ),
+        pytest.param(
+            list[list[Address]],
+            [[{"street": "Main"}]],
+            [[{"street": "Main", "number": 0}]],
+            id="nested-lists",
+        ),
+        pytest.param(
+            list[datetime],
+            ["2026-01-02T03:04:05Z"],
+            ["2026-01-02T03:04:05Z"],
+            id="datetimes",
+        ),
+        pytest.param(dict[str, UUID], {"key": _UUID}, {"key": _UUID}, id="uuids"),
+        pytest.param(set[str], ["a"], ["a"], id="set"),
+    ],
+)
+def test_a_value_inside_a_container_is_stored_as_json_data(
+    request, asynchronous, field_type, sent, stored
+):
+    """Pydantic dumps the whole value in JSON mode, also a model in a dict,
+    and a value that ``json.dumps`` cannot take, such as a ``datetime``."""
+    client = request.getfixturevalue("client" if asynchronous else "sync_client")
+
+    class Document(fr.IDMixin, SharedBase):
+        payload: Mapped[Any] = mapped_column(sqlalchemy.JSON)
+
+    class DocumentSchema(fr.IDSchema):
+        payload: field_type
+
+    @fr.include_view(client.app)
+    class DocumentView(fr.AsyncRestView if asynchronous else fr.RestView):
+        prefix = "/documents"
+        model = Document
+        schema = DocumentSchema
+
+    if asynchronous:
+        create_tables()
+    else:
+        SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
+    # An empty value first, so that the update changes the row.
+    client.post("/documents", json={"payload": type(sent)()})
+    client.patch("/documents/1", json={"payload": sent})
+    client.post("/documents", json={"payload": sent})
+
+    stmt = sqlalchemy.select(Document.payload).order_by(Document.id)
+    assert _stored(stmt, asynchronous=asynchronous) == [stored, stored]
+
+
+def _stored(stmt, *, asynchronous):
+    """The rows of ``stmt``, read in a new session."""
+    if not asynchronous:
+        with fr.open_session() as session:
+            return list(session.scalars(stmt))
+
+    async def read():
+        async with fr.open_async_session() as session:
+            return list(await session.scalars(stmt))
+
+    return asyncio.run(read())
 
 
 class _PydanticAddress(sqlalchemy.types.TypeDecorator):

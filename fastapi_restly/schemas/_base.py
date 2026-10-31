@@ -1320,27 +1320,23 @@ _SECRET_TYPES: tuple[type, ...] = (
 )
 
 
-def _json_data(value: Any) -> Any:
-    """``value`` as a ``JSON`` column takes it: a Pydantic model, or each
-    model in a list or a tuple, dumped with ``model_dump(mode="json")``. Any
-    other value comes back as it is.
+#: Dumps a value by its own type, as ``model_dump(mode="json")`` dumps a
+#: field of type ``Any``.
+_ANY_VALUE = pydantic.TypeAdapter(Any)
 
-    A field typed as a nested model validates to a model, and a ``JSON``
-    column binds through ``json.dumps``, which cannot take one. A write and a
-    filter dump it the same way, so they agree.
+
+def _json_data(value: Any) -> Any:
+    """``value`` as a ``JSON`` column takes it: dumped as Pydantic dumps it
+    in JSON mode. A model becomes what ``model_dump(mode="json")`` gives, also
+    a model in a dict or a list. A ``datetime``, a ``UUID`` or a ``Decimal``
+    becomes text, and a set becomes a list.
+
+    A field typed as a nested model validates to a model, and a field typed
+    ``list[datetime]`` to datetimes. A ``JSON`` column binds through
+    ``json.dumps``, which cannot take them. A write and a filter dump the value
+    the same way, so they agree.
     """
-    if isinstance(value, pydantic.BaseModel):
-        return value.model_dump(mode="json")
-    if isinstance(value, list | tuple) and any(
-        isinstance(item, pydantic.BaseModel) for item in value
-    ):
-        return [
-            item.model_dump(mode="json")
-            if isinstance(item, pydantic.BaseModel)
-            else item
-            for item in value
-        ]
-    return value
+    return _ANY_VALUE.dump_python(value, mode="json")
 
 
 def _hides_value(field: FieldInfo) -> bool:
