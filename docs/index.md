@@ -184,7 +184,7 @@ class CustomerView(fr.AsyncRestView):
     model = Customer  # a model on your own Base
 ```
 
-See [New & Existing Projects](projects.md).
+See [Existing Projects](existing_projects.md).
 
 ## Also in Restly
 
@@ -198,7 +198,7 @@ See [New & Existing Projects](projects.md).
   test runs in a transaction that rolls back, so a test needs no cleanup code.
   See [Testing](testing.md).
 - A new project: `restly new myapp` writes a complete project, with a `users`
-  resource and its tests. See [New & Existing Projects](projects.md).
+  resource and its tests. See [New Projects](new_projects.md).
 - Database conflicts: a duplicate unique value in a CRUD write or a
   `write_action` block is a 409, not a 500. See [Errors](errors.md).
 - React Admin:

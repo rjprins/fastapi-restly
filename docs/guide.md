@@ -85,9 +85,11 @@ It needs one call to {func}`fr.configure() <fastapi_restly.db.configure>`,
 which tells it where its database sessions come from. Your models stay
 ordinary SQLAlchemy models on a declarative base of your own.
 
-- [New & Existing Projects](projects.md): add Restly to an app that you
-  already have, start a new project with `restly new`, lay out a project as
-  it grows, and serve more than one API version.
+- [New Projects](new_projects.md): start a project with `restly new`, lay
+  it out as it grows, and serve more than one API version.
+- [Existing Projects](existing_projects.md): add Restly to an app that you
+  already have, share its login check and its `get_db`, keep its engine and
+  models, and replace a hand-written router with a view.
 - [Database & Configuration](database.md): tell Restly where its database
   is, reuse the engine, sessionmaker or session generator that your app
   already has, use another database on one view, such as a read replica, and
@@ -202,7 +204,8 @@ routes. So these subjects are FastAPI's, and its docs explain them:
 :maxdepth: 1
 :hidden:
 
-projects
+new_projects
+existing_projects
 database
 models
 ```

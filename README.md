@@ -29,7 +29,7 @@ change one step, override its method, and the rest stays the same.
 
 Restly is for REST resources, not for your whole app. It works inside the
 FastAPI app that you already have, and you add it one resource at a time;
-see [Use Restly in an existing project](https://www.fastapi-restly.org/projects.html#add-to-existing-app).
+see [Use Restly in an existing project](https://www.fastapi-restly.org/existing_projects.html).
 
 > **Status:** beta. Restly ran in production at two companies before it
 > became public. Until 1.0, a minor release can have breaking changes, and the
@@ -222,7 +222,7 @@ class CustomerView(fr.AsyncRestView):
     model = Customer  # a model on your own Base
 ```
 
-See [New & Existing Projects](https://www.fastapi-restly.org/projects.html).
+See [Existing Projects](https://www.fastapi-restly.org/existing_projects.html).
 
 ## Declare dependencies once
 
@@ -263,7 +263,7 @@ of routes such as login or webhooks. See
   [Testing](https://www.fastapi-restly.org/testing.html).
 - A new project: `restly new myapp` writes a complete project, with a `users`
   resource and its tests. See
-  [New & Existing Projects](https://www.fastapi-restly.org/projects.html).
+  [New Projects](https://www.fastapi-restly.org/new_projects.html).
 - Database conflicts: a duplicate unique value in a CRUD write or a
   `write_action` block is a 409, not a 500. See
   [Errors](https://www.fastapi-restly.org/errors.html).

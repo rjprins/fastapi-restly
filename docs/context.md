@@ -18,7 +18,7 @@ with Current.bind(user_id=42):
 ```
 
 `Current` is a class that you declare in your application, usually in
-`app/current.py`, as [New & Existing Projects](#project-current) shows. Its
+`app/current.py`, as [New Projects](#project-current) shows. Its
 base, {class}`fr.ContextNamespace <fastapi_restly.clauses.ContextNamespace>`,
 gives it the binding methods. Each annotation with
 {class}`fr.ContextParam <fastapi_restly.clauses.ContextParam>` declares one

@@ -220,7 +220,7 @@ Everything that asks for your models' tables takes the base:
   [Deploying](deploying.md) shows.
 
 A base only knows the models that have been imported.
-[New & Existing Projects](projects.md) shows how one module imports
+[New Projects](#compose-in-one-place) shows how one module imports
 them all.
 
 (existing-models)=

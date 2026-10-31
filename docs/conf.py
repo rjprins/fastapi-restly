@@ -110,9 +110,9 @@ redirects = {
     "howto_inheritance": "views.html",
     "howto_compose_views_with_mixins": "models.html",
     "howto_nested": "crud_routes.html",
-    "howto_existing_project": "projects.html",
+    "howto_existing_project": "existing_projects.html",
     "technical_details": "schemas.html",
-    "howto_project_structure": "projects.html",
+    "howto_project_structure": "new_projects.html",
     "howto_models": "models.html",
     "class_based_views": "views.html",
     "rest_views": "crud_routes.html",
@@ -129,6 +129,7 @@ redirects = {
     "howto_react_admin": "react_admin.html",
     "howto_typing": "typing.html",
     "user_guide": "guide.html",
+    "projects": "existing_projects.html",
 }
 myst_heading_anchors = 3
 myst_enable_extensions = ["colon_fence", "substitution"]

@@ -69,6 +69,6 @@ before it passes. Its database is separate from the development one.
 
 ## Further reading
 
-- [New & Existing Projects](https://www.fastapi-restly.org/projects.html)
+- [New Projects](https://www.fastapi-restly.org/new_projects.html)
 - [Deploying](https://www.fastapi-restly.org/deploying.html)
 - [Testing](https://www.fastapi-restly.org/testing.html)
