@@ -86,9 +86,12 @@ def _registered_entries(
 def _register_for_resource_ref(
     parent_router: fastapi.FastAPI | fastapi.APIRouter, view_cls: type
 ) -> None:
-    """Register a view's model→resource mapping and ensure the spec is patched.
+    """Register a CRUD view's model→resource mapping and ensure the spec is
+    patched.
 
-    Silently skips views without a SQLAlchemy model (e.g. plain View subclasses).
+    Only CRUD views are resources. A plain View may set a ``model`` for its own
+    routes, so the caller does not pass it. A view without a mapped model is
+    skipped.
     """
     model = getattr(view_cls, "model", None)
     if not is_mapped_class(model):

@@ -154,6 +154,43 @@ def test_unregistered_fk_target_not_annotated():
     assert "x-resource-ref" not in props["tag_id"]
 
 
+def test_plain_view_with_a_model_is_not_a_resource():
+    """A plain View may set a model for its own routes. It registers, and a
+    foreign key to that model gets no x-resource-ref."""
+
+    class Label(fr.IDMixin, SharedBase):
+        text: Mapped[str]
+
+    class Note(fr.IDMixin, SharedBase):
+        title: Mapped[str]
+        label_id: Mapped[int] = mapped_column(sa.ForeignKey(Label.id))
+
+    class NoteSchema(fr.IDSchema):
+        title: str
+        label_id: int
+
+    app = fastapi.FastAPI()
+
+    @fr.include_view(app)
+    class LabelStatsView(fr.View):
+        prefix = "/labels"
+        model = Label
+
+        @fr.get("/count")
+        async def count(self) -> int:
+            return 0
+
+    @fr.include_view(app)
+    class NoteView(fr.AsyncRestView):
+        prefix = "/notes"
+        model = Note
+        schema = NoteSchema
+
+    create_tables()
+    props = app.openapi()["components"]["schemas"]["NoteResponse"]["properties"]
+    assert "x-resource-ref" not in props["label_id"]
+
+
 def test_each_class_gets_the_refs_of_its_own_fields():
     """The view's schema takes a team id, its own response class sends the
     nested team. Only the id gets x-resource-ref."""

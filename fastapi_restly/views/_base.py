@@ -3768,7 +3768,8 @@ def _init_view_cls_and_add_to_router(
         return
     _prepare_view_class(view_cls)
     api_router = _init_api_router(view_cls)
-    _register_for_resource_ref(parent_router, view_cls)
+    if issubclass(view_cls, BaseRestView):
+        _register_for_resource_ref(parent_router, view_cls)
     parent_router.include_router(api_router)
     # Record only after the mount succeeded: a failed registration must not be
     # marked as mounted, or the next call would silently no-op a view whose
