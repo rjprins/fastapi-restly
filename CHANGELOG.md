@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- In `fr.configure()`, the async session generator is now
+  `async_session_generator`, and the sync one is `session_generator`. This
+  matches the other parameters, such as `async_engine` and `engine`. Rename
+  `session_generator=` to `async_session_generator=`, and
+  `sync_session_generator=` to `session_generator=`. An async generator
+  passed as `session_generator` raises `TypeError`.
 - Each write action, and each outermost `shared_write_action_commit()` block,
   runs in a savepoint. An exception rolls back to it, so the session stays
   usable.

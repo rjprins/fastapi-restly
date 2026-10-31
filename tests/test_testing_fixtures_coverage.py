@@ -245,7 +245,7 @@ def test_sync_fixture_restores_globals_even_if_session_close_raises():
             from fastapi_restly.db._config import _fr_config
 
             _fr_config.make_session = make_session
-            _fr_config.sync_session_generator = sentinel_gen
+            _fr_config.session_generator = sentinel_gen
             with engine.connect() as conn:
                 conn.begin()
                 scope = _fixtures._restly_sync_scope.__wrapped__(
@@ -267,7 +267,7 @@ def test_sync_fixture_restores_globals_even_if_session_close_raises():
                 # configuration was never touched.
                 assert _fr_config.test_make_session is None
                 assert _fr_config.make_session is make_session
-                assert _fr_config.sync_session_generator is sentinel_gen
+                assert _fr_config.session_generator is sentinel_gen
     finally:
         engine.dispose()
 
@@ -286,7 +286,7 @@ async def test_async_fixture_restores_globals_even_if_session_close_raises():
             from fastapi_restly.db._config import _fr_config
 
             _fr_config.async_make_session = make_session
-            _fr_config.session_generator = sentinel_gen
+            _fr_config.async_session_generator = sentinel_gen
             scope = _fixtures._restly_async_scope.__wrapped__(
                 None, _ASYNC_SESSION_REQUEST
             )
@@ -305,7 +305,7 @@ async def test_async_fixture_restores_globals_even_if_session_close_raises():
             # Restored despite the close() failure.
             assert _fr_config.test_async_make_session is None
             assert _fr_config.async_make_session is make_session
-            assert _fr_config.session_generator is sentinel_gen
+            assert _fr_config.async_session_generator is sentinel_gen
     finally:
         await async_engine.dispose()
 

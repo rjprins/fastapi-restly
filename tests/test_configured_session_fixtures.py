@@ -34,7 +34,7 @@ async def get_db():
         await session.execute(text("SELECT 1"))
         yield session
 
-fr.configure(session_generator=get_db, **({"async_make_session": factory} if WITH_FACTORY else {}))
+fr.configure(async_session_generator=get_db, **({"async_make_session": factory} if WITH_FACTORY else {}))
 SessionType = AsyncSession
 ViewBase = fr.AsyncRestView
 """
@@ -56,7 +56,7 @@ def get_db():
         session.execute(text("SELECT 1"))
         yield session
 
-fr.configure(sync_session_generator=get_db, **({"make_session": factory} if WITH_FACTORY else {}))
+fr.configure(session_generator=get_db, **({"make_session": factory} if WITH_FACTORY else {}))
 SessionType = Session
 ViewBase = fr.RestView
 """

@@ -13,7 +13,7 @@ async def open_async_session() -> AsyncGenerator[SA_AsyncSession]:
     """Open an async database session for use outside of request context.
 
     Resolves the same source as ``AsyncSessionDep``: a custom
-    ``session_generator`` passed to :func:`~fastapi_restly.db.configure` if one
+    ``async_session_generator`` passed to :func:`~fastapi_restly.db.configure` if one
     is configured, otherwise the built-in async session factory. (The request-only
     uncommitted-changes check is not armed here -- off-HTTP code owns its commit,
     exactly as a custom write route does.)
@@ -30,7 +30,7 @@ async def open_async_session() -> AsyncGenerator[SA_AsyncSession]:
         async with _fr_config.test_async_make_session() as sess:
             yield sess
         return
-    generator = _fr_config.session_generator
+    generator = _fr_config.async_session_generator
     if generator is not None:
         async with asynccontextmanager(generator)() as sess:
             yield sess
@@ -48,7 +48,7 @@ def open_session() -> Generator[SA_Session]:
     """Open a sync database session for use outside of request context.
 
     Resolves the same source as ``SessionDep``: a custom
-    ``sync_session_generator`` passed to :func:`~fastapi_restly.db.configure` if
+    ``session_generator`` passed to :func:`~fastapi_restly.db.configure` if
     one is configured, otherwise the built-in sync session factory. (The request-only
     uncommitted-changes check is not armed here -- off-HTTP code owns its commit,
     exactly as a custom write route does.)
@@ -65,7 +65,7 @@ def open_session() -> Generator[SA_Session]:
         with _fr_config.test_make_session() as sess:
             yield sess
         return
-    generator = _fr_config.sync_session_generator
+    generator = _fr_config.session_generator
     if generator is not None:
         with contextmanager(generator)() as sess:
             yield sess

@@ -74,7 +74,7 @@ def sessions(request):
                     finally:
                         closed.append(session)
 
-            configure = lambda: fr.configure(session_generator=get_db)
+            configure = lambda: fr.configure(async_session_generator=get_db)
             session_type = AsyncSession
             restly_dep = fr.AsyncSessionDep
             view_base = fr.AsyncRestView
@@ -97,7 +97,7 @@ def sessions(request):
                     finally:
                         closed.append(session)
 
-            configure = lambda: fr.configure(sync_session_generator=get_db)
+            configure = lambda: fr.configure(session_generator=get_db)
             session_type = Session
             restly_dep = fr.SessionDep
             view_base = fr.RestView
@@ -359,14 +359,14 @@ def test_configured_generator_can_have_fastapi_dependencies(sessions):
             async for session in sessions.get_db():
                 yield session
 
-        fr.configure(session_generator=get_db)
+        fr.configure(async_session_generator=get_db)
     else:
 
         def get_db(marker: Annotated[str, Depends(get_marker)]):
             assert marker == "resolved"
             yield from sessions.get_db()
 
-        fr.configure(sync_session_generator=get_db)
+        fr.configure(session_generator=get_db)
 
     app = FastAPI()
 

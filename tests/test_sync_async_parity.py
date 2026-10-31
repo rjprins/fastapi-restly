@@ -30,14 +30,14 @@ def _save_globals():
     return {
         "database_url": _fr_config.database_url,
         "make_session": _fr_config.make_session,
-        "sync_session_generator": _fr_config.sync_session_generator,
+        "session_generator": _fr_config.session_generator,
     }
 
 
 def _restore_globals(saved):
     _fr_config.database_url = saved["database_url"]
     _fr_config.make_session = saved["make_session"]
-    _fr_config.sync_session_generator = saved["sync_session_generator"]
+    _fr_config.session_generator = saved["session_generator"]
 
 
 @pytest.fixture

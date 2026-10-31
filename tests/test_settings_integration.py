@@ -11,11 +11,11 @@ from fastapi_restly.db._session import _async_generate_session, _generate_sessio
 
 @pytest.fixture(autouse=True)
 def restore_session_generators():
-    original_async_generator = _fr_config.session_generator
-    original_sync_generator = _fr_config.sync_session_generator
+    original_async_generator = _fr_config.async_session_generator
+    original_sync_generator = _fr_config.session_generator
     yield
-    _fr_config.session_generator = original_async_generator
-    _fr_config.sync_session_generator = original_sync_generator
+    _fr_config.async_session_generator = original_async_generator
+    _fr_config.session_generator = original_sync_generator
 
 
 def test_configure_sets_async_database_url():
@@ -41,7 +41,7 @@ async def test_async_generate_session_uses_configured_session_generator():
         yielded.append("called")
         yield DummyAsyncSession()  # type: ignore[misc]
 
-    configure(session_generator=my_generator)
+    configure(async_session_generator=my_generator)
 
     sessions = []
     async for session in _async_generate_session():
@@ -61,7 +61,7 @@ def test_generate_session_uses_configured_sync_session_generator():
         yielded.append("called")
         yield DummySyncSession()  # type: ignore[misc]
 
-    configure(sync_session_generator=my_generator)
+    configure(session_generator=my_generator)
 
     sessions = list(_generate_session())
 

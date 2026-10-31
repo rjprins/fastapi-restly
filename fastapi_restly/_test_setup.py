@@ -52,8 +52,8 @@ class _TestSetup:
     #: make an accidental later call to ``fr.configure(...)`` fail loudly.
     make_session: Any = None
     async_make_session: Any = None
+    async_session_generator: Any = None
     session_generator: Any = None
-    sync_session_generator: Any = None
     database_url: str | None = None
     async_database_url: str | None = None
 
@@ -225,8 +225,8 @@ def configure_tests(
         db_cleanup_exclude=tuple(db_cleanup_exclude),
         make_session=_fr_config.make_session,
         async_make_session=_fr_config.async_make_session,
+        async_session_generator=_fr_config.async_session_generator,
         session_generator=_fr_config.session_generator,
-        sync_session_generator=_fr_config.sync_session_generator,
         database_url=_fr_config.database_url,
         async_database_url=_fr_config.async_database_url,
     )
@@ -250,7 +250,7 @@ def _validate_database_sources(setup: _TestSetup, mode: str) -> None:
     # SQLite engines are only unified by rollback mode's pinned sync connection.
     _reject_split_databases(setup, mode)
     if mode == DELETE and (
-        setup.sync_session_generator is not None or setup.session_generator is not None
+        setup.session_generator is not None or setup.async_session_generator is not None
     ):
         raise RestlyConfigurationError(
             'fr.testing.configure_tests(db_cleanup="delete") cannot verify that '
@@ -262,20 +262,20 @@ def _validate_database_sources(setup: _TestSetup, mode: str) -> None:
 
 def _sync_source_factory() -> Any:
     factory = _source_factories()[0]
-    generator = _fr_config.sync_session_generator
+    generator = _fr_config.session_generator
     if factory is not None or generator is None:
         return factory
-    _check_discoverable_generator(generator, "sync_session_generator")
+    _check_discoverable_generator(generator, "session_generator")
     with contextmanager(generator)() as session:
         return _factory_from_session(session, asynchronous=False)
 
 
 async def _async_source_factory() -> Any:
     factory = _source_factories()[1]
-    generator = _fr_config.session_generator
+    generator = _fr_config.async_session_generator
     if factory is not None or generator is None:
         return factory
-    _check_discoverable_generator(generator, "session_generator")
+    _check_discoverable_generator(generator, "async_session_generator")
     async with asynccontextmanager(generator)() as session:
         return _factory_from_session(session, asynchronous=True)
 
@@ -288,7 +288,7 @@ def _prepare_database_sources(mode: str) -> _TestSetup:
         return _setup
     sync_factory = _sync_source_factory()
     async_factory = _source_factories()[1]
-    if async_factory is None and _setup.session_generator is not None:
+    if async_factory is None and _setup.async_session_generator is not None:
 
         async def discover():
             factory = await _async_source_factory()

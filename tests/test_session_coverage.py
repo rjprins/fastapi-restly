@@ -112,6 +112,23 @@ def test_configure_rejects_noop_calls_and_accepts_a_single_flag():
         assert context.warn_on_uncommitted is True
 
 
+def test_configure_rejects_a_generator_of_the_other_kind():
+    async def async_get_db():
+        yield None
+
+    def get_db():
+        yield None
+
+    with RestlyContext() as context:
+        with pytest.raises(TypeError, match="as async_session_generator"):
+            configure(session_generator=async_get_db)
+        with pytest.raises(TypeError, match="as session_generator"):
+            configure(async_session_generator=get_db)
+
+        assert context.session_generator is None
+        assert context.async_session_generator is None
+
+
 def test_url_created_engines_use_sqlalchemy_default_json_serializer():
     """Restly wires no custom JSON serializer into URL-created engines; JSON
     columns use SQLAlchemy's default (the standard library ``json``)."""
@@ -378,7 +395,7 @@ async def test_async_generate_session_does_not_commit_and_exits_context_on_failu
 
 def test_open_session_resolves_configured_sync_generator():
     """``open_session()`` resolves the same source as ``SessionDep``: a
-    configured ``sync_session_generator``. So a generator-only configuration
+    configured ``session_generator``. So a generator-only configuration
     (no ``make_session``) works off-HTTP, and the generator's cleanup runs on
     the way out."""
     events: list[str] = []
@@ -392,7 +409,7 @@ def test_open_session_resolves_configured_sync_generator():
             events.append("exit")
 
     with RestlyContext():
-        configure(sync_session_generator=my_generator)  # type: ignore[arg-type]
+        configure(session_generator=my_generator)  # type: ignore[arg-type]
         with proxy_open_session() as session:
             assert session is sentinel
             assert events == ["enter"]
@@ -402,7 +419,7 @@ def test_open_session_resolves_configured_sync_generator():
 @pytest.mark.asyncio
 async def test_open_async_session_resolves_configured_generator():
     """``open_async_session()`` resolves the same source as ``AsyncSessionDep``:
-    a configured ``session_generator``. So a generator-only configuration (no
+    a configured ``async_session_generator``. So a generator-only configuration (no
     ``async_make_session``) works off-HTTP, and cleanup runs on the way out."""
     events: list[str] = []
     sentinel = object()
@@ -415,7 +432,7 @@ async def test_open_async_session_resolves_configured_generator():
             events.append("exit")
 
     with RestlyContext():
-        configure(session_generator=my_generator)  # type: ignore[arg-type]
+        configure(async_session_generator=my_generator)  # type: ignore[arg-type]
         async with proxy_open_async_session() as session:
             assert session is sentinel
             assert events == ["enter"]
@@ -435,7 +452,7 @@ def test_open_session_propagates_errors_into_configured_generator():
             events.append("exit")
 
     with RestlyContext():
-        configure(sync_session_generator=my_generator)  # type: ignore[arg-type]
+        configure(session_generator=my_generator)  # type: ignore[arg-type]
         with pytest.raises(RuntimeError, match="boom"):
             with proxy_open_session():
                 raise RuntimeError("boom")
@@ -456,7 +473,7 @@ async def test_open_async_session_propagates_errors_into_configured_generator():
             events.append("exit")
 
     with RestlyContext():
-        configure(session_generator=my_generator)  # type: ignore[arg-type]
+        configure(async_session_generator=my_generator)  # type: ignore[arg-type]
         with pytest.raises(RuntimeError, match="boom"):
             async with proxy_open_async_session():
                 raise RuntimeError("boom")
@@ -464,7 +481,7 @@ async def test_open_async_session_propagates_errors_into_configured_generator():
 
 
 def test_open_session_prefers_generator_over_make_session():
-    """When both a ``sync_session_generator`` and a ``make_session`` are
+    """When both a ``session_generator`` and a ``make_session`` are
     configured, ``open_session()`` uses the generator -- the same precedence
     as ``SessionDep``."""
     sentinel = object()
@@ -477,7 +494,7 @@ def test_open_session_prefers_generator_over_make_session():
 
     with RestlyContext():
         configure(
-            sync_session_generator=my_generator,  # type: ignore[arg-type]
+            session_generator=my_generator,  # type: ignore[arg-type]
             make_session=make_session_should_not_be_used,  # type: ignore[arg-type]
         )
         with proxy_open_session() as session:
@@ -486,7 +503,7 @@ def test_open_session_prefers_generator_over_make_session():
 
 @pytest.mark.asyncio
 async def test_open_async_session_prefers_generator_over_make_session():
-    """When both a ``session_generator`` and an ``async_make_session`` are
+    """When both a ``async_session_generator`` and an ``async_make_session`` are
     configured, ``open_async_session()`` uses the generator -- the same
     precedence as ``AsyncSessionDep``."""
     sentinel = object()
@@ -499,7 +516,7 @@ async def test_open_async_session_prefers_generator_over_make_session():
 
     with RestlyContext():
         configure(
-            session_generator=my_generator,  # type: ignore[arg-type]
+            async_session_generator=my_generator,  # type: ignore[arg-type]
             async_make_session=make_session_should_not_be_used,  # type: ignore[arg-type]
         )
         async with proxy_open_async_session() as session:

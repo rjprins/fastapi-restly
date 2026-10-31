@@ -572,7 +572,7 @@ else:
         As with the sync fixture there is no shared identity map: this fixture and
         the request are separate sessions on one connection, so a write made
         directly on this session becomes visible to a request only after a flush or
-        commit. A configured ``session_generator`` is overridden on the test app,
+        commit. A configured ``async_session_generator`` is overridden on the test app,
         so native ``Depends(get_db)`` and Restly share the isolated request session.
         Without a configured factory, rollback setup opens the generator to
         discover its session's bind. Generators requiring request arguments need
@@ -675,7 +675,7 @@ def restly_session(_restly_sync_scope) -> Iterator[SA_Session]:
     Unlike production, this fixture and the request are separate sessions on one
     connection, so a write made directly on this session becomes visible to a
     request only after a flush or commit (there is no shared identity map).
-    A configured ``sync_session_generator`` is overridden on the test app, so native
+    A configured ``session_generator`` is overridden on the test app, so native
     ``Depends(get_db)`` and Restly share the isolated request session. Without a
     configured factory, rollback setup opens the generator to discover its
     session's bind. Generators requiring request arguments need an explicit test
@@ -870,13 +870,9 @@ def _override_session_generators(app: FastAPI | None) -> Iterator[None]:
     managed = _current_setup() is not None
     installed = {}
     for generator, factory, replacement in (
+        (_fr_config.session_generator, _fr_config.test_make_session, _generate_session),
         (
-            _fr_config.sync_session_generator,
-            _fr_config.test_make_session,
-            _generate_session,
-        ),
-        (
-            _fr_config.session_generator,
+            _fr_config.async_session_generator,
             _fr_config.test_async_make_session,
             _async_generate_session,
         ),

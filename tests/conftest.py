@@ -108,10 +108,10 @@ def reset_metadata():
 @pytest.fixture(autouse=True)
 def setup_database_connection():
     # Clear any sticky state left behind by previous tests (e.g. tests that
-    # plug a custom ``session_generator`` / ``sync_session_generator`` into
+    # plug a custom ``async_session_generator`` / ``session_generator`` into
     # ``_fr_config`` and don't tear them down).
+    _fr_config.async_session_generator = None
     _fr_config.session_generator = None
-    _fr_config.sync_session_generator = None
     _fr_config.registered_session_dependencies = set()
     _fr_config.make_session = None
     fr.configure(async_database_url="sqlite+aiosqlite:///:memory:")
@@ -131,7 +131,7 @@ def sync_db() -> Iterator[tuple[Engine, sessionmaker[Session]]]:
     """Configure an in-memory SQLite engine for sync RestView tests."""
     original_database_url = _fr_config.database_url
     original_make_session = _fr_config.make_session
-    original_sync_session_generator = _fr_config.sync_session_generator
+    original_sync_session_generator = _fr_config.session_generator
 
     engine = create_engine(
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
@@ -144,7 +144,7 @@ def sync_db() -> Iterator[tuple[Engine, sessionmaker[Session]]]:
     finally:
         _fr_config.database_url = original_database_url
         _fr_config.make_session = original_make_session
-        _fr_config.sync_session_generator = original_sync_session_generator
+        _fr_config.session_generator = original_sync_session_generator
         engine.dispose()
 
 

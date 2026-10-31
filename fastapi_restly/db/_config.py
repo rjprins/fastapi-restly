@@ -20,8 +20,8 @@ class RestlyContext:
         "test_make_session",
         "database_url",
         "make_session",
+        "async_session_generator",
         "session_generator",
-        "sync_session_generator",
         "warn_on_misuse",
         "warn_on_uncommitted",
     )
@@ -36,8 +36,8 @@ class RestlyContext:
     test_async_make_session: async_sessionmaker[Any] | None
     database_url: str | None
     make_session: sessionmaker[Any] | None
-    session_generator: Callable[..., AsyncIterator[SA_AsyncSession]] | None
-    sync_session_generator: Callable[..., Iterator[SA_Session]] | None
+    async_session_generator: Callable[..., AsyncIterator[SA_AsyncSession]] | None
+    session_generator: Callable[..., Iterator[SA_Session]] | None
     warn_on_misuse: bool
     warn_on_uncommitted: bool
 
@@ -50,8 +50,8 @@ class RestlyContext:
         self.test_async_make_session = None
         self.database_url = None
         self.make_session = None
+        self.async_session_generator = None
         self.session_generator = None
-        self.sync_session_generator = None
         self.warn_on_misuse = False
         self.warn_on_uncommitted = True
 

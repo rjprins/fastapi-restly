@@ -22,12 +22,12 @@ from .conftest import create_tables
 @pytest.fixture(autouse=True)
 def _restore_config():
     """The config lives on a process-wide context; restore it after each test."""
-    original_async_gen = _fr_config.session_generator
-    original_sync_gen = _fr_config.sync_session_generator
+    original_async_gen = _fr_config.async_session_generator
+    original_sync_gen = _fr_config.session_generator
     yield
     _fr_config.warn_on_uncommitted = True
-    _fr_config.session_generator = original_async_gen
-    _fr_config.sync_session_generator = original_sync_gen
+    _fr_config.async_session_generator = original_async_gen
+    _fr_config.session_generator = original_sync_gen
 
 
 def _build(client):
@@ -134,7 +134,7 @@ def test_failed_request_does_not_warn(client):
 
 def test_custom_generator_forgot_commit_warns(client):
     """The warning fires through the full arm -> flush -> warn path on a custom
-    ``session_generator`` too, not only the built-in factory: a custom generator
+    ``async_session_generator`` too, not only the built-in factory: a custom generator
     constructs/yields/cleans-up (no commit), so a route that forgot to commit is
     still caught."""
 
@@ -142,7 +142,7 @@ def test_custom_generator_forgot_commit_warns(client):
         async with _fr_config.async_make_session() as session:
             yield session
 
-    fr.configure(session_generator=custom_gen)
+    fr.configure(async_session_generator=custom_gen)
     _build(client)
     assert _warn_count(lambda: client.post("/things/forgot")) >= 1
 

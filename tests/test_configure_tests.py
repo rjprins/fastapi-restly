@@ -1465,7 +1465,7 @@ def dev_session_generator() -> Iterator[Session]:
 
 CONFIGURE_KWARGS = {"make_session": _dev_sessions}
 if __import__("os").environ.get("APP_USES_GENERATOR"):
-    CONFIGURE_KWARGS["sync_session_generator"] = dev_session_generator
+    CONFIGURE_KWARGS["session_generator"] = dev_session_generator
 
 fr.configure(**CONFIGURE_KWARGS)
 
@@ -2523,13 +2523,13 @@ def test_generator_with_request_arguments_needs_an_explicit_test_factory():
             raise AssertionError("setup must not call a request-dependent generator")
             yield None
 
-        fr.configure(sync_session_generator=dev_sessions)
+        fr.configure(session_generator=dev_sessions)
         configure_tests(app=FastAPI())
         with pytest.raises(RestlyConfigurationError) as excinfo:
             _prepare_database_sources(ROLLBACK)
 
     message = str(excinfo.value)
-    assert "session_generator" in message
+    assert "configured session_generator takes" in message
     assert "sessionmaker" in message
 
 
@@ -2551,7 +2551,7 @@ def test_rollback_rejects_a_generator_session_with_per_mapper_binds():
                 with Session(bind=engine, binds={RoutedByGenerator: other}) as session:
                     yield session
 
-            fr.configure(sync_session_generator=dev_sessions)
+            fr.configure(session_generator=dev_sessions)
             configure_tests(app=FastAPI())
             with pytest.raises(RestlyConfigurationError, match="single-bind"):
                 _prepare_database_sources(ROLLBACK)
@@ -2578,7 +2578,7 @@ def test_rollback_rejects_an_async_generator_session_with_per_mapper_binds():
                 ) as session:
                     yield session
 
-            fr.configure(session_generator=dev_sessions)
+            fr.configure(async_session_generator=dev_sessions)
             configure_tests(app=FastAPI())
             with pytest.raises(RestlyConfigurationError, match="single-bind"):
                 _prepare_database_sources(ROLLBACK)
@@ -2594,7 +2594,7 @@ def test_rollback_accepts_a_generator_alongside_a_configured_factory():
         def dev_sessions():  # pragma: no cover - never called
             yield None
 
-        fr.configure(database_url="sqlite://", sync_session_generator=dev_sessions)
+        fr.configure(database_url="sqlite://", session_generator=dev_sessions)
         configure_tests()
         # Through the validator the run actually calls: configure_tests() alone
         # validates nothing, so asserting on it accepts everything.
@@ -2607,7 +2607,7 @@ def test_delete_rejects_a_generator_even_with_a_factory():
         def dev_sessions():  # pragma: no cover - never called
             yield None
 
-        fr.configure(database_url="sqlite://", sync_session_generator=dev_sessions)
+        fr.configure(database_url="sqlite://", session_generator=dev_sessions)
         configure_tests(db_cleanup=DELETE)
         with pytest.raises(RestlyConfigurationError) as excinfo:
             _validate_database_sources(_current_setup(), DELETE)  # type: ignore[arg-type]
@@ -2623,7 +2623,7 @@ def test_none_accepts_a_generator_without_a_factory():
         async def dev_sessions():  # pragma: no cover - never called
             yield None
 
-        fr.configure(session_generator=dev_sessions)
+        fr.configure(async_session_generator=dev_sessions)
         configure_tests(db_cleanup=NONE)
         # Through the validator the run actually calls: configure_tests() alone
         # validates nothing, so asserting on it accepts everything.

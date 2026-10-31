@@ -37,7 +37,7 @@ from .db import get_db                # the session generator your routes alread
 from .orders import router as orders_router
 
 app = FastAPI()
-fr.configure(app, session_generator=get_db)
+fr.configure(app, async_session_generator=get_db)
 
 api = APIRouter(prefix="/api")
 
@@ -68,7 +68,7 @@ same session. An override of `get_db` in `app.dependency_overrides` gives the
 views their session too, so a test setup that overrides `get_db` keeps
 working; see
 [Use the view's session in your own dependencies](#share-request-session).
-A sync app passes its generator as `sync_session_generator`, and its views
+A sync app passes its generator as `session_generator`, and its views
 are `fr.RestView`. Before you pass `get_db`, check the two rules in the next
 section.
 

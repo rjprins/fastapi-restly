@@ -1,6 +1,12 @@
 import warnings
 from collections.abc import AsyncIterator, Callable, Iterator
-from inspect import Parameter, Signature, signature
+from inspect import (
+    Parameter,
+    Signature,
+    isasyncgenfunction,
+    isgeneratorfunction,
+    signature,
+)
 from typing import Annotated, Any, cast
 
 from fastapi import Depends, FastAPI
@@ -114,8 +120,9 @@ def configure(
     database_url: str | None = None,
     engine: Engine | None = None,
     make_session: sessionmaker[Any] | None = None,
-    session_generator: Callable[..., AsyncIterator[SA_AsyncSession]] | None = None,
-    sync_session_generator: Callable[..., Iterator[SA_Session]] | None = None,
+    async_session_generator: Callable[..., AsyncIterator[SA_AsyncSession]]
+    | None = None,
+    session_generator: Callable[..., Iterator[SA_Session]] | None = None,
     warn_on_misuse: bool | None = None,
     warn_on_uncommitted: bool | None = None,
     health: str | None = None,
@@ -124,9 +131,9 @@ def configure(
     only the sources that it names, for every app in the process.
 
     Async support comes from ``async_database_url``, ``async_engine``,
-    ``async_make_session`` or ``session_generator``; sync support from
+    ``async_make_session`` or ``async_session_generator``; sync support from
     ``database_url``, ``engine``, ``make_session`` or
-    ``sync_session_generator``. Pass both sets if the application uses both.
+    ``session_generator``. Pass both sets if the application uses both.
 
     A URL is the one form Restly builds an engine from, and that engine gets
     defaults suited to a web application: ``StaticPool`` for in-memory SQLite,
@@ -164,9 +171,9 @@ def configure(
         :class:`~sqlalchemy.engine.Engine` from.
     :param engine: Sync engine to use as given.
     :param make_session: ``sessionmaker`` to use as given.
-    :param session_generator: Callable yielding the
+    :param async_session_generator: Callable yielding the
         :class:`~sqlalchemy.ext.asyncio.AsyncSession` for each request.
-    :param sync_session_generator: Callable yielding the
+    :param session_generator: Callable yielding the
         :class:`~sqlalchemy.orm.Session` for each request.
     :param warn_on_misuse: Emit
         :class:`~fastapi_restly.exc.RestlyMisuseWarning` when ``include_view``
@@ -187,7 +194,9 @@ def configure(
         schema, and makes no database round-trip. Off unless set, and requires
         ``app``. A route already mounted at that path is left in place.
         Readiness is a separate endpoint of your own, not a mode of this one.
-    :raises TypeError: No setup argument was given.
+    :raises TypeError: No setup argument was given, or a generator was passed
+        to the parameter of the other kind: async to ``session_generator`` or
+        sync to ``async_session_generator``.
     :raises RestlyConfigurationError: ``health`` is not an absolute path or was
         passed without ``app``, a generator changed after route registration, or
         the database configuration changed after ``configure_tests()`` recorded it.
@@ -200,8 +209,8 @@ def configure(
             database_url is not None,
             engine is not None,
             make_session is not None,
+            async_session_generator is not None,
             session_generator is not None,
-            sync_session_generator is not None,
         )
     )
     if configures_database and _fr_config.database_configuration_locked:
@@ -227,9 +236,25 @@ def configure(
     ):
         raise TypeError("fr.configure() requires at least one setup argument.")
 
+    # Before 0.13, session_generator was the async parameter. An async
+    # generator passed to it now would otherwise fail only at the first request.
+    if isasyncgenfunction(session_generator):
+        raise TypeError(
+            "fr.configure(session_generator=...) got an async generator. "
+            "session_generator takes a sync generator that yields a Session. "
+            "Pass an async generator as async_session_generator. Before 0.13, "
+            "session_generator was the async parameter."
+        )
+    if isgeneratorfunction(async_session_generator):
+        raise TypeError(
+            "fr.configure(async_session_generator=...) got a sync generator. "
+            "async_session_generator takes an async generator that yields an "
+            "AsyncSession. Pass a sync generator as session_generator."
+        )
+
     for name, generator in (
+        ("async_session_generator", async_session_generator),
         ("session_generator", session_generator),
-        ("sync_session_generator", sync_session_generator),
     ):
         if (
             generator is not None
@@ -275,10 +300,10 @@ def configure(
         _setup_database_connection(
             database_url=database_url, engine=engine, make_session=make_session
         )
+    if async_session_generator is not None:
+        _fr_config.async_session_generator = async_session_generator
     if session_generator is not None:
         _fr_config.session_generator = session_generator
-    if sync_session_generator is not None:
-        _fr_config.sync_session_generator = sync_session_generator
     if app is not None:
         from ..views._openapi import _ensure_patched
 
@@ -454,8 +479,8 @@ async def _async_generate_session() -> AsyncIterator[SA_AsyncSession]:
         async with _fr_config.test_async_make_session() as session:
             yield session
         return
-    if _fr_config.session_generator is not None:
-        async for session in _fr_config.session_generator():
+    if _fr_config.async_session_generator is not None:
+        async for session in _fr_config.async_session_generator():
             yield session
         return
     if _fr_config.async_make_session is None:
@@ -488,8 +513,8 @@ def _generate_session() -> Iterator[SA_Session]:
         with _fr_config.test_make_session() as session:
             yield session
         return
-    if _fr_config.sync_session_generator is not None:
-        for session in _fr_config.sync_session_generator():
+    if _fr_config.session_generator is not None:
+        for session in _fr_config.session_generator():
             yield session
         return
     if _fr_config.make_session is None:
@@ -502,9 +527,7 @@ def _generate_session() -> Iterator[SA_Session]:
 class _SyncSessionDependency:
     @property
     def __signature__(self) -> Signature:
-        return _session_signature(
-            "sync_session_generator", _generate_session, SA_Session
-        )
+        return _session_signature("session_generator", _generate_session, SA_Session)
 
     def __call__(self, session: SA_Session) -> Iterator[SA_Session]:
         _arm_uncommitted_warning(session)
@@ -516,7 +539,7 @@ class _AsyncSessionDependency:
     @property
     def __signature__(self) -> Signature:
         return _session_signature(
-            "session_generator", _async_generate_session, SA_AsyncSession
+            "async_session_generator", _async_generate_session, SA_AsyncSession
         )
 
     async def __call__(

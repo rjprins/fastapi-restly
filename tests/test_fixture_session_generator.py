@@ -1,4 +1,4 @@
-"""Regression: a configured ``session_generator`` / ``sync_session_generator``
+"""Regression: a configured ``async_session_generator`` / ``session_generator``
 must not break the shipped session fixtures.
 
 The internal test scope installs an isolated factory, and the test clients
@@ -63,7 +63,7 @@ def test_sync_fixture_isolates_a_generator_configured_project():
         _Base.metadata.create_all(engine)
         with RestlyContext():
             _fr_config.make_session = make_session
-            _fr_config.sync_session_generator = project_get_db
+            _fr_config.session_generator = project_get_db
             with engine.connect() as conn:
                 scope = _fixtures._restly_sync_scope.__wrapped__(
                     conn, _fixtures._source_factories()[0]
@@ -96,7 +96,7 @@ def test_sync_fixture_isolates_a_generator_configured_project():
                     scope.close()
 
             # The fixture restores the generator after the test.
-            assert _fr_config.sync_session_generator is project_get_db
+            assert _fr_config.session_generator is project_get_db
     finally:
         engine.dispose()
         project_engine.dispose()
@@ -109,7 +109,7 @@ def test_sync_fixture_skips_generator_only_config_in_none_mode(monkeypatch):
 
     monkeypatch.setattr(_fixtures, "_cleanup_mode", lambda: NONE)
     with RestlyContext():
-        _fr_config.sync_session_generator = project_get_db
+        _fr_config.session_generator = project_get_db
         gen = _fixtures.restly_session.__wrapped__(None)
         try:
             with pytest.raises(Skipped, match="Database connection not set up"):
@@ -143,7 +143,7 @@ async def test_async_fixture_isolates_a_generator_configured_project():
             await conn.run_sync(_Base.metadata.create_all)
         with RestlyContext():
             _fr_config.async_make_session = make_session
-            _fr_config.session_generator = project_get_db
+            _fr_config.async_session_generator = project_get_db
             scope = _fixtures._restly_async_scope.__wrapped__(
                 None, _ASYNC_SESSION_REQUEST
             )
@@ -173,7 +173,7 @@ async def test_async_fixture_isolates_a_generator_configured_project():
                 await scope.aclose()
 
             # The fixture restores the generator after the test.
-            assert _fr_config.session_generator is project_get_db
+            assert _fr_config.async_session_generator is project_get_db
     finally:
         await async_engine.dispose()
         await project_engine.dispose()
@@ -187,7 +187,7 @@ async def test_async_fixture_skips_generator_only_config_in_none_mode(monkeypatc
 
     monkeypatch.setattr(_fixtures, "_cleanup_mode", lambda: NONE)
     with RestlyContext():
-        _fr_config.session_generator = project_get_db
+        _fr_config.async_session_generator = project_get_db
         agen = _fixtures.restly_async_session.__wrapped__(None)
         try:
             with pytest.raises(Skipped, match="Database connection not set up"):
@@ -197,7 +197,7 @@ async def test_async_fixture_skips_generator_only_config_in_none_mode(monkeypatc
 
 
 def test_open_session_yields_an_isolated_session_with_a_generator_configured():
-    # fr.open_session() reads sync_session_generator the same way SessionDep
+    # fr.open_session() reads session_generator the same way SessionDep
     # does, so off-request code also gets an isolated session on the fixture's
     # connection rather than one from the project generator.
     engine = create_engine(
@@ -212,7 +212,7 @@ def test_open_session_yields_an_isolated_session_with_a_generator_configured():
     try:
         with RestlyContext():
             _fr_config.make_session = make_session
-            _fr_config.sync_session_generator = project_get_db
+            _fr_config.session_generator = project_get_db
             with engine.connect() as conn:
                 scope = _fixtures._restly_sync_scope.__wrapped__(
                     conn, _fixtures._source_factories()[0]
@@ -247,7 +247,7 @@ async def test_open_async_session_yields_an_isolated_session_with_a_generator_co
     try:
         with RestlyContext():
             _fr_config.async_make_session = make_session
-            _fr_config.session_generator = project_get_db
+            _fr_config.async_session_generator = project_get_db
             scope = _fixtures._restly_async_scope.__wrapped__(
                 None, _ASYNC_SESSION_REQUEST
             )
@@ -313,7 +313,7 @@ def project_get_db():
         yield session
 
 
-fr.configure(engine=engine, sync_session_generator=project_get_db)
+fr.configure(engine=engine, session_generator=project_get_db)
 app = FastAPI()
 
 
