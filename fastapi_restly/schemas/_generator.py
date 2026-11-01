@@ -171,12 +171,17 @@ def _required_init_params(model_cls: type) -> frozenset[str]:
 
 
 def _split_optional(annotation: Any) -> tuple[Any, bool]:
-    """Return ``(type, is_optional)`` with ``None`` removed from a union."""
+    """Return ``(type, is_optional)`` with ``None`` removed from a union. The
+    other members stay: ``Cat | Dog | None`` gives ``Cat | Dog``."""
     if isinstance(annotation, types.UnionType) or get_origin(annotation) is Union:
         union_args = get_args(annotation)
         if type(None) in union_args:
-            non_none_types = [arg for arg in union_args if arg is not type(None)]
-            return (non_none_types[0] if non_none_types else annotation), True
+            non_none_types = tuple(arg for arg in union_args if arg is not type(None))
+            if not non_none_types:
+                return annotation, True
+            if len(non_none_types) == 1:
+                return non_none_types[0], True
+            return Union[non_none_types], True  # noqa: UP007
     return annotation, False
 
 
@@ -239,7 +244,7 @@ def get_model_fields(model_cls: type[Any]) -> dict[str, Any]:
             try:
                 if isinstance(column.type, PydanticJSON):
                     # The whole type, as dict[str, Address], not only dict.
-                    field_type = column.type.type_
+                    field_type, _ = _split_optional(column.type.type_)
                 else:
                     field_type = column.type.python_type
             except NotImplementedError:
@@ -445,8 +450,11 @@ def convert_sqlalchemy_type_to_pydantic(
     elif is_mapped_class(sqlalchemy_type):
         # Relationship targets are replaced with nested schemas later.
         pydantic_type = sqlalchemy_type
-    elif getattr(sqlalchemy_type, "__origin__", None) is not None:
-        # Preserve parameterized container types like dict[str, Any] or list[int].
+    elif getattr(sqlalchemy_type, "__origin__", None) is not None or isinstance(
+        sqlalchemy_type, types.UnionType
+    ):
+        # Preserve parameterized container types like dict[str, Any] or
+        # list[int], and a union such as Cat | Dog.
         pydantic_type = sqlalchemy_type
     elif type_name in {"Text", "String"}:
         pydantic_type = str

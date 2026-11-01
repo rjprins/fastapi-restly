@@ -618,9 +618,35 @@ def test_python_type_is_the_class_of_the_document():
 def test_a_column_without_annotation_gives_the_field_the_document_type():
     class Shop(fr.IDMixin, SharedBase):
         branches = mapped_column(fr.PydanticJSON(dict[str, Address]), nullable=False)
+        home = mapped_column(fr.PydanticJSON(Home | None))
 
     fields = derive_schema(Shop).model_fields
     assert fields["branches"].annotation == dict[str, Address]
+    assert fields["home"].annotation == Home | None
+
+
+class _Cat(pydantic.BaseModel):
+    meow: str
+
+
+class _Dog(pydantic.BaseModel):
+    woof: str
+
+
+def test_a_union_document_keeps_every_member():
+    class Pet(fr.IDMixin, SharedBase):
+        pet: Mapped[_Cat | _Dog] = mapped_column(fr.PydanticJSON(_Cat | _Dog))
+        other: Mapped[_Cat | _Dog | None] = mapped_column(
+            fr.PydanticJSON(_Cat | _Dog | None)
+        )
+        bare = mapped_column(fr.PydanticJSON(_Cat | _Dog), nullable=False)
+        plain: Mapped[int | str | None] = mapped_column(sqlalchemy.JSON)
+
+    fields = derive_schema(Pet).model_fields
+    assert fields["pet"].annotation == _Cat | _Dog
+    assert fields["other"].annotation == _Cat | _Dog | None
+    assert fields["bare"].annotation == _Cat | _Dog
+    assert fields["plain"].annotation == int | str | None
 
 
 def test_a_filter_on_a_document_of_any_type_works(sync_client):
