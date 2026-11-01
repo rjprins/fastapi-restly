@@ -1532,7 +1532,7 @@ def _reject_excluded_json_type(type_: Any, column: str) -> None:
         field, a ``ReadOnly`` part, a dataclass or an iterator in it.
     """
     seen_aliases: set[Any] = set()
-    seen_classes: set[type] = set()
+    seen_classes: set[Any] = set()
     # A ReadOnly around the whole type is not a part of the document.
     root, _ = _unwrap_type(type_, seen_aliases)
     # Each part, the field or the type it is in, and whether the part is
@@ -1575,16 +1575,17 @@ def _reject_excluded_json_type(type_: Any, column: str) -> None:
         if is_typeddict(origin) or (
             issubclass(origin, tuple) and hasattr(origin, "_fields")
         ):
-            # A TypedDict or a NamedTuple: check its fields too.
-            if origin in seen_classes:
+            # A TypedDict or a NamedTuple: check its fields, and below, the
+            # arguments of a generic one, as SecretStr in Pair[SecretStr].
+            if part in seen_classes:
                 continue
-            seen_classes.add(origin)
+            seen_classes.add(part)
             try:
                 hints = typing.get_type_hints(origin, include_extras=True)
             except NameError:
                 # A forward reference that does not resolve yet. Each write
                 # checks the value.
-                continue
+                hints = {}
             for name, hint in hints.items():
                 hint_where = f"{origin.__name__}.{name}"
                 if is_typeddict(origin):
@@ -1599,7 +1600,6 @@ def _reject_excluded_json_type(type_: Any, column: str) -> None:
                     if readonly_marker in field.metadata:
                         raise _read_only_error(column, hint_where)
                 pending.append((hint, hint_where, False))
-            continue
         pending.extend((arg, where, True) for arg in get_args(part))
 
 

@@ -11,7 +11,7 @@ import pickle
 from collections.abc import Iterable, Iterator
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Annotated, Any, Literal, NamedTuple, Optional
+from typing import Annotated, Any, Generic, Literal, NamedTuple, Optional, TypeVar
 from uuid import UUID, uuid4
 
 import pydantic
@@ -367,6 +367,17 @@ class _ShopSchema(fr.IDSchema):
     name: str
 
 
+_V = TypeVar("_V")
+
+
+class _GenericDict(TypedDict, Generic[_V]):
+    value: _V
+
+
+class _GenericTuple(NamedTuple, Generic[_V]):
+    value: _V
+
+
 @pytest.mark.parametrize(
     "type_, message",
     [
@@ -396,6 +407,24 @@ class _ShopSchema(fr.IDSchema):
         (_StampedDict, "_StampedDict.verified_at is ReadOnly"),
         (_StampedTuple, "_StampedTuple.verified_at is ReadOnly"),
         (list[_ShopSchema], "_ShopSchema.id is ReadOnly"),
+        # the arguments of a generic TypedDict or NamedTuple
+        (
+            _GenericDict[pydantic.SecretStr],
+            "SecretStr in _GenericDict[SecretStr] is a secret",
+        ),
+        (
+            dict[str, _GenericDict[_WithWriteOnly]],
+            "_WithWriteOnly.token is left out of the dump",
+        ),
+        (_GenericDict[fr.ReadOnly[str]], "str in _GenericDict"),
+        (
+            _GenericTuple[pydantic.SecretStr],
+            "SecretStr in _GenericTuple[SecretStr] is a secret",
+        ),
+        (
+            tuple[_GenericDict[int], _GenericDict[pydantic.SecretStr]],
+            "SecretStr in tuple[_GenericDict[int], _GenericDict[SecretStr]] is a",
+        ),
     ],
 )
 def test_a_type_that_the_dump_would_change_is_refused(type_, message):
