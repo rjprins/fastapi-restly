@@ -153,6 +153,31 @@ def test_a_write_validates_a_dict(engine):
         assert isinstance(excinfo.value.orig, pydantic.ValidationError)
 
 
+def test_a_document_with_aliases_reads_back(engine):
+    """The column stores the names of the fields, as for a plain JSON column.
+    It reads a document by the names or by the aliases."""
+
+    class Camel(pydantic.BaseModel):
+        street_name: str = pydantic.Field(alias="streetName")
+
+    class Shop(fr.IDMixin, SharedBase):
+        address: Mapped[Camel]
+
+    SharedBase.metadata.create_all(engine)
+    with Session(engine) as session:
+        session.add(Shop(address=Camel(streetName="Main")))
+        session.commit()
+        assert _stored(session, "shop", "address") == ['{"street_name": "Main"}']
+        session.add(Shop(address={"streetName": "Dock"}))
+        session.commit()
+    with Session(engine) as session:
+        stmt = sqlalchemy.select(Shop.address).order_by(Shop.id)
+        assert session.scalars(stmt).all() == [
+            Camel(streetName="Main"),
+            Camel(streetName="Dock"),
+        ]
+
+
 def test_a_subclass_keeps_its_fields_in_the_column(engine):
     """The dump goes by the type of the value, as for a plain JSON column.
     The load gives the type of the column."""
@@ -226,6 +251,18 @@ def test_a_type_that_the_dump_would_change_is_refused(type_, message):
     refuses such a type when it is defined, not at the first write."""
     with pytest.raises(RestlyConfigurationError, match=message.replace("[", r"\[")):
         fr.JSONDocument(type_)
+
+
+@pytest.mark.skipif(
+    not hasattr(pydantic.fields.FieldInfo, "exclude_if"),
+    reason="Pydantic has exclude_if from version 2.12",
+)
+def test_a_field_with_exclude_if_is_refused():
+    class Note(pydantic.BaseModel):
+        text: str = pydantic.Field("", exclude_if=lambda value: value == "")
+
+    with pytest.raises(RestlyConfigurationError, match=r"Note.text has exclude_if"):
+        fr.JSONDocument(list[Note])
 
 
 def test_a_recursive_model_without_secrets_is_accepted():

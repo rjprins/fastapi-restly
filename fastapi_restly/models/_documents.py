@@ -112,13 +112,19 @@ class JSONDocument(TypeDecorator[Any]):
         """Validate ``value`` and dump it as JSON data."""
         if value is None or value is JSON.NULL:
             return value
-        return _json_data(self._adapter.validate_python(value), self._label)
+        return _json_data(self._validate(value), self._label)
 
     def process_result_value(self, value: Any, dialect: Dialect) -> Any:
         """Validate the stored document."""
         if value is None:
             return None
-        return self._adapter.validate_python(value)
+        return self._validate(value)
+
+    def _validate(self, value: Any) -> Any:
+        """``value`` as the type of the document. A field can have its name
+        as the key, as the dump writes it, or its alias, as Pydantic reads it
+        by default."""
+        return self._adapter.validate_python(value, by_name=True)
 
     def coerce_compared_value(self, op: OperatorType | None, value: Any) -> Any:
         """The type of a value in a query, as the JSON type gives it.

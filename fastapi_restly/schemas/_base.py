@@ -1503,6 +1503,13 @@ def _reject_excluded_json_type(type_: Any, column: str) -> None:
                         "would not store its value. Remove the exclusion, or "
                         "write a SQLAlchemy TypeDecorator that stores it."
                     )
+                if _excluded_if(field):
+                    raise RestlyConfigurationError(
+                        f"{column}: {field_where} has exclude_if, so a JSON dump "
+                        "can leave it out. Then the column would not store its "
+                        "value. Remove exclude_if, or write a SQLAlchemy "
+                        "TypeDecorator that stores the field."
+                    )
                 pending.append((field.annotation, field_where))
             continue
         pending.extend((arg, where) for arg in get_args(part))
