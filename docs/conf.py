@@ -129,7 +129,9 @@ redirects = {
     "howto_react_admin": "react_admin.html",
     "howto_typing": "typing.html",
     "user_guide": "guide.html",
-    "projects": "existing_projects.html",
+    # The READMEs that `restly new` wrote in 0.12 link here for a new project.
+    "projects": "new_projects.html",
+    "logo_prototypes": "index.html",
 }
 myst_heading_anchors = 3
 myst_enable_extensions = ["colon_fence", "substitution"]
