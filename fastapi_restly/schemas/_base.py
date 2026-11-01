@@ -1335,7 +1335,9 @@ _ANY_VALUE = pydantic.TypeAdapter(
 _JSON_SCALAR_TYPES = frozenset({str, int, float, bool, type(None)})
 
 
-def _json_data(value: Any, column: str) -> Any:
+def _json_data(
+    value: Any, column: str, adapter: pydantic.TypeAdapter[Any] = _ANY_VALUE
+) -> Any:
     """``value`` as a ``JSON`` column takes it: dumped as Pydantic dumps a
     value of type ``Any`` in JSON mode. A model becomes what
     ``model_dump(mode="json", round_trip=True)`` gives, also a model in a dict
@@ -1359,13 +1361,19 @@ def _json_data(value: Any, column: str) -> Any:
 
     :param column: The column, such as ``Shop.address``, for the message of
         an error.
+    :param adapter: The type to dump by, such as the type of a
+        ``PydanticJSON`` column in a query, so that the query dumps a value
+        as the write does. A part that does not fit the type, such as a part
+        of a document, is dumped by its own type.
     :raises RestlyConfigurationError: the value holds something that a dump
         leaves out or masks, such as a secret.
     """
     if value is sqlalchemy.JSON.NULL or isinstance(value, ClauseElement):
         return value
     _reject_excluded_json_fields(value, column)
-    return _ANY_VALUE.dump_python(value, mode="json", round_trip=True, by_alias=False)
+    return adapter.dump_python(
+        value, mode="json", round_trip=True, by_alias=False, warnings=False
+    )
 
 
 def _secret_error(column: str, where: str) -> RestlyConfigurationError:

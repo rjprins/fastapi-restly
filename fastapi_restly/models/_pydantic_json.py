@@ -169,7 +169,7 @@ class PydanticJSON(TypeDecorator[Any]):
         """
         coerced = self.impl_instance.coerce_compared_value(op, value)
         if coerced is self.impl_instance:
-            return _QueryValue(self.impl_instance, self._label)
+            return _QueryValue(self.impl_instance, self._label, self._adapter)
         return coerced
 
     @property
@@ -214,18 +214,23 @@ class PydanticJSONB(PydanticJSON):
 
 class _QueryValue(TypeDecorator[Any]):
     """A value that a query compares with a document: dumped as JSON data,
-    and not validated."""
+    and not validated. It is dumped by the type of the column, as a write
+    dumps it, so a serializer in the type runs. A part of a document, which
+    does not fit the type, is dumped by its own type."""
 
     impl = JSON
     cache_ok = True
 
-    def __init__(self, impl: TypeEngine[Any], label: str) -> None:
+    def __init__(
+        self, impl: TypeEngine[Any], label: str, adapter: pydantic.TypeAdapter[Any]
+    ) -> None:
         super().__init__()
         self.impl = impl
         self.label = label
+        self.adapter = adapter
 
     def process_bind_param(self, value: Any, dialect: Dialect) -> Any:
-        return _json_data(value, self.label)
+        return _json_data(value, self.label, self.adapter)
 
 
 @functools.cache

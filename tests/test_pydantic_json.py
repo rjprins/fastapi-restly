@@ -219,6 +219,46 @@ def test_a_serializer_in_the_type_runs(engine):
         assert _stored(session, "prices", "prices") == ['{"tea": 1.5}']
 
 
+def test_a_query_dumps_a_value_as_the_write_does(sync_client):
+    """A value in a query is dumped by the type of the column too. So the
+    serializer runs, and a subclass loses its own fields. Then the query
+    finds the row that the write stored."""
+    Money = Annotated[Decimal, pydantic.PlainSerializer(float, when_used="json")]
+
+    class Shop(fr.IDMixin, SharedBase):
+        prices: Mapped[dict[str, Decimal]] = mapped_column(
+            fr.PydanticJSON(dict[str, Money])
+        )
+        price: Mapped[Decimal] = mapped_column(fr.PydanticJSON(Money))
+        address: Mapped[Address]
+
+    @fr.include_view(sync_client.app)
+    class ShopView(fr.RestView):
+        prefix = "/shops"
+        model = Shop
+
+    SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
+    with fr.open_session() as session:
+        session.add(
+            Shop(
+                prices={"tea": Decimal("1.50")},
+                price=Decimal("1.50"),
+                address=Home(street="Main"),
+            )
+        )
+        session.commit()
+        prices = sqlalchemy.select(Shop.id).where(
+            Shop.prices == {"tea": Decimal("1.50")}
+        )
+        address = sqlalchemy.select(Shop.id).where(
+            Shop.address == Home(street="Main", rooms=3)
+        )
+        assert session.scalars(prices).all() == [1]
+        assert session.scalars(address).all() == [1]
+    found = sync_client.get("/shops", params={"price": "1.50"}).json()
+    assert [shop["id"] for shop in found["data"]] == [1]
+
+
 def test_a_strict_model_reads_back(engine):
     """The stored document is JSON data, and the column reads it as Pydantic
     reads JSON. So a strict model takes text for a datetime, a UUID or a
