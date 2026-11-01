@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, follow">
 
-    <title>React Admin &#8212; FastAPI-Restly 0.12.0 documentation</title>
+    <title>React Admin &#8212; FastAPI-Restly 0.13.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=18bd87630a240e9c25be" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=18bd87630a240e9c25be" />
 
-    <script src="_static/documentation_options.js?v=61ccb1f1"></script>
+    <script src="_static/documentation_options.js?v=1019fba8"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -68,7 +68,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="color-scheme" content="light dark"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.12" />
+  <meta name="docsearch:version" content="0.13" />
   
     
     <script src="_static/searchtools.js"></script>
@@ -671,7 +671,9 @@ too. They get only this field, so <code class="docutils literal notranslate"><sp
 <a class="reference internal" href="filtering.html#filter-value-validation"><span class="std std-ref">Filter values go through the field’s validation</span></a>.
 <code class="docutils literal notranslate"><span class="pre">null</span></code> finds the rows without a value when the field allows <code class="docutils literal notranslate"><span class="pre">None</span></code>, also in
 a list: <code class="docutils literal notranslate"><span class="pre">{&quot;size&quot;:</span> <span class="pre">[null,</span> <span class="pre">3]}</span></code> finds the rows without a size and the rows
-with size 3. A time follows the same rule as in the other filters; see
+with size 3. A field on a JSON column takes only <code class="docutils literal notranslate"><span class="pre">null</span></code>, as in the
+generated filters; see <a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering, Sorting &amp; Pagination</span></a>.
+A time follows the same rule as in the other filters; see
 <a class="reference internal" href="schemas.html#utc-times"><span class="std std-ref">Keep times in UTC</span></a>.</p>
 <p>Only fields that the view’s response class sends are accepted, by their
 alias when they have one. The model must have the field in SQL: as a

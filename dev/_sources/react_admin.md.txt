@@ -147,7 +147,9 @@ too. They get only this field, so `info.data` is `{}`; see
 [Filter values go through the field's validation](#filter-value-validation).
 `null` finds the rows without a value when the field allows `None`, also in
 a list: `{"size": [null, 3]}` finds the rows without a size and the rows
-with size 3. A time follows the same rule as in the other filters; see
+with size 3. A field on a JSON column takes only `null`, as in the
+generated filters; see [Filtering, Sorting & Pagination](filtering.md).
+A time follows the same rule as in the other filters; see
 [Keep times in UTC](#utc-times).
 
 Only fields that the view's response class sends are accepted, by their

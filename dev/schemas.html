@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, follow">
 
-    <title>Schemas &amp; Validation &#8212; FastAPI-Restly 0.12.0 documentation</title>
+    <title>Schemas &amp; Validation &#8212; FastAPI-Restly 0.13.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=18bd87630a240e9c25be" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=18bd87630a240e9c25be" />
 
-    <script src="_static/documentation_options.js?v=61ccb1f1"></script>
+    <script src="_static/documentation_options.js?v=1019fba8"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -68,7 +68,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="color-scheme" content="light dark"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.12" />
+  <meta name="docsearch:version" content="0.13" />
   
     
     <script src="_static/searchtools.js"></script>
@@ -673,8 +673,10 @@ the base class.</p></li>
 <div class="details admonition">
 <p class="admonition-title">Details</p>
 <p><code class="docutils literal notranslate"><span class="pre">BaseSchema</span></code> is a Pydantic <code class="docutils literal notranslate"><span class="pre">BaseModel</span></code> with <code class="docutils literal notranslate"><span class="pre">from_attributes=True</span></code>, so it can
-read the attributes of an ORM object. It also checks that the markers are
-used in the right place; see <a class="reference internal" href="#readonly-and-writeonly">the next section</a>.</p>
+read the attributes of an ORM object. It writes a NaN or an infinity in a
+response as text; see <a class="reference internal" href="#nan-and-infinity">Keep NaN and infinity</a>. It also
+checks that the markers are used in the right place; see
+<a class="reference internal" href="#readonly-and-writeonly">the next section</a>.</p>
 <p>A request body that you set on the view, such as <code class="docutils literal notranslate"><span class="pre">schema_create</span></code>, can also be
 a plain <code class="docutils literal notranslate"><span class="pre">pydantic.BaseModel</span></code>. Its fields can still use <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>,
 <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> and <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist</span></code></a>.</p>
@@ -710,7 +712,7 @@ stores the secret, and a response shows <code class="docutils literal notranslat
 a client sees that the field has a value, but not the value. Like a
 <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> field, such a field gets no filter and is not a sort key. In the
 document of a JSON column, a secret field raises an error instead; see
-<a class="reference internal" href="#json-document-columns">Validate the document in a JSON column</a>.</p>
+<a class="reference internal" href="#json-document-columns">Store a Pydantic model in a JSON column</a>.</p>
 <div class="details admonition">
 <p class="admonition-title">Details</p>
 <p>The two markers work in different places. This matters when you use a
@@ -733,8 +735,8 @@ type alias, such as <code class="docutils literal notranslate"><span class="pre"
 field with a
 <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>.
 For an optional write-only field, write <code class="docutils literal notranslate"><span class="pre">WriteOnly[Optional[str]]</span></code>.</p>
-<p>A JSON column has its own rules for <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields; see
-<a class="reference internal" href="#json-document-columns">Validate the document in a JSON column</a>.</p>
+<p>A JSON column has its own rules for <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> and <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields; see
+<a class="reference internal" href="#json-document-columns">Store a Pydantic model in a JSON column</a>.</p>
 </div>
 </section>
 <section id="write-the-request-body-yourself">
@@ -788,19 +790,23 @@ request body that you write. Otherwise a client can set it.</p>
 <td><p><a class="reference internal" href="#readonly-and-writeonly"><code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code></a>, or <a class="reference internal" href="#explicit-write-schemas">your own request body</a></p></td>
 <td><p>The value is ignored</p></td>
 </tr>
-<tr class="row-even"><td><p>A value that its column can hold, such as a number in the range of <code class="docutils literal notranslate"><span class="pre">Integer</span></code></p></td>
+<tr class="row-even"><td><p>The shape of a JSON document</p></td>
+<td><p>A Pydantic model as the type of the column; see <a class="reference internal" href="#json-document-columns">Store a Pydantic model in a JSON column</a></p></td>
+<td><p>422</p></td>
+</tr>
+<tr class="row-odd"><td><p>A value that its column can hold, such as a number in the range of <code class="docutils literal notranslate"><span class="pre">Integer</span></code></p></td>
 <td><p>Nothing for the generic types of SQLAlchemy, a <code class="docutils literal notranslate"><span class="pre">Field</span></code> constraint for other types; see <a class="reference internal" href="#column-validation">Column validation</a></p></td>
 <td><p>422, or 400 in a filter</p></td>
 </tr>
-<tr class="row-odd"><td><p>A referenced row must exist</p></td>
+<tr class="row-even"><td><p>A referenced row must exist</p></td>
 <td><p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist</span></code></a> or a reference field; see <a class="reference internal" href="relationships.html#reference-exists"><span class="std std-ref">Relationships</span></a></p></td>
 <td><p>404</p></td>
 </tr>
-<tr class="row-even"><td><p>A value must be unique</p></td>
+<tr class="row-odd"><td><p>A value must be unique</p></td>
 <td><p>A unique constraint on the column; see <a class="reference internal" href="errors.html#default-exception-handling"><span class="std std-ref">Errors</span></a></p></td>
 <td><p>409</p></td>
 </tr>
-<tr class="row-odd"><td><p>A rule that needs the database, the stored row or the caller</p></td>
+<tr class="row-even"><td><p>A rule that needs the database, the stored row or the caller</p></td>
 <td><p>The <code class="docutils literal notranslate"><span class="pre">create</span></code> or <code class="docutils literal notranslate"><span class="pre">update</span></code> business method; see <a class="reference internal" href="lifecycle.html#business-methods"><span class="std std-ref">Request Lifecycle &amp; Hooks</span></a></p></td>
 <td><p>The error that you raise</p></td>
 </tr>
@@ -1098,6 +1104,74 @@ a time zone keeps the clock time of a value and drops its offset:
 <code class="docutils literal notranslate"><span class="pre">09:00:00+02:00</span></code> becomes <code class="docutils literal notranslate"><span class="pre">09:00:00</span></code>.</p>
 </div>
 </section>
+<section id="keep-nan-and-infinity">
+<span id="nan-and-infinity"></span><h2>Keep NaN and infinity<a class="headerlink" href="#keep-nan-and-infinity" title="Link to this heading">#</a></h2>
+<p>JSON has no number for NaN or infinity. So Restly writes them as the text
+<code class="docutils literal notranslate"><span class="pre">&quot;NaN&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;Infinity&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;-Infinity&quot;</span></code>, in a response and in a JSON column. A
+<code class="docutils literal notranslate"><span class="pre">float</span></code> field reads the text back as a number, so a client can send back the
+values that it got:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Series</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDMixin</span><span class="p">,</span> <span class="n">Base</span><span class="p">):</span>
+    <span class="n">points</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span>
+        <span class="n">fr</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">PydanticJSON</span><span class="p">(</span><span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">])</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<p>A client that sends <code class="docutils literal notranslate"><span class="pre">{&quot;points&quot;:</span> <span class="pre">[1.5,</span> <span class="pre">&quot;NaN&quot;,</span> <span class="pre">&quot;Infinity&quot;]}</span></code> gets
+<code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">1,</span> <span class="pre">&quot;points&quot;:</span> <span class="pre">[1.5,</span> <span class="pre">&quot;NaN&quot;,</span> <span class="pre">&quot;Infinity&quot;]}</span></code> back, and the column stores
+<code class="docutils literal notranslate"><span class="pre">[1.5,</span> <span class="pre">&quot;NaN&quot;,</span> <span class="pre">&quot;Infinity&quot;]</span></code>. OpenAPI still shows a number for the field, so a
+client must accept these three texts in a number field.</p>
+<p>A Pydantic model of your own, such as the model of a
+<a class="reference internal" href="api/models.html#fastapi_restly.models.PydanticJSON" title="fastapi_restly.models.PydanticJSON"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.models.PydanticJSON</span></code></a> column,
+follows its own setting: in a response, and for its fields of type <code class="docutils literal notranslate"><span class="pre">Any</span></code> in
+a JSON column. Pydantic’s default writes <code class="docutils literal notranslate"><span class="pre">null</span></code> there, which loses the
+value. Give your models the setting that
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.BaseSchema" title="fastapi_restly.schemas.BaseSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.BaseSchema</span></code></a> has:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pydantic</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Point</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">model_config</span> <span class="o">=</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">ConfigDict</span><span class="p">(</span><span class="n">ser_json_inf_nan</span><span class="o">=</span><span class="s2">"strings"</span><span class="p">)</span>
+
+    <span class="n">lat</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">lon</span><span class="p">:</span> <span class="nb">float</span>
+</pre></div>
+</div>
+<p>To give the setting to all of your models, put it in a base class of your
+own.</p>
+<p>Restly cannot keep the value in these cases:</p>
+<ul class="simple">
+<li><p>On SQLite, a <code class="docutils literal notranslate"><span class="pre">Float</span></code> column stores NaN as <code class="docutils literal notranslate"><span class="pre">NULL</span></code>, and a column that is not
+nullable refuses the row. PostgreSQL stores NaN and infinity as numbers.</p></li>
+<li><p>A plain <code class="docutils literal notranslate"><span class="pre">JSON</span></code> column gets the text only when Restly copies a request body
+onto the model. Your own code that writes the column goes through
+SQLAlchemy. SQLite then stores NaN as a number, and PostgreSQL refuses the
+row. In a part of type <code class="docutils literal notranslate"><span class="pre">Any</span></code>, a response shows such a number as <code class="docutils literal notranslate"><span class="pre">null</span></code>. For
+a free-form document that your own code writes, use
+<code class="docutils literal notranslate"><span class="pre">fr.models.PydanticJSON(dict[str,</span> <span class="pre">Any])</span></code>, which writes the text on each
+write.</p></li>
+<li><p>The text in a response needs FastAPI 0.130 or later, with its default
+response class. An older FastAPI, or <code class="docutils literal notranslate"><span class="pre">JSONResponse</span></code> as the response class,
+gives an error 500.</p></li>
+</ul>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>A request body can hold the text, or <code class="docutils literal notranslate"><span class="pre">NaN</span></code> and <code class="docutils literal notranslate"><span class="pre">Infinity</span></code> without quotes, as
+Python’s <code class="docutils literal notranslate"><span class="pre">json</span></code> module writes them. A <code class="docutils literal notranslate"><span class="pre">float</span></code> field reads both. Send the
+text: FastAPI cannot write an error message that holds <code class="docutils literal notranslate"><span class="pre">NaN</span></code> without quotes,
+so such a body can get an error 500 instead of 422. A strict field, with
+<code class="docutils literal notranslate"><span class="pre">strict=True</span></code>, refuses the text in a request.</p>
+<p>Restly reads a row into the response class in lax mode, also for a strict
+class, as a <code class="docutils literal notranslate"><span class="pre">PydanticJSON</span></code> column reads its document. So a strict <code class="docutils literal notranslate"><span class="pre">float</span></code>
+field reads the stored text back.</p>
+<p>A part of type <code class="docutils literal notranslate"><span class="pre">Any</span></code>, such as a value in <code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">Any]</span></code>, reads the text back
+as text, not as a number. So does a union with <code class="docutils literal notranslate"><span class="pre">str</span></code>, such as <code class="docutils literal notranslate"><span class="pre">float</span> <span class="pre">|</span> <span class="pre">str</span></code>.</p>
+<p>For Pydantic’s default in a response, set <code class="docutils literal notranslate"><span class="pre">ser_json_inf_nan=&quot;null&quot;</span></code> in the
+<code class="docutils literal notranslate"><span class="pre">model_config</span></code> of your schema.</p>
+<p>PostgreSQL and MySQL refuse NaN as a number in a JSON column, because JSON has
+no number for it. PostgreSQL’s <code class="docutils literal notranslate"><span class="pre">to_jsonb('NaN'::float8)</span></code> gives the text
+<code class="docutils literal notranslate"><span class="pre">&quot;NaN&quot;</span></code>, and Restly writes the same text.</p>
+</div>
+</section>
 <section id="use-other-field-names-in-json">
 <span id="field-aliases"></span><h2>Use other field names in JSON<a class="headerlink" href="#use-other-field-names-in-json" title="Link to this heading">#</a></h2>
 <p>Use a normal Pydantic alias when the JSON name differs from the Python name:</p>
@@ -1383,29 +1457,141 @@ type checkers do not accept them in an annotation, as in
 sends the same JSON, but shows a type of its own in OpenAPI.</p>
 </div>
 </section>
-<section id="validate-the-document-in-a-json-column">
-<span id="json-document-columns"></span><h2>Validate the document in a JSON column<a class="headerlink" href="#validate-the-document-in-a-json-column" title="Link to this heading">#</a></h2>
-<p>A <code class="docutils literal notranslate"><span class="pre">JSON</span></code> column maps to a bare <code class="docutils literal notranslate"><span class="pre">dict</span></code>, which does not check the fields of the
-document. To check its shape, write the schema yourself and give the field a
-nested Pydantic model as its type. Before Restly assigns the document to the
-column, it dumps the value as Pydantic does in JSON mode. A model becomes what
-<code class="docutils literal notranslate"><span class="pre">model_dump(mode=&quot;json&quot;)</span></code> gives, also a model in a dict or a list. A
-<code class="docutils literal notranslate"><span class="pre">datetime</span></code>, a <code class="docutils literal notranslate"><span class="pre">UUID</span></code> or a <code class="docutils literal notranslate"><span class="pre">Decimal</span></code> becomes text, and a set becomes a list. So
-a field such as <code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">Address]</span></code> or <code class="docutils literal notranslate"><span class="pre">list[datetime]</span></code> works too. The view’s
-schema validates the stored document when it is read back.</p>
-<p>A document with a <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.WriteOnly" title="fastapi_restly.schemas.WriteOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">WriteOnly</span></code></a> or a
-<code class="docutils literal notranslate"><span class="pre">Field(exclude=True)</span></code> field raises
+<section id="store-a-pydantic-model-in-a-json-column">
+<span id="json-document-columns"></span><h2>Store a Pydantic model in a JSON column<a class="headerlink" href="#store-a-pydantic-model-in-a-json-column" title="Link to this heading">#</a></h2>
+<p>Annotate a column with a Pydantic model. On a base with
+<a class="reference internal" href="api/models.html#fastapi_restly.models.ModelDefaults" title="fastapi_restly.models.ModelDefaults"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code></a>, the column is
+then a <a class="reference internal" href="api/models.html#fastapi_restly.models.PydanticJSON" title="fastapi_restly.models.PydanticJSON"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.models.PydanticJSON</span></code></a>
+column. It stores the model as a JSON document, and it loads the document as
+the model:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pydantic</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Address</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">model_config</span> <span class="o">=</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">ConfigDict</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">street</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">city</span><span class="p">:</span> <span class="nb">str</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Shop</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDMixin</span><span class="p">,</span> <span class="n">Base</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">address</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="n">Address</span><span class="p">]</span>
+    <span class="n">branches</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Address</span><span class="p">]]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span>
+        <span class="n">fr</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">PydanticJSON</span><span class="p">(</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Address</span><span class="p">])</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<p>The generated schema has the field <code class="docutils literal notranslate"><span class="pre">address:</span> <span class="pre">Address</span></code>. So a request with an
+address that does not fit returns 422, and a response shows the address as a
+JSON object. In your own code, <code class="docutils literal notranslate"><span class="pre">shop.address</span></code> is an <code class="docutils literal notranslate"><span class="pre">Address</span></code>. A type that is
+not one model, such as <code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">Address]</span></code>, needs <code class="docutils literal notranslate"><span class="pre">mapped_column()</span></code>, as
+<code class="docutils literal notranslate"><span class="pre">branches</span></code> shows. On PostgreSQL, use
+<a class="reference internal" href="api/models.html#fastapi_restly.models.PydanticJSONB" title="fastapi_restly.models.PydanticJSONB"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.models.PydanticJSONB</span></code></a> for a
+<code class="docutils literal notranslate"><span class="pre">JSONB</span></code> column. Alembic needs a hook in <code class="docutils literal notranslate"><span class="pre">env.py</span></code> for these columns; see
+<a class="reference internal" href="deploying.html#pydantic-json-migration"><span class="std std-ref">Write a PydanticJSON column into a migration</span></a>.</p>
+<p>As with SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">JSON</span></code> type, a change inside the document is not saved.
+<code class="docutils literal notranslate"><span class="pre">shop.address.city</span> <span class="pre">=</span> <span class="pre">&quot;Utrecht&quot;</span></code> changes the object, but not the row. Assign a
+new value:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">shop</span><span class="o">.</span><span class="n">address</span> <span class="o">=</span> <span class="n">shop</span><span class="o">.</span><span class="n">address</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span><span class="n">update</span><span class="o">=</span><span class="p">{</span><span class="s2">"city"</span><span class="p">:</span> <span class="s2">"Utrecht"</span><span class="p">})</span>
+</pre></div>
+</div>
+<p>With <code class="docutils literal notranslate"><span class="pre">frozen=True</span></code>, as in the example, the mistake fails: the assignment to
+<code class="docutils literal notranslate"><span class="pre">shop.address.city</span></code> raises a <code class="docutils literal notranslate"><span class="pre">ValidationError</span></code>. <code class="docutils literal notranslate"><span class="pre">frozen</span></code> does not reach into a
+list in the model, so use a tuple, such as <code class="docutils literal notranslate"><span class="pre">tuple[str,</span> <span class="pre">...]</span></code>, for a list. A
+dict at the top level, as in <code class="docutils literal notranslate"><span class="pre">branches</span></code>, is not frozen either. Wrap its type
+in SQLAlchemy’s <a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/extensions/mutable.html#sqlalchemy.ext.mutable.MutableDict" title="(in SQLAlchemy v2.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">MutableDict</span></code></a>. Then the
+session saves a change such as <code class="docutils literal notranslate"><span class="pre">shop.branches[&quot;south&quot;]</span> <span class="pre">=</span> <span class="pre">Address(...)</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.ext.mutable</span><span class="w"> </span><span class="kn">import</span> <span class="n">MutableDict</span>
+
+<span class="n">branches</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Address</span><span class="p">]]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span>
+    <span class="n">MutableDict</span><span class="o">.</span><span class="n">as_mutable</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">PydanticJSON</span><span class="p">(</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Address</span><span class="p">]))</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>The column validates the document each time it loads a row, also outside a
+view. So when you change the model, a stored document that no longer fits it
+makes each load of its row fail. A new field with a default is safe. For
+other changes, update the stored documents in a migration.</p>
+<p>Use a <code class="docutils literal notranslate"><span class="pre">PydanticJSON</span></code> column for a document with a fixed shape. For a
+free-form document, use a plain <code class="docutils literal notranslate"><span class="pre">JSON</span></code> column, as in
+<code class="docutils literal notranslate"><span class="pre">Mapped[dict[str,</span> <span class="pre">Any]]</span> <span class="pre">=</span> <span class="pre">mapped_column(JSON)</span></code>. For a document with a secret,
+write a SQLAlchemy <a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/custom_types.html#sqlalchemy.types.TypeDecorator" title="(in SQLAlchemy v2.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypeDecorator</span></code></a> of your own,
+because the JSON dump masks the secret. Keep a value that the server sets,
+such as the time it checked an address, in a column of its own. A request
+writes the whole document, so it would replace such a value.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p><strong>Writes and reads.</strong> The column validates a value when it writes it. So a
+dict works too, and so does another model with the same fields, such as a
+schema class of your view. A value that does not fit fails at the flush.
+Then the column dumps the value as <code class="docutils literal notranslate"><span class="pre">TypeAdapter(Address)</span></code> does in JSON mode,
+with <code class="docutils literal notranslate"><span class="pre">round_trip=True</span></code>. A <code class="docutils literal notranslate"><span class="pre">datetime</span></code>, a <code class="docutils literal notranslate"><span class="pre">UUID</span></code> or a <code class="docutils literal notranslate"><span class="pre">Decimal</span></code> becomes text,
+and a set becomes a list. A NaN or an infinity becomes text; see
+<a class="reference internal" href="#nan-and-infinity">Keep NaN and infinity</a>. A serializer in the type, such as
+a <code class="docutils literal notranslate"><span class="pre">PlainSerializer</span></code>, runs, and the column stores what it returns. A subclass of
+<code class="docutils literal notranslate"><span class="pre">Address</span></code> is stored as an <code class="docutils literal notranslate"><span class="pre">Address</span></code>, without its own fields, as a field of
+type <code class="docutils literal notranslate"><span class="pre">Address</span></code> is in <code class="docutils literal notranslate"><span class="pre">model_dump()</span></code>. The keys are the names of the fields,
+not their aliases, also with <code class="docutils literal notranslate"><span class="pre">serialize_by_alias=True</span></code>. A response reads the
+document by the names, as it reads the columns. A computed field is not
+stored, so a model with <code class="docutils literal notranslate"><span class="pre">extra=&quot;forbid&quot;</span></code> accepts the document. A <code class="docutils literal notranslate"><span class="pre">Json[T]</span></code>
+field is stored as text, as its validation reads it. A load reads the stored
+document in lax mode, also for a strict model. So it reads a <code class="docutils literal notranslate"><span class="pre">datetime</span></code> from
+text, a tuple from a list, and a <code class="docutils literal notranslate"><span class="pre">float</span></code> from <code class="docutils literal notranslate"><span class="pre">&quot;NaN&quot;</span></code>.</p>
+<p><strong>Refused types.</strong> Some types raise
 <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>
-before Restly assigns it. This includes such fields in nested models. The dump
-would leave those fields out, so they would not be stored. A field of
-Pydantic’s secret types, such as <code class="docutils literal notranslate"><span class="pre">SecretStr</span></code>, raises the same error: the dump
-masks it, so the column would get <code class="docutils literal notranslate"><span class="pre">**********</span></code>. So does a document with
-dataclasses or iterators. For such documents, use a
-SQLAlchemy <a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/custom_types.html#sqlalchemy.types.TypeDecorator" title="(in SQLAlchemy v2.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypeDecorator</span></code></a> that defines how the
-document is stored. Its bind processor receives the Pydantic model itself, not
-a dump.</p>
-<p>You can still mark the whole JSON column <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code>. That hides the column
-in responses, and the stored document keeps all its fields.</p>
+when you define the column, because the dump would not store all of the
+value:</p>
+<ul class="simple">
+<li><p>A <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.WriteOnly" title="fastapi_restly.schemas.WriteOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">WriteOnly</span></code></a>,
+<code class="docutils literal notranslate"><span class="pre">Field(exclude=True)</span></code> or <code class="docutils literal notranslate"><span class="pre">Field(exclude_if=...)</span></code> field, also in a nested
+model or a <code class="docutils literal notranslate"><span class="pre">TypedDict</span></code>. The dump leaves the field out.</p></li>
+<li><p>A field of Pydantic’s secret types, such as <code class="docutils literal notranslate"><span class="pre">SecretStr</span></code>, also in a nested
+model, a <code class="docutils literal notranslate"><span class="pre">TypedDict</span></code> or a <code class="docutils literal notranslate"><span class="pre">NamedTuple</span></code>. The dump masks it, so the column
+would store <code class="docutils literal notranslate"><span class="pre">**********</span></code>.</p></li>
+<li><p>A dataclass, and an iterator type, such as <code class="docutils literal notranslate"><span class="pre">Iterable</span></code>.</p></li>
+</ul>
+<p>A part typed <code class="docutils literal notranslate"><span class="pre">Any</span></code> is checked when you write it. For such documents, write a
+<code class="docutils literal notranslate"><span class="pre">TypeDecorator</span></code> that stores the document as you need. Its bind processor gets
+the Pydantic model itself, not a dump. You can still mark the whole column
+<code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code>. That hides the column in responses, and the stored document
+keeps all its fields.</p>
+<p><strong><code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> fields.</strong> A <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">ReadOnly</span></code></a>
+field raises too, also in a nested model, a <code class="docutils literal notranslate"><span class="pre">TypedDict</span></code> or a <code class="docutils literal notranslate"><span class="pre">NamedTuple</span></code>. A
+request writes the whole document. So a <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> that leaves out the field, as
+OpenAPI asks, would set it back to its default, and the value that the server
+set would be lost. Keep such a value in a column of its own. You can still
+mark the whole column <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>. The <code class="docutils literal notranslate"><span class="pre">id</span></code> of a reference, such as
+<code class="docutils literal notranslate"><span class="pre">fr.IDRef[User]</span></code>, does not count, because the client sends it. So a view
+schema, with its read-only <code class="docutils literal notranslate"><span class="pre">id</span></code>, cannot be the type of a document. Use a
+model of its own for the document.</p>
+<p><strong>The same as <code class="docutils literal notranslate"><span class="pre">JSON</span></code>.</strong> <code class="docutils literal notranslate"><span class="pre">None</span></code> is stored as JSON <code class="docutils literal notranslate"><span class="pre">null</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">fr.models.PydanticJSON(Address,</span> <span class="pre">none_as_null=True)</span></code> stores SQL <code class="docutils literal notranslate"><span class="pre">NULL</span></code>. A query
+reads a part of the document as with <code class="docutils literal notranslate"><span class="pre">JSON</span></code>, as in
+<code class="docutils literal notranslate"><span class="pre">Shop.address[&quot;city&quot;].as_string()</span> <span class="pre">==</span> <span class="pre">&quot;Utrecht&quot;</span></code>. A dict or a model in a
+query is dumped, but not validated, because it can be a part of a document.</p>
+<p><strong><code class="docutils literal notranslate"><span class="pre">JSONB</span></code> for each model.</strong> The <code class="docutils literal notranslate"><span class="pre">type_annotation_map</span></code> of <code class="docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code>
+has <code class="docutils literal notranslate"><span class="pre">pydantic.BaseModel:</span> <span class="pre">fr.models.PydanticJSON(pydantic.BaseModel)</span></code>, as
+SQLAlchemy maps an enum with <code class="docutils literal notranslate"><span class="pre">enum.Enum:</span> <span class="pre">Enum(enum.Enum)</span></code>. Put
+<code class="docutils literal notranslate"><span class="pre">pydantic.BaseModel:</span> <span class="pre">fr.models.PydanticJSONB(pydantic.BaseModel)</span></code> in the map
+of your base, and each model gets a <code class="docutils literal notranslate"><span class="pre">JSONB</span></code> column. Your own entry wins; see
+<a class="reference internal" href="models.html#change-model-defaults"><span class="std std-ref">Change a default</span></a>.</p>
+<p><strong>A plain <code class="docutils literal notranslate"><span class="pre">JSON</span></code> column with a schema of your own.</strong> A
+<code class="docutils literal notranslate"><span class="pre">Mapped[dict[str,</span> <span class="pre">Any]]</span></code> column gets the field type <code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">Any]</span></code> in a
+generated schema, which does not check the document. To check it only in the
+view, write the schema yourself and give the field a Pydantic model as its
+type, such as <code class="docutils literal notranslate"><span class="pre">Address</span></code> or <code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">Address]</span></code>. Restly dumps the value
+before it assigns it to the column. Then it refuses the same fields, in each
+model in the value. It cannot check the keys of a <code class="docutils literal notranslate"><span class="pre">TypedDict</span></code> or the fields
+of a <code class="docutils literal notranslate"><span class="pre">NamedTuple</span></code>, because by then the value is a plain dict or tuple. The
+column has no type of its own, so this dump goes by
+the type of the value: a subclass keeps its own fields, and a serializer of
+the field type, such as a <code class="docutils literal notranslate"><span class="pre">PlainSerializer</span></code>, does not run. A serializer in a
+model does. A NaN or an infinity becomes text, as in a <code class="docutils literal notranslate"><span class="pre">PydanticJSON</span></code>
+column; see <a class="reference internal" href="#nan-and-infinity">Keep NaN and infinity</a>. The model attribute
+then holds a dict, not a model. A <code class="docutils literal notranslate"><span class="pre">PydanticJSON</span></code> column says the shape once,
+on the model, and holds the model in all of your code.</p>
+</div>
 </section>
 <section id="internals">
 <h2>Internals<a class="headerlink" href="#internals" title="Link to this heading">#</a></h2>
@@ -1599,6 +1785,12 @@ table. A type keeps its name, except a time: it gets
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">enum.Enum</span></code> subclass</p></td>
 <td><p>same enum subclass</p></td>
 </tr>
+<tr class="row-odd"><td><p>Pydantic model, such as <code class="docutils literal notranslate"><span class="pre">Address</span></code></p></td>
+<td><p>same model</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">fr.models.PydanticJSON(T)</span></code> column without an annotation</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">T</span></code></p></td>
+</tr>
 <tr class="row-odd"><td><p>SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Text</span></code>, <code class="docutils literal notranslate"><span class="pre">String</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
 </tr>
@@ -1627,8 +1819,9 @@ table. A type keeps its name, except a time: it gets
 </table>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">Any</span></code> and other generic types, such as <code class="docutils literal notranslate"><span class="pre">tuple[int,</span> <span class="pre">int]</span></code>, also stay as they
-are. Any other type raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> when Restly generates the schema. For a
-custom column type, write the schema yourself.</p>
+are, and so does a union, such as <code class="docutils literal notranslate"><span class="pre">Cat</span> <span class="pre">|</span> <span class="pre">Dog</span></code>. Any other type raises
+<code class="docutils literal notranslate"><span class="pre">TypeError</span></code> when Restly generates the schema. For a custom column type, write
+the schema yourself.</p>
 </section>
 </section>
 <section id="see-also">
@@ -1704,12 +1897,13 @@ keys that come from the response class.</p></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#keep-times-in-utc">Keep times in UTC</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#keep-nan-and-infinity">Keep NaN and infinity</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-other-field-names-in-json">Use other field names in JSON</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#set-your-own-response-class">Set your own response class</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-names-of-the-generated-classes">The names of the generated classes</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#name-your-schemas">Name your schemas</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#name-the-view-s-classes-in-a-custom-route">Name the view’s classes in a custom route</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#validate-the-document-in-a-json-column">Validate the document in a JSON column</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#store-a-pydantic-model-in-a-json-column">Store a Pydantic model in a JSON column</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#internals">Internals</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-the-markers-work">How the markers work</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-restly-builds-the-request-bodies-and-the-response-class">How Restly builds the request bodies and the response class</a></li>

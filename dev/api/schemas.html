@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, follow">
 
-    <title>Schemas API &#8212; FastAPI-Restly 0.12.0 documentation</title>
+    <title>Schemas API &#8212; FastAPI-Restly 0.13.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=18bd87630a240e9c25be" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=18bd87630a240e9c25be" />
 
-    <script src="../_static/documentation_options.js?v=61ccb1f1"></script>
+    <script src="../_static/documentation_options.js?v=1019fba8"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -68,7 +68,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="color-scheme" content="light dark"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.12" />
+  <meta name="docsearch:version" content="0.13" />
   
     
     <script src="../_static/searchtools.js"></script>
@@ -530,7 +530,7 @@ The field remains available in responses.</p>
 <dt class="sig sig-object py" id="fastapi_restly.schemas.WriteOnly">
 <span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">WriteOnly</span></span><a class="headerlink" href="#fastapi_restly.schemas.WriteOnly" title="Link to this definition">#</a></dt>
 <dd><p>Marks a field as input-only by setting Pydantic’s serialization exclusion.
-See <a class="reference internal" href="../schemas.html#json-document-columns"><span class="std std-ref">Validate the document in a JSON column</span></a> for restrictions inside JSON documents.</p>
+See <a class="reference internal" href="../schemas.html#json-document-columns"><span class="std std-ref">Store a Pydantic model in a JSON column</span></a> for restrictions inside JSON documents.</p>
 </dd></dl>
 
 <dl class="py class" id="module-fastapi_restly.schemas">
@@ -540,6 +540,12 @@ See <a class="reference internal" href="../schemas.html#json-document-columns"><
 <p>The base of a Restly schema: a Pydantic model with
 <code class="docutils literal notranslate"><span class="pre">from_attributes=True</span></code>, so it can read a SQLAlchemy object by its
 attributes.</p>
+<p>It also has <code class="docutils literal notranslate"><span class="pre">ser_json_inf_nan=&quot;strings&quot;</span></code>, so a response writes a NaN or
+an infinity as the text <code class="docutils literal notranslate"><span class="pre">&quot;NaN&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;Infinity&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;-Infinity&quot;</span></code>.
+JSON has no number for these values, and Pydantic’s default writes
+<code class="docutils literal notranslate"><span class="pre">null</span></code>, which loses the value. A <code class="docutils literal notranslate"><span class="pre">float</span></code> field reads the text back.
+This needs FastAPI 0.130 or later, with its default response class. A
+Pydantic model of your own in a field follows its own setting.</p>
 <p>It also checks where the <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>, <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> and <code class="docutils literal notranslate"><span class="pre">MustExist</span></code>
 markers are placed. A marker deep inside the type of a field, such as
 <code class="docutils literal notranslate"><span class="pre">ReadOnly[int]</span> <span class="pre">|</span> <span class="pre">None</span></code>, would have no effect. So the class raises

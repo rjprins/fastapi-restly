@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, follow">
 
-    <title>Views API &#8212; FastAPI-Restly 0.12.0 documentation</title>
+    <title>Views API &#8212; FastAPI-Restly 0.13.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=18bd87630a240e9c25be" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=18bd87630a240e9c25be" />
 
-    <script src="../_static/documentation_options.js?v=61ccb1f1"></script>
+    <script src="../_static/documentation_options.js?v=1019fba8"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -68,7 +68,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="color-scheme" content="light dark"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.12" />
+  <meta name="docsearch:version" content="0.13" />
   
     
     <script src="../_static/searchtools.js"></script>
@@ -2061,7 +2061,9 @@ instead.</p>
 <p>The ORM path below validates through the response class, so a view’s
 schema that declares a WriteOnly field the ORM object doesn’t carry
 (e.g. <code class="docutils literal notranslate"><span class="pre">password</span></code> backed by a <code class="docutils literal notranslate"><span class="pre">password_hash</span></code> column) doesn’t fail
-response validation.</p>
+response validation. It validates in lax mode, also for a strict
+class, so a strict <code class="docutils literal notranslate"><span class="pre">float</span></code> field reads the text <code class="docutils literal notranslate"><span class="pre">&quot;NaN&quot;</span></code> that a
+JSON column stores.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -2270,7 +2272,7 @@ by name from <code class="docutils literal notranslate"><span class="pre">data</
 
 <dl class="py class">
 <dt class="sig sig-object py" id="fastapi_restly.views.Envelope">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">Envelope</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Sequence" title="(in Python v3.15)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><span class="pre">DataT</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.views.Envelope" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">Envelope</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.15)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><span class="pre">DataT</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.views.Envelope" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></a></p>
 <p>List response wrapper: <code class="docutils literal notranslate"><span class="pre">{&quot;data&quot;:</span> <span class="pre">[...]}</span></code>.</p>
 <p>The default <code class="docutils literal notranslate"><span class="pre">envelope</span></code> of <a class="reference internal" href="#fastapi_restly.views.NoPagination" title="fastapi_restly.views.NoPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">NoPagination</span></code></a>, for a view that returns
@@ -2278,16 +2280,18 @@ every row. A paginated view uses its pagination’s <code class="docutils litera
 <a class="reference internal" href="#fastapi_restly.views.PaginatedEnvelope" title="fastapi_restly.views.PaginatedEnvelope"><code class="xref py py-class docutils literal notranslate"><span class="pre">PaginatedEnvelope</span></code></a> by default.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.Envelope.data">
-<span class="sig-name descname"><span class="pre">data</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Sequence" title="(in Python v3.15)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><span class="pre">DataT</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#fastapi_restly.views.Envelope.data" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">data</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.15)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><span class="pre">DataT</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#fastapi_restly.views.Envelope.data" title="Link to this definition">#</a></dt>
 <dd><p>The rows of the list, each as an instance of the view’s response
-class.</p>
+class. A list, not a <code class="docutils literal notranslate"><span class="pre">Sequence</span></code>: Pydantic writes the rows of a
+<code class="docutils literal notranslate"><span class="pre">Sequence</span></code> field with the settings of the envelope, not with the
+settings of the response class, such as <code class="docutils literal notranslate"><span class="pre">ser_json_inf_nan</span></code>.</p>
 </dd></dl>
 
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="fastapi_restly.views.PaginatedEnvelope">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">PaginatedEnvelope</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Sequence" title="(in Python v3.15)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><span class="pre">DataT</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">total_count</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">page</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">page_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">total_pages</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.views.PaginatedEnvelope" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">PaginatedEnvelope</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.15)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><span class="pre">DataT</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">total_count</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">page</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">page_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">total_pages</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.views.PaginatedEnvelope" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#fastapi_restly.views.Envelope" title="fastapi_restly._pagination.Envelope"><code class="xref py py-class docutils literal notranslate"><span class="pre">Envelope</span></code></a></p>
 <p>Paginated list response: <code class="docutils literal notranslate"><span class="pre">data</span></code> plus pagination metadata.</p>
 <p>The default <code class="docutils literal notranslate"><span class="pre">envelope</span></code> of <a class="reference internal" href="#fastapi_restly.views.NumberedPagination" title="fastapi_restly.views.NumberedPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">NumberedPagination</span></code></a>.</p>

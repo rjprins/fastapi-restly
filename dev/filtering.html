@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, follow">
 
-    <title>Filtering, Sorting &amp; Pagination &#8212; FastAPI-Restly 0.12.0 documentation</title>
+    <title>Filtering, Sorting &amp; Pagination &#8212; FastAPI-Restly 0.13.0 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=18bd87630a240e9c25be" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=18bd87630a240e9c25be" />
 
-    <script src="_static/documentation_options.js?v=61ccb1f1"></script>
+    <script src="_static/documentation_options.js?v=1019fba8"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -68,7 +68,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="color-scheme" content="light dark"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.12" />
+  <meta name="docsearch:version" content="0.13" />
   
     
     <script src="_static/searchtools.js"></script>
@@ -641,6 +641,14 @@ column, gets only <code class="docutils literal notranslate"><span class="pre">_
 collection, so the other filters would fail on every request. Such a field
 is no sort key either: a document or a list has no order that a client
 means, and PostgreSQL’s <code class="docutils literal notranslate"><span class="pre">json</span></code> type has none at all.</p></li>
+<li><p>A field on a JSON column gets only <code class="docutils literal notranslate"><span class="pre">__isnull</span></code> too, also when it holds one
+value, such as a <code class="docutils literal notranslate"><span class="pre">str</span></code> in <code class="docutils literal notranslate"><span class="pre">fr.models.PydanticJSON(str)</span></code>. The column holds
+JSON text, such as <code class="docutils literal notranslate"><span class="pre">&quot;x&quot;</span></code> with its quotes, and SQL compares that text, not
+the value. So the other filters would find no row on SQLite and fail on
+PostgreSQL. Such a field is no sort key either. In the <code class="docutils literal notranslate"><span class="pre">filter</span></code> of a
+react-admin view, and in <code class="docutils literal notranslate"><span class="pre">FilterKey.parse()</span></code>, such a field takes only
+<code class="docutils literal notranslate"><span class="pre">null</span></code>. To filter on a key in a document, write the filter yourself; see
+<a class="reference internal" href="#own-list-filter">Add a filter of your own</a>.</p></li>
 <li><p>A <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.WriteOnly" title="fastapi_restly.schemas.WriteOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">WriteOnly</span></code></a> field, a field
 with <code class="docutils literal notranslate"><span class="pre">Field(exclude=True)</span></code>, and a field of Pydantic’s secret types, such as
 <code class="docutils literal notranslate"><span class="pre">SecretStr</span></code>, get no filter and are not a sort key. A filter on such a field
