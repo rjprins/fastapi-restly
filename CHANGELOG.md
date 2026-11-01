@@ -7,123 +7,83 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-01
+
+This release adds `fr.models.PydanticJSON`, a JSON column that holds a
+Pydantic type, and runs each write action in a savepoint. To upgrade, work
+through these steps. A missed step fails with an error. A step marked
+"Silent" gives no error when you miss it.
+
+1. In `fr.configure()`, rename `session_generator=` to
+   `async_session_generator=`, and `sync_session_generator=` to
+   `session_generator=`.
+2. Silent: SQLAlchemy now calls the `before_commit` and `after_commit`
+   listeners of a session twice for a write action. The first call is for
+   the savepoint. To run only at the commit, return early when
+   `session.in_nested_transaction()` is true.
+3. Move each `ReadOnly` field out of a document in a JSON column, into a
+   column of its own.
+4. Silent: a response now shows a NaN or an infinity as the text `"NaN"`,
+   `"Infinity"` or `"-Infinity"`, not as `null`. A JSON column that Restly
+   writes stores the same text. Check that your clients, and your own code
+   that reads such a column, accept the text. To keep `null` in a response,
+   set `ser_json_inf_nan="null"` in your schema.
+
 ### Added
 
+- `fr.models.PydanticJSON(T)` and `fr.models.PydanticJSONB(T)`, JSON columns
+  that hold a Pydantic type, such as `Address` or `dict[str, Address]`. On
+  `fr.ModelDefaults`, `Mapped[Address]` alone gives such a column.
 - `derive_schema` accepts a Pydantic model as the type of a column, as in
-  `address: Mapped[Address] = mapped_column(JSON)`. The field gets the type
-  `Address`. Before, this raised `TypeError`.
-- `fr.models.PydanticJSON(T)`, a JSON column that holds a Pydantic type, such
-  as a model or `dict[str, Address]`. It validates the document when it
-  writes it and when it loads a row, so `shop.address` is an `Address`.
-  `fr.models.PydanticJSONB` is the same column with PostgreSQL's `JSONB`. On
-  a base with `fr.ModelDefaults`, `Mapped[Address]` alone gives a
-  `PydanticJSON(Address)` column.
-- The `env.py` that `restly new` generates writes a `PydanticJSON` column into
-  a migration as `sa.JSON()`, and a `PydanticJSONB` column as
-  `postgresql.JSONB()`. Without this, the migration could not run. If your
-  `env.py` is older, or your own, copy its `render_item` function from
-  "Write a `PydanticJSON` column into a migration" in the guide.
+  `Mapped[Address] = mapped_column(JSON)`.
+- The `env.py` of `restly new` writes these columns into a migration as
+  `sa.JSON()` or `postgresql.JSONB()`. For an older `env.py`, copy
+  `render_item` from the guide.
 
 ### Changed
 
-- In `fr.configure()`, the async session generator is now
-  `async_session_generator`, and the sync one is `session_generator`. This
-  matches the other parameters, such as `async_engine` and `engine`. Rename
-  `session_generator=` to `async_session_generator=`, and
-  `sync_session_generator=` to `session_generator=`. An async generator
-  passed as `session_generator` raises `TypeError`. A sync generator passed
-  as `async_session_generator` does too. This also works for a generator in
-  `functools.partial`, behind a decorator with `functools.wraps`, or in the
-  `__call__` of an object.
-- Each outermost write action, and each outermost
-  `shared_write_action_commit()` block, runs in a savepoint. An exception
-  rolls back to it, so the session stays usable. When the commit fails,
-  Restly rolls back the whole transaction. The savepoint adds two statements
-  to each write: `SAVEPOINT` and `RELEASE SAVEPOINT`. On SQLite, Restly also
-  sends `BEGIN` before the savepoint. With the default settings of the
-  driver, the end of the savepoint would commit otherwise.
-- What a route added to the session before a write action is written when the
-  action begins, outside its savepoint. This is also true for a new object
-  that a route appends to a collection of a loaded row.
-- SQLAlchemy calls the listeners of the session for the savepoint too:
-  `after_begin`, `before_commit`, `after_commit` and `after_rollback`. So
-  `before_commit` and `after_commit` run twice. The first time is before the
-  commit, which can still fail. To run only at the commit, return early when
-  `session.in_nested_transaction()` is true.
-- The `testing` extra needs `httpx2` 2.12.0 or later. Earlier releases have
-  known security problems.
-- A document with a `ReadOnly` field, also in a nested model, raises
-  `RestlyConfigurationError` before it is stored in a JSON column. A request
-  writes the whole document. So a `PATCH` that left out the field, as OpenAPI
-  asks, set it back to its default, and the value that the server set was
-  lost. Keep such a value in a column of its own. The `id` of a reference,
-  such as `fr.IDRef[User]`, does not count, because the client sends it.
-- A response writes a NaN or an infinity as the text `"NaN"`, `"Infinity"`
-  or `"-Infinity"`, not as `null`, which lost the value. A JSON column stores
-  the same text, and a `float` field reads it back. The setting is
-  `ser_json_inf_nan="strings"` on `fr.BaseSchema`. For Pydantic's default,
-  set `ser_json_inf_nan="null"` in your schema. With FastAPI before 0.130,
-  such a response is still an error 500. OpenAPI still shows a number for
-  the field. See "Keep NaN and infinity" in the guide.
-- A list response holds its rows in `Envelope.data` as a `list`, not as a
-  `Sequence`. Pydantic wrote a NaN in the rows of a `Sequence` by the setting
-  of the envelope, so a list showed it as `null`.
-- Restly reads a row into the response class in lax mode, also when the class
-  is strict, as a `PydanticJSON` column reads its document. A strict `float`
-  field then reads the text `"NaN"` from a JSON column.
+- `fr.configure()` takes `async_session_generator` and `session_generator`,
+  as it takes `async_engine` and `engine`. A generator of the wrong kind
+  raises `TypeError`.
+- Each outermost write action and `shared_write_action_commit()` block runs
+  in a savepoint. An exception rolls back to it, so the session stays
+  usable. Each write sends `SAVEPOINT` and `RELEASE SAVEPOINT`.
+- What a route added to the session before a write action is written when
+  the action begins, outside its savepoint.
+- A response and a JSON column keep a NaN or an infinity as text; see "Keep
+  NaN and infinity" in the guide. A response needs FastAPI 0.130 or later
+  for it.
+- A document with a `ReadOnly` field raises `RestlyConfigurationError`: a
+  `PATCH` would set the field back to its default.
+- Restly reads a row into the response class in lax mode, also for a strict
+  class.
+- `Envelope.data` is a `list`, not a `Sequence`.
+- The `testing` extra needs `httpx2` 2.12.0 or later.
 
 ### Fixed
 
-- The react-admin list wrote a NaN or an infinity without quotes, as `NaN`.
-  That is not JSON, so the browser could not read the list. It now writes
-  the text, as the other responses do.
 - A write that raised is no longer committed by the next write, and a caught
-  `Conflict` no longer breaks the session. A route can catch the error of one
-  write action and go on, without `session.begin_nested()`. Inside a
-  `shared_write_action_commit()` block, still put `session.begin_nested()`
-  around each write that may raise. An object that the route put in the
-  session before the action, also through a relationship, is not undone: the
-  action writes it when it begins.
+  `Conflict` no longer breaks the session.
 - `RestlyUncommittedChangesWarning` no longer forgets a write when a later
-  savepoint rolls back. Only the writes inside the savepoint are undone.
+  savepoint rolls back.
 - On SQLite, a `session.begin_nested()` inside `shared_write_action_commit()`
   no longer commits its rows too early.
 - A JSON column with a field such as `dict[str, Address]` or `list[datetime]`
-  no longer gives a 500 error on each write. Restly dumps the whole value as
-  Pydantic does in JSON mode. A secret in a dict or a list raises
-  `RestlyConfigurationError`, as a secret in a model does. A `NaN` or an
-  infinity becomes the text `"NaN"`, `"Infinity"` or `"-Infinity"`, as
-  PostgreSQL's `to_jsonb()` writes it. JSON has no number for these values,
-  so PostgreSQL refused the row before. A `float` field reads the text back
-  as a number.
-  `sqlalchemy.JSON.NULL` and an SQL expression go to the column as they are.
-- A JSON column no longer stores a computed field of a model. A model with
-  `extra="forbid"` refused it when the row was read, so each response with
-  the row was a 500 error. A `Json[T]` field is now stored as text, as its
-  validation reads it. Before, it was stored as data, and reading it failed
-  too.
+  no longer gives a 500 error on each write. A secret in it raises
+  `RestlyConfigurationError`.
+- A JSON column stores the names of the fields, not their aliases, and no
+  computed fields. It stores a `Json[T]` field as text. Before, each of these
+  broke every response with the row.
 - A document with a `Field(exclude_if=...)` field raises
-  `RestlyConfigurationError` before it is stored, as one with
-  `Field(exclude=True)` does. The dump left the field out when the condition
-  held, so the column lost its value without an error.
-- A plain `View` that sets a `model` no longer fails when you register it.
-  It is not a resource, so a foreign key to its model gets no
-  `x-resource-ref` in OpenAPI.
-- A JSON column now stores the names of the fields also for a model with
-  `serialize_by_alias=True`. Before, it stored the aliases, and each response
-  with the row was a 500 error.
-- `derive_schema` keeps each member of a union, as in
-  `Mapped[Cat | Dog | None]`. Before, the field got `Cat | None`, so a `Dog`
-  was refused, and `Mapped[Cat | Dog]` raised `TypeError`.
+  `RestlyConfigurationError`, as one with `Field(exclude=True)` does.
 - A field on a JSON column gets only the `__isnull` filter and is no sort
-  key, also when it holds one value, such as a `str`. SQL compares the JSON
-  text of the column, such as `"x"` with its quotes. So the other filters
-  found no row on SQLite and gave a 500 error on PostgreSQL, and so did a
-  sort on PostgreSQL's `json` type. A `pydantic.Json` field on a JSON column
-  has only `__isnull` too. The `filter` of a react-admin view and
-  `fr.query.FilterKey.parse()` take only `null` for such a field, and give
-  400 for another value. Before, a `str` value found no row on SQLite, and
-  each value gave a 500 error on PostgreSQL's `json` type.
+  key. Other filters found no row on SQLite and gave a 500 error on
+  PostgreSQL.
+- `derive_schema` keeps each member of a union, as in
+  `Mapped[Cat | Dog | None]`.
+- A plain `View` that sets a `model` no longer fails when you register it.
+- The react-admin list writes a NaN as text. Before, the list was not valid
+  JSON.
 
 ## [0.12.0] - 2026-10-27
 
@@ -985,7 +945,8 @@ First public beta release.
 - Removed duplicate pytest fixture exports from `fastapi_restly.testing`;
   the pytest plugin path is `fastapi_restly.pytest_fixtures`.
 
-[Unreleased]: https://github.com/rjprins/fastapi-restly/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/rjprins/fastapi-restly/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/rjprins/fastapi-restly/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/rjprins/fastapi-restly/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/rjprins/fastapi-restly/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/rjprins/fastapi-restly/compare/v0.9.0...v0.10.0
