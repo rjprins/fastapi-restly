@@ -1,6 +1,9 @@
 from logging.config import fileConfig
+from typing import Literal
 
+import fastapi_restly as fr
 from alembic import context
+from alembic.autogenerate.api import AutogenContext
 from sqlalchemy import engine_from_config, pool
 
 import app.main  # noqa: F401  (imports every view, and each view its models)
@@ -29,6 +32,25 @@ target_metadata = Base.metadata
 RENDER_AS_BATCH = True
 
 
+def render_item(
+    type_: str, obj: object, autogen_context: AutogenContext
+) -> str | Literal[False]:
+    """Write a column of fr.PydanticJSON or fr.PydanticJSONB as the JSON type
+    it has in the database.
+
+    Without this, a migration would have PydanticJSON(Address) in it, and it
+    could not run: it imports neither the type nor your model. A migration
+    must not depend on your models anyway, because they change later.
+    Alembic writes everything else itself.
+    """
+    if type_ == "type" and isinstance(obj, fr.PydanticJSONB):
+        autogen_context.imports.add("from sqlalchemy.dialects import postgresql")
+        return "postgresql.JSONB()"
+    if type_ == "type" and isinstance(obj, fr.PydanticJSON):
+        return "sa.JSON()"
+    return False
+
+
 def run_migrations_offline() -> None:
     """Emit SQL without connecting to a database."""
     context.configure(
@@ -37,6 +59,7 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         render_as_batch=RENDER_AS_BATCH,
+        render_item=render_item,
     )
     if context.get_context().dialect.name == "postgresql":
         # The script runs in UTC too, as an online run does.
@@ -66,6 +89,7 @@ def run_migrations_online() -> None:
             connection=connection,
             target_metadata=target_metadata,
             render_as_batch=RENDER_AS_BATCH,
+            render_item=render_item,
         )
 
         with context.begin_transaction():

@@ -268,6 +268,41 @@ of the database session that runs the migration. The `env.py` that
 zone on purpose. Such a column holds UTC without the offset; see
 [Keep times in UTC](#utc-times).
 
+(pydantic-json-migration)=
+
+### Write a `PydanticJSON` column into a migration
+
+Alembic writes the type of each column into the migration. For a
+{class}`fr.PydanticJSON <fastapi_restly.models.PydanticJSON>` column, it
+writes `PydanticJSON(Address)`, and that migration cannot run: it imports
+neither the type nor your model. So give Alembic a `render_item` function
+that writes the JSON type of the database instead:
+
+```python
+# alembic/env.py
+from typing import Literal
+
+import fastapi_restly as fr
+from alembic.autogenerate.api import AutogenContext
+
+
+def render_item(
+    type_: str, obj: object, autogen_context: AutogenContext
+) -> str | Literal[False]:
+    if type_ == "type" and isinstance(obj, fr.PydanticJSONB):
+        autogen_context.imports.add("from sqlalchemy.dialects import postgresql")
+        return "postgresql.JSONB()"
+    if type_ == "type" and isinstance(obj, fr.PydanticJSON):
+        return "sa.JSON()"
+    return False
+```
+
+Pass it as `render_item=render_item` in both calls of `context.configure()`,
+the offline one and the online one. The `env.py` that `restly new` generates
+has this function. A migration should not import your models anyway, because
+the models change later. The database stores the same JSON, so
+`alembic check` finds no change.
+
 (health-checks)=
 
 ## Add a health check
