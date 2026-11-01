@@ -26,6 +26,7 @@ from sqlalchemy.orm import (
 )
 
 from .._mapping import is_mapped_class
+from ..models._documents import JSONDocument
 from ._base import (
     BaseSchema,
     IDSchema,
@@ -236,7 +237,11 @@ def get_model_fields(model_cls: type[Any]) -> dict[str, Any]:
             field_type, is_nullable = _split_optional(annotation)
         else:
             try:
-                field_type = column.type.python_type
+                if isinstance(column.type, JSONDocument):
+                    # The whole type, as dict[str, Address], not only dict.
+                    field_type = column.type.type_
+                else:
+                    field_type = column.type.python_type
             except NotImplementedError:
                 field_type = object
             if field_type is object:

@@ -2,11 +2,12 @@ import contextlib
 import dataclasses
 import functools
 import inspect
+import re
 import sys
 import types
 import typing
 import weakref
-from collections.abc import Iterable, Iterator, Mapping
+from collections.abc import Generator, Iterable, Iterator, Mapping
 from collections.abc import Sequence as _AbcSequence
 from collections.abc import Set as _AbcSet
 from datetime import datetime
@@ -1429,6 +1430,77 @@ def _reject_excluded_json_fields(value: Any, column: str) -> None:
             pending.append(item.value)
         else:
             pending.extend(item)
+
+
+#: Pydantic validates a field of these types to an iterator, which can be
+#: read only once.
+_ITERATOR_TYPES = (Iterable, Iterator, Generator)
+
+
+def _reject_excluded_json_type(type_: Any, column: str) -> None:
+    """Reject a document type with a part that a JSON dump leaves out or
+    masks, as :func:`_reject_excluded_json_fields` rejects such a value. The
+    type tells it when the column is defined, before the first write. A part
+    of type ``Any`` can still hold such a value, so each write checks too.
+
+    :param column: The name of the column, for the message of an error.
+    :raises RestlyConfigurationError: ``type_`` has a secret, an excluded
+        field, a dataclass or an iterator in it.
+    """
+    pending: list[tuple[Any, str]] = [(type_, _type_label(type_))]
+    seen_aliases: set[Any] = set()
+    seen_models: set[type] = set()
+    while pending:
+        annotation, where = pending.pop()
+        part, _ = _unwrap_type(annotation, seen_aliases)
+        origin = get_origin(part) or part
+        if not isinstance(origin, type):
+            # A union, a Literal or a value in a Literal.
+            pending.extend((arg, where) for arg in get_args(part))
+            continue
+        if issubclass(origin, _SECRET_TYPES):
+            raise RestlyConfigurationError(
+                f"{column}: {where} has a secret type, such as SecretStr. A JSON "
+                "dump masks a secret, so the column would store '**********'. "
+                "Leave the secret out of the document, or write a SQLAlchemy "
+                "TypeDecorator that stores it."
+            )
+        if dataclasses.is_dataclass(origin):
+            raise RestlyConfigurationError(
+                f"{column}: {where} is a dataclass. Restly cannot check a "
+                "dataclass for secrets and excluded fields before the dump. Use "
+                "a Pydantic model."
+            )
+        if origin in _ITERATOR_TYPES:
+            raise RestlyConfigurationError(
+                f"{column}: {where} is an iterator type, such as Iterable. "
+                "Pydantic makes an iterator of the value, which can be read only "
+                "once. Use list."
+            )
+        if issubclass(origin, pydantic.BaseModel):
+            if origin in seen_models:
+                continue
+            seen_models.add(origin)
+            for name, field in origin.model_fields.items():
+                field_where = f"{origin.__name__}.{name}"
+                if field.exclude is True:
+                    raise RestlyConfigurationError(
+                        f"{column}: {field_where} is left out of the dump, as a "
+                        "WriteOnly or Field(exclude=True) field is. So the column "
+                        "would not store its value. Remove the exclusion, or "
+                        "write a SQLAlchemy TypeDecorator that stores it."
+                    )
+                pending.append((field.annotation, field_where))
+            continue
+        pending.extend((arg, where) for arg in get_args(part))
+
+
+def _type_label(type_: Any) -> str:
+    """``type_`` as a message shows it: ``Address``, or ``dict[str, Address]``,
+    without the names of modules."""
+    if isinstance(type_, type) and not get_args(type_):
+        return type_.__name__
+    return re.sub(r"\b(?:\w+\.)+(\w+)", r"\1", repr(type_))
 
 
 def _hides_value(field: FieldInfo) -> bool:

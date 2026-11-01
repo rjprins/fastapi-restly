@@ -7,12 +7,14 @@ from ._base import (
     ModelDefaults,
     TimestampsMixin,
 )
+from ._documents import JSONDocument
 
 # Public API for ``fastapi_restly.models``.
 __all__ = [
     "CASCADE_ALL_ASYNC",
     "CASCADE_ALL_DELETE_ORPHAN_ASYNC",
     "IDMixin",
+    "JSONDocument",
     "ModelDefaults",
     "TimestampsMixin",
 ]

@@ -10,6 +10,7 @@ fastapi_restly:
   - IDMixin
   - IDRef
   - IDSchema
+  - JSONDocument
   - ListResult
   - ModelDefaults
   - MustExist
@@ -95,6 +96,7 @@ fastapi_restly.models:
   - CASCADE_ALL_ASYNC
   - CASCADE_ALL_DELETE_ORPHAN_ASYNC
   - IDMixin
+  - JSONDocument
   - ModelDefaults
   - TimestampsMixin
 fastapi_restly.objects:

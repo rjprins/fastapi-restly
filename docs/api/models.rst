@@ -11,7 +11,9 @@ two cascades for relationships on an async session, ``CASCADE_ALL_ASYNC`` and
    :members:
    :undoc-members:
    :show-inheritance:
-   :exclude-members: utc_now, underscore, metadata, TableNameMixin
+   :exclude-members: utc_now, underscore, metadata, TableNameMixin, cache_ok,
+      impl, process_bind_param, process_result_value, coerce_compared_value,
+      comparator_factory
 
 .. seealso::
 
