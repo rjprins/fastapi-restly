@@ -6,7 +6,7 @@ category: meta
 
 # FastAPI-Restly: the story so far
 
-Four years ago I joined the team at ClearBlue Markets. They had started a new project where customers could see their position on CO2 credits markets.
+Three years ago I joined the team at ClearBlue Markets. They had started a new project where customers could see their position on CO2 credits markets.
 CO2 credit markets and EU emission rules is a fascinating and promising niche, btw.
 The project involved both customer-scoping of data and typical admin interface needs.
 
@@ -19,7 +19,7 @@ I don't really remember what I knew and didn't know when deciding to write my ow
 
 In my mind the only alternatives seemed to be copy-pasting endpoints or trying to wrestle customizations into opaque endpoint generators. Those envisioned unbearable pains drove me to go deep into annotations, function signature rewriting, mro walking, and other subjects you really shouldn't be working with in any normal business application.
 
-I only worked there for one year, but that was enough time to get the main machinery working and apply it extensively. I got their permission to open source it, and always intended to, it only took four years to get here.
+I only worked there for one year, but that was enough time to get the main machinery working and apply it extensively. I got their permission to open source it, and always intended to, it only took a few years to get here.
 
 In the meantime I got employed at Global Data & Analytics for Brenntag; a large chemicals distributor. Here was a FastAPI application that suffered the exact same pains, and chose the copy-paste route. I wouldn't say it was a mess, care had been taken to keep things clean on a code level, but there was no REST. Every endpoint was bespoke. Filters on listings were bespoke. POST endpoints bespoke. The endpoint paths were unpredictable. Etc etc.
 

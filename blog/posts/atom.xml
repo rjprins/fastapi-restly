@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom" xml:lang="en">
   <id>https://www.fastapi-restly.org/blog/</id>
   <title>FastAPI-Restly Blog</title>
-  <updated>2026-10-27T23:44:26.612033+00:00</updated>
+  <updated>2026-11-01T12:57:36.508578+00:00</updated>
   <link href="https://www.fastapi-restly.org/blog/"/>
   <link href="https://www.fastapi-restly.org/blog/posts/atom.xml" rel="self"/>
   <generator uri="https://ablog.readthedocs.io/" version="0.11.13">ABlog</generator>
@@ -15,7 +15,7 @@
     </author>
     <content type="html">&lt;section id="fastapi-restly-the-story-so-far"&gt;
 
-&lt;p&gt;Four years ago I joined the team at ClearBlue Markets. They had started a new project where customers could see their position on CO2 credits markets.
+&lt;p&gt;Three years ago I joined the team at ClearBlue Markets. They had started a new project where customers could see their position on CO2 credits markets.
 CO2 credit markets and EU emission rules is a fascinating and promising niche, btw.
 The project involved both customer-scoping of data and typical admin interface needs.&lt;/p&gt;
 &lt;p&gt;The natural first instinct is to look for a fastapi-admin or a fastapi-rest package to save yourself a bunch of work. However, surprisingly there weren’t any libraries that really did what I wanted: Provide CRUD interfaces quickly, while still being extensible. &lt;code class="docutils literal notranslate"&gt;&lt;span class="pre"&gt;fastapi-utils&lt;/span&gt;&lt;/code&gt; and its &lt;code class="docutils literal notranslate"&gt;&lt;span class="pre"&gt;&amp;#64;cbv&lt;/span&gt;&lt;/code&gt; decorator was the main go-to at the time. But the class decorator approach did not enable code reuse in the way I wanted.
@@ -23,7 +23,7 @@ The project involved both customer-scoping of data and typical admin interface n
 &lt;p&gt;The core of the issue lies with how FastAPI works. By using function signatures and annotations for HTTP contracts and dependencies, routes are very much tied to functions.&lt;/p&gt;
 &lt;p&gt;I don’t really remember what I knew and didn’t know when deciding to write my own. But for sure I greatly underestimated the effort required to get proper class-based behavior for FastAPI. In retrospect it was a bit of a crazy approach for a small company with only a single engineering team.&lt;/p&gt;
 &lt;p&gt;In my mind the only alternatives seemed to be copy-pasting endpoints or trying to wrestle customizations into opaque endpoint generators. Those envisioned unbearable pains drove me to go deep into annotations, function signature rewriting, mro walking, and other subjects you really shouldn’t be working with in any normal business application.&lt;/p&gt;
-&lt;p&gt;I only worked there for one year, but that was enough time to get the main machinery working and apply it extensively. I got their permission to open source it, and always intended to, it only took four years to get here.&lt;/p&gt;
+&lt;p&gt;I only worked there for one year, but that was enough time to get the main machinery working and apply it extensively. I got their permission to open source it, and always intended to, it only took a few years to get here.&lt;/p&gt;
 &lt;p&gt;In the meantime I got employed at Global Data &amp;amp; Analytics for Brenntag; a large chemicals distributor. Here was a FastAPI application that suffered the exact same pains, and chose the copy-paste route. I wouldn’t say it was a mess, care had been taken to keep things clean on a code level, but there was no REST. Every endpoint was bespoke. Filters on listings were bespoke. POST endpoints bespoke. The endpoint paths were unpredictable. Etc etc.&lt;/p&gt;
 &lt;p&gt;You can’t step in as a new engineer in a team and say “Hey let’s use this vague non-open source bunch of code that only I know about”. So the project got side-lined at this point.&lt;/p&gt;
 &lt;p&gt;Luckily, half a year later I could join a brand new “Innovation Lab” team; short-term projects, one frontender, and one backender. I asked my manager if I could use my project. He gave the OK, although I’m not entirely sure he fully understood to what he agreed. This was a great chance to dog-food the project, and see if it was still useful in a different context.&lt;/p&gt;
@@ -34,7 +34,7 @@ The project involved both customer-scoping of data and typical admin interface n
 &lt;/section&gt;
 </content>
     <link href="https://www.fastapi-restly.org/blog/posts/story-so-far.html"/>
-    <summary>Four years ago I joined the team at ClearBlue Markets. They had started a new project where customers could see their position on CO2 credits markets.
+    <summary>Three years ago I joined the team at ClearBlue Markets. They had started a new project where customers could see their position on CO2 credits markets.
 CO2 credit markets and EU emission rules is a fascinating and promising niche, btw.
 The project involved both customer-scoping of data and typical admin interface needs.</summary>
     <published>2026-07-22T00:00:00+00:00</published>
