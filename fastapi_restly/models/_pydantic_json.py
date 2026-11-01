@@ -4,6 +4,7 @@ from typing import Any, get_origin
 
 import pydantic
 from sqlalchemy import JSON, TypeDecorator, type_coerce
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.engine import Dialect
 from sqlalchemy.sql.operators import OperatorType
 from sqlalchemy.types import TypeEngine
@@ -11,7 +12,7 @@ from sqlalchemy.types import TypeEngine
 from ..schemas._base import _json_data, _reject_excluded_json_type, _type_label
 
 
-class JSONDocument(TypeDecorator[Any]):
+class PydanticJSON(TypeDecorator[Any]):
     """A JSON column that holds a Pydantic type, such as a model::
 
         class Address(pydantic.BaseModel):
@@ -20,29 +21,30 @@ class JSONDocument(TypeDecorator[Any]):
 
 
         class Shop(fr.IDMixin, Base):
-            address: Mapped[Address] = mapped_column(fr.JSONDocument(Address))
+            address: Mapped[Address]
+            branches: Mapped[dict[str, Address]] = mapped_column(
+                fr.PydanticJSON(dict[str, Address])
+            )
+
+    On a base with :class:`ModelDefaults`, ``Mapped[Address]`` alone gives
+    the column ``PydanticJSON(Address)``, for each Pydantic model. Its type
+    map has ``pydantic.BaseModel: PydanticJSON(pydantic.BaseModel)``, as
+    SQLAlchemy uses ``enum.Enum: Enum(enum.Enum)`` for an enum. Your own
+    entry for ``pydantic.BaseModel`` wins. Another type, such as
+    ``dict[str, Address]``, needs ``mapped_column``.
 
     The column validates the document when it loads a row, so
     ``shop.address`` is an ``Address``. A write validates the value too, so a
     dict works as well. Then it dumps the value as Pydantic dumps it in JSON
     mode: a nested model becomes a dict, and a ``datetime`` becomes text.
-    Restly dumps a value for a plain ``JSON`` column in the same way. The type
-    can be any type that Pydantic validates, such as ``dict[str, Address]``.
+    Restly dumps a value for a plain ``JSON`` column in the same way.
 
     The column refuses a type with a secret, such as ``SecretStr``, or with a
-    field that has ``exclude=True``, such as a ``WriteOnly`` field: the dump
-    would mask the secret or leave out the field. It also refuses a dataclass
+    field that a dump leaves out, such as a ``WriteOnly`` field. The column
+    would not store the value of such a field. It also refuses a dataclass
     and an iterator type, such as ``Iterable``. It raises
     :class:`~fastapi_restly.exc.RestlyConfigurationError` when you define the
     column.
-
-    On a base with :class:`ModelDefaults`, ``Mapped[Address]`` alone gives
-    the column ``JSONDocument(Address)``, for each Pydantic model. The type
-    map has ``pydantic.BaseModel: JSONDocument(pydantic.BaseModel)`` for it,
-    as SQLAlchemy has ``enum.Enum: Enum(enum.Enum)`` for an enum. Another
-    type, such as ``dict[str, Address]``, needs ``mapped_column``. Your own
-    entry for ``pydantic.BaseModel``, such as
-    ``JSONDocument(pydantic.BaseModel, impl=JSONB)``, wins.
 
     In all else, the column works as SQLAlchemy's ``JSON``. ``None`` is stored
     as JSON ``null``, and ``none_as_null=True`` stores SQL ``NULL``. A change
@@ -51,11 +53,13 @@ class JSONDocument(TypeDecorator[Any]):
     validated, because it can be a part of a document, as in
     ``Shop.address["city"].as_string() == "Utrecht"``.
 
+    :class:`PydanticJSONB` is the same column with PostgreSQL's ``JSONB``.
+    For another JSON type, write a subclass that sets ``impl`` and
+    ``cache_ok = True``, as for any SQLAlchemy ``TypeDecorator``.
+
     :param type_: The type of the document. It must be hashable, as the types
         above are.
     :param none_as_null: Store ``None`` as SQL ``NULL``, as in ``JSON``.
-    :param impl: The JSON type of the column, such as ``JSONB`` on
-        PostgreSQL. The default is ``JSON``.
     :raises RestlyConfigurationError: ``type_`` has a part that the dump
         would mask or leave out.
     """
@@ -63,17 +67,8 @@ class JSONDocument(TypeDecorator[Any]):
     impl = JSON
     cache_ok = True
 
-    def __init__(
-        self, type_: Any, *, none_as_null: bool = False, impl: type[JSON] | None = None
-    ) -> None:
-        if impl is not None and not (isinstance(impl, type) and issubclass(impl, JSON)):
-            raise TypeError(
-                f"impl must be a JSON type class, such as JSONB, not {impl!r}. "
-                "Pass none_as_null to JSONDocument."
-            )
+    def __init__(self, type_: Any, *, none_as_null: bool = False) -> None:
         super().__init__(none_as_null=none_as_null)
-        if impl is not None:
-            self.impl = impl(none_as_null=none_as_null)
         self.type_ = type_
         self.none_as_null = none_as_null
         self._label = f"{type(self).__name__}({_type_label(type_)})"
@@ -90,20 +85,17 @@ class JSONDocument(TypeDecorator[Any]):
 
         SQLAlchemy calls this for a type in a type map. As with
         ``sqlalchemy.Enum(enum.Enum)``, the generic form
-        ``JSONDocument(pydantic.BaseModel)`` makes a type for each model, with
-        the same options. Another type accepts only its own class, as any
-        SQLAlchemy type does. SQLAlchemy has no public way to do this yet.
+        ``PydanticJSON(pydantic.BaseModel)`` makes a type for each model, of
+        the same class and with the same options. Another type accepts only
+        its own class, as any SQLAlchemy type does. SQLAlchemy has no public
+        way to do this yet.
         """
         if (
             self.type_ is pydantic.BaseModel
             and isinstance(python_type, type)
             and issubclass(python_type, pydantic.BaseModel)
         ):
-            return type(self)(
-                python_type,
-                none_as_null=self.none_as_null,
-                impl=type(self.impl_instance),
-            )
+            return type(self)(python_type, none_as_null=self.none_as_null)
         return super()._resolve_for_python_type(
             python_type, matched_on, matched_on_flattened
         )
@@ -159,6 +151,22 @@ class JSONDocument(TypeDecorator[Any]):
         return self._label
 
 
+class PydanticJSONB(PydanticJSON):
+    """:class:`PydanticJSON` with PostgreSQL's ``JSONB``::
+
+        class Shop(fr.IDMixin, Base):
+            address: Mapped[Address] = mapped_column(fr.PydanticJSONB(Address))
+
+    PostgreSQL can compare two ``JSONB`` documents, and ``JSONB`` has more
+    operators, such as ``contains`` and ``has_key``. For ``Mapped[Address]``
+    alone, put ``pydantic.BaseModel: fr.PydanticJSONB(pydantic.BaseModel)``
+    in the ``type_annotation_map`` of your base. SQLite has no ``JSONB``.
+    """
+
+    impl = JSONB
+    cache_ok = True
+
+
 class _QueryValue(TypeDecorator[Any]):
     """A value that a query compares with a document: dumped as JSON data,
     and not validated."""
@@ -177,7 +185,7 @@ class _QueryValue(TypeDecorator[Any]):
 
 @functools.cache
 def _document_comparator(impl_comparator: type) -> type:
-    """The comparator of a :class:`JSONDocument` over a JSON type with
+    """The comparator of a :class:`PydanticJSON` over a JSON type with
     ``impl_comparator``."""
 
     class Comparator(TypeDecorator.Comparator, impl_comparator):  # type: ignore[misc,valid-type]

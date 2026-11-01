@@ -26,7 +26,7 @@ from sqlalchemy.orm import (
 from sqlalchemy.orm.decl_api import DCTransformDeclarative
 
 from ..exc import RestlyConfigurationError
-from ._documents import JSONDocument
+from ._pydantic_json import PydanticJSON
 
 #: The cascade ``"all"`` without ``"refresh-expire"``, for
 #: ``relationship(cascade=...)`` on an async session:
@@ -238,7 +238,7 @@ _TYPE_ANNOTATION_MAP: dict[Any, Any] = {
     # requiring database migrations for every enum change.
     enum.Enum: Enum(enum.Enum, native_enum=False, length=64),
     # A Pydantic model as a JSON column that holds it: Mapped[Address].
-    pydantic.BaseModel: JSONDocument(pydantic.BaseModel),
+    pydantic.BaseModel: PydanticJSON(pydantic.BaseModel),
 }
 
 
@@ -289,7 +289,7 @@ class ModelDefaults(
       the member's name, not a database enum type. A new member then needs no
       migration.
     * A Pydantic model, as in ``Mapped[Address]``, as a
-      :class:`JSONDocument` column: a JSON column that loads an ``Address``.
+      :class:`PydanticJSON` column: a JSON column that loads an ``Address``.
     * ``awaitable_attrs`` from SQLAlchemy's ``AsyncAttrs``. An unloaded
       attribute can then be reached from plain async code,
       ``await obj.awaitable_attrs.items``, where a bare ``obj.items`` would

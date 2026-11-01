@@ -10,12 +10,13 @@ fastapi_restly:
   - IDMixin
   - IDRef
   - IDSchema
-  - JSONDocument
   - ListResult
   - ModelDefaults
   - MustExist
   - NoPagination
   - NumberedPagination
+  - PydanticJSON
+  - PydanticJSONB
   - ReactAdminView
   - ReadOnly
   - ResponseShape
@@ -96,8 +97,9 @@ fastapi_restly.models:
   - CASCADE_ALL_ASYNC
   - CASCADE_ALL_DELETE_ORPHAN_ASYNC
   - IDMixin
-  - JSONDocument
   - ModelDefaults
+  - PydanticJSON
+  - PydanticJSONB
   - TimestampsMixin
 fastapi_restly.objects:
   - async_delete_object

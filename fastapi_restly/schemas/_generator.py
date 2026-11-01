@@ -26,7 +26,7 @@ from sqlalchemy.orm import (
 )
 
 from .._mapping import is_mapped_class
-from ..models._documents import JSONDocument
+from ..models._pydantic_json import PydanticJSON
 from ._base import (
     BaseSchema,
     IDSchema,
@@ -237,7 +237,7 @@ def get_model_fields(model_cls: type[Any]) -> dict[str, Any]:
             field_type, is_nullable = _split_optional(annotation)
         else:
             try:
-                if isinstance(column.type, JSONDocument):
+                if isinstance(column.type, PydanticJSON):
                     # The whole type, as dict[str, Address], not only dict.
                     field_type = column.type.type_
                 else:

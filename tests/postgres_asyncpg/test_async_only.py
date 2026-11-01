@@ -25,7 +25,6 @@ import pydantic
 import pytest
 from fastapi import FastAPI
 from sqlalchemy import DateTime, func, or_, select, text
-from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import Mapped, mapped_column
@@ -92,9 +91,7 @@ class AsyncpgShop(fr.IDMixin, SharedBase):
 
     name: Mapped[str]
     # jsonb, with a generated schema
-    address: Mapped[AsyncpgAddress] = mapped_column(
-        fr.JSONDocument(AsyncpgAddress, impl=postgresql.JSONB)
-    )
+    address: Mapped[AsyncpgAddress] = mapped_column(fr.PydanticJSONB(AsyncpgAddress))
 
 
 LIFESPAN_EVENTS: list[str] = []

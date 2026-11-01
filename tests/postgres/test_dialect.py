@@ -29,8 +29,8 @@ at PostgreSQL (see ``conftest.py``). Eight things are covered:
 * Times: a time without an offset is UTC. psycopg leaves the time zone to
   PostgreSQL, which reads such a time in the time zone of the session, so
   these tests give the session another time zone.
-* ``fr.JSONDocument`` over ``jsonb`` and ``json``: the document reads back as
-  its type, and the ``jsonb`` operators, such as ``contains``, work on it.
+* ``fr.PydanticJSON`` and ``fr.PydanticJSONB``: the document reads back as its
+  type, and the ``jsonb`` operators, such as ``contains``, work on it.
 """
 
 import asyncio
@@ -230,13 +230,11 @@ class PgAddress(pydantic.BaseModel):
 
 class PgShop(fr.IDMixin, SharedBase):
     name: Mapped[str]
-    # jsonb, from the impl argument, with a generated schema
-    address: Mapped[PgAddress] = mapped_column(
-        fr.JSONDocument(PgAddress, impl=postgresql.JSONB)
-    )
+    # jsonb, with a generated schema
+    address: Mapped[PgAddress] = mapped_column(fr.PydanticJSONB(PgAddress))
     # json, the default, and SQL NULL for None
     old_address: Mapped[PgAddress | None] = mapped_column(
-        fr.JSONDocument(PgAddress, none_as_null=True), default=None
+        fr.PydanticJSON(PgAddress, none_as_null=True), default=None
     )
 
 
@@ -942,7 +940,7 @@ async def test_a_timedelta_column_is_a_native_interval_on_psycopg(restly_async_s
     ]
 
 
-def test_a_json_document_column_has_the_type_of_its_impl():
+def test_pydantic_json_is_json_and_pydantic_jsonb_is_jsonb():
     with _sync_engine.connect() as conn:
         rows = conn.execute(
             text(

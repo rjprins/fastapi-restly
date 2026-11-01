@@ -7,14 +7,15 @@ from ._base import (
     ModelDefaults,
     TimestampsMixin,
 )
-from ._documents import JSONDocument
+from ._pydantic_json import PydanticJSON, PydanticJSONB
 
 # Public API for ``fastapi_restly.models``.
 __all__ = [
     "CASCADE_ALL_ASYNC",
     "CASCADE_ALL_DELETE_ORPHAN_ASYNC",
     "IDMixin",
-    "JSONDocument",
+    "PydanticJSON",
+    "PydanticJSONB",
     "ModelDefaults",
     "TimestampsMixin",
 ]
