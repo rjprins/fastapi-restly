@@ -161,7 +161,7 @@ stores the secret, and a response shows `**********`, as Pydantic does. So
 a client sees that the field has a value, but not the value. Like a
 `WriteOnly` field, such a field gets no filter and is not a sort key. In the
 document of a JSON column, a secret field raises an error instead; see
-[Validate the document in a JSON column](#json-document-columns).
+[Store a Pydantic model in a JSON column](#json-document-columns).
 
 :::{admonition} Details
 :class: details
@@ -188,7 +188,7 @@ field with a
 For an optional write-only field, write `WriteOnly[Optional[str]]`.
 
 A JSON column has its own rules for `WriteOnly` fields; see
-[Validate the document in a JSON column](#json-document-columns).
+[Store a Pydantic model in a JSON column](#json-document-columns).
 :::
 
 (explicit-write-schemas)=
@@ -237,6 +237,7 @@ Each kind of rule has one place:
 |---|---|---|
 | The format or the range of one value | A Pydantic validator or a `Field` constraint on the schema | 422 |
 | A field that a client cannot set | [`ReadOnly`](#readonly-and-writeonly), or [your own request body](#explicit-write-schemas) | The value is ignored |
+| The shape of a JSON document | A Pydantic model as the type of the column; see [Store a Pydantic model in a JSON column](#json-document-columns) | 422 |
 | A value that its column can hold, such as a number in the range of `Integer` | Nothing for the generic types of SQLAlchemy, a `Field` constraint for other types; see [Column validation](#column-validation) | 422, or 400 in a filter |
 | A referenced row must exist | {class}`fr.MustExist <fastapi_restly.schemas.MustExist>` or a reference field; see [Relationships](#reference-exists) | 404 |
 | A value must be unique | A unique constraint on the column; see [Errors](#default-exception-handling) | 409 |
@@ -801,37 +802,128 @@ sends the same JSON, but shows a type of its own in OpenAPI.
 :::
 
 (json-document-columns)=
-## Validate the document in a JSON column
+## Store a Pydantic model in a JSON column
 
-A `JSON` column maps to a bare `dict`, which does not check the fields of the
-document. To check its shape, write the schema yourself and give the field a
-nested Pydantic model as its type. Before Restly assigns the document to the
-column, it dumps the value as Pydantic does in JSON mode. A model becomes what
-`model_dump(mode="json", round_trip=True)` gives, also a model in a dict or a
-list. A `datetime`, a `UUID` or a `Decimal` becomes text, and a set becomes a
-list. So a field such as `dict[str, Address]` or `list[datetime]` works too.
-The view's schema validates the stored document when it is read back.
+Annotate a column with a Pydantic model. On a base with
+{class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>`, the column is
+then a {class}`fr.PydanticJSON <fastapi_restly.models.PydanticJSON>` column.
+It stores the model as a JSON document, and it loads the document as the
+model:
 
-The dump is one that the view reads back. The keys are the names of the
-fields, not their aliases, because a response reads the document by the
-names, as it reads the columns. A computed field is not stored, so a model
-with `extra="forbid"` accepts the document. A `Json[T]` field is stored as
-text, as its validation reads it.
+```python
+import pydantic
 
-A document with a {data}`WriteOnly <fastapi_restly.schemas.WriteOnly>`, a
-`Field(exclude=True)` or a `Field(exclude_if=...)` field raises
+
+class Address(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(frozen=True)
+
+    street: str
+    city: str
+
+
+class Shop(fr.IDMixin, Base):
+    name: Mapped[str]
+    address: Mapped[Address]
+    branches: Mapped[dict[str, Address]] = mapped_column(
+        fr.PydanticJSON(dict[str, Address])
+    )
+```
+
+The generated schema has the field `address: Address`. So a request with an
+address that does not fit returns 422, and a response shows the address as a
+JSON object. In your own code, `shop.address` is an `Address`. A type that is
+not one model, such as `dict[str, Address]`, needs `mapped_column()`, as
+`branches` shows. On PostgreSQL, use
+{class}`fr.PydanticJSONB <fastapi_restly.models.PydanticJSONB>` for a `JSONB`
+column. Alembic needs a hook in `env.py` for these columns; see
+[Write a PydanticJSON column into a migration](#pydantic-json-migration).
+
+As with SQLAlchemy's `JSON` type, a change inside the document is not saved.
+`shop.address.city = "Utrecht"` changes the object, but not the row. Assign a
+new value:
+
+```python
+shop.address = shop.address.model_copy(update={"city": "Utrecht"})
+```
+
+With `frozen=True`, as in the example, the mistake fails: the assignment to
+`shop.address.city` raises a `ValidationError`. `frozen` does not reach into a
+list in the model, so use a tuple, such as `tuple[str, ...]`, for a list. A
+dict at the top level, as in `branches`, is not frozen either. Wrap its type
+in SQLAlchemy's {class}`~sqlalchemy.ext.mutable.MutableDict`. Then the
+session saves a change such as `shop.branches["south"] = Address(...)`:
+
+```python
+from sqlalchemy.ext.mutable import MutableDict
+
+branches: Mapped[dict[str, Address]] = mapped_column(
+    MutableDict.as_mutable(fr.PydanticJSON(dict[str, Address]))
+)
+```
+
+Use a `PydanticJSON` column for a document with a fixed shape. For a
+free-form document, use a plain `JSON` column, as in
+`Mapped[dict[str, Any]] = mapped_column(JSON)`. For a document with a secret,
+write a SQLAlchemy {class}`~sqlalchemy.types.TypeDecorator` of your own,
+because the JSON dump masks the secret.
+
+:::{admonition} Details
+:class: details
+
+**Writes and reads.** The column validates a value when it writes it. So a
+dict works too, and a dict that does not fit fails at the flush. Then the
+column dumps the value as Pydantic does in JSON mode, with
+`round_trip=True`. A `datetime`, a `UUID` or a `Decimal` becomes text, and a
+set becomes a list. The keys are the names of the fields, not their aliases,
+because a response reads the document by the names, as it reads the columns.
+A computed field is not stored, so a model with `extra="forbid"` accepts the
+document. A `Json[T]` field is stored as text, as its validation reads it.
+The column validates the document again when it loads the row. So a stored
+document that no longer fits the model fails when the row loads, also
+outside a view. An old document still loads when the model gets a new
+field with a default.
+
+**Refused types.** Some types raise
 {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
-before Restly assigns it. This includes such fields in nested models. The dump
-would leave those fields out, so they would not be stored. A field of
-Pydantic's secret types, such as `SecretStr`, raises the same error: the dump
-masks it, so the column would get `**********`. So does a document with
-dataclasses or iterators. For such documents, use a
-SQLAlchemy {class}`~sqlalchemy.types.TypeDecorator` that defines how the
-document is stored. Its bind processor receives the Pydantic model itself, not
-a dump.
+when you define the column, because the dump would not store all of the
+value:
 
-You can still mark the whole JSON column `WriteOnly`. That hides the column
-in responses, and the stored document keeps all its fields.
+- A {data}`WriteOnly <fastapi_restly.schemas.WriteOnly>`,
+  `Field(exclude=True)` or `Field(exclude_if=...)` field, also in a nested
+  model. The dump leaves the field out.
+- A field of Pydantic's secret types, such as `SecretStr`. The dump masks it,
+  so the column would store `**********`.
+- A dataclass, and an iterator type, such as `Iterable`.
+
+A part typed `Any` is checked when you write it. For such documents, write a
+`TypeDecorator` that stores the document as you need. Its bind processor gets
+the Pydantic model itself, not a dump. You can still mark the whole column
+`WriteOnly`. That hides the column in responses, and the stored document
+keeps all its fields.
+
+**The same as `JSON`.** `None` is stored as JSON `null`, and
+`fr.PydanticJSON(Address, none_as_null=True)` stores SQL `NULL`. A query
+reads a part of the document as with `JSON`, as in
+`Shop.address["city"].as_string() == "Utrecht"`. A value in a query is
+dumped, but not validated, because it can be a part of a document.
+
+**`JSONB` for each model.** The `type_annotation_map` of `fr.ModelDefaults`
+has `pydantic.BaseModel: fr.PydanticJSON(pydantic.BaseModel)`, as SQLAlchemy
+maps an enum with `enum.Enum: Enum(enum.Enum)`. Put
+`pydantic.BaseModel: fr.PydanticJSONB(pydantic.BaseModel)` in the map of your
+base, and each model gets a `JSONB` column. Your own entry wins; see
+[Change a default](#change-model-defaults).
+
+**A plain `JSON` column with a schema of your own.** A
+`Mapped[dict[str, Any]]` column gets the field type `dict[str, Any]` in a
+generated schema, which does not check the document. To check it only in the
+view, write the schema yourself and give the field a Pydantic model as its
+type, such as `Address` or `dict[str, Address]`. Restly dumps the value as
+above before it assigns it to the column, and it refuses the same types when
+it writes the value. The model attribute then holds a dict, not a model. A
+`PydanticJSON` column says the shape once, on the model, and holds the model
+in all of your code.
+:::
 
 ## Internals
 
@@ -1004,6 +1096,7 @@ table. A type keeps its name, except a time: it gets
 | `list` / `list[T]` | `list` / `list[T]` |
 | `enum.Enum` subclass | same enum subclass |
 | Pydantic model, such as `Address` | same model |
+| `fr.PydanticJSON(T)` column without an annotation | `T` |
 | SQLAlchemy `Text`, `String` | `str` |
 | SQLAlchemy `Integer` | `int` |
 | SQLAlchemy `Float` | `float` |

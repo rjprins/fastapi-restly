@@ -12,6 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `derive_schema` accepts a Pydantic model as the type of a column, as in
   `Mapped[Address]`. The field gets the type `Address`. Before, this raised
   `TypeError`.
+- `fr.PydanticJSON(T)`, a JSON column that holds a Pydantic type, such as a
+  model or `dict[str, Address]`. It validates the document when it writes it
+  and when it loads a row, so `shop.address` is an `Address`.
+  `fr.PydanticJSONB` is the same column with PostgreSQL's `JSONB`. On a base
+  with `fr.ModelDefaults`, `Mapped[Address]` alone gives a
+  `PydanticJSON(Address)` column.
+- The `env.py` that `restly new` generates writes a `PydanticJSON` column into
+  a migration as `sa.JSON()`, and a `PydanticJSONB` column as
+  `postgresql.JSONB()`. Without this, the migration could not run.
 
 ### Changed
 
