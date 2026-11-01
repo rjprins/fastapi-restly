@@ -34,14 +34,7 @@ from typing_extensions import TypeVar
 from ..db._config import _fr_config
 from ..exc import RestlyConfigurationError, RestlyMisuseWarning
 from ..schemas._base import _reject_buried_markers
-from ._base import (
-    BaseRestView,
-    ListResult,
-    ResponseShape,
-    View,
-    _serves_route,
-    _warn_on_misuse,
-)
+from ._base import BaseRestView, ListResult, ResponseShape, View, _serves_route
 from ._class_based_view import (
     _copy_all_parent_class_endpoints_into_this_subclass,
     _init_all_endpoints,
@@ -50,6 +43,7 @@ from ._class_based_view import (
 from ._generated import _schema_list_params
 from ._guards import _check_removed_settings
 from ._list_params import _list_openapi_parameters
+from ._misuse_lint import _warn_on_misuse
 from ._openapi import _register_for_resource_ref
 from ._view_types import _evaluated, _replace_view_types, _view_types, _ViewType
 

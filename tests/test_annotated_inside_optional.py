@@ -16,7 +16,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
-from fastapi_restly.views._base import _warn_scalar_named_reference_fields
+from fastapi_restly.views._misuse_lint import _warn_scalar_named_reference_fields
 
 from ._models import SharedBase
 from .conftest import create_tables
