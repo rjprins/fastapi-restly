@@ -451,6 +451,44 @@ def test_json_null_and_an_sql_expression_go_to_the_column_as_they_are(sync_db):
         assert list(session.scalars(stmt.order_by(Note.id))) == ["null", None]
 
 
+@pytest.mark.parametrize("asynchronous", [True, False], ids=["async", "sync"])
+def test_a_model_annotation_gets_a_derived_schema(request, asynchronous):
+    """``Mapped[Address]`` on a JSON column gives the field type ``Address``,
+    as ``Mapped[dict[str, Address]]`` gives ``dict[str, Address]``."""
+    client = request.getfixturevalue("client" if asynchronous else "sync_client")
+
+    class Shop(fr.IDMixin, SharedBase):
+        address: Mapped[Address] = mapped_column(sqlalchemy.JSON)
+        old_address: Mapped[Address | None] = mapped_column(sqlalchemy.JSON)
+
+    @fr.include_view(client.app)
+    class ShopView(fr.AsyncRestView if asynchronous else fr.RestView):
+        prefix = "/shops"
+        model = Shop
+
+    fields = ShopView.schema.model_fields
+    assert fields["address"].annotation is Address
+    assert fields["address"].is_required()
+    assert fields["old_address"].annotation == Address | None
+    if asynchronous:
+        create_tables()
+    else:
+        SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
+
+    client.post("/shops", json={"address": {}}, assert_status_code=422)
+    created = client.post("/shops", json={"address": {"street": "Main"}}).json()
+    assert created["address"] == {"street": "Main", "number": 0}
+    assert created["old_address"] is None
+    updated = client.patch(
+        "/shops/1", json={"old_address": {"street": "Dock", "number": 2}}
+    ).json()
+    assert updated["old_address"] == {"street": "Dock", "number": 2}
+    assert client.get("/shops/1").json() == updated
+
+    stmt = sqlalchemy.select(Shop.old_address)
+    assert _stored(stmt, asynchronous=asynchronous) == [{"street": "Dock", "number": 2}]
+
+
 def _stored(stmt, *, asynchronous):
     """The rows of ``stmt``, read in a new session."""
     if not asynchronous:

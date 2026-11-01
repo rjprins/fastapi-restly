@@ -432,6 +432,11 @@ def convert_sqlalchemy_type_to_pydantic(
         pydantic_type = sqlalchemy_type
     elif isinstance(sqlalchemy_type, type) and issubclass(sqlalchemy_type, enum.Enum):
         pydantic_type = sqlalchemy_type
+    elif isinstance(sqlalchemy_type, type) and issubclass(
+        sqlalchemy_type, pydantic.BaseModel
+    ):
+        # The document in a JSON column, as in dict[str, Address].
+        pydantic_type = sqlalchemy_type
     elif is_mapped_class(sqlalchemy_type):
         # Relationship targets are replaced with nested schemas later.
         pydantic_type = sqlalchemy_type

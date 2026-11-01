@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `derive_schema` accepts a Pydantic model as the type of a column, as in
+  `Mapped[Address]`. The field gets the type `Address`. Before, this raised
+  `TypeError`.
+
 ### Changed
 
 - In `fr.configure()`, the async session generator is now

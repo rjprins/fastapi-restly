@@ -997,6 +997,7 @@ table. A type keeps its name, except a time: it gets
 | `dict` / `dict[str, Any]` | `dict` / `dict[str, Any]` |
 | `list` / `list[T]` | `list` / `list[T]` |
 | `enum.Enum` subclass | same enum subclass |
+| Pydantic model, such as `Address` | same model |
 | SQLAlchemy `Text`, `String` | `str` |
 | SQLAlchemy `Integer` | `int` |
 | SQLAlchemy `Float` | `float` |
