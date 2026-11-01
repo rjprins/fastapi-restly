@@ -14,7 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   matches the other parameters, such as `async_engine` and `engine`. Rename
   `session_generator=` to `async_session_generator=`, and
   `sync_session_generator=` to `session_generator=`. An async generator
-  passed as `session_generator` raises `TypeError`.
+  passed as `session_generator` raises `TypeError`. A sync generator passed
+  as `async_session_generator` does too. This also works for a generator in
+  `functools.partial`, behind a decorator with `functools.wraps`, or in the
+  `__call__` of an object.
 - Each write action, and each outermost `shared_write_action_commit()` block,
   runs in a savepoint. An exception rolls back to it, so the session stays
   usable.

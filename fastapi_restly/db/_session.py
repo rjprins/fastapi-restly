@@ -1,11 +1,13 @@
 import warnings
 from collections.abc import AsyncIterator, Callable, Iterator
+from functools import partial
 from inspect import (
     Parameter,
     Signature,
     isasyncgenfunction,
     isgeneratorfunction,
     signature,
+    unwrap,
 )
 from typing import Annotated, Any, cast
 
@@ -109,6 +111,21 @@ def _register_health_route(app: FastAPI, path: str) -> None:
         return
     # name= keeps the private handler out of the generated operationId.
     app.add_api_route(path, _health, methods=["GET"], name="health")
+
+
+def _is_generator(call: Any, check: Callable[[Any], bool]) -> bool:
+    """Whether ``check``, such as ``isasyncgenfunction``, is true for
+    ``call``, as FastAPI tells the kind of a dependency: also through
+    ``functools.partial``, a decorator that uses ``functools.wraps``, or the
+    ``__call__`` method of an object."""
+    if call is None:
+        return False
+    for candidate in (call, getattr(call, "__call__", None)):
+        while isinstance(candidate, partial):
+            candidate = candidate.func
+        if candidate is not None and (check(candidate) or check(unwrap(candidate))):
+            return True
+    return False
 
 
 def configure(
@@ -238,14 +255,14 @@ def configure(
 
     # Before 0.13, session_generator was the async parameter. An async
     # generator passed to it now would otherwise fail only at the first request.
-    if isasyncgenfunction(session_generator):
+    if _is_generator(session_generator, isasyncgenfunction):
         raise TypeError(
             "fr.configure(session_generator=...) got an async generator. "
             "session_generator takes a sync generator that yields a Session. "
             "Pass an async generator as async_session_generator. Before 0.13, "
             "session_generator was the async parameter."
         )
-    if isgeneratorfunction(async_session_generator):
+    if _is_generator(async_session_generator, isgeneratorfunction):
         raise TypeError(
             "fr.configure(async_session_generator=...) got a sync generator. "
             "async_session_generator takes an async generator that yields an "

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 from collections.abc import AsyncIterator, Iterator
 from inspect import signature
 from typing import Any, cast, get_args
@@ -112,20 +113,63 @@ def test_configure_rejects_noop_calls_and_accepts_a_single_flag():
         assert context.warn_on_uncommitted is True
 
 
-def test_configure_rejects_a_generator_of_the_other_kind():
-    async def async_get_db():
+def _wrapped(generator):
+    """``generator`` behind a decorator that uses ``functools.wraps``."""
+
+    @functools.wraps(generator)
+    def wrapper(*args, **kwargs):
+        return generator(*args, **kwargs)
+
+    return wrapper
+
+
+class _AsyncGetDb:
+    async def __call__(self):
         yield None
 
-    def get_db():
+
+class _GetDb:
+    def __call__(self):
         yield None
 
+
+async def _async_get_db():
+    yield None
+
+
+def _get_db():
+    yield None
+
+
+@pytest.mark.parametrize(
+    "async_generator",
+    [
+        _async_get_db,
+        _wrapped(_async_get_db),
+        functools.partial(_async_get_db),
+        _AsyncGetDb(),
+    ],
+    ids=["function", "wrapped", "partial", "callable-object"],
+)
+def test_configure_rejects_an_async_generator_as_session_generator(async_generator):
+    """FastAPI takes each of these as an async generator dependency."""
     with RestlyContext() as context:
         with pytest.raises(TypeError, match="as async_session_generator"):
-            configure(session_generator=async_get_db)
-        with pytest.raises(TypeError, match="as session_generator"):
-            configure(async_session_generator=get_db)
+            configure(session_generator=async_generator)  # type: ignore[arg-type]
 
         assert context.session_generator is None
+
+
+@pytest.mark.parametrize(
+    "generator",
+    [_get_db, _wrapped(_get_db), functools.partial(_get_db), _GetDb()],
+    ids=["function", "wrapped", "partial", "callable-object"],
+)
+def test_configure_rejects_a_sync_generator_as_async_session_generator(generator):
+    with RestlyContext() as context:
+        with pytest.raises(TypeError, match="as session_generator"):
+            configure(async_session_generator=generator)  # type: ignore[arg-type]
+
         assert context.async_session_generator is None
 
 
@@ -503,7 +547,7 @@ def test_open_session_prefers_generator_over_make_session():
 
 @pytest.mark.asyncio
 async def test_open_async_session_prefers_generator_over_make_session():
-    """When both a ``async_session_generator`` and an ``async_make_session`` are
+    """When both an ``async_session_generator`` and an ``async_make_session`` are
     configured, ``open_async_session()`` uses the generator -- the same
     precedence as ``AsyncSessionDep``."""
     sentinel = object()
