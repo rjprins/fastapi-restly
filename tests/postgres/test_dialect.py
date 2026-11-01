@@ -1,7 +1,7 @@
 """The dialect-divergent surface, pinned on real PostgreSQL.
 
 Everything here is invisible on SQLite and only runs when the subtree is pointed
-at PostgreSQL (see ``conftest.py``). Seven things are covered:
+at PostgreSQL (see ``conftest.py``). Eight things are covered:
 
 * ``contains`` (``LIKE``) is case-sensitive and ``icontains`` (``ILIKE``) folds
   case, for ASCII *and* non-ASCII input. On SQLite ``LIKE`` is
@@ -29,6 +29,8 @@ at PostgreSQL (see ``conftest.py``). Seven things are covered:
 * Times: a time without an offset is UTC. psycopg leaves the time zone to
   PostgreSQL, which reads such a time in the time zone of the session, so
   these tests give the session another time zone.
+* ``fr.JSONDocument`` over ``jsonb`` and ``json``: the document reads back as
+  its type, and the ``jsonb`` operators, such as ``contains``, work on it.
 """
 
 import asyncio
@@ -38,6 +40,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 
 import httpx
+import pydantic
 import pytest
 from fastapi import FastAPI
 from sqlalchemy import (
@@ -220,6 +223,23 @@ class PgSpan(fr.IDMixin, SharedBase):
     duration: Mapped[timedelta]
 
 
+class PgAddress(pydantic.BaseModel):
+    street: str
+    number: int = 0
+
+
+class PgShop(fr.IDMixin, SharedBase):
+    name: Mapped[str]
+    # jsonb, from the impl argument, with a generated schema
+    address: Mapped[PgAddress] = mapped_column(
+        fr.JSONDocument(PgAddress, impl=postgresql.JSONB)
+    )
+    # json, the default, and SQL NULL for None
+    old_address: Mapped[PgAddress | None] = mapped_column(
+        fr.JSONDocument(PgAddress, none_as_null=True), default=None
+    )
+
+
 @fr.include_view(_app)
 class PgWordView(fr.AsyncRestView):
     prefix = "/words"
@@ -341,6 +361,12 @@ class PgSpanView(fr.AsyncRestView):
 
 
 @fr.include_view(_app)
+class PgShopView(fr.AsyncRestView):
+    prefix = "/shops"
+    model = PgShop
+
+
+@fr.include_view(_app)
 class PgShelvedView(fr.AsyncRestView):
     prefix = "/shelved"
     model = PgShelved
@@ -369,6 +395,7 @@ _MODELS = [
     PgSpan,
     PgShelved,
     PgKeyed,
+    PgShop,
 ]
 
 
@@ -913,6 +940,71 @@ async def test_a_timedelta_column_is_a_native_interval_on_psycopg(restly_async_s
     assert [(row["name"], row["duration"]) for row in listed.json()["data"]] == [
         ("long", "PT1H30M")
     ]
+
+
+def test_a_json_document_column_has_the_type_of_its_impl():
+    with _sync_engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                "SELECT column_name, data_type FROM information_schema.columns "
+                "WHERE table_name = 'pg_shop' AND column_name LIKE '%address'"
+            )
+        )
+        assert dict(rows.all()) == {"address": "jsonb", "old_address": "json"}
+
+
+@pytest.mark.asyncio
+async def test_a_json_document_reads_back_as_its_type_on_psycopg(restly_async_session):
+    """The view writes the validated document, and a list reads it back. A
+    count of a paginated list works with the ``json`` column too."""
+    async with _async_client() as client:
+        for name, street in [("one", "Main"), ("two", "Dock")]:
+            created = await client.post(
+                "/shops/", json={"name": name, "address": {"street": street}}
+            )
+            assert created.status_code == 201, created.text
+        moved = await client.patch(
+            f"/shops/{created.json()['id']}",
+            json={"old_address": {"street": "Dock", "number": 2}},
+        )
+        assert moved.status_code == 200, moved.text
+        listed = await client.get("/shops/", params={"page_size": 1})
+    assert listed.status_code == 200, listed.text
+    assert listed.json()["total_count"] == 2
+    assert listed.json()["data"][0]["address"] == {"street": "Main", "number": 0}
+
+    rows = await restly_async_session.execute(
+        select(PgShop.address, PgShop.old_address).order_by(PgShop.id)
+    )
+    assert rows.all() == [
+        (PgAddress(street="Main"), None),
+        (PgAddress(street="Dock"), PgAddress(street="Dock", number=2)),
+    ]
+    # none_as_null: None is SQL NULL, not JSON null.
+    stmt = select(PgShop.name).where(PgShop.old_address.is_(None))
+    assert (await restly_async_session.scalars(stmt)).all() == ["one"]
+
+
+def test_the_jsonb_operators_work_on_a_json_document(restly_session):
+    """A value in a query is dumped but not validated, so ``contains`` takes a
+    part of a document. A part of a document has the JSON type."""
+    restly_session.add_all(
+        [
+            PgShop(name="one", address=PgAddress(street="Main", number=1)),
+            PgShop(name="two", address=PgAddress(street="Dock", number=2)),
+        ]
+    )
+    restly_session.flush()
+
+    def names(condition):
+        stmt = select(PgShop.name).where(condition).order_by(PgShop.id)
+        return restly_session.scalars(stmt).all()
+
+    assert names(PgShop.address.contains({"street": "Dock"})) == ["two"]
+    assert names(PgShop.address == PgAddress(street="Main", number=1)) == ["one"]
+    assert names(PgShop.address["street"].astext == "Main") == ["one"]
+    assert names(PgShop.address["number"].as_integer() > 1) == ["two"]
+    assert names(PgShop.address.has_key("street")) == ["one", "two"]
 
 
 # ---------------------------------------------------------------------------

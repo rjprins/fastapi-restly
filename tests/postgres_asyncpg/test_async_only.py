@@ -21,9 +21,11 @@ from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager, contextmanager
 from datetime import datetime, timedelta, timezone
 
+import pydantic
 import pytest
 from fastapi import FastAPI
 from sqlalchemy import DateTime, func, or_, select, text
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import Mapped, mapped_column
@@ -78,6 +80,21 @@ class AsyncpgSpan(fr.IDMixin, SharedBase):
     name: Mapped[str]
     # a native INTERVAL on PostgreSQL, with a generated schema
     duration: Mapped[timedelta]
+
+
+class AsyncpgAddress(pydantic.BaseModel):
+    street: str
+    number: int = 0
+
+
+class AsyncpgShop(fr.IDMixin, SharedBase):
+    __tablename__ = "restly_asyncpg_shop"
+
+    name: Mapped[str]
+    # jsonb, with a generated schema
+    address: Mapped[AsyncpgAddress] = mapped_column(
+        fr.JSONDocument(AsyncpgAddress, impl=postgresql.JSONB)
+    )
 
 
 LIFESPAN_EVENTS: list[str] = []
@@ -138,6 +155,12 @@ class AsyncpgSpanView(fr.AsyncRestView):
     model = AsyncpgSpan
 
 
+@fr.include_view(app)
+class AsyncpgShopView(fr.AsyncRestView):
+    prefix = "/shops"
+    model = AsyncpgShop
+
+
 fr.testing.configure_tests(
     app=app, base=SharedBase, create_all=True, db_cleanup=CLEANUP
 )
@@ -152,6 +175,7 @@ def drop_test_table() -> Iterator[None]:
             await connection.run_sync(AsyncpgNote.__table__.drop, checkfirst=True)
             await connection.run_sync(AsyncpgTag.__table__.drop, checkfirst=True)
             await connection.run_sync(AsyncpgSpan.__table__.drop, checkfirst=True)
+            await connection.run_sync(AsyncpgShop.__table__.drop, checkfirst=True)
         await engine.dispose()
 
     asyncio.run(drop())
@@ -405,6 +429,27 @@ async def test_a_timedelta_column_is_a_native_interval_with_asyncpg(
     assert response.status_code == 200, response.text
     assert [(row["name"], row["duration"]) for row in response.json()["data"]] == [
         ("long", "PT1H30M")
+    ]
+
+
+@pytest.mark.asyncio
+async def test_a_json_document_reads_back_as_its_type_with_asyncpg(
+    restly_async_client, restly_async_session
+):
+    """asyncpg encodes jsonb itself. The column gives it the dumped
+    document, and a query value is dumped too."""
+    created = await restly_async_client.post(
+        "/shops", json={"name": "one", "address": {"street": "Main"}}
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["address"] == {"street": "Main", "number": 0}
+
+    stmt = select(AsyncpgShop.address).where(
+        AsyncpgShop.address.contains({"street": "Main"}),
+        AsyncpgShop.address["street"].astext == "Main",
+    )
+    assert (await restly_async_session.scalars(stmt)).all() == [
+        AsyncpgAddress(street="Main")
     ]
 
 
