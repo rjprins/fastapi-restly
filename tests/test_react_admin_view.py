@@ -16,7 +16,7 @@ import decimal
 import json
 import uuid
 from collections.abc import Iterator
-from typing import Annotated
+from typing import Annotated, Any
 
 import pydantic
 import pytest
@@ -515,11 +515,12 @@ def test_react_admin_filter_on_an_enum_column_checks_the_labels(client):
         )
 
 
-def test_react_admin_filter_null_on_an_enum_and_a_document_in_a_json_column(client):
+def test_react_admin_filter_null_on_an_enum_and_a_json_column(client):
     """``null`` finds the rows without a value also on a column of
-    SQLAlchemy's ``Enum`` type, which has no label for it. A field typed as
-    a model over a ``JSON`` column compares the document as a write stores
-    it."""
+    SQLAlchemy's ``Enum`` type, which has no label for it. A field on a JSON
+    column takes only ``null``: the column holds JSON text, so SQL cannot
+    compare it with a document or a text. Such a filter found no row on
+    SQLite and gave a 500 error on PostgreSQL's ``json`` type."""
 
     class RaTheme(pydantic.BaseModel):
         name: str
@@ -529,11 +530,17 @@ def test_react_admin_filter_null_on_an_enum_and_a_document_in_a_json_column(clie
         status: Mapped[str | None] = mapped_column(
             sqlalchemy.Enum("draft", "published", name="ra_page_status"), default=None
         )
-        theme: Mapped[dict | None] = mapped_column(sqlalchemy.JSON, default=None)
+        theme: Mapped[dict | None] = mapped_column(
+            sqlalchemy.JSON(none_as_null=True), default=None
+        )
+        tag: Mapped[str | None] = mapped_column(
+            fr.PydanticJSON(str, none_as_null=True), default=None
+        )
 
     class RaPageSchema(fr.IDSchema):
         status: str | None = None
         theme: RaTheme | None = None
+        tag: str | None = None
 
     @fr.include_view(client.app)
     class RaPageView(fr.AsyncReactAdminView):
@@ -542,17 +549,28 @@ def test_react_admin_filter_null_on_an_enum_and_a_document_in_a_json_column(clie
         schema = RaPageSchema
 
     create_tables()
-    client.post("/pages/", json={"status": "draft", "theme": {"name": "dark"}})
+    client.post(
+        "/pages/", json={"status": "draft", "theme": {"name": "dark"}, "tag": "x"}
+    )
     client.post("/pages/", json={})
 
+    def get(filter_: dict, status_code: int = 200) -> Any:
+        params = {"filter": json.dumps(filter_)}
+        return client.get("/pages/", params=params, assert_status_code=status_code)
+
     def ids(filter_: dict) -> list[int]:
-        rows = client.get("/pages/", params={"filter": json.dumps(filter_)}).json()
-        return [row["id"] for row in rows]
+        return [row["id"] for row in get(filter_).json()]
 
     assert ids({"status": None}) == [2]
     assert ids({"status": [None, "draft"]}) == [1, 2]
-    assert ids({"theme": {"name": "dark"}}) == [1]
-    assert ids({"theme": {"name": "light"}}) == []
+    assert ids({"theme": None}) == [2]
+    assert ids({"tag": [None]}) == [2]
+    assert get({"tag": "x"}, 400).json()["detail"] == (
+        "Invalid filter value for 'tag': 'x'. A filter on a JSON column can "
+        "only check whether it is null."
+    )
+    get({"theme": {"name": "dark"}}, 400)
+    get({"tag": [None, "x"]}, 400)
 
 
 def test_react_admin_filter_on_a_hybrid_in_python_returns_400(client):

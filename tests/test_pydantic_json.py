@@ -814,8 +814,7 @@ def test_a_union_document_keeps_every_member():
 
 def test_a_document_of_any_type_has_only_isnull(sync_client):
     """A field on a JSON column has only ``__isnull``, also a field of type
-    Any. A ``FilterKey`` on it still parses a value, though the column type
-    has no Python type."""
+    Any, and a ``FilterKey`` on it takes only ``None``."""
 
     class Item(fr.IDMixin, SharedBase):
         doc: Mapped[Any] = mapped_column(
@@ -834,7 +833,9 @@ def test_a_document_of_any_type_has_only_isnull(sync_client):
     assert found == [{"id": 1, "doc": 5}]
     sync_client.get("/items?doc=5", assert_status_code=422)
     key = fr.query.FilterKey(Item, ItemView.schema_response, "doc")
-    assert key.parse("5") == "5"
+    assert key.parse(None) is None
+    with pytest.raises(fr.exc.BadQueryParam):
+        key.parse("5")
 
 
 def test_a_view_schema_can_have_its_own_document_class(sync_client):
@@ -937,21 +938,26 @@ def test_a_view_writes_and_reads_the_document(request, asynchronous):
     ]
 
 
-def test_a_filter_key_compares_the_whole_document(sync_client):
+def test_a_filter_key_takes_only_none_but_a_query_compares_the_document(engine):
+    """A ``FilterKey`` on a JSON column takes only ``None``, as the generated
+    filters have only ``__isnull``. A condition of your own still compares
+    the whole document."""
+
     class Shop(fr.IDMixin, SharedBase):
         address: Mapped[Address] = mapped_column(fr.PydanticJSON(Address))
 
     class ShopSchema(fr.IDSchema):
         address: Address
 
-    SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
-    with fr.open_session() as session:
+    key = fr.query.FilterKey(Shop, ShopSchema, "address")
+    with pytest.raises(fr.exc.BadQueryParam):
+        key.parse({"street": "Dock"})
+
+    SharedBase.metadata.create_all(engine)
+    with Session(engine) as session:
         session.add_all([Shop(address=Address(street=s)) for s in ("Main", "Dock")])
         session.commit()
-
-        key = fr.query.FilterKey(Shop, ShopSchema, "address")
-        value = key.parse({"street": "Dock"})
-        stmt = sqlalchemy.select(Shop.id).where(key.column == value)
+        stmt = sqlalchemy.select(Shop.id).where(Shop.address == Address(street="Dock"))
         assert list(session.scalars(stmt)) == [2]
 
 

@@ -108,8 +108,10 @@ class FilterKey:
         id. A field of type ``Any``, such as the ``id`` of ``fr.IDSchema``,
         and the id of a reference get the Python type of the column, such as
         a ``UUID`` from its text. A column of SQLAlchemy's ``Enum`` type
-        takes only its labels. A model for a ``JSON`` column becomes JSON
-        data, as a write stores it. A time gets the form of its column; see
+        takes only its labels. A field on a JSON column takes only ``None``,
+        as the generated filters have only ``__isnull`` for it: the column
+        holds JSON text, so SQL cannot compare it with a value. A time gets
+        the form of its column; see
         :ref:`utc-times`. A number must fit its integer column, and text
         must hold no NUL character; see :ref:`column-validation`. The length
         of text is not checked.

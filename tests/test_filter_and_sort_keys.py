@@ -377,59 +377,35 @@ def test_parse_gives_the_member_for_a_number_of_an_int_enum():
     assert "task.priority = 'HIGH'" in str(compiled)
 
 
-def test_parse_gives_json_data_for_a_model_in_a_json_column():
-    """A field typed as a model validates to a model, and a ``JSON`` column
-    binds through ``json.dumps``. The value becomes JSON data, as a write
-    stores it."""
-
-    class Settings(pydantic.BaseModel):
-        theme: str
-        size: int = 12
+@pytest.mark.parametrize(
+    ("column_type", "field_type", "value"),
+    [
+        (sqlalchemy.JSON(), dict[str, Any], {"theme": "dark"}),
+        (fr.PydanticJSON(str), str, "dark"),
+        (fr.PydanticJSONB(str), str, "dark"),
+    ],
+    ids=["JSON", "PydanticJSON", "PydanticJSONB"],
+)
+def test_parse_takes_only_none_for_a_json_column(column_type, field_type, value):
+    """A JSON column holds JSON text, so SQL cannot compare it with a value: a
+    text found no row on SQLite, and each value gave a 500 error on
+    PostgreSQL's ``json`` type. ``parse`` takes only ``None``, as the
+    generated filters have only ``__isnull`` for such a field."""
 
     class Profile(fr.IDMixin, SharedBase):
-        settings: Mapped[dict[str, Any]] = mapped_column(sqlalchemy.JSON)
+        settings: Mapped[Any] = mapped_column(column_type, nullable=True)
 
     class ProfileSchema(fr.IDSchema):
-        settings: Settings
+        settings: field_type | None = None
 
     key = fr.query.FilterKey(Profile, ProfileSchema, "settings")
-    assert key.parse({"theme": "dark"}) == {"theme": "dark", "size": 12}
-
-
-def test_parse_gives_json_data_for_a_container_in_a_json_column():
-    """Also a model in a dict, and a time in a list: the value becomes JSON
-    data, as a write stores it."""
-
-    class Settings(pydantic.BaseModel):
-        theme: str
-
-    class Board(fr.IDMixin, SharedBase):
-        panels: Mapped[dict[str, Any]] = mapped_column(sqlalchemy.JSON)
-        stamps: Mapped[list[Any]] = mapped_column(sqlalchemy.JSON)
-
-    class BoardSchema(fr.IDSchema):
-        panels: dict[str, Settings]
-        stamps: list[datetime]
-
-    panels = fr.query.FilterKey(Board, BoardSchema, "panels")
-    stamps = fr.query.FilterKey(Board, BoardSchema, "stamps")
-    assert panels.parse({"left": {"theme": "dark"}}) == {"left": {"theme": "dark"}}
-    assert stamps.parse(["2026-01-02T03:04:05Z"]) == ["2026-01-02T03:04:05Z"]
-
-
-def test_parse_refuses_a_secret_in_a_json_column_as_a_write_does():
-    """A dump masks a secret, so the filter would compare the mask. A write
-    of such a document raises, and so does the filter."""
-
-    class Vault(fr.IDMixin, SharedBase):
-        tokens: Mapped[dict[str, Any]] = mapped_column(sqlalchemy.JSON)
-
-    class VaultSchema(fr.IDSchema):
-        tokens: dict[str, pydantic.SecretStr]
-
-    key = fr.query.FilterKey(Vault, VaultSchema, "tokens")
-    with pytest.raises(fr.exc.RestlyConfigurationError, match="secret"):
-        key.parse({"api": "s3cret"})
+    assert key.parse(None) is None
+    with pytest.raises(BadQueryParam) as caught:
+        key.parse(value)
+    assert caught.value.detail == (
+        f"Invalid filter value for 'settings': {value!r}. A filter on a JSON "
+        "column can only check whether it is null."
+    )
 
 
 def test_parse_gives_a_time_the_form_of_its_column():

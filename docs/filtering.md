@@ -95,8 +95,9 @@ Not every field gets every suffix:
   value, such as a `str` in `fr.PydanticJSON(str)`. The column holds JSON
   text, such as `"x"` with its quotes, and SQL compares that text, not the
   value. So the other filters would find no row on SQLite and fail on
-  PostgreSQL. Such a field is no sort key either. To filter on a key in a
-  document, write the filter yourself; see
+  PostgreSQL. Such a field is no sort key either. In the `filter` of a
+  react-admin view, and in `FilterKey.parse()`, such a field takes only
+  `null`. To filter on a key in a document, write the filter yourself; see
   [Add a filter of your own](#own-list-filter).
 - A {data}`WriteOnly <fastapi_restly.schemas.WriteOnly>` field, a field
   with `Field(exclude=True)`, and a field of Pydantic's secret types, such as

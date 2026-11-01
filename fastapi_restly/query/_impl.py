@@ -45,7 +45,6 @@ from ..schemas._base import (
     IDRef,
     IDSchema,
     _hides_value,
-    _json_data,
     _schema_role_name,
     _unwrap_type,
 )
@@ -1715,8 +1714,9 @@ def _value_parser(
     A value goes through the validation of its field: a text from a URL, or
     a value from JSON. ``None`` stays ``None``, for ``IS NULL``. An ``IDRef``
     gives its id. A column of SQLAlchemy's ``Enum`` type takes only its
-    labels. A ``JSON`` column takes a model as JSON data, as a write stores
-    it. A field of type ``Any``, such as the ``id`` of ``fr.IDSchema``, and
+    labels. A JSON column takes only ``None``: it holds JSON text, so SQL
+    cannot compare it with a value. A field of type ``Any``, such as the
+    ``id`` of ``fr.IDSchema``, and
     the id of a reference get the Python type of the column, such as a
     ``UUID`` from its text. Any other value goes through ``column_value``: a
     time gets the form of its column, a number must fit an integer column,
@@ -1734,8 +1734,7 @@ def _value_parser(
     validator = _field_validator(schema_cls, field_name)
     column_type = getattr(column, "type", None)
     enum_type = _enum_type(column)
-    # A TypeDecorator over JSON binds through its own code, as on a write.
-    is_json = isinstance(column_type, sqlalchemy.JSON)
+    json_column = _has_json_type(column)
     # A field of type Any, such as the id of fr.IDSchema, gives the value as
     # it came, and so does a reference for its id.
     untyped = _unwrap_type(schema_cls.model_fields[field_name].annotation)[0] is Any
@@ -1748,6 +1747,11 @@ def _value_parser(
             message has the reason, such as Pydantic's
             ``Input should be a valid integer``.
         """
+        if json_column and value is not None:
+            raise BadQueryParam(
+                f"Invalid filter value for {key!r}: {value!r}. A filter on a "
+                "JSON column can only check whether it is null."
+            )
         # Only a validation error is the client's fault. Another exception
         # from a validator is a bug, as it is for a request body.
         try:
@@ -1767,8 +1771,6 @@ def _value_parser(
             result = result.id
         elif enum_type is not None:
             return _enum_value(enum_type, result, key, value)
-        elif is_json:
-            return _json_data(result, f"{schema_cls.__name__}.{field_name}")
         try:
             if (untyped or reference) and to_python_type is not None:
                 result = to_python_type(result)

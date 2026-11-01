@@ -74,9 +74,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no longer commits its rows too early.
 - A JSON column with a field such as `dict[str, Address]` or `list[datetime]`
   no longer gives a 500 error on each write. Restly dumps the whole value as
-  Pydantic does in JSON mode, also for a filter. A secret in a dict or a list
-  raises `RestlyConfigurationError`, as a secret in a model does, also in a
-  filter. A `NaN` or an infinity in a dict or a list stays as it is.
+  Pydantic does in JSON mode. A secret in a dict or a list raises
+  `RestlyConfigurationError`, as a secret in a model does. A `NaN` or an
+  infinity in a dict or a list stays as it is.
   `sqlalchemy.JSON.NULL` and an SQL expression go to the column as they are.
 - A JSON column no longer stores a computed field of a model. A model with
   `extra="forbid"` refused it when the row was read, so each response with
@@ -101,7 +101,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   text of the column, such as `"x"` with its quotes. So the other filters
   found no row on SQLite and gave a 500 error on PostgreSQL, and so did a
   sort on PostgreSQL's `json` type. A `pydantic.Json` field on a JSON column
-  has only `__isnull` too.
+  has only `__isnull` too. The `filter` of a react-admin view and
+  `fr.query.FilterKey.parse()` take only `null` for such a field, and give
+  400 for another value. Before, a `str` value found no row on SQLite, and
+  each value gave a 500 error on PostgreSQL's `json` type.
 
 ## [0.12.0] - 2026-10-27
 
