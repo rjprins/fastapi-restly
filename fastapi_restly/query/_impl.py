@@ -427,7 +427,7 @@ def _enum_type(column: Any) -> sqlalchemy.Enum | None:
 
 def _has_json_type(column: Any) -> bool:
     """Whether ``column`` has SQLAlchemy's ``JSON`` type, also inside
-    ``TypeDecorator`` layers, such as ``fr.PydanticJSON``. ``JSONB`` is such
+    ``TypeDecorator`` layers, such as ``fr.models.PydanticJSON``. ``JSONB`` is such
     a type too.
 
     Such a column holds JSON text, such as ``"x"`` with its quotes.

@@ -381,8 +381,8 @@ def test_parse_gives_the_member_for_a_number_of_an_int_enum():
     ("column_type", "field_type", "value"),
     [
         (sqlalchemy.JSON(), dict[str, Any], {"theme": "dark"}),
-        (fr.PydanticJSON(str), str, "dark"),
-        (fr.PydanticJSONB(str), str, "dark"),
+        (fr.models.PydanticJSON(str), str, "dark"),
+        (fr.models.PydanticJSONB(str), str, "dark"),
     ],
     ids=["JSON", "PydanticJSON", "PydanticJSONB"],
 )

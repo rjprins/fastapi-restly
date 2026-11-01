@@ -226,7 +226,7 @@ def test_react_admin_list_writes_a_nan_as_text(client):
     JSON, so the browser could not read the list."""
 
     class RaSeries(fr.IDMixin, SharedBase):
-        points: Mapped[list[float]] = mapped_column(fr.PydanticJSON(list[float]))
+        points: Mapped[list[float]] = mapped_column(fr.models.PydanticJSON(list[float]))
 
     @fr.include_view(client.app)
     class RaSeriesView(fr.AsyncReactAdminView):
@@ -559,7 +559,7 @@ def test_react_admin_filter_null_on_an_enum_and_a_json_column(client):
             sqlalchemy.JSON(none_as_null=True), default=None
         )
         tag: Mapped[str | None] = mapped_column(
-            fr.PydanticJSON(str, none_as_null=True), default=None
+            fr.models.PydanticJSON(str, none_as_null=True), default=None
         )
 
     class RaPageSchema(fr.IDSchema):

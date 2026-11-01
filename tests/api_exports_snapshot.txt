@@ -15,8 +15,6 @@ fastapi_restly:
   - MustExist
   - NoPagination
   - NumberedPagination
-  - PydanticJSON
-  - PydanticJSONB
   - ReactAdminView
   - ReadOnly
   - ResponseShape
@@ -208,6 +206,8 @@ fastapi_restly.exc:
 fastapi_restly.models:
   - CASCADE_ALL_ASYNC
   - CASCADE_ALL_DELETE_ORPHAN_ASYNC
+  - PydanticJSON
+  - PydanticJSONB
 fastapi_restly.objects:
   - async_delete_object
   - async_make_new_object

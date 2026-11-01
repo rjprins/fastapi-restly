@@ -85,9 +85,9 @@ these defaults:
   database enum type, so a new member needs no database migration.
 - **Pydantic models as JSON.** A column typed with a Pydantic model, as in
   `Mapped[Address]`, is a
-  {class}`fr.PydanticJSON <fastapi_restly.models.PydanticJSON>` column. It
-  stores the model as a JSON document, and it loads the document as an
-  `Address`; see
+  {class}`fr.models.PydanticJSON <fastapi_restly.models.PydanticJSON>`
+  column. It stores the model as a JSON document, and it loads the document
+  as an `Address`; see
   [Store a Pydantic model in a JSON column](#json-document-columns).
 - **`awaitable_attrs`.** Code outside a view can await a relationship that is
   not loaded yet, as

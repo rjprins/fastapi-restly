@@ -91,7 +91,9 @@ class AsyncpgShop(fr.IDMixin, SharedBase):
 
     name: Mapped[str]
     # jsonb, with a generated schema
-    address: Mapped[AsyncpgAddress] = mapped_column(fr.PydanticJSONB(AsyncpgAddress))
+    address: Mapped[AsyncpgAddress] = mapped_column(
+        fr.models.PydanticJSONB(AsyncpgAddress)
+    )
 
 
 LIFESPAN_EVENTS: list[str] = []

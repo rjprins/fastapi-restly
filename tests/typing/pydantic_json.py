@@ -31,10 +31,10 @@ class Address(pydantic.BaseModel):
 class Shop(fr.IDMixin, Base):
     address: Mapped[Address]
     postal: Mapped[Address | None] = mapped_column(
-        fr.PydanticJSONB(Address, none_as_null=True), default=None
+        fr.models.PydanticJSONB(Address, none_as_null=True), default=None
     )
     branches: Mapped[dict[str, Address]] = mapped_column(
-        MutableDict.as_mutable(fr.PydanticJSON(dict[str, Address])),
+        MutableDict.as_mutable(fr.models.PydanticJSON(dict[str, Address])),
         default_factory=dict,
     )
 
@@ -45,7 +45,7 @@ shop.address = shop.address.model_copy(update={"city": "Delft"})
 shop.branches["south"] = Address(street="Dock", city="Delft")
 
 stmt = select(Shop.id).where(Shop.address["city"].as_string() == "Delft")
-column_type: fr.PydanticJSON = fr.PydanticJSON(list[Address])
+column_type: fr.models.PydanticJSON = fr.models.PydanticJSON(list[Address])
 document_type: Any = column_type.type_
 
 

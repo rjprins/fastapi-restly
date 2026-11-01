@@ -1469,7 +1469,7 @@ class _Address(pydantic.BaseModel):
     street: str
 
 
-class _JSONBDocument(fr.PydanticJSON):
+class _JSONBDocument(fr.models.PydanticJSON):
     impl = postgresql.JSONB
     cache_ok = True
 
@@ -1478,8 +1478,8 @@ class _JSONBDocument(fr.PydanticJSON):
 @pytest.mark.parametrize(
     ("column_type", "expected"),
     [
-        (fr.PydanticJSON(_Address), "sa.JSON()"),
-        (fr.PydanticJSONB(_Address), "postgresql.JSONB()"),
+        (fr.models.PydanticJSON(_Address), "sa.JSON()"),
+        (fr.models.PydanticJSONB(_Address), "postgresql.JSONB()"),
         (_JSONBDocument(_Address), "postgresql.JSONB()"),
         (sqlalchemy.String(10), "sa.String(length=10)"),
     ],

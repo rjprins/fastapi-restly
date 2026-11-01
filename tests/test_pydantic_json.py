@@ -1,4 +1,4 @@
-"""fr.PydanticJSON: a JSON column that holds a Pydantic type.
+"""fr.models.PydanticJSON: a JSON column that holds a Pydantic type.
 
 The column validates the document when it loads a row, and validates and
 dumps it by its type on a write. In all else it works as SQLAlchemy's JSON.
@@ -62,9 +62,9 @@ def _stored(session: Session, table: str, column: str) -> list[Any]:
 
 def test_a_row_reads_back_as_the_type(engine):
     class Shop(fr.IDMixin, SharedBase):
-        address: Mapped[Address] = mapped_column(fr.PydanticJSON(Address))
+        address: Mapped[Address] = mapped_column(fr.models.PydanticJSON(Address))
         branches: Mapped[dict[str, Address]] = mapped_column(
-            fr.PydanticJSON(dict[str, Address]), default_factory=dict
+            fr.models.PydanticJSON(dict[str, Address]), default_factory=dict
         )
 
     SharedBase.metadata.create_all(engine)
@@ -121,7 +121,9 @@ def test_a_model_annotation_alone_gives_a_document_column(engine):
 def test_your_own_type_map_entry_for_models_wins():
     class Base(fr.ModelDefaults, DeclarativeBase):
         type_annotation_map = {
-            pydantic.BaseModel: fr.PydanticJSONB(pydantic.BaseModel, none_as_null=True)
+            pydantic.BaseModel: fr.models.PydanticJSONB(
+                pydantic.BaseModel, none_as_null=True
+            )
         }
 
     class Shop(fr.IDMixin, Base):
@@ -137,7 +139,7 @@ def test_a_write_validates_a_dict(engine):
     fails the flush instead of each later load of the row."""
 
     class Shop(fr.IDMixin, SharedBase):
-        address: Mapped[Address] = mapped_column(fr.PydanticJSON(Address))
+        address: Mapped[Address] = mapped_column(fr.models.PydanticJSON(Address))
 
     SharedBase.metadata.create_all(engine)
     with Session(engine) as session:
@@ -190,7 +192,7 @@ def test_a_subclass_is_stored_as_the_type_of_the_column(engine):
         rooms: int = 1
 
     class Shop(fr.IDMixin, SharedBase):
-        address: Mapped[Strict] = mapped_column(fr.PydanticJSON(Strict))
+        address: Mapped[Strict] = mapped_column(fr.models.PydanticJSON(Strict))
 
     SharedBase.metadata.create_all(engine)
     with Session(engine) as session:
@@ -209,7 +211,7 @@ def test_a_serializer_in_the_type_runs(engine):
 
     class Prices(fr.IDMixin, SharedBase):
         prices: Mapped[dict[str, Decimal]] = mapped_column(
-            fr.PydanticJSON(dict[str, Money])
+            fr.models.PydanticJSON(dict[str, Money])
         )
 
     SharedBase.metadata.create_all(engine)
@@ -227,7 +229,7 @@ def test_a_query_dumps_a_value_as_the_write_does(engine):
 
     class Shop(fr.IDMixin, SharedBase):
         prices: Mapped[dict[str, Decimal]] = mapped_column(
-            fr.PydanticJSON(dict[str, Money])
+            fr.models.PydanticJSON(dict[str, Money])
         )
         address: Mapped[Address]
 
@@ -315,7 +317,7 @@ def test_a_nan_is_stored_as_text_and_reads_back_as_a_nan(engine):
     that PostgreSQL's ``to_jsonb()`` writes. A ``float`` reads it back."""
 
     class Series(fr.IDMixin, SharedBase):
-        points: Mapped[list[float]] = mapped_column(fr.PydanticJSON(list[float]))
+        points: Mapped[list[float]] = mapped_column(fr.models.PydanticJSON(list[float]))
 
     SharedBase.metadata.create_all(engine)
     with Session(engine) as session:
@@ -336,7 +338,9 @@ def test_a_text_nan_in_an_untyped_part_stays_text(engine):
     ``float`` field turns it into a number."""
 
     class Reading(fr.IDMixin, SharedBase):
-        values: Mapped[dict[str, Any]] = mapped_column(fr.PydanticJSON(dict[str, Any]))
+        values: Mapped[dict[str, Any]] = mapped_column(
+            fr.models.PydanticJSON(dict[str, Any])
+        )
 
     SharedBase.metadata.create_all(engine)
     with Session(engine) as session:
@@ -504,7 +508,7 @@ def test_a_type_that_the_dump_would_change_is_refused(type_, message):
     """The dump masks a secret and leaves out an excluded field. The column
     refuses such a type when it is defined, not at the first write."""
     with pytest.raises(RestlyConfigurationError, match=message.replace("[", r"\[")):
-        fr.PydanticJSON(type_)
+        fr.models.PydanticJSON(type_)
 
 
 @pytest.mark.skipif(
@@ -519,9 +523,9 @@ def test_a_field_with_exclude_if_is_refused():
         main: Annotated[str, pydantic.Field(exclude_if=lambda value: value == "")]
 
     with pytest.raises(RestlyConfigurationError, match=r"Note.text has exclude_if"):
-        fr.PydanticJSON(list[Note])
+        fr.models.PydanticJSON(list[Note])
     with pytest.raises(RestlyConfigurationError, match=r"Tags.main has exclude_if"):
-        fr.PydanticJSON(Tags)
+        fr.models.PydanticJSON(Tags)
 
 
 def test_an_excluded_field_in_a_named_tuple_is_accepted():
@@ -531,7 +535,7 @@ def test_an_excluded_field_in_a_named_tuple_is_accepted():
         left: int
         right: Annotated[int, pydantic.Field(exclude=True)]
 
-    column_type = fr.PydanticJSON(Pair)
+    column_type = fr.models.PydanticJSON(Pair)
     assert column_type.process_bind_param(Pair(1, 2), None) == [1, 2]
 
 
@@ -561,7 +565,7 @@ def test_a_reference_in_a_document_is_accepted():
         owner: fr.IDRef[Owner]
         approver: fr.IDSchema[Owner]
 
-    column_type = fr.PydanticJSON(list[Line])
+    column_type = fr.models.PydanticJSON(list[Line])
     stored = column_type.process_bind_param([{"owner": 1, "approver": {"id": 2}}], None)
     assert stored == [{"owner": 1, "approver": {"id": 2}}]
     (line,) = column_type.process_result_value(stored, None)
@@ -570,7 +574,9 @@ def test_a_reference_in_a_document_is_accepted():
 
 def test_a_readonly_field_in_a_part_of_type_any_fails_the_write(engine):
     class Vault(fr.IDMixin, SharedBase):
-        items: Mapped[dict[str, Any]] = mapped_column(fr.PydanticJSON(dict[str, Any]))
+        items: Mapped[dict[str, Any]] = mapped_column(
+            fr.models.PydanticJSON(dict[str, Any])
+        )
 
     SharedBase.metadata.create_all(engine)
     with Session(engine) as session:
@@ -585,7 +591,7 @@ def test_a_recursive_model_without_secrets_is_accepted():
         name: str
         children: list["Tree"] = []
 
-    assert fr.PydanticJSON(Tree).type_ is Tree
+    assert fr.models.PydanticJSON(Tree).type_ is Tree
 
 
 def test_a_secret_in_a_part_of_type_any_fails_the_write(engine):
@@ -593,7 +599,9 @@ def test_a_secret_in_a_part_of_type_any_fails_the_write(engine):
     checks the value, as for a plain JSON column."""
 
     class Vault(fr.IDMixin, SharedBase):
-        items: Mapped[dict[str, Any]] = mapped_column(fr.PydanticJSON(dict[str, Any]))
+        items: Mapped[dict[str, Any]] = mapped_column(
+            fr.models.PydanticJSON(dict[str, Any])
+        )
 
     SharedBase.metadata.create_all(engine)
     with Session(engine) as session:
@@ -620,7 +628,7 @@ def test_none_is_stored_as_json_stores_it(engine, none_as_null):
         )
 
     Plain = define("Plain", sqlalchemy.JSON(none_as_null=none_as_null))
-    Typed = define("Typed", fr.PydanticJSON(Address, none_as_null=none_as_null))
+    Typed = define("Typed", fr.models.PydanticJSON(Address, none_as_null=none_as_null))
     SharedBase.metadata.create_all(engine)
 
     stored = {}
@@ -649,7 +657,7 @@ def test_a_value_in_a_query_is_dumped_but_not_validated(engine):
     so a part of a document works too."""
 
     class Shop(fr.IDMixin, SharedBase):
-        address: Mapped[Address] = mapped_column(fr.PydanticJSON(Address))
+        address: Mapped[Address] = mapped_column(fr.models.PydanticJSON(Address))
 
     SharedBase.metadata.create_all(engine)
     with Session(engine) as session:
@@ -676,7 +684,7 @@ def test_mutable_dict_tracks_a_new_key(engine):
 
     class Shop(fr.IDMixin, SharedBase):
         branches: Mapped[dict[str, Address]] = mapped_column(
-            MutableDict.as_mutable(fr.PydanticJSON(dict[str, Address]))
+            MutableDict.as_mutable(fr.models.PydanticJSON(dict[str, Address]))
         )
 
     SharedBase.metadata.create_all(engine)
@@ -703,27 +711,29 @@ def test_mutable_dict_tracks_a_new_key(engine):
 
 def test_each_type_has_its_own_cache_key(engine):
     assert (
-        fr.PydanticJSON(Address)._static_cache_key
-        != fr.PydanticJSON(Home)._static_cache_key
+        fr.models.PydanticJSON(Address)._static_cache_key
+        != fr.models.PydanticJSON(Home)._static_cache_key
     )
     assert (
-        fr.PydanticJSON(Address)._static_cache_key
-        == fr.PydanticJSON(Address)._static_cache_key
+        fr.models.PydanticJSON(Address)._static_cache_key
+        == fr.models.PydanticJSON(Address)._static_cache_key
     )
     # none_as_null is in the key too, as in JSON. Without it, the second
     # statement would reuse the SQL of the first.
     with Session(engine) as session:
         for none_as_null in (False, True):
-            column_type = fr.PydanticJSON(Address, none_as_null=none_as_null)
+            column_type = fr.models.PydanticJSON(Address, none_as_null=none_as_null)
             stmt = sqlalchemy.select(sqlalchemy.literal(None, column_type).is_(None))
             assert session.scalar(stmt) is none_as_null
-    adapted = fr.PydanticJSON(Address, none_as_null=True).adapt(fr.PydanticJSON)
+    adapted = fr.models.PydanticJSON(Address, none_as_null=True).adapt(
+        fr.models.PydanticJSON
+    )
     assert adapted.none_as_null
 
 
 def test_the_type_must_be_hashable():
     with pytest.raises(RestlyConfigurationError, match="is not hashable"):
-        fr.PydanticJSON(Annotated[list[int], {"unit": "cm"}])
+        fr.models.PydanticJSON(Annotated[list[int], {"unit": "cm"}])
 
 
 def test_a_model_is_needed_in_the_annotation():
@@ -734,7 +744,7 @@ def test_a_model_is_needed_in_the_annotation():
 
 
 def test_the_label_keeps_text_in_quotes():
-    column_type = fr.PydanticJSON(Literal["v1.2", 1.5])
+    column_type = fr.models.PydanticJSON(Literal["v1.2", 1.5])
     assert repr(column_type) == "PydanticJSON(Literal['v1.2', 1.5])"
 
 
@@ -758,7 +768,7 @@ def test_a_subclass_can_use_a_type_decorator_as_its_impl(engine):
         impl = sqlalchemy.JSON
         cache_ok = True
 
-    class TextDocument(fr.PydanticJSON):
+    class TextDocument(fr.models.PydanticJSON):
         impl = TextJSON
         cache_ok = True
 
@@ -785,7 +795,7 @@ def test_the_metadata_pickles_after_a_comparison():
     class Shop(Base):
         __tablename__ = "shop"
         id: Mapped[int] = mapped_column(primary_key=True)
-        address: Mapped[Address] = mapped_column(fr.PydanticJSON(Address))
+        address: Mapped[Address] = mapped_column(fr.models.PydanticJSON(Address))
 
     Shop.__table__.c.address.comparator  # noqa: B018
     metadata = pickle.loads(pickle.dumps(Base.metadata))
@@ -799,8 +809,8 @@ def test_pydantic_jsonb_is_a_jsonb_column():
     class Shop(Base):
         __tablename__ = "shop"
         id: Mapped[int] = mapped_column(primary_key=True)
-        address: Mapped[Address] = mapped_column(fr.PydanticJSONB(Address))
-        plain: Mapped[Address] = mapped_column(fr.PydanticJSON(Address))
+        address: Mapped[Address] = mapped_column(fr.models.PydanticJSONB(Address))
+        plain: Mapped[Address] = mapped_column(fr.models.PydanticJSON(Address))
 
     ddl = str(
         sqlalchemy.schema.CreateTable(Shop.__table__).compile(
@@ -815,20 +825,22 @@ def test_pydantic_jsonb_is_a_jsonb_column():
 
 
 def test_python_type_is_the_class_of_the_document():
-    assert fr.PydanticJSON(Address).python_type is Address
-    assert fr.PydanticJSON(dict[str, Address]).python_type is dict
+    assert fr.models.PydanticJSON(Address).python_type is Address
+    assert fr.models.PydanticJSON(dict[str, Address]).python_type is dict
     short = Annotated[list[int], pydantic.Field(max_length=3)]
-    assert fr.PydanticJSON(short).python_type is list
+    assert fr.models.PydanticJSON(short).python_type is list
     with pytest.raises(NotImplementedError):
-        fr.PydanticJSON(Address | None).python_type
+        fr.models.PydanticJSON(Address | None).python_type
     with pytest.raises(NotImplementedError):
-        fr.PydanticJSON(Any).python_type
+        fr.models.PydanticJSON(Any).python_type
 
 
 def test_a_column_without_annotation_gives_the_field_the_document_type():
     class Shop(fr.IDMixin, SharedBase):
-        branches = mapped_column(fr.PydanticJSON(dict[str, Address]), nullable=False)
-        home = mapped_column(fr.PydanticJSON(Home | None))
+        branches = mapped_column(
+            fr.models.PydanticJSON(dict[str, Address]), nullable=False
+        )
+        home = mapped_column(fr.models.PydanticJSON(Home | None))
 
     fields = derive_schema(Shop).model_fields
     assert fields["branches"].annotation == dict[str, Address]
@@ -845,11 +857,11 @@ class _Dog(pydantic.BaseModel):
 
 def test_a_union_document_keeps_every_member():
     class Pet(fr.IDMixin, SharedBase):
-        pet: Mapped[_Cat | _Dog] = mapped_column(fr.PydanticJSON(_Cat | _Dog))
+        pet: Mapped[_Cat | _Dog] = mapped_column(fr.models.PydanticJSON(_Cat | _Dog))
         other: Mapped[_Cat | _Dog | None] = mapped_column(
-            fr.PydanticJSON(_Cat | _Dog | None)
+            fr.models.PydanticJSON(_Cat | _Dog | None)
         )
-        bare = mapped_column(fr.PydanticJSON(_Cat | _Dog), nullable=False)
+        bare = mapped_column(fr.models.PydanticJSON(_Cat | _Dog), nullable=False)
         plain: Mapped[int | str | None] = mapped_column(sqlalchemy.JSON)
 
     fields = derive_schema(Pet).model_fields
@@ -865,7 +877,7 @@ def test_a_document_of_any_type_has_only_isnull(sync_client):
 
     class Item(fr.IDMixin, SharedBase):
         doc: Mapped[Any] = mapped_column(
-            fr.PydanticJSON(Any, none_as_null=True), nullable=True
+            fr.models.PydanticJSON(Any, none_as_null=True), nullable=True
         )
 
     @fr.include_view(sync_client.app)
@@ -1018,7 +1030,7 @@ def test_a_filter_key_takes_only_none_but_a_query_compares_the_document(engine):
     the whole document."""
 
     class Shop(fr.IDMixin, SharedBase):
-        address: Mapped[Address] = mapped_column(fr.PydanticJSON(Address))
+        address: Mapped[Address] = mapped_column(fr.models.PydanticJSON(Address))
 
     class ShopSchema(fr.IDSchema):
         address: Address

@@ -28,7 +28,7 @@ from .clauses import (
 from .db import AsyncSessionDep, SessionDep, configure, open_async_session, open_session
 
 # Models
-from .models import IDMixin, ModelDefaults, PydanticJSON, PydanticJSONB, TimestampsMixin
+from .models import IDMixin, ModelDefaults, TimestampsMixin
 
 # Schema utilities
 from .schemas import (
@@ -104,8 +104,6 @@ __all__ = [
     "ModelDefaults",
     "IDMixin",
     "TimestampsMixin",
-    "PydanticJSON",
-    "PydanticJSONB",
     # Schemas
     "BaseSchema",
     "IDRef",

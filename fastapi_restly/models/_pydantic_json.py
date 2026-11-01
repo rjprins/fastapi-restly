@@ -50,7 +50,7 @@ class PydanticJSON(TypeDecorator[Any]):
         class Shop(fr.IDMixin, Base):
             address: Mapped[Address]
             branches: Mapped[dict[str, Address]] = mapped_column(
-                fr.PydanticJSON(dict[str, Address])
+                fr.models.PydanticJSON(dict[str, Address])
             )
 
     On a base with :class:`ModelDefaults`, ``Mapped[Address]`` alone gives
@@ -231,11 +231,11 @@ class PydanticJSONB(PydanticJSON):
     """:class:`PydanticJSON` with PostgreSQL's ``JSONB``::
 
         class Shop(fr.IDMixin, Base):
-            address: Mapped[Address] = mapped_column(fr.PydanticJSONB(Address))
+            address: Mapped[Address] = mapped_column(fr.models.PydanticJSONB(Address))
 
     PostgreSQL can compare two ``JSONB`` documents, and ``JSONB`` has more
     operators, such as ``contains`` and ``has_key``. For ``Mapped[Address]``
-    alone, put ``pydantic.BaseModel: fr.PydanticJSONB(pydantic.BaseModel)``
+    alone, put ``pydantic.BaseModel: fr.models.PydanticJSONB(pydantic.BaseModel)``
     in the ``type_annotation_map`` of your base. SQLite has no ``JSONB``.
     """
 

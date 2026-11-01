@@ -202,7 +202,7 @@ def test_a_json_typed_field_keeps_its_filters_on_a_column_that_is_not_json():
 
 @pytest.mark.parametrize(
     "column_type",
-    [JSON(), fr.PydanticJSON(str), fr.PydanticJSONB(str)],
+    [JSON(), fr.models.PydanticJSON(str), fr.models.PydanticJSONB(str)],
     ids=["JSON", "PydanticJSON", "PydanticJSONB"],
 )
 def test_a_field_on_a_json_column_has_only_isnull(column_type):

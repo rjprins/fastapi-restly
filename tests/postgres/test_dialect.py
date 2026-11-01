@@ -29,7 +29,7 @@ at PostgreSQL (see ``conftest.py``). Eight things are covered:
 * Times: a time without an offset is UTC. psycopg leaves the time zone to
   PostgreSQL, which reads such a time in the time zone of the session, so
   these tests give the session another time zone.
-* ``fr.PydanticJSON`` and ``fr.PydanticJSONB``: the document reads back as its
+* ``fr.models.PydanticJSON`` and ``fr.models.PydanticJSONB``: the document reads back as its
   type, and the ``jsonb`` operators, such as ``contains``, work on it. A NaN
   is stored as the text ``"NaN"``, in such a column and in a plain ``json``
   column that a view writes. PostgreSQL refuses NaN as a number in JSON.
@@ -235,15 +235,15 @@ class PgAddress(pydantic.BaseModel):
 class PgShop(fr.IDMixin, SharedBase):
     name: Mapped[str]
     # jsonb, with a generated schema
-    address: Mapped[PgAddress] = mapped_column(fr.PydanticJSONB(PgAddress))
+    address: Mapped[PgAddress] = mapped_column(fr.models.PydanticJSONB(PgAddress))
     # json, the default, and SQL NULL for None
     old_address: Mapped[PgAddress | None] = mapped_column(
-        fr.PydanticJSON(PgAddress, none_as_null=True), default=None
+        fr.models.PydanticJSON(PgAddress, none_as_null=True), default=None
     )
 
 
 class PgSeries(fr.IDMixin, SharedBase):
-    points: Mapped[list[float]] = mapped_column(fr.PydanticJSONB(list[float]))
+    points: Mapped[list[float]] = mapped_column(fr.models.PydanticJSONB(list[float]))
 
 
 @fr.include_view(_app)

@@ -273,7 +273,7 @@ zone on purpose. Such a column holds UTC without the offset; see
 ### Write a `PydanticJSON` column into a migration
 
 Alembic writes the type of each column into the migration. For a
-{class}`fr.PydanticJSON <fastapi_restly.models.PydanticJSON>` column, it
+{class}`fr.models.PydanticJSON <fastapi_restly.models.PydanticJSON>` column, it
 writes `PydanticJSON(Address)`, and that migration cannot run: it imports
 neither the type nor your model. So give Alembic a `render_item` function
 that writes the JSON type of the database instead:
@@ -290,7 +290,7 @@ from sqlalchemy.dialects import postgresql
 def render_item(
     type_: str, obj: object, autogen_context: AutogenContext
 ) -> str | Literal[False]:
-    if type_ == "type" and isinstance(obj, fr.PydanticJSON):
+    if type_ == "type" and isinstance(obj, fr.models.PydanticJSON):
         if isinstance(obj.impl, postgresql.JSONB):
             autogen_context.imports.add("from sqlalchemy.dialects import postgresql")
             return "postgresql.JSONB()"
@@ -304,7 +304,7 @@ has this function. A migration should not import your models anyway, because
 the models change later. The database stores the same JSON, so
 `alembic check` finds no change.
 
-The function writes `JSONB` for `fr.PydanticJSONB`, and for your own
+The function writes `JSONB` for `fr.models.PydanticJSONB`, and for your own
 subclass with `impl = JSONB`. It writes only the main type of a column with
 `with_variant()`. For such a column, write the variant into the migration
 yourself.

@@ -542,7 +542,9 @@ values that it got:
 
 ```python
 class Series(fr.IDMixin, Base):
-    points: Mapped[list[float]] = mapped_column(fr.PydanticJSON(list[float]))
+    points: Mapped[list[float]] = mapped_column(
+        fr.models.PydanticJSON(list[float])
+    )
 ```
 
 A client that sends `{"points": [1.5, "NaN", "Infinity"]}` gets
@@ -551,10 +553,10 @@ A client that sends `{"points": [1.5, "NaN", "Infinity"]}` gets
 client must accept these three texts in a number field.
 
 A Pydantic model of your own, such as the model of a
-{class}`fr.PydanticJSON <fastapi_restly.models.PydanticJSON>` column, follows
-its own setting: in a response, and for its fields of type `Any` in a JSON
-column. Pydantic's default writes `null` there, which loses the value. Give
-your models the setting that
+{class}`fr.models.PydanticJSON <fastapi_restly.models.PydanticJSON>` column,
+follows its own setting: in a response, and for its fields of type `Any` in
+a JSON column. Pydantic's default writes `null` there, which loses the
+value. Give your models the setting that
 {class}`fr.BaseSchema <fastapi_restly.schemas.BaseSchema>` has:
 
 ```python
@@ -580,7 +582,8 @@ Restly cannot keep the value in these cases:
   SQLAlchemy. SQLite then stores NaN as a number, and PostgreSQL refuses the
   row. In a part of type `Any`, a response shows such a number as `null`. For
   a free-form document that your own code writes, use
-  `fr.PydanticJSON(dict[str, Any])`, which writes the text on each write.
+  `fr.models.PydanticJSON(dict[str, Any])`, which writes the text on each
+  write.
 - The text in a response needs FastAPI 0.130 or later, with its default
   response class. An older FastAPI, or `JSONResponse` as the response class,
   gives an error 500.
@@ -885,9 +888,9 @@ sends the same JSON, but shows a type of its own in OpenAPI.
 
 Annotate a column with a Pydantic model. On a base with
 {class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>`, the column is
-then a {class}`fr.PydanticJSON <fastapi_restly.models.PydanticJSON>` column.
-It stores the model as a JSON document, and it loads the document as the
-model:
+then a {class}`fr.models.PydanticJSON <fastapi_restly.models.PydanticJSON>`
+column. It stores the model as a JSON document, and it loads the document as
+the model:
 
 ```python
 import pydantic
@@ -904,7 +907,7 @@ class Shop(fr.IDMixin, Base):
     name: Mapped[str]
     address: Mapped[Address]
     branches: Mapped[dict[str, Address]] = mapped_column(
-        fr.PydanticJSON(dict[str, Address])
+        fr.models.PydanticJSON(dict[str, Address])
     )
 ```
 
@@ -913,8 +916,8 @@ address that does not fit returns 422, and a response shows the address as a
 JSON object. In your own code, `shop.address` is an `Address`. A type that is
 not one model, such as `dict[str, Address]`, needs `mapped_column()`, as
 `branches` shows. On PostgreSQL, use
-{class}`fr.PydanticJSONB <fastapi_restly.models.PydanticJSONB>` for a `JSONB`
-column. Alembic needs a hook in `env.py` for these columns; see
+{class}`fr.models.PydanticJSONB <fastapi_restly.models.PydanticJSONB>` for a
+`JSONB` column. Alembic needs a hook in `env.py` for these columns; see
 [Write a PydanticJSON column into a migration](#pydantic-json-migration).
 
 As with SQLAlchemy's `JSON` type, a change inside the document is not saved.
@@ -936,7 +939,7 @@ session saves a change such as `shop.branches["south"] = Address(...)`:
 from sqlalchemy.ext.mutable import MutableDict
 
 branches: Mapped[dict[str, Address]] = mapped_column(
-    MutableDict.as_mutable(fr.PydanticJSON(dict[str, Address]))
+    MutableDict.as_mutable(fr.models.PydanticJSON(dict[str, Address]))
 )
 ```
 
@@ -1003,16 +1006,16 @@ schema, with its read-only `id`, cannot be the type of a document. Use a
 model of its own for the document.
 
 **The same as `JSON`.** `None` is stored as JSON `null`, and
-`fr.PydanticJSON(Address, none_as_null=True)` stores SQL `NULL`. A query
+`fr.models.PydanticJSON(Address, none_as_null=True)` stores SQL `NULL`. A query
 reads a part of the document as with `JSON`, as in
 `Shop.address["city"].as_string() == "Utrecht"`. A dict or a model in a
 query is dumped, but not validated, because it can be a part of a document.
 
 **`JSONB` for each model.** The `type_annotation_map` of `fr.ModelDefaults`
-has `pydantic.BaseModel: fr.PydanticJSON(pydantic.BaseModel)`, as SQLAlchemy
-maps an enum with `enum.Enum: Enum(enum.Enum)`. Put
-`pydantic.BaseModel: fr.PydanticJSONB(pydantic.BaseModel)` in the map of your
-base, and each model gets a `JSONB` column. Your own entry wins; see
+has `pydantic.BaseModel: fr.models.PydanticJSON(pydantic.BaseModel)`, as
+SQLAlchemy maps an enum with `enum.Enum: Enum(enum.Enum)`. Put
+`pydantic.BaseModel: fr.models.PydanticJSONB(pydantic.BaseModel)` in the map
+of your base, and each model gets a `JSONB` column. Your own entry wins; see
 [Change a default](#change-model-defaults).
 
 **A plain `JSON` column with a schema of your own.** A
@@ -1203,7 +1206,7 @@ table. A type keeps its name, except a time: it gets
 | `list` / `list[T]` | `list` / `list[T]` |
 | `enum.Enum` subclass | same enum subclass |
 | Pydantic model, such as `Address` | same model |
-| `fr.PydanticJSON(T)` column without an annotation | `T` |
+| `fr.models.PydanticJSON(T)` column without an annotation | `T` |
 | SQLAlchemy `Text`, `String` | `str` |
 | SQLAlchemy `Integer` | `int` |
 | SQLAlchemy `Float` | `float` |

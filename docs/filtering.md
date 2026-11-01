@@ -92,9 +92,9 @@ Not every field gets every suffix:
   is no sort key either: a document or a list has no order that a client
   means, and PostgreSQL's `json` type has none at all.
 - A field on a JSON column gets only `__isnull` too, also when it holds one
-  value, such as a `str` in `fr.PydanticJSON(str)`. The column holds JSON
-  text, such as `"x"` with its quotes, and SQL compares that text, not the
-  value. So the other filters would find no row on SQLite and fail on
+  value, such as a `str` in `fr.models.PydanticJSON(str)`. The column holds
+  JSON text, such as `"x"` with its quotes, and SQL compares that text, not
+  the value. So the other filters would find no row on SQLite and fail on
   PostgreSQL. Such a field is no sort key either. In the `filter` of a
   react-admin view, and in `FilterKey.parse()`, such a field takes only
   `null`. To filter on a key in a document, write the filter yourself; see
