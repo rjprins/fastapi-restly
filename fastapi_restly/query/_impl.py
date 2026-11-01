@@ -375,18 +375,20 @@ def _supports_scalar_operators(field: FieldInfo) -> bool:
     )
 
 
-def _is_sortable(field: FieldInfo) -> bool:
+def _is_sortable(field: FieldInfo, column: Any) -> bool:
     """Whether a sort key on ``field`` has an order that a client means.
 
-    A field that gets only ``__isnull``, such as a ``dict`` or a ``list``,
-    gets no sort key either, and neither does a nested model: a document or a
-    list has no such order, and PostgreSQL's ``json`` type has no order at
-    all, so a sort on it fails on every request. A reference, such as
-    ``IDRef[User]``, sorts by its id.
+    A field that gets only ``__isnull``, such as a ``dict``, a ``list`` or a
+    field on a JSON column, gets no sort key either, and neither does a
+    nested model: a document or a list has no such order, and PostgreSQL's
+    ``json`` type has no order at all, so a sort on it fails on every
+    request. A reference, such as ``IDRef[User]``, sorts by its id.
+
+    :param column: The column of the field.
     """
     if _get_nested_schema(field) is not None and not _is_idref_field(field):
         return False
-    return _supports_scalar_operators(field)
+    return _supports_scalar_operators(field) and not _has_json_type(column)
 
 
 def _supports_range_operators(field: FieldInfo, column: Any) -> bool:
@@ -422,6 +424,21 @@ def _enum_type(column: Any) -> sqlalchemy.Enum | None:
     while isinstance(sql_type, TypeDecorator):
         sql_type = sql_type.impl_instance
     return sql_type if isinstance(sql_type, sqlalchemy.Enum) else None
+
+
+def _has_json_type(column: Any) -> bool:
+    """Whether ``column`` has SQLAlchemy's ``JSON`` type, also inside
+    ``TypeDecorator`` layers, such as ``fr.PydanticJSON``. ``JSONB`` is such
+    a type too.
+
+    Such a column holds JSON text, such as ``"x"`` with its quotes.
+    SQLAlchemy compares it with a value such as ``x``, without the quotes, so
+    a filter finds no row on SQLite and fails on PostgreSQL.
+    """
+    sql_type = getattr(column, "type", None)
+    while isinstance(sql_type, TypeDecorator):
+        sql_type = sql_type.impl_instance
+    return isinstance(sql_type, sqlalchemy.JSON)
 
 
 def _pagination_offset_validator(pagination: NumberedPagination) -> Any:
@@ -490,8 +507,10 @@ def derive_schema_list_params(
     WriteOnly field gives none either, because a filter on it would let a
     client find out its value. A field whose type is a collection (``dict``/``list``, e.g. a
     ``JSON`` or ``ARRAY`` column) gives only ``__isnull``: a value from the
-    URL cannot become a collection. A field of a nested schema gives dotted
-    keys, such as ``vendor.name``.
+    URL cannot become a collection. A field on a JSON column gives only
+    ``__isnull`` too, also when it holds one value, such as a ``str``: the
+    database compares the JSON text, not the value. A field of a nested
+    schema gives dotted keys, such as ``vendor.name``.
 
     The four key settings choose which of these keys the model has. Each
     entry is a key as the client sends it, or a pattern. ``*`` in a pattern
@@ -634,7 +653,7 @@ def _derive_list_params(
             continue
         # ``sort=tags.name`` has no clear meaning when an item has several
         # tags, and the join repeats rows.
-        if _is_sortable(field) and not any(
+        if _is_sortable(field, column) and not any(
             relationship.property.uselist for relationship in relationships
         ):
             sort_keys.append(name)
@@ -833,8 +852,11 @@ def _filter_fields(name: str, field: FieldInfo, column: Any) -> dict[str, Any]:
     # repeating it makes no sense.
     # Collection/JSON-typed fields (``dict``, ``list[str]``) resolve to
     # real columns, but no query-string value can coerce into them, so
-    # every operator except ``__isnull`` would 400 at request time.
-    supports_scalar = _supports_scalar_operators(field)
+    # every operator except ``__isnull`` would 400 at request time. A JSON
+    # column holds JSON text, so a filter on it compares the text, also for
+    # a field that holds one value: it finds no row on SQLite and fails on
+    # PostgreSQL.
+    supports_scalar = _supports_scalar_operators(field) and not _has_json_type(column)
     if supports_scalar:
         eq_desc = (
             f"Filter by ``{name}``. Comma-separated values are OR-combined "
@@ -889,7 +911,7 @@ def _filter_fields(name: str, field: FieldInfo, column: Any) -> dict[str, Any]:
 
     # an Enum column holds labels: LIKE would search the stored names, and a
     # native ENUM on PostgreSQL has no LIKE at all
-    if _is_string_field(field) and _enum_type(column) is None:
+    if supports_scalar and _is_string_field(field) and _enum_type(column) is None:
         fields[f"{name}__contains"] = (
             Annotated[
                 Optional[list[str]],
@@ -921,6 +943,11 @@ def _filter_fields(name: str, field: FieldInfo, column: Any) -> dict[str, Any]:
     return fields
 
 
+#: Why a field has only ``__isnull``, for the messages.
+_ISNULL_ONLY_HINT = (
+    "A field that holds a dict or a list, or that has a JSON column, has only __isnull."
+)
+
 #: Why a field has no key with this suffix, for the messages.
 _SUFFIX_HINTS = {
     "contains": "Only text fields have __contains and __icontains.",
@@ -931,9 +958,7 @@ _SUFFIX_HINTS = {
         "enums, have __gte, __lte, __gt and __lt. A column of SQLAlchemy's "
         "Enum type has none.",
     ),
-    **dict.fromkeys(
-        ("", "in", "ne"), "A field that holds a dict or a list has only __isnull."
-    ),
+    **dict.fromkeys(("", "in", "ne"), _ISNULL_ONLY_HINT),
 }
 
 
@@ -957,7 +982,9 @@ def _check_filter_entries(
         if "*" not in field and field in keys_of_field:
             field_keys = ", ".join(keys_of_field[field])
             message += f" The filter keys of {field!r} are: {field_keys}."
-            if suffix in _SUFFIX_HINTS:
+            if keys_of_field[field] == [f"{field}__isnull"]:
+                message += f" {_ISNULL_ONLY_HINT}"
+            elif suffix in _SUFFIX_HINTS:
                 message += f" {_SUFFIX_HINTS[suffix]}"
         elif "*" not in entry:
             if keys_of_field:

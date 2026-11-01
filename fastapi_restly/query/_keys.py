@@ -137,10 +137,10 @@ class SortKey:
     It finds the field and the column as :class:`FilterKey` does. A field
     that a response never shows is no sort key either: the order of the rows
     would let a client find out its value. Neither is a field that holds a
-    ``dict``, a ``list`` or a nested model, as in the generated list params:
-    a document has no order that a client means, and PostgreSQL's ``json``
-    type has none at all. The react-admin views use this class for their
-    ``sort``.
+    ``dict``, a ``list`` or a nested model, or a field on a JSON column, as
+    in the generated list params: a document has no order that a client
+    means, and PostgreSQL's ``json`` type has none at all. The react-admin
+    views use this class for their ``sort``.
 
     :param model: The model of the rows, such as the view's ``model``.
     :param schema_response: The response class. A view passes its
@@ -160,7 +160,7 @@ class SortKey:
         self._schema = schema_response
         self._model = model
         field_name, self.column = _find_column(model, schema_response, key, "sort")
-        if not _is_sortable(schema_response.model_fields[field_name]):
+        if not _is_sortable(schema_response.model_fields[field_name], self.column):
             raise BadQueryParam(f"Unknown sort key: {key!r}")
 
     def term(

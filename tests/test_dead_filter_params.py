@@ -182,19 +182,65 @@ def test_collection_typed_fields_are_no_sort_keys():
     )
 
 
-def test_json_typed_field_keeps_scalar_filters():
+def test_a_json_typed_field_keeps_its_filters_on_a_column_that_is_not_json():
     """``pydantic.Json[dict]`` LOOKS like a collection field (its annotation is
-    ``dict``) but its validation parses the query string as JSON, so its
-    filters genuinely work -- they must not be removed."""
+    ``dict``) but its validation parses the query string as JSON, so on a
+    column that is not JSON its filters stay. On a JSON column it has only
+    ``__isnull``, as each field on such a column has."""
 
     class RowSchema(fr.BaseSchema):
-        name: str
+        name: pydantic.Json[dict]
         jmeta: pydantic.Json[dict] | None = None
 
     fields = derive_schema_list_params(RowSchema, JsonColumnRow).model_fields
 
-    for alive in ("jmeta", "jmeta__in", "jmeta__ne", "jmeta__isnull"):
+    for alive in ("name", "name__in", "name__ne", "name__isnull", "jmeta__isnull"):
         assert alive in fields, alive
+    for dead in ("jmeta", "jmeta__in", "jmeta__ne"):
+        assert dead not in fields, dead
+
+
+@pytest.mark.parametrize(
+    "column_type",
+    [JSON(), fr.PydanticJSON(str), fr.PydanticJSONB(str)],
+    ids=["JSON", "PydanticJSON", "PydanticJSONB"],
+)
+def test_a_field_on_a_json_column_has_only_isnull(column_type):
+    """A JSON column holds JSON text, such as ``"x"`` with its quotes, and SQL
+    compares that text. So a filter on a field that holds one value, such as
+    a ``str``, found no row on SQLite and failed on PostgreSQL, and so did a
+    sort on PostgreSQL's ``json`` type. Such a field has only ``__isnull``
+    and is no sort key, also for ``fr.query.SortKey``."""
+
+    class JsonValueRow(fr.IDMixin, SharedBase):
+        name: Mapped[str] = mapped_column()
+        tag: Mapped[str | None] = mapped_column(column_type, default=None)
+
+    class RowSchema(fr.BaseSchema):
+        name: str
+        tag: str | None = None
+
+    params = derive_schema_list_params(RowSchema, JsonValueRow)
+    assert [key for key in params.model_fields if key.startswith("tag")] == [
+        "tag__isnull"
+    ]
+    assert "name__contains" in params.model_fields
+    params.model_validate({"sort": "name"})
+    with pytest.raises(pydantic.ValidationError):
+        params.model_validate({"sort": "tag"})
+    with pytest.raises(BadQueryParam) as caught:
+        fr.query.SortKey(JsonValueRow, RowSchema, "tag")
+    assert caught.value.detail == "Unknown sort key: 'tag'"
+
+    with pytest.raises(RestlyConfigurationError) as raised:
+        derive_schema_list_params(
+            RowSchema, JsonValueRow, exclude_filters=("tag__contains",)
+        )
+    assert str(raised.value) == (
+        "exclude_filters: 'tag__contains' matches no filter key of RowSchema. "
+        "The filter keys of 'tag' are: tag__isnull. A field that holds a dict "
+        "or a list, or that has a JSON column, has only __isnull."
+    )
 
 
 def test_collection_typed_fields_isnull_works_end_to_end(client):

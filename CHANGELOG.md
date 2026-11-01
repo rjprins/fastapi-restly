@@ -96,6 +96,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `derive_schema` keeps each member of a union, as in
   `Mapped[Cat | Dog | None]`. Before, the field got `Cat | None`, so a `Dog`
   was refused, and `Mapped[Cat | Dog]` raised `TypeError`.
+- A field on a JSON column gets only the `__isnull` filter and is no sort
+  key, also when it holds one value, such as a `str`. SQL compares the JSON
+  text of the column, such as `"x"` with its quotes. So the other filters
+  found no row on SQLite and gave a 500 error on PostgreSQL, and so did a
+  sort on PostgreSQL's `json` type. A `pydantic.Json` field on a JSON column
+  has only `__isnull` too.
 
 ## [0.12.0] - 2026-10-27
 

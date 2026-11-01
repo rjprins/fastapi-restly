@@ -91,6 +91,13 @@ Not every field gets every suffix:
   collection, so the other filters would fail on every request. Such a field
   is no sort key either: a document or a list has no order that a client
   means, and PostgreSQL's `json` type has none at all.
+- A field on a JSON column gets only `__isnull` too, also when it holds one
+  value, such as a `str` in `fr.PydanticJSON(str)`. The column holds JSON
+  text, such as `"x"` with its quotes, and SQL compares that text, not the
+  value. So the other filters would find no row on SQLite and fail on
+  PostgreSQL. Such a field is no sort key either. To filter on a key in a
+  document, write the filter yourself; see
+  [Add a filter of your own](#own-list-filter).
 - A {data}`WriteOnly <fastapi_restly.schemas.WriteOnly>` field, a field
   with `Field(exclude=True)`, and a field of Pydantic's secret types, such as
   `SecretStr`, get no filter and are not a sort key. A filter on such a field

@@ -219,7 +219,7 @@ def test_a_serializer_in_the_type_runs(engine):
         assert _stored(session, "prices", "prices") == ['{"tea": 1.5}']
 
 
-def test_a_query_dumps_a_value_as_the_write_does(sync_client):
+def test_a_query_dumps_a_value_as_the_write_does(engine):
     """A value in a query is dumped by the type of the column too. So the
     serializer runs, and a subclass loses its own fields. Then the query
     finds the row that the write stored."""
@@ -229,23 +229,11 @@ def test_a_query_dumps_a_value_as_the_write_does(sync_client):
         prices: Mapped[dict[str, Decimal]] = mapped_column(
             fr.PydanticJSON(dict[str, Money])
         )
-        price: Mapped[Decimal] = mapped_column(fr.PydanticJSON(Money))
         address: Mapped[Address]
 
-    @fr.include_view(sync_client.app)
-    class ShopView(fr.RestView):
-        prefix = "/shops"
-        model = Shop
-
-    SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
-    with fr.open_session() as session:
-        session.add(
-            Shop(
-                prices={"tea": Decimal("1.50")},
-                price=Decimal("1.50"),
-                address=Home(street="Main"),
-            )
-        )
+    SharedBase.metadata.create_all(engine)
+    with Session(engine) as session:
+        session.add(Shop(prices={"tea": Decimal("1.50")}, address=Home(street="Main")))
         session.commit()
         prices = sqlalchemy.select(Shop.id).where(
             Shop.prices == {"tea": Decimal("1.50")}
@@ -255,8 +243,6 @@ def test_a_query_dumps_a_value_as_the_write_does(sync_client):
         )
         assert session.scalars(prices).all() == [1]
         assert session.scalars(address).all() == [1]
-    found = sync_client.get("/shops", params={"price": "1.50"}).json()
-    assert [shop["id"] for shop in found["data"]] == [1]
 
 
 def test_a_strict_model_reads_back(engine):
@@ -826,11 +812,15 @@ def test_a_union_document_keeps_every_member():
     assert fields["plain"].annotation == int | str | None
 
 
-def test_a_filter_on_a_document_of_any_type_works(sync_client):
-    """A field of type Any gets the filter of a plain JSON column."""
+def test_a_document_of_any_type_has_only_isnull(sync_client):
+    """A field on a JSON column has only ``__isnull``, also a field of type
+    Any. A ``FilterKey`` on it still parses a value, though the column type
+    has no Python type."""
 
     class Item(fr.IDMixin, SharedBase):
-        doc: Mapped[Any] = mapped_column(fr.PydanticJSON(Any))
+        doc: Mapped[Any] = mapped_column(
+            fr.PydanticJSON(Any, none_as_null=True), nullable=True
+        )
 
     @fr.include_view(sync_client.app)
     class ItemView(fr.RestView):
@@ -839,7 +829,12 @@ def test_a_filter_on_a_document_of_any_type_works(sync_client):
 
     SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
     sync_client.post("/items", json={"doc": 5})
-    assert sync_client.get("/items?doc=5").json()["data"] == [{"id": 1, "doc": 5}]
+    sync_client.post("/items", json={"doc": None})
+    found = sync_client.get("/items?doc__isnull=false").json()["data"]
+    assert found == [{"id": 1, "doc": 5}]
+    sync_client.get("/items?doc=5", assert_status_code=422)
+    key = fr.query.FilterKey(Item, ItemView.schema_response, "doc")
+    assert key.parse("5") == "5"
 
 
 def test_a_view_schema_can_have_its_own_document_class(sync_client):
