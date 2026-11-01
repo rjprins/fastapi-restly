@@ -7,7 +7,7 @@ import sys
 import types
 import typing
 import weakref
-from collections.abc import Generator, Iterable, Iterator, Mapping
+from collections.abc import Callable, Generator, Iterable, Iterator, Mapping
 from collections.abc import Sequence as _AbcSequence
 from collections.abc import Set as _AbcSet
 from datetime import datetime
@@ -35,7 +35,7 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio.session import AsyncSession as SA_AsyncSession
 from sqlalchemy.orm.session import Session as SA_Session
 from sqlalchemy.sql import ClauseElement
-from typing_extensions import TypeAliasType, TypeVar
+from typing_extensions import TypeAliasType, TypeVar, is_typeddict
 
 from .._columns import column_value
 from .._mapping import is_mapped_instance, is_to_many_relationship
@@ -1345,10 +1345,11 @@ def _json_data(value: Any, column: str) -> Any:
     ``PlainSerializer``, does not run. A serializer in a nested model does.
 
     The dump is one that Restly reads back. The keys are the names of the
-    fields, not the aliases: a response reads the document of a column by the
-    names, as it reads the columns. A computed field is left out, because a
-    model with ``extra="forbid"`` refuses it. A ``Json[T]`` field stays text,
-    as its validation reads it.
+    fields, not the aliases, also for a model with
+    ``serialize_by_alias=True``: a response reads the document of a column by
+    the names, as it reads the columns. A computed field is left out, because
+    a model with ``extra="forbid"`` refuses it. A ``Json[T]`` field stays
+    text, as its validation reads it.
 
     A field typed as a nested model validates to a model, and a field typed
     ``list[datetime]`` to datetimes. A ``JSON`` column binds through
@@ -1356,20 +1357,96 @@ def _json_data(value: Any, column: str) -> Any:
     the same way, so they agree. SQLAlchemy's ``JSON.NULL`` and an SQL
     expression, such as ``null()``, go to the column as they are.
 
-    :param column: The name of the column, for the message of an error.
+    :param column: The column, such as ``Shop.address``, for the message of
+        an error.
     :raises RestlyConfigurationError: the value holds something that a dump
         leaves out or masks, such as a secret.
     """
     if value is sqlalchemy.JSON.NULL or isinstance(value, ClauseElement):
         return value
     _reject_excluded_json_fields(value, column)
-    return _ANY_VALUE.dump_python(value, mode="json", round_trip=True)
+    return _ANY_VALUE.dump_python(value, mode="json", round_trip=True, by_alias=False)
+
+
+def _secret_error(column: str, where: str) -> RestlyConfigurationError:
+    return RestlyConfigurationError(
+        f"{column}: {where} is a secret, such as a SecretStr. A JSON dump masks "
+        "a secret, so the column would store '**********'. Leave the secret out "
+        "of the document, or write a SQLAlchemy TypeDecorator that stores it."
+    )
+
+
+def _excluded_error(column: str, where: str) -> RestlyConfigurationError:
+    return RestlyConfigurationError(
+        f"{column}: {where} is left out of the dump, as a WriteOnly or "
+        "Field(exclude=True) field is. So the column would not store its value. "
+        "Remove the exclusion, or write a SQLAlchemy TypeDecorator that stores it."
+    )
+
+
+def _excluded_if_error(column: str, where: str) -> RestlyConfigurationError:
+    return RestlyConfigurationError(
+        f"{column}: {where} has exclude_if, so a JSON dump can leave it out. Then "
+        "the column would not store its value. Remove exclude_if, or write a "
+        "SQLAlchemy TypeDecorator that stores the field."
+    )
+
+
+def _dataclass_error(column: str, where: str) -> RestlyConfigurationError:
+    return RestlyConfigurationError(
+        f"{column}: {where} is a dataclass. Restly cannot check a dataclass for "
+        "secrets and excluded fields before the dump. Use a Pydantic model."
+    )
+
+
+def _iterator_error(column: str, where: str) -> RestlyConfigurationError:
+    return RestlyConfigurationError(
+        f"{column}: {where} is an iterator, which can be read only once. Use a list."
+    )
+
+
+#: A field that a JSON dump leaves out or masks, and the function that makes
+#: its error.
+_Unstorable = tuple[str, Callable[[str, str], RestlyConfigurationError]]
+
+#: For each model class, its first such field, or None. A write checks each
+#: model in the document, so the fields of a class are checked only once.
+_UNSTORABLE_FIELDS: weakref.WeakKeyDictionary[type, _Unstorable | None] = (
+    weakref.WeakKeyDictionary()
+)
+
+
+def _unstorable_field(model: type[pydantic.BaseModel]) -> _Unstorable | None:
+    """The first field of ``model`` that a JSON dump leaves out or masks,
+    and the function that makes its error."""
+    try:
+        return _UNSTORABLE_FIELDS[model]
+    except KeyError:
+        pass
+    found: _Unstorable | None = None
+    for name, field in model.model_fields.items():
+        if field.exclude:
+            found = (name, _excluded_error)
+        elif _excluded_if(field):
+            found = (name, _excluded_if_error)
+        # A secret field, also one without a value yet: the first write of
+        # such a document fails, not the first with a secret.
+        elif _hides_value(field):
+            found = (name, _secret_error)
+        if found:
+            break
+    _UNSTORABLE_FIELDS[model] = found
+    return found
 
 
 def _reject_excluded_json_fields(value: Any, column: str) -> None:
     """Reject exclusions, secrets, and document values that cannot be
     inspected safely. A JSON dump leaves out an excluded field and masks a
-    secret, so the column would not get the value."""
+    secret, so the column would not get the value.
+
+    :param column: The column, or the type of a ``PydanticJSON`` column, for
+        the message of an error.
+    """
     pending = [value]
     seen: set[int] = set()
     while pending:
@@ -1386,19 +1463,12 @@ def _reject_excluded_json_fields(value: Any, column: str) -> None:
                 if kind is dict:
                     pending.extend(item.values())
             continue
-        if dataclasses.is_dataclass(item) or isinstance(item, Iterator):
-            raise RestlyConfigurationError(
-                f"{column}: documents containing dataclasses or iterators cannot "
-                "be stored automatically in a plain JSON column. Use a SQLAlchemy "
-                "TypeDecorator to define their storage representation."
-            )
+        if dataclasses.is_dataclass(item):
+            raise _dataclass_error(column, f"the {kind.__name__} in the document")
+        if isinstance(item, Iterator):
+            raise _iterator_error(column, "a value in the document")
         if isinstance(item, _SECRET_TYPES):
-            raise RestlyConfigurationError(
-                f"{column}: the document holds a secret, such as a SecretStr. A "
-                "JSON dump masks a secret, so documents with secrets cannot be "
-                "stored automatically in a plain JSON column. Use a SQLAlchemy "
-                "TypeDecorator to define their storage representation."
-            )
+            raise _secret_error(column, "a value in the document")
         if isinstance(item, str | bytes | bytearray) or not isinstance(
             item, (pydantic.BaseModel, Mapping, _AbcSequence, _AbcSet, Enum)
         ):
@@ -1407,33 +1477,11 @@ def _reject_excluded_json_fields(value: Any, column: str) -> None:
             continue
         seen.add(id(item))
         if isinstance(item, pydantic.BaseModel):
-            for name, field in type(item).model_fields.items():
-                if field.exclude:
-                    raise RestlyConfigurationError(
-                        f"{column}: {type(item).__name__}.{name} is excluded from "
-                        "serialization. Documents with WriteOnly or "
-                        "Field(exclude=True) fields cannot be stored automatically "
-                        "in a plain JSON column. Use a SQLAlchemy TypeDecorator "
-                        "to define their storage representation."
-                    )
-                if _excluded_if(field):
-                    raise RestlyConfigurationError(
-                        f"{column}: {type(item).__name__}.{name} has exclude_if, "
-                        "so a JSON dump can leave it out. Then the column would "
-                        "not store its value. Remove exclude_if, or use a "
-                        "SQLAlchemy TypeDecorator that stores the field."
-                    )
-                # A secret field, also one without a value yet: the first
-                # write of such a document fails, not the first with a secret.
-                if _hides_value(field):
-                    raise RestlyConfigurationError(
-                        f"{column}: {type(item).__name__}.{name} has a secret "
-                        "type, such as SecretStr, which a JSON dump masks. "
-                        "Documents with secret fields cannot be stored "
-                        "automatically in a plain JSON column. Use a SQLAlchemy "
-                        "TypeDecorator to define their storage representation."
-                    )
-                pending.append(getattr(item, name, None))
+            unstorable = _unstorable_field(kind)
+            if unstorable is not None:
+                name, error = unstorable
+                raise error(column, f"{kind.__name__}.{name}")
+            pending.extend(getattr(item, name, None) for name in kind.model_fields)
             if item.model_extra:
                 pending.extend(item.model_extra.values())
         elif isinstance(item, Mapping):
@@ -1456,63 +1504,65 @@ def _reject_excluded_json_type(type_: Any, column: str) -> None:
     type tells it when the column is defined, before the first write. A part
     of type ``Any`` can still hold such a value, so each write checks too.
 
-    :param column: The name of the column, for the message of an error.
+    :param column: The type of the column, such as
+        ``PydanticJSON(Address)``, for the message of an error.
     :raises RestlyConfigurationError: ``type_`` has a secret, an excluded
         field, a dataclass or an iterator in it.
     """
-    pending: list[tuple[Any, str]] = [(type_, _type_label(type_))]
+    # Each part, the field or the type it is in, and whether the part is
+    # inside that field or type, as P is in list[P].
+    pending: list[tuple[Any, str, bool]] = [(type_, _type_label(type_), False)]
     seen_aliases: set[Any] = set()
-    seen_models: set[type] = set()
+    seen_classes: set[type] = set()
     while pending:
-        annotation, where = pending.pop()
+        annotation, where, inside = pending.pop()
         part, _ = _unwrap_type(annotation, seen_aliases)
         origin = get_origin(part) or part
         if not isinstance(origin, type):
             # A union, a Literal or a value in a Literal.
-            pending.extend((arg, where) for arg in get_args(part))
+            pending.extend((arg, where, True) for arg in get_args(part))
             continue
+        found = f"{_type_label(part)} in {where}" if inside else where
         if issubclass(origin, _SECRET_TYPES):
-            raise RestlyConfigurationError(
-                f"{column}: {where} has a secret type, such as SecretStr. A JSON "
-                "dump masks a secret, so the column would store '**********'. "
-                "Leave the secret out of the document, or write a SQLAlchemy "
-                "TypeDecorator that stores it."
-            )
+            raise _secret_error(column, found)
         if dataclasses.is_dataclass(origin):
-            raise RestlyConfigurationError(
-                f"{column}: {where} is a dataclass. Restly cannot check a "
-                "dataclass for secrets and excluded fields before the dump. Use "
-                "a Pydantic model."
-            )
+            raise _dataclass_error(column, found)
         if origin in _ITERATOR_TYPES:
             raise RestlyConfigurationError(
-                f"{column}: {where} is an iterator type, such as Iterable. "
-                "Pydantic makes an iterator of the value, which can be read only "
-                "once. Use list."
+                f"{column}: Pydantic validates {found} to an iterator, which can "
+                "be read only once. Use list."
             )
         if issubclass(origin, pydantic.BaseModel):
-            if origin in seen_models:
+            if origin in seen_classes:
                 continue
-            seen_models.add(origin)
+            seen_classes.add(origin)
             for name, field in origin.model_fields.items():
                 field_where = f"{origin.__name__}.{name}"
                 if field.exclude is True:
-                    raise RestlyConfigurationError(
-                        f"{column}: {field_where} is left out of the dump, as a "
-                        "WriteOnly or Field(exclude=True) field is. So the column "
-                        "would not store its value. Remove the exclusion, or "
-                        "write a SQLAlchemy TypeDecorator that stores it."
-                    )
+                    raise _excluded_error(column, field_where)
                 if _excluded_if(field):
-                    raise RestlyConfigurationError(
-                        f"{column}: {field_where} has exclude_if, so a JSON dump "
-                        "can leave it out. Then the column would not store its "
-                        "value. Remove exclude_if, or write a SQLAlchemy "
-                        "TypeDecorator that stores the field."
-                    )
-                pending.append((field.annotation, field_where))
+                    raise _excluded_if_error(column, field_where)
+                pending.append((field.annotation, field_where, False))
             continue
-        pending.extend((arg, where) for arg in get_args(part))
+        if is_typeddict(origin) or (
+            issubclass(origin, tuple) and hasattr(origin, "_fields")
+        ):
+            # A TypedDict or a NamedTuple: check its fields too.
+            if origin in seen_classes:
+                continue
+            seen_classes.add(origin)
+            try:
+                hints = typing.get_type_hints(origin, include_extras=True)
+            except NameError:
+                # A forward reference that does not resolve yet. Each write
+                # checks the value.
+                continue
+            pending.extend(
+                (hint, f"{origin.__name__}.{name}", False)
+                for name, hint in hints.items()
+            )
+            continue
+        pending.extend((arg, where, True) for arg in get_args(part))
 
 
 def _excluded_if(field: FieldInfo) -> bool:
@@ -1523,10 +1573,15 @@ def _excluded_if(field: FieldInfo) -> bool:
 
 def _type_label(type_: Any) -> str:
     """``type_`` as a message shows it: ``Address``, or ``dict[str, Address]``,
-    without the names of modules."""
+    without the names of modules. Text in quotes, as in a ``Literal``, stays
+    as it is."""
     if isinstance(type_, type) and not get_args(type_):
         return type_.__name__
-    return re.sub(r"\b(?:\w+\.)+(\w+)", r"\1", repr(type_))
+    return re.sub(
+        r"'[^']*'|\"[^\"]*\"|\b(?:[A-Za-z_]\w*\.)+([A-Za-z_]\w*)",
+        lambda match: match.group(1) or match.group(0),
+        repr(type_),
+    )
 
 
 def _hides_value(field: FieldInfo) -> bool:

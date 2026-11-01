@@ -10,7 +10,7 @@ import dataclasses
 import math
 from collections.abc import Iterable, Iterator
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, NamedTuple, Optional
 
 import pydantic
 import pytest
@@ -20,6 +20,7 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import StatementError
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
+from typing_extensions import TypedDict
 
 import fastapi_restly as fr
 from fastapi_restly.db._config import _fr_config
@@ -229,18 +230,33 @@ class _Point:
     x: int
 
 
+class _Polygon(pydantic.BaseModel):
+    points: dict[str, list[_Point]]
+
+
+class _SecretDict(TypedDict):
+    password: pydantic.SecretStr
+
+
+class _SecretTuple(NamedTuple):
+    password: pydantic.SecretStr
+
+
 @pytest.mark.parametrize(
     "type_, message",
     [
-        (_WithSecret, "_WithSecret.password has a secret type"),
-        (dict[str, _WithSecret], "_WithSecret.password has a secret type"),
-        (list[pydantic.SecretStr], "list[SecretStr] has a secret type"),
-        (pydantic.Secret[int], "Secret[int] has a secret type"),
-        (_Node, "_Node.secret has a secret type"),
+        (_WithSecret, "_WithSecret.password is a secret"),
+        (dict[str, _WithSecret], "_WithSecret.password is a secret"),
+        (list[pydantic.SecretStr], "SecretStr in list[SecretStr] is a secret"),
+        (pydantic.Secret[int], "Secret[int] is a secret"),
+        (_Node, "_Node.secret is a secret"),
+        (_SecretDict, "_SecretDict.password is a secret"),
+        (_SecretTuple, "_SecretTuple.password is a secret"),
         (list[_WithWriteOnly | None], "_WithWriteOnly.token is left out of the dump"),
         (_WithExcluded, "_WithExcluded.note is left out of the dump"),
-        (list[_Point], "list[_Point] is a dataclass"),
-        (Iterable[int], "Iterable[int] is an iterator type"),
+        (list[_Point], "_Point in list[_Point] is a dataclass"),
+        (_Polygon, "_Point in _Polygon.points is a dataclass"),
+        (Iterable[int], "Pydantic validates Iterable[int] to an iterator"),
     ],
 )
 def test_a_type_that_the_dump_would_change_is_refused(type_, message):
@@ -283,7 +299,7 @@ def test_a_secret_in_a_part_of_type_any_fails_the_write(engine):
         with pytest.raises(StatementError) as excinfo:
             session.flush()
     assert isinstance(excinfo.value.orig, RestlyConfigurationError)
-    assert "holds a secret" in str(excinfo.value.orig)
+    assert "a value in the document is a secret" in str(excinfo.value.orig)
 
 
 @pytest.mark.parametrize("none_as_null", [False, True])

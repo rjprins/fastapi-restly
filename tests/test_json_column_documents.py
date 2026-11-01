@@ -198,7 +198,9 @@ def test_unsupported_documents_are_rejected_before_writing(
             session.add(row)
             session.commit()
 
-        with pytest.raises(fr.exc.RestlyConfigurationError, match="TypeDecorator"):
+        with pytest.raises(
+            fr.exc.RestlyConfigurationError, match="^Document.payload: "
+        ):
             if operation == "create":
                 fr.objects.make_new_object(session, Document, schema(payload=document))
             else:
@@ -535,6 +537,32 @@ def test_a_document_reads_back_as_it_was_written(request, asynchronous):
     assert _stored(stmt, asynchronous=asynchronous) == [
         {"street_name": "Main", "sizes": "[1,2]"}
     ]
+
+
+class _AliasDocument(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(serialize_by_alias=True)
+    street_name: str = pydantic.Field(alias="streetName")
+
+
+def test_a_document_that_dumps_by_alias_is_stored_by_names(sync_client):
+    """``serialize_by_alias=True`` does not change the keys in the column.
+    Before, the column got the aliases, and a response could not read them."""
+
+    class Shop(fr.IDMixin, SharedBase):
+        document: Mapped[_AliasDocument] = mapped_column(sqlalchemy.JSON)
+
+    @fr.include_view(sync_client.app)
+    class ShopView(fr.RestView):
+        prefix = "/shops"
+        model = Shop
+
+    SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
+
+    response = sync_client.post("/shops", json={"document": {"streetName": "Main"}})
+    assert response.status_code == 201
+    assert sync_client.get("/shops/1").json()["document"] == {"streetName": "Main"}
+    stmt = sqlalchemy.select(Shop.document)
+    assert _stored(stmt, asynchronous=False) == [{"street_name": "Main"}]
 
 
 @pytest.mark.skipif(
