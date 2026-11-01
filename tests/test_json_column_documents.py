@@ -489,6 +489,82 @@ def test_a_model_annotation_gets_a_derived_schema(request, asynchronous):
     assert _stored(stmt, asynchronous=asynchronous) == [{"street": "Dock", "number": 2}]
 
 
+class _RoundTripDocument(pydantic.BaseModel):
+    """A document that Pydantic reads back only from the right dump: it reads
+    a field by its alias, refuses an extra key, and reads a ``Json`` field
+    from text."""
+
+    model_config = pydantic.ConfigDict(extra="forbid")
+    street_name: str = pydantic.Field(alias="streetName")
+    sizes: pydantic.Json[list[int]]
+
+    @pydantic.computed_field
+    @property
+    def size_count(self) -> int:
+        return len(self.sizes)
+
+
+@pytest.mark.parametrize("asynchronous", [True, False], ids=["async", "sync"])
+def test_a_document_reads_back_as_it_was_written(request, asynchronous):
+    """The column gets the document by the names of its fields, without the
+    computed field, and with the ``Json`` field as text. A response reads a
+    document by the names of its fields, so it reads it back. Before, the
+    column also got the computed field and the ``Json`` field as a list, and
+    each response with the row was a 500."""
+    client = request.getfixturevalue("client" if asynchronous else "sync_client")
+
+    class Shop(fr.IDMixin, SharedBase):
+        document: Mapped[_RoundTripDocument] = mapped_column(sqlalchemy.JSON)
+
+    @fr.include_view(client.app)
+    class ShopView(fr.AsyncRestView if asynchronous else fr.RestView):
+        prefix = "/shops"
+        model = Shop
+
+    if asynchronous:
+        create_tables()
+    else:
+        SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
+
+    sent = {"streetName": "Main", "sizes": "[1, 2]"}
+    created = client.post("/shops", json={"document": sent}).json()
+    shown = {"streetName": "Main", "sizes": [1, 2], "size_count": 2}
+    assert created["document"] == shown
+    assert client.get("/shops/1").json()["document"] == shown
+    stmt = sqlalchemy.select(Shop.document)
+    assert _stored(stmt, asynchronous=asynchronous) == [
+        {"street_name": "Main", "sizes": "[1,2]"}
+    ]
+
+
+@pytest.mark.skipif(
+    not hasattr(pydantic.fields.FieldInfo, "exclude_if"),
+    reason="Pydantic has exclude_if from version 2.12",
+)
+def test_a_field_with_exclude_if_is_rejected_before_writing(sync_db):
+    """The dump leaves the field out when the condition holds. The document is
+    refused also when it does not hold, so the first write fails, not the
+    first with such a value."""
+
+    class Note(pydantic.BaseModel):
+        text: str = pydantic.Field("", exclude_if=lambda value: value == "")
+
+    class Document(fr.IDMixin, SharedBase):
+        payload: Mapped[dict] = mapped_column(sqlalchemy.JSON)
+
+    schema = pydantic.create_model("DocumentInput", payload=(Note, ...))
+    engine, make_session = sync_db
+    SharedBase.metadata.create_all(engine)
+    with make_session() as session:
+        with pytest.raises(
+            fr.exc.RestlyConfigurationError,
+            match=r"Document.payload: Note.text has exclude_if",
+        ):
+            fr.objects.make_new_object(
+                session, Document, schema(payload=Note(text="kept"))
+            )
+
+
 def _stored(stmt, *, asynchronous):
     """The rows of ``stmt``, read in a new session."""
     if not asynchronous:

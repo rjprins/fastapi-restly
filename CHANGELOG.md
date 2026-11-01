@@ -61,6 +61,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   raises `RestlyConfigurationError`, as a secret in a model does, also in a
   filter. A `NaN` or an infinity in a dict or a list stays as it is.
   `sqlalchemy.JSON.NULL` and an SQL expression go to the column as they are.
+- A JSON column no longer stores a computed field of a model. A model with
+  `extra="forbid"` refused it when the row was read, so each response with
+  the row was a 500 error. A `Json[T]` field is now stored as text, as its
+  validation reads it. Before, it was stored as data, and reading it failed
+  too.
+- A document with a `Field(exclude_if=...)` field raises
+  `RestlyConfigurationError` before it is stored, as one with
+  `Field(exclude=True)` does. The dump left the field out when the condition
+  held, so the column lost its value without an error.
 - A plain `View` that sets a `model` no longer fails when you register it.
   It is not a resource, so a foreign key to its model gets no
   `x-resource-ref` in OpenAPI.

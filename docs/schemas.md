@@ -807,13 +807,19 @@ A `JSON` column maps to a bare `dict`, which does not check the fields of the
 document. To check its shape, write the schema yourself and give the field a
 nested Pydantic model as its type. Before Restly assigns the document to the
 column, it dumps the value as Pydantic does in JSON mode. A model becomes what
-`model_dump(mode="json")` gives, also a model in a dict or a list. A
-`datetime`, a `UUID` or a `Decimal` becomes text, and a set becomes a list. So
-a field such as `dict[str, Address]` or `list[datetime]` works too. The view's
-schema validates the stored document when it is read back.
+`model_dump(mode="json", round_trip=True)` gives, also a model in a dict or a
+list. A `datetime`, a `UUID` or a `Decimal` becomes text, and a set becomes a
+list. So a field such as `dict[str, Address]` or `list[datetime]` works too.
+The view's schema validates the stored document when it is read back.
 
-A document with a {data}`WriteOnly <fastapi_restly.schemas.WriteOnly>` or a
-`Field(exclude=True)` field raises
+The dump is one that the view reads back. The keys are the names of the
+fields, not their aliases, because a response reads the document by the
+names, as it reads the columns. A computed field is not stored, so a model
+with `extra="forbid"` accepts the document. A `Json[T]` field is stored as
+text, as its validation reads it.
+
+A document with a {data}`WriteOnly <fastapi_restly.schemas.WriteOnly>`, a
+`Field(exclude=True)` or a `Field(exclude_if=...)` field raises
 {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
 before Restly assigns it. This includes such fields in nested models. The dump
 would leave those fields out, so they would not be stored. A field of

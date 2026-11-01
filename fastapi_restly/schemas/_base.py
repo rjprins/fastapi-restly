@@ -1338,11 +1338,17 @@ _JSON_SCALAR_TYPES = frozenset({str, int, float, bool, type(None)})
 def _json_data(value: Any, column: str) -> Any:
     """``value`` as a ``JSON`` column takes it: dumped as Pydantic dumps a
     value of type ``Any`` in JSON mode. A model becomes what
-    ``model_dump(mode="json")`` gives, also a model in a dict or a list. A
-    ``datetime``, a ``UUID`` or a ``Decimal`` becomes text, and a set becomes
-    a list. The dump goes by the type of each value, so a serializer on the
-    field itself, such as a ``PlainSerializer``, does not run. A serializer
-    in a nested model does.
+    ``model_dump(mode="json", round_trip=True)`` gives, also a model in a dict
+    or a list. A ``datetime``, a ``UUID`` or a ``Decimal``
+    becomes text, and a set becomes a list. The dump goes by the type of each
+    value, so a serializer on the field itself, such as a
+    ``PlainSerializer``, does not run. A serializer in a nested model does.
+
+    The dump is one that Restly reads back. The keys are the names of the
+    fields, not the aliases: a response reads the document of a column by the
+    names, as it reads the columns. A computed field is left out, because a
+    model with ``extra="forbid"`` refuses it. A ``Json[T]`` field stays text,
+    as its validation reads it.
 
     A field typed as a nested model validates to a model, and a field typed
     ``list[datetime]`` to datetimes. A ``JSON`` column binds through
@@ -1357,7 +1363,7 @@ def _json_data(value: Any, column: str) -> Any:
     if value is sqlalchemy.JSON.NULL or isinstance(value, ClauseElement):
         return value
     _reject_excluded_json_fields(value, column)
-    return _ANY_VALUE.dump_python(value, mode="json")
+    return _ANY_VALUE.dump_python(value, mode="json", round_trip=True)
 
 
 def _reject_excluded_json_fields(value: Any, column: str) -> None:
@@ -1409,6 +1415,13 @@ def _reject_excluded_json_fields(value: Any, column: str) -> None:
                         "Field(exclude=True) fields cannot be stored automatically "
                         "in a plain JSON column. Use a SQLAlchemy TypeDecorator "
                         "to define their storage representation."
+                    )
+                if _excluded_if(field):
+                    raise RestlyConfigurationError(
+                        f"{column}: {type(item).__name__}.{name} has exclude_if, "
+                        "so a JSON dump can leave it out. Then the column would "
+                        "not store its value. Remove exclude_if, or use a "
+                        "SQLAlchemy TypeDecorator that stores the field."
                     )
                 # A secret field, also one without a value yet: the first
                 # write of such a document fails, not the first with a secret.
@@ -1493,6 +1506,12 @@ def _reject_excluded_json_type(type_: Any, column: str) -> None:
                 pending.append((field.annotation, field_where))
             continue
         pending.extend((arg, where) for arg in get_args(part))
+
+
+def _excluded_if(field: FieldInfo) -> bool:
+    """Whether a dump can leave out ``field``, by its ``exclude_if``.
+    Pydantic has ``exclude_if`` from version 2.12."""
+    return getattr(field, "exclude_if", None) is not None
 
 
 def _type_label(type_: Any) -> str:
