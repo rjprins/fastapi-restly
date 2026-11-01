@@ -23,12 +23,12 @@ from ._base import (
     UpdateSchemaT,
     _check_action_name,
     _ReadWhere,
-    _schema_response,
     delete,
     get,
     patch,
     post,
 )
+from ._generated import _schema_response
 from ._lifecycle import (
     _bracket,
     _require_result,
