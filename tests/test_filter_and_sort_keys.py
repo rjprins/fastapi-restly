@@ -417,6 +417,21 @@ def test_parse_gives_json_data_for_a_container_in_a_json_column():
     assert stamps.parse(["2026-01-02T03:04:05Z"]) == ["2026-01-02T03:04:05Z"]
 
 
+def test_parse_refuses_a_secret_in_a_json_column_as_a_write_does():
+    """A dump masks a secret, so the filter would compare the mask. A write
+    of such a document raises, and so does the filter."""
+
+    class Vault(fr.IDMixin, SharedBase):
+        tokens: Mapped[dict[str, Any]] = mapped_column(sqlalchemy.JSON)
+
+    class VaultSchema(fr.IDSchema):
+        tokens: dict[str, pydantic.SecretStr]
+
+    key = fr.query.FilterKey(Vault, VaultSchema, "tokens")
+    with pytest.raises(fr.exc.RestlyConfigurationError, match="secret"):
+        key.parse({"api": "s3cret"})
+
+
 def test_parse_gives_a_time_the_form_of_its_column():
     """A time without an offset is UTC; see ``tests/test_utc_times.py``."""
 

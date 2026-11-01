@@ -34,7 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A JSON column with a field such as `dict[str, Address]` or `list[datetime]`
   no longer gives a 500 error on each write. Restly dumps the whole value as
   Pydantic does in JSON mode, also for a filter. A secret in a dict or a list
-  raises `RestlyConfigurationError`, as a secret in a model does.
+  raises `RestlyConfigurationError`, as a secret in a model does, also in a
+  filter. A `NaN` or an infinity in a dict or a list stays as it is.
+  `sqlalchemy.JSON.NULL` and an SQL expression go to the column as they are.
 - A plain `View` that sets a `model` no longer fails when you register it.
   It is not a resource, so a foreign key to its model gets no
   `x-resource-ref` in OpenAPI.

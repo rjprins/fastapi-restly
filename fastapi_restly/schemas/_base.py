@@ -10,6 +10,7 @@ from collections.abc import Iterable, Iterator, Mapping
 from collections.abc import Sequence as _AbcSequence
 from collections.abc import Set as _AbcSet
 from datetime import datetime
+from enum import Enum
 from typing import (
     TYPE_CHECKING,
     Annotated,
@@ -25,12 +26,14 @@ from typing import (
 )
 
 import pydantic
+import sqlalchemy
 from pydantic.fields import Field, FieldInfo
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio.session import AsyncSession as SA_AsyncSession
 from sqlalchemy.orm.session import Session as SA_Session
+from sqlalchemy.sql import ClauseElement
 from typing_extensions import TypeAliasType, TypeVar
 
 from .._columns import column_value
@@ -1321,22 +1324,111 @@ _SECRET_TYPES: tuple[type, ...] = (
 
 
 #: Dumps a value by its own type, as ``model_dump(mode="json")`` dumps a
-#: field of type ``Any``.
-_ANY_VALUE = pydantic.TypeAdapter(Any)
+#: field of type ``Any``. A float such as ``nan`` stays a float, as in a field
+#: of type ``float``: ``json.dumps`` writes it, or the database refuses it.
+_ANY_VALUE = pydantic.TypeAdapter(
+    Any, config=pydantic.ConfigDict(ser_json_inf_nan="constants")
+)
+
+#: The types of the values in a JSON document that need no check.
+_JSON_SCALAR_TYPES = frozenset({str, int, float, bool, type(None)})
 
 
-def _json_data(value: Any) -> Any:
-    """``value`` as a ``JSON`` column takes it: dumped as Pydantic dumps it
-    in JSON mode. A model becomes what ``model_dump(mode="json")`` gives, also
-    a model in a dict or a list. A ``datetime``, a ``UUID`` or a ``Decimal``
-    becomes text, and a set becomes a list.
+def _json_data(value: Any, column: str) -> Any:
+    """``value`` as a ``JSON`` column takes it: dumped as Pydantic dumps a
+    value of type ``Any`` in JSON mode. A model becomes what
+    ``model_dump(mode="json")`` gives, also a model in a dict or a list. A
+    ``datetime``, a ``UUID`` or a ``Decimal`` becomes text, and a set becomes
+    a list. The dump goes by the type of each value, so a serializer on the
+    field itself, such as a ``PlainSerializer``, does not run. A serializer
+    in a nested model does.
 
     A field typed as a nested model validates to a model, and a field typed
     ``list[datetime]`` to datetimes. A ``JSON`` column binds through
     ``json.dumps``, which cannot take them. A write and a filter dump the value
-    the same way, so they agree.
+    the same way, so they agree. SQLAlchemy's ``JSON.NULL`` and an SQL
+    expression, such as ``null()``, go to the column as they are.
+
+    :param column: The name of the column, for the message of an error.
+    :raises RestlyConfigurationError: the value holds something that a dump
+        leaves out or masks, such as a secret.
     """
+    if value is sqlalchemy.JSON.NULL or isinstance(value, ClauseElement):
+        return value
+    _reject_excluded_json_fields(value, column)
     return _ANY_VALUE.dump_python(value, mode="json")
+
+
+def _reject_excluded_json_fields(value: Any, column: str) -> None:
+    """Reject exclusions, secrets, and document values that cannot be
+    inspected safely. A JSON dump leaves out an excluded field and masks a
+    secret, so the column would not get the value."""
+    pending = [value]
+    seen: set[int] = set()
+    while pending:
+        item = pending.pop()
+        kind = type(item)
+        # Most of a document is plain JSON data, as a request body gives it.
+        # Check it by its exact type first: this is much faster.
+        if kind in _JSON_SCALAR_TYPES:
+            continue
+        if kind is dict or kind is list:
+            if id(item) not in seen:
+                seen.add(id(item))
+                pending.extend(item)
+                if kind is dict:
+                    pending.extend(item.values())
+            continue
+        if dataclasses.is_dataclass(item) or isinstance(item, Iterator):
+            raise RestlyConfigurationError(
+                f"{column}: documents containing dataclasses or iterators cannot "
+                "be stored automatically in a plain JSON column. Use a SQLAlchemy "
+                "TypeDecorator to define their storage representation."
+            )
+        if isinstance(item, _SECRET_TYPES):
+            raise RestlyConfigurationError(
+                f"{column}: the document holds a secret, such as a SecretStr. A "
+                "JSON dump masks a secret, so documents with secrets cannot be "
+                "stored automatically in a plain JSON column. Use a SQLAlchemy "
+                "TypeDecorator to define their storage representation."
+            )
+        if isinstance(item, str | bytes | bytearray) or not isinstance(
+            item, (pydantic.BaseModel, Mapping, _AbcSequence, _AbcSet, Enum)
+        ):
+            continue
+        if id(item) in seen:
+            continue
+        seen.add(id(item))
+        if isinstance(item, pydantic.BaseModel):
+            for name, field in type(item).model_fields.items():
+                if field.exclude:
+                    raise RestlyConfigurationError(
+                        f"{column}: {type(item).__name__}.{name} is excluded from "
+                        "serialization. Documents with WriteOnly or "
+                        "Field(exclude=True) fields cannot be stored automatically "
+                        "in a plain JSON column. Use a SQLAlchemy TypeDecorator "
+                        "to define their storage representation."
+                    )
+                # A secret field, also one without a value yet: the first
+                # write of such a document fails, not the first with a secret.
+                if _hides_value(field):
+                    raise RestlyConfigurationError(
+                        f"{column}: {type(item).__name__}.{name} has a secret "
+                        "type, such as SecretStr, which a JSON dump masks. "
+                        "Documents with secret fields cannot be stored "
+                        "automatically in a plain JSON column. Use a SQLAlchemy "
+                        "TypeDecorator to define their storage representation."
+                    )
+                pending.append(getattr(item, name, None))
+            if item.model_extra:
+                pending.extend(item.model_extra.values())
+        elif isinstance(item, Mapping):
+            pending.extend(item.keys())
+            pending.extend(item.values())
+        elif isinstance(item, Enum):
+            pending.append(item.value)
+        else:
+            pending.extend(item)
 
 
 def _hides_value(field: FieldInfo) -> bool:

@@ -1741,7 +1741,7 @@ def _value_parser(
         elif enum_type is not None:
             return _enum_value(enum_type, result, key, value)
         elif is_json:
-            return _json_data(result)
+            return _json_data(result, f"{schema_cls.__name__}.{field_name}")
         try:
             if (untyped or reference) and to_python_type is not None:
                 result = to_python_type(result)

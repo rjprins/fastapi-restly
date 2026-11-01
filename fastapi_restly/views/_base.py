@@ -132,7 +132,6 @@ from ..schemas._base import (
     _as_response,
     _client_name,
     _collection_item_type,
-    _hides_value,
     _is_readonly,
     _json_data,
     _model_id_type,
@@ -481,8 +480,7 @@ def _json_ready(model_cls: type[Any], field_name: str, value: Any) -> Any:
     """
     if not _is_json_column(model_cls, field_name):
         return value
-    _reject_excluded_json_fields(value, f"{model_cls.__name__}.{field_name}")
-    return _json_data(value)
+    return _json_data(value, f"{model_cls.__name__}.{field_name}")
 
 
 def _column_ready(
@@ -524,66 +522,6 @@ def _column_ready(
                 }
             ]
         ) from None
-
-
-def _reject_excluded_json_fields(value: Any, column: str) -> None:
-    """Reject exclusions, secrets, and document values that cannot be
-    inspected safely. A JSON dump leaves out an excluded field and masks a
-    secret, so the column would not get the value."""
-    pending = [value]
-    seen: set[int] = set()
-    while pending:
-        item = pending.pop()
-        if dataclasses.is_dataclass(item) or isinstance(item, Iterator):
-            raise RestlyConfigurationError(
-                f"{column}: documents containing dataclasses or iterators cannot "
-                "be stored automatically in a plain JSON column. Use a SQLAlchemy "
-                "TypeDecorator to define their storage representation."
-            )
-        if isinstance(item, _SECRET_TYPES):
-            raise RestlyConfigurationError(
-                f"{column}: the document holds a secret, such as a SecretStr. A "
-                "JSON dump masks a secret, so documents with secrets cannot be "
-                "stored automatically in a plain JSON column. Use a SQLAlchemy "
-                "TypeDecorator to define their storage representation."
-            )
-        if isinstance(item, str | bytes | bytearray) or not isinstance(
-            item, (pydantic.BaseModel, Mapping, Sequence, Set, Enum)
-        ):
-            continue
-        if id(item) in seen:
-            continue
-        seen.add(id(item))
-        if isinstance(item, pydantic.BaseModel):
-            for name, field in type(item).model_fields.items():
-                if field.exclude:
-                    raise RestlyConfigurationError(
-                        f"{column}: {type(item).__name__}.{name} is excluded from "
-                        "serialization. Documents with WriteOnly or "
-                        "Field(exclude=True) fields cannot be stored automatically "
-                        "in a plain JSON column. Use a SQLAlchemy TypeDecorator "
-                        "to define their storage representation."
-                    )
-                # A secret field, also one without a value yet: the first
-                # write of such a document fails, not the first with a secret.
-                if _hides_value(field):
-                    raise RestlyConfigurationError(
-                        f"{column}: {type(item).__name__}.{name} has a secret "
-                        "type, such as SecretStr, which a JSON dump masks. "
-                        "Documents with secret fields cannot be stored "
-                        "automatically in a plain JSON column. Use a SQLAlchemy "
-                        "TypeDecorator to define their storage representation."
-                    )
-                pending.append(getattr(item, name, None))
-            if item.model_extra:
-                pending.extend(item.model_extra.values())
-        elif isinstance(item, Mapping):
-            pending.extend(item.keys())
-            pending.extend(item.values())
-        elif isinstance(item, Enum):
-            pending.append(item.value)
-        else:
-            pending.extend(item)
 
 
 def _add_assignment(target: dict[str, Any], field_name: str | None, value: Any) -> None:

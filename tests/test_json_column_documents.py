@@ -14,6 +14,7 @@ processor, and may well want the object as it stands.
 import asyncio
 import dataclasses
 import json
+import math
 from collections import deque
 from collections.abc import Iterable, Iterator
 from datetime import datetime
@@ -382,6 +383,66 @@ def test_a_value_inside_a_container_is_stored_as_json_data(
 
     stmt = sqlalchemy.select(Document.payload).order_by(Document.id)
     assert _stored(stmt, asynchronous=asynchronous) == [stored, stored]
+
+
+@pytest.mark.parametrize("asynchronous", [True, False], ids=["async", "sync"])
+def test_a_nan_in_a_container_is_stored_as_a_nan(request, asynchronous):
+    """Python's ``json`` reads ``NaN``, so a body can hold it. The dump keeps
+    it, as for a field of type ``float``: the row then reads back as it was
+    written. A dump to ``null`` would store a row that its schema cannot
+    read."""
+    client = request.getfixturevalue("client" if asynchronous else "sync_client")
+
+    class Series(fr.IDMixin, SharedBase):
+        points: Mapped[Any] = mapped_column(sqlalchemy.JSON)
+
+    class SeriesSchema(fr.IDSchema):
+        points: list[float]
+
+    @fr.include_view(client.app)
+    class SeriesView(fr.AsyncRestView if asynchronous else fr.RestView):
+        prefix = "/series"
+        model = Series
+        schema = SeriesSchema
+
+    if asynchronous:
+        create_tables()
+    else:
+        SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
+    # httpx refuses to encode NaN, so the body is sent as text.
+    response = client.post(
+        "/series",
+        content='{"points": [1.0, NaN, Infinity]}',
+        headers={"content-type": "application/json"},
+    )
+    assert response.status_code == 201, response.text
+
+    client.get("/series/1").raise_for_status()
+    stmt = sqlalchemy.select(Series.points)
+    [points] = _stored(stmt, asynchronous=asynchronous)
+    assert points[0] == 1.0
+    assert math.isnan(points[1])
+    assert points[2] == math.inf
+
+
+def test_json_null_and_an_sql_expression_go_to_the_column_as_they_are(sync_db):
+    """SQLAlchemy's ``JSON.NULL`` stores JSON ``null``, and ``null()`` stores
+    SQL ``NULL``. A dump would turn them into other values."""
+
+    class Note(fr.IDMixin, SharedBase):
+        body: Mapped[Any] = mapped_column(sqlalchemy.JSON, nullable=True)
+
+    class NoteInput(pydantic.BaseModel):
+        body: Any
+
+    engine, make_session = sync_db
+    SharedBase.metadata.create_all(engine)
+    with make_session() as session:
+        for body in (sqlalchemy.JSON.NULL, sqlalchemy.null()):
+            fr.objects.make_new_object(session, Note, NoteInput(body=body))
+        session.commit()
+        stmt = sqlalchemy.select(sqlalchemy.cast(Note.body, sqlalchemy.String))
+        assert list(session.scalars(stmt.order_by(Note.id))) == ["null", None]
 
 
 def _stored(stmt, *, asynchronous):
