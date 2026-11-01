@@ -36,6 +36,14 @@ class JSONDocument(TypeDecorator[Any]):
     :class:`~fastapi_restly.exc.RestlyConfigurationError` when you define the
     column.
 
+    On a base with :class:`ModelDefaults`, ``Mapped[Address]`` alone gives
+    the column ``JSONDocument(Address)``, for each Pydantic model. The type
+    map has ``pydantic.BaseModel: JSONDocument(pydantic.BaseModel)`` for it,
+    as SQLAlchemy has ``enum.Enum: Enum(enum.Enum)`` for an enum. Another
+    type, such as ``dict[str, Address]``, needs ``mapped_column``. Your own
+    entry for ``pydantic.BaseModel``, such as
+    ``JSONDocument(pydantic.BaseModel, impl=JSONB)``, wins.
+
     In all else, the column works as SQLAlchemy's ``JSON``. ``None`` is stored
     as JSON ``null``, and ``none_as_null=True`` stores SQL ``NULL``. A change
     inside the document, such as ``shop.address.city = "Utrecht"``, is not
@@ -74,6 +82,31 @@ class JSONDocument(TypeDecorator[Any]):
         # A TypeDecorator does not take this from its impl. JSON puts a None
         # into the INSERT, as JSON null, unless none_as_null is set.
         self.should_evaluate_none = self.impl_instance.should_evaluate_none
+
+    def _resolve_for_python_type(
+        self, python_type: Any, matched_on: Any, matched_on_flattened: Any
+    ) -> Any:
+        """The column type for the model in ``Mapped[...]``.
+
+        SQLAlchemy calls this for a type in a type map. As with
+        ``sqlalchemy.Enum(enum.Enum)``, the generic form
+        ``JSONDocument(pydantic.BaseModel)`` makes a type for each model, with
+        the same options. Another type accepts only its own class, as any
+        SQLAlchemy type does. SQLAlchemy has no public way to do this yet.
+        """
+        if (
+            self.type_ is pydantic.BaseModel
+            and isinstance(python_type, type)
+            and issubclass(python_type, pydantic.BaseModel)
+        ):
+            return type(self)(
+                python_type,
+                none_as_null=self.none_as_null,
+                impl=type(self.impl_instance),
+            )
+        return super()._resolve_for_python_type(
+            python_type, matched_on, matched_on_flattened
+        )
 
     def process_bind_param(self, value: Any, dialect: Dialect) -> Any:
         """Validate ``value`` and dump it as JSON data."""

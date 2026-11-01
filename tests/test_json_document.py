@@ -84,6 +84,54 @@ def test_a_row_reads_back_as_the_type(engine):
         assert shop.branches == {"north": Address(street="Dock", number=2)}
 
 
+def test_a_model_annotation_alone_gives_a_document_column(engine):
+    """On a base with ``fr.ModelDefaults``, ``Mapped[Address]`` needs no
+    column type. Each model gets its own type. An explicit type wins."""
+
+    class Shop(fr.IDMixin, SharedBase):
+        address: Mapped[Address]
+        plain: Mapped[Address] = mapped_column(sqlalchemy.JSON)
+        home: Mapped[Home | None] = None
+
+    columns = Shop.__table__.c
+    assert repr(columns.address.type) == "JSONDocument(Address)"
+    assert repr(columns.home.type) == "JSONDocument(Home)"
+    assert type(columns.plain.type) is sqlalchemy.JSON
+    assert columns.home.nullable and not columns.address.nullable
+    SharedBase.metadata.create_all(engine)
+    with Session(engine) as session:
+        session.add(
+            Shop(
+                address=Address(street="Main"),
+                plain={"street": "Main"},
+                home=Home(street="Dock", rooms=3),
+            )
+        )
+        session.commit()
+    with Session(engine) as session:
+        shop = session.scalars(sqlalchemy.select(Shop)).one()
+        assert shop.address == Address(street="Main")
+        assert shop.home == Home(street="Dock", rooms=3)
+        assert shop.plain == {"street": "Main"}
+
+
+def test_your_own_type_map_entry_for_models_wins():
+    class Base(fr.ModelDefaults, DeclarativeBase):
+        type_annotation_map = {
+            pydantic.BaseModel: fr.JSONDocument(
+                pydantic.BaseModel, impl=postgresql.JSONB, none_as_null=True
+            )
+        }
+
+    class Shop(fr.IDMixin, Base):
+        address: Mapped[Address]
+
+    column_type = Shop.__table__.c.address.type
+    assert column_type.type_ is Address
+    assert column_type.none_as_null
+    assert type(column_type.impl_instance) is postgresql.JSONB
+
+
 def test_a_write_validates_a_dict(engine):
     """A dict is validated, so the column gets the defaults, and a typo
     fails the flush instead of each later load of the row."""
@@ -353,10 +401,8 @@ def test_a_view_writes_and_reads_the_document(request, asynchronous):
     client = request.getfixturevalue("client" if asynchronous else "sync_client")
 
     class Shop(fr.IDMixin, SharedBase):
-        address: Mapped[Address] = mapped_column(fr.JSONDocument(Address))
-        old_address: Mapped[Address | None] = mapped_column(
-            fr.JSONDocument(Address), default=None
-        )
+        address: Mapped[Address]
+        old_address: Mapped[Address | None] = None
 
     @fr.include_view(client.app)
     class ShopView(fr.AsyncRestView if asynchronous else fr.RestView):
