@@ -890,7 +890,7 @@ not their aliases, also with `serialize_by_alias=True`. A response reads the
 document by the names, as it reads the columns. A computed field is not
 stored, so a model with `extra="forbid"` accepts the document. A `Json[T]`
 field is stored as text, as its validation reads it. A load reads the stored
-document as Pydantic reads JSON. So a strict model reads a `datetime` from
+document in lax mode, also for a strict model. So it reads a `datetime` from
 text, and a tuple from a list.
 
 **Refused types.** Some types raise
@@ -940,8 +940,10 @@ base, and each model gets a `JSONB` column. Your own entry wins; see
 generated schema, which does not check the document. To check it only in the
 view, write the schema yourself and give the field a Pydantic model as its
 type, such as `Address` or `dict[str, Address]`. Restly dumps the value
-before it assigns it to the column, and it refuses the same types when it
-writes the value. The column has no type of its own, so this dump goes by
+before it assigns it to the column. Then it refuses the same fields, in each
+model in the value. It cannot check the keys of a `TypedDict` or the fields
+of a `NamedTuple`, because by then the value is a plain dict or tuple. The
+column has no type of its own, so this dump goes by
 the type of the value: a subclass keeps its own fields, and a serializer of
 the field type, such as a `PlainSerializer`, does not run. A serializer in a
 model does. The model attribute then holds a dict, not a model. A

@@ -45,12 +45,14 @@ class PydanticJSON(TypeDecorator[Any]):
     it dumps the value as ``TypeAdapter(type_)`` dumps it in JSON mode: a
     nested model becomes a dict, and a ``datetime`` becomes text. The keys
     are the names of the fields, not their aliases. A load reads the stored
-    JSON data as Pydantic reads JSON, so a strict model reads it back too.
+    JSON data in lax mode, so a strict model reads it back too.
 
     The column refuses a type with a secret, such as ``SecretStr``, or with a
     field that a dump leaves out, such as a ``WriteOnly`` field. The column
-    would not store the value of such a field. It also refuses a dataclass
-    and an iterator type, such as ``Iterable``. It raises
+    would not store the value of such a field. It refuses a ``ReadOnly``
+    field too, because a request writes the whole document and would replace
+    the value. It also refuses a dataclass and an iterator type, such as
+    ``Iterable``. It raises
     :class:`~fastapi_restly.exc.RestlyConfigurationError` when you define the
     column.
 
@@ -91,8 +93,9 @@ class PydanticJSON(TypeDecorator[Any]):
         except TypeError:
             raise RestlyConfigurationError(
                 f"{self._label}: the type is not hashable. SQLAlchemy caches a "
-                "statement by the types in it. Use a type without a dict or a "
-                "list in it, as in Annotated[str, Field(max_length=10)]."
+                "statement by the types in it. A dict or a list as a value in "
+                "Annotated[...] has no hash. Use Field(...) instead, as in "
+                "Annotated[str, Field(max_length=10)]."
             ) from None
         self._adapter: pydantic.TypeAdapter[Any] = pydantic.TypeAdapter(type_)
         _reject_excluded_json_type(type_, self._label)
@@ -151,8 +154,9 @@ class PydanticJSON(TypeDecorator[Any]):
     def process_result_value(self, value: Any, dialect: Dialect) -> Any:
         """Validate the stored document.
 
-        The document is JSON data, so it is read as Pydantic reads JSON: a
-        strict field takes text for a ``datetime``, and a list for a tuple.
+        The document is JSON data, so it is read in lax mode, also for a
+        strict model: it takes text for a ``datetime``, and a list for a
+        tuple.
         A field can have its name as the key, as the dump writes it, or its
         alias, as Pydantic reads it by default.
         """
@@ -181,8 +185,9 @@ class PydanticJSON(TypeDecorator[Any]):
         """The class of the document, such as ``dict`` for
         ``dict[str, Address]``.
 
-        :raises NotImplementedError: The type has no one class, as a union or
-            ``Any`` has not. SQLAlchemy raises it for such a type too.
+        :raises NotImplementedError: The type is a union, ``Any``, or another
+            type that is not one class. SQLAlchemy raises it for such a type
+            too.
         """
         type_ = self.type_
         if get_origin(type_) is Annotated:

@@ -1404,7 +1404,8 @@ def _read_only_error(column: str, where: str) -> RestlyConfigurationError:
     return RestlyConfigurationError(
         f"{column}: {where} is ReadOnly. But a request writes the whole "
         "document, so it would replace the value that the server set. Keep such "
-        "a value in a column of its own, or remove ReadOnly."
+        "a value in a column of its own, or use a model without ReadOnly for "
+        "the document."
     )
 
 

@@ -260,9 +260,9 @@ def test_a_query_dumps_a_value_as_the_write_does(sync_client):
 
 
 def test_a_strict_model_reads_back(engine):
-    """The stored document is JSON data, and the column reads it as Pydantic
-    reads JSON. So a strict model takes text for a datetime, a UUID or a
-    Decimal, and a list for a tuple."""
+    """The stored document is JSON data, and the column reads it in lax
+    mode. So a strict model takes text for a datetime, a UUID or a Decimal,
+    and a list for a tuple."""
 
     class Entry(pydantic.BaseModel):
         model_config = pydantic.ConfigDict(strict=True)
