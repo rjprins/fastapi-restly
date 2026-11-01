@@ -635,12 +635,14 @@ To save all orders in one commit, see
 :::{admonition} Details
 :class: details
 
-Each write action runs in a savepoint, SQLAlchemy's
+Each outermost write action runs in a savepoint, SQLAlchemy's
 {meth}`session.begin_nested() <sqlalchemy.orm.Session.begin_nested>`. The
 savepoint begins after `authorize`, the reference check and the snapshot, and
 it ends at the commit. When the action raises before the commit, Restly rolls
-back to the savepoint. This undoes only what the action changed. The rows that
-were loaded before stay loaded, so async code can still read them. Inside a
+back to the savepoint. This undoes only what the action changed. Rows that
+the action did not change stay loaded, so async code can still read them.
+Rows that it changed, such as the row of an update, are expired. In async
+code, call `await session.refresh(obj)` before you read such a row. Inside a
 `shared_write_action_commit()` block, or inside the block of another action,
 an action has no savepoint of its own; see
 [Commit several writes together](#shared-write-action-commit).
@@ -648,22 +650,32 @@ an action has no savepoint of its own; see
 A savepoint begins with a flush of what is pending in the session, as
 `begin_nested()` always does. So an object that a route adds to the session
 before the write action is written when the action begins, and an error in
-the action does not undo it. Give a new object to `write_action` as `obj`,
-without `session.add()`: the action then adds it inside its savepoint.
+the action does not undo it. This is also true for a new object that a route
+appends to a collection of a loaded row. Give a new object to `write_action`
+as `obj`, without `session.add()`, and connect it to loaded rows inside the
+block: the action then adds it inside its savepoint.
 
 An error from `after_action_commit` does not undo the order: the order is
 saved. See [When `after_action_commit` raises](#after-action-commit-raises).
-When the commit itself fails, for example on a deferred constraint, the
-savepoint has ended already. Then Restly rolls back the whole transaction.
-This also expires the rows that were loaded before.
+When the commit itself fails, for example on a deferred constraint, Restly
+rolls back the whole transaction. This also expires the rows that were loaded
+before. On SQLite, Restly sends `BEGIN` before the savepoint. With the default
+settings of the driver, the end of the savepoint would commit already
+otherwise.
 
-SQLAlchemy calls the `before_commit` and `after_commit` listeners of the
-session also when a savepoint ends. So for each write action, they run twice:
-when the savepoint ends, and at the commit. A listener that must run only at
-the commit returns early when `session.in_nested_transaction()` is true. Work
-that must wait for the commit, such as an email, belongs in
-`after_action_commit`. On SQLite, the savepoint can also make
-`database is locked` come sooner; see [Turn on WAL for SQLite](#sqlite-wal).
+The savepoint costs two more statements for each write: `SAVEPOINT` and
+`RELEASE SAVEPOINT`. On SQLite, `BEGIN` is a third.
+
+SQLAlchemy calls the listeners of the session for a savepoint too:
+`after_begin` when it begins, `before_commit` and `after_commit` when it ends,
+and `after_rollback` when it rolls back. So `before_commit` and `after_commit`
+run twice for each outermost write action: when the savepoint ends, and at the
+commit. The first time is before the commit, which can still fail. A listener
+that must run only at the commit returns early when
+`session.in_nested_transaction()` is true. Work that must wait for the commit,
+such as an email, belongs in `after_action_commit`. On SQLite, the savepoint
+can also make `database is locked` come sooner; see
+[Turn on WAL for SQLite](#sqlite-wal).
 :::
 
 (transaction-hooks)=
@@ -1174,9 +1186,13 @@ saves the order with the lines that its relationship holds, and the hooks
 receive the order as `new`.
 
 The route builds the order before the block, so before `authorize` and the
-reference check. That is safe, because building an object writes nothing. A
-check of the built object, such as a rule about its lines, goes inside the
-block, where `authorize` has already passed.
+reference check. That is safe, because building an object writes nothing. But
+set a reference to a loaded row by its key, as `customer_id=` above, or set it
+inside the block. With `Order(customer=customer)` before the block, the loaded
+customer holds the new order in its `orders`. The action begins with a flush,
+and SQLAlchemy then warns that the order is not in the session. A check of the
+built object, such as a rule about its lines, goes inside the block, where
+`authorize` has already passed.
 
 (write-several-rows)=
 **Change several rows in one action.** Pass `obj=None`: the action has no

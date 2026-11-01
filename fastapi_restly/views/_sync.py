@@ -203,7 +203,10 @@ class RestView(
           it. Restly adds it to the session when the block starts, so a flush
           in the block gives it an id. ``authorize`` gets ``obj=None``, as on
           ``POST /``, and ``old`` is ``None``. Pass the request as ``data``,
-          so that ``authorize`` sees what the action creates::
+          so that ``authorize`` sees what the action creates. Do not
+          ``session.add()`` the object before the block, and do not append it
+          to a collection of a loaded row there: the block begins with a
+          flush, so an error in the block would not undo that row::
 
               upload = Upload(filename=file.filename)
               with self.write_action(self.Action.CREATE, obj=upload, data=form):
@@ -237,6 +240,8 @@ class RestView(
         Work that needs the commit goes in ``after_action_commit``.
 
         An exception in the block skips the save and the commit. The
+        outermost block runs in a savepoint, and Restly rolls back to it, so
+        what the block changed is undone. The
         outermost block on the session owns the commit and the after-hooks.
         So a handler or a ``write_action`` inside this block, or this block
         inside :meth:`shared_write_action_commit`, returns after its save and

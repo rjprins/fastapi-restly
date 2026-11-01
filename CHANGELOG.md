@@ -18,20 +18,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   as `async_session_generator` does too. This also works for a generator in
   `functools.partial`, behind a decorator with `functools.wraps`, or in the
   `__call__` of an object.
-- Each write action, and each outermost `shared_write_action_commit()` block,
-  runs in a savepoint. An exception rolls back to it, so the session stays
-  usable.
+- Each outermost write action, and each outermost
+  `shared_write_action_commit()` block, runs in a savepoint. An exception
+  rolls back to it, so the session stays usable. When the commit fails,
+  Restly rolls back the whole transaction. The savepoint adds two statements
+  to each write: `SAVEPOINT` and `RELEASE SAVEPOINT`. On SQLite, Restly also
+  sends `BEGIN` before the savepoint. With the default settings of the
+  driver, the end of the savepoint would commit otherwise.
 - What a route added to the session before a write action is written when the
-  action begins, outside its savepoint.
-- The `before_commit` and `after_commit` listeners of the session also run
-  when the savepoint ends. To run only at the commit, return early when
+  action begins, outside its savepoint. This is also true for a new object
+  that a route appends to a collection of a loaded row.
+- SQLAlchemy calls the listeners of the session for the savepoint too:
+  `after_begin`, `before_commit`, `after_commit` and `after_rollback`. So
+  `before_commit` and `after_commit` run twice. The first time is before the
+  commit, which can still fail. To run only at the commit, return early when
   `session.in_nested_transaction()` is true.
 
 ### Fixed
 
 - A write that raised is no longer committed by the next write, and a caught
   `Conflict` no longer breaks the session. A route can catch the error of one
-  write and go on, without `session.begin_nested()`.
+  write action and go on, without `session.begin_nested()`. Inside a
+  `shared_write_action_commit()` block, still put `session.begin_nested()`
+  around each write that may raise. An object that the route put in the
+  session before the action, also through a relationship, is not undone: the
+  action writes it when it begins.
+- `RestlyUncommittedChangesWarning` no longer forgets a write when a later
+  savepoint rolls back. Only the writes inside the savepoint are undone.
 - On SQLite, a `session.begin_nested()` inside `shared_write_action_commit()`
   no longer commits its rows too early.
 - A JSON column with a field such as `dict[str, Address]` or `list[datetime]`

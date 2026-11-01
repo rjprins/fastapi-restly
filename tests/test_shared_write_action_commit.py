@@ -657,10 +657,12 @@ async def test_async_owner_drains_sync_hooks_through_run_sync(writes):
 @pytest.mark.parametrize("writes", ["async"], indirect=True)
 @pytest.mark.parametrize("nested_block", [False, True])
 async def test_sync_owner_rejects_async_work_before_mutation(writes, nested_block):
-    from fastapi_restly.views._lifecycle import _shared_write_action_commit
+    """The owner of a sync block, without its savepoint: a sync block on an
+    async session runs only inside ``run_sync()``, where nothing can await."""
+    from fastapi_restly.views._lifecycle import _join_shared_write_action_commit
 
     with pytest.raises(RuntimeError, match="cannot join the commit of a sync"):
-        with _shared_write_action_commit(writes.target):
+        with _join_shared_write_action_commit(writes.target):
             if nested_block:
                 async with writes.view.shared_write_action_commit():
                     pytest.fail("The async block must not be entered")
@@ -668,6 +670,4 @@ async def test_sync_owner_rejects_async_work_before_mutation(writes, nested_bloc
                 await writes.view.handle_create(writes.schema(name="never"))
 
     assert writes.events == []
-    # The savepoint of the sync block was rolled back; the transaction that
-    # begin_nested() began stays, as with SQLAlchemy's own begin_nested().
-    assert not writes.session.in_nested_transaction()
+    assert not writes.session.in_transaction()

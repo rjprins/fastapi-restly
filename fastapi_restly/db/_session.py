@@ -1,4 +1,5 @@
 import warnings
+import weakref
 from collections.abc import AsyncIterator, Callable, Iterator
 from functools import partial
 from inspect import (
@@ -20,7 +21,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.ext.asyncio import AsyncSession as SA_AsyncSession
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, SessionTransaction, sessionmaker
 from sqlalchemy.orm import Session as SA_Session
 
 from .._routes import iter_routes
@@ -430,12 +431,49 @@ def _should_warn_uncommitted() -> bool:
     return _fr_config.warn_on_uncommitted
 
 
+#: The flag of a session that flushed changes and did not commit them yet.
+_UNCOMMITTED = "_fr_uncommitted"
+#: The value of the flag when each open savepoint began.
+_UNCOMMITTED_AT_SAVEPOINT = "_fr_uncommitted_at_savepoint"
+
+
 def _mark_uncommitted(session: SA_Session, flush_context: Any = None) -> None:
-    session.info["_fr_uncommitted"] = True
+    session.info[_UNCOMMITTED] = True
 
 
-def _clear_uncommitted(session: SA_Session, *args: Any) -> None:
-    session.info.pop("_fr_uncommitted", None)
+def _remember_uncommitted(session: SA_Session, transaction: SessionTransaction) -> None:
+    """Keep the flag when a savepoint begins, for its rollback.
+
+    ``begin_nested()`` flushes what is pending before SQLAlchemy calls this,
+    so the flag includes that flush.
+    """
+    if transaction.nested:
+        saved = session.info.setdefault(
+            _UNCOMMITTED_AT_SAVEPOINT, weakref.WeakKeyDictionary()
+        )
+        saved[transaction] = session.info.get(_UNCOMMITTED, False)
+
+
+def _clear_committed(session: SA_Session) -> None:
+    """The commit leaves nothing uncommitted. The release of a savepoint is
+    not a commit: its changes are still uncommitted."""
+    if not session.in_nested_transaction():
+        session.info.pop(_UNCOMMITTED, None)
+
+
+def _restore_rolled_back(session: SA_Session, transaction: SessionTransaction) -> None:
+    """The rollback of the transaction leaves nothing uncommitted. The
+    rollback of a savepoint undoes only what was flushed in it, so the flag
+    gets its value from when the savepoint began."""
+    # A failed flush reports its own transaction, inside the one that it
+    # rolled back.
+    while transaction.parent is not None and not transaction.nested:
+        transaction = transaction.parent
+    saved = session.info.get(_UNCOMMITTED_AT_SAVEPOINT, {})
+    if transaction.nested and saved.get(transaction):
+        session.info[_UNCOMMITTED] = True
+    else:
+        session.info.pop(_UNCOMMITTED, None)
 
 
 def _arm_uncommitted_warning(session: SA_AsyncSession | SA_Session) -> None:
@@ -448,8 +486,9 @@ def _arm_uncommitted_warning(session: SA_AsyncSession | SA_Session) -> None:
     target = getattr(session, "sync_session", session)
     try:
         event.listen(target, "after_flush", _mark_uncommitted)
-        event.listen(target, "after_commit", _clear_uncommitted)
-        event.listen(target, "after_rollback", _clear_uncommitted)
+        event.listen(target, "after_transaction_create", _remember_uncommitted)
+        event.listen(target, "after_commit", _clear_committed)
+        event.listen(target, "after_soft_rollback", _restore_rolled_back)
     except Exception:
         # Best-effort dev aid: unusual sessions (test stubs, or session types
         # without ORM flush events) opt out. Never break a request.
@@ -469,7 +508,7 @@ def _warn_if_uncommitted(session: SA_AsyncSession | SA_Session) -> None:
         if target.info.get("_fr_suppress_uncommitted"):
             return
         uncommitted = bool(
-            target.info.get("_fr_uncommitted")
+            target.info.get(_UNCOMMITTED)
             or target.new
             or target.dirty
             or target.deleted

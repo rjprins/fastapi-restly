@@ -8,8 +8,10 @@ put the route's own ``session.begin_nested()`` around each call, as the docs
 of 0.12 showed, which still works.
 
 The engines are plain, as in production: SQLite without the SAVEPOINT fix
-that the test fixtures install. tests/postgres/test_write_action_error.py runs
-the same tests on PostgreSQL.
+that the test fixtures install. With the default settings of the driver, the
+release of a savepoint that began the transaction commits. So on SQLite, the
+``BEGIN`` that Restly sends before its savepoint is under test too.
+tests/postgres/test_write_action_error.py runs the same tests on PostgreSQL.
 """
 
 import warnings
@@ -190,6 +192,21 @@ async def test_a_loop_that_ends_with_an_error_does_not_warn(orders):
         _warn_if_uncommitted(orders.session)
 
 
+async def test_a_caught_error_keeps_the_warning_for_a_write_before_it(orders):
+    """The route's own object is flushed when the savepoint begins, outside
+    it. The rollback of the savepoint does not undo it, so it is still
+    uncommitted, and the request warns."""
+    _arm_uncommitted_warning(orders.session)
+    orders.session.add(orders.model(name="added before"))
+
+    with pytest.raises(HTTPException):
+        await _create(orders, "rejected")
+
+    with pytest.warns(RestlyUncommittedChangesWarning):
+        _warn_if_uncommitted(orders.session)
+    await call(orders.session.rollback())
+
+
 async def test_an_object_added_before_the_action_is_written_at_its_start(orders):
     """The savepoint begins after the flush of what is pending, so it holds
     only the change of the action."""
@@ -216,9 +233,8 @@ async def test_an_error_that_leaves_a_shared_block_undoes_the_block(orders):
 
 
 async def test_a_savepoint_inside_a_shared_block_does_not_commit_early(orders):
-    """On SQLite, with the default settings of the driver, the release of the
-    outermost savepoint commits. The savepoint of the block is the outermost
-    one, so the release of the route's savepoint inside it commits nothing."""
+    """The route's savepoint inside the block does not begin the
+    transaction, so on SQLite its release commits nothing."""
     with pytest.raises(ValueError, match="stop"):
         async with enter(orders.view.shared_write_action_commit()):
             async with enter(orders.session.begin_nested()):
@@ -246,8 +262,8 @@ async def test_a_caught_conflict_inside_a_shared_block_stops_its_commit(orders):
 
 
 async def test_a_direct_commit_inside_a_write_action_saves_nothing(orders):
-    """The commit is refused at the savepoint, before it flushes: on SQLite,
-    its release would commit."""
+    """The outermost block owns the commit, so a direct commit is refused
+    before it flushes, and the block saves nothing."""
     view = orders.view
     order = orders.model(name="direct")
 
@@ -259,13 +275,32 @@ async def test_a_direct_commit_inside_a_write_action_saves_nothing(orders):
     assert await _names(orders) == ["after"]
 
 
+async def test_a_release_that_fails_undoes_everything(orders):
+    """A failed release leaves the savepoint unusable: SQLAlchemy does not
+    roll back to it any more. So the whole transaction rolls back, and the
+    next write does not commit the row of the failed one."""
+    bind = orders.session.bind
+    engine = getattr(bind, "sync_engine", bind)
+    failures = ["the release failed"]
+
+    def fail_once(connection, name, context):
+        if failures:
+            raise RuntimeError(failures.pop())
+
+    event.listen(engine, "release_savepoint", fail_once)
+    try:
+        with pytest.raises(RuntimeError, match="the release failed"):
+            await _create(orders, "lost")
+        await _create(orders, "after")
+    finally:
+        event.remove(engine, "release_savepoint", fail_once)
+
+    assert await _names(orders) == ["after"]
+
+
 async def test_a_commit_that_fails_after_the_release_undoes_everything(orders):
-    """The savepoint is gone, so the whole transaction rolls back."""
-    if orders.dialect == "sqlite":
-        pytest.skip(
-            "On SQLite, with the default settings of the driver, the release "
-            "of the outermost savepoint commits already."
-        )
+    """The savepoint is gone, so the whole transaction rolls back. On SQLite,
+    the ``BEGIN`` before the savepoint keeps its release from committing."""
     session = getattr(orders.session, "sync_session", orders.session)
 
     def fail_the_commit(session):

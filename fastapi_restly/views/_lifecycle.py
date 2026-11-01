@@ -31,12 +31,14 @@ outermost ``shared_write_action_commit`` block opens it at its start. An
 exception that leaves the outermost bracket rolls back to the savepoint. This
 undoes only the changes of the bracket and keeps the other loaded objects, so
 the session stays usable, and a route can catch the error and write again.
-When the savepoint is gone, because a commit released it, the whole
-transaction rolls back, as ``with session.begin():`` does. The commit releases
-the savepoint, then commits.
+When the commit fails, the whole transaction rolls back, as
+``with session.begin():`` does. The commit releases the savepoint, then
+commits. On SQLite, a ``BEGIN`` comes before the savepoint, so the release
+does not commit; see :func:`_begin_sqlite_transaction`.
 """
 
 import contextlib
+import sqlite3
 import warnings
 import weakref
 from collections.abc import AsyncIterator, Callable, Iterable, Iterator
@@ -47,6 +49,7 @@ from typing import Any, Protocol
 
 from sqlalchemy import event
 from sqlalchemy import inspect as sa_inspect
+from sqlalchemy.exc import UnboundExecutionError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import MANYTOONE, InstanceState, Session, SessionTransaction
 from sqlalchemy.orm.collections import collection_adapter
@@ -651,6 +654,8 @@ class _SharedWriteActionCommit:
     )
     #: The savepoint of the outermost block, which an error rolls back to.
     savepoint: SessionTransaction | None = None
+    #: Whether the commit began. Its first step releases the savepoint.
+    commit_began: bool = False
 
     def begin_savepoint(self, session: Session) -> None:
         """Open the savepoint of the outermost block, once.
@@ -659,19 +664,25 @@ class _SharedWriteActionCommit:
         before the block stay outside the savepoint.
         """
         if self.savepoint is None:
+            _begin_sqlite_transaction(session)
             self.savepoint = session.begin_nested()
 
     def undo(self, session: Session) -> None:
         """Undo the changes of the outermost block after an exception.
 
         The rollback of the savepoint undoes only these changes, and it
-        expires only the objects that they changed. When the savepoint is
-        gone, because a commit released it, roll back the whole transaction.
-        Do the same when no savepoint was opened, but the transaction cannot
-        go on, such as after the flush of ``begin_nested()`` failed.
+        expires only the objects that they changed. When the commit began, it
+        released the savepoint, or its release failed and left the savepoint
+        unusable. Then roll back the whole transaction. Do the same when no
+        savepoint was opened, but the transaction cannot go on, such as after
+        the flush of ``begin_nested()`` failed.
         """
         savepoint = self.savepoint
-        if savepoint is not None and _is_open(session, savepoint):
+        if (
+            savepoint is not None
+            and not self.commit_began
+            and _is_open(session, savepoint)
+        ):
             savepoint.rollback()
         elif savepoint is not None or not session.is_active:
             session.rollback()
@@ -679,9 +690,13 @@ class _SharedWriteActionCommit:
     def require_active(self, *, asynchronous: bool = False) -> None:
         if self.aborted:
             raise RuntimeError(
-                "The write was aborted: an exception left a write_action() or "
-                "shared_write_action_commit() block, or a rollback ended its "
-                "transaction. The outermost block commits nothing."
+                "The write was aborted: a flush failed or a rollback ended the "
+                "transaction of the write_action() or "
+                "shared_write_action_commit() block, or a session.commit() "
+                "was refused in it. The outermost block commits nothing. Inside "
+                "a block, run each write that may raise in "
+                "session.begin_nested(): the rollback of the savepoint then "
+                "undoes its change, and the block goes on."
             )
         if asynchronous and not self.asynchronous:
             raise RuntimeError(
@@ -775,7 +790,7 @@ async def _async_commit_shared_write_actions(
     owner.require_unrefused()
     for obj, attributes in _objects_to_refresh(owner):
         await session.refresh(obj, attribute_names=attributes)
-    owner.committing = True
+    owner.committing = owner.commit_began = True
     try:
         await session.commit()
     finally:
@@ -788,7 +803,7 @@ def _commit_shared_write_actions(
     owner.require_unrefused()
     for obj, attributes in _objects_to_refresh(owner):
         session.refresh(obj, attribute_names=attributes)
-    owner.committing = True
+    owner.committing = owner.commit_began = True
     try:
         session.commit()
     finally:
@@ -910,9 +925,9 @@ def _reject_direct_commit(session: Session) -> None:
 
     ``session.commit()`` first releases each open savepoint, and SQLAlchemy
     calls ``before_commit`` for each. So refuse it at the savepoint of the
-    outermost block already: on SQLite, with the default settings of the
-    driver, its release can commit. The release of a savepoint that the caller
-    opened is not a commit, so it goes on.
+    outermost block already, before the release writes anything. The release
+    of a savepoint that the caller opened inside the block is not a commit,
+    so it goes on.
     """
     owner = _shared_write_action_commit_owner(session)
     if owner is None or owner.committing:
@@ -975,6 +990,42 @@ def _belongs_to_transaction(
             return True
         transaction = transaction.parent
     return False
+
+
+#: The value of ``sqlite3.Connection.autocommit`` when the driver manages the
+#: transaction as before Python 3.12. Before 3.12, this is the only way.
+_LEGACY_TRANSACTION_CONTROL = getattr(sqlite3, "LEGACY_TRANSACTION_CONTROL", -1)
+
+
+def _begin_sqlite_transaction(session: Session) -> None:
+    """On SQLite, begin the transaction before the savepoint of a block.
+
+    With their default settings, pysqlite and aiosqlite begin a transaction
+    only before an ``INSERT``, an ``UPDATE`` or a ``DELETE``. So a
+    ``SAVEPOINT`` that comes first begins the transaction itself, and its
+    release commits, before the commit of the block. A ``BEGIN`` first keeps
+    the release inside the transaction, and only the commit commits.
+
+    Nothing changes when the driver is in a transaction already, or when it
+    leaves the transaction to the caller: with ``isolation_level=None``, as
+    SQLAlchemy's recipe for SQLite sets it, or with ``autocommit`` set.
+    """
+    try:
+        dialect = session.get_bind().dialect
+    except UnboundExecutionError:
+        return  # binds for each model only; each has its own dialect
+    if dialect.name != "sqlite":
+        return
+    connection = session.connection()
+    driver = connection.connection.driver_connection
+    if (
+        driver.in_transaction
+        or driver.isolation_level is None
+        or getattr(driver, "autocommit", _LEGACY_TRANSACTION_CONTROL)
+        != _LEGACY_TRANSACTION_CONTROL
+    ):
+        return
+    connection.exec_driver_sql("BEGIN")
 
 
 def _is_open(session: Session, savepoint: SessionTransaction) -> bool:
