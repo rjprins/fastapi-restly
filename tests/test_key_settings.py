@@ -23,7 +23,7 @@ from fastapi_restly.exc import BadQueryParam, RestlyConfigurationError
 from fastapi_restly.query import apply_list_params, derive_schema_list_params
 from fastapi_restly.query._impl import _record_of
 from fastapi_restly.testing import RestlyTestClient
-from fastapi_restly.views._base import _LIST_SETTING_DEFAULTS
+from fastapi_restly.views._list_params import _LIST_SETTING_DEFAULTS
 
 
 class Base(DeclarativeBase):

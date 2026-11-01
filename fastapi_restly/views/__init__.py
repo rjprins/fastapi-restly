@@ -45,13 +45,13 @@ from ._base import (
     delete,
     get,
     include_view,
-    list_filter,
     patch,
     post,
     put,
     resolve_scope,
     route,
 )
+from ._list_params import list_filter
 from ._sync import RestView
 from ._view_types import ViewCreate, ViewID, ViewListResponse, ViewResponse, ViewUpdate
 

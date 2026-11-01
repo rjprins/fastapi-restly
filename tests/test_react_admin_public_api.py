@@ -11,9 +11,9 @@ import fastapi_restly.views._react_admin as react_admin
 #: The private names that the react-admin views still import: the helpers of
 #: the view settings, which have no public form yet.
 PRIVATE_IMPORTS = {
-    "._base._how_set",
-    "._base._list_filter_methods",
-    "._base._list_setting",
+    "._list_params._how_set",
+    "._list_params._list_filter_methods",
+    "._list_params._list_setting",
     "._guards._owner",
     "._guards._set_by",
 }
