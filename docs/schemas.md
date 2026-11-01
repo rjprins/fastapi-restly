@@ -187,7 +187,7 @@ field with a
 {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`.
 For an optional write-only field, write `WriteOnly[Optional[str]]`.
 
-A JSON column has its own rules for `WriteOnly` fields; see
+A JSON column has its own rules for `ReadOnly` and `WriteOnly` fields; see
 [Store a Pydantic model in a JSON column](#json-document-columns).
 :::
 
@@ -870,7 +870,9 @@ Use a `PydanticJSON` column for a document with a fixed shape. For a
 free-form document, use a plain `JSON` column, as in
 `Mapped[dict[str, Any]] = mapped_column(JSON)`. For a document with a secret,
 write a SQLAlchemy {class}`~sqlalchemy.types.TypeDecorator` of your own,
-because the JSON dump masks the secret.
+because the JSON dump masks the secret. Keep a value that the server sets,
+such as the time it checked an address, in a column of its own. A request
+writes the whole document, so it would replace such a value.
 
 :::{admonition} Details
 :class: details
@@ -909,6 +911,16 @@ A part typed `Any` is checked when you write it. For such documents, write a
 the Pydantic model itself, not a dump. You can still mark the whole column
 `WriteOnly`. That hides the column in responses, and the stored document
 keeps all its fields.
+
+**`ReadOnly` fields.** A {data}`ReadOnly <fastapi_restly.schemas.ReadOnly>`
+field raises too, also in a nested model, a `TypedDict` or a `NamedTuple`. A
+request writes the whole document. So a `PATCH` that leaves out the field, as
+OpenAPI asks, would set it back to its default, and the value that the server
+set would be lost. Keep such a value in a column of its own. You can still
+mark the whole column `ReadOnly`. The `id` of a reference, such as
+`fr.IDRef[User]`, does not count, because the client sends it. So a view
+schema, with its read-only `id`, cannot be the type of a document. Use a
+model of its own for the document.
 
 **The same as `JSON`.** `None` is stored as JSON `null`, and
 `fr.PydanticJSON(Address, none_as_null=True)` stores SQL `NULL`. A query

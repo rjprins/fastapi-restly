@@ -69,8 +69,9 @@ class PydanticJSON(TypeDecorator[Any]):
     :param type\\_: The type of the document. It must be hashable, as the
         types above are.
     :param none_as_null: Store ``None`` as SQL ``NULL``, as in ``JSON``.
-    :raises RestlyConfigurationError: ``type_`` is not hashable, or it has a
-        part that the dump would mask or leave out.
+    :raises RestlyConfigurationError: ``type_`` is not hashable, it has a
+        part that the dump would mask or leave out, or it has a ``ReadOnly``
+        field, which a write would replace.
     """
 
     impl = JSON

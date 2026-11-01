@@ -52,6 +52,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `session.in_nested_transaction()` is true.
 - The `testing` extra needs `httpx2` 2.12.0 or later. Earlier releases have
   known security problems.
+- A document with a `ReadOnly` field, also in a nested model, raises
+  `RestlyConfigurationError` before it is stored in a JSON column. A request
+  writes the whole document. So a `PATCH` that left out the field, as OpenAPI
+  asks, set it back to its default, and the value that the server set was
+  lost. Keep such a value in a column of its own. The `id` of a reference,
+  such as `fr.IDRef[User]`, does not count, because the client sends it.
 
 ### Fixed
 

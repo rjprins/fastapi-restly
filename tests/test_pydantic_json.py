@@ -342,6 +342,31 @@ class _OptionalExcludedDict(TypedDict, total=False):
     note: Annotated[str, pydantic.Field(exclude=True)]
 
 
+class _Stamped(pydantic.BaseModel):
+    street: str
+    verified_at: fr.ReadOnly[datetime | None] = None
+
+
+class _OptionalStamped(pydantic.BaseModel):
+    verified_at: fr.ReadOnly[datetime] | None = None
+
+
+class _StampedTags(pydantic.BaseModel):
+    tags: list[fr.ReadOnly[str]] = []
+
+
+class _StampedDict(TypedDict):
+    verified_at: fr.ReadOnly[datetime]
+
+
+class _StampedTuple(NamedTuple):
+    verified_at: fr.ReadOnly[datetime]
+
+
+class _ShopSchema(fr.IDSchema):
+    name: str
+
+
 @pytest.mark.parametrize(
     "type_, message",
     [
@@ -362,6 +387,15 @@ class _OptionalExcludedDict(TypedDict, total=False):
         (list[_Point], "_Point in list[_Point] is a dataclass"),
         (_Polygon, "_Point in _Polygon.points is a dataclass"),
         (Iterable[int], "Pydantic validates Iterable[int] to an iterator"),
+        # a request writes the whole document, so it would replace the value
+        # that the server set
+        (_Stamped, "_Stamped.verified_at is ReadOnly"),
+        (dict[str, _Stamped], "_Stamped.verified_at is ReadOnly"),
+        (_OptionalStamped, "_OptionalStamped.verified_at is ReadOnly"),
+        (_StampedTags, "str in _StampedTags.tags is ReadOnly"),
+        (_StampedDict, "_StampedDict.verified_at is ReadOnly"),
+        (_StampedTuple, "_StampedTuple.verified_at is ReadOnly"),
+        (list[_ShopSchema], "_ShopSchema.id is ReadOnly"),
     ],
 )
 def test_a_type_that_the_dump_would_change_is_refused(type_, message):
@@ -397,6 +431,51 @@ def test_an_excluded_field_in_a_named_tuple_is_accepted():
 
     column_type = fr.PydanticJSON(Pair)
     assert column_type.process_bind_param(Pair(1, 2), None) == [1, 2]
+
+
+def test_a_readonly_field_is_refused_in_a_mapped_annotation():
+    """The message names the field. The fix is a column of its own."""
+
+    class Base(fr.ModelDefaults, DeclarativeBase):
+        pass
+
+    with pytest.raises(
+        RestlyConfigurationError,
+        match=r"^PydanticJSON\(_Stamped\): _Stamped.verified_at is ReadOnly\. ",
+    ):
+
+        class Shop(fr.IDMixin, Base):
+            address: Mapped[_Stamped]
+
+
+def test_a_reference_in_a_document_is_accepted():
+    """The client sends the id of a reference, so its ReadOnly id does not
+    count."""
+
+    class Owner(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    class Line(pydantic.BaseModel):
+        owner: fr.IDRef[Owner]
+        approver: fr.IDSchema[Owner]
+
+    column_type = fr.PydanticJSON(list[Line])
+    stored = column_type.process_bind_param([{"owner": 1, "approver": {"id": 2}}], None)
+    assert stored == [{"owner": 1, "approver": {"id": 2}}]
+    (line,) = column_type.process_result_value(stored, None)
+    assert (line.owner.id, line.approver.id) == (1, 2)
+
+
+def test_a_readonly_field_in_a_part_of_type_any_fails_the_write(engine):
+    class Vault(fr.IDMixin, SharedBase):
+        items: Mapped[dict[str, Any]] = mapped_column(fr.PydanticJSON(dict[str, Any]))
+
+    SharedBase.metadata.create_all(engine)
+    with Session(engine) as session:
+        session.add(Vault(items={"home": _Stamped(street="Main")}))
+        with pytest.raises(StatementError) as excinfo:
+            session.flush()
+    assert "_Stamped.verified_at is ReadOnly" in str(excinfo.value.orig)
 
 
 def test_a_recursive_model_without_secrets_is_accepted():
@@ -715,6 +794,34 @@ def test_a_view_schema_can_have_its_own_document_class(sync_client):
     created = sync_client.post("/shops", json={"address": {"street": "Main"}}).json()
     assert created == {"id": 1, "address": {"street": "Main", "number": 0}}
     assert sync_client.get("/shops/1").json() == created
+
+
+def test_the_whole_column_can_be_readonly(sync_client):
+    """A ReadOnly field in the document is refused, but ReadOnly around the
+    whole column works as for any column: the server sets the document."""
+
+    class Shop(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+        address: Mapped[Address | None] = mapped_column(default=None)
+
+    class ShopSchema(fr.IDSchema):
+        name: str
+        address: fr.ReadOnly[Address | None] = None
+
+    @fr.include_view(sync_client.app)
+    class ShopView(fr.RestView):
+        prefix = "/shops"
+        model = Shop
+        schema = ShopSchema
+
+    SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
+    sync_client.post("/shops", json={"name": "Corner"})
+    with fr.open_session() as session:
+        session.get(Shop, 1).address = Address(street="Main")
+        session.commit()
+    sync_client.patch("/shops/1", json={"name": "Dock", "address": {"street": "X"}})
+    shop = sync_client.get("/shops/1").json()
+    assert (shop["name"], shop["address"]["street"]) == ("Dock", "Main")
 
 
 @pytest.mark.parametrize("asynchronous", [True, False], ids=["async", "sync"])

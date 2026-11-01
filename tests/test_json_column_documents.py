@@ -147,6 +147,14 @@ class _SecretValuesDocument(pydantic.BaseModel):
     tokens: dict[str, pydantic.SecretStr]
 
 
+class _StampedDocument(pydantic.BaseModel):
+    """A request writes the whole document, so it would replace the value
+    that the server set."""
+
+    label: str = "visible"
+    verified_at: fr.ReadOnly[datetime | None] = None
+
+
 @pytest.mark.parametrize("operation", ["create", "update"])
 @pytest.mark.parametrize(
     "document_type, document",
@@ -180,6 +188,8 @@ class _SecretValuesDocument(pydantic.BaseModel):
         # not in a model: the dump of a dict or a list masks a secret too
         (dict[str, pydantic.SecretStr], {"api": pydantic.SecretStr("s3cret")}),
         (list[_DataclassDocument], [_DataclassDocument()]),
+        (_StampedDocument, _StampedDocument()),
+        (list[_StampedDocument], [_StampedDocument()]),
     ],
 )
 def test_unsupported_documents_are_rejected_before_writing(
@@ -236,6 +246,54 @@ def test_http_create_rejects_writeonly_json_without_committing(request, asynchro
     with pytest.raises(fr.exc.RestlyConfigurationError, match="Document.payload"):
         client.post("/private-documents", json={"payload": {"secret": "input-secret"}})
     assert client.get("/private-documents").json()["total_count"] == 0
+
+
+def test_a_readonly_field_in_a_document_is_refused_on_a_request(sync_client):
+    """Without the check, a PATCH that leaves out ``verified_at``, as the
+    OpenAPI asks, would set it back to null."""
+
+    class Document(fr.IDMixin, SharedBase):
+        payload: Mapped[dict] = mapped_column(sqlalchemy.JSON)
+
+    class DocumentSchema(fr.IDSchema):
+        payload: _StampedDocument
+
+    @fr.include_view(sync_client.app)
+    class DocumentView(fr.RestView):
+        prefix = "/stamped-documents"
+        model = Document
+        schema = DocumentSchema
+
+    SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
+    with pytest.raises(
+        fr.exc.RestlyConfigurationError,
+        match=r"^Document.payload: _StampedDocument.verified_at is ReadOnly\. ",
+    ):
+        sync_client.post("/stamped-documents", json={"payload": {"label": "a"}})
+    assert sync_client.get("/stamped-documents").json()["total_count"] == 0
+
+
+def test_a_reference_in_a_document_is_stored(sync_db):
+    """The client sends the id of a reference, so its ReadOnly id does not
+    count."""
+
+    class Owner(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    class Line(pydantic.BaseModel):
+        owner: fr.IDRef[Owner]
+
+    class Document(fr.IDMixin, SharedBase):
+        payload: Mapped[list] = mapped_column(sqlalchemy.JSON)
+
+    schema = pydantic.create_model("DocumentInput", payload=(list[Line], ...))
+    engine, make_session = sync_db
+    SharedBase.metadata.create_all(engine)
+    with make_session() as session:
+        row = fr.objects.make_new_object(
+            session, Document, schema(payload=[{"owner": 1}])
+        )
+        assert row.payload == [{"owner": 1}]
 
 
 def test_create_stores_a_nested_model_as_plain_json(client):

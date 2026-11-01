@@ -1392,6 +1392,24 @@ def _excluded_if_error(column: str, where: str) -> RestlyConfigurationError:
     )
 
 
+def _read_only_error(column: str, where: str) -> RestlyConfigurationError:
+    return RestlyConfigurationError(
+        f"{column}: {where} is ReadOnly. But a request writes the whole "
+        "document, so it would replace the value that the server set. Keep such "
+        "a value in a column of its own, or remove ReadOnly."
+    )
+
+
+def _read_only(model: type[pydantic.BaseModel], field: FieldInfo) -> bool:
+    """Whether ``field`` of ``model`` is ``ReadOnly``, also as in
+    ``ReadOnly[int] | None``. The ``id`` of a reference, such as
+    ``IDRef[User]``, is a value that the client sends, so it does not count."""
+    if is_reference_annotation(model):
+        return False
+    _, metadata = _unwrap_type(field.annotation)
+    return readonly_marker in field.metadata or readonly_marker in metadata
+
+
 def _dataclass_error(column: str, where: str) -> RestlyConfigurationError:
     return RestlyConfigurationError(
         f"{column}: {where} is a dataclass. Restly cannot check a dataclass for "
@@ -1405,8 +1423,8 @@ def _iterator_error(column: str, where: str) -> RestlyConfigurationError:
     )
 
 
-#: A field that a JSON dump leaves out or masks, and the function that makes
-#: its error.
+#: A field that a JSON dump leaves out or masks, or that a write would
+#: replace, and the function that makes its error.
 _Unstorable = tuple[str, Callable[[str, str], RestlyConfigurationError]]
 
 #: For each model class, its first such field, or None. A write checks each
@@ -1417,8 +1435,8 @@ _UNSTORABLE_FIELDS: weakref.WeakKeyDictionary[type, _Unstorable | None] = (
 
 
 def _unstorable_field(model: type[pydantic.BaseModel]) -> _Unstorable | None:
-    """The first field of ``model`` that a JSON dump leaves out or masks,
-    and the function that makes its error."""
+    """The first field of ``model`` that a JSON dump leaves out or masks, or
+    that is ``ReadOnly``, and the function that makes its error."""
     try:
         return _UNSTORABLE_FIELDS[model]
     except KeyError:
@@ -1433,6 +1451,8 @@ def _unstorable_field(model: type[pydantic.BaseModel]) -> _Unstorable | None:
         # such a document fails, not the first with a secret.
         elif _hides_value(field):
             found = (name, _secret_error)
+        elif _read_only(model, field):
+            found = (name, _read_only_error)
         if found:
             break
     _UNSTORABLE_FIELDS[model] = found
@@ -1440,9 +1460,10 @@ def _unstorable_field(model: type[pydantic.BaseModel]) -> _Unstorable | None:
 
 
 def _reject_excluded_json_fields(value: Any, column: str) -> None:
-    """Reject exclusions, secrets, and document values that cannot be
-    inspected safely. A JSON dump leaves out an excluded field and masks a
-    secret, so the column would not get the value.
+    """Reject exclusions, secrets, ``ReadOnly`` fields, and document values
+    that cannot be inspected safely. A JSON dump leaves out an excluded field
+    and masks a secret, so the column would not get the value. A request
+    writes the whole document, so it would replace a ``ReadOnly`` value.
 
     :param column: The column, or the type of a ``PydanticJSON`` column, for
         the message of an error.
@@ -1500,29 +1521,34 @@ _ITERATOR_TYPES = (Iterable, Iterator, Generator)
 
 def _reject_excluded_json_type(type_: Any, column: str) -> None:
     """Reject a document type with a part that a JSON dump leaves out or
-    masks, as :func:`_reject_excluded_json_fields` rejects such a value. The
-    type tells it when the column is defined, before the first write. A part
-    of type ``Any`` can still hold such a value, so each write checks too.
+    masks, or that is ``ReadOnly``, as :func:`_reject_excluded_json_fields`
+    rejects such a value. The type tells it when the column is defined,
+    before the first write. A part of type ``Any`` can still hold such a
+    value, so each write checks too.
 
     :param column: The type of the column, such as
         ``PydanticJSON(Address)``, for the message of an error.
     :raises RestlyConfigurationError: ``type_`` has a secret, an excluded
-        field, a dataclass or an iterator in it.
+        field, a ``ReadOnly`` part, a dataclass or an iterator in it.
     """
-    # Each part, the field or the type it is in, and whether the part is
-    # inside that field or type, as P is in list[P].
-    pending: list[tuple[Any, str, bool]] = [(type_, _type_label(type_), False)]
     seen_aliases: set[Any] = set()
     seen_classes: set[type] = set()
+    # A ReadOnly around the whole type is not a part of the document.
+    root, _ = _unwrap_type(type_, seen_aliases)
+    # Each part, the field or the type it is in, and whether the part is
+    # inside that field or type, as P is in list[P].
+    pending: list[tuple[Any, str, bool]] = [(root, _type_label(type_), False)]
     while pending:
         annotation, where, inside = pending.pop()
-        part, _ = _unwrap_type(annotation, seen_aliases)
+        part, metadata = _unwrap_type(annotation, seen_aliases)
         origin = get_origin(part) or part
+        found = f"{_type_label(part)} in {where}" if inside else where
+        if readonly_marker in metadata:
+            raise _read_only_error(column, found)
         if not isinstance(origin, type):
             # A union, a Literal or a value in a Literal.
             pending.extend((arg, where, True) for arg in get_args(part))
             continue
-        found = f"{_type_label(part)} in {where}" if inside else where
         if issubclass(origin, _SECRET_TYPES):
             raise _secret_error(column, found)
         if dataclasses.is_dataclass(origin):
@@ -1542,6 +1568,8 @@ def _reject_excluded_json_type(type_: Any, column: str) -> None:
                     raise _excluded_error(column, field_where)
                 if _excluded_if(field):
                     raise _excluded_if_error(column, field_where)
+                if _read_only(origin, field):
+                    raise _read_only_error(column, field_where)
                 pending.append((field.annotation, field_where, False))
             continue
         if is_typeddict(origin) or (
@@ -1568,6 +1596,8 @@ def _reject_excluded_json_type(type_: Any, column: str) -> None:
                         raise _excluded_error(column, hint_where)
                     if _excluded_if(field):
                         raise _excluded_if_error(column, hint_where)
+                    if readonly_marker in field.metadata:
+                        raise _read_only_error(column, hint_where)
                 pending.append((hint, hint_where, False))
             continue
         pending.extend((arg, where, True) for arg in get_args(part))
