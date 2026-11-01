@@ -33,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `before_commit` and `after_commit` run twice. The first time is before the
   commit, which can still fail. To run only at the commit, return early when
   `session.in_nested_transaction()` is true.
+- The `testing` extra needs `httpx2` 2.12.0 or later. Earlier releases have
+  known security problems.
 
 ### Fixed
 
